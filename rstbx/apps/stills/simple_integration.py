@@ -527,7 +527,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
             term1 = (self.fuller_kapton_absorption_sigmas/self.fuller_kapton_absorption_correction)**2
             term2 = (self.integrated_sigma/self.integrated_data)**2
             self.integrated_data *= self.fuller_kapton_absorption_correction
-            self.integrated_sigma = self.integrated_data * flex.sqrt(term1 + term2)
+            self.integrated_sigma = abs(self.integrated_data * flex.sqrt(term1 + term2))
             # order is purposeful: the line above requires that self.integrated_data has already been corrected!
           else:
             self.fuller_kapton_absorption_correction = C(
