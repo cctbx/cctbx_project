@@ -674,6 +674,94 @@ class AveragingDialog(BaseDialog):
 
     self.SetTitle('Averaging Settings')
 
+class TrialTagSelectionDialog(BaseDialog):
+  def __init__(self, parent,
+               label_style='bold',
+               content_style='normal',
+               db=None,
+               *args, **kwargs):
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+    self.db = db
+    self.parent = parent
+    self.run_paths = []
+    self.tags = []
+    self.tag_names = []
+
+    self.trials = db.get_all_trials()
+    trial_numbers = ["%d"%trial.trial for trial in self.trials]
+    self.trials_ctrl = gctr.ChoiceCtrl(self,
+                                       label='Trial number:',
+                                       label_size=(120, -1),
+                                       label_style='bold',
+                                       choices=trial_numbers)
+    self.main_sizer.Add(self.trials_ctrl, flag=wx.EXPAND | wx.ALL, border=10)
+
+
+    self.trial_tags = gctr.CheckListCtrl(self,
+                                         label='Tags (optional):',
+                                         label_size=(40, -1),
+                                         label_style='normal',
+                                         ctrl_size=(200, -1),
+                                         choices=[])
+    self.main_sizer.Add(self.trial_tags, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.SetTitle('Pick a trial and optionally some tags from that trial')
+
+    self.Bind(wx.EVT_CHOICE, self.onTrialSelect, id=self.trials_ctrl.ctr.GetId())
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    wx.CallAfter(self.refresh_tags)
+
+  def onTrialSelect(self, e):
+    self.refresh_tags()
+
+  def refresh_tags(self):
+    self.trial_tags.ctr.Clear()
+    trial = self.trials[self.trials_ctrl.ctr.GetSelection()]
+    self.tags = []
+    self.tag_names = []
+    tag_ids = []
+    for run in trial.runs:
+      for tag in run.tags:
+        if tag.id not in tag_ids:
+          self.tags.append(tag)
+          tag_ids.append(tag.id)
+          self.tag_names.append(tag.name)
+
+    self.trial_tags.ctr.InsertItems(items=self.tag_names, pos=0)
+
+  def onOK(self, e):
+    from xfel.ui.db import get_run_path
+    self.run_paths = []
+
+    trial = self.trials[self.trials_ctrl.ctr.GetSelection()]
+    tags = [self.tags[self.tag_names.index(t)] for t in self.trial_tags.ctr.GetCheckedStrings()]
+    tag_ids = [t.id for t in tags]
+
+    run_ids = []
+    for rungroup in trial.rungroups:
+      for run in rungroup.runs:
+        if run.id not in run_ids:
+          if len(tags) == 0:
+            self.run_paths.append(os.path.join(
+              get_run_path(self.parent.main.params.output_folder, trial, rungroup, run),
+              'out'))
+          else:
+            run_tag_ids = [t.id for t in run.tags]
+            for tag_id in tag_ids:
+              if tag_id in run_tag_ids:
+                run_ids.append(run.id)
+                self.run_paths.append(os.path.join(
+                  get_run_path(self.parent.main.params.output_folder, trial, rungroup, run),
+                  'out'))
+                break
+    e.Skip()
 
 class TagDialog(BaseDialog):
   def __init__(self, parent,

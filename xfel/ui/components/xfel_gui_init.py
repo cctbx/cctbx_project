@@ -655,7 +655,7 @@ class RunWindow(wx.Panel):
     self.trials_tab = TrialsTab(self.main_nbook, main=self.parent)
     self.jobs_tab = JobsTab(self.main_nbook, main=self.parent)
     self.status_tab = StatusTab(self.main_nbook, main=self.parent)
-    self.merge_tab = MergeTab(self.main_nbook)
+    self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, 'Runs')
     self.main_nbook.AddPage(self.trials_tab, 'Trials')
     self.main_nbook.AddPage(self.jobs_tab, 'Jobs')
@@ -1202,7 +1202,7 @@ class StatusTab(BaseTab):
 
 
 class MergeTab(BaseTab):
-  def __init__(self, parent, prefix='prime'):
+  def __init__(self, parent, main, prefix='prime'):
     BaseTab.__init__(self, parent=parent)
 
     #TODO: This seems like a placeholder. Need to have a proper window that
@@ -1210,8 +1210,10 @@ class MergeTab(BaseTab):
 
     #TODO: alternatively, concatenate any combo of tags into an input file
 
+    self.main = main
     self.prefix = prefix
     self.prime_filename = '{}.phil'.format(self.prefix)
+    self.run_paths = []
 
     self.prime_panel = PRIMEInputWindow(self)
     self.btn_get_tags = wx.Button(self, label='Select Tags...', size=(120, -1))
@@ -1235,12 +1237,26 @@ class MergeTab(BaseTab):
     self.Bind(wx.EVT_TEXT, self.onInput, self.prime_panel.inp_box.ctr)
     self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
     self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onSelectTags, self.btn_get_tags)
     self.Bind(wx.EVT_BUTTON, self.onRun, self.btn_run_prime)
     self.Bind(wx.EVT_BUTTON, self.onLoad, self.btn_load_phil)
     self.Bind(wx.EVT_BUTTON, self.onSave, self.btn_save_phil)
 
+  def onSelectTags(self, e):
+    ''' Allows user to choose a trial and tags for merging
+    '''
+    from xfel_gui_dialogs import TrialTagSelectionDialog
+    trial_tag_select_dlg = TrialTagSelectionDialog(self, db=self.main.db)
+    if trial_tag_select_dlg.ShowModal() == wx.ID_OK:
+      self.run_paths = trial_tag_select_dlg.run_paths
+
+      if self.prime_panel.inp_box.ctr.GetValue() != '' or len(self.run_paths) > 0:
+        self.btn_run_prime.Enable()
+      else:
+        self.btn_run_prime.Disable()
+
   def onInput(self, e):
-    if self.prime_panel.inp_box.ctr.GetValue() != '':
+    if self.prime_panel.inp_box.ctr.GetValue() != '' or len(self.run_paths) > 0:
       self.btn_run_prime.Enable()
     else:
       self.btn_run_prime.Disable()
@@ -1270,7 +1286,8 @@ class MergeTab(BaseTab):
     self.pparams = master_phil.fetch(sources=[user_phil]).extract()
     self.prime_panel.pparams = self.pparams
 
-    self.prime_panel.inp_box.ctr.SetValue(str(self.pparams.data[0]))
+    if len(self.pparams.data) > 0:
+      self.prime_panel.inp_box.ctr.SetValue(str(self.pparams.data[0]))
     current_dir = os.path.dirname(self.pparams.run_no)
     self.prime_panel.out_box.ctr.SetValue(str(current_dir))
     if str(self.prime_panel.out_box.ctr.GetValue).lower() == '':
@@ -1319,7 +1336,10 @@ class MergeTab(BaseTab):
 
   def init_settings(self):
     self.pparams = self.prime_panel.pparams
-    self.pparams.data = [self.prime_panel.inp_box.ctr.GetValue()]
+    self.pparams.data = []
+    if len(self.prime_panel.inp_box.ctr.GetValue()) > 0:
+      self.pparams.data.append(self.prime_panel.inp_box.ctr.GetValue())
+    self.pparams.data.extend(self.run_paths)
     self.out_dir = self.prime_panel.out_box.ctr.GetValue()
     self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)
     self.pparams.title = self.prime_panel.title_box.ctr.GetValue()
