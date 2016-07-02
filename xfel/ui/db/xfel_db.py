@@ -45,10 +45,20 @@ class initialize(initialize_base):
     return columns_dict
 
 class xfel_db_application(object):
-  def __init__(self, params):
+  def __init__(self, params, drop_tables = False, verify_tables = False):
     self.params = params
     dbobj = get_db_connection(params)
     self.init_tables = initialize(params, dbobj) # only place where a connection is held
+
+    if drop_tables:
+      self.drop_tables()
+
+    if verify_tables and not self.verify_tables():
+      self.create_tables()
+      print 'Creating experiment tables...'
+      if not self.verify_tables():
+        from libtbx.utils import Sorry
+        raise Sorry("Couldn't create experiment tables")
 
     self.columns_dict = self.init_tables.set_up_columns_dict(self)
 

@@ -468,18 +468,7 @@ class MainWindow(wx.Frame):
     self.SetSizer(main_box)
 
   def connect_to_db(self, drop_tables = False):
-    self.db = xfel_db_application(self.params)
-
-    if drop_tables:
-      self.db.drop_tables()
-
-    if not self.db.verify_tables():
-      self.db.create_tables()
-      print 'Creating experiment tables...'
-      if not self.db.verify_tables():
-        from libtbx.utils import Sorry
-        raise Sorry("Couldn't create experiment tables")
-        return False
+    self.db = xfel_db_application(self.params, drop_tables = drop_tables, verify_tables = True)
 
     return True
 
