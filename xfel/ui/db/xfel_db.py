@@ -9,7 +9,7 @@ from xfel.ui.db.rungroup import Rungroup
 from xfel.ui.db.tag import Tag
 from xfel.ui.db.job import Job
 from xfel.ui.db.stats import Stats
-from xfel.ui.db.experiment import Cell, Bin, Isoform
+from xfel.ui.db.experiment import Cell, Bin, Isoform, Event
 
 from xfel.ui.db import get_db_connection
 
@@ -171,9 +171,11 @@ class xfel_db_application(object):
     cursor = self.execute_query(query)
     return [Bin(self, bin_id = i[0]) for i in cursor.fetchall()]
 
-  def get_all_x(self, cls, name):
+  def get_all_x(self, cls, name, where = None):
     table_name = "%s_%s" % (self.params.experiment_tag, name)
     query = "SELECT id, %s FROM `%s`" % (", ".join(self.columns_dict[table_name]), table_name)
+    if where is not None:
+      query += " " + where
     cursor = self.execute_query(query)
     results = []
     for row in cursor.fetchall():
@@ -293,6 +295,17 @@ class xfel_db_application(object):
       job = self.get_job(job_id)
 
     self.delete_x(job, job_id)
+
+  def get_all_events(self, trial = None, runs = None):
+    if trial is None:
+      where = None
+    else:
+      if runs is None:
+        runs = trial.runs
+      where = "WHERE trial_id = %d AND run_id in (%s)" % (
+        trial.id, ", ".join([str(r.id) for r in runs]))
+
+    return self.get_all_x(Event, "event", where)
 
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)

@@ -268,6 +268,49 @@ class ProgressSentinel(Thread):
       self.parent.run_window.prg_light.change_status('on')
       time.sleep(5)
 
+# ------------------------------- Frames Sentinel ------------------------------- #
+
+# Set up events for FramesSeninel
+tp_EVT_FRAMES_REFRESH = wx.NewEventType()
+EVT_FRAMES_REFRESH = wx.PyEventBinder(tp_EVT_JOB_REFRESH, 1)
+
+class RefreshFrames(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+
+  def __init__(self, etype, eid):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+
+class FramesSentinel(Thread):
+  ''' Worker thread for frames; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+
+  def post_refresh(self):
+    pass
+
+  def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+    db = xfel_db_application(self.parent.parent.params)
+
+    while self.active:
+      trial = db.get_trial(trial_number=int(self.parent.trial_number.ctr.GetStringSelection()))
+      runs = [db.get_run(run_number=int(r)) for r in self.parent.trial_runs.ctr.GetCheckedStrings()]
+      print "Total events in trial", trial.trial,
+      if len(runs) == 0:
+        runs = None
+      else:
+        print "runs", ", ".join(sorted([str(r.run) for r in runs])),
+      print ":", len(db.get_all_events(trial, runs))
+      self.post_refresh()
+      time.sleep(2)
+
 # ------------------------------- Clustering --------------------------------- #
 
 # Set up events for and for finishing all cycles

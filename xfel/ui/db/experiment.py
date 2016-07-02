@@ -71,7 +71,7 @@ class Crystal(db_proxy):
       try:
         isoform_name = crystal.identified_isoform
       except AttributeError:
-        self.cell = Cell(app, crystal=crystal)
+        self.cell = Cell(app, crystal=crystal, isoform_id = None)
       else:
         tag = app.params.experiment_tag
         query = """SELECT cell.id from `%s_cell` cell

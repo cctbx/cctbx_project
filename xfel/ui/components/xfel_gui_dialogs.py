@@ -473,6 +473,11 @@ class CalibrationDialog(BaseDialog):
     self.main_sizer.Add(self.phil_text, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.phil_path, flag=wx.EXPAND | wx.ALL, border=10)
 
+    self.chk_split_dataset = wx.CheckBox(self,
+                                         label='Split dataset into 2 halves (outputs statistics, double runtime, uses 2x number of images')
+    self.chk_split_dataset.SetValue(True)
+    self.main_sizer.Add(self.chk_split_dataset, flag=wx.ALL, border=10)
+
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
@@ -484,9 +489,25 @@ class CalibrationDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onBrowse, self.phil_path.button1)
     self.Bind(wx.EVT_BUTTON, self.onDefault, self.phil_path.button2)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    self.Bind(wx.EVT_BUTTON, self.onCancel, id=wx.ID_CANCEL)
 
     self.SetTitle('Calibration Settings')
     self.find_runs()
+
+    self.frames_sentinel = None
+    self.start_frames_sentinel()
+
+  def start_frames_sentinel(self):
+    if self.frames_sentinel is None:
+      from xfel.ui.components.xfel_gui_init import FramesSentinel
+      self.frames_sentinel = FramesSentinel(self)
+    self.frames_sentinel.active = True
+    self.frames_sentinel.start()
+
+  def stop_frames_sentinel(self):
+    if self.frames_sentinel is not None:
+      self.frames_sentinel.active = False
+      self.frames_sentinel.join()
 
   def onOK(self, e):
     from xfel.ui.db import get_run_path
@@ -504,11 +525,13 @@ class CalibrationDialog(BaseDialog):
                     wx.ICON_EXCLAMATION)
       return
 
+    self.stop_frames_sentinel()
+
     runs = [self.db.get_run(run_number=int(r)) for r in self.trial_runs.ctr.GetCheckedStrings()]
     run_ids = [r.id for r in runs]
-    command = "cspad.cbf_metrology reflections=%s tag=%s split_dataset=True n_subset=%d "% (
+    command = "cspad.cbf_metrology reflections=%s tag=%s split_dataset=%s n_subset=%d "% (
       self.reflections.ctr.GetStringSelection(), self.version_name.ctr.GetValue(),
-      self.n_subset.ctr.GetValue())
+      self.chk_split_dataset.GetValue(), self.n_subset.ctr.GetValue())
 
     phil_file = os.path.join(settings_dir, "cfgs", "%s.phil"%version_str)
     f = open(phil_file, 'w')
@@ -533,7 +556,6 @@ class CalibrationDialog(BaseDialog):
 
     submit_path = os.path.join(settings_dir, "%s.sh"%version_str)
     command = str(get_submit_command(command, submit_path, working_dir, params.mp)) # comes back as unicode which throws off easy_run
-
     cwd = os.getcwd()
     os.makedirs(working_dir)
     os.chdir(working_dir)
@@ -583,6 +605,9 @@ class CalibrationDialog(BaseDialog):
     # TODO: Generate default PHIL parameters
     pass
 
+  def onCancel(self, e):
+    self.stop_frames_sentinel()
+    e.Skip()
 
 class AveragingDialog(BaseDialog):
   def __init__(self, parent, run, params,
