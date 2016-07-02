@@ -37,6 +37,9 @@ def get_psana_corrected_data(psana_det, evt, use_default = False, dark = True, c
   if data is None:
     return
 
+  import numpy as np
+  data = data.astype(np.float64)
+
   if dark:
     data -= psana_det.pedestals(run)
   if common_mode:
