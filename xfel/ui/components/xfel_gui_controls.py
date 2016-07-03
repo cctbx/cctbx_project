@@ -450,7 +450,8 @@ class CheckListCtrl(CtrlBase):
         ctr_box = wx.FlexGridSizer(2, 1, 10, 0)
       ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
+    ctr_box.Add(self.ctr, proportion=1,
+                flag=wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
 
     self.SetSizer(ctr_box)
 

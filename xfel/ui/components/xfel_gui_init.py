@@ -515,12 +515,6 @@ class MainWindow(wx.Frame):
 
     return True
 
-  # def start_sentinels(self):
-  #   self.start_run_sentinel()
-  #   self.start_job_sentinel()
-  #   self.start_job_monitor()
-  #   self.start_prg_sentinel()
-
   def stop_sentinels(self):
     self.stop_run_sentinel()
     self.stop_job_sentinel()
@@ -623,6 +617,8 @@ class MainWindow(wx.Frame):
       if self.prg_sentinel is None or not self.prg_sentinel.active:
         self.start_prg_sentinel()
         self.run_window.prg_light.change_status('on')
+    elif tab == 4:
+      self.run_window.merge_tab.find_trials()
 
   def onLeavingTab(self, e):
     tab = self.run_window.main_nbook.GetSelection()
@@ -662,19 +658,20 @@ class RunWindow(wx.Panel):
     self.main_nbook.AddPage(self.status_tab, 'Status')
     self.main_nbook.AddPage(self.merge_tab, 'Merge')
 
-    self.sentinel_box = wx.BoxSizer(wx.HORIZONTAL)
+    self.sentinel_box = wx.FlexGridSizer(1, 4, 0, 20)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
     self.jmn_light = gctr.SentinelStatus(self.main_panel, label='Job Monitor')
     self.prg_light = gctr.SentinelStatus(self.main_panel, label='Progress Sentinel')
-    self.sentinel_box.Add(self.run_light, flag=wx.LEFT, border=10)
-    self.sentinel_box.Add(self.job_light, flag=wx.LEFT, border=20)
-    self.sentinel_box.Add(self.jmn_light, flag=wx.LEFT, border=20)
-    self.sentinel_box.Add(self.prg_light, flag=wx.LEFT, border=20)
+    self.sentinel_box.Add(self.run_light)
+    self.sentinel_box.Add(self.job_light)
+    self.sentinel_box.Add(self.jmn_light)
+    self.sentinel_box.Add(self.prg_light)
 
     nb_sizer = wx.BoxSizer(wx.VERTICAL)
     nb_sizer.Add(self.main_nbook, 1, flag=wx.EXPAND | wx.ALL, border=3)
-    nb_sizer.Add(self.sentinel_box, flag=wx.EXPAND | wx.ALL, border=3)
+    nb_sizer.Add((-1, 20))
+    nb_sizer.Add(self.sentinel_box, flag=wx.ALIGN_CENTER_HORIZONTAL)
     self.main_panel.SetSizer(nb_sizer)
 
     main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -991,7 +988,8 @@ class StatusTab(BaseTab):
     self.multi_opt_sizer.Add(self.trial_number, pos=(1, 0),
                              flag=wx.ALL, border=10)
     self.multi_opt_sizer.Add(self.tag_list, pos=(0, 1), span=(2, 1),
-                             flag=wx.BOTTOM | wx.TOP | wx.RIGHT, border=10)
+                             flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
+                             border=10)
     self.multi_box_sizer.Add(self.multi_opt_sizer, flag=wx.EXPAND)
     self.bottom_sizer.Add(self.multi_box_sizer)
 
@@ -1205,61 +1203,194 @@ class MergeTab(BaseTab):
   def __init__(self, parent, main, prefix='prime'):
     BaseTab.__init__(self, parent=parent)
 
-    #TODO: This seems like a placeholder. Need to have a proper window that
-    #TODO: accepts multiple input entries, whether they are files or folders
-
-    #TODO: alternatively, concatenate any combo of tags into an input file
-
     self.main = main
     self.prefix = prefix
     self.prime_filename = '{}.phil'.format(self.prefix)
+    self.output = self.main.params.output_folder
+    self.run_paths = []
+    self.trial_no = None
+    self.all_trials = []
+    self.all_tags = []
+    self.selected_tags = []
     self.run_paths = []
 
     self.prime_panel = PRIMEInputWindow(self)
-    self.btn_get_tags = wx.Button(self, label='Select Tags...', size=(120, -1))
-    self.btn_load_phil = wx.Button(self, label='Load PHIL', size=(120, -1))
-    self.btn_save_phil = wx.Button(self, label='Save PHIL', size=(120, -1))
-    self.btn_run_prime = wx.Button(self, label='Run PRIME', size=(120, -1))
-    self.btn_run_prime.Disable()
-    self.btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.btn_sizer.Add(self.btn_get_tags)
-    self.btn_sizer.Add(self.btn_load_phil, flag=wx.LEFT, border=5)
-    self.btn_sizer.Add(self.btn_save_phil, flag=wx.LEFT, border=5)
-    self.btn_sizer.Add(self.btn_run_prime, flag=wx.LEFT, border=5)
+    self.toolbar = wx.ToolBar(self, style=wx.TB_HORZ_TEXT | wx.TB_FLAT)
+    self.tb_btn_def = self.toolbar.AddLabelTool(wx.ID_ANY, label=' Defaults',
+                          bitmap=wx.Bitmap('{}/24x24/def.png'.format(icons)),
+                          shortHelp='Default Settings',
+                          longHelp='Generate default PRIME settings')
+    self.tb_btn_load = self.toolbar.AddLabelTool(wx.ID_OPEN, label=' Load PHIL',
+                          bitmap=wx.Bitmap('{}/24x24/open.png'.format(icons)),
+                          shortHelp='Load PHIL file',
+                          longHelp='Load PHIL file with PRIME settings')
+    self.tb_btn_save = self.toolbar.AddLabelTool(wx.ID_SAVE, label=' Save PHIL',
+                          bitmap=wx.Bitmap('{}/24x24/save.png'.format(icons)),
+                          shortHelp='Save PHIL file',
+                          longHelp='Save PHIL file with PRIME settings')
+    self.toolbar.AddSeparator()
+    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label=' Run PRIME',
+                          bitmap=wx.Bitmap('{}/24x24/run.png'.format(icons)),
+                          shortHelp='Run PRIME',
+                          longHelp='Scale, merge and post-refine with PRIME')
+    self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+    self.toolbar.Realize()
 
-    self.main_sizer.Add(self.prime_panel, flag=wx.ALL | wx.EXPAND, border=10)
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.btn_sizer,
-                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM,
-                        border=10)
+    # Modify PRIME input window to hide input control
+    self.prime_panel.inp_box.Hide()
 
-    self.Bind(wx.EVT_BUTTON, self.onInput, self.prime_panel.inp_box.btn_browse)
-    self.Bind(wx.EVT_TEXT, self.onInput, self.prime_panel.inp_box.ctr)
+    # Input box
+    self.input_panel = wx.Panel(self)
+    input_box = wx.StaticBox(self.input_panel, label='PRIME Input')
+    self.input_box_sizer = wx.StaticBoxSizer(input_box, wx.HORIZONTAL)
+    self.input_panel.SetSizer(self.input_box_sizer)
+
+    self.trial_number = gctr.ChoiceCtrl(self.input_panel,
+                                        label='Trial:',
+                                        label_size=(80, -1),
+                                        label_style='normal',
+                                        ctrl_size=(140, -1),
+                                        choices=[])
+    self.tag_list = gctr.CheckListCtrl(self.input_panel,
+                                       ctrl_size=(200, 100),
+                                       choices=[],
+                                       direction='vertical')
+    self.opt_prefix = gctr.OptionCtrl(self.input_panel,
+                                      label='List prefix:',
+                                      label_size=(80, -1),
+                                      ctrl_size=(140, -1),
+                                      items=[('prefix', 'prime')])
+    self.input_list = wx.TextCtrl(self.input_panel,
+                                  style=wx.TE_MULTILINE | wx.TE_READONLY)
+
+    self.trial_tag_sizer = wx.GridBagSizer(2, 3)
+    self.trial_tag_sizer.AddGrowableCol(2)
+    self.trial_tag_sizer.AddGrowableRow(1)
+    self.trial_tag_sizer.Add(self.opt_prefix, pos=(0, 0))
+    self.trial_tag_sizer.Add(self.trial_number, pos=(1, 0),
+                             flag=wx.TOP, border=10)
+    self.trial_tag_sizer.Add(self.tag_list, pos=(0, 1), span=(2, 1),
+                             flag=wx.LEFT | wx.EXPAND,
+                             border=10)
+    self.trial_tag_sizer.Add(self.input_list, pos=(0, 2), span=(2, 1),
+                             flag=wx.LEFT | wx.EXPAND | wx.ALIGN_RIGHT,
+                             border=10)
+
+    self.input_box_sizer.Add(self.trial_tag_sizer, 1, flag=wx.ALL | wx.EXPAND,
+                             border=10)
+
+    self.main_sizer.Add(self.toolbar, border=10,
+                        flag=wx.EXPAND | wx.LEFT | wx.RIGHT)
+    self.main_sizer.Add(self.input_panel, proportion=1,
+                        flag=wx.ALL | wx.EXPAND, border=10)
+    self.main_sizer.Add(self.prime_panel, border=10,
+                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.EXPAND)
+
+
+    self.Bind(wx.EVT_TEXT, self.onInput, self.input_list)
     self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
     self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
-    self.Bind(wx.EVT_BUTTON, self.onSelectTags, self.btn_get_tags)
-    self.Bind(wx.EVT_BUTTON, self.onRun, self.btn_run_prime)
-    self.Bind(wx.EVT_BUTTON, self.onLoad, self.btn_load_phil)
-    self.Bind(wx.EVT_BUTTON, self.onSave, self.btn_save_phil)
+    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
+    self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
+    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
+    self.Bind(wx.EVT_TOOL, self.onLoad, self.tb_btn_load)
+    self.Bind(wx.EVT_TOOL, self.onSave, self.tb_btn_save)
 
-  def onSelectTags(self, e):
-    ''' Allows user to choose a trial and tags for merging
-    '''
-    from xfel_gui_dialogs import TrialTagSelectionDialog
-    trial_tag_select_dlg = TrialTagSelectionDialog(self, db=self.main.db)
-    if trial_tag_select_dlg.ShowModal() == wx.ID_OK:
-      self.run_paths = trial_tag_select_dlg.run_paths
+  def onTagCheck(self, e):
+    checked_items = self.tag_list.ctr.GetCheckedStrings()
+    self.selected_tags = [i for i in self.main.db.get_all_tags() if i.name
+                          in checked_items]
+    self.find_integrated_pickles()
 
-      if self.prime_panel.inp_box.ctr.GetValue() != '' or len(self.run_paths) > 0:
-        self.btn_run_prime.Enable()
+  def onTrialChoice(self, e):
+    trial_idx = self.trial_number.ctr.GetSelection()
+    if self.trial_number.ctr.GetClientData(trial_idx) == 0:
+      self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+      self.tag_list.ctr.Clear()
+      self.input_list.SetValue('')
+    elif self.trial_number.ctr.GetClientData(trial_idx) != self.trial_no:
+      self.trial_no = self.trial_number.ctr.GetClientData(trial_idx)
+      self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
+      self.find_tags()
+      self.find_integrated_pickles()
+
+  def find_tags(self):
+    print 'Looking for tags...'
+    self.tag_list.ctr.Clear()
+    self.tags = []
+    self.tag_names = []
+    tag_ids = []
+    for run in self.trial.runs:
+      for tag in run.tags:
+        if tag.id not in tag_ids:
+          self.tags.append(tag)
+          tag_ids.append(tag.id)
+          self.tag_names.append(tag.name)
+    self.tag_list.ctr.InsertItems(items=self.tag_names, pos=0)
+
+  def find_trials(self):
+    all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    new_trials = [i for i in all_db_trials if i not in self.all_trials]
+    if len(new_trials) > 0:
+      self.trial_number.ctr.Clear()
+      self.all_trials = [None] + \
+                        [str(i.trial) for i in self.main.db.get_all_trials()]
+      for trial in self.all_trials:
+        if trial is not None:
+          entry = 'Trial {}'.format(trial)
+          self.trial_number.ctr.Append(entry)
+          item_idx = self.trial_number.ctr.FindString(entry)
+          self.trial_number.ctr.SetClientData(item_idx, trial)
+        else:
+          entry = '-- select a trial --'
+          self.trial_number.ctr.Append(entry)
+          self.trial_number.ctr.SetClientData(0, None)
+
+      if self.trial_no is not None:
+        self.trial_number.ctr.SetSelection(self.trial_no)
       else:
-        self.btn_run_prime.Disable()
+        self.trial_number.ctr.SetSelection(0)
+
+  def find_integrated_pickles(self):
+
+    # Find runblock paths associated with the trial
+    run_numbers = []
+    run_ids = []
+    tag_ids = [t.id for t in self.selected_tags]
+    for rb in self.trial.rungroups:
+      for run in rb.runs:
+        if run.run not in run_numbers:
+          if len(self.selected_tags) == 0:
+            self.run_paths.append(os.path.join(
+              get_run_path(self.main.params.output_folder,
+                           self.trial, rb, run),'out'))
+          else:
+            run_tag_ids = [t.id for t in run.tags]
+            for tag_id in tag_ids:
+              if tag_id in run_tag_ids:
+                run_ids.append(run.id)
+                self.run_paths.append(os.path.join(
+                  get_run_path(self.main.params.output_folder, self.trial,
+                               rb, run), 'out'))
+                break
+
+    # Display paths in input list text control
+    input_paths = '\n'.join(self.run_paths)
+    self.input_list.SetValue(input_paths)
+
+    # Find appropriate integration pickles in runblock paths
+    self.all_pickles = []
+    for path in self.run_paths:
+      try:
+        pickles = [os.path.join(path, i) for i in os.listdir(path) if
+                   i.endswith('pickle') and 'int-' in i]
+        self.all_pickles = self.all_pickles + pickles
+      except OSError, error:
+        print 'Folder {} not found!'.format(path)
+        continue
 
   def onInput(self, e):
-    if self.prime_panel.inp_box.ctr.GetValue() != '' or len(self.run_paths) > 0:
-      self.btn_run_prime.Enable()
-    else:
-      self.btn_run_prime.Disable()
+    self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
 
   def onLoad(self, e):
     # Extract params from file
@@ -1336,10 +1467,12 @@ class MergeTab(BaseTab):
 
   def init_settings(self):
     self.pparams = self.prime_panel.pparams
-    self.pparams.data = []
-    if len(self.prime_panel.inp_box.ctr.GetValue()) > 0:
-      self.pparams.data.append(self.prime_panel.inp_box.ctr.GetValue())
-    self.pparams.data.extend(self.run_paths)
+    self.pparams.data = [self.pickle_path_file]
+    # if len(self.prime_panel.inp_box.ctr.GetValue()) > 0:
+    #   self.pparams.data.append(self.prime_panel.inp_box.ctr.GetValue())
+
+    # self.pparams.data.extend(self.run_paths)
+
     self.out_dir = self.prime_panel.out_box.ctr.GetValue()
     self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)
     self.pparams.title = self.prime_panel.title_box.ctr.GetValue()
@@ -1352,6 +1485,17 @@ class MergeTab(BaseTab):
 
   def onRun(self, e):
     # Run full processing
+
+    # Write list of pickles to file
+    list_prefix = self.opt_prefix.prefix.GetValue()
+    if list_prefix == None or list_prefix == '':
+      list_prefix = 'prime'
+    self.pickle_path_file = os.path.join(self.output,
+                                         '{}.lst'.format(list_prefix))
+    print 'Saving list of pickles to ', self.pickle_path_file
+    with open(self.pickle_path_file, 'w') as lfile:
+      for pickle in self.all_pickles:
+        lfile.write('{}\n'.format(pickle))
 
     self.init_settings()
     prime_phil = master_phil.format(python_object=self.pparams)
@@ -1376,6 +1520,7 @@ class MergeTab(BaseTab):
     self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
                                           ''.format(user, 'python')).stdout_lines
     self.prime_run_window.Show(True)
+
 
 
 # ------------------------------- UI Elements -------------------------------- #
