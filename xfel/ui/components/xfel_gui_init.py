@@ -1356,22 +1356,19 @@ class MergeTab(BaseTab):
     # Find runblock paths associated with the trial
     run_numbers = []
     run_ids = []
-    tag_ids = [t.id for t in self.selected_tags]
+    self.run_paths = []
     for rb in self.trial.rungroups:
       for run in rb.runs:
         if run.run not in run_numbers:
           if len(self.selected_tags) == 0:
             self.run_paths.append(os.path.join(
-              get_run_path(self.main.params.output_folder,
-                           self.trial, rb, run),'out'))
+              get_run_path(self.output, self.trial, rb, run), 'out'))
           else:
-            run_tag_ids = [t.id for t in run.tags]
-            for tag_id in tag_ids:
-              if tag_id in run_tag_ids:
-                run_ids.append(run.id)
+            for tag_id in [int(t.id) for t in self.selected_tags]:
+              if tag_id in [int(t.id) for t in run.tags]:
+                run_ids.append(int(run.id))
                 self.run_paths.append(os.path.join(
-                  get_run_path(self.main.params.output_folder, self.trial,
-                               rb, run), 'out'))
+                  get_run_path(self.output, self.trial, rb, run), 'out'))
                 break
 
     # Display paths in input list text control
@@ -1386,7 +1383,7 @@ class MergeTab(BaseTab):
                    i.endswith('pickle') and 'int-' in i]
         self.all_pickles = self.all_pickles + pickles
       except OSError, error:
-        print 'Folder {} not found!'.format(path)
+        print 'Folder not found: {}'.format(path)
         continue
 
   def onInput(self, e):
@@ -1468,11 +1465,6 @@ class MergeTab(BaseTab):
   def init_settings(self):
     self.pparams = self.prime_panel.pparams
     self.pparams.data = [self.pickle_path_file]
-    # if len(self.prime_panel.inp_box.ctr.GetValue()) > 0:
-    #   self.pparams.data.append(self.prime_panel.inp_box.ctr.GetValue())
-
-    # self.pparams.data.extend(self.run_paths)
-
     self.out_dir = self.prime_panel.out_box.ctr.GetValue()
     self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)
     self.pparams.title = self.prime_panel.title_box.ctr.GetValue()
