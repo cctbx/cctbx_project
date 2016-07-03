@@ -1238,6 +1238,7 @@ class MergeTab(BaseTab):
 
     # Modify PRIME input window to hide input control
     self.prime_panel.inp_box.Hide()
+    self.prime_panel.out_box.ctr.SetValue(self.output)
 
     # Input box
     self.input_panel = wx.Panel(self)
@@ -1251,6 +1252,7 @@ class MergeTab(BaseTab):
                                         label_style='normal',
                                         ctrl_size=(140, -1),
                                         choices=[])
+    self.tag_title = wx.StaticText(self.input_panel, label='Tags:')
     self.tag_list = gctr.CheckListCtrl(self.input_panel,
                                        ctrl_size=(200, 100),
                                        choices=[],
@@ -1260,6 +1262,8 @@ class MergeTab(BaseTab):
                                       label_size=(80, -1),
                                       ctrl_size=(140, -1),
                                       items=[('prefix', 'prime')])
+    self.input_number = wx.StaticText(self.input_panel,
+                                      label='0 images in 0 folders:')
     self.input_list = wx.TextCtrl(self.input_panel,
                                   style=wx.TE_MULTILINE | wx.TE_READONLY)
 
@@ -1269,13 +1273,18 @@ class MergeTab(BaseTab):
     self.trial_tag_sizer.Add(self.opt_prefix, pos=(0, 0))
     self.trial_tag_sizer.Add(self.trial_number, pos=(1, 0),
                              flag=wx.TOP, border=10)
-    self.trial_tag_sizer.Add(self.tag_list, pos=(0, 1), span=(2, 1),
+    self.trial_tag_sizer.Add(self.tag_title, pos=(0, 1),
                              flag=wx.LEFT | wx.EXPAND,
-                             border=10)
-    self.trial_tag_sizer.Add(self.input_list, pos=(0, 2), span=(2, 1),
+                             border=15)
+    self.trial_tag_sizer.Add(self.tag_list, pos=(1, 1),
+                             flag=wx.LEFT | wx.EXPAND,
+                             border=15)
+    self.trial_tag_sizer.Add(self.input_number, pos=(0, 2),
                              flag=wx.LEFT | wx.EXPAND | wx.ALIGN_RIGHT,
-                             border=10)
-
+                             border=15)
+    self.trial_tag_sizer.Add(self.input_list, pos=(1, 2),
+                             flag=wx.LEFT | wx.EXPAND | wx.ALIGN_RIGHT,
+                             border=15)
     self.input_box_sizer.Add(self.trial_tag_sizer, 1, flag=wx.ALL | wx.EXPAND,
                              border=10)
 
@@ -1315,7 +1324,6 @@ class MergeTab(BaseTab):
       self.find_integrated_pickles()
 
   def find_tags(self):
-    print 'Looking for tags...'
     self.tag_list.ctr.Clear()
     self.tags = []
     self.tag_names = []
@@ -1326,6 +1334,7 @@ class MergeTab(BaseTab):
           self.tags.append(tag)
           tag_ids.append(tag.id)
           self.tag_names.append(tag.name)
+    self.tag_title.SetLabel('Tags for trial {}:'.format(self.trial.trial))
     self.tag_list.ctr.InsertItems(items=self.tag_names, pos=0)
 
   def find_trials(self):
@@ -1385,6 +1394,10 @@ class MergeTab(BaseTab):
       except OSError, error:
         print 'Folder not found: {}'.format(path)
         continue
+
+    self.input_number.SetLabel('{} images in {} folders:'
+                               ''.format(len(self.all_pickles),
+                                         len(self.run_paths)))
 
   def onInput(self, e):
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
