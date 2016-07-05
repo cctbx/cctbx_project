@@ -1068,7 +1068,7 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann,
       use_plane_peptide_bond_restr=False,
-      fix_rama_outliers=False,
+      fix_rotamer_outliers=False,
       # log=sys.stdout,
       # verbose=True
       )
@@ -1159,7 +1159,7 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann,
-      fix_rama_outliers=False)
+      fix_rotamer_outliers=False)
   d2 = get_distances(h, n_neighbours=20)
   h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
@@ -1210,7 +1210,7 @@ HELIX    1  21 ALA A   21  ALA A   24  1                                  5
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
       ss_annotation=ann,
-      fix_rama_outliers=False)
+      fix_rotamer_outliers=False)
   # h.write_pdb_file(file_name="%s_result.pdb" % prefix)
   d1 = get_distances(h, 5)
   answer_h = iotbx.pdb.input(

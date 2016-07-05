@@ -427,7 +427,7 @@ def substitute_ss(real_h,
                     ss_annotation,
                     params = None,
                     use_plane_peptide_bond_restr=True,
-                    fix_rama_outliers=True,
+                    fix_rotamer_outliers=True,
                     cif_objects=None,
                     log=null_out(),
                     rotamer_manager=None,
@@ -727,7 +727,7 @@ def substitute_ss(real_h,
       dihedral                 = True,
       chirality                = True,
       planarity                = True,
-      fix_rotamer_outliers     = fix_rama_outliers,
+      fix_rotamer_outliers     = fix_rotamer_outliers,
       log                      = refinement_log)
   log.write(" Done\n")
   log.flush()
