@@ -420,7 +420,6 @@ class run(object):
     if(len(self.args)==0): sys.exit(0)
     self.mon_lib_srv = server.server()
 
-
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
     self.pdb_file_names = list(self.inputs.pdb_file_names)

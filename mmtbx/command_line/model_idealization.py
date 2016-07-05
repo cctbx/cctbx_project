@@ -46,7 +46,6 @@ Usage examples:
   print >> log, "-"*79
   print >> log, master_params().show()
 
-
 def whole_chain_in_ncs(whole_h, master_iselection):
   m_c = whole_h.select(master_iselection)
   m_c_id = m_c.only_model().chains()[0].id
