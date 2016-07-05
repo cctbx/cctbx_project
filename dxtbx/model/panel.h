@@ -286,6 +286,7 @@ namespace dxtbx { namespace model {
     os << "  thickness: " << p.get_thickness() << std::endl;
     os << "  material: " << p.get_material() << std::endl;
     os << "  mu: " << p.get_mu() << std::endl;
+    os << "  gain: " << p.get_gain() << std::endl;
     os << "  fast_axis: " << p.get_fast_axis().const_ref() << std::endl;
     os << "  slow_axis: " << p.get_slow_axis().const_ref() << std::endl;
     os << "  origin: " << p.get_origin().const_ref() << std::endl;
