@@ -814,7 +814,8 @@ class TrialsTab(BaseTab):
         self.add_trial(trial=trial)
 
     self.trial_panel.SetSizer(self.trial_sizer)
-    self.trial_panel.Layout()
+    #self.trial_panel.Layout()
+    self.trial_sizer.Layout()
     self.trial_panel.SetupScrolling()
 
   def add_trial(self, trial):

@@ -1363,6 +1363,14 @@ class TrialDialog(BaseDialog):
                                              label_style='bold',
                                              ghost_button=False)
 
+    choices = [('None', None)] + \
+              [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
+    self.copy_runblocks = gctr.ChoiceCtrl(self,
+                                          label='Copy runblocks from',
+                                          label_style='normal',
+                                          label_size=(100, -1),
+                                          choices=choices)
+
     self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
 
     self.throttle = gctr.SpinCtrl(self,
@@ -1408,12 +1416,13 @@ class TrialDialog(BaseDialog):
     self.main_sizer.Add(self.trial_comment,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
+    self.main_sizer.Add(self.copy_runblocks,
+                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
+                        border=10)
     self.main_sizer.Add(self.phil_box, 1,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
-    self.main_sizer.Add(self.option_sizer,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
+    self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
     # Dialog control
@@ -1507,6 +1516,16 @@ class TrialDialog(BaseDialog):
           process_percent = process_percent,
           d_min = d_min,
           n_bins = n_bins)
+        self.trial = self.db.get_trial(trial_number=int(self.trial_info.ctr.GetValue()))
+
+        template_trial_number = self.copy_runblocks.ctr.GetClientData(
+          self.copy_runblocks.ctr.GetSelection())
+
+        if template_trial_number is not None:
+          template_trial = self.db.get_trial(trial_number=template_trial_number)
+          for block in template_trial.rungroups:
+            self.trial.add_rungroup(block)
+
       else:
         self.trial.target_phil_str = target_phil_str
         self.trial.comment = comment
