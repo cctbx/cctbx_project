@@ -72,7 +72,9 @@ def cis_trans_specification():
 
     lines = file("%(preamble)s_minimized.geo" % locals(), "rb").read()
     print geo_spec % results[0]
-    assert lines.find(geo_spec % results[0])>-1, 'not found\n"""%s"""' % geo_spec % results[0]
+    if lines.find(geo_spec % results[0])==1:
+      if lines.find(geo_spec % abs(results[0]))==1
+        assert 0, ".geo specification not found"
 
 def trans_only_specification():
   # must be run after cis_trans_specification
@@ -86,7 +88,9 @@ def trans_only_specification():
 
     lines = file("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
     print geo_spec % results[0]
-    assert lines.find(geo_spec % results[0])>-1
+    if lines.find(geo_spec % results[0])==1:
+      if lines.find(geo_spec % abs(results[0]))==1
+        assert 0, ".geo specification not found"
 
 def run():
   cis_trans_specification()
