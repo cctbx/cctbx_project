@@ -9,7 +9,7 @@ import wx
 class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
     saved_value = None
-    if 'value' in kwds:
+    if (kwds.get('value', "") != ""):
       saved_value = kwds['value']
       kwds['value'] = ""
     super(ValidatedTextCtrl, self).__init__(*args, **kwds)
