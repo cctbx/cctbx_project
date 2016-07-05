@@ -241,7 +241,8 @@ class ProgressSentinel(Thread):
                                             'c':cell.cell_c,
                                             'alpha':cell.cell_alpha,
                                             'beta':cell.cell_beta,
-                                            'gamma':cell.cell_gamma}
+                                            'gamma':cell.cell_gamma,
+                                            'isoform':None}
           else:
             counts = [int(i.count) for i in bins]
             totals = [int(i.total_hkl) for i in bins]
@@ -1151,7 +1152,10 @@ class StatusTab(BaseTab):
   def refresh_rows(self, info={}):
     ''' Refresh status data '''
 
-    if info != {}:
+    # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
+    no_isoforms = all(isinstance(key, int) for key in dict.keys(info))
+
+    if info != {} and not no_isoforms:
       max_multiplicity = max([info[i]['multiplicity'] for i in info])
       if max_multiplicity > self.multiplicity_goal:
         xmax = max_multiplicity

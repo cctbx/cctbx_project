@@ -1363,16 +1363,16 @@ class TrialDialog(BaseDialog):
                                              label_style='bold',
                                              ghost_button=False)
 
+    self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
+
     choices = [('None', None)] + \
               [('Trial {}'.format(t.trial), t.trial) for t in self.all_trials]
     self.copy_runblocks = gctr.ChoiceCtrl(self,
                                           label='Copy runblocks from',
                                           label_style='normal',
-                                          label_size=(100, -1),
+                                          label_size=(180, -1),
+                                          ctrl_size=(100, -1),
                                           choices=choices)
-
-    self.phil_box = rt.RichTextCtrl(self, style=wx.VSCROLL, size=(-1, 400))
-
     self.throttle = gctr.SpinCtrl(self,
                                   label='Percent events processed:',
                                   label_size=(180, -1),
@@ -1381,7 +1381,6 @@ class TrialDialog(BaseDialog):
                                   ctrl_value='100',
                                   ctrl_min=1,
                                   ctrl_max=100)
-
     self.num_bins = gctr.SpinCtrl(self,
                                   label='Number of bins:',
                                   label_size=(180, -1),
@@ -1391,7 +1390,6 @@ class TrialDialog(BaseDialog):
                                   ctrl_min=1,
                                   ctrl_max=100,
                                   ctrl_step=1)
-
     self.d_min = gctr.SpinCtrl(self,
                                label='High res. limit ({}):'
                                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
@@ -1404,8 +1402,10 @@ class TrialDialog(BaseDialog):
                                ctrl_step=0.1,
                                ctrl_digits=1)
 
-    self.option_sizer = wx.FlexGridSizer(2, 2, 10, 20)
-    self.option_sizer.AddMany([(self.throttle),
+    self.option_sizer = wx.FlexGridSizer(3, 2, 10, 20)
+    self.option_sizer.AddMany([(self.copy_runblocks),
+                               (0, 0),
+                               (self.throttle),
                                (0, 0),
                                (self.num_bins),
                                (self.d_min)])
@@ -1414,9 +1414,6 @@ class TrialDialog(BaseDialog):
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
     self.main_sizer.Add(self.trial_comment,
-                        flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
-                        border=10)
-    self.main_sizer.Add(self.copy_runblocks,
                         flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT,
                         border=10)
     self.main_sizer.Add(self.phil_box, 1,
@@ -1459,6 +1456,7 @@ class TrialDialog(BaseDialog):
       self.trial_info.button1.Disable()
       self.trial_info.button2.Disable()
       self.trial_info.ctr.SetEditable(False)
+      self.copy_runblocks.Hide()
       self.phil_box.SetEditable(False)
       self.throttle.ctr.Disable()
       self.num_bins.ctr.Disable()
