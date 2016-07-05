@@ -419,6 +419,17 @@ class run(object):
     self.inputs.params.show(prefix="  ", out=self.log)
     if(len(self.args)==0): sys.exit(0)
     self.mon_lib_srv = server.server()
+    ##########################
+    # adjust some parameters #
+    ##########################
+    if hasattr(self.params, "amber"):
+      if self.params.amber.use_amber:
+        self.params.pdb_interpretation.sort_atoms=False
+        print >> self.log, "%s\n  %s\n%s" % (
+          '-'*40,
+          'Automatic sorting of atoms turned off.',
+          '-'*40,
+        )
 
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
