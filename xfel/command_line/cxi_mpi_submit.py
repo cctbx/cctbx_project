@@ -100,7 +100,7 @@ phil_str = '''
 
 mp_phil_str = '''
   mp {
-    method = *mpi sge pbs custom
+    method = *mpi sge pbs custom lsf
       .type = choice
       .help = Muliprocessing method
     nproc = 1
@@ -217,7 +217,7 @@ def copy_target(target, dest_dir, root_name):
       num_sub_targets += 1
     f.write(line)
 
-def get_submit_command(command, submit_path, stdoutdir, params, run = None):
+def get_submit_command(command, submit_path, stdoutdir, params, run = None, log_name = "log.out"):
   """ Get a submit command for the various compute environments known to work for cctbx.xfel
   @param command Any command line program and its arguments
   @param submit_path Submit script will be written here
@@ -225,9 +225,13 @@ def get_submit_command(command, submit_path, stdoutdir, params, run = None):
   @param params mp phil params for cxi.mpi_submit (see mp_phil_scope)
   @param run Only used for sge and pbs. Run number for processing.  Optional.
   """
-  if params.method == "mpi":
-    command = "bsub -a mympi -n %d -o %s -q %s %s" % (
-      params.nproc, os.path.join(stdoutdir, "log.out"), params.queue, command)
+  if params.method == "mpi" or params.method == "lsf":
+    if params.method == "mpi":
+      mpistr = " -a mympi"
+    else:
+      mpistr = ""
+    command = "bsub%s -n %d -o %s -q %s %s" % (
+      mpistr, params.nproc, os.path.join(stdoutdir, log_name), params.queue, command)
 
     f = open(submit_path, 'w')
     f.write("#! /bin/sh\n")
@@ -248,7 +252,7 @@ def get_submit_command(command, submit_path, stdoutdir, params, run = None):
       run_str = "-N run%d"%run
 
     submit_command = "qsub -cwd %s %s -o %s -q %s %s" % (
-      nproc_str, run_str, os.path.join(stdoutdir, "log.out"), params.queue, submit_path)
+      nproc_str, run_str, os.path.join(stdoutdir, log_name), params.queue, submit_path)
 
     import libtbx.load_env
     setpaths_path = os.path.join(abs(libtbx.env.build_path), "setpaths.sh")
@@ -276,7 +280,7 @@ def get_submit_command(command, submit_path, stdoutdir, params, run = None):
     # Write out a script for submitting this job and submit it
     submit_path = os.path.splitext(submit_path)[0] + ".csh"
 
-    submit_command = "qsub -o %s %s" % (os.path.join(stdoutdir, "log.out"), submit_path)
+    submit_command = "qsub -o %s %s" % (os.path.join(stdoutdir, log_name), submit_path)
 
     import libtbx.load_env
     setpaths_path = os.path.join(abs(libtbx.env.build_path), "setpaths.csh")
@@ -312,7 +316,7 @@ def get_submit_command(command, submit_path, stdoutdir, params, run = None):
       raise Sorry("Custom submission template file not found: %s" % params.custom.submit_template)
 
     # Use the input script as a template and fill in the missing info needed
-    submit_command = "qsub -o %s %s %s" % (os.path.join(stdoutdir, "log.out"), params.custom.extra_args, submit_path)
+    submit_command = "qsub -o %s %s %s" % (os.path.join(stdoutdir, log_name), params.custom.extra_args, submit_path)
 
     processing_command = "%s mp.method=mpi\n" % (command)
 
