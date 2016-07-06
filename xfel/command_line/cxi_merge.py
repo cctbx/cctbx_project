@@ -262,6 +262,15 @@ def get_observations (work_params):
   file_names = []
   for dir_name in data_dirs :
     if not os.path.isdir(dir_name):
+      #check if list-of-pickle text file is given
+      pickle_list_file = open(dir_name,'r')
+      pickle_list = pickle_list_file.read().split("\n")
+      for pickle_filename in pickle_list:
+        if os.path.isfile(pickle_filename) and pickle_filename.endswith("."+extension):
+          if data_subset==0 or \
+            (data_subset==1 and (int(os.path.basename(pickle_filename).split("."+extension)[0][-1])%2==1)) or \
+            (data_subset==2 and (int(os.path.basename(pickle_filename).split("."+extension)[0][-1])%2==0)):
+            file_names.append(pickle_filename)
       continue
     for file_name in os.listdir(dir_name):
       if (file_name.endswith("_00000."+extension)):
