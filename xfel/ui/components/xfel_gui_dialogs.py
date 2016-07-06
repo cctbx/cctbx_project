@@ -305,7 +305,7 @@ class AdvancedSettingsDialog(BaseDialog):
     mp_box = wx.StaticBox(self, label='Multiprocessing Options')
     self.mp_sizer = wx.StaticBoxSizer(mp_box, wx.VERTICAL)
 
-    choices = ['python', 'mpi', 'sge', 'pbi', 'custom']
+    choices = ['python', 'lsf', 'mpi', 'sge', 'pbi', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
                                      label='Multiprocessing:',
                                      label_size=(120, -1),
@@ -1442,6 +1442,7 @@ class TrialDialog(BaseDialog):
         target_phil_str = self.last_trial.target_phil_str
         self.trial_comment.ctr.SetValue(str(self.last_trial.comment))
         process_percent = self.last_trial.process_percent
+
       else:
         target_phil_str = ''
         process_percent = 100

@@ -226,24 +226,34 @@ class ProgressSentinel(Thread):
           self.parent.run_window.status_tab.tag_trial_changed = False
 
         for cell in cells:
-
-          # Check to see if different high-res bin has been selected
-          current_rows = self.parent.run_window.status_tab.rows
-          if current_rows != {}:
-            bins = cell.bins[:int(current_rows[cell.isoform.name]['high_bin'])]
-          else:
-            bins = cell.bins
-
           # Check for cell isoform
           if cell.isoform is None:
+
+            run_numbers = []
+            runs = []
+            n_img = 0
+            for rb in trial.rungroups:
+              for run in rb.runs:
+                if run.run not in run_numbers:
+                  run_numbers.append(run.run)
+                  runs.append(run)
+              n_img = n_img + len(db.get_all_events(trial, runs))
+
             self.info[cells.index(cell)] = {'a':cell.cell_a,
                                             'b':cell.cell_b,
                                             'c':cell.cell_c,
                                             'alpha':cell.cell_alpha,
                                             'beta':cell.cell_beta,
                                             'gamma':cell.cell_gamma,
-                                            'isoform':None}
+                                            'n_img':n_img}
           else:
+            current_rows = self.parent.run_window.status_tab.rows
+            if current_rows != {}:
+              bins = cell.bins[
+                     :int(current_rows[cell.isoform.name]['high_bin'])]
+            else:
+              bins = cell.bins
+
             counts = [int(i.count) for i in bins]
             totals = [int(i.total_hkl) for i in bins]
 
@@ -273,7 +283,7 @@ class ProgressSentinel(Thread):
 
 # Set up events for FramesSeninel
 tp_EVT_FRAMES_REFRESH = wx.NewEventType()
-EVT_FRAMES_REFRESH = wx.PyEventBinder(tp_EVT_JOB_REFRESH, 1)
+EVT_FRAMES_REFRESH = wx.PyEventBinder(tp_EVT_FRAMES_REFRESH, 1)
 
 class RefreshFrames(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
@@ -349,6 +359,7 @@ class Clusterer():
           rb_paths.append(os.path.join(get_run_path(self.output, self.trial,
                                                     rb, run), "out"))
     all_pickles = []
+
     for path in rb_paths:
       try:
         pickles = [os.path.join(path, i) for i in os.listdir(path) if
@@ -1154,31 +1165,51 @@ class StatusTab(BaseTab):
     # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
     no_isoforms = all(isinstance(key, int) for key in dict.keys(info))
 
-    if info != {} and not no_isoforms:
-      max_multiplicity = max([info[i]['multiplicity'] for i in info])
-      if max_multiplicity > self.multiplicity_goal:
-        xmax = max_multiplicity
-      else:
-        xmax = self.multiplicity_goal
-
+    if info != {}:
       if self.redraw_windows:
         self.status_sizer.Clear(deleteWindows=True)
         self.rows = {}
         row = None
 
-      for iso, values in info.iteritems():
-        if not self.redraw_windows:
-          row = self.rows[values['isoform']]['row']
+      if not no_isoforms:
+        max_multiplicity = max([info[i]['multiplicity'] for i in info])
+        if max_multiplicity > self.multiplicity_goal:
+          xmax = max_multiplicity
+        else:
+          xmax = self.multiplicity_goal
 
-        self.update_row(row=row,
-                        name=values['isoform'],
-                        value=values['multiplicity'],
-                        bins=values['bins'],
-                        xmax=xmax)
+        for iso, values in info.iteritems():
+          if not self.redraw_windows:
+            row = self.rows[values['isoform']]['row']
+
+          self.update_row(row=row,
+                          name=values['isoform'],
+                          value=values['multiplicity'],
+                          bins=values['bins'],
+                          xmax=xmax)
+      else:
+        if self.redraw_windows:
+          self.status_sizer.Clear(deleteWindows=True)
+          self.rows = {}
+          row = None
+        else:
+          row = self.rows['None']['row']
+        self.update_noniso_row(row=row,
+                               num_images=info[0]['n_img'])
       self.redraw_windows = False
 
     else:
       self.status_sizer.Clear(deleteWindows=True)
+
+  def update_noniso_row(self, row, num_images=0):
+    if row is None:
+      self.rows['None'] = {}
+      row = pltr.NoBarPlot(self.status_panel,
+                           label='No isoforms detected!')
+      self.status_sizer.Add(row, flag=wx.ALIGN_CENTER)
+
+    row.update_number(number=num_images)
+    self.rows['None']['row'] = row
 
   def update_row(self, row, name, value, bins, xmax):
     ''' Add new row, or update existing '''
@@ -1383,6 +1414,7 @@ class MergeTab(BaseTab):
           if len(self.selected_tags) == 0:
             self.run_paths.append(os.path.join(
               get_run_path(self.output, self.trial, rb, run), 'out'))
+            run_numbers.append(run.run)
           else:
             for tag_id in [int(t.id) for t in self.selected_tags]:
               if tag_id in [int(t.id) for t in run.tags]:
@@ -1551,12 +1583,15 @@ class MergeTab(BaseTab):
     with open(prime_file, 'w') as pf:
       pf.write(txt_out)
 
-    job_name = 'prime_t{}'.format(self.trial_no)
+    if params.mp.method == 'python':
+      command=None
+    else:
+      job_name = 'prime_t{}'.format(self.trial_no)
+      cmd = '-J {} prime.postrefine {}'.format(job_name, prime_file)
+      submit_path = os.path.join(settings_dir, script_filename)
+      command = str(get_submit_command(cmd, submit_path, self.working_dir,
+                                       params.mp))
 
-    command = '-J {} prime.postrefine {}'.format(job_name, prime_file)
-    submit_path = os.path.join(settings_dir, script_filename)
-    command = str(get_submit_command(command, submit_path,
-                                     self.working_dir, params.mp))
     if e.GetId() == self.tb_btn_run.GetId():
       self.prime_run_window = PRIMERunWindow(self, -1,
                                              title='PRIME Output',
@@ -1569,6 +1604,7 @@ class MergeTab(BaseTab):
                                             ''.format(user, 'python')).stdout_lines
 
       self.prime_run_window.Show(True)
+
     elif e.GetId() == self.tb_btn_cmd.GetId():
       print 'Submission command:'
       print command

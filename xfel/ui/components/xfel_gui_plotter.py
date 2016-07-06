@@ -8,6 +8,7 @@ Description : XFEL UI Plots and Charts
 '''
 
 import wx
+import numpy as np
 
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -80,6 +81,35 @@ class SingleBarPlot(gctr.CtrlBase):
     self.canvas.draw()
     self.Fit()
 
+
+class NoBarPlot(gctr.CtrlBase):
+  def __init__(self, parent,
+               label='',
+               label_size=wx.DefaultSize,
+               label_style='bold'):
+    gctr.CtrlBase.__init__(self, parent=parent, label_style=label_style,
+                           content_style='bold')
+
+    self.sizer = wx.BoxSizer(wx.VERTICAL)
+    self.info_sizer=wx.FlexGridSizer(1, 3, 0, 10)
+
+    self.iso_txt = wx.StaticText(self, label=label, size=label_size)
+    self.num_txt = wx.StaticText(self, label='0')
+    self.end_txt = wx.StaticText(self, label='images integrated')
+    self.iso_txt.SetFont(wx.Font(18, wx.DEFAULT, wx.NORMAL, wx.BOLD))
+    self.num_txt.SetFont(wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD))
+    self.end_txt.SetFont(wx.Font(18, wx.DEFAULT, wx.NORMAL, wx.BOLD))
+
+    self.info_sizer.Add(self.iso_txt, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.info_sizer.Add(self.num_txt, flag=wx.ALIGN_CENTER_VERTICAL)
+    self.info_sizer.Add(self.end_txt, flag=wx.ALIGN_CENTER_VERTICAL)
+
+    self.sizer.Add(self.info_sizer, flag=wx.ALIGN_CENTER)
+    self.SetSizer(self.sizer)
+
+  def update_number(self, number):
+    self.num_txt.SetLabel(str(number))
+
 class PopUpCharts(object):
   ''' Class to generate chargs and graphs that will appear in separate
   windows when user requests them, e.g. unit cell histogram chart '''
@@ -90,7 +120,7 @@ class PopUpCharts(object):
   def plot_uc_histogram(self, info):
 
     # Initialize figure
-    fig = plt.figure(figsize=(12, 9))
+    fig = plt.figure(figsize=(12, 10))
     gsp = GridSpec(2, 3)
 
     # Extract uc dimensions from info list
@@ -101,23 +131,54 @@ class PopUpCharts(object):
     beta = [i[4] for i in info]
     gamma = [i[5] for i in info]
 
-    sub_a = fig.add_subplot(gsp[0])
-    sub_a.hist(a, 20, normed=False, facecolor='b',
-             alpha=0.75, histtype='stepfilled')
-    sub_b = fig.add_subplot(gsp[1])
-    sub_b.hist(b, 20, normed=False, facecolor='b',
-             alpha=0.75, histtype='stepfilled')
-    sub_c = fig.add_subplot(gsp[2])
-    sub_c.hist(c, 20, normed=False, facecolor='b',
-             alpha=0.75, histtype='stepfilled')
-    sub_alpha = fig.add_subplot(gsp[3])
-    sub_alpha.hist(alpha, 20, normed=False, facecolor='b',
-                   alpha=0.75,  histtype='stepfilled')
-    sub_beta = fig.add_subplot(gsp[4])
-    sub_beta.hist(beta, 20, normed=False, facecolor='b',
-                  alpha=0.75, histtype='stepfilled')
-    sub_gamma = fig.add_subplot(gsp[5])
-    sub_gamma.hist(gamma, 20, normed=False, facecolor='b',
-                   alpha=0.75, histtype='stepfilled')
+    nbins = int(np.sqrt(len(info))) * 2
 
+    fig.suptitle('Histogram of Unit Cell Dimensions ({} images)'
+                 ''.format(len(info)), fontsize=18)
+
+    sub_a = fig.add_subplot(gsp[0])
+    sub_a.hist(a, nbins, normed=False, facecolor='#2c7fb8',
+             alpha=0.75, histtype='stepfilled')
+    sub_a.set_xlabel("a-edge ($\AA$)")
+    sub_a.set_ylabel('Number of images')
+
+    sub_b = fig.add_subplot(gsp[1], sharey=sub_a)
+    sub_b.hist(b, nbins, normed=False, facecolor='#2c7fb8',
+             alpha=0.75, histtype='stepfilled')
+    sub_b.set_xlabel("b-edge ($\AA$)")
+    plt.setp(sub_b.get_yticklabels(), visible=False)
+    sub_b.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    sub_c = fig.add_subplot(gsp[2], sharey=sub_a)
+    sub_c.hist(c, nbins, normed=False, facecolor='#2c7fb8',
+             alpha=0.75, histtype='stepfilled')
+    sub_c.set_xlabel("c-edge ($\AA$)")
+    plt.setp(sub_c.get_yticklabels(), visible=False)
+    sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    sub_alpha = fig.add_subplot(gsp[3])
+    sub_alpha.hist(alpha, nbins, normed=False, facecolor='#7fcdbb',
+                   alpha=0.75,  histtype='stepfilled')
+    sub_alpha.set_xlabel(r'$\alpha (\circ)$')
+    sub_alpha.set_ylabel('Number of images')
+
+    sub_beta = fig.add_subplot(gsp[4], sharey=sub_alpha)
+    sub_beta.hist(beta, nbins, normed=False, facecolor='#7fcdbb',
+                  alpha=0.75, histtype='stepfilled')
+    sub_beta.set_xlabel(r'$\beta (\circ)$')
+    plt.setp(sub_beta.get_yticklabels(), visible=False)
+    sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    sub_gamma = fig.add_subplot(gsp[5], sharey=sub_alpha)
+    sub_gamma.hist(gamma, nbins, normed=False, facecolor='#7fcdbb',
+                   alpha=0.75, histtype='stepfilled')
+    sub_gamma.set_xlabel(r'$\gamma (\circ)$')
+    plt.setp(sub_gamma.get_yticklabels(), visible=False)
+    sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    gsp.update(wspace=0)
     plt.show()
