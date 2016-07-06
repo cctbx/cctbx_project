@@ -47,6 +47,7 @@ class initialize(initialize_base):
 class xfel_db_application(object):
   def __init__(self, params, drop_tables = False, verify_tables = False):
     self.params = params
+    self.query_count = 0
     dbobj = get_db_connection(params)
     self.init_tables = initialize(params, dbobj) # only place where a connection is held
 
@@ -66,6 +67,7 @@ class xfel_db_application(object):
     if verbose:
       from time import time
       st = time()
+      self.query_count += 1
 
     retry_count = 0
     retry_max = 10
@@ -79,7 +81,7 @@ class xfel_db_application(object):
           dbobj.commit()
 
         if verbose:
-          print 'SQLTime Taken = % 10.6f seconds' % (time() - st), query[:min(len(query),160)]
+          print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, time() - st), query[:min(len(query),145)]
         return cursor
       except OperationalError, e:
         if "Can't connect to MySQL server" not in str(e):
@@ -169,7 +171,11 @@ class xfel_db_application(object):
     query = "SELECT id FROM `%s_bin` WHERE cell_id = %d" % \
             (self.params.experiment_tag, cell_id)
     cursor = self.execute_query(query)
-    return [Bin(self, bin_id = i[0]) for i in cursor.fetchall()]
+    ids = [str(i[0]) for i in cursor.fetchall()]
+    if len(ids) == 0:
+      return []
+    where = "WHERE id IN (%s)" % ", ".join(ids)
+    return self.get_all_x(Bin, 'bin', where)
 
   def get_all_x(self, cls, name, where = None):
     table_name = "%s_%s" % (self.params.experiment_tag, name)
@@ -256,7 +262,11 @@ class xfel_db_application(object):
     query = "SELECT tag_id from `%s_run_tag` WHERE `%s_run_tag`.run_id = %d" % \
             (self.params.experiment_tag, self.params.experiment_tag, run_id)
     cursor = self.execute_query(query)
-    return [Tag(self, i[0]) for i in cursor.fetchall()]
+    tag_ids = [str(i[0]) for i in cursor.fetchall()]
+    if len(tag_ids) == 0:
+      return []
+    where = "WHERE id IN (%s)" % ", ".join(tag_ids)
+    return self.get_all_x(Tag, 'tag', where)
 
   def get_all_tags(self):
     return self.get_all_x(Tag, "tag")

@@ -1,4 +1,5 @@
 from __future__ import division
+from scitbx.array_family import flex
 
 class Stats(object):
   def __init__(self, app, trial, tags = None):
@@ -45,17 +46,24 @@ class Stats(object):
     cells = [self.app.get_cell(cell_id=i[0]) for i in cell_ids]
 
     for cell in cells:
+      bin_ids = [str(bin.id) for bin in cell.bins]
+      if len(bin_ids) == 0:
+        continue
+
+      # Big expensive query to avoid many small queries
+      query = """SELECT bin.id, cell_bin.count FROM `%s_cell_bin` cell_bin
+                 JOIN `%s_bin` bin ON bin.id = cell_bin.bin_id
+                 JOIN `%s_crystal` crystal ON crystal.id = cell_bin.crystal_id
+                 JOIN `%s_experiment` exp ON exp.crystal_id = crystal.id
+                 JOIN `%s_imageset` imgset ON imgset.id = exp.imageset_id
+                 JOIN `%s_imageset_event` ie ON ie.imageset_id = imgset.id
+                 JOIN `%s_event` evt ON evt.id = ie.event_id
+                 JOIN `%s_run` run ON run.id = evt.run_id
+                 WHERE run.id in %s AND bin.id IN (%s)""" % (
+        exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, ", ".join(bin_ids))
+      results = self.app.execute_query(query).fetchall()
+      ids = flex.int([r[0] for r in results])
+      counts = flex.int([r[1] for r in results])
       for bin in cell.bins:
-        query = """SELECT cell_bin.count FROM `%s_cell_bin` cell_bin
-                   JOIN `%s_bin` bin ON bin.id = cell_bin.bin_id
-                   JOIN `%s_crystal` crystal ON crystal.id = cell_bin.crystal_id
-                   JOIN `%s_experiment` exp ON exp.crystal_id = crystal.id
-                   JOIN `%s_imageset` imgset ON imgset.id = exp.imageset_id
-                   JOIN `%s_imageset_event` ie ON ie.imageset_id = imgset.id
-                   JOIN `%s_event` evt ON evt.id = ie.event_id
-                   JOIN `%s_run` run ON run.id = evt.run_id
-                   WHERE run.id in %s AND bin.id = %d""" % (
-          exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, int(bin.id))
-        counts = self.app.execute_query(query).fetchall()
-        bin.count = sum([c[0] for c in counts])
+        bin.count = flex.sum(counts.select(ids == bin.id))
     return cells
