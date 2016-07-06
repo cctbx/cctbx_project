@@ -377,7 +377,6 @@ class Clusterer():
     else:
       # If clustering button was pressed, do clustering
       # 2. Pick subset
-      print len(all_pickles), self.sample_size
       subset = list(np.random.choice(all_pickles, size=int(self.sample_size)))
 
       # 3. Do clustering
@@ -1233,6 +1232,11 @@ class MergeTab(BaseTab):
                           bitmap=wx.Bitmap('{}/24x24/save.png'.format(icons)),
                           shortHelp='Save PHIL file',
                           longHelp='Save PHIL file with PRIME settings')
+    self.tb_btn_cmd = self.toolbar.AddLabelTool(wx.ID_ANY, label=' Command',
+                          bitmap=wx.Bitmap('{}/24x24/term.png'.format(icons)),
+                          shortHelp='PRIME Command',
+                          longHelp='Output PRIME command to stdout')
+    self.toolbar.EnableTool(self.tb_btn_cmd.GetId(), False)
     self.toolbar.AddSeparator()
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label=' Run PRIME',
                           bitmap=wx.Bitmap('{}/24x24/run.png'.format(icons)),
@@ -1307,6 +1311,7 @@ class MergeTab(BaseTab):
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
+    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_cmd)
     self.Bind(wx.EVT_TOOL, self.onLoad, self.tb_btn_load)
     self.Bind(wx.EVT_TOOL, self.onSave, self.tb_btn_save)
 
@@ -1320,6 +1325,7 @@ class MergeTab(BaseTab):
     trial_idx = self.trial_number.ctr.GetSelection()
     if self.trial_number.ctr.GetClientData(trial_idx) == 0:
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+      self.toolbar.EnableTool(self.tb_btn_cmd.GetId(), False)
       self.tag_list.ctr.Clear()
       self.input_list.SetValue('')
     elif self.trial_number.ctr.GetClientData(trial_idx) != self.trial_no:
@@ -1406,6 +1412,7 @@ class MergeTab(BaseTab):
 
   def onInput(self, e):
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
+    self.toolbar.EnableTool(self.tb_btn_cmd.GetId(), True)
 
   def onLoad(self, e):
     # Extract params from file
@@ -1481,10 +1488,31 @@ class MergeTab(BaseTab):
       self.prime_panel.opt_chk_useref.Disable()
 
   def init_settings(self):
+
+    # Determine where/what PRIME folders are
+    prime_dir = os.path.join(self.output, 'prime')
+    self.working_dir = os.path.join(prime_dir, 'trial_{}'.format(self.trial_no))
+    if not os.path.exists(prime_dir):
+      os.mkdir(prime_dir)
+    if not os.path.exists(self.working_dir):
+      os.mkdir(self.working_dir)
+
+    # Write list of pickles to file
+    list_prefix = self.opt_prefix.prefix.GetValue()
+    if list_prefix == None or list_prefix == '':
+      list_prefix = 'prime'
+    self.pickle_path_file = os.path.join(self.working_dir,
+                           '{}_trial_{}.lst'.format(list_prefix, self.trial_no))
+    print 'Saving list of pickles to ', self.pickle_path_file
+
+    with open(self.pickle_path_file, 'w') as lfile:
+      for pickle in self.all_pickles:
+        lfile.write('{}\n'.format(pickle))
+
     self.pparams = self.prime_panel.pparams
     self.pparams.data = [self.pickle_path_file]
+    self.pparams.run_no = misc.set_base_dir(out_dir=self.working_dir)
     self.out_dir = self.prime_panel.out_box.ctr.GetValue()
-    self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)
     self.pparams.title = self.prime_panel.title_box.ctr.GetValue()
     if str(self.prime_panel.ref_box.ctr.GetValue()).lower() != '':
       self.pparams.hklisoin = self.prime_panel.ref_box.ctr.GetValue()
@@ -1496,16 +1524,17 @@ class MergeTab(BaseTab):
   def onRun(self, e):
     # Run full processing
 
-    # Write list of pickles to file
-    list_prefix = self.opt_prefix.prefix.GetValue()
-    if list_prefix == None or list_prefix == '':
-      list_prefix = 'prime'
-    self.pickle_path_file = os.path.join(self.output,
-                                         '{}.lst'.format(list_prefix))
-    print 'Saving list of pickles to ', self.pickle_path_file
-    with open(self.pickle_path_file, 'w') as lfile:
-      for pickle in self.all_pickles:
-        lfile.write('{}\n'.format(pickle))
+    from xfel.command_line.cxi_mpi_submit import get_submit_command
+    from xfel.ui import settings_dir
+    import datetime
+    import copy
+
+    params = copy.deepcopy(self.main.params)
+    params.mp.nproc = self.prime_panel.opt_spc_nproc.GetValue()
+
+    # Generate script filename (w/ timestamp)
+    ts = '{:%Y%m%d_%H%M%S}'.format(datetime.datetime.now())
+    script_filename = 'trial_{:03d}_{}.sh'.format(int(self.trial_no), ts)
 
     self.init_settings()
     prime_phil = master_phil.format(python_object=self.pparams)
@@ -1517,20 +1546,34 @@ class MergeTab(BaseTab):
     for one_output in output:
       txt_out += one_output + '\n'
 
-    prime_file = os.path.join(self.out_dir, self.prime_filename)
-    out_file = os.path.join(self.out_dir, 'stdout.log')
+    prime_file = os.path.join(settings_dir, self.prime_filename)
+    out_file = os.path.join(self.working_dir, 'stdout.log')
     with open(prime_file, 'w') as pf:
       pf.write(txt_out)
 
-    self.prime_run_window = PRIMERunWindow(self, -1,
-                                           title='PRIME Output',
-                                           params=self.pparams,
-                                           prime_file=prime_file,
-                                           out_file=out_file)
-    self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
-                                          ''.format(user, 'python')).stdout_lines
-    self.prime_run_window.Show(True)
+    job_name = 'prime_t{}'.format(self.trial_no)
 
+    command = '-J {} prime.postrefine {}'.format(job_name, prime_file)
+    submit_path = os.path.join(settings_dir, script_filename)
+    command = str(get_submit_command(command, submit_path,
+                                     self.working_dir, params.mp))
+    if e.GetId() == self.tb_btn_run.GetId():
+      self.prime_run_window = PRIMERunWindow(self, -1,
+                                             title='PRIME Output',
+                                             params=self.pparams,
+                                             prime_file=prime_file,
+                                             out_file=out_file,
+                                             mp_method=params.mp.method,
+                                             command=command)
+      self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
+                                            ''.format(user, 'python')).stdout_lines
+
+      self.prime_run_window.Show(True)
+    elif e.GetId() == self.tb_btn_cmd.GetId():
+      print 'Submission command:'
+      print command
+
+    # Try and write files to created folder
 
 
 # ------------------------------- UI Elements -------------------------------- #
