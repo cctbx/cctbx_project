@@ -124,12 +124,12 @@ class PopUpCharts(object):
     gsp = GridSpec(2, 3)
 
     # Extract uc dimensions from info list
-    a = [i[0] for i in info]
-    b = [i[1] for i in info]
-    c = [i[2] for i in info]
-    alpha = [i[3] for i in info]
-    beta = [i[4] for i in info]
-    gamma = [i[5] for i in info]
+    a = [i['a'] for i in info]
+    b = [i['b'] for i in info]
+    c = [i['c'] for i in info]
+    alpha = [i['alpha'] for i in info]
+    beta = [i['beta'] for i in info]
+    gamma = [i['gamma'] for i in info]
 
     nbins = int(np.sqrt(len(info))) * 2
 

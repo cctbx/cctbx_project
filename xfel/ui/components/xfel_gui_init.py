@@ -336,14 +336,12 @@ class ClusteringResult(wx.PyCommandEvent):
     return self.result
 
 class Clusterer():
-  def __init__(self, trial, runblocks, output, sample_size, threshold,
-               histogram=False):
+  def __init__(self, trial, runblocks, output, sample_size, threshold):
     self.trial = trial
     self.runblocks = runblocks
     self.output = output
     self.sample_size = sample_size
     self.threshold = threshold
-    self.histogram = histogram
 
   def unit_cell_clustering(self):
 
@@ -371,30 +369,16 @@ class Clusterer():
       print 'No images integrated (yet)'
       return
 
-    if self.histogram:
-      # If histogram button was pressed, return set of unit cells
-      # 2. Load pickle files, extract and return unit cell tuples
-      from libtbx import easy_pickle as ep
-      all_cells = []
-      for pickle in all_pickles:
-        info = ep.load(pickle)
-        cell = info['observations'][0].unit_cell().parameters()
-        all_cells.append(cell)
+    # If clustering button was pressed, do clustering
+    # 2. Pick subset
+    subset = list(np.random.choice(all_pickles, size=int(self.sample_size)))
 
-      return all_cells
-
-    else:
-      # If clustering button was pressed, do clustering
-      # 2. Pick subset
-      subset = list(np.random.choice(all_pickles, size=int(self.sample_size)))
-
-      # 3. Do clustering
-      ucs = Cluster.from_files(subset, use_b=True)
-      clusters, _ = ucs.ab_cluster(self.threshold,
-                                   log=False, write_file_lists=False,
-                                   schnell=False, doplot=False)
-
-      return clusters
+    # 3. Do clustering
+    ucs = Cluster.from_files(subset, use_b=True)
+    clusters, _ = ucs.ab_cluster(self.threshold,
+                                 log=False, write_file_lists=False,
+                                 schnell=False, doplot=False)
+    return clusters
 
 class ClusteringWorker(Thread):
   ''' Worker thread for jobs; generated so that the GUI does not lock up when
@@ -421,15 +405,6 @@ class ClusteringWorker(Thread):
     self.clusters = clusterer.unit_cell_clustering()
 
     evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.clusters)
-    wx.PostEvent(self.parent, evt)
-
-  def histogram(self):
-    clusterer = Clusterer(self.trial, self.runblocks, self.output,
-                          self.sample_size, self.threshold, histogram=True)
-
-    self.all_cells = clusterer.unit_cell_clustering()
-
-    evt = ClusteringResult(tp_EVT_CLUSTERING, -1, self.all_cells)
     wx.PostEvent(self.parent, evt)
 
 # ------------------------------- Main Window -------------------------------- #
@@ -959,6 +934,7 @@ class StatusTab(BaseTab):
     self.tag_trial_changed = False
     self.redraw_windows = True
     self.multiplicity_goal = 10
+    self.info = {}
 
     self.status_panel = ScrolledPanel(self, size=(900, 120))
     self.status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
@@ -1044,14 +1020,24 @@ class StatusTab(BaseTab):
 
 
   def onHistogram(self, e):
-    trial = self.main.db.get_trial(trial_number=self.trial_no)
-    runblocks = trial.rungroups
+    if self.info != {}:
+      info = [self.info[i] for i in self.info.keys()]
+    else:
+      info = []
 
-    clustering = ClusteringWorker(self, trial=trial, runblocks=runblocks,
-                                  output=self.main.params.output_folder,
-                                  threshold=self.opt_cluster.threshold.GetValue(),
-                                  sample_size=self.opt_cluster.num_images.GetValue())
-    clustering.histogram()
+    if len(info) <= 1:
+       msg = wx.MessageDialog(None,
+                              'Need more data points for histogram.',
+                              'Histogram Alert',
+                              wx.OK | wx.ICON_EXCLAMATION)
+       msg.ShowModal()
+       msg.Destroy()
+
+
+    else:
+      plotter = pltr.PopUpCharts()
+      plotter.plot_uc_histogram(info=info)
+
 
   def onClustering(self, e):
     trial = self.main.db.get_trial(trial_number=self.trial_no)
@@ -1069,9 +1055,6 @@ class StatusTab(BaseTab):
 
     if e.GetValue() is None:
       print 'Nothing to cluster!'
-    elif all(isinstance(i, tuple) for i in e.GetValue()):
-      plotter = pltr.PopUpCharts()
-      plotter.plot_uc_histogram(info=e.GetValue())
     else:
       counter = 0
       clusters = sorted(e.GetValue(), key=lambda x: x.members, reverse=True)
@@ -1150,33 +1133,35 @@ class StatusTab(BaseTab):
       self.find_trials()
 
     # Show info
-    self.refresh_rows(info=e.GetValue())
+    self.info = e.GetValue()
+    self.refresh_rows()
     self.status_panel.SetSizer(self.status_sizer)
     #self.status_panel.Layout()
     self.status_sizer.Layout()
     self.status_panel.SetupScrolling()
     self.status_box.SetLabel('Data Statistics - Trial {}'.format(self.trial_no))
 
-  def refresh_rows(self, info={}):
+  def refresh_rows(self):
     ''' Refresh status data '''
 
     # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
-    no_isoforms = all(isinstance(key, int) for key in dict.keys(info))
+    no_isoforms = all(isinstance(key, int) for key in dict.keys(self.info))
 
-    if info != {}:
+    if self.info != {}:
       if self.redraw_windows:
         self.status_sizer.Clear(deleteWindows=True)
         self.rows = {}
         row = None
 
       if not no_isoforms:
-        max_multiplicity = max([info[i]['multiplicity'] for i in info])
+        max_multiplicity = max([self.info[i]['multiplicity'] for i in
+                                self.info])
         if max_multiplicity > self.multiplicity_goal:
           xmax = max_multiplicity
         else:
           xmax = self.multiplicity_goal
 
-        for iso, values in info.iteritems():
+        for iso, values in self.info.iteritems():
           if not self.redraw_windows:
             row = self.rows[values['isoform']]['row']
 
@@ -1193,7 +1178,7 @@ class StatusTab(BaseTab):
         else:
           row = self.rows['None']['row']
         self.update_noniso_row(row=row,
-                               num_images=info[0]['n_img'])
+                               num_images=self.info[0]['n_img'])
       self.redraw_windows = False
 
     else:
@@ -1204,7 +1189,9 @@ class StatusTab(BaseTab):
       self.rows['None'] = {}
       row = pltr.NoBarPlot(self.status_panel,
                            label='No isoforms detected!')
-      self.status_sizer.Add(row, flag=wx.ALIGN_CENTER)
+      self.status_sizer.AddStretchSpacer()
+      self.status_sizer.Add(row, flag=wx.CENTER)
+      self.status_sizer.AddStretchSpacer()
 
     row.update_number(number=num_images)
     self.rows['None']['row'] = row
