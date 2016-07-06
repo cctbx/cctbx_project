@@ -263,6 +263,24 @@ class crystal_model(object):
     jacobian_t = jacobian.transpose()
     var_c = (jacobian * cov_O * jacobian.transpose())[0]
 
+    # For cell volume (a X b).c,
+    # F = c1(a2*b3 - b2*a3) + c2(a3*b1 - b3*a1) + c3(a1*b2 - b1*a2)
+    a1, a2, a3 = vec_a
+    b1, b2, b3 = vec_b
+    c1, c2, c3 = vec_c
+    jacobian = matrix.rec((c3*b2 - c2*b3,
+                           c1*b3 - c3*b1,
+                           c2*b1 - c1*b2,
+                           c2*a3 - c3*a2,
+                           c3*a1 - c1*a3,
+                           c1*a2 - c2*a1,
+                           a2*b3 - b2*a3,
+                           a3*b1 - b3*a1,
+                           a1*b2 - b1*a2), (1,9))
+    jacobian_t = jacobian.transpose()
+    var_V = (jacobian * cov_O * jacobian.transpose())[0]
+    self._cell_volume_sd = sqrt(var_V)
+
     # For the unit cell angles we need to calculate derivatives of the angles
     # with respect to the elements of O
     dalpha_db, dalpha_dc = angle_derivative_wrt_vectors(vec_b, vec_c)
@@ -317,6 +335,21 @@ class crystal_model(object):
     self._calc_cell_parameter_sd()
 
     return self._cell_sd
+
+  def get_cell_volume_sd(self):
+    '''Return the estimated standard deviation of the unit cell volume in
+    units of Angstroms^3, if available, otherwise None.
+
+    :rtype: :py:class:`tuple`
+    '''
+    if self._cov_B is None: return None
+    if self._cell_volume_sd is not None: return self._cell_volume_sd
+
+    # propagate covariance of B to errors in the unit cell parameters and
+    # volume
+    self._calc_cell_parameter_sd()
+
+    return self._cell_volume_sd
 
   def set_A(self, A):
     uc = unit_cell(orthogonalization_matrix=A.transpose().inverse())
@@ -410,6 +443,7 @@ class crystal_model(object):
   def reset_unit_cell_errors(self):
     self._cov_B = None
     self._cell_sd = None
+    self._cell_volume_sd = None
 
   def get_unit_cell(self):
     '''
