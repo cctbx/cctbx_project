@@ -151,7 +151,7 @@ class manager (object) :
     if (not protein_ss_definition_present and
         self.sec_str_from_pdb_file is None):
       if(self.verbose>0):
-        print >> log, "No existing protein secondary structure definitions " + \
+        print >> self.log, "No existing protein secondary structure definitions " + \
         "found in .pdb file or phil parameters."
       # find_automatically = True
     else:
