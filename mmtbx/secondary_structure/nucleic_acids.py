@@ -257,12 +257,27 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
         a2 = r2.get_atom(l[1])
         # Bug notification: a2 could be None: bug report form
         # ms@mrc-lmb.cam.ac.uk on Nov 30, 2015, file was not provided.
+        # UPD. a1 also could be None, investigated and improved potential
+        # hbond filtering procedure. Hopefully, this will resolve the issue.
         if a1 is None or a2 is None:
-          msg = "Something is wrong in .pdb file around '%s' or '%s'.\n" % (
-              a1.id_str(), a2.id_str())
-          msg += "If it is not clear to you, please contact developers and "
-          msg += "supply .pdb file used to recreate this crash."
-          raise Sorry(msg)
+          missing_atom = l[0] if a1 is None else l[1]
+          missing_res = r1 if a1 is None else r2
+          print >> log, "Warning! %s atom is missing from residue %s " % (
+              missing_atom, missing_res.id_str())
+          if verbose > 1:
+            print >> log, "Atoms present in the residue:"
+            for a in missing_res.atoms():
+              print >> log, a.id_str()
+          print >> log, "  Was trying to link: %s%s with %s%s, Saenger class: %d" % (
+              r1.id_str(), l[0], r2.id_str(), l[1], class_number)
+          a1_id = a1.id_str() if a1 is not None else "None"
+          a2_id = a2.id_str() if a2 is not None else "None"
+          # msg = "Something is wrong in .pdb file around '%s' or '%s'.\n" % (
+          #     a1_id, a2_id)
+          # msg += "If it is not clear to you, please contact developers and "
+          # msg += "supply above message and .pdb file used."
+          continue
+          # raise Sorry(msg)
         d1 += abs(a1.distance(a2)-2.89)
       n_links_in_data = len(data[1:])
       if n_links_in_data < 1:
@@ -334,6 +349,8 @@ def get_phil_base_pairs(pdb_hierarchy, nonbonded_proxies,
         common_residue_names_get_class(ag2.resname, consider_ccp4_mon_lib_rna_dna=True) in \
           ["common_rna_dna", "ccp4_mon_lib_rna_dna"] and
         (a1.element in ["N", "O"] and a2.element in ["N", "O"]) and
+        a1.name.find("P") < 0 and a2.name.find("P") < 0 and
+        a1.name.find("'") < 0 and a2.name.find("'") < 0 and
         not consecutive_residues(a1, a2) and
         (ag1.altloc.strip() == ag2.altloc.strip()) and
         final_link_direction_check(a1, a2)):
