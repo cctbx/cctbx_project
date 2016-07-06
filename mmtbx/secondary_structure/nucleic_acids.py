@@ -296,7 +296,8 @@ def get_h_bonds_for_basepair(a1, a2, distance_cutoff=100, log=sys.stdout, verbos
       print >> log, "    %s --> %s distance = %.3f" % (
           a1.id_str(), a2.id_str(), a1.distance(a2))
     if a1 is not None and a2 is not None and a1.distance(a2)<distance_cutoff:
-      new_hbonds.append(tuple(sorted([a1.i_seq, a2.i_seq])))
+      new_hbonds.append(tuple([a1, a2] if a1.i_seq<a2.i_seq else [a2, a1]))
+      # new_hbonds.append(tuple(sorted([a1.i_seq, a2.i_seq])))
   return new_hbonds, best_class_number
 
 def final_link_direction_check(atom1, atom2, rna_dna_angle_cutoff=35):
@@ -430,7 +431,9 @@ def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
           print resname
           print r.resname
           print new_res.resname.strip()
-          raise Sorry('Cannot make NA restraints for %s residue' % resname)
+          print "Warning, Cannot make NA restraints for %s residue" % resname
+          continue
+          # raise Sorry('Cannot make NA restraints for %s residue' % resname)
         planes = libdef.get_planes()
         if planes is not None and len(planes) > 0:
           best_index = 0
@@ -704,6 +707,9 @@ def get_basepair_hbond_proxies(
           base_pair.saenger_class = saenger_class
         hbonds = get_h_bonds_for_particular_basepair((a1, a2), base_pair.saenger_class)
         for hb in hbonds:
+          if hb[0] is None or hb[1] is None:
+            print "NA hbond rejected because one of the atoms is absent"
+            continue
           dist = hb[0].distance(hb[1])
           if dist < hbond_distance_cutoff:
             if base_pair.restrain_hbonds:
