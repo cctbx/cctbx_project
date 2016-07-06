@@ -113,7 +113,7 @@ class FormatSMVRigakuSaturnSN07400090(FormatSMVRigakuSaturn):
 
     return self._detector_factory.complex(
         'CCD', detector_origin.elems, detector_fast.elems,
-        detector_slow.elems, pixel_size, image_size, (underload, overload))
+        detector_slow.elems, pixel_size, image_size, (underload, overload), gain=10)
 
 if __name__ == '__main__':
 

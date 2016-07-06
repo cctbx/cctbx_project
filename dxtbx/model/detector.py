@@ -511,7 +511,7 @@ class detector_factory:
   def make_detector(stype, fast_axis, slow_axis, origin,
                     pixel_size, image_size, trusted_range = (0.0, 0.0),
                     px_mm=None, name="Panel", thickness=0.0, material='',
-                    mu=0.0):
+                    mu=0.0, gain=None):
     """Ensure all types are correct before creating c++ detector class."""
 
     if px_mm is None:
@@ -531,6 +531,8 @@ class detector_factory:
       p.set_thickness(thickness)
       p.set_material(material)
       p.set_px_mm_strategy(px_mm)
+      if gain is not None:
+        p.set_gain(gain)
     except Exception, e:
       print e
       raise e
@@ -621,7 +623,7 @@ class detector_factory:
 
   @staticmethod
   def complex(sensor, origin, fast, slow, pixel, size,
-              trusted_range = (0.0, 0.0), px_mm = None):
+              trusted_range = (0.0, 0.0), px_mm = None, gain = None):
     '''A complex detector model, where you know exactly where everything
     is. This is useful for implementation of the Rigaku Saturn header
     format, as that is exactly what is in there. Origin, fast and slow are
@@ -636,7 +638,7 @@ class detector_factory:
 
     return detector_factory.make_detector(
             detector_factory.sensor(sensor),
-            fast, slow, origin, pixel, size, trusted_range, px_mm)
+            fast, slow, origin, pixel, size, trusted_range, px_mm, gain=gain)
 
   @staticmethod
   def imgCIF(cif_file, sensor):
