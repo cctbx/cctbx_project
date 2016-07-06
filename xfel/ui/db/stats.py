@@ -42,8 +42,12 @@ class Stats(object):
                JOIN `%s_run` run ON run.id = evt.run_id
                WHERE run.id in %s AND trial.id = %d""" % (
       exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, self.trial.id)
-    cell_ids = self.app.execute_query(query).fetchall()
-    cells = [self.app.get_cell(cell_id=i[0]) for i in cell_ids]
+    cell_ids = [str(i[0]) for i in self.app.execute_query(query).fetchall()]
+    if len(cell_ids) == 0:
+      cells = []
+    else:
+      from experiment import Cell
+      cells = self.app.get_all_x(Cell, 'cell', where = "WHERE id IN (%s)"%", ".join(cell_ids))
 
     for cell in cells:
       bin_ids = [str(bin.id) for bin in cell.bins]

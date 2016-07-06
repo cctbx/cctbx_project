@@ -225,20 +225,18 @@ class ProgressSentinel(Thread):
           self.parent.run_window.status_tab.redraw_windows = True
           self.parent.run_window.status_tab.tag_trial_changed = False
 
+        run_numbers = []
+        runs = []
+        for rb in trial.rungroups:
+          for run in rb.runs:
+            if run.run not in run_numbers:
+              run_numbers.append(run.run)
+              runs.append(run)
+        n_img = len(db.get_all_events(trial, runs))
+
         for cell in cells:
           # Check for cell isoform
           if cell.isoform is None:
-
-            run_numbers = []
-            runs = []
-            n_img = 0
-            for rb in trial.rungroups:
-              for run in rb.runs:
-                if run.run not in run_numbers:
-                  run_numbers.append(run.run)
-                  runs.append(run)
-              n_img = n_img + len(db.get_all_events(trial, runs))
-
             self.info[cells.index(cell)] = {'a':cell.cell_a,
                                             'b':cell.cell_b,
                                             'c':cell.cell_c,

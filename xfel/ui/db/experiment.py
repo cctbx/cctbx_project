@@ -105,12 +105,13 @@ class Cell(db_proxy):
       kwargs['lookup_symbol'] = crystal.get_space_group().type().lookup_symbol()
     db_proxy.__init__(self, app, "%s_cell" % app.params.experiment_tag, id=cell_id, **kwargs)
     self.cell_id = self.id
-    self.bins = app.get_cell_bins(self.id)
 
     if self.isoform_id is not None:
       self.isoform = Isoform(app, isoform_id = self.isoform_id)
+      self.bins = app.get_cell_bins(self.id)
     else:
       self.isoform = None
+      self.bins = []
 
 class Bin(db_proxy):
   def __init__(self, app, bin_id = None, **kwargs):
