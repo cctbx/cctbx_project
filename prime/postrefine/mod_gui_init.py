@@ -559,17 +559,23 @@ class PRIMEThread(Thread):
   def __init__(self,
                parent,
                prime_file,
-               out_file):
+               out_file,
+               command=None):
     Thread.__init__(self)
     self.parent = parent
     self.prime_file = prime_file
     self.out_file = out_file
+    self.command = command
 
   def run(self):
     if os.path.isfile(self.out_file):
       os.remove(self.out_file)
-    command = 'prime.postrefine {} > {}'.format(self.prime_file, self.out_file)
-    easy_run.fully_buffered(command, join_stdout_stderr=True)
+    if self.command is None:
+      cmd = 'prime.postrefine {} > {}'.format(self.prime_file, self.out_file)
+    else:
+      cmd = self.command
+
+    easy_run.fully_buffered(cmd, join_stdout_stderr=True)
     evt = AllDone(tp_EVT_ALLDONE, -1)
     wx.PostEvent(self.parent, evt)
 
@@ -824,7 +830,7 @@ class PRIMERunWindow(wx.Frame):
   ''' New frame that will show processing info '''
 
   def __init__(self, parent, id, title, params,
-               prime_file, out_file):
+               prime_file, out_file, mp_method='python', command=None):
     wx.Frame.__init__(self, parent, id, title, size=(800, 900),
                       style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER)
 
@@ -835,6 +841,8 @@ class PRIMERunWindow(wx.Frame):
     self.bookmark = 0
     self.prev_pids = []
     self.aborted = False
+    self.command=command
+    self.mp_method = mp_method
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -906,18 +914,18 @@ class PRIMERunWindow(wx.Frame):
     self.gauge_prime.SetSize((rect.width - 4, rect.height - 4))
 
   def onAbort(self, e):
-    # with open(self.tmp_abort_file, 'w') as af:
-    #   af.write('')
     self.status_txt.SetForegroundColour('red')
     self.status_txt.SetLabel('Aborting...')
     self.prime_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
 
-    self.pids = easy_run.fully_buffered('pgrep -u {} {}'
-                                        ''.format(user, python)).stdout_lines
-    self.pids = [i for i in self.pids if i not in self.prev_pids]
-    for i in self.pids:
-      easy_run.fully_buffered('kill -9 {}'.format(i))
-      print 'killing PID {}'.format(i)
+    if self.mp_method == 'python':
+      self.pids = easy_run.fully_buffered('pgrep -u {} {}'
+                                          ''.format(user, python)).stdout_lines
+      self.pids = [i for i in self.pids if i not in self.prev_pids]
+      for i in self.pids:
+        easy_run.fully_buffered('kill -9 {}'.format(i))
+        print 'killing PID {}'.format(i)
+
     self.aborted = True
 
   def run(self):
@@ -925,9 +933,9 @@ class PRIMERunWindow(wx.Frame):
     self.status_txt.SetLabel('Running...')
     self.gauge_prime.SetRange(self.pparams.n_postref_cycle)
 
-    prime_process = PRIMEThread(self, self.prime_file, self.out_file)
+    prime_process = PRIMEThread(self, self.prime_file, self.out_file,
+                                command=self.command)
     prime_process.start()
-
     self.timer.Start(5000)
 
 
@@ -999,7 +1007,12 @@ class PRIMERunWindow(wx.Frame):
     # Update log
     self.display_log()
 
+
   def onFinishedProcess(self, e):
+    self.final_step()
+
+
+  def final_step(self):
     self.timer.Stop()
     font = self.status_txt.GetFont()
     font.SetWeight(wx.BOLD)
