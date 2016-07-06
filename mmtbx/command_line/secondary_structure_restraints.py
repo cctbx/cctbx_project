@@ -164,12 +164,12 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   if work_params.format in ["phenix", "phenix_refine"]:
     comment = "\n".join([
       "# These parameters are suitable for use in e.g. phenix.real_space_refine",
-      "# or geometry_minimization. To use theim in phenix.refine add ",
+      "# or geometry_minimization. To use them in phenix.refine add ",
       "# 'refinement.' if front of pdb_interpretation."])
     if work_params.format == "phenix_refine":
       comment = "\n".join([
       "# These parameters are suitable for use in phenix.refine only.",
-      "# To use theim in other Phenix tools remove ",
+      "# To use them in other Phenix tools remove ",
       "# 'refinement.' if front of pdb_interpretation."])
     print >> result_out, comment
     if (prefix_scope != "") :
