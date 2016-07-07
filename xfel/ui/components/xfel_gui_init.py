@@ -883,7 +883,7 @@ class JobsTab(BaseTab):
 
     self.monitor_jobs()
     self.job_panel.SetupScrolling()
-    self.job_panel.Refresh()
+    self.job_sizer.Layout()
 
   def find_trials(self):
     if self.main.db is not None:

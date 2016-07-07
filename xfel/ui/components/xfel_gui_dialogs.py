@@ -45,6 +45,8 @@ class EdListCtrl(wx.ListCtrl, TextEditMixin):
     """Constructor"""
     wx.ListCtrl.__init__(self, parent, ID, pos, size, style)
     TextEditMixin.__init__(self)
+    self.curRow = -1
+
 
 class BaseDialog(wx.Dialog):
   def __init__(self, parent,
@@ -842,8 +844,8 @@ class TagDialog(BaseDialog):
     self.tag_list.InsertStringItem(self.index, new_tag[0])
     self.tag_list.SetStringItem(self.index, 1, new_tag[1])
     self.tag_list.SetItemData(self.index, -1)
-    self.tag_list.Select(self.index)
-    self.tag_list.Focus(self.index)
+    #self.tag_list.Select(self.index)
+    #self.tag_list.Focus(self.index)
     self.index += 1
 
   def onRemove(self, e):

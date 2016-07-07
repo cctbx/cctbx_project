@@ -312,6 +312,8 @@ class xfel_db_application(object):
     else:
       if runs is None:
         runs = trial.runs
+        if len(runs) == 0:
+          return []
       where = "WHERE trial_id = %d AND run_id in (%s)" % (
         trial.id, ", ".join([str(r.id) for r in runs]))
 
