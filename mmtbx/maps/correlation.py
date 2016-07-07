@@ -4,7 +4,6 @@ from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx import miller
 import sys
-from libtbx.utils import Sorry
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 
