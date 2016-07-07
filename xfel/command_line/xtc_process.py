@@ -142,6 +142,10 @@ xtc_phil_str = '''
         .type = float
         .help = If not None, use the input energy for every event instead of the energy \
                 from the XTC stream
+      override_distance = None
+        .type = float
+        .help = If not None, use the input distance for every event instead of the distance \
+                from the XTC stream
       invalid_pixel_mask = None
         .type = str
         .help = Path to invalid pixel mask, in the dials.generate_mask format. If not set, use the \
@@ -546,11 +550,14 @@ class InMemScript(DialsProcessScript):
         self.debug_write(",no_data\n")
         return
 
-      distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
-      if distance is None:
-        print "No distance, skipping shot"
-        self.debug_write(",no_distance\n")
-        return
+      if self.params.format.cbf.override_distance is None:
+        distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
+        if distance is None:
+          print "No distance, skipping shot"
+          self.debug_write(",no_distance\n")
+          return
+      else:
+        distance = self.params.format.cbf.override_distance
 
       if self.params.format.cbf.override_energy is None:
         wavelength = cspad_tbx.evt_wavelength(evt)
