@@ -709,6 +709,10 @@ class score3(object):
   def update(self, sites_cart, selection=None):
     target = self.compute_target(sites_cart=sites_cart, selection=selection)
     assert self.target is not None
+    den = (abs(self.target)+abs(target))*100
+    num = abs(abs(self.target)-abs(target))*2
+    if(den==0): second_cond = False
+    else:       second_cond = num/den<5.
     if(target > self.target):
       self.residue.atoms().set_xyz(sites_cart)
       fl = self.rotamer_eval is None or \
@@ -716,7 +720,7 @@ class score3(object):
       if(fl):
         self.target = target
         self.sites_cart = sites_cart
-    elif(abs(abs(self.target)-abs(target))*2/(abs(self.target)+abs(target))*100<5.):
+    elif(second_cond):
       fl = self.rotamer_eval is None or \
         self.rotamer_eval.evaluate_residue(residue = self.residue) == "OUTLIER"
       if(fl):

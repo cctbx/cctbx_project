@@ -49,6 +49,7 @@ class run(mmtbx.f_model.manager):
     self.show(prefix = "re-set all scales", log = log)
     if(remove_outliers and not self.twinned()):
       self.remove_outliers(use_model = False, log = None) # XXX
+      self.show(prefix = "remove outliers", log = log)
     result = None
     if(self.twinned()):
       for cycle in xrange(2):
@@ -67,6 +68,9 @@ class run(mmtbx.f_model.manager):
       self.apply_scale_k1_to_f_obs()
     #XXX if(remove_outliers and not self.twinned()):
     #XXX   self.remove_outliers(use_model = True, log = None) # XXX
+    if(remove_outliers and not self.twinned()):
+      self.remove_outliers(use_model = True, log = None) # XXX
+      self.show(prefix = "remove outliers", log = log)
     return result
 
   def reset_all_scales(self):
@@ -91,7 +95,8 @@ class run(mmtbx.f_model.manager):
   def show(self, prefix, log, r=None):
     if(log is None): return
     if(r is None): r = self.r_all()
-    m = "%29s: r_all=%6.4f"%(prefix, r)
+    m = "%24s: r(all,work,free)=%6.4f %6.4f %6.4f n_refl.: %d"%(prefix, r,
+      self.r_work(), self.r_free(), self.f_obs().data().size())
     if(not self.twinned()):
       print >> log, m
     else:

@@ -152,7 +152,7 @@ def run(args, log=sys.stdout):
     n_slots=10, log=log)
   #
   # Compute FSC(map, model)
-  broadcast(m="Model-map FSC:", log=log)
+  broadcast(m="Map-model FSC:", log=log)
   mmtbx.maps.correlation.fsc_model_map(
     xray_structure=xrs, map=map_data, d_min=d_min, log=log)
   #
@@ -162,12 +162,9 @@ def run(args, log=sys.stdout):
     map_data       = map_data,
     d_min          = d_min)
   broadcast(m="Map-model CC:", log=log)
-  print >> log, "Overall:"
-  # entire box
-  print >> log, "         box: %6.4f"%cc_calculator.cc()
-  # all atoms
-  print >> log, "around atoms: %6.4f"%cc_calculator.cc(
-    selection=flex.bool(xrs.scatterers().size(),True))
+  print >> log, "Overall (entire box):  %6.4f"%cc_calculator.cc()
+  print >> log, "Around atoms (masked): %6.4f"%cc_calculator.cc(
+    selection=flex.bool(xrs.scatterers().size(), True))
   # per chain
   print >> log, "Per chain:"
   for chain in ph.chains():
@@ -193,7 +190,7 @@ def run(args, log=sys.stdout):
       map_2      = map_model,
       sites_cart = sites_cart.select(rg.atoms().extract_i_seq()),
       unit_cell  = xrs.unit_cell(),
-      radius     = 2.5)
+      radius     = 2.)
     cc_per_residue.append(cc)
   show_histogram(data=cc_per_residue, n_slots=10, log=log)
   #

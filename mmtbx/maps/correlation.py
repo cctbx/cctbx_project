@@ -4,28 +4,68 @@ from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx import miller
 import sys
+from libtbx.utils import Sorry
+import boost.python
+cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 
-def fsc_model_map(xray_structure, map, d_min, log=sys.stdout, prefix=""):
+def fsc_model_map(xray_structure, map, d_min, log=sys.stdout, radius=2.,
+                  n_bins=30, prefix=""):
+  sgn = xray_structure.crystal_symmetry().space_group().type().number()
   f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
-  mc = f_calc.structure_factors_from_map(
-    map            = map,
-    use_scale      = True,
-    anomalous_flag = False,
-    use_sg         = False)
-  print >> log, prefix, "OVERALL: %7.4f"%f_calc.map_correlation(other = mc)
-  bin_selections = f_calc.log_binning()
+  def compute_mc(f_calc, map):
+    return f_calc.structure_factors_from_map(
+      map            = map,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+  sites_frac = xray_structure.sites_frac()
+  if(sgn==1):
+    mask = cctbx_maptbx_ext.mask(
+      sites_frac                  = sites_frac,
+      unit_cell                   = xray_structure.unit_cell(),
+      n_real                      = map.all(),
+      mask_value_inside_molecule  = 1,
+      mask_value_outside_molecule = 0,
+      radii                       = flex.double(sites_frac.size(), radius))
+  mc = compute_mc(f_calc=f_calc, map=map)
+  if(sgn==1):
+    mc_masked = compute_mc(f_calc=f_calc, map=map*mask)
+    del mask
+  print >> log, prefix, "Overall (entire box):  %7.4f"%\
+    f_calc.map_correlation(other = mc)
+  if(sgn==1):
+    cc = f_calc.map_correlation(other = mc_masked)
+    if(cc is not None): print >> log, prefix, "Around atoms (masked): %7.4f"%cc
   dsd = f_calc.d_spacings().data()
-  print >> log, prefix, "BIN# RESOLUTION (A)     CC"
-  fmt="%2d: %7.3f-%-7.3f %7.4f"
-  for i_bin, sel in enumerate(bin_selections):
-    d     = dsd.select(sel)
-    d_min = flex.min(d)
-    d_max = flex.max(d)
-    n     = d.size()
-    fc    = f_calc.select(sel)
-    fo    = mc.select(sel)
-    cc    = fc.map_correlation(other = fo)
-    print >> log, prefix, fmt%(i_bin, d_max, d_min, cc)
+  if(dsd.size()>1500):
+    f_calc.setup_binner(n_bins = n_bins)
+  else:
+    f_calc.setup_binner(reflections_per_bin = dsd.size())
+  if(sgn==1):
+    print >> log, prefix, "Bin# Resolution (A)     CC   CC(masked)"
+  else:
+    print >> log, prefix, "Bin# Resolution (A)     CC"
+  fmt1="%2d: %7.3f-%-7.3f %7.4f"
+  for i_bin in f_calc.binner().range_used():
+    sel       = f_calc.binner().selection(i_bin)
+    d         = dsd.select(sel)
+    d_min     = flex.min(d)
+    d_max     = flex.max(d)
+    n         = d.size()
+    fc        = f_calc.select(sel)
+    fo        = mc.select(sel)
+    cc        = fc.map_correlation(other = fo)
+    if(sgn==1):
+      fo_masked = mc_masked.select(sel)
+      cc_masked = fc.map_correlation(other = fo_masked)
+      if(cc_masked is not None and cc is not None):
+        fmt2="%2d: %7.3f-%-7.3f %7.4f %7.4f"
+        print >> log, prefix, fmt2%(i_bin, d_max, d_min, cc, cc_masked)
+      else:
+        fmt2="%2d: %7.3f-%-7.3f %s %s"
+        print >> log, prefix, fmt2%(i_bin, d_max, d_min, "none", "none")
+    else:
+      print >> log, prefix, fmt1%(i_bin, d_max, d_min, cc)
 
 def assert_same_gridding(map_1, map_2):
   assert map_1.focus()==map_2.focus()
@@ -157,11 +197,9 @@ class from_map_and_xray_structure_or_fmodel(object):
     if(self.fmodel is not None):
       self.sites_cart = self.fmodel.xray_structure.sites_cart()
       self.sites_frac = self.fmodel.xray_structure.sites_frac()
-      self.weights    = self.fmodel.xray_structure.atomic_weights()
     else:
       self.sites_cart = self.xray_structure.sites_cart()
       self.sites_frac = self.xray_structure.sites_frac()
-      self.weights    = self.xray_structure.atomic_weights()
 
   def cc(self, selections=None, selection=None, atom_radius=2.0, per_atom=None):
     def compute(sites_cart):

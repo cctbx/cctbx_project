@@ -119,7 +119,7 @@ def exercise_00(d_min = 3.0, k_sol = 0.35, b_sol = 50.0,
   assert r_work_start > 0.3
   params = bss.master_params.extract()
   params.number_of_macro_cycles=4
-  r = fmodel.update_all_scales(params=params, fast=False)
+  r = fmodel.update_all_scales(params=params, fast=False, remove_outliers=False)
   r_work_final = fmodel.r_work()
   assert approx_equal(r_work_final, 0,   1.e-5)
   assert approx_equal(r.k_sol[0], k_sol, 1.e-5)
@@ -156,7 +156,8 @@ def exercise_01_general(d_mins = [1.6,],
             f_obs          = f_obs,
             xray_structure = xray_structure,
             bin_selections = bin_selections)
-          fmodel.update_all_scales(fast=fast, params=params)
+          fmodel.update_all_scales(fast=fast, params=params,
+            remove_outliers=False)
           result = bss.bulk_solvent_and_scales(
             fmodel_kbu = fmodel.fmodel_kbu(), params = params)
           if(not fast):
@@ -227,7 +228,7 @@ def exercise_03_do_nothing(d_min = 2.0):
   params = bss.master_params.extract()
   params.bulk_solvent = False
   params.anisotropic_scaling = False
-  fmodel.update_all_scales(params = params, fast=False)
+  fmodel.update_all_scales(params = params, fast=False, remove_outliers=False)
   result = bss.bulk_solvent_and_scales(
     fmodel_kbu = fmodel.fmodel_kbu(), params  = params)
   r_work1 = fmodel.r_work()*100.
@@ -265,7 +266,8 @@ def exercise_04_fix_k_sol_b_sol_b_cart(d_min = 2.0):
   params.fix_b_cart.b12 = b_cart[3]
   params.fix_b_cart.b13 = b_cart[4]
   params.fix_b_cart.b23 = b_cart[5]
-  result = fmodel.update_all_scales(params = params, fast = False)
+  result = fmodel.update_all_scales(params = params, fast = False,
+    remove_outliers=False)
   r_work = fmodel.r_work()*100.
   assert r_work_start > 0.0
   assert approx_equal(r_work,          0.0, eps = 1.e-6)
