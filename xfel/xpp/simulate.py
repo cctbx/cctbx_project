@@ -11,7 +11,7 @@ class phil_validation:
     pass
 
 class file_table:
-  def __init__(self,param,query,enforce81=False):
+  def __init__(self,param,query,enforce80=False,enforce81=False):
     import urllib2
     auth_handler = urllib2.HTTPBasicAuthHandler()
     auth_handler.add_password(realm="Webservices Auth",
@@ -47,6 +47,8 @@ class file_table:
       self.unixtimes.append(  time.mktime(time.strptime(item[:19],"%Y-%m-%dT%H:%M:%S"))  )
     self.rundict = {}
     for i in xrange(len(self.runs)):
+      if enforce80: #assume the required FEE spectrometer data is in stream 80
+        if self.items[i].find("-s80-") < 0: continue
       if enforce81: #assume the required FEE spectrometer data is in stream 81
         if self.items[i].find("-s81-") < 0: continue
       if self.rundict.get(self.runs[i],0)==0:

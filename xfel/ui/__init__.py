@@ -39,6 +39,9 @@ web {
   password = ""
     .type = str
     .help = Web password. Will be cached in plain text!
+  enforce80 = False
+    .type = bool
+    .help = report only on stream 81, FEE spectrometer
   enforce81 = False
     .type = bool
     .help = report only on stream 81, FEE spectrometer

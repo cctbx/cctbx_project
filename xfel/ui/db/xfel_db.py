@@ -101,7 +101,7 @@ class xfel_db_application(object):
   def list_lcls_runs(self):
     from xfel.xpp.simulate import file_table
     query = "https://pswww.slac.stanford.edu/ws-auth/dataexport/placed?exp_name=%s" % (self.params.experiment)
-    FT = file_table(self.params, query, enforce81=self.params.web.enforce81)
+    FT = file_table(self.params, query, enforce80=self.params.web.enforce80, enforce81=self.params.web.enforce81)
     return FT.get_runs()
 
   def verify_tables(self):
