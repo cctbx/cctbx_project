@@ -145,6 +145,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       data["pixel_size"] = p.get_pixel_size();
       data["trusted_range"] = p.get_trusted_range();
       data["thickness"] = p.get_thickness();
+      data["gain"] = p.get_gain();
       data["material"] = p.get_material();
       data["mu"] = p.get_mu();
       data["mask"] = boost::python::list(p.get_mask());
@@ -182,6 +183,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       p.set_image_size(extract< tiny<std::size_t,2> >(data["image_size"]));
       p.set_trusted_range(extract< tiny<double,2> >(data["trusted_range"]));
       p.set_thickness(extract<double>(data["thickness"]));
+      if (data.has_key("gain")) {
+        p.set_gain(extract<double>(data["gain"]));
+      }
       p.set_material(extract<std::string>(data["material"]));
       p.set_mu(extract<double>(data["mu"]));
       p.set_px_mm_strategy(extract< shared_ptr<PxMmStrategy> >(data["px_mm_strategy"]));
