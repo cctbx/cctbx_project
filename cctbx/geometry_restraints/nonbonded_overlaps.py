@@ -396,7 +396,9 @@ class info(object):
     '''
     selection_list = [flex.bool([True]*sites_cart.size())]
     results = []
-    second_grm_selection = macro_molecule_selection.count(False) > 0
+    # second_grm_selection = macro_molecule_selection.count(False) > 0
+    # This is 10 times faster and produces the same result
+    second_grm_selection = not macro_molecule_selection.all_eq(True)
     if second_grm_selection:
       selection_list.append(macro_molecule_selection)
 
