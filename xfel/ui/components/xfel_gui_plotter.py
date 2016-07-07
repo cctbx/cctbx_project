@@ -9,6 +9,7 @@ Description : XFEL UI Plots and Charts
 
 import wx
 import numpy as np
+from scitbx.array_family import flex
 
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -124,12 +125,12 @@ class PopUpCharts(object):
     gsp = GridSpec(2, 3)
 
     # Extract uc dimensions from info list
-    a = [i['a'] for i in info]
-    b = [i['b'] for i in info]
-    c = [i['c'] for i in info]
-    alpha = [i['alpha'] for i in info]
-    beta = [i['beta'] for i in info]
-    gamma = [i['gamma'] for i in info]
+    a = flex.double([i['a'] for i in info])
+    b = flex.double([i['b'] for i in info])
+    c = flex.double([i['c'] for i in info])
+    alpha = flex.double([i['alpha'] for i in info])
+    beta = flex.double([i['beta'] for i in info])
+    gamma = flex.double([i['gamma'] for i in info])
 
     nbins = int(np.sqrt(len(info))) * 2
 
@@ -139,13 +140,17 @@ class PopUpCharts(object):
     sub_a = fig.add_subplot(gsp[0])
     sub_a.hist(a, nbins, normed=False, facecolor='#2c7fb8',
              alpha=0.75, histtype='stepfilled')
-    sub_a.set_xlabel("a-edge ($\AA$)")
+    sub_a.set_xlabel(
+      "a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
+                                        flex.mean_and_variance(a).unweighted_sample_standard_deviation()))
     sub_a.set_ylabel('Number of images')
 
     sub_b = fig.add_subplot(gsp[1], sharey=sub_a)
     sub_b.hist(b, nbins, normed=False, facecolor='#2c7fb8',
              alpha=0.75, histtype='stepfilled')
-    sub_b.set_xlabel("b-edge ($\AA$)")
+    sub_b.set_xlabel(
+      "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
+                                        flex.mean_and_variance(b).unweighted_sample_standard_deviation()))
     plt.setp(sub_b.get_yticklabels(), visible=False)
     sub_b.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
@@ -153,7 +158,9 @@ class PopUpCharts(object):
     sub_c = fig.add_subplot(gsp[2], sharey=sub_a)
     sub_c.hist(c, nbins, normed=False, facecolor='#2c7fb8',
              alpha=0.75, histtype='stepfilled')
-    sub_c.set_xlabel("c-edge ($\AA$)")
+    sub_c.set_xlabel(
+      "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
+                                        flex.mean_and_variance(c).unweighted_sample_standard_deviation()))
     plt.setp(sub_c.get_yticklabels(), visible=False)
     sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
@@ -161,13 +168,17 @@ class PopUpCharts(object):
     sub_alpha = fig.add_subplot(gsp[3])
     sub_alpha.hist(alpha, nbins, normed=False, facecolor='#7fcdbb',
                    alpha=0.75,  histtype='stepfilled')
-    sub_alpha.set_xlabel(r'$\alpha (\circ)$')
+    sub_alpha.set_xlabel(
+      r'$\alpha (%.2f +/- %.2f\circ)$' % (flex.mean(alpha),
+                                           flex.mean_and_variance(alpha).unweighted_sample_standard_deviation()))
     sub_alpha.set_ylabel('Number of images')
 
     sub_beta = fig.add_subplot(gsp[4], sharey=sub_alpha)
     sub_beta.hist(beta, nbins, normed=False, facecolor='#7fcdbb',
                   alpha=0.75, histtype='stepfilled')
-    sub_beta.set_xlabel(r'$\beta (\circ)$')
+    sub_beta.set_xlabel(
+      r'$\beta (%.2f +/- %.2f\circ)$' % (flex.mean(beta),
+                                         flex.mean_and_variance(beta).unweighted_sample_standard_deviation()))
     plt.setp(sub_beta.get_yticklabels(), visible=False)
     sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
@@ -175,7 +186,9 @@ class PopUpCharts(object):
     sub_gamma = fig.add_subplot(gsp[5], sharey=sub_alpha)
     sub_gamma.hist(gamma, nbins, normed=False, facecolor='#7fcdbb',
                    alpha=0.75, histtype='stepfilled')
-    sub_gamma.set_xlabel(r'$\gamma (\circ)$')
+    sub_gamma.set_xlabel(
+      r'$\gamma (%.2f +/- %.2f\circ)$' % (flex.mean(gamma),
+                                          flex.mean_and_variance(gamma).unweighted_sample_standard_deviation()))
     plt.setp(sub_gamma.get_yticklabels(), visible=False)
     sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)

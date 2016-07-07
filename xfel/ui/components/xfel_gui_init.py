@@ -271,7 +271,8 @@ class ProgressSentinel(Thread):
                                             'c':cell.cell_c,
                                             'alpha':cell.cell_alpha,
                                             'beta':cell.cell_beta,
-                                            'gamma':cell.cell_gamma}
+                                            'gamma':cell.cell_gamma,
+                                            'n_img':n_img}
       self.post_refresh()
       self.info = {}
       self.parent.run_window.prg_light.change_status('on')
@@ -1169,7 +1170,8 @@ class StatusTab(BaseTab):
                           name=values['isoform'],
                           value=values['multiplicity'],
                           bins=values['bins'],
-                          xmax=xmax)
+                          xmax=xmax,
+                          n_img=values['n_img'])
       else:
         if self.redraw_windows:
           self.status_sizer.Clear(deleteWindows=True)
@@ -1196,7 +1198,7 @@ class StatusTab(BaseTab):
     row.update_number(number=num_images)
     self.rows['None']['row'] = row
 
-  def update_row(self, row, name, value, bins, xmax):
+  def update_row(self, row, name, value, bins, xmax, n_img):
     ''' Add new row, or update existing '''
 
     bin_choices = [("Bin {}:  {:3.2f} - {:3.2f}" \
@@ -1205,7 +1207,7 @@ class StatusTab(BaseTab):
     if row is None:
       self.rows[name] = {}
       row = pltr.SingleBarPlot(self.status_panel,
-                               label='Isoform {}'.format(name),
+                               label='Isoform {} (Nimg:{})'.format(name, n_img),
                                gauge_size=(250, 15),
                                choice_label='High res. limit:',
                                choice_size=(160, -1),
