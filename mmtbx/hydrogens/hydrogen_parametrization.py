@@ -310,15 +310,16 @@ def run(args, out=sys.stdout):
 
   names = list(pdb_hierarchy.atoms().extract_name())
   sites_cart = xray_structure.sites_cart()
-  scatterers = xray_structure.scatterers()
+  #scatterers = xray_structure.scatterers()
 
   atoms_list = list(pdb_hierarchy.atoms_with_labels())
 
   print >>log, '\nNow determining connectivity table for H atoms...'
   connectivity = hydrogen_connectivity.determine_H_neighbors(
-    bond_proxies   = bond_proxies_simple,
-    angle_proxies  = angle_proxies,
-    xray_structure = xray_structure)
+    geometry_restraints   = geometry_restraints,
+    bond_proxies          = bond_proxies_simple,
+    angle_proxies         = angle_proxies,
+    xray_structure        = xray_structure)
 
   print >>log, '\nNow determining the parameterization for H atoms...'
   h_parameterization = get_h_parameterization(
@@ -328,6 +329,8 @@ def run(args, out=sys.stdout):
     atoms_list     = atoms_list)
 
   print >>log, '\nNow reconstructing H atoms...'
+  long_distance_list = []
+  unk_list = []
   for ih in h_parameterization.keys():
     residue = atoms_list[ih].resseq
     hp = h_parameterization[ih]
@@ -338,9 +341,36 @@ def run(args, out=sys.stdout):
     if(h_obj.distance is not None):
       print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
         residue, 'distance:', h_obj.distance
+      if(h_obj.distance > 0.05):
+        long_distance_list.append(ih)
     else:
       print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', residue
+      unk_list.append(ih)
 
+  # some informative output for residues with unknown algorithm
+  print >>log, '*'*79
+  print >>log, 'Warning: The following atoms where not assigned an H type'
+  for ih in unk_list:
+    residue = atoms_list[ih].resseq
+    hp = h_parameterization[ih]
+    print >> log, 'atom:', names[ih], 'residue:', residue, \
+      'chain', atoms_list[ih].chain_id
+  print >>log, '*'*79
+
+  # some informative output for residues where position is NOT reproduced
+  # -> wronlgy assigned or
+  print >>log, 'Warning: The position of the following H atoms was not reproduced'
+  for ih in long_distance_list:
+    residue = atoms_list[ih].resseq
+    hp = h_parameterization[ih]
+    h_obj = generate_H_positions(
+      sites_cart        = sites_cart,
+      ih                = ih,
+      para_info         = hp)
+    if(h_obj.distance is not None and h_obj.distance > 0.05):
+      print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
+        residue, 'chain', atoms_list[ih].chain_id, 'distance:', h_obj.distance
+  print >>log, '*'*79
 
 if (__name__ == "__main__"):
   t0 = time.time()

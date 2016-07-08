@@ -68,9 +68,11 @@ def exercise():
 
   # determine values with code to be tested
   connectivity = hydrogen_connectivity.determine_H_neighbors(
-    bond_proxies   = bond_proxies_simple,
-    angle_proxies  = angle_proxies,
-    xray_structure = xray_structure)
+    geometry_restraints   = geometry_restraints,
+    bond_proxies          = bond_proxies_simple,
+    angle_proxies         = angle_proxies,
+    xray_structure        = xray_structure)
+
   bond_list = {}
   angle_list = {}
   third_nb_list = {}
@@ -84,10 +86,11 @@ def exercise():
       third_nb_list[ih]=[]
       for atom in connectivity[ih][2]:
         third_nb_list[ih].append(atom.iseq)
+#      print third_nb_list[ih]
 
-#--------------------------------------
+#-----------------------------------------------------------------------------
 # This is useful to keep for debugging: human readable output of connectivity
-#--------------------------------------
+#-----------------------------------------------------------------------------
 #  for ih in connectivity.keys():
 #    if(len(connectivity[ih])==3):
 #      string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
@@ -96,7 +99,7 @@ def exercise():
 #    print  names[ih],': ', names[(connectivity[ih][0][0]).iseq], \
 #      ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), \
 #      ',', string
-#--------------------------------------
+#-----------------------------------------------------------------------------
 
 # determine values directly from pdb_str
   model = mmtbx.model.manager(
@@ -133,7 +136,7 @@ def exercise():
       angle_ctrl[tuple(sorted(list(ap.i_seqs)))]=ap.angle_ideal
 
 # HH needs also third neighbors:
-  third_nb_ctrl = {19: [9, 8]}
+  third_nb_ctrl = {19: [8, 9]}
 
   assert (bond_list == bond_ctrl), '1-2 neighbors and distance_ideal are wrong'
   assert (angle_list == angle_ctrl), '1-3 neighbors and angle_ideal are wrong'

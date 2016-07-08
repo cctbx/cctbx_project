@@ -8,15 +8,13 @@ from cctbx import geometry_restraints
 import hydrogen_connectivity
 import hydrogen_parametrization
 
-#----------------------------------------------------
-# This test checks the parameterization of hydrogen atoms
-# for nucleic acids
+#-----------------------------------------------------------------------------
+# This test checks the parameterization of hydrogen atoms for nucleic acids
 # Steps:
 # 1) determine parameterization
-# 2) Compare calculated position of H from parameterization
-# to input position
-# test fails if distance is > 0.001 A (=precision of coordinates)
-#----------------------------------------------------
+# 2) Compare calculated position of H from parameterization to input position
+# test fails if distance is > 0.001 A (= precision of coordinates)
+#-----------------------------------------------------------------------------
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
@@ -45,13 +43,14 @@ def exercise():
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
   connectivity = hydrogen_connectivity.determine_H_neighbors(
-    bond_proxies   = bond_proxies_simple,
-    angle_proxies  = angle_proxies,
-    xray_structure = xray_structure)
+    geometry_restraints   = geometry_restraints,
+    bond_proxies          = bond_proxies_simple,
+    angle_proxies         = angle_proxies,
+    xray_structure        = xray_structure)
 
-#-------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # This is useful to keep for debugging: human readable output of connectivity
-#-------------------------------------------------------------
+#-----------------------------------------------------------------------------
 #  for ih in connectivity.keys():
 #    if(len(connectivity[ih])==3):
 #      string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
@@ -59,7 +58,7 @@ def exercise():
 #      string = 'n/a'
 #    print  names[ih],': ', names[(connectivity[ih][0]).iseq], \
 #      ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), ',', string
-#-------------------------------------------------------------
+#-----------------------------------------------------------------------------
 
   h_parameterization = hydrogen_parametrization.get_h_parameterization(
     connectivity   = connectivity,
