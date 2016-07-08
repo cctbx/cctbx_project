@@ -55,7 +55,11 @@ the output images in the folder cxi49812.
                         default=False,
                         dest="raw_data",
                         help="Disable psana corrections such as dark pedestal subtraction or common mode (cbf only)")
-                 .option(None, "--config", "-c",
+                .option(None, "--background_pickle", "-B",
+                        default=None,
+                        dest="background_pickle",
+                        help="")
+                .option(None, "--config", "-c",
                         type="string",
                         default=None,
                         dest="config",
@@ -214,6 +218,9 @@ the output images in the folder cxi49812.
   src = psana.Source('DetInfo(%s)'%address)
   nevent = np.array([0.])
 
+  if command_line.options.background_pickle is not None:
+    background = easy_pickle.load(command_line.options.background_pickle)['DATA'].as_numpy_array()
+
   for run in ds.runs():
     runnumber = run.run()
 
@@ -233,7 +240,7 @@ the output images in the folder cxi49812.
       if i%10==0: print 'Rank',rank,'processing event',rank*len(mytimes)+i,', ',i,'of',len(mytimes)
       evt = run.event(mytimes[i])
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
-      if 'Rayonix' in command_line.options.address or 'FeeHxSpectrometer' in command_line.options.address:
+      if 'Rayonix' in command_line.options.address or 'FeeHxSpectrometer' in command_line.options.address or 'XrayTransportDiagnostic' in command_line.options.address:
         data = evt.get(psana.Camera.FrameV1,src)
         if data is None:
           print "No data"
@@ -259,27 +266,34 @@ the output images in the folder cxi49812.
         print "No data"
         continue
 
-      if 'FeeHxSpectrometer' in command_line.options.address:
+      if command_line.options.background_pickle is not None:
+        data -= background
+
+      if 'FeeHxSpectrometer' in command_line.options.address or 'XrayTransportDiagnostic' in command_line.options.address:
         distance = np.array([0.0])
         wavelength = np.array([1.0])
       else:
         d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
         if d is None:
-          print "No distance, skipping shot"
-          continue
-        if 'distance' in locals():
-          distance += d
+          print "No distance"
+          if 'distance' not in locals():
+            distance = np.array([0.0])
         else:
-          distance = np.array([float(d)])
+          if 'distance' in locals():
+            distance += d
+          else:
+            distance = np.array([float(d)])
 
         w = cspad_tbx.evt_wavelength(evt)
         if w is None:
-          print "No wavelength, skipping shot"
-          continue
-        if 'wavelength' in locals():
-          wavelength += w
+          print "No wavelength"
+          if 'wavelength' not in locals():
+            wavelength = np.array([1.0])
         else:
-          wavelength = np.array([w])
+          if 'wavelength' in locals():
+            wavelength += w
+          else:
+            wavelength = np.array([w])
 
       t = cspad_tbx.evt_time(evt)
       if t is None:
@@ -401,7 +415,7 @@ the output images in the folder cxi49812.
             timestamp=timestamp,
             wavelength=wavelength)
         easy_pickle.dump(path, d)
-    elif 'FeeHxSpectrometer' in command_line.options.address:
+    elif 'FeeHxSpectrometer' in command_line.options.address or 'XrayTransportDiagnostic' in command_line.options.address:
       all_data = [mean, stddev, maxall]
       split_address = cspad_tbx.address_split(address)
       old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]

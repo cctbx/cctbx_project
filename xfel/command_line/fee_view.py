@@ -30,6 +30,9 @@ phil_scope = parse("""
   experiment = None
     .type = str
     .help = Experiment name, e.g. cxid9114
+  skip_events = None
+    .type = int
+    .help = Optionally skip N events
   include scope xfel.cxi.spectra_filter.phil_scope
 """, process_includes = True)
 
@@ -73,7 +76,11 @@ def run(args):
     # list of all events
     times = run.times()
 
+    if params.skip_events is not None:
+      times = times[params.skip_events:]
+
     nevents = min(len(times),max_events)
+
     # chop the list into pieces, depending on rank.  This assigns each process
     # events such that the get every Nth event where N is the number of processes
     mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
