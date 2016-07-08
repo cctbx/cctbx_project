@@ -219,6 +219,7 @@ class ProgressSentinel(Thread):
           trial_number=self.parent.run_window.status_tab.trial_no)
 
         tags = self.parent.run_window.status_tab.selected_tags
+        tag_ids = [tag.id for tag in tags]
         cells = db.get_stats(trial=trial, tags=tags)()
 
         if self.parent.run_window.status_tab.tag_trial_changed:
@@ -230,8 +231,14 @@ class ProgressSentinel(Thread):
         for rb in trial.rungroups:
           for run in rb.runs:
             if run.run not in run_numbers:
-              run_numbers.append(run.run)
-              runs.append(run)
+              if len(tags) > 0:
+                for tag in run.tags:
+                  if tag.id in tag_ids:
+                    run_numbers.append(run.run)
+                    runs.append(run)
+              else:
+                run_numbers.append(run.run)
+                runs.append(run)
         n_img = len(db.get_all_events(trial, runs))
 
         for cell in cells:
