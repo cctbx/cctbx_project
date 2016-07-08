@@ -561,8 +561,6 @@ class manager(object):
     self.add_dihedrals_in_place(chi_torsions)
 
   def remove_chi_torsion_restraints_in_place(self, selection=None):
-    """ This function should not be used because add_dihedrals_in_place
-    is taking care of duplications."""
     if self.dihedral_proxies is not None:
       if selection is None:
         self.dihedral_proxies = self.dihedral_proxies.proxy_remove(origin_id=2)
