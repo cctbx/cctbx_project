@@ -118,6 +118,17 @@ class PopUpCharts(object):
   def __init__(self):
     pass
 
+  def reject_outliers(self, data):
+    from scitbx.math import five_number_summary
+    min_x, q1_x, med_x, q3_x, max_x = five_number_summary(data)
+    #print "Five number summary: min %.1f, q1 %.1f, med %.1f, q3 %.1f, max %.1f"%(min_x, q1_x, med_x, q3_x, max_x)
+    iqr_x = q3_x - q1_x
+    cut_x = 1.5 * iqr_x
+    outliers = flex.bool(len(data), False)
+    outliers.set_selected(data > q3_x + cut_x, True)
+    outliers.set_selected(data < q1_x - cut_x, True)
+    return outliers
+
   def plot_uc_histogram(self, info):
 
     # Initialize figure
@@ -132,10 +143,22 @@ class PopUpCharts(object):
     beta = flex.double([i['beta'] for i in info])
     gamma = flex.double([i['gamma'] for i in info])
 
+    accepted = flex.bool(len(a), True)
+    for d in [a, b, c, alpha, beta, gamma]:
+      outliers = self.reject_outliers(d)
+      accepted &= ~outliers
+
+    a = a.select(accepted)
+    b = b.select(accepted)
+    c = c.select(accepted)
+    alpha = alpha.select(accepted)
+    beta = beta.select(accepted)
+    gamma = gamma.select(accepted)
+
     nbins = int(np.sqrt(len(info))) * 2
 
     fig.suptitle('Histogram of Unit Cell Dimensions ({} images)'
-                 ''.format(len(info)), fontsize=18)
+                 ''.format(len(a)), fontsize=18)
 
     sub_a = fig.add_subplot(gsp[0])
     sub_a.hist(a, nbins, normed=False, facecolor='#2c7fb8',
