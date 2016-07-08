@@ -186,6 +186,7 @@ class SettingsDialog(BaseDialog):
     creds.Center()
     if (creds.ShowModal() == wx.ID_OK):
       self.params.db.host     = creds.db_host.ctr.GetValue()
+      self.params.db.name     = creds.db_name.ctr.GetValue()
       self.params.db.user     = creds.db_user.ctr.GetValue()
       self.params.db.password = creds.db_password.ctr.GetValue()
       self.params.web.user     = creds.web_user.ctr.GetValue()
@@ -196,7 +197,7 @@ class SettingsDialog(BaseDialog):
 
   def onOK(self, e):
     self.params.experiment_tag = self.db_cred.ctr.GetValue()
-    self.params.experiment = self.params.db.name = self.experiment.ctr.GetValue()
+    self.params.experiment = self.experiment.ctr.GetValue()
     self.params.output_folder = self.output.ctr.GetValue()
     e.Skip()
 
@@ -224,6 +225,15 @@ class DBCredentialsDialog(BaseDialog):
                                        big_button_size=(130, -1),
                                        value=params.db.host)
     self.main_sizer.Add(self.db_host, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Database name
+    self.db_name = gctr.TextButtonCtrl(self,
+                                       label='DB name',
+                                       label_style='bold',
+                                       label_size=(150, -1),
+                                       big_button_size=(130, -1),
+                                       value=params.db.name)
+    self.main_sizer.Add(self.db_name, flag=wx.EXPAND | wx.ALL, border=10)
 
     # User name
     self.db_user = gctr.TextButtonCtrl(self,
