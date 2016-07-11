@@ -100,40 +100,20 @@ x_range = range(1, len(delta_dict_list)+1)
 x_label = []
 for i in range(1, len(delta_dict_list)+1):
   x_label.append(str(i))
-data_title = ['Tpr_i','Tpr','Txy_i','Txy','G','B','RotX','RotY','ry','rz','r0','re','voigt_nu','a','b','c','alpha','beta','gamma','CC']
+data_title = ['Tpr_i','Tpr','Txy_i','Txy','G','B','RotX','RotY','ry','rz','r0','re','voigt_nu','a','b','c','alpha','beta','gamma','CC1/2']
 cn_plot = 1
-for i in range(n_col-2):
+for i in range(n_col-1):
   if i not in (0,2):
     data_series = []
     for delta_dict in delta_dict_list:
       narr = np.array([delta_dict[key][i] for key in delta_dict.keys()])
       data_series.append(narr)
 
-      ax = plt.subplot(4, 5, cn_plot, title=data_title[i])
+      ax = plt.subplot(3, 6, cn_plot, title=data_title[i])
       plt.boxplot(data_series)
       plt.xticks(x_range, x_label)
       if data_title[i] in ('ry','rz','r0','re'):
         plt.ylim([0, 0.01])
       plt.grid(True)
-      """
-      if data_title[i]=='Tpr':
-        plt.ylim([0, 3000])
-      elif data_title[i]=='Txy':
-        plt.ylim([0, 500])
-      elif data_title[i]=='G':
-        plt.ylim([0, 9])
-      elif data_title[i]=='B':
-        plt.ylim([0, 450])
-      elif data_title[i]=='RotX':
-        plt.ylim([0, 14])
-      elif data_title[i]=='RotY':
-        plt.ylim([0, 14])
-      elif data_title[i]=='a':
-        plt.ylim([0, 80])
-      elif data_title[i]=='b':
-        plt.ylim([0, 80])
-      elif data_title[i]=='c':
-        plt.ylim([0, 80])
-      """
     cn_plot += 1
 plt.show()

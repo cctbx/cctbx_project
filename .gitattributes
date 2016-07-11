@@ -2581,6 +2581,7 @@ prime/command_line/comparestats.py -text
 prime/command_line/frame_extractor_by_scan.py -text
 prime/command_line/iotacc.py -text
 prime/command_line/plot_energy_spectrum.py -text
+prime/command_line/plotstats.py -text
 prime/command_line/postrefine.py -text
 prime/command_line/prime_gui.py -text
 prime/command_line/print_integration_pickle.py -text
