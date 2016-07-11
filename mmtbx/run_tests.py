@@ -137,6 +137,7 @@ tst_list = (
   "$D/conformation_dependent_library/test_rdl.py",
   "$D/conformation_dependent_library/test_hpdl.py",
   "$D/regression/tst_find_ss_structure.py",
+  "$D/regression/tst_fix_rotamer_outliers.py",
   "$D/regression/tst_chain_comparison.py",
   "$D/regression/tst_regularize_from_pdb.py",
   "$D/regression/tst_find_ncs.py",

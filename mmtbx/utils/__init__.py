@@ -55,6 +55,7 @@ from cctbx import uctbx
 from cctbx import xray
 from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 from iotbx.file_reader import any_file
+from mmtbx.rotamer.rotamer_eval import RotamerEval
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -2280,6 +2281,86 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
     result = math.sqrt(flex.sum(values) / values.size())
   return result
 
+def fix_rotamer_outliers(
+    pdb_hierarchy,
+    grm,
+    xrs,
+    radius=5,
+    mon_lib_srv=None,
+    rotamer_manager=None,
+    asc=None):
+  if mon_lib_srv is None:
+    mon_lib_srv = mmtbx.monomer_library.server.server()
+  if rotamer_manager is None:
+    rotamer_manager = RotamerEval()
+  from mmtbx.command_line import lockit
+  from cctbx.geometry_restraints import nonbonded_overlaps as nbo
+  get_class = iotbx.pdb.common_residue_names_get_class
+  assert pdb_hierarchy is not None
+  assert grm is not None
+  assert xrs is not None
+  if asc is None:
+    asc = pdb_hierarchy.atom_selection_cache()
+  special_position_settings = crystal.special_position_settings(
+      crystal_symmetry = xrs.crystal_symmetry())
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for conf in chain.conformers():
+        for res in conf.residues():
+          cl = get_class(res.resname)
+          if cl not in ["common_amino_acid","modified_amino_acid"]:
+            continue
+          ev = rotamer_manager.evaluate_residue_2(res)
+          # print ev,
+          if ev != "OUTLIER" or ev is None:
+            continue
+          sel = flex.size_t([])
+          sel_res_mc = flex.size_t([])
+          for a in res.atoms():
+            sel.append(a.i_seq)
+            if a.name.strip() in ["N", "CA", "C", "O"]:
+              sel_res_mc.append(a.i_seq)
+          bsel = flex.bool([False]*pdb_hierarchy.atoms().size())
+          bsel.set_selected(sel, True)
+          selection_around_residue = special_position_settings.pair_generator(
+              sites_cart      = xrs.sites_cart(),
+              distance_cutoff = radius
+                ).neighbors_of(primary_selection = bsel).iselection()
+          sel_h = pdb_hierarchy.select(selection_around_residue)
+          sel_around_no_mc = flex.size_t(sorted(list(set(list(selection_around_residue)) - set(list(sel_res_mc)))))
+          bsel_around_no_mc = flex.bool([False]*pdb_hierarchy.atoms().size())
+          bsel_around_no_mc.set_selected(sel_around_no_mc, True)
+
+          rotamer_iterator = lockit.get_rotamer_iterator(
+              mon_lib_srv         = mon_lib_srv,
+              residue             = res,
+              atom_selection_bool = None)
+          if rotamer_iterator is None:
+            continue
+          site_labels = xrs.scatterers().extract_labels()
+          hd_sel = xrs.hd_selection()
+          i = 0
+          inf = []
+          for rotamer, rotamer_sites_cart in rotamer_iterator:
+            nb_overlaps = nbo.info(
+                geometry_restraints_manager=grm,
+                macro_molecule_selection=bsel_around_no_mc,
+                sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+                site_labels=site_labels,
+                hd_sel=hd_sel,
+                do_only_macro_molecule=True)
+            overlap_proxies = nb_overlaps.result.nb_overlaps_proxies_macro_molecule
+            summ = 0
+            for p in overlap_proxies:
+              d = list(p)
+              summ += d[3]-d[4]
+            inf.append((i, rotamer.id, rotamer.frequency, nb_overlaps.result.nb_overlaps_macro_molecule,
+                nb_overlaps.result.normalized_nbo_macro_molecule, summ, rotamer_sites_cart))
+            i += 1
+          s_inf = sorted(inf, cmp=lambda x,y: cmp(x[5], y[5]))
+          res.atoms().set_xyz(s_inf[-1][-1])
+  return pdb_hierarchy
+
 def switch_rotamers(
       pdb_hierarchy,
       mode,
@@ -2297,7 +2378,6 @@ def switch_rotamers(
   sites_cart_result = sites_cart_start.deep_copy()
   if ((mode == "fix_outliers")
       and rotamer_manager is None):
-    from mmtbx.rotamer.rotamer_eval import RotamerEval
     rotamer_manager = RotamerEval()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
