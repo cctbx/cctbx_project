@@ -11,6 +11,7 @@
 
 
 from __future__ import division
+from dxtbx_format_nexus_ext import *
 
 
 class check_dtype(object):
@@ -1126,19 +1127,26 @@ class DataList(object):
     d = self.lookup[index]
     i = index - self.offset[d]
 
+    # Keeping this in for the moment to allow evaluation of speed etc
     # aiming to resolve dials#148
-    mode_148 = True
+    # mode_148 = True
 
-    if mode_148:
-      # allocate empty array, copy data in
-      data = np.empty((self.height, self.width), dtype='uint32')
-      self.datasets[d].read_direct(data, np.s_[i,:,:], np.s_[:,:])
-    else:
-      data = self.datasets[d][i,:,:]
-      if data.dtype == np.uint16:
-        data = data.astype(np.uint32)
-
-    data_as_flex = flex.int(data)
+    # if mode_148:
+    #   # allocate empty array, copy data in
+    #   data = np.empty((self.height, self.width), dtype='uint32')
+    #   self.datasets[d].read_direct(data, np.s_[i,:,:], np.s_[:,:])
+    # else:
+    #   data = self.datasets[d][i,:,:]
+    #   if data.dtype == np.uint16:
+    #     data = data.astype(np.uint32)
+    # data_as_flex = flex.int(data)
+    N, height, width = self.datasets[d].shape
+    data_as_flex = dataset_as_flex_int(
+      self.datasets[d].id.id,
+      (slice(i, i+1, 1),
+       slice(0, height, 1),
+       slice(0, width, 1)))
+    data_as_flex.reshape(flex.grid(data_as_flex.all()[1:]))
     return data_as_flex
 
 

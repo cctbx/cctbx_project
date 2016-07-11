@@ -601,6 +601,7 @@ dxtbx/format/TemplatePYCXI61.py -text
 dxtbx/format/TemplatePYCXI71.py -text
 dxtbx/format/TemplatePYCXI7d.py -text
 dxtbx/format/__init__.py -text
+dxtbx/format/boost_python/nexus_ext.cc -text
 dxtbx/format/doc/adding_new_formats.txt -text
 dxtbx/format/nexus.py -text
 dxtbx/format/tests/TestFormat.py -text

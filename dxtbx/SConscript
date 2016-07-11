@@ -18,7 +18,8 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       env_etc.dxtbx_include])
   env.Append(
 	LIBS=env_etc.libm + [ 
-	  "scitbx_boost_python"])
+	  "scitbx_boost_python",
+    "hdf5"])
     
   if env_etc.clang_version:
     wd = ["-Wno-unused-function"]
@@ -30,6 +31,11 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       "boost_python/to_ewald_sphere_helpers.cc",
       "boost_python/ext.cpp"])
 
+  nexus = env.SharedLibrary(
+    target='#/lib/dxtbx_format_nexus_ext', 
+    source=[
+      'format/boost_python/nexus_ext.cc'])
+      
   model = env.SharedLibrary(
     target='#/lib/dxtbx_model_ext', 
     source=[
