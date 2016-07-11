@@ -41,7 +41,7 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
   env.Append(
 	LIBS=env_etc.libm + [ 
 	  "scitbx_boost_python",
-    "hdf5"])
+    "hdf5"], LIBPATH=[env_etc.base_lib])
     
   if env_etc.clang_version:
     wd = ["-Wno-unused-function"]
