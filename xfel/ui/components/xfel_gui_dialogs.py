@@ -359,6 +359,20 @@ class AdvancedSettingsDialog(BaseDialog):
     analysis_box = wx.StaticBox(self, label='Data Analysis Options')
     self.analysis_sizer = wx.StaticBoxSizer(analysis_box, wx.VERTICAL)
 
+    # Processing back-ends
+    self.back_ends = ['DIALS', 'LABELIT']
+    self.dispatchers = ['cctbx.xfel.xtc_process', 'cxi.xtc_process']
+    self.back_end = gctr.ChoiceCtrl(self,
+                                    label='Processing back end:',
+                                    label_size=(120, -1),
+                                    label_style='bold',
+                                    choices=self.back_ends)
+    self.analysis_sizer.Add(self.back_end, flag=wx.EXPAND | wx.ALL, border=10)
+    try:
+      self.back_end.ctr.SetSelection(self.dispatchers.index(params.dispatcher))
+    except ValueError:
+      pass
+
     img_types = ['corrected', 'raw']
     self.avg_img_type = gctr.ChoiceCtrl(self,
                                         label='Avg. Image Type:',
@@ -409,6 +423,7 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nproc.ctr.SetIncrement(1)
 
   def onOK(self, e):
+    self.params.dispatcher = self.dispatchers[self.back_end.ctr.GetSelection()]
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
     self.params.mp.queue = self.queue.ctr.GetStringSelection()
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())

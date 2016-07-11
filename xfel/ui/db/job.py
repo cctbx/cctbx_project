@@ -112,6 +112,7 @@ def submit_job(app, job):
   phil = open(submit_phil_path, "w")
 
   d = dict(dry_run = app.params.dry_run,
+    dispatcher = app.params.dispatcher,
     cfg = config_path,
     calib_dir = job.rungroup.calib_dir,
     experiment = app.params.experiment,
