@@ -1,9 +1,31 @@
+import sys
 import os
 import libtbx.load_env
 Import("env_etc")
 
 env_etc.dxtbx_dist = libtbx.env.dist_path("dxtbx")
 env_etc.dxtbx_include = os.path.dirname(env_etc.dxtbx_dist)
+env_etc.dxtbx_includes = []
+
+# for the hdf5.h file - look at where Python is coming from unless is OS X
+# framework build... messy but appears to work on Linux and OS X
+include_root = os.path.split(env_etc.python_include)[0]
+if 'Python.framework' in include_root:
+  include_root = os.path.join(
+    include_root.split('Python.framework')[0], 'include')
+if os.path.exists(os.path.join(include_root, 'hdf5.h')):
+  env_etc.dxtbx_includes.append(include_root)
+else:
+  # check for PSDM installation. Example:
+  # /reg/g/psdm/sw/external/hdf5/1.8.6/x86_64-rhel5-gcc41-opt/include
+  psdm_hdf5_path = os.path.join(os.environ.get('SIT_ROOT',""),
+                                'sw', 'external', 'hdf5', '1.8.6',
+                                os.environ.get('SIT_ARCH',""), 'include')
+  if os.path.exists(psdm_hdf5_path):
+    env_etc.dxtbx_common_includes.append(psdm_hdf5_path)
+if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
+  env_etc.dxtbx_includes.append(libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'include')))
+
 if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
   Import("env_no_includes_boost_python_ext")
   env = env_no_includes_boost_python_ext.Clone()
@@ -15,7 +37,7 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       env_etc.boost_adaptbx_include,
       env_etc.boost_include,
       env_etc.python_include,
-      env_etc.dxtbx_include])
+      env_etc.dxtbx_include] + env_etc.dxtbx_includes)
   env.Append(
 	LIBS=env_etc.libm + [ 
 	  "scitbx_boost_python",
