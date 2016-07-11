@@ -317,6 +317,11 @@ class xfel_db_application(object):
       where = "WHERE trial_id = %d AND run_id in (%s)" % (
         trial.id, ", ".join([str(r.id) for r in runs]))
 
+    if 'rungroup_id' in self.columns_dict["%s_%s" % (self.params.experiment_tag, 'event')]: # some backwards compatibility, as event.rungroup_id was added late to the schema
+      rungroups = ", ".join([str(rg.id) for rg in trial.rungroups])
+      if len(rungroups) > 0:
+        where += " AND rungroup_id in (%s)"%rungroups
+
     return self.get_all_x(Event, "event", where)
 
   def get_stats(self, **kwargs):

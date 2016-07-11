@@ -122,7 +122,11 @@ xtc_phil_str = '''
               streams are not in the standard location for your PSDM installation.
     trial = None
       .type = int
-      .help = Trial number for this job.
+      .help = Optional. Trial number for this run.
+    rungroup = None
+      .type = int
+      .help = Optional. Useful for organizing runs with similar parameters into logical \
+              groupings.
  }
   format {
     file_format = *cbf pickle

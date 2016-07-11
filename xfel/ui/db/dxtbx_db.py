@@ -9,7 +9,10 @@ def log_frame(experiments, reflections, params, run, timestamp = None):
   db_experiment = app.create_experiment(experiments[0])
   db_run = app.get_run(run_number=run)
   db_trial = app.get_trial(trial_number=params.input.trial)
-  db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id)
+  if params.input.rungroup is None:
+    db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id)
+  else:
+    db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id, rungroup_id = params.input.rungroup)
   app.link_imageset_frame(db_experiment.imageset, db_event)
 
   d = experiments[0].crystal.get_unit_cell().d(reflections['miller_index'])

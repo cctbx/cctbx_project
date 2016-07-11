@@ -469,6 +469,9 @@ class Script(object):
     if params.input.target is not None:
       extra_str += " %s" % params.input.target
 
+    if params.input.rungroup is not None:
+      extra_str += " input.rungroup=%d" % params.input.rungroup
+
     command = "%s input.experiment=%s input.run_num=%d input.trial=%d output.output_dir=%s %s %s" % (
       params.input.dispatcher, params.input.experiment, params.input.run_num, params.input.trial, output_dir,
       logging_str, extra_str
