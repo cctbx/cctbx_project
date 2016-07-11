@@ -2,8 +2,7 @@ from __future__ import division
 try:
   import MySQLdb
 except ImportError, e:
-  from libtbx.utils import Sorry
-  raise Sorry("Mysql is not installed")
+  pass
 
 def get_run_path(rootpath, trial, rungroup, run):
   import os
