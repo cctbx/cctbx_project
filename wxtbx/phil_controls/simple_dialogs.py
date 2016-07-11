@@ -13,7 +13,7 @@ class SimpleInputDialog (wx.Dialog) :
                 value=None,
                 caption=None) :
     style = wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER| \
-      wx.WS_EX_VALIDATE_RECURSIVELY
+      wx.WS_EX_VALIDATE_RECURSIVELY | wx.RESIZE_BORDER
     wx.Dialog.__init__(self,
       parent=parent,
       title=title,
