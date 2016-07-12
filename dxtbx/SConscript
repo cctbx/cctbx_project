@@ -38,11 +38,18 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       env_etc.boost_include,
       env_etc.python_include,
       env_etc.dxtbx_include] + env_etc.dxtbx_includes)
-  env.Append(
-	LIBS=env_etc.libm + [ 
-	  "scitbx_boost_python",
-    "hdf5"], LIBPATH=[env_etc.base_lib])
-    
+      
+  if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
+    env.Append(
+    LIBS=env_etc.libm + [ 
+      "scitbx_boost_python",
+      "libhdf5"], LIBPATH=[libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'lib'))])
+  else:
+    env.Append(
+    LIBS=env_etc.libm + [ 
+      "scitbx_boost_python",
+      "hdf5"], LIBPATH=[env_etc.base_lib])
+
   if env_etc.clang_version:
     wd = ["-Wno-unused-function"]
     env.Append(CCFLAGS=wd)
