@@ -1866,6 +1866,7 @@ mmtbx/command_line/find_residue_in_pdb.py -text
 mmtbx/command_line/find_tls_groups.py -text
 mmtbx/command_line/find_torsion_angle_ncs_groups.py svneol=native#text/x-python
 mmtbx/command_line/fix_rama_outliers.py -text
+mmtbx/command_line/fix_rotamer_outliers.py -text
 mmtbx/command_line/flipbase.py -text
 mmtbx/command_line/fmodel.py -text
 mmtbx/command_line/fmodel_simple.py -text
