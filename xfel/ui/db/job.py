@@ -148,11 +148,12 @@ def submit_job(app, job):
           modules.append(line.lstrip('[').rstrip(']'))
     if backend == 'labelit':
       modules.extend(['my_ana_pkg.mod_hitfind:index','my_ana_pkg.mod_dump:index'])
-    assert len(modules) > 0
-    config_str += "modules = %s\n"%(" ".join(modules))
+
+    if len(modules) > 0:
+      config_str += "modules = %s\n"%(" ".join(modules))
 
     if job.rungroup.config_str is not None:
-      config_str += job.rungroup.config_str
+      config_str += job.rungroup.config_str + "\n"
 
     if backend == 'labelit':
       d['address'] = d['address'].replace('.','-').replace(':','|') # old style address
