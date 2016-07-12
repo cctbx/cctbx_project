@@ -62,45 +62,106 @@ def submit_job(app, job):
   configs_dir = os.path.join(settings_dir, "cfgs")
   if not os.path.exists(configs_dir):
     os.makedirs(configs_dir)
-
-  from xfel.command_line.xtc_process import phil_scope
-  from iotbx.phil import parse
-  trial_params = phil_scope.fetch(parse(job.trial.target_phil_str)).extract()
-  if trial_params.format.file_format == "cbf":
-    trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
-    trial_params.format.cbf.override_energy = job.rungroup.energy
-    trial_params.format.cbf.invalid_pixel_mask = job.rungroup.untrusted_pixel_mask_path
-    trial_params.format.cbf.gain_mask_value = job.rungroup.gain_mask_level
-  else:
-    assert False
-  trial_params.dispatch.process_percent = job.trial.process_percent
-
-  working_phil = phil_scope.format(python_object=trial_params)
-  diff_phil = phil_scope.fetch_diff(source=working_phil)
-
   target_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_params.phil"%
     (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+  backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(app.params.dispatcher)]
+
+  if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None or backend == 'labelit':
+    config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
+      (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+  else:
+    config_path = None
+
+  # Dictionary for formating the submit phil and, if used, the labelit cfg file
+  d = dict(
+    # Generally for the LABELIT backend
+    address                   = job.rungroup.detector_address,
+    default_calib_dir         = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"),
+    dark_avg_path             = job.rungroup.dark_avg_path,
+    dark_stddev_path          = job.rungroup.dark_stddev_path,
+    untrusted_pixel_mask_path = job.rungroup.untrusted_pixel_mask_path,
+    detz_parameter            = job.rungroup.detz_parameter,
+    gain_map_path             = job.rungroup.gain_map_path,
+    gain_mask_level           = job.rungroup.gain_mask_level,
+    beamx                     = job.rungroup.beamx,
+    beamy                     = job.rungroup.beamy,
+    energy                    = job.rungroup.energy,
+    binning                   = job.rungroup.binning,
+    trial_id                  = job.trial.id,
+    # Generally for job submission
+    dry_run                   = app.params.dry_run,
+    dispatcher                = app.params.dispatcher,
+    cfg                       = config_path,
+    experiment                = app.params.experiment,
+    run_num                   = job.run.run,
+    trial                     = job.trial.trial,
+    output_dir                = app.params.output_folder,
+    # Generally for both
+    rungroup                  = job.rungroup.rungroup_id,
+    experiment_tag            = app.params.experiment_tag,
+    calib_dir                 = job.rungroup.calib_dir,
+    nproc                     = app.params.mp.nproc,
+    queue                     = app.params.mp.queue,
+    target                    = target_phil_path,
+    host                      = app.params.db.host,
+    dbname                    = app.params.db.name,
+    user                      = app.params.db.user,
+  )
+  if app.params.db.password is not None and len(app.params.db.password) == 0:
+    d['password'] = None
+  else:
+    d['password'] = app.params.db.password
+
   phil = open(target_phil_path, "w")
-  phil.write(diff_phil.as_str())
+
+  if backend == 'dials':
+    from xfel.command_line.xtc_process import phil_scope
+    from iotbx.phil import parse
+    trial_params = phil_scope.fetch(parse(job.trial.target_phil_str)).extract()
+    if trial_params.format.file_format == "cbf":
+      trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
+      trial_params.format.cbf.override_energy = job.rungroup.energy
+      trial_params.format.cbf.invalid_pixel_mask = job.rungroup.untrusted_pixel_mask_path
+      trial_params.format.cbf.gain_mask_value = job.rungroup.gain_mask_level
+    else:
+      assert False
+    trial_params.dispatch.process_percent = job.trial.process_percent
+
+    working_phil = phil_scope.format(python_object=trial_params)
+    diff_phil = phil_scope.fetch_diff(source=working_phil)
+
+    phil.write(diff_phil.as_str())
+  elif backend == 'labelit':
+    phil.write(job.trial.target_phil_str)
+  else:
+    assert False
   phil.close()
 
-  config_path = None
-  if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None:
+  if config_path is not None:
     config_str = "[psana]\n"
     if job.rungroup.calib_dir is not None:
       config_str += "calib-dir=%s\n"%job.rungroup.calib_dir
+    modules = []
     if job.rungroup.config_str is not None:
-      modules = []
       for line in job.rungroup.config_str.split("\n"):
-        assert isinstance(line, str)
         if line.startswith('['):
           modules.append(line.lstrip('[').rstrip(']'))
-      assert len(modules) > 0
-      config_str += "modules = %s\n"%(" ".join(modules))
+    if backend == 'labelit':
+      modules.extend(['my_ana_pkg.mod_hitfind:index','my_ana_pkg.mod_dump:index'])
+    assert len(modules) > 0
+    config_str += "modules = %s\n"%(" ".join(modules))
+
+    if job.rungroup.config_str is not None:
       config_str += job.rungroup.config_str
 
-    config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
-      (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
+    if backend == 'labelit':
+      d['address'] = d['address'].replace('.','-').replace(':','|') # old style address
+      template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "index_all.cfg"))
+      for line in template.readlines():
+        config_str += line.format(**d)
+      template.close()
+      d['address'] = job.rungroup.detector_address
+
     cfg = open(config_path, 'w')
     cfg.write(config_str)
     cfg.close()
@@ -108,33 +169,16 @@ def submit_job(app, job):
   submit_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%
     (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
 
-  template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db"), "submit.phil"))
+  template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "submit.phil"))
   phil = open(submit_phil_path, "w")
 
-  d = dict(dry_run = app.params.dry_run,
-    dispatcher = app.params.dispatcher,
-    cfg = config_path,
-    calib_dir = job.rungroup.calib_dir,
-    experiment = app.params.experiment,
-    experiment_tag = app.params.experiment_tag,
-    run_num = job.run.run,
-    trial = job.trial.trial,
-    rungroup = job.rungroup.rungroup_id,
-    output_dir = app.params.output_folder,
-    nproc = app.params.mp.nproc,
-    queue = app.params.mp.queue,
-    target = target_phil_path,
-    host = app.params.db.host,
-    dbname = app.params.db.name,
-    user = app.params.db.user,
-  )
-  if app.params.db.password is not None and len(app.params.db.password) == 0:
-    d['password'] = None
-  else:
-    d['password'] = app.params.db.password
+  if backend == 'labelit':
+    d['target'] = None # any target phil will be in mod_hitfind
 
   for line in template.readlines():
     phil.write(line.format(**d))
+
+  d['target'] = target_phil_path
 
   template.close()
   phil.close()

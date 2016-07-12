@@ -118,11 +118,20 @@ class xfel_db_application(object):
 
     trial = Trial(self, **kwargs)
     if trial.target_phil_str is not None:
-      from xfel.command_line.xtc_process import phil_scope
       from iotbx.phil import parse
-      trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
-      if len(trial_params.indexing.stills.isoforms) > 0:
-        for isoform in trial_params.indexing.stills.isoforms:
+      backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(self.params.dispatcher)]
+      if backend == 'labelit':
+        from spotfinder.applications.xfel import cxi_phil
+        trial_params = cxi_phil.cxi_versioned_extract().persist.phil_scope.fetch(parse(trial.target_phil_str)).extract()
+        isoforms = trial_params.isoforms
+      elif backend == 'dials':
+        from xfel.command_line.xtc_process import phil_scope
+        trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
+        isoforms = trial_params.indexing.stills.isoforms
+      else:
+        assert False
+      if len(isoforms) > 0:
+        for isoform in isoforms:
           print "Creating isoform", isoform.name
           db_isoform = Isoform(self,
                                name = isoform.name,
