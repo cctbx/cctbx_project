@@ -685,7 +685,7 @@ represents its position in the hierarchy (and corresponding array returned by
 constructing the hierarchy, but modifications to the hierarchy will not be
 propagated to the individual atoms.  You can reset the ``i_seq`` at any time::
 
-  hierarchy.reset_atom_i_seq()
+  hierarchy.reset_atom_i_seqs()
 
 or::
 
