@@ -162,7 +162,7 @@ class xfel_db_application(object):
 
   def get_trial_isoforms(self, trial_id):
     where = "WHERE trial_id = %d"%trial_id
-    return self.get_all_x(Isoform, "isoform")
+    return self.get_all_x(Isoform, "isoform", where)
 
   def create_cell(self, **kwargs):
     return Cell(self, **kwargs)
