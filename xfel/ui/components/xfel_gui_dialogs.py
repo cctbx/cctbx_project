@@ -1021,7 +1021,7 @@ class RunBlockDialog(BaseDialog):
                                btn_default=True,
                                btn_default_label='Default Config',
                                ctr_size=(-1, 200),
-                               ctr_value=str(block.config_ctr))
+                               ctr_value=str(block.config_str))
     self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Extra phil
@@ -1222,8 +1222,8 @@ class RunBlockDialog(BaseDialog):
     rg_dict = dict(startrun=startrun,
                    endrun=endrun,
                    active=True,
-                   config_str=self.config.GetValue(),
-                   extra_phil_str=self.phil.GetValue(),
+                   config_str=self.config.ctr.GetValue(),
+                   extra_phil_str=self.phil.ctr.GetValue(),
                    detector_address=self.address.ctr.GetValue(),
                    detz_parameter=self.beam_xyz.DetZ.GetValue(),
                    beamx=self.beam_xyz.X.GetValue(),
@@ -1279,8 +1279,8 @@ class RunBlockDialog(BaseDialog):
     ''' If previous rungroups exist in trial, fill in fields in nascent block '''
     if len(self.all_blocks) > 0:
       last = self.all_blocks[-1]
-      self.config.SetValue(str(last.config_str))
-      self.phil.SetValue(str(last.extra_phil_str))
+      self.config.ctr.SetValue(str(last.config_str))
+      self.phil.ctr.SetValue(str(last.extra_phil_str))
       self.address.ctr.SetValue(str(last.detector_address))
       self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
       self.beam_xyz.X.SetValue(str(last.beamx))

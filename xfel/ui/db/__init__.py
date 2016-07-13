@@ -77,6 +77,7 @@ class db_proxy(object):
 
   def __getattr__(self, key):
     # Called if the property is not found
+    assert hasattr(self, '_db_dict')
     if key not in self._db_dict:
       print self.table_name, key, 'error!', self._db_dict
       raise AttributeError()

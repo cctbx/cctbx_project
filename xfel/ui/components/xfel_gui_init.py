@@ -218,6 +218,8 @@ class ProgressSentinel(Thread):
         trial = db.get_trial(
           trial_number=self.parent.run_window.status_tab.trial_no)
 
+        trial_has_isoforms = len(trial.isoforms) > 0
+
         tags = self.parent.run_window.status_tab.selected_tags
         tag_ids = [tag.id for tag in tags]
         cells = db.get_stats(trial=trial, tags=tags)()
@@ -244,6 +246,8 @@ class ProgressSentinel(Thread):
         for cell in cells:
           # Check for cell isoform
           if cell.isoform is None:
+            if trial_has_isoforms: # Sometimes LABELIT backend will not assign an isoform to an image, even if the trial is using isoforms
+              continue
             self.info[cells.index(cell)] = {'a':cell.cell_a,
                                             'b':cell.cell_b,
                                             'c':cell.cell_c,
@@ -1151,7 +1155,6 @@ class StatusTab(BaseTab):
 
   def refresh_rows(self):
     ''' Refresh status data '''
-
     # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
     no_isoforms = all(isinstance(key, int) for key in dict.keys(self.info))
 

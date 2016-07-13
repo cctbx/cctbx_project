@@ -3959,6 +3959,7 @@ xfel/ui/components/xfel_gui_dialogs.py -text
 xfel/ui/components/xfel_gui_init.py -text
 xfel/ui/components/xfel_gui_plotter.py -text
 xfel/ui/db/__init__.py -text
+xfel/ui/db/cfgs/index_all.cfg -text
 xfel/ui/db/cfgs/submit.phil -text
 xfel/ui/db/dxtbx_db.py -text
 xfel/ui/db/experiment.py -text

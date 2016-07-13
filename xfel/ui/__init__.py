@@ -15,24 +15,6 @@ dry_run = False
 experiment = ""
   .type = str
   .help = Experiment name, eg cxid9114
-experiment_tag = ""
-  .type = str
-  .help = User defined tag to describe the set of trials being performed. All database tables will \
-          be pre-pended with this string
-db {
-  host = psdb-user.slac.stanford.edu
-    .type = str
-    .help = Host name for mysql databse server
-  name = ""
-    .type = str
-    .help = Database name
-  user = ""
-    .type=str
-    .help = Database user name
-  password = ""
-    .type = str
-    .help = Database password. Will be cached as plain text!
-}
 output_folder = ""
   .type = path
   .help = Processing results will go in this folder
@@ -56,7 +38,27 @@ average_raw_data = False
 
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """
-master_phil_scope = parse(master_phil_str, process_includes=True)
+db_phil_str = """
+experiment_tag = ""
+  .type = str
+  .help = User defined tag to describe the set of trials being performed. All database tables will \
+          be pre-pended with this string
+db {
+  host = psdb-user.slac.stanford.edu
+    .type = str
+    .help = Host name for mysql databse server
+  name = ""
+    .type = str
+    .help = Database name
+  user = ""
+    .type=str
+    .help = Database user name
+  password = ""
+    .type = str
+    .help = Database password. Will be cached as plain text!
+}
+"""
+master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
 
 settings_dir = os.path.join(os.path.expanduser('~'), '.cctbx.xfel')
 settings_file = os.path.join(settings_dir, 'settings.phil')

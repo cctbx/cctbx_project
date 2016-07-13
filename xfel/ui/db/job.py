@@ -87,16 +87,15 @@ def submit_job(app, job):
     beamy                     = job.rungroup.beamy,
     energy                    = job.rungroup.energy,
     binning                   = job.rungroup.binning,
-    trial_id                  = job.trial.id,
     # Generally for job submission
     dry_run                   = app.params.dry_run,
     dispatcher                = app.params.dispatcher,
     cfg                       = config_path,
     experiment                = app.params.experiment,
     run_num                   = job.run.run,
-    trial                     = job.trial.trial,
     output_dir                = app.params.output_folder,
     # Generally for both
+    trial                     = job.trial.trial,
     rungroup                  = job.rungroup.rungroup_id,
     experiment_tag            = app.params.experiment_tag,
     calib_dir                 = job.rungroup.calib_dir,
@@ -114,10 +113,14 @@ def submit_job(app, job):
 
   phil = open(target_phil_path, "w")
 
+  phil_str = job.trial.target_phil_str
+  if job.rungroup.extra_phil_str is not None:
+    phil_str += "\n" + job.rungroup.extra_phil_str
+
   if backend == 'dials':
     from xfel.command_line.xtc_process import phil_scope
     from iotbx.phil import parse
-    trial_params = phil_scope.fetch(parse(job.trial.target_phil_str)).extract()
+    trial_params = phil_scope.fetch(parse(phil_str)).extract()
     if trial_params.format.file_format == "cbf":
       trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
       trial_params.format.cbf.override_energy = job.rungroup.energy
@@ -132,7 +135,7 @@ def submit_job(app, job):
 
     phil.write(diff_phil.as_str())
   elif backend == 'labelit':
-    phil.write(job.trial.target_phil_str)
+    phil.write(phil_str)
   else:
     assert False
   phil.close()

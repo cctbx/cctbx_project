@@ -6,9 +6,15 @@ def log_frame(experiments, reflections, params, run, timestamp = None):
   assert len(experiments) == 1
 
   app = dxtbx_xfel_db_application(params)
+  if params.input.trial is None:
+    db_trial = app.get_trial(trial_id = params.input.trial_id)
+    params.input.trial = db_trial.trial
+  else:
+    db_trial = app.get_trial(trial_number = params.input.trial)
+    params.input.trial_id = db_trial.id
+
   db_experiment = app.create_experiment(experiments[0])
   db_run = app.get_run(run_number=run)
-  db_trial = app.get_trial(trial_number=params.input.trial)
   if params.input.rungroup is None:
     db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id)
   else:

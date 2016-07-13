@@ -50,7 +50,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                db_user                = None,
                db_password            = None,
                db_tags                = None,
+               trial                  = None,
                rungroup_id            = None,
+               db_version             = 'v1',
                **kwds):
     """The mod_hitfind class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -95,7 +97,9 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     self.m_db_user              = cspad_tbx.getOptString(db_user)
     self.m_db_password          = cspad_tbx.getOptString(db_password)
     self.m_db_tags              = cspad_tbx.getOptString(db_tags)
+    self.m_trial                = cspad_tbx.getOptInteger(trial)
     self.m_rungroup_id          = cspad_tbx.getOptInteger(rungroup_id)
+    self.m_db_version           = cspad_tbx.getOptString(db_version)
     # A ROI should not contain any ASIC boundaries, as these are
     # noisy.  Hence circular ROI:s around the beam centre are probably
     # not such a grand idea.
@@ -117,9 +121,31 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       assert self.m_sql_buffer_size >= 1
 
     if self.m_progress_logging:
-      self.buffered_progress_entries = []
-      assert self.m_sql_buffer_size >= 1
-      self.isoforms = {}
+      if self.m_db_version == 'v1':
+        self.buffered_progress_entries = []
+        assert self.m_sql_buffer_size >= 1
+        self.isoforms = {}
+      elif self.m_db_version == 'v2':
+        from xfel.ui import db_phil_str
+        from libtbx.phil import parse
+        extra_phil = """
+        input {
+          trial = None
+            .type = int
+          trial_id = None
+            .type = int
+          rungroup = None
+            .type = int
+        }
+        """
+        self.db_params = parse(db_phil_str + extra_phil).extract()
+        self.db_params.experiment_tag = self.m_db_experiment_tag
+        self.db_params.db.host = self.m_db_host
+        self.db_params.db.name = self.m_db_name
+        self.db_params.db.user = self.m_db_user
+        self.db_params.db.password = self.m_db_password
+        self.db_params.input.trial = self.m_trial
+        self.db_params.input.rungroup = self.m_rungroup_id
 
     if self.m_db_tags is None:
       self.m_db_tags = ""
@@ -302,27 +328,35 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
 
       indexed = info is not None
       if indexed and self.m_progress_logging:
-        # integration pickle dictionary is available here as info.last_saved_best
-        if info.last_saved_best["identified_isoform"] is not None:
-          #print info.last_saved_best.keys()
-          from cxi_xdr_xes.cftbx.cspad_ana import db
-          dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
-          cursor = dbobj.cursor()
-          if info.last_saved_best["identified_isoform"] in self.isoforms:
-            PM, indices, miller_id = self.isoforms[info.last_saved_best["identified_isoform"]]
-          else:
-            from xfel.xpp.progress_support import progress_manager
-            PM = progress_manager(info.last_saved_best,self.m_db_experiment_tag, self.m_trial_id, self.m_rungroup_id, evt.run())
-            indices, miller_id = PM.get_HKL(cursor)
-            # cache these as they don't change for a given isoform
-            self.isoforms[info.last_saved_best["identified_isoform"]] = PM, indices, miller_id
-          if self.m_sql_buffer_size > 1:
-            self.queue_progress_entry(PM.scale_frame_detail(self.timestamp,cursor,do_inserts=False))
-          else:
-            PM.scale_frame_detail(self.timestamp,cursor,do_inserts=True)
-            dbobj.commit()
-            cursor.close()
-            dbobj.close()
+        if self.m_db_version == 'v1':
+          # integration pickle dictionary is available here as info.last_saved_best
+          if info.last_saved_best["identified_isoform"] is not None:
+            #print info.last_saved_best.keys()
+            from cxi_xdr_xes.cftbx.cspad_ana import db
+            dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
+            cursor = dbobj.cursor()
+            if info.last_saved_best["identified_isoform"] in self.isoforms:
+              PM, indices, miller_id = self.isoforms[info.last_saved_best["identified_isoform"]]
+            else:
+              from xfel.xpp.progress_support import progress_manager
+              PM = progress_manager(info.last_saved_best,self.m_db_experiment_tag, self.m_trial_id, self.m_rungroup_id, evt.run())
+              indices, miller_id = PM.get_HKL(cursor)
+              # cache these as they don't change for a given isoform
+              self.isoforms[info.last_saved_best["identified_isoform"]] = PM, indices, miller_id
+            if self.m_sql_buffer_size > 1:
+              self.queue_progress_entry(PM.scale_frame_detail(self.timestamp,cursor,do_inserts=False))
+            else:
+              PM.scale_frame_detail(self.timestamp,cursor,do_inserts=True)
+              dbobj.commit()
+              cursor.close()
+              dbobj.close()
+        elif self.m_db_version == 'v2':
+          from xfel.command_line.frame_unpickler import construct_reflection_table_and_experiment_list
+          from xfel.ui.db.dxtbx_db import log_frame
+          c = construct_reflection_table_and_experiment_list(info.last_saved_best, None, pixel_size, proceed_without_image=True)
+          c.assemble_experiments()
+          c.assemble_reflections()
+          log_frame(c.experiment_list, c.reflections, self.db_params, evt.run(), self.timestamp)
 
       if self.m_db_logging:
         sec,ms = cspad_tbx.evt_time(evt)
@@ -447,7 +481,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
     if self.m_db_logging:
       self.commit_entries()
 
-    if self.m_progress_logging:
+    if self.m_progress_logging and self.m_db_version == 'v1':
       self.commit_progress_entries()
 
   def queue_entry(self, entry):

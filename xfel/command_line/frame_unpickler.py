@@ -56,19 +56,27 @@ def find_matching_img(pickle, img_location=None):
 class construct_reflection_table_and_experiment_list(object):
   def __init__(self, pickle, img_location, pixel_size, proceed_without_image=False):
     # unpickle pickle file and keep track of image location
-    self.pickle = pickle
     if img_location is None:
       if proceed_without_image:
-        self.img_location = [pickle]
+        self.img_location = []
       else:
         raise Sorry, "No image found at specified location. Override by setting proceed_without_image to False" \
         + "to produce experiment lists that may only be read when check_format is False."
     else:
       self.img_location = [img_location]
+
+    # pickle can be already unpickled, if so, loading it will fail with an AttributeError. A load
+    # error will fail with EOFError
     try:
       self.data = easy_pickle.load(pickle)
     except EOFError:
       self.data = None
+      self.pickle = None
+    except AttributeError:
+      self.data = pickle
+      self.pickle = None
+    else:
+      self.pickle = pickle
     if self.data is not None:
       self.length = len(self.data['observations'][0].data())
       self.pixel_size = pixel_size
@@ -106,13 +114,15 @@ class construct_reflection_table_and_experiment_list(object):
     self.crystal.set_mosaicity(self.data['mosaicity'])
     self.crystal._ML_half_mosaicity_deg = self.data['ML_half_mosaicity_deg'][0]
     self.crystal._ML_domain_size_ang = self.data['ML_domain_size_ang'][0]
+    if self.data['identified_isoform'] is not None:
+      self.crystal.identified_isoform = self.data['identified_isoform']
 
   def expt_detector_maker(self):
     """Construct the detector object for the experiments file. This function generates a monolithic flattening of the
     CSPAD detector if not supplied with an image file."""
     self.distance = self.data['distance']
     self.xbeam, self.ybeam = self.data['xbeam'], self.data['ybeam']
-    if not dxtbx.load(self.img_location[0])._image_file.endswith("_00000.pickle"):
+    if len(self.img_location) > 0 and not dxtbx.load(self.img_location[0])._image_file.endswith("_00000.pickle"):
       self.detector = dxtbx.load(self.img_location[0])._detector()
     else:
       self.detector = detector.detector_factory.simple('SENSOR_UNKNOWN',self.distance,(self.xbeam, self.ybeam),'+x','-y',
@@ -124,6 +134,9 @@ class construct_reflection_table_and_experiment_list(object):
 
   def expt_imageset_maker(self):
     """Construct the imageset object for the experiments file."""
+    if len(self.img_location) == 0:
+      self.imageset = None
+      return
     self.filename = self.img_location
     self.format = FormatMultiImage.FormatMultiImage()
     self.reader = imageset.MultiFileReader(self.format, self.filename)
@@ -141,13 +154,13 @@ class construct_reflection_table_and_experiment_list(object):
     self.expt_gonio_maker()
     self.expt_imageset_maker()
     self.expt_scan_maker()
-    self.experiments = experiment_list.Experiment(beam = self.beam,
-                                                  crystal=self.crystal,
-                                                  detector=self.detector,
-                                                  goniometer=self.goniometer,
-                                                  imageset=self.imageset,
-                                                  scan=self.scan)
-    self.experiment_list = experiment_list.ExperimentList([self.experiments])
+    self.experiment = experiment_list.Experiment(beam = self.beam,
+                                                 crystal=self.crystal,
+                                                 detector=self.detector,
+                                                 goniometer=self.goniometer,
+                                                 imageset=self.imageset,
+                                                 scan=self.scan)
+    self.experiment_list = experiment_list.ExperimentList([self.experiment])
 
   def experiments_to_json(self, path_name=None):
     if path_name is None:
