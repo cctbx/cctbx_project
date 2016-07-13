@@ -294,7 +294,7 @@ class fmodels(object):
       result = self.target_functor_neutron(compute_gradients=compute_gradients)
     return result
 
-  def target_and_gradients(self, weights, compute_gradients,
+  def target_and_gradients(self, compute_gradients, weights=None,
         u_iso_refinable_params = None, occupancy = False):
     """
     ...
@@ -305,7 +305,8 @@ class fmodels(object):
       def __init__(self, fmodels):
         self.fmodels = fmodels
         tfx_r = tfx(compute_gradients = compute_gradients)
-        wx = weights.wx * weights.wx_scale
+        wx=1.
+        if(weights is not None): wx = weights.wx * weights.wx_scale
         self.target_work_xray = tfx_r.target_work()
         self.target_work_xray_weighted = self.target_work_xray * wx
         self.gradient_xray = None
@@ -318,7 +319,8 @@ class fmodels(object):
           self.gradient_xray = sf
           self.gradient_xray_weighted = sf * wx
         if(fmodels.fmodel_neutron() is not None):
-          wn = weights.wn * weights.wn_scale
+          wn=1
+          if(weights is not None): wn = weights.wn * weights.wn_scale
           tfn_r = tfn(compute_gradients = compute_gradients)
           self.target_work_neutron = tfn_r.target_work()
           self.target_work_neutron_weighted = self.target_work_neutron * wn
@@ -332,16 +334,22 @@ class fmodels(object):
             self.gradient_neutron_weighted = sf * wn
       def target(self):
         if(self.fmodels.fmodel_neutron() is not None):
-          result = (self.target_work_xray * weights.wx_scale + \
-                    self.target_work_neutron * weights.wn_scale) * weights.wxn
+          if(weights is not None):
+            result = (self.target_work_xray * weights.wx_scale + \
+                      self.target_work_neutron * weights.wn_scale) * weights.wxn
+          else:
+            result = self.target_work_xray + self.target_work_neutron
         else: result = self.target_work_xray_weighted
         return result
       def gradients(self):
         result = None
         if(compute_gradients):
           if(self.fmodels.fmodel_neutron() is not None):
-            result = (self.gradient_xray  * weights.wx_scale + \
-                      self.gradient_neutron * weights.wn_scale) * weights.wxn
+            if(weights is not None):
+              result = (self.gradient_xray  * weights.wx_scale + \
+                        self.gradient_neutron * weights.wn_scale) * weights.wxn
+            else:
+              result = self.gradient_xray + self.gradient_neutron
           else: result = self.gradient_xray_weighted
         return result
     result = tg(fmodels = self)

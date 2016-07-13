@@ -1571,6 +1571,24 @@ class manager(manager_mixin):
                                   update_f_calc  = True)
     return self
 
+  def checksum(self,
+               k_isotropic=True,
+               k_anisotropic=True,
+               f_calc=True,
+               f_masks=True,
+               k_masks=True,
+               f_obs=True):
+    result = 0
+    sz = self.k_isotropic().size()
+    if(k_isotropic):   result += flex.sum(self.k_isotropic())/sz
+    if(k_anisotropic): result += flex.sum(self.k_anisotropic())/sz
+    if(f_calc):        result += flex.sum(abs(self.f_calc()).data())/sz
+    if(f_masks):       result += sum([flex.sum(abs(m).data())/sz
+                                     for m in self.f_masks()])
+    if(k_masks):       result += sum([flex.sum(m)/sz for m in self.k_masks()])
+    if(f_obs):         result += flex.sum(self.f_obs().data())/sz
+    return result
+
   def hl_coeffs(self):
     if(self.arrays is None):
       return self._hl_coeffs
