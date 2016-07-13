@@ -997,38 +997,51 @@ class RunBlockDialog(BaseDialog):
     firstidx = start.index(str(self.first_run))
     lastidx = stop.index(str(self.last_run))
 
-    self.option_sizer = wx.FlexGridSizer(1, 3, 0, 10)
-    self.option_sizer.AddGrowableCol(2)
-
     self.config_panel = wx.Panel(self)
     config_box = wx.StaticBox(self.config_panel, label='Configuration')
     self.config_sizer = wx.StaticBoxSizer(config_box)
     self.config_panel.SetSizer(self.config_sizer)
 
+    self.phil_panel = wx.Panel(self)
+    phil_box = wx.StaticBox(self.phil_panel, label='Extra phil parameters')
+    self.phil_sizer = wx.StaticBoxSizer(phil_box)
+    self.phil_panel.SetSizer(self.phil_sizer)
+
     runblock_box = wx.StaticBox(self, label='Options')
     self.runblock_box_sizer = wx.StaticBoxSizer(runblock_box, wx.VERTICAL)
-    self.runblock_panel = ScrolledPanel(self, size=(550, 350))
+    self.runblock_panel = ScrolledPanel(self, size=(550, 225))
     self.runlbock_sizer = wx.BoxSizer(wx.VERTICAL)
     self.runblock_panel.SetSizer(self.runlbock_sizer)
 
+    # Configuration text ctrl (user can put in anything they want)
+    self.config = gctr.PHILBox(self.config_panel,
+                               btn_import=True,
+                               btn_import_label='Import Config',
+                               btn_export=False,
+                               btn_default=True,
+                               btn_default_label='Default Config',
+                               ctr_size=(-1, 200),
+                               ctr_value=str(block.config_ctr))
+    self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Extra phil
+    self.phil = gctr.PHILBox(self.phil_panel,
+                             btn_import=True,
+                             btn_import_label='Import PHIL',
+                             btn_export=False,
+                             btn_default=True,
+                             btn_default_label='Default PHIL',
+                             ctr_size=(-1, 200),
+                             ctr_value=str(block.extra_phil_str))
+    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
     # Image format choice
-    self.img_format = gctr.ChoiceCtrl(self,
+    self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
                                       label='Image Format:',
                                       label_size=(100, -1),
                                       ctrl_size=(150, -1),
                                       choices=['CBF', 'pickle'])
-    self.btn_import_cfg = wx.Button(self, label='Import Config', size=(120, -1))
-    self.btn_default_cfg = wx.Button(self, label='Default Config', size=(120, -1))
-    self.option_sizer.Add(self.btn_import_cfg, flag=wx.ALIGN_RIGHT)
-    self.option_sizer.Add(self.btn_default_cfg, flag=wx.ALIGN_RIGHT)
-    self.option_sizer.Add(self.img_format, flag=wx.ALIGN_RIGHT)
-
-    # Configuration text ctrl (user can put in anything they want)
-    self.config = rt.RichTextCtrl(self.config_panel,
-                                  size=(-1, 250),
-                                  style=wx.VSCROLL,
-                                  value=str(block.config_str))
-    self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runlbock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     # Runblock runs choice
     self.runblocks = gctr.MultiChoiceCtrl(self.runblock_panel,
@@ -1127,14 +1140,11 @@ class RunBlockDialog(BaseDialog):
     self.runlbock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
-    self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.config_panel, flag=wx.EXPAND | wx.ALL, border=10)
-
     self.runblock_box_sizer.Add(self.runblock_panel)
     self.main_sizer.Add(self.runblock_box_sizer, flag=wx.EXPAND | wx.ALL,
                         border=10)
-
-
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -1144,8 +1154,9 @@ class RunBlockDialog(BaseDialog):
 
     self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
               id=self.dark_avg_path.btn_big.GetId())
-    self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.btn_import_cfg)
-    self.Bind(wx.EVT_BUTTON, self.onDefaultConfig, self.btn_default_cfg)
+    self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.config.btn_import)
+    self.Bind(wx.EVT_BUTTON, self.onDefaultConfig, self.config.btn_default)
+    self.Bind(wx.EVT_BUTTON, self.onImportPhil, self.phil.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onDarkMapBrowse,
               id=self.gain_map_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onDarkStdBrowse,
@@ -1175,8 +1186,23 @@ class RunBlockDialog(BaseDialog):
       config_file = cfg_dlg.GetPaths()[0]
       with open(config_file, 'r') as cfg:
         cfg_contents = cfg.read()
-      self.config.SetValue(cfg_contents)
+      self.config.ctr.SetValue(cfg_contents)
     cfg_dlg.Destroy()
+
+  def onImportPhil(self, e):
+    phil_dlg = wx.FileDialog(self,
+                             message="Load phil file",
+                             defaultDir=os.curdir,
+                             defaultFile="*",
+                             wildcard="*.phil",
+                             style=wx.OPEN | wx.FD_FILE_MUST_EXIST,
+                             )
+    if phil_dlg.ShowModal() == wx.ID_OK:
+      phil_file = phil_dlg.GetPaths()[0]
+      with open(phil_file, 'r') as phil:
+        phil_contents = phil.read()
+      self.phil.ctr.SetValue(phil_contents)
+    phil_dlg.Destroy()
 
   def onDefaultConfig(self, e):
     # TODO: Generate default config parameters (re-do based on pickle / CBF)
@@ -1197,6 +1223,7 @@ class RunBlockDialog(BaseDialog):
                    endrun=endrun,
                    active=True,
                    config_str=self.config.GetValue(),
+                   extra_phil_str=self.phil.GetValue(),
                    detector_address=self.address.ctr.GetValue(),
                    detz_parameter=self.beam_xyz.DetZ.GetValue(),
                    beamx=self.beam_xyz.X.GetValue(),
@@ -1253,6 +1280,7 @@ class RunBlockDialog(BaseDialog):
     if len(self.all_blocks) > 0:
       last = self.all_blocks[-1]
       self.config.SetValue(str(last.config_str))
+      self.phil.SetValue(str(last.extra_phil_str))
       self.address.ctr.SetValue(str(last.detector_address))
       self.beam_xyz.DetZ.SetValue(str(last.detz_parameter))
       self.beam_xyz.X.SetValue(str(last.beamx))
