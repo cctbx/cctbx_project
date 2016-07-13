@@ -34,6 +34,11 @@ data = None
   .multiple = True
   .help = Directory containing integrated data in pickle format.  Repeat to \
     specify additional directories.
+a_list = None
+  .type = path
+  .multiple = False # for now XXX possibly make it multiple later
+  .help = Text file containing a list of acceptable integration pickles, that is, not ones
+  .help = that are misindexed, wrong type, or otherwise rejected as determined separately by user
 filename_extension = "pickle"
   .type = str
   .help = Filename extension for integration pickle files. Usually pickle but can be otherwise.
@@ -259,10 +264,13 @@ def get_observations (work_params):
     exit("Changed the interface for get_observations, please contact authors "+str(e))
 
   print "Step 1.  Get a list of all files"
+  if work_params.a_list is not None:
+    permissible_file_names = [a.strip() for a in open(work_params.a_list,"r").readlines()]
+    n_sorry = 0
   file_names = []
   for dir_name in data_dirs :
     if not os.path.isdir(dir_name):
-      #check if list-of-pickle text file is given
+      #check if list-of-pickles text file is given
       pickle_list_file = open(dir_name,'r')
       pickle_list = pickle_list_file.read().split("\n")
       for pickle_filename in pickle_list:
@@ -273,6 +281,11 @@ def get_observations (work_params):
             file_names.append(pickle_filename)
       continue
     for file_name in os.listdir(dir_name):
+      if work_params.a_list is not None and os.path.join(dir_name, file_name) not in permissible_file_names:
+        # use A_list mechanism to reject files not on the "acceptable" list
+        print "SORRY--%s FILE NOT ON THE A-List"%(os.path.join(dir_name, file_name))
+        n_sorry+=1
+        continue
       if (file_name.endswith("_00000."+extension)):
         if data_subset==0 or \
           (data_subset==1 and (int(os.path.basename(file_name).split("_00000."+extension)[0][-1])%2==1)) or \
@@ -283,6 +296,8 @@ def get_observations (work_params):
           (data_subset==1 and (int(os.path.basename(file_name).split("."+extension)[0][-1])%2==1)) or \
           (data_subset==2 and (int(os.path.basename(file_name).split("."+extension)[0][-1])%2==0)):
           file_names.append(os.path.join(dir_name, file_name))
+  if work_params.a_list is not None:
+    print ("A_LIST: %d names rejected for not being on the a_list, leaving %d accepted"%(n_sorry, len(file_names)))
   if subsubset is not None and subsubset_total is not None:
     file_names = [file_names[i] for i in xrange(len(file_names)) if (i+subsubset)%subsubset_total == 0]
   print "Number of pickle files found:", len(file_names)
