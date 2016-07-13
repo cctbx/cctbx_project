@@ -319,8 +319,9 @@ def load_result (file_name,
   # If @p file_name cannot be read, the load_result() function returns
   # @c None.
 
-  print "Step 2.  Load pickle file into dictionary obj and filter on lattice & cell with",reindex_op
-  print file_name
+  print >> out, "-" * 80
+  print >> out, "Step 2.  Load pickle file into dictionary obj and filter on lattice & cell with",reindex_op
+  print >> out, file_name
   """
   Take a pickle file, confirm that it contains the appropriate data, and
   check the lattice type and unit cell against the reference settings - if
@@ -363,8 +364,7 @@ def load_result (file_name,
   unit_cell = result_array.unit_cell()
   sg_info = result_array.space_group_info()
   print >> out, ""
-  print >> out, "-" * 80
-  print >> out, file_name
+
   print >> out, sg_info
   print >> out, unit_cell
 
@@ -402,7 +402,7 @@ def load_result (file_name,
   # Illustrate how a unit cell filter would be implemented.
   #ucparams = unit_cell.parameters()
   #if not (130.21 < ucparams[2] < 130.61) or not (92.84 < ucparams[0] < 93.24):
-  #  print "DOES NOT PASS ERSATZ UNIT CELL FILTER"
+  #  print >> out, "DOES NOT PASS ERSATZ UNIT CELL FILTER"
   #  return None
   print >> out, "Integrated data:"
   result_array.show_summary(f=out, prefix="  ")
@@ -897,7 +897,7 @@ class scaling_manager (intensity_data) :
     @return a tuple with an array of selections for each bin and an array of median
     intensity values for each bin.
     """
-    print "Computing intensity bins.",
+    print >> out, "Computing intensity bins.",
     all_mean_Is = flex.double()
     only_means = flex.double()
     for hkl_id in xrange(self.n_refl):
@@ -910,7 +910,7 @@ class scaling_manager (intensity_data) :
       only_means.append(meanI)
       all_mean_Is.extend(flex.double([meanI]*n))
     step = (flex.max(only_means)-flex.min(only_means))/n_bins
-    print "Bin size:", step
+    print >> out, "Bin size:", step
 
     sels = []
     binned_intensities = []
@@ -922,7 +922,7 @@ class scaling_manager (intensity_data) :
       binned_intensities.append((step/2 + step*i)+min(only_means))
 
     #for i, (sel, intensity) in enumerate(zip(sels, binned_intensities)):
-    #  print "Bin %02d, number of observations: % 10d, midpoint intensity: %f"%(i, sel.count(True), intensity)
+    #  print >> out, "Bin %02d, number of observations: % 10d, midpoint intensity: %f"%(i, sel.count(True), intensity)
 
     return sels, binned_intensities
 
@@ -930,11 +930,11 @@ class scaling_manager (intensity_data) :
     """
     Adjust sigmas according to Evans, 2011 Acta D and Evans and Murshudov, 2013 Acta D
     """
-    print "Starting scale_errors"
-    print "Computing initial estimates of sdfac, sdb and sdadd"
+    print >> out, "Starting scale_errors"
+    print >> out, "Computing initial estimates of sdfac, sdb and sdadd"
     sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
 
-    print "Initial estimates:", sdfac, sdb, sdadd
+    print >> out, "Initial estimates:", sdfac, sdb, sdadd
 
     from xfel import compute_normalized_deviations, apply_sd_error_params
     from scitbx.simplex import simplex_opt
@@ -983,22 +983,22 @@ class scaling_manager (intensity_data) :
           # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
           f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
 
-        print "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+        print >> out, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
         return f
 
-    print "Refining error correction parameters sdfac, sdb, and sdadd"
+    print >> out, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
     minimizer = simplex_minimizer(sdfac, sdb, sdadd, self.ISIGI, self.miller_set.indices(), sels)
     sdfac, sdb, sdadd = minimizer.x
-    print "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
+    print >> out, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
 
-    print "Applying sdfac/sdb/sdadd 1"
+    print >> out, "Applying sdfac/sdb/sdadd 1"
     self.ISIGI = apply_sd_error_params(self.ISIGI, sdfac, sdb, sdadd)
 
     self.summed_weight= flex.double(self.n_refl, 0.)
     self.summed_wt_I  = flex.double(self.n_refl, 0.)
 
-    print "Applying sdfac/sdb/sdadd 2"
+    print >> out, "Applying sdfac/sdb/sdadd 2"
     for hkl_id in xrange(self.n_refl):
       hkl = self.miller_set.indices()[hkl_id]
       if hkl not in self.ISIGI: continue
@@ -1014,7 +1014,7 @@ class scaling_manager (intensity_data) :
 
     if False:
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
-      print "Validating"
+      print >> out, "Validating"
       all_sigmas_normalized = compute_normalized_deviations(self.ISIGI, self.miller_set.indices())
       binned_rms_normalized_sigmas = []
 
@@ -1028,7 +1028,7 @@ class scaling_manager (intensity_data) :
   def errors_from_residuals(self):
     """
     """
-    print "Computing error estimates from sample residuals"
+    print >> out, "Computing error estimates from sample residuals"
     self.summed_weight= flex.double(self.n_refl, 0.)
     self.summed_wt_I  = flex.double(self.n_refl, 0.)
 
@@ -1046,7 +1046,7 @@ class scaling_manager (intensity_data) :
         Intensity = self.ISIGI[hkl][i][0] # scaled intensity
         self.summed_wt_I[hkl_id] += Intensity / variance
         self.summed_weight[hkl_id] += 1 / variance
-    print "Done computing error estimates"
+    print >> out, "Done computing error estimates"
 
 
   def finalize_and_save_data (self) :
@@ -1191,7 +1191,7 @@ class scaling_manager (intensity_data) :
 
     assert observations.size() == cos_two_polar_angle.size()
     tt_vec = observations.two_theta(wavelength)
-    #print "mean tt degrees",180.*flex.mean(tt_vec.data())/math.pi
+    #print >> out, "mean tt degrees",180.*flex.mean(tt_vec.data())/math.pi
     cos_tt_vec = flex.cos( tt_vec.data() )
     sin_tt_vec = flex.sin( tt_vec.data() )
     cos_sq_tt_vec = cos_tt_vec * cos_tt_vec
@@ -1207,7 +1207,7 @@ class scaling_manager (intensity_data) :
     otherP_prime = 0.5 * other_F_prime * cos_two_polar_angle * sin_sq_tt_vec
     otherprange=P_nought_vec - otherP_prime
     diff2 = flex.abs(prange - otherprange)
-    print "mean diff is",flex.mean(diff2), "range",flex.min(diff2), flex.max(diff2)
+    print >> out, "mean diff is",flex.mean(diff2), "range",flex.min(diff2), flex.max(diff2)
     # XXX done
     observations = observations / ( P_nought_vec - P_prime )
     # This corrects observations for polarization assuming 100% polarization on
@@ -1215,7 +1215,7 @@ class scaling_manager (intensity_data) :
     # Polarization model as described by Kahn, Fourme, Gadet, Janin, Dumas & Andre
     # (1982) J. Appl. Cryst. 15, 330-337, equations 13 - 15.
 
-    print "Step 3. Correct for polarization."
+    print >> out, "Step 3. Correct for polarization."
     indexed_cell = observations.unit_cell()
 
     observations_original_index = observations.deep_copy()
@@ -1242,12 +1242,13 @@ class scaling_manager (intensity_data) :
       anomalous_flag=not self.params.merge_anomalous,
       crystal_symmetry=self.miller_set.crystal_symmetry()
       )
-    print "Step 4. Filter on global resolution and map to asu"
+    print >> out, "Step 4. Filter on global resolution and map to asu"
     print >> out, "Data in reference setting:"
     #observations.show_summary(f=out, prefix="  ")
     show_observations(observations, out=out)
 
     if self.params.significance_filter.apply is True: #------------------------------------
+      print >> out, "Step 5. Frame by frame resolution filter"
       # Apply an I/sigma filter ... accept resolution bins only if they
       #   have significant signal; tends to screen out higher resolution observations
       #   if the integration model doesn't quite fit
@@ -1260,9 +1261,9 @@ class scaling_manager (intensity_data) :
         [min([self.params.significance_filter.n_bins,N_bins_small_set]),
          N_bins_large_set, 1]
       )
-      print "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
+      print >> out, "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
       bin_results = show_observations(observations, out=out, n_bins=N_bins)
-      #show_observations(observations, out=sys.stdout, n_bins=N_bins)
+
       acceptable_resolution_bins = [
         bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
       acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
@@ -1279,12 +1280,10 @@ class scaling_manager (intensity_data) :
           imposed_res_sel)
         observations_original_index = observations_original_index.select(
           imposed_res_sel)
-        print "New resolution filter at %7.2f"%imposed_res_filter,file_name
-      print "N acceptable bins",N_acceptable_bins
-      print "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
-      print "Step 5. Frame by frame resolution filter"
+        print >> out, "New resolution filter at %7.2f"%imposed_res_filter,file_name
+      print >> out, "N acceptable bins",N_acceptable_bins
+      print >> out, "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
       # Finished applying the binwise I/sigma filter---------------------------------------
-
     if self.params.raw_data.sdfac_auto is True:
       I_over_sig = observations.data()/observations.sigmas()
       #assert that at least a few I/sigmas are less than zero
@@ -1298,11 +1297,11 @@ class scaling_manager (intensity_data) :
         Stats = flex.mean_and_variance(no_signal)
         SDFAC = Stats.unweighted_sample_standard_deviation()
       else: SDFAC=1.
-      print "The applied SDFAC is %7.4f"%SDFAC
+      print >> out, "The applied SDFAC is %7.4f"%SDFAC
       corrected_sigmas = observations.sigmas() * SDFAC
       observations = observations.customized_copy(sigmas = corrected_sigmas)
 
-    print "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
+    print >> out, "Step 6.  Match to reference intensities, filter by correlation, filter out negative intensities."
     assert len(observations_original_index.indices()) \
       ==   len(observations.indices())
 
@@ -1381,7 +1380,7 @@ class scaling_manager (intensity_data) :
       N = data.n_obs - data.n_rejected
       DELTA = sum_w * sum_xx - sum_x**2 # see p. 105 in Bevington & Robinson
       if (DELTA) == 0:
-        print "Skipping frame with",sum_w,sum_xx,sum_x**2
+        print >> out, "Skipping frame with",sum_w,sum_xx,sum_x**2
         return null_data(file_name=file_name,
                          log_out=out.getvalue(),
                          low_signal=True)
@@ -1405,7 +1404,7 @@ class scaling_manager (intensity_data) :
       from scitbx import lbfgs
       from libtbx import adopt_init_args
 
-      print "Old correlation is", corr
+      print >> out, "Old correlation is", corr
       pair1 = flex.int([pair[1] for pair in matches.pairs()])
       pair0 = flex.int([pair[0] for pair in matches.pairs()])
       #raw_input("go:")
@@ -1426,7 +1425,7 @@ class scaling_manager (intensity_data) :
       IOBSVEC = observations.data()
       ICALCVEC = flex.double([self.i_model.data()[p] for p in pair0])
       MILLER = observations_original_index.indices()
-      print "ZZZ",observations.size(), observations_original_index.size(), len(MILLER)
+      print >> out, "ZZZ",observations.size(), observations_original_index.size(), len(MILLER)
       ORI = result["current_orientation"][0]
       Astar = matrix.sqr(ORI.reciprocal_matrix())
       WAVE = result["wavelength"]
@@ -1459,8 +1458,8 @@ class scaling_manager (intensity_data) :
           return getattr(YY,item)
 
          def show(values):
-          print "G: %10.7f"%values.G,
-          print "B: %10.7f"%values.BFACTOR, \
+          print >> out, "G: %10.7f"%values.G,
+          print >> out, "B: %10.7f"%values.BFACTOR, \
                 "RS: %10.7f"%values.RS, \
                 "%7.3f deg %7.3f deg"%(
             180.*values.thetax/math.pi,180.*values.thetay/math.pi)
@@ -1494,8 +1493,8 @@ class scaling_manager (intensity_data) :
           return getattr(YY,item)
 
          def show(values):
-          print "%10.7f"%values.G,
-          print "%10.7f"%values.BFACTOR, \
+          print >> out, "%10.7f"%values.G,
+          print >> out, "%10.7f"%values.BFACTOR, \
                 "eta %10.7f"%values.ETA, \
                 "Deff %10.2f"%values.DEFF, \
                 "%7.3f deg %7.3f deg"%(
@@ -1551,7 +1550,7 @@ class scaling_manager (intensity_data) :
 
       func = fvec_callable(unpack(current))
       functional = flex.sum(func*func)
-      print "functional",functional
+      print >> out, "functional",functional
 
       class c_minimizer:
 
@@ -1595,14 +1594,14 @@ class scaling_manager (intensity_data) :
             #calculate by finite_difference
             self.g.append( ( dfunctional-functional )/DELTA )
           self.g[2]=0.
-          print "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+          print >> out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
           values.show()
           return self.f, self.g
 
         def __del__(self):
           values = unpack(self.x)
-          print "FINALMODEL",
-          print "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+          print >> out, "FINALMODEL",
+          print >> out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
           values.show()
 
       try:
@@ -1621,8 +1620,8 @@ class scaling_manager (intensity_data) :
       if fat_count < 3:
         return null_data(
                file_name=file_name, log_out=out.getvalue(), low_signal=True)
-      print "On total %5d the fat selection is %5d"%(len(observations.indices()), fat_count)
-      print "ZZZ",observations.size(), observations_original_index.size(), len(fat_selection), len(scaler)
+      print >> out, "On total %5d the fat selection is %5d"%(len(observations.indices()), fat_count)
+      print >> out, "ZZZ",observations.size(), observations_original_index.size(), len(fat_selection), len(scaler)
       observations_original_index = observations_original_index.select(fat_selection)
 
       observations = observations.customized_copy(
@@ -1635,11 +1634,11 @@ class scaling_manager (intensity_data) :
         miller_indices=observations.indices())
 
     if not self.params.scaling.enable or self.params.postrefinement.enable: # Do not scale anything
-      print "Scale factor to an isomorphous reference PDB will NOT be applied."
+      print >> out, "Scale factor to an isomorphous reference PDB will NOT be applied."
       slope = 1.0
       offset = 0.0
 
-    print result.get("sa_parameters")[0]
+    print >> out, result.get("sa_parameters")[0]
     have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
     #have_sa_params = (result.get("sa_parameters")[0].find('None')!=0)
     observations_original_index_indices = observations_original_index.indices()
@@ -1798,8 +1797,8 @@ class scaling_manager (intensity_data) :
         data.summed_weight[pair[0]] += 1 / variance
     data.set_log_out(out.getvalue())
     if corr > 0.5:
-      print "Selected file %s"%file_name.replace("integration","out").replace("int","idx")
-      print "Selected distance %6.2f mm"%float(result["distance"])
+      print >> out, "Selected file %s"%file_name.replace("integration","out").replace("int","idx")
+      print >> out, "Selected distance %6.2f mm"%float(result["distance"])
       data.show_log_out(sys.stdout)
     return data
 
