@@ -14,6 +14,8 @@ import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 import iotbx.ncs
 from copy import deepcopy
+from mmtbx.utils import fix_rotamer_outliers
+from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
 
 
 master_params_str = """
@@ -25,6 +27,10 @@ file_name = None
 trim_alternative_conformations = False
   .type = bool
   .help = Leave only atoms with empty altloc
+additionally_fix_rotamer_outliers = True
+  .type = bool
+  .help = At the late stage if rotamer is still outlier choose another one \
+    with minimal clash with surrounding atoms
 include scope mmtbx.secondary_structure.build.ss_idealization_master_phil_str
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -117,6 +123,11 @@ def run(args):
     cs = box.crystal_symmetry()
     shift_vector = box.shift_vector
   pdb_h_raw = pdb_input.construct_hierarchy()
+  write_whole_pdb_file(
+      file_name="%s_boxed.pdb" % os.path.basename(pdb_file_names[0]),
+      pdb_hierarchy=pdb_h_raw,
+      crystal_symmetry=cs,
+      ss_annotation=pdb_input.extract_secondary_structure())
   if work_params.trim_alternative_conformations:
     asc = pdb_h_raw.atom_selection_cache()
     sel = asc.selection("altloc ' '")
@@ -188,7 +199,6 @@ def run(args):
     print "Annotation in idealization"
     print ann.as_pdb_str()
     original_ann = ann.deep_copy()
-  # STOP()
   if ann is None or ann.get_n_helices() + ann.get_n_sheets() == 0:
     print >> log, "No secondary structure annotations found."
     print >> log, "Secondary structure substitution step will be skipped"
@@ -214,6 +224,7 @@ def run(args):
         xray_structure=xrs,
         ss_annotation=ann,
         params=work_params.ss_idealization,
+        fix_rotamer_outliers=True,
         cif_objects=inputs.cif_objects,
         verbose=True,
         log=log)
@@ -221,6 +232,7 @@ def run(args):
 
   # Write resulting pdb file.
   pdb_h_shifted = (master_pdb_h if master_pdb_h is not None else pdb_h).deep_copy()
+  pdb_h_shifted.reset_atom_i_seqs()
   write_whole_pdb_file(
       file_name="%s_ss_substituted_nosh.pdb" % os.path.basename(pdb_file_names[0]),
       pdb_hierarchy=pdb_h_shifted,
@@ -237,10 +249,10 @@ def run(args):
       pdb_hierarchy=pdb_h_shifted,
       crystal_symmetry=cs,
       ss_annotation=ann)
-  # STOP()
 
   work_params.loop_idealization.minimize_whole = not using_ncs
-  work_params.loop_idealization.variant_search_level = 0
+  # work_params.loop_idealization.enabled = False
+  # work_params.loop_idealization.variant_search_level = 0
   loop_ideal = loop_idealization(
       pdb_hierarchy=master_pdb_h if master_pdb_h is not None else pdb_h,
       params=work_params.loop_idealization,
@@ -249,15 +261,49 @@ def run(args):
       verbose=True)
   log.flush()
 
+  # fixing remaining rotamer outliers
+  fixed_rot_pdb_h = loop_ideal.resulting_pdb_h.deep_copy()
+  fixed_rot_pdb_h.reset_atom_i_seqs()
+
+  write_whole_pdb_file(
+    file_name="%s_before_rot_fixing.pdb" % os.path.basename(pdb_file_names[0]),
+    pdb_hierarchy=fixed_rot_pdb_h,
+    crystal_symmetry=cs,
+    ss_annotation=ann)
+
+  if work_params.additionally_fix_rotamer_outliers:
+    # again get grm... - need to optimize somehow
+    processed_pdb_files_srv = mmtbx.utils.\
+        process_pdb_file_srv(
+            crystal_symmetry= cs,
+            pdb_interpretation_params = None,
+            stop_for_unknowns         = False,
+            log=log,
+            cif_objects=None)
+    processed_pdb_file, pdb_inp = processed_pdb_files_srv.\
+        process_pdb_files(raw_records=flex.split_lines(fixed_rot_pdb_h.as_pdb_string()))
+
+    grm = get_geometry_restraints_manager(
+        processed_pdb_file, xrs, params=None)
+
+    # mon_lib_srv and rotamer_manager already was created multiple times
+    # to this moment in different procedures :(
+    fixed_rot_pdb_h = fix_rotamer_outliers(
+        pdb_hierarchy=fixed_rot_pdb_h,
+        grm=grm.geometry,
+        xrs=xrs,
+        mon_lib_srv=None,
+        rotamer_manager=None)
+
   cs_to_write = cs if shift_vector is None else None
   write_whole_pdb_file(
     file_name="%s_ss_all_idealized.pdb" % os.path.basename(pdb_file_names[0]),
-    pdb_hierarchy=loop_ideal.resulting_pdb_h,
+    pdb_hierarchy=fixed_rot_pdb_h,
     crystal_symmetry=cs_to_write,
     ss_annotation=ann)
 
   if using_ncs:
-    ssb.set_xyz_smart(pdb_h, loop_ideal.resulting_pdb_h)
+    ssb.set_xyz_smart(pdb_h, fixed_rot_pdb_h)
     # multiply back and do geometry_minimization for the whole molecule
     for ncs_gr in ncs_restr_group_list:
       master_h = pdb_h.select(ncs_gr.master_iselection)
@@ -275,6 +321,17 @@ def run(args):
         excl_string_selection=loop_ideal.ref_exclusion_selection,
         log=log,
         ss_annotation=original_ann)
+  else:
+    # still need to run gm if rotamers were fixed
+    if work_params.additionally_fix_rotamer_outliers:
+      ssb.set_xyz_smart(pdb_h, fixed_rot_pdb_h) # get out of if?
+      minimize_wrapper_for_ramachandran(
+          hierarchy=pdb_h,
+          xrs=xrs,
+          original_pdb_h=original_hierarchy,
+          excl_string_selection=loop_ideal.ref_exclusion_selection,
+          log=log,
+          ss_annotation=original_ann)
 
   # shifting back if needed
   if shift_vector is not None:
@@ -289,6 +346,8 @@ def run(args):
       pdb_hierarchy=pdb_h,
       crystal_symmetry=cs_to_write,
       ss_annotation=original_ann)
+
+  # add hydrogens if needed
 
 
 
