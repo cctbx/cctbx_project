@@ -2,6 +2,7 @@ from __future__ import division
 
 import os, time
 import libtbx.load_env
+from libtbx.utils import Sorry
 
 from xfel.ui.db.trial import Trial
 from xfel.ui.db.run import Run
@@ -16,7 +17,6 @@ from xfel.ui.db import get_db_connection
 try:
   from MySQLdb import OperationalError
 except ImportError:
-  from libtbx.utils import Sorry
   raise Sorry('Mysql not available')
 
 from xfel.command_line.experiment_manager import initialize as initialize_base
@@ -58,7 +58,6 @@ class xfel_db_application(object):
       self.create_tables()
       print 'Creating experiment tables...'
       if not self.verify_tables():
-        from libtbx.utils import Sorry
         raise Sorry("Couldn't create experiment tables")
 
     self.columns_dict = self.init_tables.set_up_columns_dict(self)
@@ -247,6 +246,8 @@ class xfel_db_application(object):
     if run_id is not None:
       return Run(self, run_id)
     runs = [r for r in self.get_all_runs() if r.run == run_number]
+    if len(runs) == 0:
+      raise Sorry("Couldn't find run %d"%run_number)
     assert len(runs) == 1
     return runs[0]
 
