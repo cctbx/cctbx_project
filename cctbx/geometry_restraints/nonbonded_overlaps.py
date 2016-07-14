@@ -364,7 +364,8 @@ class info(object):
     macro_molecule_selection,
     sites_cart,
     hd_sel,
-    site_labels=None):
+    site_labels=None,
+    do_only_macro_molecule=False):
     '''
     Construct nonbonded_overlaps_info, the non-bonded overlaps number and list
 
@@ -402,7 +403,15 @@ class info(object):
     if second_grm_selection:
       selection_list.append(macro_molecule_selection)
 
-    for sel in selection_list:
+    for i, sel in enumerate(selection_list):
+      if do_only_macro_molecule and i == 0:
+        results.append(compute(
+            nonbonded_list=[],
+            hd_sel=None,
+            full_connectivity_table=None,
+            connectivity_table_2=None,
+            sites_cart=None))
+        continue
       grm = geometry_restraints_manager.select(sel)
       cart = sites_cart.select(sel)
       if site_labels:
