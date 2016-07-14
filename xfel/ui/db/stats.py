@@ -123,4 +123,11 @@ class HitrateStats(object):
       average_sigma.append(avg_i)
       average_i_sigi.append(avg_i_sigi)
 
+    order = flex.sort_permutation(timestamps)
+    timestamps = timestamps.select(order)
+    n_strong = n_strong.select(order)
+    averge_intensity = average_intensity.select(order)
+    averge_sigma = average_sigma.select(order)
+    averge_i_sigi = average_i_sigi.select(order)
+
     return timestamps, n_strong, average_intensity, average_sigma, average_i_sigi
