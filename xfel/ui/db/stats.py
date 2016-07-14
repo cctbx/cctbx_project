@@ -123,6 +123,23 @@ class HitrateStats(object):
       average_sigma.append(avg_i)
       average_i_sigi.append(avg_i_sigi)
 
+    # This left join query finds the events with no imageset, meaning they failed to index
+    query = """SELECT event.timestamp, event.n_strong
+               FROM `%s_event` event
+               LEFT JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
+               WHERE is_e.event_id IS NULL
+            """ % (tag, tag)
+
+    cursor = self.app.execute_query(query, verbose = True)
+    for row in cursor.fetchall():
+      ts, n_s, = row
+      rts = reverse_timestamp(ts)
+      timestamps.append(rts[0] + (rts[1]/1000))
+      n_strong.append(n_s)
+      average_intensity.append(0)
+      average_sigma.append(0)
+      average_i_sigi.append(0)
+
     order = flex.sort_permutation(timestamps)
     timestamps = timestamps.select(order)
     n_strong = n_strong.select(order)
