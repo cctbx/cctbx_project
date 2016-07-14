@@ -51,7 +51,7 @@ def plot_run_stats(timestamps, n_shots, i_sig_i, tuple_of_timestamp_boundaries):
     idx_min = max(0, i - half_idx_rate_window)
     idx_max = min(i + half_idx_rate_window, len(i_sig_i))
     idx_span = idx_max - idx_min
-    idx_sele = [idx_bool[j] for j in xrange(idx_min, idx_max)]
+    idx_sele = idx_bool[idx_min:idx_max]
     idx_local_rate = idx_sele.count(True)/idx_span
     idx_rate.append(idx_local_rate)
   # <I/sig(I)> per shot
