@@ -5624,9 +5624,6 @@ class process(object):
       out=out,
       prefix=prefix)
 
-    def clash_score(self):
-      return 'Clash Score'
-
   def search_for_ncs(self, hierarchy):
     params = self.all_chain_proxies.params.ncs_search
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group
