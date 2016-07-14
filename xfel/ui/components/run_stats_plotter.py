@@ -43,9 +43,7 @@ def plot_run_stats(timestamps, n_shots, i_sig_i, tuple_of_timestamp_boundaries):
   iterator = xrange(len(i_sig_i))
   # indexing rate in a sliding window
   half_idx_rate_window = int(len(i_sig_i)//20)
-  idx_bool = flex.bool()
-  for i in iterator:
-    idx_bool.append(i_sig_i[i] > 0)
+  idx_bool = i_sig_i > 0
   idx_rate = flex.double()
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)

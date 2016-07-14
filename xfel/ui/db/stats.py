@@ -127,8 +127,9 @@ class HitrateStats(object):
     query = """SELECT event.timestamp, event.n_strong
                FROM `%s_event` event
                LEFT JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
-               WHERE is_e.event_id IS NULL
-            """ % (tag, tag)
+               WHERE is_e.event_id IS NULL AND
+                     event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d
+            """ % (tag, tag, self.trial.id, self.run.id, self.rungroup.id)
 
     cursor = self.app.execute_query(query, verbose = True)
     for row in cursor.fetchall():
@@ -143,8 +144,8 @@ class HitrateStats(object):
     order = flex.sort_permutation(timestamps)
     timestamps = timestamps.select(order)
     n_strong = n_strong.select(order)
-    averge_intensity = average_intensity.select(order)
-    averge_sigma = average_sigma.select(order)
-    averge_i_sigi = average_i_sigi.select(order)
+    average_intensity = average_intensity.select(order)
+    average_sigma = average_sigma.select(order)
+    average_i_sigi = average_i_sigi.select(order)
 
     return timestamps, n_strong, average_intensity, average_sigma, average_i_sigi
