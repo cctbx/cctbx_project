@@ -327,36 +327,49 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       sys.stderr = sys.__stderr__
 
       indexed = info is not None
-      if indexed and self.m_progress_logging:
+      if self.m_progress_logging:
         if self.m_db_version == 'v1':
-          # integration pickle dictionary is available here as info.last_saved_best
-          if info.last_saved_best["identified_isoform"] is not None:
-            #print info.last_saved_best.keys()
-            from cxi_xdr_xes.cftbx.cspad_ana import db
-            dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
-            cursor = dbobj.cursor()
-            if info.last_saved_best["identified_isoform"] in self.isoforms:
-              PM, indices, miller_id = self.isoforms[info.last_saved_best["identified_isoform"]]
-            else:
-              from xfel.xpp.progress_support import progress_manager
-              PM = progress_manager(info.last_saved_best,self.m_db_experiment_tag, self.m_trial_id, self.m_rungroup_id, evt.run())
-              indices, miller_id = PM.get_HKL(cursor)
-              # cache these as they don't change for a given isoform
-              self.isoforms[info.last_saved_best["identified_isoform"]] = PM, indices, miller_id
-            if self.m_sql_buffer_size > 1:
-              self.queue_progress_entry(PM.scale_frame_detail(self.timestamp,cursor,do_inserts=False))
-            else:
-              PM.scale_frame_detail(self.timestamp,cursor,do_inserts=True)
-              dbobj.commit()
-              cursor.close()
-              dbobj.close()
+          if indexed:
+            # integration pickle dictionary is available here as info.last_saved_best
+            if info.last_saved_best["identified_isoform"] is not None:
+              #print info.last_saved_best.keys()
+              from cxi_xdr_xes.cftbx.cspad_ana import db
+              dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
+              cursor = dbobj.cursor()
+              if info.last_saved_best["identified_isoform"] in self.isoforms:
+                PM, indices, miller_id = self.isoforms[info.last_saved_best["identified_isoform"]]
+              else:
+                from xfel.xpp.progress_support import progress_manager
+                PM = progress_manager(info.last_saved_best,self.m_db_experiment_tag, self.m_trial_id, self.m_rungroup_id, evt.run())
+                indices, miller_id = PM.get_HKL(cursor)
+                # cache these as they don't change for a given isoform
+                self.isoforms[info.last_saved_best["identified_isoform"]] = PM, indices, miller_id
+              if self.m_sql_buffer_size > 1:
+                self.queue_progress_entry(PM.scale_frame_detail(self.timestamp,cursor,do_inserts=False))
+              else:
+                PM.scale_frame_detail(self.timestamp,cursor,do_inserts=True)
+                dbobj.commit()
+                cursor.close()
+                dbobj.close()
         elif self.m_db_version == 'v2':
-          from xfel.command_line.frame_unpickler import construct_reflection_table_and_experiment_list
           from xfel.ui.db.dxtbx_db import log_frame
-          c = construct_reflection_table_and_experiment_list(info.last_saved_best, None, pixel_size, proceed_without_image=True)
-          c.assemble_experiments()
-          c.assemble_reflections()
-          log_frame(c.experiment_list, c.reflections, self.db_params, evt.run(), self.timestamp)
+          sfspots = evt.get('sfspots')
+          if sfspots is None:
+            if indexed:
+              n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
+            else:
+              n_spots = 0
+          else:
+            n_spots = sfspots
+
+          if indexed:
+            from xfel.command_line.frame_unpickler import construct_reflection_table_and_experiment_list
+            c = construct_reflection_table_and_experiment_list(info.last_saved_best, None, pixel_size, proceed_without_image=True)
+            c.assemble_experiments()
+            c.assemble_reflections()
+            log_frame(c.experiment_list, c.reflections, self.db_params, evt.run(), n_spots, self.timestamp)
+          else:
+            log_frame(None, None, self.db_params, evt.run(), n_spots, self.timestamp)
 
       if self.m_db_logging:
         sec,ms = cspad_tbx.evt_time(evt)

@@ -96,6 +96,13 @@ class Isoform(db_proxy):
     db_proxy.__init__(self, app, "%s_isoform" % app.params.experiment_tag, id=isoform_id, **kwargs)
     self.isoform_id = self.id
 
+  def __getattr__(self, key):
+    if key == "cell":
+      cells = self.app.get_all_x(Cell, 'cell', where = "WHERE isoform_id = %d"%self.id)
+      assert len(cells) == 1
+      return cells[0]
+    raise AttributeError(key)
+
 class Cell(db_proxy):
   def __init__(self, app, cell_id = None, crystal = None, **kwargs):
     assert [cell_id, crystal].count(None) in [1,2]

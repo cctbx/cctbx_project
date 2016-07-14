@@ -80,7 +80,7 @@ class db_proxy(object):
     assert hasattr(self, '_db_dict')
     if key not in self._db_dict:
       print self.table_name, key, 'error!', self._db_dict
-      raise AttributeError()
+      raise AttributeError(key)
 
     return self._db_dict[key]
 
