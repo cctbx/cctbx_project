@@ -142,7 +142,7 @@ class Format(object):
       self._beam_instance = beam_instance
 
       scan_instance = self._scan()
-      assert(isinstance(scan_instance, Scan))
+      assert(isinstance(scan_instance, Scan) or isinstance(scan_instance, list))
       self._scan_instance = scan_instance
 
     except exceptions.Exception, e:

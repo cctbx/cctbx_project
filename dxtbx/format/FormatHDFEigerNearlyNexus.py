@@ -347,7 +347,10 @@ class FormatEigerNearlyNexus(FormatHDF5):
     return self._mask
 
   def get_num_images(self):
-    return self._scan().get_num_images()
+    scan = self._scan()
+    if isinstance(scan, list):
+      return sum(s.get_num_images() for s in scan)
+    return scan.get_num_images()
 
   def get_image_file(self, index=None):
     return self._image_file
