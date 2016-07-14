@@ -8,6 +8,7 @@ from cctbx.array_family import flex
 from libtbx.utils import plural_s
 from libtbx.str_utils import show_string
 import libtbx.load_env
+from iotbx.pdb import write_whole_pdb_file
 import sys
 
 def run(args, command_name=libtbx.env.dispatcher_name):
@@ -68,10 +69,11 @@ def run(args, command_name=libtbx.env.dispatcher_name):
       crystal_symmetry = cctbx.crystal.non_crystallographic_symmetry(
         sites_cart=sel_hierarchy.atoms().extract_xyz(),
         buffer_layer=co.cryst1_replacement_buffer_layer)
-    sel_hierarchy.write_pdb_file(
-      file_name=co.write_pdb_file,
-      crystal_symmetry=crystal_symmetry,
-      append_end=True)
+    write_whole_pdb_file(
+        file_name=co.write_pdb_file,
+        processed_pdb_file=processed_pdb_file,
+        pdb_hierarchy=sel_hierarchy,
+        crystal_symmetry=crystal_symmetry)
     print
 
 if (__name__ == "__main__"):
