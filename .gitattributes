@@ -3914,6 +3914,7 @@ xfel/small_cell/solve_orientation.py -text
 xfel/small_cell/write_orientation_arrows.py -text
 xfel/ui/__init__.py -text
 xfel/ui/command_line/__init__.py -text
+xfel/ui/command_line/plot_run_stats.py -text
 xfel/ui/command_line/xfel_gui_launch.py -text
 xfel/ui/components/__init__.py -text
 xfel/ui/components/icons/16x16/cancel.png -text
@@ -3955,6 +3956,7 @@ xfel/ui/components/icons/32x32/test.png -text
 xfel/ui/components/icons/32x32/txt.png -text
 xfel/ui/components/icons/32x32/undo.png -text
 xfel/ui/components/icons/32x32/write.png -text
+xfel/ui/components/run_stats_plotter.py -text
 xfel/ui/components/xfel_gui_controls.py -text
 xfel/ui/components/xfel_gui_dialogs.py -text
 xfel/ui/components/xfel_gui_init.py -text
