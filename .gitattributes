@@ -3878,6 +3878,7 @@ xfel/graph_proc/parameter_optimizer.py -text
 xfel/libtbx_config -text
 xfel/libtbx_refresh.py -text
 xfel/merging/__init__.py -text
+xfel/merging/absorption.py -text
 xfel/merging/phil_validation.py -text
 xfel/metrology/__init__.py -text
 xfel/metrology/legacy_scale/__init__.py -text

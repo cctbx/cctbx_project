@@ -1264,24 +1264,64 @@ class scaling_manager (intensity_data) :
       print >> out, "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
       bin_results = show_observations(observations, out=out, n_bins=N_bins)
 
-      acceptable_resolution_bins = [
-        bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
-      acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
-                                         if False not in acceptable_resolution_bins[:i+1]]
-      if len(acceptable_nested_bin_sequences)==0:
-        return null_data(
-          file_name=file_name, log_out=out.getvalue(), low_signal=True)
+      if result.get("fuller_kapton_absorption_correction", None) is not None:
+        fkac = result["fuller_kapton_absorption_correction"][0]
+        #assert that we have absorption corrections for all observations
+        if len(fkac)!=N_obs_pre_filter: raise Sorry(
+           "Fuller corrections %d don't match obs %d"%(len(fkac),N_obs_pre_filter))
+        unobstructed = (fkac==1.0)
+
+        xypred = result["mapped_predictions"][0]
+        if len(xypred)!=N_obs_pre_filter: raise Sorry(
+           "Mapped predictions %d don't match obs %d"%(len(xypred),N_obs_pre_filter))
+
+        print >> out, "unobstructed",unobstructed.count(True), "obstructed", unobstructed.count(False)
+
+        if False:
+          from matplotlib import pyplot as plt
+          xy_unobstructed = xypred.select(unobstructed)
+          xy_obstructed = xypred.select(~unobstructed)
+          plt.plot([a[0] for a in xy_unobstructed], [a[1] for a in xy_unobstructed], "r.")
+          plt.plot([a[0] for a in xy_obstructed], [a[1] for a in xy_obstructed], "b.")
+          #plt.plot([a[0] for a in xypred], [a[1] for a in xypred], "r.")
+          plt.axes().set_aspect("equal")
+          plt.show()
+
+        from xfel.merging.absorption import show_observations as aso
+        ASO = aso(observations, unobstructed, self.params, out=out, n_bins=N_bins)
+        observations = observations.select(ASO.master_selection)
+        observations_original_index = observations_original_index.select(ASO.master_selection)
+
+        if False:
+          from matplotlib import pyplot as plt
+          unobstructed_subset = (fkac.select(ASO.master_selection)==1.0)
+          xy_unobstructed = xypred.select(ASO.master_selection).select(unobstructed_subset)
+          xy_obstructed = xypred.select(ASO.master_selection).select(~unobstructed_subset)
+          plt.plot([a[0] for a in xy_unobstructed], [a[1] for a in xy_unobstructed], "r.")
+          plt.plot([a[0] for a in xy_obstructed], [a[1] for a in xy_obstructed], "b.")
+          #plt.plot([a[0] for a in xypred], [a[1] for a in xypred], "r.")
+          plt.axes().set_aspect("equal")
+          plt.show()
+
       else:
-        N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
-        imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
-        imposed_res_sel = observations.resolution_filter_selection(
-          d_min=imposed_res_filter)
-        observations = observations.select(
-          imposed_res_sel)
-        observations_original_index = observations_original_index.select(
-          imposed_res_sel)
-        print >> out, "New resolution filter at %7.2f"%imposed_res_filter,file_name
-      print >> out, "N acceptable bins",N_acceptable_bins
+        acceptable_resolution_bins = [
+          bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
+        acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+                                           if False not in acceptable_resolution_bins[:i+1]]
+        if len(acceptable_nested_bin_sequences)==0:
+          return null_data(
+            file_name=file_name, log_out=out.getvalue(), low_signal=True)
+        else:
+          N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
+          imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
+          imposed_res_sel = observations.resolution_filter_selection(
+            d_min=imposed_res_filter)
+          observations = observations.select(
+            imposed_res_sel)
+          observations_original_index = observations_original_index.select(
+            imposed_res_sel)
+          print >> out, "New resolution filter at %7.2f"%imposed_res_filter,file_name
+        print >> out, "N acceptable bins",N_acceptable_bins
       print >> out, "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
       # Finished applying the binwise I/sigma filter---------------------------------------
     if self.params.raw_data.sdfac_auto is True:
