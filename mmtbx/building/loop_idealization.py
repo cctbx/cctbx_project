@@ -66,6 +66,7 @@ class loop_idealization():
     xrs = pdb_hierarchy.extract_xray_structure()
     asc = pdb_hierarchy.atom_selection_cache()
     self.resulting_pdb_h = pdb_hierarchy.deep_copy()
+    self.resulting_pdb_h.reset_atom_i_seqs()
     self.params = self.process_params(params)
     self.log = log
     self.verbose = verbose
@@ -241,6 +242,7 @@ class loop_idealization():
       pdb_hierarchy, out_res_num, prefix="", minimize=True):
 
     original_pdb_h = pdb_hierarchy.deep_copy()
+    original_pdb_h.reset_atom_i_seqs()
     chain_id = original_pdb_h.only_model().only_chain().id
     all_results = []
     variants_searches = [
