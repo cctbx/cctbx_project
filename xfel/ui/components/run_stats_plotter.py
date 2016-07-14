@@ -42,7 +42,7 @@ import random
 def plot_run_stats(timestamps, n_shots, i_sig_i, tuple_of_timestamp_boundaries):
   iterator = xrange(len(i_sig_i))
   # indexing rate in a sliding window
-  half_idx_rate_window = int(len(i_sig_i)//20)
+  half_idx_rate_window = min(50, int(len(i_sig_i)//20))
   idx_bool = i_sig_i > 0
   idx_rate = flex.double()
   for i in iterator:
@@ -69,9 +69,9 @@ def plot_run_stats(timestamps, n_shots, i_sig_i, tuple_of_timestamp_boundaries):
   ax1.scatter(t, hitrate, edgecolors="none")
   ax1.axis('tight')
   ax1.set_ylabel("strong spots")
-  ax2.plot(t, idx_rate)
+  ax2.plot(t, idx_rate*100)
   ax2.axis('tight')
-  ax2.set_ylabel("indexing rate per %d" % (2*half_idx_rate_window))
+  ax2.set_ylabel("indexing rate per %d frames (%%)" % (2*half_idx_rate_window))
   ax3.scatter(t, i_sig_i, edgecolors="none")
   ax3.axis('tight')
   ax3.set_ylabel("signal-to-noise")
