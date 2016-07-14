@@ -697,11 +697,11 @@ def substitute_ss(real_h,
     print >> log, "Outputting model before regularization %s" % processed_params.file_name_before_regularization
     real_h.write_pdb_file(
         file_name=processed_params.file_name_before_regularization)
-    # geo_fname = processed_params.file_name_before_regularization[:-4]+'.geo'
-    # print >> log, "Outputting geo file for regularization %s" % geo_fname
-    # grm.write_geo_file(
-    #     site_labels=[atom.id_str() for atom in real_h.atoms()],
-    #     file_name=geo_fname)
+    geo_fname = processed_params.file_name_before_regularization[:-4]+'.geo'
+    print >> log, "Outputting geo file for regularization %s" % geo_fname
+    grm.write_geo_file(
+        site_labels=[atom.id_str() for atom in real_h.atoms()],
+        file_name=geo_fname)
 
   #testing number of restraints
   assert grm.geometry.get_n_den_proxies() == 0
