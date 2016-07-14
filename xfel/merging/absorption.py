@@ -107,7 +107,7 @@ class show_observations:
     # Now compute the appropriate selections
     unattenuated_res_limit = float(self.result[unatten_acceptable].d_range.split()[2])
     attenuated_res_limit = float(self.result[atten_acceptable].d_range.split()[2])
-    print >> self.out, "New comination resolution filter at %7.2f and %7.2f"%(unattenuated_res_limit,
+    print >> self.out, "New combination resolution filter at %7.2f and %7.2f"%(unattenuated_res_limit,
     attenuated_res_limit)
 
     unattenuated_res_selection = self.obs.resolution_filter_selection(

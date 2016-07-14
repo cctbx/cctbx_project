@@ -1288,7 +1288,12 @@ class scaling_manager (intensity_data) :
           plt.show()
 
         from xfel.merging.absorption import show_observations as aso
-        ASO = aso(observations, unobstructed, self.params, out=out, n_bins=N_bins)
+        try:
+          ASO = aso(observations, unobstructed, self.params, out=out, n_bins=N_bins)
+        except RuntimeError, e:
+          print >> out, "skipping image: could not process obstructed/unobstructed bins"
+          return null_data(
+            file_name=file_name, log_out=out.getvalue(), low_signal=True)
         observations = observations.select(ASO.master_selection)
         observations_original_index = observations_original_index.select(ASO.master_selection)
 
