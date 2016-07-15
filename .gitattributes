@@ -3915,6 +3915,7 @@ xfel/small_cell/write_orientation_arrows.py -text
 xfel/ui/__init__.py -text
 xfel/ui/command_line/__init__.py -text
 xfel/ui/command_line/plot_run_stats.py -text
+xfel/ui/command_line/print_run_stats.py -text
 xfel/ui/command_line/xfel_gui_launch.py -text
 xfel/ui/components/__init__.py -text
 xfel/ui/components/icons/16x16/cancel.png -text

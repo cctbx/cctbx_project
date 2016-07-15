@@ -108,7 +108,7 @@ class HitrateStats(object):
                WHERE event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d AND
                      cb.bin_id IN (%s)
             """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id, ", ".join(low_res_bin_ids))
-    cursor = self.app.execute_query(query, verbose = True)
+    cursor = self.app.execute_query(query)
     timestamps = flex.double()
     n_strong = flex.int()
     average_intensity = flex.double()
@@ -131,7 +131,7 @@ class HitrateStats(object):
                      event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d
             """ % (tag, tag, self.trial.id, self.run.id, self.rungroup.id)
 
-    cursor = self.app.execute_query(query, verbose = True)
+    cursor = self.app.execute_query(query)
     for row in cursor.fetchall():
       ts, n_s, = row
       rts = reverse_timestamp(ts)

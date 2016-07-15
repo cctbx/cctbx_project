@@ -23,19 +23,26 @@ phil_str = """
     .type = int
   rungroup = None
     .type = int
+  hit_cutoff = 30
+    .type = int
+    .help = Number of reflections to consider an image a hit. Estimate by looking at plot of strong reflections/image.
 """
 phil_scope = parse(phil_str + db_phil_str)
-user_phil = []
-for arg in sys.argv[1:]:
-  try:
-    user_phil.append(parse(arg))
-  except Exception, e:
-    raise Sorry("Unrecognized argument %s"%arg)
-params = phil_scope.fetch(sources=user_phil).extract()
 
-app = xfel_db_application(params)
-all_results = []
-for run_no in params.run:
-  all_results.append(HitrateStats(app, run_no, params.trial, params.rungroup)())
-plot_multirun_stats(all_results)
-print "OK"
+def run(args):
+  user_phil = []
+  for arg in args:
+    try:
+      user_phil.append(parse(arg))
+    except Exception, e:
+      raise Sorry("Unrecognized argument %s"%arg)
+  params = phil_scope.fetch(sources=user_phil).extract()
+
+  app = xfel_db_application(params)
+  all_results = []
+  for run_no in params.run:
+    all_results.append(HitrateStats(app, run_no, params.trial, params.rungroup)())
+  plot_multirun_stats(all_results)
+
+if __name__ == "__main__":
+  run(sys.argv[1:])
