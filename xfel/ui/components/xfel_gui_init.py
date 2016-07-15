@@ -259,7 +259,7 @@ class ProgressSentinel(Thread):
             current_rows = self.parent.run_window.status_tab.rows
             if current_rows != {}:
               bins = cell.bins[
-                     :int(current_rows[cell.isoform.name]['high_bin'])]
+                     :int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
             else:
               bins = cell.bins
 
@@ -274,9 +274,9 @@ class ProgressSentinel(Thread):
 
             # Generate multiplicity graph for isoforms
             mult = sum(counts) / sum(totals) * (process_percent / 100)
-            self.info[cell.isoform.name] = {'multiplicity':mult,
+            self.info[cell.isoform._db_dict['name']] = {'multiplicity':mult,
                                             'bins':bins,
-                                            'isoform':cell.isoform.name,
+                                            'isoform':cell.isoform._db_dict['name'],
                                             'a':cell.cell_a,
                                             'b':cell.cell_b,
                                             'c':cell.cell_c,
