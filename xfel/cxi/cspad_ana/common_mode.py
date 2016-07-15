@@ -213,7 +213,8 @@ class common_mode_correction(mod_event_info):
       #mod_mar.py will set these during its event function
       self.active_areas = None
       self.beam_center = None
-    elif self.address == 'XppEndstation-0|Rayonix-0':
+    elif self.address == 'XppEndstation-0|Rayonix-0' or \
+         self.address == 'MfxEndstation-0|Rayonix-0':
       assert self.override_beam_x is not None
       assert self.override_beam_y is not None
       from xfel.cxi.cspad_ana import rayonix_tbx
@@ -331,7 +332,8 @@ class common_mode_correction(mod_event_info):
         # to set this up.  The MAR does not have a configure object.
         self.beam_center = evt.get("marccd_beam_center")
         self.active_areas = evt.get("marccd_active_areas")
-      elif self.address == 'XppEndstation-0|Rayonix-0':
+      elif self.address == 'XppEndstation-0|Rayonix-0' or \
+           self.address == 'MfxEndstation-0|Rayonix-0':
         pass # bc and aa set in the beginjob function
       elif self.address == 'XppGon-0|Cspad-0':
         # Load the active areas as determined from the optical metrology
@@ -372,7 +374,8 @@ class common_mode_correction(mod_event_info):
       # XPP metrology.
       self.cspad_img = cspad_tbx.image_xpp(
         self.address, evt, env, self.active_areas)
-    elif self.address == 'XppEndstation-0|Rayonix-0':
+    elif self.address == 'XppEndstation-0|Rayonix-0' or \
+         self.address == 'MfxEndstation-0|Rayonix-0':
       from psana import Source, Camera
       import numpy as np
       address = cspad_tbx.old_address_to_new_address(self.address)
@@ -522,7 +525,9 @@ class common_mode_correction(mod_event_info):
       sel = (self.mask_img == -2 )|(self.mask_img == cspad_tbx.cspad_mask_value)
       self.cspad_img.set_selected(sel, cspad_tbx.cspad_mask_value)
 
-    if self.address == 'XppEndstation-0|Rayonix-0' and self.crop_rayonix:
+    if (self.address == 'XppEndstation-0|Rayonix-0' or \
+        self.address == 'MfxEndstation-0|Rayonix-0') and \
+        self.crop_rayonix:
       # Crop the masked data so that the beam center is in the center of the image
       self.cspad_img = self.cspad_img[self.rayonix_crop_slice[0], self.rayonix_crop_slice[1]]
 

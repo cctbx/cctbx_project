@@ -928,10 +928,11 @@ def env_detz(address, env):
       # arm.  Always return zero to allow the distance to be set using
       # the offset.
       return 0
-    elif detector == 'XppEndstation':
-      # There is no distance recorded for the XPP's Rayonix on the robot
-      # arm.  Always return zero to allow the distance to be set using
-      # the offset.
+    elif detector == 'XppEndstation' or \
+         detector == 'MfxEndstation':
+      # There is no distance recorded for the XPP's or MFX's Rayonix
+      # on the robot arm.  Always return zero to allow the distance to
+      # be set using the offset.
       return 0
     else:
       return None
