@@ -11,7 +11,6 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None)
     params.input.trial = db_trial.trial
   else:
     db_trial = app.get_trial(trial_number = params.input.trial)
-    params.input.trial_id = db_trial.id
 
   if params.input.rungroup is None:
     db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id, n_strong = n_strong)

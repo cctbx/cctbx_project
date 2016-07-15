@@ -635,6 +635,7 @@ class InMemScript(DialsProcessScript):
     if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
       print "Not enough spots to index"
       self.debug_write(",not_enough_spots_%d\n"%len(observed))
+      self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     self.restore_ranges(cspad_img, self.params)
@@ -661,6 +662,7 @@ class InMemScript(DialsProcessScript):
 
     if not self.params.dispatch.index:
       self.debug_write(",strong_shot_%d\n"%len(observed))
+      self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     # index and refine
@@ -670,6 +672,7 @@ class InMemScript(DialsProcessScript):
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write(",indexing_failed_%d\n"%len(observed))
+      self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     if self.params.dispatch.dump_indexed:
@@ -681,6 +684,7 @@ class InMemScript(DialsProcessScript):
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write(",refine_failed_%d\n"%len(indexed))
+      self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     if self.params.dispatch.reindex_strong:
@@ -690,10 +694,12 @@ class InMemScript(DialsProcessScript):
         import traceback; traceback.print_exc()
         print str(e), "event", timestamp
         self.debug_write(",reindexstrong_failed_%d\n"%len(indexed))
+        self.log_frame(None, None, run.run(), len(observed), timestamp)
         return
 
     if not self.params.dispatch.integrate:
       self.debug_write(",index_ok_%d\n"%len(indexed))
+      self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     # integrate
@@ -703,22 +709,22 @@ class InMemScript(DialsProcessScript):
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write(",integrate_failed_%d\n"%len(indexed))
+      self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
-    if self.params.experiment_tag is not None:
-      try:
-        self.log_frame(experiments, integrated, run.run(), timestamp)
-      except Exception, e:
-        import traceback; traceback.print_exc()
-        print str(e), "event", timestamp
-        self.debug_write(",db_logging_failed_%d\n" % len(integrated))
-        return
-
+    self.log_frame(experiments, integrated, run.run(), len(observed), timestamp)
     self.debug_write(",integrate_ok_%d\n"%len(integrated))
 
-  def log_frame(self, experiment, reflections, run, timestamp = None):
-    from xfel.ui.db.dxtbx_db import log_frame
-    log_frame(experiment, reflections, self.params, run, timestamp)
+  def log_frame(self, experiments, reflections, run, n_strong, timestamp = None):
+    if self.params.experiment_tag is None:
+      return
+    try:
+      from xfel.ui.db.dxtbx_db import log_frame
+      log_frame(experiments, reflections, self.params, run, n_strong, timestamp)
+    except Exception, e:
+      import traceback; traceback.print_exc()
+      print str(e), "event", timestamp
+      self.debug_write(",db_logging_failed_%d\n" % len(integrated))
 
   def save_image(self, image, params, root_path):
     """ Save an image, in either cbf or pickle format.

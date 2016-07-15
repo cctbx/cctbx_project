@@ -1291,7 +1291,7 @@ class scaling_manager (intensity_data) :
         try:
           ASO = aso(observations, unobstructed, self.params, out=out, n_bins=N_bins)
         except Exception, e:
-          # in development encountered: 
+          # in development encountered:
           # RuntimeError, flex.mean() of empty array
           # ValueError, max() arg is empty sequence
           print >> out, "skipping image: could not process obstructed/unobstructed bins"

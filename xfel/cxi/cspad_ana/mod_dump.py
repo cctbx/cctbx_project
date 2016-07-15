@@ -51,6 +51,10 @@ class mod_dump(common_mode.common_mode_correction):
     if (evt.get('skip_event')):
       return
 
+    if self.cspad_img is None:
+      print "No image to save for %s"%self.timestamp
+      return
+
     # Where the sample-detector distance is not available, set it to
     # zero.
     distance = cspad_tbx.env_distance(self.address, env, self._detz_offset)
