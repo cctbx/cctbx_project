@@ -64,9 +64,11 @@ def plot_run_stats(timestamps, n_shots, i_sig_i, tuple_of_timestamp_boundaries):
   #   else:
   #     avg_I_over_sig_I.append(0)
   # plot hitrate (as n_strong), indexing rate and <I/sig(I)> on same axes against timestamp, per run
+  idxrate_sel = i_sig_i > 0
   t, hitrate = timestamps, n_shots
   f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
   ax1.scatter(t, hitrate, edgecolors="none")
+  ax1.scatter(t.select(idxrate_sel), hitrate.select(idxrate_sel), edgecolors="none", color='g')
   ax1.axis('tight')
   ax1.set_ylabel("strong spots")
   ax2.plot(t, idx_rate*100)

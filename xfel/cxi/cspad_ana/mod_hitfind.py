@@ -326,7 +326,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
       sys.stdout = sys.__stdout__
       sys.stderr = sys.__stderr__
 
-      indexed = info is not None
+      indexed = info is not None and hasattr(info, 'spotfinder_results')
       if self.m_progress_logging:
         if self.m_db_version == 'v1':
           if indexed:
@@ -353,14 +353,17 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                 dbobj.close()
         elif self.m_db_version == 'v2':
           from xfel.ui.db.dxtbx_db import log_frame
-          sfspots = evt.get('sfspots')
-          if sfspots is None:
-            if indexed:
-              n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
-            else:
-              n_spots = 0
+          if indexed:
+            n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
           else:
-            n_spots = sfspots
+            sfspots = evt.get('sfspots')
+            if sfspots is None:
+              if info is None or not isinstance(info, int):
+                n_spots = 0
+              else:
+                n_spots = info
+            else:
+              n_spots = sfspots
 
           if indexed:
             from xfel.command_line.frame_unpickler import construct_reflection_table_and_experiment_list

@@ -52,18 +52,30 @@ def integrate_one_image(data, **kwargs):
     return run_one_index_core(horizons_phil)
   except NoAutoIndex,e:
     print "NoAutoIndex", data['TIMESTAMP'], e
+    info = e.info
   except AutoIndexError,e:
     print "FailedAutoIndex", data['TIMESTAMP'], e
+    info = e.info
   except Sorry,e:
     print "Sorry", data['TIMESTAMP'], e
+    info = e.info
   except ZeroDivisionError,e:
     print "ZeroDivisionError", data['TIMESTAMP'], e
+    info = e.info
   except SpotfinderError,e:
     print "Too few spots from Spotfinder", data['TIMESTAMP'], e
+    info = e.info
   except Exception,e:
     print "ANOTHER exception", data['TIMESTAMP'], e
     import traceback
     traceback.print_exc()
+    info = e.info
+
+  # return number of spotfinder spots
+  try:
+    return len(info.organizer.S.images[info.organizer.frames[0]]['spots_total'])
+  except Exception, e:
+    print "Couldn't find spotfinding results", data['TIMESTAMP']
 
 if __name__=="__main__":
   pass

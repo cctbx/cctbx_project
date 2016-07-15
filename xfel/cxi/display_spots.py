@@ -183,7 +183,11 @@ def run_one_index_core(horizons_phil):
   imagefile_arguments = pack_names(horizons_phil)
   info = new_horizons_state(horizons_phil,imagefile_arguments)
 
-  info.process()
+  try:
+    info.process()
+  except Exception, e:
+    e.info = info
+    raise e
 
   info.S = info.spotfinder_results
   return info
