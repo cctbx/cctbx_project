@@ -230,6 +230,9 @@ the output images in the folder cxi49812.
     # list of all events
     if command_line.options.skipevents > 0:
       print "Skipping first %d events"%command_line.options.skipevents
+    elif "Rayonix" in command_line.options.address:
+      print "Skipping first image in the Rayonix detector" # Shuttering issue
+      command_line.options.skipevents = 1
 
     times = run.times()[command_line.options.skipevents:]
     nevents = min(len(times),maxevents)
