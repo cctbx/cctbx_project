@@ -275,9 +275,12 @@ the output images in the folder cxi49812.
       else:
         d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
         if d is None:
-          print "No distance"
+          print "No distance, using distance", command_line.options.detz_offset
+          assert command_line.options.detz_offset is not None
           if 'distance' not in locals():
-            distance = np.array([0.0])
+            distance = np.array([command_line.options.detz_offset])
+          else:
+            distance += command_line.options.detz_offset
         else:
           if 'distance' in locals():
             distance += d
