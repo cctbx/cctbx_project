@@ -137,13 +137,10 @@ class table (slots_getstate_setstate) :
   """
   Combined table of statistics for one or more structures published together.
   """
-  __slots__ = ["text_field_separation", "columns",
-    "count_anomalous_pairs_separately"]
+  __slots__ = ["text_field_separation", "columns"]
 
-  def __init__ (self, text_field_separation=4,
-      count_anomalous_pairs_separately=False) :
+  def __init__ (self, text_field_separation=4) :
     self.text_field_separation = text_field_separation
-    self.count_anomalous_pairs_separately = count_anomalous_pairs_separately
     self.columns = []
 
   def add_column (self, col) :
@@ -226,14 +223,6 @@ class table (slots_getstate_setstate) :
     p.append("Statistics for the highest-resolution shell are shown in "+
       "parentheses.")
     section.append(p)
-    if (anomalous_flag) :
-      note = PyRTF.Paragraph(ss.ParagraphStyles.Normal)
-      if (self.count_anomalous_pairs_separately) :
-        note.append("* Friedel mates were counted separately where present.")
-      else :
-        note.append("* Friedel mates were averaged when calculating "+
-          "reflection statistics.")
-      section.append(note)
     return doc
 
   def save_txt (self, file_name) :

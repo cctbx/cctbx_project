@@ -269,14 +269,27 @@ def merging_and_model_statistics (
     sigma_filtering=sigma_filtering)
   i_obs = filter.array_merged
   unmerged_i_obs = filter.array
-  if (i_obs.anomalous_flag()) and (not anomalous) :
-    i_obs = i_obs.average_bijvoet_mates()
-  if (f_obs.anomalous_flag()) and (not anomalous) :
-    f_obs = f_obs.average_bijvoet_mates()
-  if (f_model.anomalous_flag()) and (not anomalous) :
-    f_model = f_model.average_bijvoet_mates()
-  if (free_sel.anomalous_flag()) and (not anomalous) :
-    free_sel = free_sel.average_bijvoet_mates()
+  # average Bijvoet pairs if not anomalous
+  if (not anomalous):
+    if (i_obs.anomalous_flag()):
+      i_obs = i_obs.average_bijvoet_mates()
+    if (f_obs.anomalous_flag()):
+      f_obs = f_obs.average_bijvoet_mates()
+    if (f_model.anomalous_flag()):
+      f_model = f_model.average_bijvoet_mates()
+    if (free_sel.anomalous_flag()):
+      free_sel = free_sel.average_bijvoet_mates()
+  # create Bijvoet pairs if an array is not anomalous
+  else:
+    if (not i_obs.anomalous_flag()):
+      i_obs = i_obs.generate_bijvoet_mates()
+    if (not f_obs.anomalous_flag()):
+      f_obs = f_obs.generate_bijvoet_mates()
+    if (not f_model.anomalous_flag()):
+      f_model = f_model.generate_bijvoet_mates()
+    if (not free_sel.anomalous_flag()):
+      free_sel = free_sel.generate_bijvoet_mates()
+
   if (free_sel.data().count(True) == 0) :
     raise Sorry("R-free array does not select any reflections.  To calculate "+
       "CC* and related statistics, a valid set of R-free flags must be used.")

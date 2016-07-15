@@ -81,6 +81,12 @@ structure_params_str = """
     use_internal_variance = False
       .type = bool
       .help = Estimate intensity variance for unmerged data
+    count_anomalous_pairs_separately = False
+      .type = bool
+      .short_caption = Count anomalous pairs separately
+      .help = If true, the program will treat F+ and F- (if present) as \
+        independent reflections when calculating data statistics.  (Not \
+        recommended.)
   }
 """
 
@@ -95,12 +101,6 @@ table_one {
     n_bins = 10
       .type = int
       .short_caption = Number of resolution bins
-    count_anomalous_pairs_separately = False
-      .type = bool
-      .short_caption = Count anomalous pairs separately
-      .help = If true, the program will treat F+ and F- (if present) as \
-        independent reflections when calculating data statistics.  (Not \
-        recommended.)
     ligand_selection = None
       .type = str
       .short_caption = Ligand atom selection
@@ -344,7 +344,6 @@ def rfactor_sanity_check (
 
 def run_single_structure (params,
     n_bins,
-    count_anomalous_pairs_separately,
     ligand_selection=None,
     log=None) :
   if (log is None) : log = null_out()
@@ -355,7 +354,8 @@ def run_single_structure (params,
     "xray_data.r_free_flags.file_name=\"%s\"" % params.mtz_file,
     "xray_data.r_free_flags.label=\"%s\"" % params.r_free_flags.label,
     "n_bins=%d" % n_bins,
-    "count_anomalous_pairs_separately=%s" % count_anomalous_pairs_separately,
+    "count_anomalous_pairs_separately=%s" % \
+    params.count_anomalous_pairs_separately,
     "coot=False",
     "maps=False",
     "probe_dots=False",
@@ -390,9 +390,7 @@ class table_one (iotbx.table_one.table) :
 
   def __init__ (self, params, out=sys.stdout) :
     iotbx.table_one.table.__init__(self,
-      text_field_separation=params.output.text_field_separation,
-      count_anomalous_pairs_separately=\
-        params.processing.count_anomalous_pairs_separately)
+      text_field_separation=params.output.text_field_separation)
     self.output_dir = os.getcwd()
     self.params = params
     self.output_files = []
@@ -417,7 +415,6 @@ class table_one (iotbx.table_one.table) :
     return run_single_structure(
       params=self.params.structure[i_struct],
       n_bins=self.params.processing.n_bins,
-      count_anomalous_pairs_separately=self.count_anomalous_pairs_separately,
       ligand_selection=self.params.processing.ligand_selection)
 
   def save_multiple (self, file_base, formats) :
