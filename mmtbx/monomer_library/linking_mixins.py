@@ -907,7 +907,7 @@ Residue classes
       #assert len(bond_i_seqs)==1
       self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seq],
                                             self.pdb_atoms[j_seq],
-                                            link_rt_mx_ji,
+                                            sym_pair.rt_mx_ji
                                           ])
       assert i_seq == nonbonded_i_seqs[i_seq]
       assert j_seq == nonbonded_i_seqs[j_seq]

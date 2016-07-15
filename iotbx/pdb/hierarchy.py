@@ -1406,7 +1406,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         if abs(dihedral.delta)>360./flip_data["value"][1]/4: # does this work
           info.append("Residue %s %s" % (ag.resname, rg.resseq))
           atoms = ag.atoms()
-          for atom in atoms: print atom.quote()
           for pair in flip_data["pairs"]:
             atom1 = ag.get_atom(pair[0])
             if atom1 is None: continue
