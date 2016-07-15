@@ -191,7 +191,8 @@ class xfel_db_application(object):
 
   def get_all_x(self, cls, name, where = None):
     table_name = "%s_%s" % (self.params.experiment_tag, name)
-    query = "SELECT id, %s FROM `%s`" % (", ".join(self.columns_dict[table_name]), table_name)
+    columns = ["%s.%s"%(name, c) for c in self.columns_dict[table_name]]
+    query = "SELECT %s.id, %s FROM `%s` %s" % (name, ", ".join(columns), table_name, name)
     if where is not None:
       query += " " + where
     cursor = self.execute_query(query)
@@ -320,21 +321,24 @@ class xfel_db_application(object):
 
     self.delete_x(job, job_id)
 
-  def get_all_events(self, trial = None, runs = None):
-    if trial is None:
-      where = None
-    else:
+  def get_all_events(self, trial = None, runs = None, only_indexed = True):
+    where = None
+    if only_indexed:
+      where = "JOIN `%s_imageset_event` is_e ON event.id = is_e.event_id"%self.params.experiment_tag
+    if trial is not None:
       if runs is None:
         runs = trial.runs
       if len(runs) == 0:
         return []
-      where = "WHERE trial_id = %d AND run_id in (%s)" % (
+      if where is None:
+        where = ""
+      where += " WHERE event.trial_id = %d AND event.run_id in (%s)" % (
         trial.id, ", ".join([str(r.id) for r in runs]))
 
       if 'rungroup_id' in self.columns_dict["%s_%s" % (self.params.experiment_tag, 'event')]: # some backwards compatibility, as event.rungroup_id was added late to the schema
         rungroups = ", ".join([str(rg.id) for rg in trial.rungroups])
         if len(rungroups) > 0:
-          where += " AND rungroup_id in (%s)"%rungroups
+          where += " AND event.rungroup_id in (%s)"%rungroups
 
     return self.get_all_x(Event, "event", where)
 

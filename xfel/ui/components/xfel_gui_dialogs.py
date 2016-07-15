@@ -353,6 +353,12 @@ class AdvancedSettingsDialog(BaseDialog):
                                ctrl_min=1,
                                ctrl_max=1000)
     self.mp_sizer.Add(self.nproc, flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.chk_use_ffb = wx.CheckBox(self,
+                                   label='Use ffb (fast feedback) file system. Active experiment only, on hiprio or prio queues')
+    self.chk_use_ffb.SetValue(params.use_ffb)
+
+    self.mp_sizer.Add(self.chk_use_ffb, flag=wx.ALL, border=10)
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Data analysis settings
@@ -427,6 +433,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
     self.params.mp.queue = self.queue.ctr.GetStringSelection()
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
+    self.params.use_ffb = bool(self.chk_use_ffb.GetValue())
     self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
     self.params.web.enforce80 = bool(self.chk_enforce80.GetValue())
     self.params.web.enforce81 = bool(self.chk_enforce81.GetValue())

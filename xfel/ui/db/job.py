@@ -94,6 +94,7 @@ def submit_job(app, job):
     experiment                = app.params.experiment,
     run_num                   = job.run.run,
     output_dir                = app.params.output_folder,
+    use_ffb                   = app.params.use_ffb,
     # Generally for both
     trial                     = job.trial.trial,
     rungroup                  = job.rungroup.rungroup_id,

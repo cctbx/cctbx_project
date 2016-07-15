@@ -35,7 +35,9 @@ web {
 average_raw_data = False
   .type = bool
   .help = If True, don't use any psana corrections (dark, common mode, etc.)
-
+use_ffb = False
+  .type = bool
+  .help = "Run on the ffb if possible. Only for active users!"
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """
 db_phil_str = """

@@ -9,6 +9,7 @@ input {{
   xtc_dir = None
   dispatcher = {dispatcher}
   target = {target}
+  use_ffb = {use_ffb}
 }}
 output {{
   output_dir = {output_dir}
