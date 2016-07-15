@@ -2361,6 +2361,7 @@ mmtbx/regression/tst_find_ncs.py -text
 mmtbx/regression/tst_find_peaks_holes.py -text
 mmtbx/regression/tst_find_ss_structure.py -text
 mmtbx/regression/tst_fix_rotamer_outliers.py -text
+mmtbx/regression/tst_flip_symmetric.py -text
 mmtbx/regression/tst_fmodel_2.py -text
 mmtbx/regression/tst_fmodel_misc.py -text
 mmtbx/regression/tst_fmodel_no_cryst1.py -text
