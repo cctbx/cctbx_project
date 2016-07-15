@@ -46,7 +46,23 @@ def run():
   assert os.path.exists(amberhome)
   target = os.path.join(os.path.dirname(phenix_dir), "amber")
   if os.path.exists(target):
-    print '\n  Not linking because it already exists : %s' % target
+    if os.path.samefile(target, amberhome):
+      print '''
+  Not linking $AMBERHOME into Phenix modules directory because there is
+  already a link and it points to the same directory as $AMBERHOME.
+    $AMBERHOME : %s
+    Phenix link: %s
+    ''' % (amberhome, target)
+    else:
+      print '''
+  Not linking $AMBERHOME into Phenix modules directory because there is
+  already a link and it does not point to the same directory as $AMBERHOME.
+    $AMBERHOME : %s
+    Phenix link: %s
+
+  Consider removing the Phenix link to update to a new $AMBERHOME.
+      ''' % (amberhome, target)
+      raise Sorry("$AMBERHOME and Phenix link mismatch")
   else:
     os.symlink(amberhome, target)
 

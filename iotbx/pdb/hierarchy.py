@@ -1352,6 +1352,73 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           result.append(residue_range_sel)
     return result
 
+  def flip_symmetric_amino_acids(self):
+    import time
+    from cctbx import geometry_restraints
+    data = {
+      "ARG" : {"dihedral" : ["CD", "NE", "CZ", "NH1"],
+               "value"    : [0, 1],
+               "pairs"    : [["NH1", "NH2"],
+                             ["HH11","HH21"], # should this also be periodicty
+                             ["HH12","HH22"], # of 1
+                            ],
+             },
+      "ASP" : {"dihedral" : ["CA", "CB", "CG", "OD1"],
+               "value"    : [0, 1],
+               "pairs"    : [["OD1", "OD2"]],
+             },
+      "GLU" : {"dihedral" : ["CB", "CG", "CD", "OE1"],
+               "value"    : [0, 1],
+               "pairs"    : [["OE1", "OE2"]],
+             },
+      "PHE" : {"dihedral" : ["CA", "CB", "CG", "CD1"],
+               "value"    : [0, 1],
+               "pairs"    : [["CD1", "CD2"],
+                             ["CE1", "CE2"],
+                             ["HD1", "HD2"],
+                             ["HE1", "HD2"],
+                            ],
+             },
+    }
+    data["TYR"]=data["PHE"]
+    sites_cart = self.atoms().extract_xyz()
+    t0=time.time()
+    info = []
+    for rg in self.residue_groups():
+      for ag in rg.atom_groups():
+        flip_data = data.get(ag.resname, None)
+        if flip_data is None: continue
+        dihedral_i_seqs = []
+        for d in flip_data["dihedral"]:
+          atom = ag.get_atom(d)
+          if atom is None: break
+          dihedral_i_seqs.append(atom.i_seq)
+        proxy = geometry_restraints.dihedral_proxy(
+          i_seqs=dihedral_i_seqs,
+          angle_ideal=flip_data["value"][0],
+          weight=flip_data["value"][1],
+          periodicity=1
+        )
+        dihedral = geometry_restraints.dihedral(
+          sites_cart=sites_cart,
+          proxy=proxy,
+        )
+        if abs(dihedral.delta)>360./flip_data["value"][1]/4: # does this work
+          info.append("Residue %s %s" % (ag.resname, rg.resseq))
+          atoms = ag.atoms()
+          for atom in atoms: print atom.quote()
+          for pair in flip_data["pairs"]:
+            atom1 = ag.get_atom(pair[0])
+            if atom1 is None: continue
+            atom2 = ag.get_atom(pair[1])
+            if atom2 is None: continue
+            tmp = atom1.xyz
+            atom1.xyz = atom2.xyz
+            atom2.xyz = tmp
+            info.append("  Flipped %s and %s" % (atom1.name, atom2.name))
+    print 'time to flip residues',time.time()-t0
+    return info
+
   def distance_based_simple_two_way_bond_sets(self,
         fallback_expected_bond_length=1.4,
         fallback_search_max_distance=2.5) :
@@ -2142,7 +2209,11 @@ class _(boost.python.injector, ext.atom_with_labels):
 
 class input_hierarchy_pair(object):
 
-  def __init__(self, input, hierarchy=None, sort_atoms=False):
+  def __init__(self,
+               input,
+               hierarchy=None,
+               sort_atoms=False,
+              ):
     self.input = input
     if (hierarchy is None):
       hierarchy = self.input.construct_hierarchy(

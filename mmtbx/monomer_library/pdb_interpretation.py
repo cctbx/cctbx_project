@@ -149,6 +149,9 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
+  flip_symmetric_amino_acids = False
+    .type = bool
+    .short_caption = Flip
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
@@ -532,6 +535,33 @@ angle
     .type = float
   sigma = None
     .type = float
+}
+dihedral
+  .optional = True
+  .multiple = True
+  .short_caption = Dihedral
+  .style = hidden
+{
+  action = *add delete change
+    .type = choice
+  atom_selection_1 = None
+    .type = atom_selection
+    .input_size = 400
+  atom_selection_2 = None
+    .type = atom_selection
+    .input_size = 400
+  atom_selection_3 = None
+    .type = atom_selection
+    .input_size = 400
+  atom_selection_4 = None
+    .type = atom_selection
+    .input_size = 400
+  angle_ideal = None
+    .type = float
+  sigma = None
+    .type = float
+  periodicity = None
+    .type = int
 }
 planarity
   .optional = True
@@ -2464,6 +2494,7 @@ class build_chain_proxies(object):
               for bond in prev_mm.lib_link.bond_list:
                 atoms = (prev_mm.expected_atoms.get(bond.atom_id_1, None),
                          mm     .expected_atoms.get(bond.atom_id_2, None))
+                # should not rely on sequence for ALL
                 if None in atoms: return 999.
                 i_seqs = [atom.i_seq for atom in atoms]
                 s1 = sites_cart[i_seqs[0]]
@@ -2900,11 +2931,15 @@ class build_all_chain_proxies(linking_mixins):
         raw_records = flex.std_string(raw_records)
       self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
     self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
+    if self.params.flip_symmetric_amino_acids:
+      self.pdb_hierarchy.flip_symmetric_amino_acids()
     if atom_selection_string is not None:
       sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
       temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
       self.pdb_inp = pdb.input(source_info=None, lines=temp_string)
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
+      if self.params.flip_symmetric_amino_acids:
+        self.pdb_hierarchy.flip_symmetric_amino_acids()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.counts = self.pdb_hierarchy.overall_counts()
@@ -4267,6 +4302,70 @@ class build_all_chain_proxies(linking_mixins):
     print >> log, "    Total number of custom angles:", len(result)
     return result
 
+  def process_geometry_restraints_edits_dihedral(self, sel_cache, params, log):
+    result = []
+    if (len(params.dihedral) == 0): return result
+    if (self.special_position_indices is None):
+      special_position_indices = []
+    else:
+      special_position_indices = self.special_position_indices
+    print >> log, "  Custom dihedrals:"
+    atoms = self.pdb_atoms
+    sel_attrs = ["atom_selection_"+n for n in ["1", "2", "3", "4"]]
+    for dihedral in params.dihedral:
+      def show_atom_selections():
+        for attr in sel_attrs:
+          print >> log, "      %s = %s" % (
+            attr, show_string(getattr(dihedral, attr, None)))
+      if (dihedral.angle_ideal is None):
+        print >> log, "    Warning: Ignoring dihedral with angle_ideal = None:"
+        show_atom_selections()
+      elif (dihedral.sigma is None):
+        print >> log, "    Warning: Ignoring dihedral with sigma = None:"
+        show_atom_selections()
+        print >> log, "      angle_ideal = %.6g" % dihedral.angle_ideal
+      elif (dihedral.sigma is None or dihedral.sigma <= 0):
+        print >> log, "    Warning: Ignoring dihedral with sigma <= 0:"
+        show_atom_selections()
+        print >> log, "      angle_ideal = %.6g" % dihedral.angle_ideal
+        print >> log, "      sigma = %.6g" % dihedral.sigma
+      elif (dihedral.action != "add"):
+        raise Sorry("%s = %s not implemented." %
+          dihedral.__phil_path_and_value__("action"))
+      else:
+        i_seqs = self.phil_atom_selections_as_i_seqs(
+          cache=sel_cache, scope_extract=dihedral, sel_attrs=sel_attrs)
+        p = geometry_restraints.dihedral_proxy(
+          i_seqs=i_seqs,
+          angle_ideal=dihedral.angle_ideal,
+          weight=geometry_restraints.sigma_as_weight(sigma=dihedral.sigma),
+          periodicity=dihedral.periodicity,
+        )
+        a = geometry_restraints.dihedral(
+          sites_cart=self.sites_cart,
+          proxy=p)
+        print >> log, "    dihedral:"
+        n_special = 0
+        for i,i_seq in enumerate(p.i_seqs):
+          print >> log, "      atom %d:" % (i+1), atoms[i_seq].quote(),
+          if (i_seq in special_position_indices):
+            n_special += 1
+            print >> log, "# SPECIAL POSITION",
+          print >> log
+        print >> log, "      angle_model: %7.2f" % a.angle_model
+        print >> log, "      angle_ideal: %7.2f" % a.angle_ideal
+        print >> log, "      ideal - model:  %7.2f" % a.delta
+        print >> log, "      sigma: %.6g" % \
+          geometry_restraints.weight_as_sigma(weight=a.weight)
+        if (n_special != 0):
+          raise Sorry(
+            "Custom dihedral involves %d special position%s:\n"
+            "  Please inspect the output for details."
+              % plural_s(n_special))
+        result.append(p)
+    print >> log, "    Total number of custom dihedrals:", len(result)
+    return result
+
   def process_geometry_restraints_edits_planarity(self,
                                                   sel_cache,
                                                   params,
@@ -4407,11 +4506,12 @@ class build_all_chain_proxies(linking_mixins):
         sel_cache=sel_cache, params=params, log=log)
     result.angle_proxies=self.process_geometry_restraints_edits_angle(
         sel_cache=sel_cache, params=params, log=log)
+    result.dihedral_proxies=self.process_geometry_restraints_edits_dihedral(
+        sel_cache=sel_cache, params=params, log=log)
     result.planarity_proxies=self.process_geometry_restraints_edits_planarity(
         sel_cache=sel_cache, params=params, log=log)
     result.parallelity_proxies=self.process_geometry_restraints_edits_parallelity(
         sel_cache=sel_cache, params=params, log=log)
-#    assert 0
     return result
 
   def process_hydrogen_bonds (self, bonds_table, log, verbose=False) :
@@ -4854,6 +4954,8 @@ class build_all_chain_proxies(linking_mixins):
           rt_mx_ji=proxy.rt_mx_ji)
       for proxy in processed_edits.angle_proxies:
         self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
+      for proxy in processed_edits.dihedral_proxies:
+        self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
       for proxy in processed_edits.planarity_proxies:
         self.geometry_proxy_registries.planarity.add_if_not_duplicated(proxy=proxy)
       for proxy in processed_edits.parallelity_proxies:
