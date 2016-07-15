@@ -1,4 +1,5 @@
-import os, sys
+from __future__ import division
+import sys
 from StringIO import StringIO
 from libtbx import easy_run
 import iotbx.pdb
