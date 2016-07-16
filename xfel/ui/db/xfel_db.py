@@ -203,6 +203,66 @@ class xfel_db_application(object):
       results.append(cls(self, **d))
     return results
 
+  def get_all_x_with_subitems(self, cls, name, where = None, sub_items = None):
+    """ Assemble a list of db_proxy objects, where each one references a sub object
+        @param cls principal class
+        @param name table name not including experiment tag
+        @param where optional constraints on what to get
+        @param sub_items: array of tuples (cls,name) of items this table references
+        @return list of assembled db_proxy objects"""
+
+    # Assemble a list of all columns to be extracted via a big join. Then entries in the
+    # columns array will be of the form "name.column", IE: tag.comment
+    table_name = "%s_%s" % (self.params.experiment_tag, name)
+    columns = ["%s.%s"%(name, c) for c in self.columns_dict[table_name]]
+    columns.append("%s.id"%name)
+
+    if sub_items is None:
+      sub_items = []
+    sub_table_names = ["%s_%s"%(self.params.experiment_tag, i[1]) for i in sub_items]
+    for i, sub_item in enumerate(sub_items):
+      scls, sname = sub_item
+      columns.extend(["%s.%s"%(sname, c) for c in self.columns_dict[sub_table_names[i]]])
+      columns.append("%s.id"%sname)
+
+    # the main item being extracted is in the FROM statement and is given a nickname which
+    # is the table name without the experiment tag
+    query = "SELECT %s FROM `%s` %s" % (", ".join(columns), table_name, name)
+
+    # Join statements to bring in the sub tables
+    for i, sub_item in enumerate(sub_items):
+      scls, sname = sub_item
+      query += " JOIN `%s` %s ON %s.id = %s.%s_id"% (
+        sub_table_names[i], sname, sname, name, sname)
+
+    if where is not None:
+      query += " " + where
+    cursor = self.execute_query(query)
+
+    results = []
+    for row in cursor.fetchall():
+      # Each row will be a complete item and sub items in column form. Assemble one
+      # dictionary (d) for the main item and a dictionary of dictionaries (sub_ds)
+      # for each of the sub items
+      d = {}
+      sub_ds = {sub_item[1]:(sub_item[0], {}) for sub_item in sub_items}
+      for key, value in zip(columns, row):
+        n, c = key.split('.') # nickname n, column name c
+        if n == name:
+          d[c] = value # this column came from the main table
+        else:
+          sub_ds[n][1][c] = value # this column came from a sub table
+
+      # pop the id column as it is passed as name_id to the db_proxy class (ie Job(job_id = 2))
+      _id = d.pop("id")
+      d["%s_id"%name] = _id
+      results.append(cls(self, **d)) # instantiate the main class
+      for sub_d_n, sub_d in sub_ds.iteritems():
+        _id = sub_d[1].pop("id")
+        sub_d[1]["%s_id"%sub_d_n] = _id
+        setattr(results[-1], sub_d_n, sub_d[0](self, **sub_d[1])) # instantiate the sub items
+    return results
+
   def get_trial(self, trial_id = None, trial_number = None):
     assert [trial_id, trial_number].count(None) == 1
     if trial_id is None:
@@ -310,7 +370,7 @@ class xfel_db_application(object):
     return Job(self, job_id)
 
   def get_all_jobs(self):
-    return self.get_all_x(Job, "job")
+    return self.get_all_x_with_subitems(Job, "job", sub_items = [(Trial, 'trial'), (Run, 'run'), (Rungroup, 'rungroup')])
 
   def delete_job(self, job = None, job_id = None):
     assert [job, job_id].count(None) == 1

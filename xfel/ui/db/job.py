@@ -5,9 +5,6 @@ class Job(db_proxy):
   def __init__(self, app, job_id = None, **kwargs):
     db_proxy.__init__(self, app, "%s_job" % app.params.experiment_tag, id = job_id, **kwargs)
     self.job_id = self.id
-    self.trial = app.get_trial(trial_id=self.trial_id)
-    self.run = app.get_run(run_id=self.run_id)
-    self.rungroup = app.get_rungroup(self.rungroup_id)
 
 # Support classes and functions for job submission
 
