@@ -222,7 +222,7 @@ class ProgressSentinel(Thread):
 
         tags = self.parent.run_window.status_tab.selected_tags
         tag_ids = [tag.id for tag in tags]
-        cells = db.get_stats(trial=trial, tags=tags)()
+        cells = db.get_stats(trial=trial, tags=tags, isigi_cutoff = self.parent.run_window.status_tab.isigi_cutoff)()
 
         if self.parent.run_window.status_tab.tag_trial_changed:
           self.parent.run_window.status_tab.redraw_windows = True
@@ -241,7 +241,8 @@ class ProgressSentinel(Thread):
               else:
                 run_numbers.append(run.run)
                 runs.append(run)
-        n_img = len(db.get_all_events(trial, runs))
+        if not trial_has_isoforms:
+          n_img = len(db.get_all_events(trial, runs))
 
         for cell in cells:
           # Check for cell isoform
@@ -260,11 +261,16 @@ class ProgressSentinel(Thread):
             if current_rows != {}:
               bins = cell.bins[
                      :int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+              highest_bin = cell.bins[int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
             else:
               bins = cell.bins
+              d_mins = [b.d_min for b in bins]
+              highest_bin = bins[d_mins.index(min(d_mins))]
 
-            counts = [int(i.count) for i in bins]
-            totals = [int(i.total_hkl) for i in bins]
+            counts_all = [int(i.count) for i in bins]
+            totals_all = [int(i.total_hkl) for i in bins]
+            counts_highest = int(highest_bin.count)
+            totals_highest = int(highest_bin.total_hkl)
 
             # Apply throttle to multiplicity calculation
             if trial.process_percent is None:
@@ -272,9 +278,13 @@ class ProgressSentinel(Thread):
             else:
               process_percent = trial.process_percent
 
+            n_img = len(db.get_all_events(trial, runs, isoform = cell.isoform))
+
             # Generate multiplicity graph for isoforms
-            mult = sum(counts) / sum(totals) * (process_percent / 100)
-            self.info[cell.isoform._db_dict['name']] = {'multiplicity':mult,
+            mult_all = sum(counts_all) / sum(totals_all) / (process_percent / 100)
+            mult_highest = counts_highest / totals_highest / (process_percent / 100)
+            self.info[cell.isoform._db_dict['name']] = {'multiplicity_all':mult_all,
+                                            'multiplicity_highest':mult_highest,
                                             'bins':bins,
                                             'isoform':cell.isoform._db_dict['name'],
                                             'a':cell.cell_a,
@@ -946,6 +956,7 @@ class StatusTab(BaseTab):
     self.tag_trial_changed = False
     self.redraw_windows = True
     self.multiplicity_goal = 10
+    self.isigi_cutoff = None
     self.info = {}
 
     self.status_panel = ScrolledPanel(self, size=(900, 120))
@@ -975,15 +986,23 @@ class StatusTab(BaseTab):
                                      ctrl_size=(100, -1),
                                      items=[('goal', 10)])
 
+    self.opt_isigi = gctr.OptionCtrl(self,
+                                     label='I/sigI cutoff:',
+                                     label_size=(120, -1),
+                                     ctrl_size=(100, -1),
+                                     items=[('isigi', 'None')])
+
     self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 10)
 
     multi_box = wx.StaticBox(self, label='Statistics Options')
     self.multi_box_sizer = wx.StaticBoxSizer(multi_box, wx.VERTICAL)
-    self.multi_opt_sizer = wx.GridBagSizer(2, 2)
+    self.multi_opt_sizer = wx.GridBagSizer(3, 2)
 
-    self.multi_opt_sizer.Add(self.opt_multi, pos=(0, 0),
+    self.multi_opt_sizer.Add(self.trial_number, pos=(0, 0),
                              flag=wx.LEFT | wx.TOP | wx.RIGHT, border=10)
-    self.multi_opt_sizer.Add(self.trial_number, pos=(1, 0),
+    self.multi_opt_sizer.Add(self.opt_multi, pos=(1, 0),
+                             flag=wx.ALL, border=10)
+    self.multi_opt_sizer.Add(self.opt_isigi, pos=(2, 0),
                              flag=wx.ALL, border=10)
     self.multi_opt_sizer.Add(self.tag_list, pos=(0, 1), span=(2, 1),
                              flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
@@ -1025,6 +1044,7 @@ class StatusTab(BaseTab):
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
     self.Bind(wx.EVT_TEXT_ENTER, self.onMultiplicityGoal, self.opt_multi.goal)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.opt_isigi.isigi)
     self.Bind(wx.EVT_BUTTON, self.onClustering, self.btn_cluster)
     self.Bind(wx.EVT_BUTTON, self.onHistogram, self.btn_histogram)
     self.Bind(EVT_PRG_REFRESH, self.onRefresh)
@@ -1131,6 +1151,13 @@ class StatusTab(BaseTab):
     if goal.isdigit() and goal != '':
       self.multiplicity_goal = int(goal)
 
+  def onIsigICutoff(self, e):
+    cutoff = self.opt_isigi.isigi.GetValue()
+    try:
+      self.isigi_cutoff = float(cutoff)
+    except ValueError:
+      pass
+
   def onRefresh(self, e):
     # Find new tags
     all_db_tags = [str(i.name) for i in self.main.db.get_all_tags()]
@@ -1165,7 +1192,7 @@ class StatusTab(BaseTab):
         row = None
 
       if not no_isoforms:
-        max_multiplicity = max([self.info[i]['multiplicity'] for i in
+        max_multiplicity = max([self.info[i]['multiplicity_all'] for i in
                                 self.info])
         if max_multiplicity > self.multiplicity_goal:
           xmax = max_multiplicity
@@ -1178,7 +1205,8 @@ class StatusTab(BaseTab):
 
           self.update_row(row=row,
                           name=values['isoform'],
-                          value=values['multiplicity'],
+                          valuea=values['multiplicity_highest'],
+                          valueb=values['multiplicity_all'],
                           bins=values['bins'],
                           xmax=xmax,
                           n_img=values['n_img'])
@@ -1208,7 +1236,7 @@ class StatusTab(BaseTab):
     row.update_number(number=num_images)
     self.rows['None']['row'] = row
 
-  def update_row(self, row, name, value, bins, xmax, n_img):
+  def update_row(self, row, name, valuea, valueb, bins, xmax, n_img):
     ''' Add new row, or update existing '''
 
     bin_choices = [("Bin {}:  {:3.2f} - {:3.2f}" \
@@ -1216,7 +1244,7 @@ class StatusTab(BaseTab):
                     bins.index(b)) for b in bins]
     if row is None:
       self.rows[name] = {}
-      row = pltr.SingleBarPlot(self.status_panel,
+      row = pltr.DoubleBarPlot(self.status_panel,
                                label='Isoform {} (Nimg:{})'.format(name, n_img),
                                gauge_size=(250, 15),
                                choice_label='High res. limit:',
@@ -1225,7 +1253,7 @@ class StatusTab(BaseTab):
       self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
       row.bins.ctr.SetSelection(row.bins.ctr.GetCount() - 1)
 
-    row.redraw_axes(value=value, goal=self.multiplicity_goal, xmax=xmax)
+    row.redraw_axes(valuea=valuea, valueb=valueb, goal=self.multiplicity_goal, xmax=xmax)
     self.rows[name]['row'] = row
     self.rows[name]['high_bin'] = row.bins.ctr.GetClientData(
       row.bins.ctr.GetSelection())

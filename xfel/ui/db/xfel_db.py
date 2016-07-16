@@ -321,10 +321,11 @@ class xfel_db_application(object):
 
     self.delete_x(job, job_id)
 
-  def get_all_events(self, trial = None, runs = None, only_indexed = True):
+  def get_all_events(self, trial = None, runs = None, only_indexed = True, isoform = None):
+    tag = self.params.experiment_tag
     where = None
-    if only_indexed:
-      where = "JOIN `%s_imageset_event` is_e ON event.id = is_e.event_id"%self.params.experiment_tag
+    if only_indexed or isoform is not None:
+      where = "JOIN `%s_imageset_event` is_e ON event.id = is_e.event_id"%tag
     if trial is not None:
       if runs is None:
         runs = trial.runs
@@ -332,10 +333,19 @@ class xfel_db_application(object):
         return []
       if where is None:
         where = ""
-      where += " WHERE event.trial_id = %d AND event.run_id in (%s)" % (
+      if isoform is None:
+        where += " WHERE"
+      else:
+        where += """ JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
+                     JOIN `%s_experiment` exp ON exp.imageset_id = imgset.id
+                     JOIN `%s_crystal` crystal ON crystal.id = exp.crystal_id
+                     JOIN `%s_cell` cell ON cell.id = crystal.cell_id
+                     JOIN `%s_isoform` isoform ON isoform.id = cell.isoform_id
+                     WHERE isoform.id = %s AND"""%(tag, tag, tag, tag, tag, isoform.id)
+      where += " event.trial_id = %d AND event.run_id in (%s)" % (
         trial.id, ", ".join([str(r.id) for r in runs]))
 
-      if 'rungroup_id' in self.columns_dict["%s_%s" % (self.params.experiment_tag, 'event')]: # some backwards compatibility, as event.rungroup_id was added late to the schema
+      if 'rungroup_id' in self.columns_dict["%s_%s" % (tag, 'event')]: # some backwards compatibility, as event.rungroup_id was added late to the schema
         rungroups = ", ".join([str(rg.id) for rg in trial.rungroups])
         if len(rungroups) > 0:
           where += " AND event.rungroup_id in (%s)"%rungroups

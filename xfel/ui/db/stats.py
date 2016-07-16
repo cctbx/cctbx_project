@@ -2,13 +2,14 @@ from __future__ import division
 from scitbx.array_family import flex
 
 class Stats(object):
-  def __init__(self, app, trial, tags = None):
+  def __init__(self, app, trial, tags = None, isigi_cutoff = None):
     self.app = app
     self.trial = trial
     if tags is None:
       tags = []
     self.tags = tags
     self.tag_ids = [t.id for t in tags]
+    self.isigi_cutoff = isigi_cutoff
 
   def __call__(self):
     runs = []
@@ -63,8 +64,12 @@ class Stats(object):
                  JOIN `%s_imageset_event` ie ON ie.imageset_id = imgset.id
                  JOIN `%s_event` evt ON evt.id = ie.event_id
                  JOIN `%s_run` run ON run.id = evt.run_id
-                 WHERE run.id in %s AND bin.id IN (%s)""" % (
+                 WHERE run.id in %s AND bin.id IN (%s)
+                       AND cell_bin.avg_intensity > 0
+                       """ % (
         exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, ", ".join(bin_ids))
+      if self.isigi_cutoff is not None and self.isigi_cutoff >= 0:
+        query += " AND cell_bin.avg_i_sigi >= %f"%self.isigi_cutoff
       results = self.app.execute_query(query).fetchall()
       ids = flex.int([r[0] for r in results])
       counts = flex.int([r[1] for r in results])

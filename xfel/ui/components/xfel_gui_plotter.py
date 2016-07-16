@@ -18,7 +18,7 @@ from matplotlib.figure import Figure
 
 import xfel.ui.components.xfel_gui_controls as gctr
 
-class SingleBarPlot(gctr.CtrlBase):
+class DoubleBarPlot(gctr.CtrlBase):
   def __init__(self, parent,
                label='',
                label_size=wx.DefaultSize,
@@ -63,14 +63,15 @@ class SingleBarPlot(gctr.CtrlBase):
 
     self.SetSizer(self.sizer)
 
-  def redraw_axes(self, value, goal, xmax):
+  def redraw_axes(self, valuea, valueb, goal, xmax):
     ''' Re-draw axes with latest values '''
 
     self.ax.clear()
-    bar = self.ax.barh(0, value, height=1, align='center', color='#7570b3')
+    bar = self.ax.barh(0, valueb, height=1, align='center', color='green')
+    bar = self.ax.barh(0, valuea, height=1, align='center', color='#7570b3')
 
     xloc = xmax / 0.8
-    label = '{:.2f}'.format(value)
+    label = '{:.1f}({:.1f})'.format(valueb, valuea)
     yloc = bar[0].get_y() + bar[0].get_height() / 2.0
     self.ax.text(xloc, yloc, label, horizontalalignment='right',
                  verticalalignment='center', weight='bold',
