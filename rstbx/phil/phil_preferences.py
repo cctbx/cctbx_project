@@ -111,6 +111,11 @@ integration {
       .help = governs the cutoff resolution for teh ewald proximal volume: that volume of reciprocal space containing
       .help =  spots predicted by the current mosaicity model.
   }
+  initial_volume_factor = 1.8
+      .type = float
+      .help = controls the initial integration limits before filtering by sig(I) durig merging
+      .help = used in rstbx/new_horizons/oscillation_shots.py -- not fully understood
+      .help = a larger volume factor integrates a larger volume of reciprocal space
   enable_residual_map = False
       .type = bool
       .help = x,y model vs. spotfinder residuals plotted vs. image position

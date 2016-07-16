@@ -448,7 +448,8 @@ class SafetyLimits:
 
 class ResLimitControl:
   def __init__(self,pd,horizons_phil):
-    initialVolumeFactor = 1.8 # Legacy value=1.5 prior to 7/17/07
+    #initialVolumeFactor = 1.8 # Legacy value=1.5 prior to 7/17/07
+    initialVolumeFactor = horizons_phil.integration.initial_volume_factor
     self.subsequentVolumeFactor = 1.5 # this value not used by stats_mtz; see stats_mtz code
     if horizons_phil.mosflm_integration_reslimit_override!=None:
       self.initial_limit = horizons_phil.mosflm_integration_reslimit_override
