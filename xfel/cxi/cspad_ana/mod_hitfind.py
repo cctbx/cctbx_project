@@ -366,11 +366,17 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
               n_spots = sfspots
 
           if indexed:
-            from xfel.command_line.frame_unpickler import construct_reflection_table_and_experiment_list
-            c = construct_reflection_table_and_experiment_list(info.last_saved_best, None, pixel_size, proceed_without_image=True)
-            c.assemble_experiments()
-            c.assemble_reflections()
-            log_frame(c.experiment_list, c.reflections, self.db_params, evt.run(), n_spots, self.timestamp)
+            known_setting = info.horizons_phil.known_setting
+            indexed_setting = info.organizer.info['best_integration']['counter']
+            if known_setting is not None and known_setting == indexed_setting:
+              from xfel.command_line.frame_unpickler import construct_reflection_table_and_experiment_list
+              c = construct_reflection_table_and_experiment_list(info.last_saved_best, None, pixel_size, proceed_without_image=True)
+              c.assemble_experiments()
+              c.assemble_reflections()
+              log_frame(c.experiment_list, c.reflections, self.db_params, evt.run(), n_spots, self.timestamp)
+            else:
+              print "Not logging %s, wrong bravais setting (expecting %d, got %d)" % (
+                self.timestamp, known_setting, indexed_setting)
           else:
             log_frame(None, None, self.db_params, evt.run(), n_spots, self.timestamp)
 

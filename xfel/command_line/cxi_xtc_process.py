@@ -72,6 +72,16 @@ phil_scope = parse('''
     method = *mpi sge
       .type = choice
       .help = "Muliprocessing method"
+    mpi {
+      method = client_server *striping
+        .type = choice
+        .help = Method of serving data to child processes in MPI. client_server:    \
+                use one process as a server that sends timestamps to each process.  \
+                All processes will stay busy at all times at the cost of MPI send/  \
+                recieve overhead. striping: each process uses its rank to determine \
+                which events to process. Some processes will finish early and go    \
+                idle, but no MPI overhead is incurred.
+    }
   }
   debug {
     write_debug_files = False
@@ -164,9 +174,10 @@ class Script(object):
       times = run.times()
       nevents = min(len(times),max_events)
 
-      if params.mp.method == "mpi" and size > 2:
+      if params.mp.method == "mpi" and size > 2 and params.mp.mpi.method == 'client_server':
         # use a client/server approach to be sure every process is busy as much as possible
         # only do this if there are more than 2 processes, as one process will be a server
+        print "Using MPI client server"
         if rank == 0:
           # server process
           for t in times[:nevents]:
@@ -188,6 +199,7 @@ class Script(object):
       else:
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
+        print "Striping events"
         mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
 
         for i in xrange(len(mytimes)):
