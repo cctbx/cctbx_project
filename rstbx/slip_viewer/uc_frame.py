@@ -136,6 +136,7 @@ class UCSettingsPanel(wx.Panel):
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.distance_ctrl = FloatSpin(
           self, digits=self.digits, name="Detector Distance", value=img.get_detector_distance())
+    self.distance_ctrl.SetIncrement(0.5)
     box.Add(self.distance_ctrl,
             0, wx.RIGHT | wx.TOP | wx.BOTTOM | wx.ALIGN_CENTER_VERTICAL, 5)
 
@@ -148,7 +149,7 @@ class UCSettingsPanel(wx.Panel):
     img = self.GetParent().GetParent()._img
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.wavelength_ctrl = FloatSpin(
-          self, digits=self.digits, name="Wavelength", value=img.get_wavelength())
+          self, digits=4, name="Wavelength", value=img.get_wavelength())
     self.wavelength_ctrl.SetIncrement(0.05)
     box.Add(self.wavelength_ctrl,
             0, wx.RIGHT | wx.TOP | wx.BOTTOM | wx.ALIGN_CENTER_VERTICAL, 5)
