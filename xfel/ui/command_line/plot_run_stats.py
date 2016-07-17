@@ -26,6 +26,9 @@ phil_str = """
   hit_cutoff = 30
     .type = int
     .help = Number of reflections to consider an image a hit. Estimate by looking at plot of strong reflections/image.
+  d_min = None
+    .type = float
+    .help = Highest resolution to consider for I/sigI plot
 """
 phil_scope = parse(phil_str + db_phil_str)
 
@@ -43,7 +46,7 @@ def run(args):
   all_results = []
   for run_no in params.run:
     runs.append(run_no)
-    all_results.append(HitrateStats(app, run_no, params.trial, params.rungroup)())
+    all_results.append(HitrateStats(app, run_no, params.trial, params.rungroup, params.d_min)())
   plot_multirun_stats(all_results, runs)
 
 if __name__ == "__main__":

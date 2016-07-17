@@ -78,11 +78,12 @@ class Stats(object):
     return cells
 
 class HitrateStats(object):
-  def __init__(self, app, run_number, trial_number, rungroup_id):
+  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None):
     self.app = app
     self.run = app.get_run(run_number = run_number)
     self.trial = app.get_trial(trial_number = trial_number)
     self.rungroup = app.get_rungroup(rungroup_id = rungroup_id)
+    self.d_min = d_min
 
   def __call__(self):
     from iotbx.detectors.cspad_detector_formats import reverse_timestamp
@@ -96,9 +97,16 @@ class HitrateStats(object):
     high_res_bin_ids = []
     for isoform in isoforms:
       bins = isoform.cell.bins
-      d_mins = [b.d_min for b in bins]
+      d_mins = [float(b.d_min) for b in bins]
       low_res_bin_ids.append(str(bins[d_mins.index(max(d_mins))].id))
-      high_res_bin_ids.append(str(bins[d_mins.index(min(d_mins))].id))
+      if self.d_min is None:
+        min_bin_index = d_mins.index(min(d_mins))
+      else:
+        d_maxes = [float(b.d_max) for b in bins]
+        qualified_bin_indices = [i for i in xrange(len(bins)) if d_maxes[i] >= self.d_min and d_mins[i] <= self.d_min]
+        assert len(qualified_bin_indices) == 1
+        min_bin_index = qualified_bin_indices[0]
+      high_res_bin_ids.append(str(bins[min_bin_index].id))
     assert len(low_res_bin_ids) > 0
     assert len(high_res_bin_ids) > 0
     assert len(low_res_bin_ids) == len(high_res_bin_ids)
