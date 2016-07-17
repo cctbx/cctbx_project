@@ -93,15 +93,20 @@ class HitrateStats(object):
     isoforms = self.trial.isoforms
     assert len(isoforms) > 0
     low_res_bin_ids = []
+    high_res_bin_ids = []
     for isoform in isoforms:
       bins = isoform.cell.bins
       d_mins = [b.d_min for b in bins]
       low_res_bin_ids.append(str(bins[d_mins.index(max(d_mins))].id))
+      high_res_bin_ids.append(str(bins[d_mins.index(min(d_mins))].id))
     assert len(low_res_bin_ids) > 0
+    assert len(high_res_bin_ids) > 0
+    assert len(low_res_bin_ids) == len(high_res_bin_ids)
 
     tag = self.app.params.experiment_tag
 
-    query = """SELECT event.timestamp, event.n_strong, cb.avg_intensity, cb.avg_sigma, cb.avg_i_sigi
+    # Get the high and low res avg_i_sigi in one query. Means there will be 2x timestamps retrieved, where each is found twice
+    query = """SELECT bin.id, event.timestamp, event.n_strong, cb.avg_i_sigi
                FROM `%s_event` event
                JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
                JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
@@ -112,21 +117,43 @@ class HitrateStats(object):
                JOIN `%s_cell_bin` cb ON cb.bin_id = bin.id AND cb.crystal_id = crystal.id
                WHERE event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d AND
                      cb.bin_id IN (%s)
-            """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id, ", ".join(low_res_bin_ids))
+            """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id, ", ".join(low_res_bin_ids + high_res_bin_ids))
     cursor = self.app.execute_query(query)
     timestamps = flex.double()
     n_strong = flex.int()
-    average_intensity = flex.double()
-    average_sigma = flex.double()
-    average_i_sigi = flex.double()
+    average_i_sigi_low = flex.double()
+    average_i_sigi_high = flex.double()
     for row in cursor.fetchall():
-      ts, n_s, avg_i, avg_s, avg_i_sigi = row
+      b_id, ts, n_s, avg_i_sigi = row
       rts = reverse_timestamp(ts)
-      timestamps.append(rts[0] + (rts[1]/1000))
-      n_strong.append(n_s)
-      average_intensity.append(avg_i)
-      average_sigma.append(avg_i)
-      average_i_sigi.append(avg_i_sigi)
+      rts = rts[0] + (rts[1]/1000)
+      if rts not in timestamps:
+        # First time through, figure out which bin is reported (high or low), add avg_i_sigi to that set of results
+        timestamps.append(rts)
+        n_strong.append(n_s)
+        if str(b_id) in low_res_bin_ids:
+          average_i_sigi_low.append(avg_i_sigi)
+          average_i_sigi_high.append(0)
+        elif str(b_id) in high_res_bin_ids:
+          average_i_sigi_low.append(0)
+          if avg_i_sigi is None:
+            average_i_sigi_high.append(0)
+          else:
+            average_i_sigi_high.append(avg_i_sigi)
+        else:
+          assert False
+      else:
+        # Second time through, already have added to timestamps and n_strong, so fill in missing avg_i_sigi
+        index = flex.first_index(timestamps, rts)
+        if str(b_id) in low_res_bin_ids:
+          average_i_sigi_low[index] = avg_i_sigi
+        elif str(b_id) in high_res_bin_ids:
+          if avg_i_sigi is None:
+            average_i_sigi_high[index] = 0
+          else:
+            average_i_sigi_high[index] = avg_i_sigi
+        else:
+          assert False
 
     # This left join query finds the events with no imageset, meaning they failed to index
     query = """SELECT event.timestamp, event.n_strong
@@ -142,15 +169,13 @@ class HitrateStats(object):
       rts = reverse_timestamp(ts)
       timestamps.append(rts[0] + (rts[1]/1000))
       n_strong.append(n_s)
-      average_intensity.append(0)
-      average_sigma.append(0)
-      average_i_sigi.append(0)
+      average_i_sigi_low.append(0)
+      average_i_sigi_high.append(0)
 
     order = flex.sort_permutation(timestamps)
     timestamps = timestamps.select(order)
     n_strong = n_strong.select(order)
-    average_intensity = average_intensity.select(order)
-    average_sigma = average_sigma.select(order)
-    average_i_sigi = average_i_sigi.select(order)
+    average_i_sigi_low = average_i_sigi_low.select(order)
+    average_i_sigi_high = average_i_sigi_high.select(order)
 
-    return timestamps, n_strong, average_intensity, average_sigma, average_i_sigi
+    return timestamps, n_strong, average_i_sigi_low, average_i_sigi_high

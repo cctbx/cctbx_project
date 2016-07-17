@@ -32,9 +32,9 @@ def run(args):
 
   app = xfel_db_application(params)
   for run_no in params.run:
-    timestamps, n_strong, average_intensity, average_sigma, average_i_sigi = HitrateStats(app, run_no, params.trial, params.rungroup)()
+    timestamps, n_strong, average_i_sigi_low, average_i_sigi_high = HitrateStats(app, run_no, params.trial, params.rungroup)()
     n_hit = (n_strong >= params.hit_cutoff).count(True)
-    n_indexed = (average_i_sigi > 0).count(True)
+    n_indexed = (average_i_sigi_low > 0).count(True)
     n_total = len(timestamps)
     print "% 4d  % 7d % 5.1f   % 7d % 5.1f  % 7d" % (run_no, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_total)
 

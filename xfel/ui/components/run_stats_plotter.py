@@ -2,42 +2,13 @@ from __future__ import division
 
 from dials.array_family import flex
 from matplotlib import pyplot as plt
-import random
 
 # get_hitrate_stats takes a tuple (run, trial, rungroup)
 # and returns a tuple of flex arrays as follows:
 # time (s) -- flex.double, timestamp of the shot,
 # n_strong -- flex.int, number of strong spots identified by hitfinder,
-# intensities -- flex.double, the average intensity to 10 Angstroms of each shot, if it indexed,
-# sigmas -- flex.double, the average sigma to 10 Angstroms of each shot, if it indexed,
-# I_sig_I -- flex.double, the average I/sig(I) to 10 Angstroms of each shot, if it indexed
-
-# # test data
-# time_zero = 19483.3
-# test_runs = []
-# for r in xrange(5): # test on some mock runs
-#   # timestamps in seconds
-#   t = flex.double()
-#   for i in xrange(1000):
-#     t.append(time_zero)
-#     time_zero += i
-#   # number strong spots identified
-#   n = flex.int()
-#   for i in xrange(1000):
-#     n.append(max(random.randint(-200, 100), 0))
-#   # intensities, sigmas and avg I/sig(I) of spots, if indexed, cut to 10 Angstroms
-#   I = flex.double() # not used
-#   S = flex.double() # not used
-#   I_sig_I = flex.double()
-#   for i in xrange(1000):
-#     I.append(random.random()*10000 - 3000)
-#     S.append(random.random()*1000 - 300)
-#     if n[i] > 0:
-#       I_sig_I.append(random.random()*6)
-#     else:
-#       I_sig_I.append(0)
-#   test_runs.append((t, n, I, S, I_sig_I))
-
+# I_sig_I_low -- flex.double, the average I/sig(I) in the low res bin of each shot, if it indexed
+# I_sig_I_high -- flex.double, the average I/sig(I) in the high res bin of each shot, if it indexed
 
 def plot_run_stats(timestamps,
                    n_strong,
@@ -72,7 +43,7 @@ def plot_run_stats(timestamps,
   ax3.scatter(t, i_sig_i_high, edgecolors="none", color='orange')
   ax3.axis('tight')
   ax3.set_ylabel("signal-to-noise")
-  f.subplots_adjust(hspace=0)o
+  f.subplots_adjust(hspace=0)
   ax3.set_xlabel("timestamp (s)")
   # add lines and text summaries at the timestamp boundaries
   for boundary in tuple_of_timestamp_boundaries:
@@ -96,15 +67,13 @@ def plot_run_stats(timestamps,
     ax4.text(start_t, .5, "%d idx" % n_idx)
     ax4.text(start_t, .3, "%-5.1f%% hit" % (100*n_hits/lengths[idx]))
     ax4.text(start_t, .1, "%-5.1f%% idx" % (100*n_idx/lengths[idx]))
-    ax4.gca().yaxis.set_major_locator(plt.NullLocator())
+    #ax4.gca().yaxis.set_major_locator(plt.NullLocator())
     start += lengths[idx]
   plt.show()
 
 def plot_multirun_stats(runs, run_numbers):
   tset = flex.double()
   nset = flex.int()
-  Iset = flex.double()
-  Sset = flex.double()
   I_sig_I_low_set = flex.double()
   I_sig_I_high_set = flex.double()
   boundaries = []
@@ -113,17 +82,15 @@ def plot_multirun_stats(runs, run_numbers):
     if len(r[0]) > 0:
       tset.extend(r[0])
       nset.extend(r[1])
-      Iset.extend(r[2])
-      Sset.extend(r[3])
-      I_sig_I_set_low.extend(r[4])
-      I_sig_I_set_high.extend(r[5])
+      I_sig_I_low_set.extend(r[2])
+      I_sig_I_high_set.extend(r[3])
       boundaries.append(r[0][0])
       boundaries.append(r[0][-1])
       lengths.append(len(r[0]))
   plot_run_stats(tset,
                  nset,
-                 I_sig_I_set_low,
-                 I_sig_I_set_high,
+                 I_sig_I_low_set,
+                 I_sig_I_high_set,
                  tuple(boundaries),
                  tuple(lengths),
                  run_numbers)
