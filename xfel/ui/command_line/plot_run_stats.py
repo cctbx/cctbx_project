@@ -39,10 +39,12 @@ def run(args):
   params = phil_scope.fetch(sources=user_phil).extract()
 
   app = xfel_db_application(params)
+  runs = []
   all_results = []
   for run_no in params.run:
+    runs.append(run_no)
     all_results.append(HitrateStats(app, run_no, params.trial, params.rungroup)())
-  plot_multirun_stats(all_results)
+  plot_multirun_stats(all_results, runs)
 
 if __name__ == "__main__":
   run(sys.argv[1:])

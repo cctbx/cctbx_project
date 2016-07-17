@@ -39,69 +39,94 @@ import random
 #   test_runs.append((t, n, I, S, I_sig_I))
 
 
-def plot_run_stats(timestamps, n_shots, i_sig_i, tuple_of_timestamp_boundaries):
-  iterator = xrange(len(i_sig_i))
+def plot_run_stats(timestamps,
+                   n_strong,
+                   i_sig_i_low,
+                   i_sig_i_high,
+                   tuple_of_timestamp_boundaries,
+                   lengths,
+                   run_numbers):
+  iterator = xrange(len(i_sig_i_low))
   # indexing rate in a sliding window
-  half_idx_rate_window = min(50, int(len(i_sig_i)//20))
-  idx_bool = i_sig_i > 0
+  half_idx_rate_window = min(50, int(len(i_sig_i_low)//20))
+  idx_bool = i_sig_i_low > 0
   idx_rate = flex.double()
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)
-    idx_max = min(i + half_idx_rate_window, len(i_sig_i))
+    idx_max = min(i + half_idx_rate_window, len(i_sig_i_low))
     idx_span = idx_max - idx_min
     idx_sele = idx_bool[idx_min:idx_max]
     idx_local_rate = idx_sele.count(True)/idx_span
     idx_rate.append(idx_local_rate)
-  # <I/sig(I)> per shot
-  # I_over_sig_I = flex.double()
-  # for i in iterator:
-  #   I_over_sig_I.append(I[i]/S[i])
-  # avg_I_over_sig_I = flex.double()
-  # for i in iterator:
-  #   avg = I_over_sig_I[i].min_max_mean().mean
-  #   if avg is not None:
-  #     avg_I_over_sig_I.append(avg)
-  #   else:
-  #     avg_I_over_sig_I.append(0)
-  # plot hitrate (as n_strong), indexing rate and <I/sig(I)> on same axes against timestamp, per run
-  idxrate_sel = i_sig_i > 0
-  t, hitrate = timestamps, n_shots
-  f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
-  ax1.scatter(t, hitrate, edgecolors="none", color ='orange')
-  ax1.scatter(t.select(idxrate_sel), hitrate.select(idxrate_sel), edgecolors="none", color='blue')
+  idxrate_sel = i_sig_i_low > 0
+  t, hits = timestamps, n_strong >= 40
+  f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
+  ax1.scatter(t, n_strong, edgecolors="none", color ='orange')
+  ax1.scatter(t.select(idxrate_sel), n_strong.select(idxrate_sel), edgecolors="none", color='blue')
   ax1.axis('tight')
   ax1.set_ylabel("strong spots")
   ax2.plot(t, idx_rate*100)
   ax2.axis('tight')
   ax2.set_ylabel("indexing rate per %d frames (%%)" % (2*half_idx_rate_window))
-  ax3.scatter(t, i_sig_i, edgecolors="none")
+  ax3.scatter(t, i_sig_i_low, edgecolors="none", color='red')
+  ax3.scatter(t, i_sig_i_high, edgecolors="none", color='orange')
   ax3.axis('tight')
   ax3.set_ylabel("signal-to-noise")
-  f.subplots_adjust(hspace=0)
+  f.subplots_adjust(hspace=0)o
   ax3.set_xlabel("timestamp (s)")
-  plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
-  # add lines at the timestamp boundaries
+  # add lines and text summaries at the timestamp boundaries
   for boundary in tuple_of_timestamp_boundaries:
     for a in (ax1, ax2, ax3):
       a.axvline(x=boundary, ymin=0, ymax=3, linewidth=1, color='k')
+  run_starts = tuple_of_timestamp_boundaries[0::2]
+  run_ends = tuple_of_timestamp_boundaries[1::2]
+  start = 0
+  end = -1
+  for idx in xrange(len(run_numbers)):
+    start_t = run_starts[idx]
+    end_t = run_ends[idx]
+    end += lengths[idx]
+    slice_t = t[start:end+1]
+    slice_hits = hits[start:end+1]
+    n_hits = slice_hits.count(True)
+    slice_idx_bool = idx_bool[start:end+1]
+    n_idx = slice_idx_bool.count(True)
+    ax4.text(start_t, .9, "run %d" % run_numbers[idx])
+    ax4.text(start_t, .7, "%d hits" % lengths[idx])
+    ax4.text(start_t, .5, "%d idx" % n_idx)
+    ax4.text(start_t, .3, "%-5.1f%% hit" % (100*n_hits/lengths[idx]))
+    ax4.text(start_t, .1, "%-5.1f%% idx" % (100*n_idx/lengths[idx]))
+    ax4.gca().yaxis.set_major_locator(plt.NullLocator())
+    start += lengths[idx]
   plt.show()
 
-def plot_multirun_stats(runs):
+def plot_multirun_stats(runs, run_numbers):
   tset = flex.double()
   nset = flex.int()
   Iset = flex.double()
   Sset = flex.double()
-  I_sig_I_set = flex.double()
+  I_sig_I_low_set = flex.double()
+  I_sig_I_high_set = flex.double()
   boundaries = []
+  lengths = []
   for r in runs:
-    tset.extend(r[0])
-    nset.extend(r[1])
-    Iset.extend(r[2])
-    Sset.extend(r[3])
-    I_sig_I_set.extend(r[4])
-    boundaries.append(r[0][0])
-    boundaries.append(r[0][-1])
-  plot_run_stats(tset, nset, I_sig_I_set, tuple(boundaries))
+    if len(r[0]) > 0:
+      tset.extend(r[0])
+      nset.extend(r[1])
+      Iset.extend(r[2])
+      Sset.extend(r[3])
+      I_sig_I_set_low.extend(r[4])
+      I_sig_I_set_high.extend(r[5])
+      boundaries.append(r[0][0])
+      boundaries.append(r[0][-1])
+      lengths.append(len(r[0]))
+  plot_run_stats(tset,
+                 nset,
+                 I_sig_I_set_low,
+                 I_sig_I_set_high,
+                 tuple(boundaries),
+                 tuple(lengths),
+                 run_numbers)
 
 if __name__ == "__main__":
   # plot_multirun_stats(test_runs)
