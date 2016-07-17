@@ -37,16 +37,21 @@ class UCSettingsPanel(wx.Panel):
     # Number of decimal digits for distances.
     self.digits = 2
 
+    # Wavelength control.
+    beam = self._pyslip.tiles.raw_image.get_beam()
+    self._wavelength = beam.get_wavelength()
+
     # Unit cell controls.
     if self.phil_params.calibrate_unitcell.unitcell is not None:
       self._cell = list(self.phil_params.calibrate_unitcell.unitcell.parameters())
     else:
-      self._cell = [78,78,37,90,90,90]
+      self._cell = [4.18,4.72,58.38,89.44,89.63,75.85]
 
     if self.phil_params.calibrate_unitcell.spacegroup is not None:
       self._spacegroup = self.phil_params.calibrate_unitcell.spacegroup
     else:
-      self._spacegroup = "P43212"
+      self._spacegroup = "P1"
+
     self._cell_control_names = ["uc_a_ctrl","uc_b_ctrl","uc_c_ctrl",
                                 "uc_alpha_ctrl","uc_beta_ctrl","uc_gamma_ctrl"]
 
@@ -139,12 +144,26 @@ class UCSettingsPanel(wx.Panel):
     self.Bind(EVT_FLOATSPIN, self.OnSpin, self.distance_ctrl)
     sizer.Add(box)
 
+    # Wavelength control
+    img = self.GetParent().GetParent()._img
+    box = wx.BoxSizer(wx.HORIZONTAL)
+    self.wavelength_ctrl = FloatSpin(
+          self, digits=self.digits, name="Wavelength", value=img.get_wavelength())
+    self.wavelength_ctrl.SetIncrement(0.05)
+    box.Add(self.wavelength_ctrl,
+            0, wx.RIGHT | wx.TOP | wx.BOTTOM | wx.ALIGN_CENTER_VERTICAL, 5)
+
+    txtw = wx.StaticText(self, label="Wavelength")
+    box.Add(txtw, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
+    self.Bind(EVT_FLOATSPIN, self.OnSpin, self.wavelength_ctrl)
+    sizer.Add(box)
+
 
     # d_min control
     if self.phil_params.calibrate_unitcell.d_min is not None:
       self.d_min = self.phil_params.calibrate_unitcell.d_min
     else:
-      self.d_min = 10
+      self.d_min = 3.5
     box = wx.BoxSizer(wx.HORIZONTAL)
     self.d_min_ctrl = FloatSpin(
           self, digits=self.digits, name="d_min", value=self.d_min)
@@ -279,7 +298,7 @@ class UCSettingsPanel(wx.Panel):
     detector = self._pyslip.tiles.raw_image.get_detector()
     beam     = self._pyslip.tiles.raw_image.get_beam()
 
-    wavelength = beam.get_wavelength()
+    wavelength = float(self.wavelength_ctrl.GetValue())
     distance = float(self.distance_ctrl.GetValue())
     pixel_size = detector[0].get_pixel_size()[0] # FIXME assumes square pixels, and that all panels use same pixel size
 
