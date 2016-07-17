@@ -21,23 +21,24 @@ def get_run_stats(timestamps,
   iterator = xrange(len(isigi_low))
   # indexing rate in a sliding window
   half_idx_rate_window = min(50, int(len(isigi_low)//20))
-  idx_bool = isigi_low > 0
+  idx_low_sel = isigi_low > 0
+  idx_high_sel = isigi_high > 0
   idx_rate = flex.double()
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)
     idx_max = min(i + half_idx_rate_window, len(isigi_low))
     idx_span = idx_max - idx_min
-    idx_sel = idx_bool[idx_min:idx_max]
+    idx_sel = idx_low_sel[idx_min:idx_max]
     idx_local_rate = idx_sel.count(True)/idx_span
     idx_rate.append(idx_local_rate)
-  idx_sel = isigi_low > 0
   # hit rate as dependent on n_strong_cutoff
   hits = n_strong >= n_strong_cutoff
   return (timestamps,
           n_strong,
           hits,
           idx_rate,
-          idx_sel,
+          idx_low_sel,
+          idx_high_sel,
           isigi_low,
           isigi_high,
           half_idx_rate_window*2,
@@ -49,7 +50,7 @@ def plot_run_stats(stats,
                    interactive=True,
                    gui=False,
                    gui_figure=None):
-  t, n_strong, hits, idx_rate, idx_sel, isigi_low, isigi_high, \
+  t, n_strong, hits, idx_rate, idx_low_sel, idx_high_sel, isigi_low, isigi_high, \
   window, lengths, boundaries, run_numbers = stats
   if gui:
     assert gui_figure is not None
@@ -57,8 +58,8 @@ def plot_run_stats(stats,
   else:
     fig = plt
   f, (ax1, ax2, ax3, ax4) = fig.subplots(4, sharex=True, sharey=False)
-  ax1.scatter(t.select(~idx_sel), n_strong.select(~idx_sel), edgecolors="none", color ='orange')
-  ax1.scatter(t.select(idx_sel), n_strong.select(idx_sel), edgecolors="none", color='blue')
+  ax1.scatter(t.select(~idx_low_sel), n_strong.select(~idx_low_sel), edgecolors="none", color ='orange')
+  ax1.scatter(t.select(idx_low_sel), n_strong.select(idx_low_sel), edgecolors="none", color='blue')
   ax1.axis('tight')
   ax1.set_ylabel("strong spots\nblue: low resolution\nyellow: high_resolution")
   ax2.plot(t, idx_rate*100)
@@ -85,25 +86,30 @@ def plot_run_stats(stats,
     slice_t = t[start:end+1]
     slice_hits = hits[start:end+1]
     n_hits = slice_hits.count(True)
-    slice_idx_bool = idx_sel[start:end+1]
-    n_idx = slice_idx_bool.count(True)
+    slice_idx_low_sel = idx_low_sel[start:end+1]
+    slice_idx_high_sel = idx_high_sel[start:end+1]
+    n_idx_low = slice_idx_low_sel.count(True)
+    n_idx_high = slice_idx_high_sel.count(True)
     ax4.text(start_t, .9, "run %d" % run_numbers[idx])
     ax4.text(start_t, .7, "%d hits" % lengths[idx])
-    ax4.text(start_t, .5, "%d idx" % n_idx)
-    ax4.text(start_t, .3, "%-5.1f%% hit" % (100*n_hits/lengths[idx]))
-    ax4.text(start_t, .1, "%-5.1f%% idx" % (100*n_idx/lengths[idx]))
+    ax4.text(start_t, .5, "%d (%d) idx" % (n_idx_low, n_idx_high))
+    ax4.text(start_t, .3, "%-3.1f%% hit" % (100*n_hits/lengths[idx],))
+    ax4.text(start_t, .1, "%-3.1f(%-3.1f)%% idx" % \
+      (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]))
     #ax4.gca().yaxis.set_major_locator(plt.NullLocator())
     start += lengths[idx]
   fig.show()
 
-def plot_multirun_stats(runs, run_numbers, n_strong_cutoff=40):
+def plot_multirun_stats(runs, run_numbers, n_strong_cutoff=40, gui=False, gui_figure=None):
   tset = flex.double()
   nset = flex.int()
   I_sig_I_low_set = flex.double()
   I_sig_I_high_set = flex.double()
   boundaries = []
   lengths = []
-  for r in runs:
+  runs_with_data = []
+  for idx in xrange(len(runs)):
+    r = runs[idx]
     if len(r[0]) > 0:
       tset.extend(r[0])
       nset.extend(r[1])
@@ -112,15 +118,16 @@ def plot_multirun_stats(runs, run_numbers, n_strong_cutoff=40):
       boundaries.append(r[0][0])
       boundaries.append(r[0][-1])
       lengths.append(len(r[0]))
+      runs_with_data.append(run_numbers[idx])
   stats_tuple = get_run_stats(tset,
                               nset,
                               I_sig_I_low_set,
                               I_sig_I_high_set,
                               tuple(boundaries),
                               tuple(lengths),
-                              run_numbers,
+                              runs_with_data,
                               n_strong_cutoff=n_strong_cutoff)
-  plot_run_stats(stats_tuple, interactive=True)
+  plot_run_stats(stats_tuple, interactive=True, gui=False, gui_figure=None)
 
 if __name__ == "__main__":
   import sys

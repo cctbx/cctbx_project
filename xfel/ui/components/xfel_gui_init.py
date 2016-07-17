@@ -299,6 +299,76 @@ class ProgressSentinel(Thread):
       self.parent.run_window.prg_light.change_status('on')
       time.sleep(5)
 
+# ----------------------------- Run Stats Sentinel ---------------------------- #
+
+# Set up events for monitoring hitrate, indexing rate and I/sig(I)
+tp_EVT_RUNSTATS_REFRESH = wx.NewEventType()
+EVT_RUNSTATS_REFRESH = wx.PyEventBinder(tp_EVT_RUNSTATS_REFRESH, 1)
+
+class RefreshRunStats(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, result=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.result = result
+  def GetValue(self):
+    return self.result
+
+class RunStatsSentinel(Thread):
+  ''' Worker thread for run stats; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+    self.output = self.parent.params.output_folder
+    self.number_of_pickles = 0
+    self.info = {}
+
+    # on initialization (and restart), make sure run stats drawn from scratch
+    self.parent.run_window.runstats_tab.redraw_windows = True
+
+  def post_refresh(self):
+    evt = RefreshRunStats(tp_EVT_RUNSTATS_REFRESH, -1, self.info)
+    wx.PostEvent(self.parent.run_window.runstats_tab, evt)
+
+  def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+    self.db = xfel_db_application(self.parent.params)
+
+    while self.active:
+      self.parent.run_window.runstats_light.change_status('idle')
+      self.plot_run_stats()
+      self.post_refresh()
+      self.info = {}
+      self.parent.run_window.runstats_light.change_status('on')
+      time.sleep(5)
+
+  def plot_run_stats(self):
+    from xfel.ui.components.xfel_gui_controls import PyplotPanel
+    from xfel.ui.db.stats import HitrateStats
+    from xfel.ui.components.run_stats_plotter import plot_multirun_stats
+    import copy
+    if self.parent.run_window.runstats_tab.trial is not None:
+      trial = self.db.get_trial(
+        trial_number=self.parent.run_window.runstats_tab.trial_no)
+      selected_runs = copy.deepcopy(self.parent.run_window.runstats_tab.selected_runs)
+      run_numbers = []
+      # runs = []
+      stats = []
+      for rg in trial.rungroups:
+        for run in rg.runs:
+          if run.run not in run_numbers and run.run in selected_runs:
+            # runs.append(run)
+            run_numbers.append(run.run)
+            stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id)())
+      fig = self.parent.run_window.runstats_tab.pyplot_panel.figure
+      plot_multirun_stats(stats, run_numbers, gui=True, gui_figure=fig)
+
+
 # ------------------------------- Frames Sentinel ------------------------------- #
 
 # Set up events for FramesSeninel
@@ -440,6 +510,7 @@ class MainWindow(wx.Frame):
     self.job_sentinel = None
     self.job_monitor = None
     self.prg_sentinel = None
+    self.runstats_sentinel = None
 
     self.params = load_cached_settings()
     self.db = None
@@ -531,6 +602,9 @@ class MainWindow(wx.Frame):
     if self.prg_sentinel is not None and self.prg_sentinel.active:
       self.stop_prg_sentinel()
 
+    if self.runstats_sentinel is not None and self.runstats_sentinel.active:
+      self.stop_runstats_sentinel()
+
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
     self.run_sentinel.start()
@@ -575,6 +649,16 @@ class MainWindow(wx.Frame):
     self.run_window.prg_light.change_status('off')
     self.prg_sentinel.active = False
     self.prg_sentinel.join()
+
+  def start_runstats_sentinel(self):
+    self.runstats_sentinel = RunStatsSentinel(self, active=True)
+    self.runstats_sentinel.start()
+    self.run_window.runstats_light.change_status('on')
+
+  def stop_runstats_sentinel(self):
+    self.run_window.runstats_light.change_status('off')
+    self.runstats_sentinel.active = False
+    self.runstats_sentinel.join()
 
   def OnAboutBox(self, e):
     ''' About dialog '''
@@ -624,6 +708,10 @@ class MainWindow(wx.Frame):
         self.start_prg_sentinel()
         self.run_window.prg_light.change_status('on')
     elif tab == 4:
+      if self.runstats_sentinel is None or not self.runstats_sentinel.active:
+        self.start_runstats_sentinel()
+        self.run_window.runstats_light.change_status('on')
+    elif tab == 5:
       self.run_window.merge_tab.find_trials()
 
   def onLeavingTab(self, e):
@@ -636,6 +724,10 @@ class MainWindow(wx.Frame):
       if self.prg_sentinel.active:
         self.stop_prg_sentinel()
         self.run_window.prg_light.change_status('off')
+    elif tab == 4:
+      if self.runstats_sentinel.active:
+        self.stop_runstats_sentinel()
+        self.run_window.runstats_light.change_status('off')
 
 
   def onQuit(self, e):
@@ -657,22 +749,26 @@ class RunWindow(wx.Panel):
     self.trials_tab = TrialsTab(self.main_nbook, main=self.parent)
     self.jobs_tab = JobsTab(self.main_nbook, main=self.parent)
     self.status_tab = StatusTab(self.main_nbook, main=self.parent)
+    self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
     self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, 'Runs')
     self.main_nbook.AddPage(self.trials_tab, 'Trials')
     self.main_nbook.AddPage(self.jobs_tab, 'Jobs')
     self.main_nbook.AddPage(self.status_tab, 'Status')
+    self.main_nbook.AddPage(self.runstats_tab, 'Run Stats')
     self.main_nbook.AddPage(self.merge_tab, 'Merge')
 
-    self.sentinel_box = wx.FlexGridSizer(1, 4, 0, 20)
+    self.sentinel_box = wx.FlexGridSizer(1, 5, 0, 20)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
     self.jmn_light = gctr.SentinelStatus(self.main_panel, label='Job Monitor')
     self.prg_light = gctr.SentinelStatus(self.main_panel, label='Progress Sentinel')
+    self.runstats_light = gctr.SentinelStatus(self.main_panel, label='Run Stats Sentinel')
     self.sentinel_box.Add(self.run_light)
     self.sentinel_box.Add(self.job_light)
     self.sentinel_box.Add(self.jmn_light)
     self.sentinel_box.Add(self.prg_light)
+    self.sentinel_box.Add(self.runstats_light)
 
     nb_sizer = wx.BoxSizer(wx.VERTICAL)
     nb_sizer.Add(self.main_nbook, 1, flag=wx.EXPAND | wx.ALL, border=3)
@@ -1257,6 +1353,127 @@ class StatusTab(BaseTab):
     self.rows[name]['row'] = row
     self.rows[name]['high_bin'] = row.bins.ctr.GetClientData(
       row.bins.ctr.GetSelection())
+
+
+class RunStatsTab(BaseTab):
+  def __init__(self, parent, main):
+    BaseTab.__init__(self, parent=parent)
+
+    self.main = main
+    self.pyplot_panel = None
+    self.all_trials = []
+    self.trial_no = 0
+    self.trial = None
+    self.runs_available = []
+    self.selected_runs = []
+    self.tag_trial_changed = True
+    self.tag_runs_changed = True
+    self.redraw_windows = True
+
+    # self.runstats_panel = ScrolledPanel(self, size=(900, 120))
+    # self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
+    # self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL)
+    # self.runstats_panel.SetSizer(self.runstats_sizer)
+
+    self.pyplot_panel = gctr.PyplotPanel(self)
+    self.pyplot_box = wx.StaticBox(self.pyplot_panel, label='Run Statistics')
+    self.pyplot_sizer = wx.StaticBoxSizer(self.pyplot_box, wx.VERTICAL)
+    self.pyplot_panel.SetSizer(self.pyplot_sizer)
+
+    self.trial_number = gctr.ChoiceCtrl(self,
+                                        label='Trial:',
+                                        label_size=(120, -1),
+                                        label_style='normal',
+                                        ctrl_size=(100, -1),
+                                        choices=[])
+    self.run_numbers =  gctr.CheckListCtrl(self,
+                                           label='Selected runs:',
+                                           label_size=(200, -1),
+                                           label_style='normal',
+                                           ctrl_size=(150, -1),
+                                           direction='vertical',
+                                           choices=[])
+
+    self.options_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+
+    options_box = wx.StaticBox(self, label='Statistics Options')
+    self.options_box_sizer = wx.StaticBoxSizer(options_box, wx.VERTICAL)
+    self.options_opt_sizer = wx.GridBagSizer(1, 2)
+
+    self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
+                               flag=wx.ALL, border=10)
+    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(2, 1),
+                               flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
+                               border=10)
+    self.options_box_sizer.Add(self.options_opt_sizer, flag=wx.EXPAND)
+    self.options_sizer.Add(self.options_box_sizer)
+
+    self.main_sizer.Add(self.pyplot_panel, 1,
+                        flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.options_sizer, 1,
+                        flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Bindings
+    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
+    self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
+    self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
+
+  def onTrialChoice(self, e):
+    self.trial_no = self.trial_number.ctr.GetSelection()
+    self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
+    self.pyplot_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
+    self.find_runs()
+
+  def onRunChoice(self, e):
+    run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
+    if self.trial is not None:
+      self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
+      self.main.run_window.runstats_light.change_status('idle')
+      # self.tag_runs_changed = True
+
+  def find_trials(self):
+    self.all_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    self.trial_number.ctr.Clear()
+    for trial in self.all_trials:
+      self.trial_number.ctr.Append(trial)
+    self.trial_number.ctr.SetSelection(self.trial_no)
+
+  def find_runs(self):
+    self.run_numbers.ctr.Clear()
+    if self.trial is not None:
+      self.runs_available = [str(r.run) for r in self.trial.runs]
+      self.run_numbers.ctr.InsertItems(items=self.runs_available, pos=0)
+
+  def onRefresh(self, e):
+    self.refresh_trials()
+    self.refresh_runs()
+    # self.plot_runstats()
+    if self.redraw_windows:
+      self.pyplot_sizer.Clear(deleteWindows=True)
+      self.find_trials()
+      self.find_runs()
+      # self.redraw_plot()
+      self.redraw_windows = False
+    self.pyplot_panel.SetSizer(self.pyplot_sizer)
+    self.pyplot_sizer.Layout()
+    # self.pyplot_panel.SetupScrolling()
+    if self.trial is not None:
+      self.pyplot_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
+    else:
+      self.pyplot_box.SetLabel('Run Statistics - No trial selected')
+
+  def refresh_trials(self):
+    self.all_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+
+  def refresh_runs(self):
+    if self.trial is not None:
+      new_runs = [str(r.run) for r in self.trial.runs]
+      old_runs = self.run_numbers.ctr.GetItems()
+      n_runs = len(old_runs)
+      for run in new_runs:
+        if run not in old_runs:
+          self.run_numbers.ctr.InsertItems(items=[run], pos=n_runs)
+          n_runs += 1
 
 
 class MergeTab(BaseTab):
