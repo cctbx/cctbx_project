@@ -85,6 +85,42 @@ ATOM      5  O   ALA A   1       1.425   0.883  -1.851  1.00 20.00      A    O
 ATOM      6  OXT ALA A   1       0.066   2.117  -0.674  1.00 20.00      A    O-1
 """
 
+pdb_str_7 = """
+CRYST1  405.833  405.833  236.667  90.00  90.00  90.00 P 1
+ATOM  10021  N   ALA E1273     302.855 197.287 175.926  1.00 96.14           N
+ATOM  10022  CA  ALA E1273     303.086 195.852 176.039  1.00 96.14           C
+ATOM  10023  C   ALA E1273     303.598 195.351 174.696  1.00 96.14           C
+ATOM  10024  O   ALA E1273     303.769 196.123 173.749  1.00 96.14           O
+ATOM  10025  CB  ALA E1273     301.819 195.120 176.456  1.00174.39           C
+ATOM  10026  N   HIS E1274     303.840 194.045 174.612  1.00 96.33           N
+ATOM  10027  CA  HIS E1274     304.277 193.409 173.371  1.00 96.33           C
+ATOM  10028  C   HIS E1274     303.842 191.944 173.370  1.00 96.33           C
+ATOM  10029  O   HIS E1274     303.670 191.358 174.436  1.00 96.33           O
+ATOM  10030  CB  HIS E1274     305.794 193.523 173.216  1.00174.39           C
+ATOM  10031  CG  HIS E1274     306.463 192.245 172.818  1.00174.39           C
+ATOM  10032  ND1 HIS E1274     306.808 191.271 173.730  1.00174.39           N
+ATOM  10033  CD2 HIS E1274     306.848 191.779 171.606  1.00174.39           C
+ATOM  10034  CE1 HIS E1274     307.379 190.261 173.098  1.00174.39           C
+ATOM  10035  NE2 HIS E1274     307.416 190.544 171.809  1.00174.39           N
+ATOM  10036  N   ARG E1275     303.671 191.339 172.195  1.00 96.53           N
+ATOM  10037  CA  ARG E1275     303.301 189.931 172.174  1.00 96.53           C
+ATOM  10038  C   ARG E1275     304.315 189.194 173.039  1.00 96.53           C
+ATOM  10039  O   ARG E1275     305.308 188.665 172.530  1.00 96.53           O
+ATOM  10040  CB  ARG E1275     303.279 189.375 170.749  1.00174.39           C
+ATOM  10041  N   UNK E1276     304.062 189.142 174.347  1.00 95.20           N
+ATOM  10042  CA  UNK E1276     305.103 188.914 175.332  1.00 95.20           C
+ATOM  10043  C   UNK E1276     305.569 187.487 175.535  1.00 95.20           C
+ATOM  10044  O   UNK E1276     305.814 187.071 176.671  1.00 95.20           O
+ATOM  10045  CB  UNK E1276     304.640 189.472 176.669  1.00161.31           C
+ATOM  10046  N   UNK E1277     305.690 186.727 174.455  1.00 94.99           N
+ATOM  10047  CA  UNK E1277     306.151 185.349 174.528  1.00 94.99           C
+ATOM  10048  C   UNK E1277     306.888 185.034 173.233  1.00 94.99           C
+ATOM  10049  O   UNK E1277     307.382 185.940 172.554  1.00 94.99           O
+ATOM  10050  CB  UNK E1277     304.991 184.389 174.752  1.00161.31           C
+TER
+END
+"""
+
 def exercise_1():
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv              = server.server(),
@@ -161,9 +197,27 @@ def exercise_3():
   assert len(c_beta_skip.get("d-peptide", []))==0
   assert len(c_beta_skip.get("-ve", []))==1
 
+def exercise_4():
+  """
+  Testing UNK to be equivalent to ALA
+  """
+  pdb_h = iotbx.pdb.input(
+      source_info=None,
+      lines=pdb_str_7).construct_hierarchy()
+  c_beta_restrs, c_beta_skip = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  assert c_beta_restrs.size()==10
+  assert c_beta_skip == {}
+  #
+  pdb_h = iotbx.pdb.input(
+      source_info=None,
+      lines=pdb_str_7.replace("UNK","ALA")).construct_hierarchy()
+  c_beta_restrs, c_beta_skip = c_beta.get_c_beta_torsion_proxies(pdb_h)
+  assert c_beta_restrs.size()==10
+  assert c_beta_skip == {}
 
 if (__name__ == "__main__") :
   exercise_1()
   exercise_2()
   exercise_3()
+  exercise_4()
   print "OK"

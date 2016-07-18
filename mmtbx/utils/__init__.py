@@ -2820,6 +2820,19 @@ class extract_box_around_model_and_map(object):
       self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
     else:
       self.shift_to_map_boxed_sites_back = None
+    ###
+    #import boost.python
+    #cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+    #mask = cctbx_maptbx_ext.mask(
+    #  sites_frac                  = self.xray_structure_box.sites_frac(),
+    #  unit_cell                   = self.xray_structure_box.unit_cell(),
+    #  n_real                      = self.map_box.all(),
+    #  mask_value_inside_molecule  = 1,
+    #  mask_value_outside_molecule = 0,
+    #  radii                       =
+    #    flex.double(self.xray_structure_box.sites_frac().size(), 2.0))
+    #self.map_box = self.map_box*mask
+    ###
 
   def select_box(self,threshold,xrs=None):
     # Select box where data are positive (> threshold*max)

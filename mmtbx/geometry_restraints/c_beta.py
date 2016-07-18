@@ -22,69 +22,59 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
   c_beta_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
   c_beta_residues_skipped = {}
+  s0 = set([' N  ', ' CA ', ' C  ', ' CB '])
   for model in pdb_hierarchy.select(sel).models():
     for chain in model.chains():
-      if chain.is_protein():
-        for rg in chain.residue_groups():
-          for conformer in rg.conformers():
-            for residue in conformer.residues():
-              CB_atom = residue.find_atom_by(name=" CB ")
-              if residue.resname in three_letter_l_given_three_letter_d:
-                c_beta_residues_skipped.setdefault("d-peptide", [])
-                c_beta_residues_skipped['d-peptide'].append(CB_atom)
+      for rg in chain.residue_groups():
+        for conformer in rg.conformers():
+          for residue in conformer.residues():
+            if(not s0.issubset(set(residue.atoms().extract_name()))): continue
+            CB_atom = residue.find_atom_by(name=" CB ")
+            if residue.resname in three_letter_l_given_three_letter_d:
+              c_beta_residues_skipped.setdefault("d-peptide", [])
+              c_beta_residues_skipped['d-peptide'].append(CB_atom)
+              continue
+            CA_atom = residue.find_atom_by(name=" CA ")
+            N_atom  = residue.find_atom_by(name=" N  ")
+            C_atom  = residue.find_atom_by(name=" C  ")
+            if(N_atom is not None and CA_atom is not None
+               and C_atom is not None and CB_atom is not None):
+              if not (actual_bselection[N_atom.i_seq] and
+                  actual_bselection[CA_atom.i_seq] and
+                  actual_bselection[C_atom.i_seq] and
+                  actual_bselection[CB_atom.i_seq] ):
                 continue
-              CA_atom = residue.find_atom_by(name=" CA ")
-              N_atom  = residue.find_atom_by(name=" N  ")
-              C_atom  = residue.find_atom_by(name=" C  ")
-              if (N_atom is not None and CA_atom is not None
-                  and C_atom is not None and CB_atom is not None):
-                if not (actual_bselection[N_atom.i_seq] and
-                    actual_bselection[CA_atom.i_seq] and
-                    actual_bselection[C_atom.i_seq] and
-                    actual_bselection[CB_atom.i_seq] ):
-                  continue
-                #
-                # check for correct chiral volume
-                #
-                sites_cart = [N_atom.xyz,
-                              C_atom.xyz,
-                              CA_atom.xyz,
-                              CB_atom.xyz]
-                chiral = cctbx.geometry_restraints.chirality(
-                  sites_cart,
-                  volume_ideal=0.,
-                  both_signs=True,
-                  weight=1.,
-                  )
-                if chiral.volume_model<0:
-                  c_beta_residues_skipped.setdefault("-ve", [])
-                  c_beta_residues_skipped["-ve"].append(CB_atom)
-                  continue
-                dihedralNCAB, dihedralCNAB = get_cb_target_angle_pair(
-                                               resname=residue.resname)
-                #NCAB
-                i_seqs = [N_atom.i_seq,
-                          C_atom.i_seq,
-                          CA_atom.i_seq,
-                          CB_atom.i_seq]
-                dp_add = cctbx.geometry_restraints.dihedral_proxy(
-                  i_seqs=i_seqs,
-                  angle_ideal=dihedralNCAB,
-                  weight=1/sigma**2,
-                  origin_id=1)
-                c_beta_dihedral_proxies.append(dp_add)
-                #CNAB
-                i_seqs = [C_atom.i_seq,
-                          N_atom.i_seq,
-                          CA_atom.i_seq,
-                          CB_atom.i_seq]
-                dp_add = cctbx.geometry_restraints.dihedral_proxy(
-                  i_seqs=i_seqs,
-                  angle_ideal=dihedralCNAB,
-                  weight=1/sigma**2,
-                  origin_id=1)
-                c_beta_dihedral_proxies.append(dp_add)
-  return c_beta_dihedral_proxies, c_beta_residues_skipped
+              # check for correct chiral volume
+              sites_cart = [N_atom.xyz, C_atom.xyz, CA_atom.xyz, CB_atom.xyz]
+              chiral = cctbx.geometry_restraints.chirality(
+                sites_cart,
+                volume_ideal=0.,
+                both_signs=True,
+                weight=1.,
+                )
+              if(chiral.volume_model<0):
+                c_beta_residues_skipped.setdefault("-ve", [])
+                c_beta_residues_skipped["-ve"].append(CB_atom)
+                continue
+              dihedralNCAB, dihedralCNAB = get_cb_target_angle_pair(
+                                             resname=residue.resname)
+              #NCAB
+              i_seqs = [N_atom.i_seq,C_atom.i_seq,CA_atom.i_seq,CB_atom.i_seq]
+              dp_add = cctbx.geometry_restraints.dihedral_proxy(
+                i_seqs=i_seqs,
+                angle_ideal=dihedralNCAB,
+                weight=1/sigma**2,
+                origin_id=1)
+              c_beta_dihedral_proxies.append(dp_add)
+              #CNAB
+              i_seqs = [C_atom.i_seq,N_atom.i_seq,CA_atom.i_seq,CB_atom.i_seq]
+              dp_add = cctbx.geometry_restraints.dihedral_proxy(
+                i_seqs=i_seqs,
+                angle_ideal=dihedralCNAB,
+                weight=1/sigma**2,
+                origin_id=1)
+              c_beta_dihedral_proxies.append(dp_add)
+  return c_beta_dihedral_proxies, c_beta_residues_skipped # BAD
 
 def get_cb_target_angle_pair(resname):
   target_angle_dict = {
