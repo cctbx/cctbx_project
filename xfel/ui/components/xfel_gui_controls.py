@@ -736,18 +736,3 @@ class IsoformInfoCtrl(CtrlBase):
       plotter = pltr.PopUpCharts()
       plotter.plot_uc_histogram(info=self.uc_values)
 
-class PyplotPanel(wx.Panel):
-  def __init__(self, parent):
-    import matplotlib as mpl
-    mpl.use("WXAgg")
-    from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as Canvas
-    # from matplotlib.backends.backend_wx import NavigationToolbar2Wx
-    from matplotlib.figure import Figure
-    wx.Panel.__init__(self, parent)
-    self.figure = Figure()
-  def draw(self):
-    self.canvas = Canvas()
-    self.sizer.Add(self.canvas, 1, wx.LEFT | wx,TOP | wx.GROW)
-    self.SetSizer(self.sizer)
-    self.Fit()
-

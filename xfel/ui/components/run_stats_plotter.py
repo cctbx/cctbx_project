@@ -93,9 +93,8 @@ def plot_run_stats(stats, d_min, interactive=True):
   if interactive:
     plt.show()
   else:
-    figure = plt.figure()
-    figure.savefig("runstats_tmp.png", bbox_inches='tight')
-    plt.close(figure)
+    f.savefig("runstats_tmp.png", bbox_inches='tight')
+    plt.close(f)
     return "runstats_tmp.png"
 
 def plot_multirun_stats(runs,
@@ -133,7 +132,8 @@ def plot_multirun_stats(runs,
                               tuple(lengths),
                               runs_with_data,
                               n_strong_cutoff=n_strong_cutoff)
-  plot_run_stats(stats_tuple, d_min, interactive=True)
+  png = plot_run_stats(stats_tuple, d_min, interactive=interactive)
+  return png
 
 if __name__ == "__main__":
   import sys
