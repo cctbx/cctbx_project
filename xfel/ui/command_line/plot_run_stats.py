@@ -29,6 +29,10 @@ phil_str = """
   d_min = None
     .type = float
     .help = Highest resolution to consider for I/sigI plot
+  compress_runs = True
+    .type = bool
+    .help = When plotting multiple runs, adjust timestamps so there is no blank space between them.
+    .help = Thise mode is not compatible with fetching events from timestamps.
 """
 phil_scope = parse(phil_str + db_phil_str)
 
@@ -47,7 +51,8 @@ def run(args):
   for run_no in params.run:
     runs.append(run_no)
     all_results.append(HitrateStats(app, run_no, params.trial, params.rungroup, params.d_min)())
-  plot_multirun_stats(all_results, runs, params.hit_cutoff)
+  plot_multirun_stats(all_results, runs, params.hit_cutoff, \
+    interactive=True, compress_runs=params.compress_runs)
 
 if __name__ == "__main__":
   run(sys.argv[1:])

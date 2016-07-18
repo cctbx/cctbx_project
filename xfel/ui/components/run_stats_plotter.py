@@ -101,7 +101,8 @@ def plot_multirun_stats(runs,
                         run_numbers,
                         d_min,
                         n_strong_cutoff=40,
-                        interactive=False):
+                        interactive=False,
+                        compress_runs=True):
   tset = flex.double()
   nset = flex.int()
   I_sig_I_low_set = flex.double()
@@ -113,8 +114,11 @@ def plot_multirun_stats(runs,
   for idx in xrange(len(runs)):
     r = runs[idx]
     if len(r[0]) > 0:
-      tslice = r[0] - r[0][0] + offset
-      offset += (r[0][-1] - r[0][0])
+      if compress_runs:
+        tslice = r[0] - r[0][0] + offset
+        offset += (r[0][-1] - r[0][0])
+      else:
+        tslice = r[0]
       last_end = r[0][-1]
       tset.extend(tslice)
       nset.extend(r[1])
