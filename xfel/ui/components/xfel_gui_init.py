@@ -326,6 +326,8 @@ class RunStatsSentinel(Thread):
     self.output = self.parent.params.output_folder
     self.number_of_pickles = 0
     self.info = {}
+    self.run_numbers = []
+    self.stats = []
 
     # on initialization (and restart), make sure run stats drawn from scratch
     self.parent.run_window.runstats_tab.redraw_windows = True
@@ -341,32 +343,36 @@ class RunStatsSentinel(Thread):
 
     while self.active:
       self.parent.run_window.runstats_light.change_status('idle')
-      self.plot_run_stats()
+      self.plot_stats_static()
       self.post_refresh()
       self.info = {}
       self.parent.run_window.runstats_light.change_status('on')
       time.sleep(5)
 
-  def plot_run_stats(self):
-    from xfel.ui.components.xfel_gui_controls import PyplotPanel
+  def refresh_stats(self):
     from xfel.ui.db.stats import HitrateStats
-    from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     import copy
     if self.parent.run_window.runstats_tab.trial is not None:
       trial = self.db.get_trial(
         trial_number=self.parent.run_window.runstats_tab.trial_no)
       selected_runs = copy.deepcopy(self.parent.run_window.runstats_tab.selected_runs)
-      run_numbers = []
-      # runs = []
-      stats = []
+      self.run_numbers = []
+      self.stats = []
       for rg in trial.rungroups:
         for run in rg.runs:
-          if run.run not in run_numbers and run.run in selected_runs:
-            # runs.append(run)
-            run_numbers.append(run.run)
-            stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id)())
-      fig = self.parent.run_window.runstats_tab.pyplot_panel.figure
-      plot_multirun_stats(stats, run_numbers, gui=True, gui_figure=fig)
+          if run.run not in self.run_numbers and run.run in selected_runs:
+            self.run_numbers.append(run.run)
+            self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id, d_min=2.5)())
+
+  def plot_stats_static(self):
+    from xfel.ui.components.run_stats_plotter import plot_multirun_stats
+    self.refresh_stats()
+    plot_multirun_stats(self.stats, self.run_numbers, 2.5, interactive=False)
+
+  def plot_stats_interactive(self):
+    self.refresh_stats()
+    self.parent.run_window.runstats_tab.png = plot_multirun_stats(
+      stats, run_numbers, 2.5, interactive=True)
 
 
 # ------------------------------- Frames Sentinel ------------------------------- #
@@ -1360,7 +1366,6 @@ class RunStatsTab(BaseTab):
     BaseTab.__init__(self, parent=parent)
 
     self.main = main
-    self.pyplot_panel = None
     self.all_trials = []
     self.trial_no = 0
     self.trial = None
@@ -1368,17 +1373,13 @@ class RunStatsTab(BaseTab):
     self.selected_runs = []
     self.tag_trial_changed = True
     self.tag_runs_changed = True
+    self.png = None
     self.redraw_windows = True
 
-    # self.runstats_panel = ScrolledPanel(self, size=(900, 120))
-    # self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
-    # self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL)
-    # self.runstats_panel.SetSizer(self.runstats_sizer)
-
-    self.pyplot_panel = gctr.PyplotPanel(self)
-    self.pyplot_box = wx.StaticBox(self.pyplot_panel, label='Run Statistics')
-    self.pyplot_sizer = wx.StaticBoxSizer(self.pyplot_box, wx.VERTICAL)
-    self.pyplot_panel.SetSizer(self.pyplot_sizer)
+    self.runstats_panel = ScrolledPanel(self, size=(900, 120))
+    self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
+    self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL)
+    self.runstats_panel.SetSizer(self.runstats_sizer)
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
@@ -1408,7 +1409,7 @@ class RunStatsTab(BaseTab):
     self.options_box_sizer.Add(self.options_opt_sizer, flag=wx.EXPAND)
     self.options_sizer.Add(self.options_box_sizer)
 
-    self.main_sizer.Add(self.pyplot_panel, 1,
+    self.main_sizer.Add(self.runstats_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.options_sizer, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
@@ -1421,7 +1422,7 @@ class RunStatsTab(BaseTab):
   def onTrialChoice(self, e):
     self.trial_no = self.trial_number.ctr.GetSelection()
     self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
-    self.pyplot_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
+    self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
     self.find_runs()
 
   def onRunChoice(self, e):
@@ -1429,7 +1430,6 @@ class RunStatsTab(BaseTab):
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
       self.main.run_window.runstats_light.change_status('idle')
-      # self.tag_runs_changed = True
 
   def find_trials(self):
     self.all_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
@@ -1442,25 +1442,25 @@ class RunStatsTab(BaseTab):
     self.run_numbers.ctr.Clear()
     if self.trial is not None:
       self.runs_available = [str(r.run) for r in self.trial.runs]
+      # self.runs_available = ["All", "Last 10", "Last 5"] + [str(r.run) for r in self.trial.runs]
       self.run_numbers.ctr.InsertItems(items=self.runs_available, pos=0)
 
   def onRefresh(self, e):
     self.refresh_trials()
     self.refresh_runs()
-    # self.plot_runstats()
     if self.redraw_windows:
-      self.pyplot_sizer.Clear(deleteWindows=True)
+      self.runstats_sizer.Clear(deleteWindows=True)
       self.find_trials()
       self.find_runs()
-      # self.redraw_plot()
+      self.plot_static_runstats()
       self.redraw_windows = False
-    self.pyplot_panel.SetSizer(self.pyplot_sizer)
-    self.pyplot_sizer.Layout()
-    # self.pyplot_panel.SetupScrolling()
+    # self.runstats_panel.SetSizer(self.runstats_sizer)
+    # self.runstats_sizer.Layout()
+    # self.runstats_panel.SetupScrolling()
     if self.trial is not None:
-      self.pyplot_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
+      self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
     else:
-      self.pyplot_box.SetLabel('Run Statistics - No trial selected')
+      self.runstats_box.SetLabel('Run Statistics - No trial selected')
 
   def refresh_trials(self):
     self.all_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
@@ -1474,6 +1474,16 @@ class RunStatsTab(BaseTab):
         if run not in old_runs:
           self.run_numbers.ctr.InsertItems(items=[run], pos=n_runs)
           n_runs += 1
+
+  def plot_static_runstats(self):
+    print self.png
+    if self.png is not None:
+      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
+      static_bitmap = wx.StaticBitmap(self.scrollPnl, wx.ID_ANY, wx.BitmapFromImage(img))
+      self.runstats_sizer.Add(static_bitmap, 1, wx.EXPAND | wx.ALL, 3)
+      self.runstats_panel.SetSizer(self.runstats_sizer)
+      self.runstats_panel.Layout()
+      self.runstats_panel.SetupScrolling()
 
 
 class MergeTab(BaseTab):
