@@ -1382,14 +1382,19 @@ class RunStatsTab(BaseTab):
     self.static_bitmap = None
     self.redraw_windows = True
 
-    self.runstats_panel = ScrolledPanel(self, size=(900, 300))
+    # self.runstats_panel = FlexGridSizer(self, size=(900, 300))
+    # self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
+    # self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL)
+    # self.runstats_panel.SetSizer(self.runstats_sizer)
+
+    self.runstats_panel = ScrolledPanel(self, size=(900, 120))
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
-    self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL)
+    self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL | wx.EXPAND)
     self.runstats_panel.SetSizer(self.runstats_sizer)
 
-    # self.runstats_panel = ScrolledPanel(self)
-    # self.runstats_sizer = wx.BoxSizer(wx.VERTICAL)
-    # self.runstats_panel.SetSizer(self.runstats_sizer)
+    # self.figure_sizer = wx.BoxSizer(wx.VERTICAL | wx.EXPAND)
+    # # self.figure_sizer.Add(self.figure_box, flag=wx.ALIGN_CENTER | wx.EXPAND)
+    # self.runstats_sizer.Add(self.figure_sizer, flag=wx.EXPAND)
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
@@ -1405,24 +1410,24 @@ class RunStatsTab(BaseTab):
                                            direction='vertical',
                                            choices=[])
 
-    self.options_sizer = wx.FlexGridSizer(1, 1, 0, 20)
+    self.options_sizer = wx.FlexGridSizer(1, 1, 0, 10)
 
     options_box = wx.StaticBox(self, label='Statistics Options')
     self.options_box_sizer = wx.StaticBoxSizer(options_box, wx.VERTICAL)
-    self.options_opt_sizer = wx.GridBagSizer(1, 2)
+    self.options_opt_sizer = wx.GridBagSizer(0, 1)
 
     self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
                                flag=wx.ALL, border=10)
     self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(2, 1),
-                               flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
+                               flag=wx.BOTTOM | wx.TOP | wx.RIGHT,
                                border=10)
-    self.options_box_sizer.Add(self.options_opt_sizer, flag=wx.EXPAND)
+    self.options_box_sizer.Add(self.options_opt_sizer)
     self.options_sizer.Add(self.options_box_sizer)
 
-    self.main_sizer.Add(self.runstats_panel, 1,
+    self.main_sizer.Add(self.runstats_panel, 2,
                         flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.options_sizer, 1,
-                        flag=wx.EXPAND | wx.ALL, border=10)
+                        flag=wx.ALL, border=10)
 
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
@@ -1489,10 +1494,9 @@ class RunStatsTab(BaseTab):
     if self.png is not None:
       if self.static_bitmap is not None:
         self.static_bitmap.Destroy()
-      self.runstats_sizer.Clear(deleteWindows=True)
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
       self.static_bitmap = wx.StaticBitmap(self.runstats_panel, wx.ID_ANY, wx.BitmapFromImage(img))
-      self.runstats_sizer.Add(self.static_bitmap, 1, wx.EXPAND | wx.ALL, 3)
+      self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
       self.runstats_panel.SetSizer(self.runstats_sizer)
       self.runstats_panel.Layout()
       self.runstats_panel.SetupScrolling()
