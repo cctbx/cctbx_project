@@ -46,7 +46,8 @@ def get_run_stats(timestamps,
           tuple_of_timestamp_boundaries,
           run_numbers)
 
-def plot_run_stats(stats, d_min, interactive=True, xsize=100, ysize=100):
+def plot_run_stats(stats, d_min, interactive=True, xsize=30, ysize=10):
+  print xsize, ysize
   t, n_strong, hits, idx_rate, idx_low_sel, idx_high_sel, isigi_low, isigi_high, \
   window, lengths, boundaries, run_numbers = stats
   if len(t) == 0:
@@ -102,7 +103,8 @@ def plot_run_stats(stats, d_min, interactive=True, xsize=100, ysize=100):
   if interactive:
     plt.show()
   else:
-    f.savefig("runstats_tmp.png", bbox_inches='tight', figsize=(xsize, ysize), dpi=300)
+    f.set_size_inches(xsize, ysize)
+    f.savefig("runstats_tmp.png", bbox_inches='tight', dpi=300)
     plt.close(f)
     return "runstats_tmp.png"
 
@@ -112,8 +114,9 @@ def plot_multirun_stats(runs,
                         n_strong_cutoff=40,
                         interactive=False,
                         compress_runs=True,
-                        xsize=100,
-                        ysize=100):
+                        xsize=30,
+                        ysize=10):
+  print xsize, ysize
   tset = flex.double()
   nset = flex.int()
   I_sig_I_low_set = flex.double()
@@ -147,7 +150,7 @@ def plot_multirun_stats(runs,
                               tuple(lengths),
                               runs_with_data,
                               n_strong_cutoff=n_strong_cutoff)
-  png = plot_run_stats(stats_tuple, d_min, interactive=interactive)
+  png = plot_run_stats(stats_tuple, d_min, interactive=interactive, xsize=xsize, ysize=ysize)
   return png
 
 if __name__ == "__main__":
