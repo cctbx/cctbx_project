@@ -371,12 +371,11 @@ class RunStatsSentinel(Thread):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
     sizex, sizey = self.parent.run_window.runstats_tab.runstats_panel.GetSize()
-    print sizex, sizey
     print "calculating stats with n_strong of", self.parent.run_window.runstats_tab.n_strong
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       self.stats, self.run_numbers, 2.5, interactive=False,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
-      xsize=sizex/50, ysize=sizey/50) # convert px to inches
+      xsize=sizex/100, ysize=sizey/100) # convert px to inches
     self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_interactive(self):
