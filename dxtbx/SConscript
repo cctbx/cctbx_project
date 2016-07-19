@@ -6,7 +6,12 @@ Import("env_etc")
 env_etc.dxtbx_dist = libtbx.env.dist_path("dxtbx")
 env_etc.dxtbx_include = os.path.dirname(env_etc.dxtbx_dist)
 env_etc.dxtbx_includes = []
-
+env_etc.dxtbx_common_includes = [env_etc.base_include,
+                                 env_etc.libtbx_include,
+                                 env_etc.scitbx_include,
+                                 env_etc.boost_adaptbx_include,
+                                 env_etc.boost_include,
+                                 env_etc.dxtbx_include]
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
 include_root = os.path.split(env_etc.python_include)[0]
@@ -32,21 +37,16 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
   env_etc.enable_more_warnings(env=env)
   env_etc.include_registry.append(
     env=env,
-    paths=[
-      env_etc.libtbx_include,
-      env_etc.boost_adaptbx_include,
-      env_etc.boost_include,
-      env_etc.python_include,
-      env_etc.dxtbx_include] + env_etc.dxtbx_includes)
-      
+    paths=env_etc.dxtbx_includes + env_etc.dxtbx_common_includes + [env_etc.python_include])
+
   if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
     env.Append(
-    LIBS=env_etc.libm + [ 
+      LIBS=env_etc.libm + [
       "scitbx_boost_python",
       "libhdf5"], LIBPATH=[libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'lib'))])
   else:
     env.Append(
-    LIBS=env_etc.libm + [ 
+      LIBS=env_etc.libm + [
       "scitbx_boost_python",
       "hdf5"], LIBPATH=[env_etc.base_lib])
 
@@ -58,15 +58,17 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
     target="#lib/dxtbx_ext",
     source=[
       "boost_python/to_ewald_sphere_helpers.cc",
-      "boost_python/ext.cpp"])
+      "boost_python/ext.cpp"],
+      LIBS=env_etc.libs_python+env_etc.libm)
 
   nexus = env.SharedLibrary(
-    target='#/lib/dxtbx_format_nexus_ext', 
+    target='#/lib/dxtbx_format_nexus_ext',
     source=[
-      'format/boost_python/nexus_ext.cc'])
-      
+      'format/boost_python/nexus_ext.cc'],
+      LIBS=env_etc.libs_python+env_etc.libm)
+
   model = env.SharedLibrary(
-    target='#/lib/dxtbx_model_ext', 
+    target='#/lib/dxtbx_model_ext',
     source=[
       'model/boost_python/beam.cc',
       'model/boost_python/goniometer.cc',
@@ -77,5 +79,5 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'model/boost_python/scan_helpers.cc',
       'model/boost_python/parallax_correction.cc',
       'model/boost_python/pixel_to_millimeter.cc',
-      'model/boost_python/model_ext.cc'])
-      
+      'model/boost_python/model_ext.cc'],
+      LIBS=env_etc.libs_python+env_etc.libm)
