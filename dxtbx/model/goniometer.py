@@ -91,6 +91,8 @@ class goniometer_factory:
   def imgCIF(cif_file):
     '''Initialize a goniometer model from an imgCIF file.'''
 
+    # FIXME in here work out how to get the proper setting matrix if != 1
+      
     cbf_handle = pycbf.cbf_handle_struct()
     cbf_handle.read_file(cif_file, pycbf.MSG_DIGEST)
 
