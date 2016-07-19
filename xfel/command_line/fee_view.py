@@ -9,6 +9,7 @@ from psmon import publish
 from psmon.plots import Image, XYPlot
 from libtbx.phil import parse
 from xfel.cxi.spectra_filter import spectra_filter
+from xfel.cxi.cspad_ana import cspad_tbx
 
 """
 Example usage:
@@ -92,7 +93,7 @@ def run(args):
       if not accepted:
         continue
 
-      print "Publishing data for event", i
+      print cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)), "Publishing data for event", i
 
       #header = "Event %d, m/f: %7.7f, f: %d"%(i, peak_max/flux, flux)
       header = "Event %d"%(i)
