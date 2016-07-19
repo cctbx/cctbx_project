@@ -24,6 +24,7 @@ import os
 import math
 import time
 import sys
+import glob
 from scitbx import matrix
 op = os.path
 
@@ -270,9 +271,12 @@ def get_observations (work_params):
   file_names = []
   for dir_name in data_dirs :
     if not os.path.isdir(dir_name):
-      #check if list-of-pickles text file is given
-      pickle_list_file = open(dir_name,'r')
-      pickle_list = pickle_list_file.read().split("\n")
+      if os.path.isfile(dir_name):
+        #check if list-of-pickles text file is given
+        pickle_list_file = open(dir_name,'r')
+        pickle_list = pickle_list_file.read().split("\n")
+      else:
+        pickle_list = glob.glob(dir_name)
       for pickle_filename in pickle_list:
         if os.path.isfile(pickle_filename) and pickle_filename.endswith("."+extension):
           if data_subset==0 or \
