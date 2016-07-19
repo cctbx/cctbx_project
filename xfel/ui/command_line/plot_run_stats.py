@@ -51,7 +51,7 @@ def run(args):
   for run_no in params.run:
     runs.append(run_no)
     all_results.append(HitrateStats(app, run_no, params.trial, params.rungroup, params.d_min)())
-  plot_multirun_stats(all_results, runs, params.hit_cutoff, \
+  plot_multirun_stats(all_results, runs, params.d_min, n_strong_cutoff=params.hit_cutoff, \
     interactive=True, compress_runs=params.compress_runs)
 
 if __name__ == "__main__":

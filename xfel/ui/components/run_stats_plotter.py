@@ -21,8 +21,8 @@ def get_run_stats(timestamps,
   iterator = xrange(len(isigi_low))
   # indexing rate in a sliding window
   half_idx_rate_window = min(50, int(len(isigi_low)//20))
-  idx_low_sel = isigi_low > 0
-  idx_high_sel = isigi_high > 0
+  idx_low_sel = (isigi_low > 0) & (n_strong >= n_strong_cutoff)
+  idx_high_sel = (isigi_high > 0) & (n_strong >= n_strong_cutoff)
   idx_rate = flex.double()
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)
