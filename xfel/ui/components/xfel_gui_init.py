@@ -376,7 +376,7 @@ class RunStatsSentinel(Thread):
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       self.stats, self.run_numbers, 2.5, interactive=False,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
-      xsize=sizex/300, ysize=sizey/300) # convert px to inches
+      xsize=sizex/50, ysize=sizey/50) # convert px to inches
     self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_interactive(self):
