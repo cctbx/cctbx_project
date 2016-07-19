@@ -370,10 +370,13 @@ class RunStatsSentinel(Thread):
   def plot_stats_static(self):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
+    sizex, sizey = self.parent.run_window.runstats_tab.runstats_panel.GetSize()
+    print sizex, sizey
     print "calculating stats with n_strong of", self.parent.run_window.runstats_tab.n_strong
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       self.stats, self.run_numbers, 2.5, interactive=False,
-      n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong)
+      n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
+      xsize=sizex/300, ysize=sizey/300) # convert px to inches
     self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_interactive(self):
@@ -1394,18 +1397,22 @@ class RunStatsTab(BaseTab):
     # self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL)
     # self.runstats_panel.SetSizer(self.runstats_sizer)
 
-    self.runstats_panel = ScrolledPanel(self, size=(900, 120))
+    self.runstats_panel = wx.Panel(self, size=(900, 120))
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
     self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL | wx.EXPAND)
     self.runstats_panel.SetSizer(self.runstats_sizer)
 
-    # self.figure_sizer = wx.BoxSizer(wx.VERTICAL | wx.EXPAND)
-    # # self.figure_sizer.Add(self.figure_box, flag=wx.ALIGN_CENTER | wx.EXPAND)
+    # self.figure_panel = wx.Panel(self, size=(900, 120))
+    # self.figure_box = wx.StaticBox(self.figure_panel, wx.VERTICAL)
+    # # self.figure_sizer = wx.BoxSizer(wx.VERTICAL | wx.EXPAND)
+    # self.figure_sizer = wx.GridBagSizer(1, 1)
+    # self.figure_sizer.Add(self.figure_box, pos=(0, 0),
+    #                       flag=wx.LEFT | wx.TOP | wx.RIGHT, border=10)
     # self.runstats_sizer.Add(self.figure_sizer, flag=wx.EXPAND)
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
-                                        label_size=(120, -1),
+                                        label_size=(90, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
@@ -1416,9 +1423,9 @@ class RunStatsTab(BaseTab):
                                      label='Auto plot last five runs',
                                      size=(200, -1))
     self.n_strong_cutoff = gctr.OptionCtrl(self,
-                                           label='Number strong spots cutoff:',
-                                           label_size=(200, -1),
-                                           ctrl_size=(200, -1),
+                                           label='# strong spots cutoff:',
+                                           label_size=(160, -1),
+                                           ctrl_size=(30, -1),
                                            items=[('n_strong', 40)])
     self.run_numbers =  gctr.CheckListCtrl(self,
                                            label='Selected runs:',
@@ -1442,7 +1449,7 @@ class RunStatsTab(BaseTab):
                                flag=wx.ALL, border=10)
     self.options_opt_sizer.Add(self.n_strong_cutoff, pos=(3, 0),
                                flag=wx.ALL, border=10)
-    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(4, 1),
+    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(6, 1),
                                flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
                                border=10)
     self.options_box_sizer.Add(self.options_opt_sizer)
@@ -1528,11 +1535,12 @@ class RunStatsTab(BaseTab):
       if self.static_bitmap is not None:
         self.static_bitmap.Destroy()
       img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
-      self.static_bitmap = wx.StaticBitmap(self.runstats_panel, wx.ID_ANY, wx.BitmapFromImage(img))
+      self.static_bitmap = wx.StaticBitmap(
+        self.runstats_panel, wx.ID_ANY, wx.BitmapFromImage(img))
       self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
       self.runstats_panel.SetSizer(self.runstats_sizer)
       self.runstats_panel.Layout()
-      self.runstats_panel.SetupScrolling()
+      # self.figure_panel.SetupScrolling()
 
   def select_last_n_runs(self, n):
     if self.trial is not None:
