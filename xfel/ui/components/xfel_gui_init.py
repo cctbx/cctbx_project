@@ -370,14 +370,18 @@ class RunStatsSentinel(Thread):
   def plot_stats_static(self):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
+    print "calculating stats with n_strong of", self.parent.run_window.runstats_tab.n_strong
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
-      self.stats, self.run_numbers, 2.5, interactive=False)
+      self.stats, self.run_numbers, 2.5, interactive=False,
+      n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong)
     self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_interactive(self):
     self.refresh_stats()
+    print "calculating stats with n_strong of", self.parent.run_window.runstats_tab.n_strong
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
-      stats, run_numbers, 2.5, interactive=True)
+      stats, run_numbers, 2.5, interactive=True,
+      n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong)
 
 
 # ------------------------------- Frames Sentinel ------------------------------- #
@@ -1378,9 +1382,12 @@ class RunStatsTab(BaseTab):
     self.selected_runs = []
     self.tag_trial_changed = True
     self.tag_runs_changed = True
+    self.tag_last_three = False
+    self.tag_last_five = False
     self.png = None
     self.static_bitmap = None
     self.redraw_windows = True
+    self.n_strong = 40
 
     # self.runstats_panel = FlexGridSizer(self, size=(900, 300))
     # self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
@@ -1402,6 +1409,17 @@ class RunStatsTab(BaseTab):
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
+    self.last_three_runs = wx.Button(self,
+                                     label='Auto plot last three runs',
+                                     size=(200, -1))
+    self.last_five_runs =  wx.Button(self,
+                                     label='Auto plot last five runs',
+                                     size=(200, -1))
+    self.n_strong_cutoff = gctr.OptionCtrl(self,
+                                           label='Number strong spots cutoff:',
+                                           label_size=(200, -1),
+                                           ctrl_size=(200, -1),
+                                           items=[('n_strong', 40)])
     self.run_numbers =  gctr.CheckListCtrl(self,
                                            label='Selected runs:',
                                            label_size=(200, -1),
@@ -1414,12 +1432,18 @@ class RunStatsTab(BaseTab):
 
     options_box = wx.StaticBox(self, label='Statistics Options')
     self.options_box_sizer = wx.StaticBoxSizer(options_box, wx.VERTICAL)
-    self.options_opt_sizer = wx.GridBagSizer(0, 1)
+    self.options_opt_sizer = wx.GridBagSizer(1, 1)
 
     self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
                                flag=wx.ALL, border=10)
-    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(2, 1),
-                               flag=wx.BOTTOM | wx.TOP | wx.RIGHT,
+    self.options_opt_sizer.Add(self.last_three_runs, pos=(1, 0),
+                               flag=wx.ALL, border=10)
+    self.options_opt_sizer.Add(self.last_five_runs, pos=(2, 0),
+                               flag=wx.ALL, border=10)
+    self.options_opt_sizer.Add(self.n_strong_cutoff, pos=(3, 0),
+                               flag=wx.ALL, border=10)
+    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(4, 1),
+                               flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
                                border=10)
     self.options_box_sizer.Add(self.options_opt_sizer)
     self.options_sizer.Add(self.options_box_sizer)
@@ -1431,6 +1455,9 @@ class RunStatsTab(BaseTab):
 
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onLastThreeRuns, self.last_three_runs)
+    self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
 
@@ -1442,6 +1469,8 @@ class RunStatsTab(BaseTab):
     self.find_runs()
 
   def onRunChoice(self, e):
+    self.tag_last_three = False
+    self.tag_last_five = False
     run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
@@ -1463,6 +1492,10 @@ class RunStatsTab(BaseTab):
   def onRefresh(self, e):
     self.refresh_trials()
     self.refresh_runs()
+    if self.tag_last_three:
+      self.select_last_n_runs(3)
+    elif self.tag_last_five:
+      self.select_last_n_runs(5)
     if self.redraw_windows:
       self.plot_static_runstats()
       self.redraw_windows = False
@@ -1501,6 +1534,28 @@ class RunStatsTab(BaseTab):
       self.runstats_panel.Layout()
       self.runstats_panel.SetupScrolling()
 
+  def select_last_n_runs(self, n):
+    if self.trial is not None:
+      self.selected_runs = [r.run for r in self.trial.runs][-n:]
+
+  def onLastThreeRuns(self, e):
+    self.tag_last_five = False
+    self.tag_last_three = True
+    self.select_last_n_runs(3)
+    self.main.run_window.runstats_light.change_status('idle')
+
+  def onLastFiveRuns(self, e):
+    self.tag_last_three = False
+    self.tag_last_five = True
+    self.select_last_five_runs(5)
+    self.main.run_window.runstats_light.change_status('idle')
+
+  def onHitCutoff(self, e):
+    n_strong = self.n_strong_cutoff.n_strong.GetValue()
+    print n_strong, "inputted for n_strong"
+    if n_strong.isdigit() and n_strong != '':
+      self.n_strong = int(n_strong)
+      print n_strong, "accepted as n_strong"
 
 class MergeTab(BaseTab):
   def __init__(self, parent, main, prefix='prime'):
