@@ -39,9 +39,9 @@ def run(args):
       print "Coulnd't get run", run_no
       continue
     n_hit = (n_strong >= params.hit_cutoff).count(True)
-    n_indexed = (average_i_sigi_low > 0).count(True)
+    n_indexed = ((average_i_sigi_low > 0) & (n_strong >= params.hit_cutoff)).count(True)
     n_total = len(timestamps)
-    n_high_quality = (average_i_sigi_high > 0).count(True)
+    n_high_quality = ((average_i_sigi_high > 0) & (n_strong >= params.hit_cutoff)).count(True)
     try:
       print "% 4d  % 7d % 5.1f   % 7d % 5.1f     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_high_quality, 100*n_high_quality/n_total, 100*n_high_quality/n_indexed, n_total)
     except ZeroDivisionError:
