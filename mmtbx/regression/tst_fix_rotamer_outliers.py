@@ -128,6 +128,7 @@ def get_necessary_inputs(pdb_str, mon_lib_srv, ener_lib):
 def exercise_1(mon_lib_srv, ener_lib, rotamer_manager):
   """ 58 is outlier """
   pdb_h, grm, xrs = get_necessary_inputs(pdb_str_1, mon_lib_srv, ener_lib)
+  # pdb_h.write_pdb_file("fix_rot_out_ex1_start.pdb")
   pdb_h = fix_rotamer_outliers(
       pdb_hierarchy=pdb_h,
       grm=grm,
@@ -137,10 +138,11 @@ def exercise_1(mon_lib_srv, ener_lib, rotamer_manager):
       rotamer_manager=rotamer_manager,
       asc=None)
   rotamers = []
+  # pdb_h.write_pdb_file("fix_rot_out_ex1_end.pdb")
   for res in pdb_h.only_chain().only_conformer().residues():
     rotamers.append(rotamer_manager.evaluate_residue(res))
   # print rotamers
-  assert rotamers == ['m-80', 'p']
+  assert rotamers == ['m-80', 'p'], rotamers
 
 def exercise_2(mon_lib_srv, ener_lib, rotamer_manager):
   pdb_h, grm, xrs = get_necessary_inputs(pdb_str_2, mon_lib_srv, ener_lib)
