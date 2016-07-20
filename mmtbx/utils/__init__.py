@@ -2281,6 +2281,72 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
     result = math.sqrt(flex.sum(values) / values.size())
   return result
 
+def _get_rotamers_evaluated(
+    pdb_hierarchy,
+    res,
+    grm,
+    special_position_settings,
+    mon_lib_srv,
+    radius):
+  from mmtbx.command_line import lockit
+  from cctbx.geometry_restraints import nonbonded_overlaps as nbo
+  sel = flex.size_t([])
+  sel_res_mc = flex.size_t([])
+  for a in res.atoms():
+    sel.append(a.i_seq)
+    if a.name.strip() in ["N", "CA", "C", "O"]:
+      sel_res_mc.append(a.i_seq)
+  xrs = pdb_hierarchy.extract_xray_structure()
+  bsel = flex.bool([False]*pdb_hierarchy.atoms().size())
+  bsel.set_selected(sel, True)
+  selection_around_residue = special_position_settings.pair_generator(
+      sites_cart      = xrs.sites_cart(),
+      distance_cutoff = radius
+        ).neighbors_of(primary_selection = bsel).iselection()
+  sel_h = pdb_hierarchy.select(selection_around_residue)
+  sel_around_no_mc = flex.size_t(sorted(list(set(list(selection_around_residue)) - set(list(sel_res_mc)))))
+  bsel_around_no_mc = flex.bool([False]*pdb_hierarchy.atoms().size())
+  bsel_around_no_mc.set_selected(sel_around_no_mc, True)
+
+  rotamer_iterator = lockit.get_rotamer_iterator(
+      mon_lib_srv         = mon_lib_srv,
+      residue             = res,
+      atom_selection_bool = None)
+  if rotamer_iterator is None:
+    return None
+  site_labels = xrs.scatterers().extract_labels()
+  hd_sel = xrs.hd_selection()
+  i = 0
+  inf = []
+  sites_for_nb_overlaps = pdb_hierarchy.atoms().extract_xyz().deep_copy()
+  for rotamer, rotamer_sites_cart in rotamer_iterator:
+    assert rotamer_sites_cart.size() == res.atoms().size()
+    for i, i_seq in enumerate(sel):
+      sites_for_nb_overlaps[i_seq] = rotamer_sites_cart[i]
+    nb_overlaps = nbo.info(
+        geometry_restraints_manager=grm,
+        macro_molecule_selection=bsel_around_no_mc,
+        sites_cart=sites_for_nb_overlaps,
+        site_labels=site_labels,
+        hd_sel=hd_sel,
+        do_only_macro_molecule=True)
+    overlap_proxies = nb_overlaps.result.nb_overlaps_proxies_macro_molecule
+    summ = 0
+    for p in overlap_proxies:
+      d = list(p)
+      summ += d[3]-d[4]
+    # print "summ:", summ
+    inf.append((i,
+        rotamer.id,
+        rotamer.frequency,
+        nb_overlaps.result.nb_overlaps_macro_molecule,
+        nb_overlaps.result.normalized_nbo_macro_molecule,
+        summ,
+        rotamer_sites_cart))
+    i += 1
+  return sorted(inf, cmp=lambda x,y: cmp(x[5], y[5]))
+
+
 def fix_rotamer_outliers(
     pdb_hierarchy,
     grm,
@@ -2294,8 +2360,6 @@ def fix_rotamer_outliers(
     mon_lib_srv = mmtbx.monomer_library.server.server()
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
-  from mmtbx.command_line import lockit
-  from cctbx.geometry_restraints import nonbonded_overlaps as nbo
   get_class = iotbx.pdb.common_residue_names_get_class
   assert pdb_hierarchy is not None
   assert grm is not None
@@ -2316,61 +2380,15 @@ def fix_rotamer_outliers(
           # print ev,
           if ev != "OUTLIER" or ev is None:
             continue
-          sel = flex.size_t([])
-          sel_res_mc = flex.size_t([])
-          for a in res.atoms():
-            sel.append(a.i_seq)
-            if a.name.strip() in ["N", "CA", "C", "O"]:
-              sel_res_mc.append(a.i_seq)
-          bsel = flex.bool([False]*pdb_hierarchy.atoms().size())
-          bsel.set_selected(sel, True)
-          selection_around_residue = special_position_settings.pair_generator(
-              sites_cart      = xrs.sites_cart(),
-              distance_cutoff = radius
-                ).neighbors_of(primary_selection = bsel).iselection()
-          sel_h = pdb_hierarchy.select(selection_around_residue)
-          sel_around_no_mc = flex.size_t(sorted(list(set(list(selection_around_residue)) - set(list(sel_res_mc)))))
-          bsel_around_no_mc = flex.bool([False]*pdb_hierarchy.atoms().size())
-          bsel_around_no_mc.set_selected(sel_around_no_mc, True)
-
-          rotamer_iterator = lockit.get_rotamer_iterator(
-              mon_lib_srv         = mon_lib_srv,
-              residue             = res,
-              atom_selection_bool = None)
-          if rotamer_iterator is None:
+          s_inf = _get_rotamers_evaluated(
+              pdb_hierarchy=pdb_hierarchy,
+              res=res,
+              grm=grm,
+              special_position_settings=special_position_settings,
+              mon_lib_srv=mon_lib_srv,
+              radius=radius)
+          if s_inf is None:
             continue
-          site_labels = xrs.scatterers().extract_labels()
-          hd_sel = xrs.hd_selection()
-          i = 0
-          inf = []
-          sites_for_nb_overlaps = pdb_hierarchy.atoms().extract_xyz()
-          for rotamer, rotamer_sites_cart in rotamer_iterator:
-            assert rotamer_sites_cart.size() == res.atoms().size()
-            for i, i_seq in enumerate(sel):
-              sites_for_nb_overlaps[i_seq] = rotamer_sites_cart[i]
-            # where is setting sites_cart???
-            nb_overlaps = nbo.info(
-                geometry_restraints_manager=grm,
-                macro_molecule_selection=bsel_around_no_mc,
-                sites_cart=sites_for_nb_overlaps,
-                site_labels=site_labels,
-                hd_sel=hd_sel,
-                do_only_macro_molecule=True)
-            overlap_proxies = nb_overlaps.result.nb_overlaps_proxies_macro_molecule
-            summ = 0
-            for p in overlap_proxies:
-              d = list(p)
-              summ += d[3]-d[4]
-            # print "summ:", summ
-            inf.append((i,
-                rotamer.id,
-                rotamer.frequency,
-                nb_overlaps.result.nb_overlaps_macro_molecule,
-                nb_overlaps.result.normalized_nbo_macro_molecule,
-                summ,
-                rotamer_sites_cart))
-            i += 1
-          s_inf = sorted(inf, cmp=lambda x,y: cmp(x[5], y[5]))
           if s_inf[-1][5] > -0.01 or backrub_range is None:
             res.atoms().set_xyz(s_inf[-1][-1])
           else:
