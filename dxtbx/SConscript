@@ -13,6 +13,8 @@ env_etc.dxtbx_common_includes = [env_etc.base_include,
                                  env_etc.boost_include,
                                  env_etc.dxtbx_include]
 env_etc.dxtbx_libs = ["hdf5"]
+if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
+  env_etc.dxtbx_libs = ["libhdf5", "boost_python"]
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
 include_root = os.path.split(env_etc.python_include)[0]
