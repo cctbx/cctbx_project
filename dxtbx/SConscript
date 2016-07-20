@@ -12,6 +12,7 @@ env_etc.dxtbx_common_includes = [env_etc.base_include,
                                  env_etc.boost_adaptbx_include,
                                  env_etc.boost_include,
                                  env_etc.dxtbx_include]
+env_etc.dxtbx_libs = ["hdf5"]
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
 include_root = os.path.split(env_etc.python_include)[0]
@@ -59,13 +60,13 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
     source=[
       "boost_python/to_ewald_sphere_helpers.cc",
       "boost_python/ext.cpp"],
-      LIBS=env_etc.libs_python+env_etc.libm)
+      LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs)
 
   nexus = env.SharedLibrary(
     target='#/lib/dxtbx_format_nexus_ext',
     source=[
       'format/boost_python/nexus_ext.cc'],
-      LIBS=env_etc.libs_python+env_etc.libm)
+      LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs)
 
   model = env.SharedLibrary(
     target='#/lib/dxtbx_model_ext',
@@ -80,4 +81,4 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'model/boost_python/parallax_correction.cc',
       'model/boost_python/pixel_to_millimeter.cc',
       'model/boost_python/model_ext.cc'],
-      LIBS=env_etc.libs_python+env_etc.libm)
+      LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs)
