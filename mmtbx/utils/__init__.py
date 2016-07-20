@@ -2288,6 +2288,7 @@ def fix_rotamer_outliers(
     radius=5,
     mon_lib_srv=None,
     rotamer_manager=None,
+    backrub_range=None,
     asc=None):
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
@@ -2307,6 +2308,7 @@ def fix_rotamer_outliers(
     for chain in model.chains():
       for conf in chain.conformers():
         for res in conf.residues():
+          # print "Working on ", res.id_str()
           cl = get_class(res.resname)
           if cl not in ["common_amino_acid","modified_amino_acid"]:
             continue
@@ -2341,11 +2343,16 @@ def fix_rotamer_outliers(
           hd_sel = xrs.hd_selection()
           i = 0
           inf = []
+          sites_for_nb_overlaps = pdb_hierarchy.atoms().extract_xyz()
           for rotamer, rotamer_sites_cart in rotamer_iterator:
+            assert rotamer_sites_cart.size() == res.atoms().size()
+            for i, i_seq in enumerate(sel):
+              sites_for_nb_overlaps[i_seq] = rotamer_sites_cart[i]
+            # where is setting sites_cart???
             nb_overlaps = nbo.info(
                 geometry_restraints_manager=grm,
                 macro_molecule_selection=bsel_around_no_mc,
-                sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+                sites_cart=sites_for_nb_overlaps,
                 site_labels=site_labels,
                 hd_sel=hd_sel,
                 do_only_macro_molecule=True)
@@ -2354,11 +2361,22 @@ def fix_rotamer_outliers(
             for p in overlap_proxies:
               d = list(p)
               summ += d[3]-d[4]
-            inf.append((i, rotamer.id, rotamer.frequency, nb_overlaps.result.nb_overlaps_macro_molecule,
-                nb_overlaps.result.normalized_nbo_macro_molecule, summ, rotamer_sites_cart))
+            # print "summ:", summ
+            inf.append((i,
+                rotamer.id,
+                rotamer.frequency,
+                nb_overlaps.result.nb_overlaps_macro_molecule,
+                nb_overlaps.result.normalized_nbo_macro_molecule,
+                summ,
+                rotamer_sites_cart))
             i += 1
           s_inf = sorted(inf, cmp=lambda x,y: cmp(x[5], y[5]))
-          res.atoms().set_xyz(s_inf[-1][-1])
+          if s_inf[-1][5] > -0.01 or backrub_range is None:
+            res.atoms().set_xyz(s_inf[-1][-1])
+          else:
+            #try backrub motions here
+            # print "Backrub would be useful here...."
+            pass
   return pdb_hierarchy
 
 def switch_rotamers(
