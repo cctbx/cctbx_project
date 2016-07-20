@@ -693,6 +693,9 @@ class ExperimentListDict(object):
   @staticmethod
   def _goniometer_from_dict(obj):
     ''' Get the goniometer from a dictionary. '''
+    if 'axes' in obj and 'angles' in obj and 'scan_axis' in obj:
+      from dxtbx.model import MultiAxisGoniometer
+      return MultiAxisGoniometer.from_dict(obj)
     from dxtbx.model import Goniometer
     return Goniometer.from_dict(obj)
 

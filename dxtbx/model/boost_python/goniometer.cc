@@ -17,6 +17,7 @@
 #include <scitbx/constants.h>
 #include <dxtbx/model/goniometer.h>
 #include <dxtbx/model/kappa_goniometer.h>
+#include <dxtbx/model/multi_axis_goniometer.h>
 #include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {

@@ -10,8 +10,10 @@ from __future__ import division
 
 import math
 
-from dxtbx.model.goniometer import Goniometer
+from dxtbx.model.goniometer import Goniometer, MultiAxisGoniometer
 from dxtbx.model.goniometer import goniometer_factory
+from libtbx import easy_pickle
+from libtbx.test_utils import Exception_expected
 
 def compare_tuples(a, b, tol = 1.0e-6):
 
@@ -26,7 +28,6 @@ def compare_tuples(a, b, tol = 1.0e-6):
 def test_goniometer():
   '''A test class for the goniometer class.'''
 
-  from libtbx import easy_pickle
 
   axis = (1, 0, 0)
   fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
@@ -103,6 +104,74 @@ def test_goniometer():
 
   print 'OK'
 
+def test_multi_axis_goniometer():
+  from libtbx.test_utils import approx_equal
+  from scitbx.array_family import flex
+
+  alpha = 50
+  omega = -10
+  kappa = 30
+  phi = 20
+  direction = '-y'
+
+  kappa_omega_scan = goniometer_factory.kappa(
+    alpha, omega, kappa, phi, direction, 'omega')
+  axes = (kappa_omega_scan.get_phi_axis(), kappa_omega_scan.get_kappa_axis(),
+          kappa_omega_scan.get_omega_axis())
+  angles = (kappa_omega_scan.get_phi_angle(), kappa_omega_scan.get_kappa_angle(),
+            kappa_omega_scan.get_omega_angle())
+
+  # First test a kappa goniometer with omega as the scan axis
+  axes = flex.vec3_double(axes)
+  angles = flex.double(angles)
+  scan_axis = 2
+
+  multi_axis_omega_scan = goniometer_factory.multi_axis(axes, angles, scan_axis)
+  assert approx_equal(multi_axis_omega_scan.get_fixed_rotation(), kappa_omega_scan.get_fixed_rotation())
+  assert approx_equal(multi_axis_omega_scan.get_rotation_axis(), kappa_omega_scan.get_rotation_axis())
+
+  recycle_omega = MultiAxisGoniometer.from_dict(multi_axis_omega_scan.to_dict())
+  assert approx_equal(recycle_omega.get_axes(), multi_axis_omega_scan.get_axes())
+  assert approx_equal(recycle_omega.get_angles(), multi_axis_omega_scan.get_angles())
+  assert recycle_omega.get_scan_axis() == multi_axis_omega_scan.get_scan_axis()
+
+  # Now test a kappa goniometer with phi as the scan axis
+  kappa_phi_scan = goniometer_factory.kappa(
+    alpha, omega, kappa, phi, direction, 'phi')
+
+  scan_axis = 0
+  multi_axis_phi_scan = goniometer_factory.multi_axis(axes, angles, scan_axis)
+  assert approx_equal(multi_axis_phi_scan.get_fixed_rotation(), kappa_phi_scan.get_fixed_rotation())
+  assert approx_equal(multi_axis_phi_scan.get_rotation_axis(), kappa_phi_scan.get_rotation_axis())
+
+  recycle_phi = MultiAxisGoniometer.from_dict(multi_axis_phi_scan.to_dict())
+  assert approx_equal(recycle_phi.get_axes(), multi_axis_phi_scan.get_axes())
+  assert approx_equal(recycle_phi.get_angles(), multi_axis_phi_scan.get_angles())
+  assert recycle_phi.get_scan_axis() == multi_axis_phi_scan.get_scan_axis()
+
+  s = easy_pickle.dumps(multi_axis_phi_scan)
+  recycle = easy_pickle.loads(s)
+  assert recycle == multi_axis_phi_scan
+
+  assert approx_equal(recycle.get_axes(), multi_axis_phi_scan.get_axes())
+  assert approx_equal(recycle.get_angles(), multi_axis_phi_scan.get_angles())
+  assert recycle.get_scan_axis() == multi_axis_phi_scan.get_scan_axis()
+
+  # Check exception is raised if scan axis is out range
+  try: goniometer_factory.multi_axis(axes, angles, 3)
+  except RuntimeError, e: pass
+  else: raise Exception_expected
+
+  # Single axis is just a special case of a multi axis goniometer
+  single_axis = goniometer_factory.multi_axis(
+    flex.vec3_double(((1,0,0),)), flex.double((0,)), 0)
+  assert single_axis.get_fixed_rotation() == (1,0,0,0,1,0,0,0,1)
+  assert single_axis.get_setting_rotation() == (1,0,0,0,1,0,0,0,1)
+  assert single_axis.get_rotation_axis() == (1,0,0)
+
+  print 'OK'
+
 if __name__ == '__main__':
 
   test_goniometer()
+  test_multi_axis_goniometer()
