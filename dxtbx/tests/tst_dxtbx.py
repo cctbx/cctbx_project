@@ -98,8 +98,8 @@ def tst_dxtbx_models():
   from dxtbx.tests.test_goniometer import test_goniometer
   test_goniometer()
 
-  from dxtbx.tests.test_goniometer import test_goniometer
-  test_goniometer()
+  from dxtbx.tests.test_goniometer import test_multi_axis_goniometer
+  test_multi_axis_goniometer()
 
   from dxtbx.tests.test_scan import test_scan
   test_scan()
