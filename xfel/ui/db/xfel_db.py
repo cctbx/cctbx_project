@@ -381,18 +381,20 @@ class xfel_db_application(object):
 
     self.delete_x(job, job_id)
 
-  def get_all_events(self, trial = None, runs = None, only_indexed = True, isoform = None):
+  def get_all_events(self, trial = None, runs = None, only_indexed = True, isoform = None, where = None):
     tag = self.params.experiment_tag
-    where = None
+    if where is None:
+      final_where = ""
+    else:
+      final_where = where.strip()
+      where = ""
     if only_indexed or isoform is not None:
-      where = "JOIN `%s_imageset_event` is_e ON event.id = is_e.event_id"%tag
+      where = " JOIN `%s_imageset_event` is_e ON event.id = is_e.event_id"%tag
     if trial is not None:
       if runs is None:
         runs = trial.runs
       if len(runs) == 0:
         return []
-      if where is None:
-        where = ""
       if isoform is None:
         where += " WHERE"
       else:
@@ -410,7 +412,9 @@ class xfel_db_application(object):
         if len(rungroups) > 0:
           where += " AND event.rungroup_id in (%s)"%rungroups
 
-    return self.get_all_x(Event, "event", where)
+    if len(where) > 0:
+      final_where = "AND " + final_where.lstrip("WHERE")
+    return self.get_all_x(Event, "event", where + " " + final_where)
 
   def get_stats(self, **kwargs):
     return Stats(self, **kwargs)

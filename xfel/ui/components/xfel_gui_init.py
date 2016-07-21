@@ -131,7 +131,7 @@ class JobMonitor(Thread):
 
     while self.active:
       self.post_refresh()
-      time.sleep(1)
+      time.sleep(5)
 
 
 # ------------------------------- Job Sentinel ------------------------------- #
