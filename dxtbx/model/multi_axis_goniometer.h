@@ -49,11 +49,11 @@ namespace dxtbx { namespace model {
      * @param angles The corresponding axis angles
      * @param scan_axis The index into the list of axes identifying the scan axis
      */
-    MultiAxisGoniometer(scitbx::af::shared<vec3<double> > axes,
-                        scitbx::af::shared<double> angles,
+    MultiAxisGoniometer(const scitbx::af::const_ref<vec3<double> > &axes,
+                        const scitbx::af::const_ref<double> &angles,
                         std::size_t scan_axis)
-      : axes_(axes),
-        angles_(angles),
+      : axes_(axes.begin(), axes.end()),
+        angles_(angles.begin(), angles.end()),
         scan_axis_(scan_axis)
     {
       DXTBX_ASSERT(axes.size() >= 1);
@@ -68,12 +68,12 @@ namespace dxtbx { namespace model {
 
     /* Get the axes */
     scitbx::af::shared<vec3<double> > get_axes() const {
-      return axes_;
+      return scitbx::af::shared<vec3<double> >(axes_.begin(), axes_.end());
     }
 
     /* Get the angles */
     scitbx::af::shared<double> get_angles() const {
-      return angles_;
+      return scitbx::af::shared<double>(angles_.begin(), angles_.end());
     }
 
     /* Get the scan axis */

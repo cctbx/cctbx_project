@@ -46,15 +46,18 @@ namespace dxtbx { namespace model { namespace boost_python {
   };
 
   MultiAxisGoniometer* from_dict(boost::python::dict obj) {
+    scitbx::af::shared<vec3<double> > axes =
+      boost::python::extract< scitbx::af::shared<vec3<double> > >(obj["axes"]);
+    scitbx::af::shared<double> angles =
+      boost::python::extract< scitbx::af::shared<double> >(obj["angles"]);
     return new MultiAxisGoniometer(
-      boost::python::extract< scitbx::af::shared<vec3<double> > >(obj["axes"]),
-      boost::python::extract< scitbx::af::shared<double> >(obj["angles"]),
+      axes.const_ref(), angles.const_ref(),
       boost::python::extract< std::size_t >(obj["scan_axis"]));
   };
 
   static boost::shared_ptr<MultiAxisGoniometer> make_multi_axis_goniometer(
-    scitbx::af::shared<vec3<double> > axes,
-    scitbx::af::shared<double> angles,
+    const scitbx::af::const_ref<vec3<double> > &axes,
+    const scitbx::af::const_ref<double> &angles,
     std::size_t scan_axis)
   {
     return boost::shared_ptr<MultiAxisGoniometer>(new MultiAxisGoniometer(
@@ -65,8 +68,8 @@ namespace dxtbx { namespace model { namespace boost_python {
   {
 
     class_ <MultiAxisGoniometer, bases <Goniometer> > ("MultiAxisGoniometer")
-      .def(init <scitbx::af::shared<vec3<double> >,
-                 scitbx::af::shared<double>,
+      .def(init <const scitbx::af::const_ref<vec3<double> > &,
+                 const scitbx::af::const_ref<double> &,
                  std::size_t> ((
           arg("axes"),
           arg("angles"),
