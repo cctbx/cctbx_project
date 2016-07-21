@@ -16,6 +16,13 @@ env_etc.dxtbx_libs = ["hdf5"]
 env_etc.dxtbx_lib_paths = [env_etc.base_lib]
 if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
   env_etc.dxtbx_libs = ["libhdf5", "boost_python"]
+  env_etc.dxtbx_includes.append(libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'include')))
+  env_etc.dxtbx_lib_paths = [
+                              env_etc.libpath_python, 
+                              env_etc.libtbx_lib,
+                              libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'lib'))
+                            ]
+  
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
 include_root = os.path.split(env_etc.python_include)[0]
@@ -37,8 +44,6 @@ else:
                                 os.environ.get('SIT_ARCH',""), 'lib')
   if os.path.exists(psdm_hdf5_path):
     env_etc.dxtbx_lib_paths.append(psdm_hdf5_path)
-if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
-  env_etc.dxtbx_includes.append(libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'include')))
 
 if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
   Import("env_no_includes_boost_python_ext")
@@ -48,16 +53,10 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
     env=env,
     paths=env_etc.dxtbx_includes + env_etc.dxtbx_common_includes + [env_etc.python_include])
 
-  if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
-    env.Append(
-      LIBS=env_etc.libm + [
-      "scitbx_boost_python",
-      "libhdf5"], LIBPATH=[libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'lib'))])
-  else:
-    env.Append(
-      LIBS=env_etc.libm + [
-      "scitbx_boost_python",
-      ]+env_etc.dxtbx_libs, LIBPATH=env_etc.dxtbx_lib_paths)
+  env.Append(
+    LIBS=env_etc.libm + [
+    "scitbx_boost_python",
+    ]+env_etc.dxtbx_libs, LIBPATH=env_etc.dxtbx_lib_paths)
 
   if env_etc.clang_version:
     wd = ["-Wno-unused-function"]
