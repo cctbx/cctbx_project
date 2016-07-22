@@ -2495,7 +2495,7 @@ def fix_rotamer_outliers(
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   if rotamer_manager is None:
-    rotamer_manager = RotamerEval()
+    rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
   if log is None:
     log = sys.stdout
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -2600,7 +2600,7 @@ def switch_rotamers(
   sites_cart_result = sites_cart_start.deep_copy()
   if ((mode == "fix_outliers")
       and rotamer_manager is None):
-    rotamer_manager = RotamerEval()
+    rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for residue_group in chain.residue_groups():

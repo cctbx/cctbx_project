@@ -47,7 +47,7 @@ class manager(object):
     from mmtbx.rotamer import rotamer_eval
     self.sa = SidechainAngles(False)
     self.rotamer_id = rotamer_eval.RotamerID()
-    self.rotamer_evaluator = rotamer_eval.RotamerEval()
+    self.rotamer_evaluator = rotamer_eval.RotamerEval(mon_lib_srv=self.mon_lib_srv)
     self.target_map_data = None
     self.residual_map_data = None
 

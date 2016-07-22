@@ -576,7 +576,7 @@ class box_build_refine_base (object) :
       mon_lib_srv = mmtbx.monomer_library.server.server()
     if (rotamer_manager is None) :
       from mmtbx.rotamer import rotamer_eval
-      rotamer_manager = rotamer_eval.RotamerEval()
+      rotamer_manager = rotamer_eval.RotamerEval(mon_lib_srv=mon_lib_srv)
     residue = self.only_residue()
     self.restrain_atoms(
       selection=self.others_in_box,
