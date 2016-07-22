@@ -302,7 +302,7 @@ class ThreeProteinResidues(list):
     # This should be consistent with mmtbx/validation/ramalyze.py,
     # lines 219-240. Particularly, prepro comes before ile/val
     if self[1].resname == "PRO":
-      if self.cis_group(): return ramalyze.RAMA_CISPRO
+      if self.cis_group(limit=30): return ramalyze.RAMA_CISPRO
       else: return ramalyze.RAMA_TRANSPRO
     elif self[2].resname == "PRO": return ramalyze.RAMA_PREPRO
     elif self[1].resname in ["ILE", "VAL"]: return ramalyze.RAMA_ILE_VAL
