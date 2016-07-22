@@ -90,7 +90,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   fixed_pdb_h = pdb_h.deep_copy()
   fixed_pdb_h.reset_atom_i_seqs()
 
-  rotamer_manager = RotamerEval()
+  rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
   fixed_pdb_h = fix_rotamer_outliers(
       pdb_hierarchy=fixed_pdb_h,
       grm=grm.geometry,
