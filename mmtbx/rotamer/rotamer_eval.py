@@ -221,7 +221,7 @@ class RotamerEval:
     if residue is not None:
       atoms = residue.atoms()
       resname = residue.resname.lower().strip()
-    if resname == 'gly':
+    if resname == 'gly': # why ala is not here?
       return None
     elif resname == 'mse':
       resname = 'met'
@@ -257,7 +257,7 @@ class RotamerEval:
     if residue is not None:
       atoms = residue.atoms()
       resname = residue.resname.lower().strip()
-    if resname == 'gly':
+    if resname == 'gly' or resname == 'ala':
       return None
     elif resname == 'mse':
       resname = 'met'
