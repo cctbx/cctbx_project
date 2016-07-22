@@ -86,7 +86,7 @@ class groups(object):
           t_frac = [math.modf(t)[0] for t in t_frac] # put into [-1,1]
           radius = flex.sum(flex.sqrt((sites_cart_1-
             sites_cart_1.mean()).dot()))/sites_cart_1.size()*4./3.
-          fracscat = c1.atoms_size()/n_atoms_all
+          fracscat = min(c1.atoms_size(),c2.atoms_size())/n_atoms_all
           result.setdefault( frozenset([c1,orig_c2]), [] ).append( [p_identity,[lsq_fit_obj.r, t_frac, angle, radius, fracscat]] )
         else:
           result.setdefault( frozenset([c1,orig_c2]), [] ).append( [p_identity,None] )
