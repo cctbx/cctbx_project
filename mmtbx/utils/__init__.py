@@ -2287,7 +2287,8 @@ def _get_rotamers_evaluated(
     grm,
     special_position_settings,
     mon_lib_srv,
-    radius):
+    radius,
+    prefix="a"):
   from mmtbx.command_line import lockit
   from cctbx.geometry_restraints import nonbonded_overlaps as nbo
   sel = flex.size_t([])
@@ -2321,8 +2322,12 @@ def _get_rotamers_evaluated(
   sites_for_nb_overlaps = pdb_hierarchy.atoms().extract_xyz().deep_copy()
   for rotamer, rotamer_sites_cart in rotamer_iterator:
     assert rotamer_sites_cart.size() == res.atoms().size()
-    for i, i_seq in enumerate(sel):
-      sites_for_nb_overlaps[i_seq] = rotamer_sites_cart[i]
+    for j, i_seq in enumerate(sel):
+      sites_for_nb_overlaps[i_seq] = rotamer_sites_cart[j]
+    out_pdb_h = pdb_hierarchy.deep_copy()
+    out_pdb_h.atoms().set_xyz(sites_for_nb_overlaps)
+    # out_pdb_h.write_pdb_file(
+    #     file_name="%s_%s_%s.pdb" % (prefix, res.id_str()[7:],rotamer.id))
     nb_overlaps = nbo.info(
         geometry_restraints_manager=grm,
         macro_molecule_selection=bsel_around_no_mc,
@@ -2335,7 +2340,6 @@ def _get_rotamers_evaluated(
     for p in overlap_proxies:
       d = list(p)
       summ += d[3]-d[4]
-    # print "summ:", summ
     inf.append((i,
         rotamer.id,
         rotamer.frequency,
@@ -2344,8 +2348,138 @@ def _get_rotamers_evaluated(
         summ,
         rotamer_sites_cart))
     i += 1
-  return sorted(inf, cmp=lambda x,y: cmp(x[5], y[5]))
+  return sorted(inf, key=lambda x: (x[5], x[2])  )
 
+
+def _find_theta(ap1, ap2, cur_xyz, needed_xyz):
+  from mmtbx.building.loop_closure.ccd import ccd_python
+  f, s_home, r_norm, r_home = ccd_python._get_f_r_s(
+      axis_point_1=ap1,
+      axis_point_2=ap2,
+      moving_coor=cur_xyz,
+      fixed_coor=needed_xyz)
+  b = list(2*r_norm*(f.dot(r_home)))[0]
+  c = list(2*r_norm*(f.dot(s_home)))[0]
+  znam = math.sqrt(b*b+c*c)
+  sin_alpha = c/znam
+  cos_alpha = b/znam
+  alpha = math.atan2(sin_alpha, cos_alpha)
+  return math.degrees(alpha)
+
+def backrub_move(
+    prev_res,
+    cur_res,
+    next_res,
+    angle,
+    move_oxygens=False,
+    accept_worse_rama=False,
+    rotamer_manager=None,
+    rama_manager=None):
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+  from mmtbx_validation_ramachandran_ext import rama_eval
+  from scitbx.matrix import rotate_point_around_axis
+  from mmtbx.conformation_dependent_library.multi_residue_class import ThreeProteinResidues, \
+      RestraintsRegistry
+
+  if abs(angle) < 1e-4:
+    return
+  if prev_res is None or next_res is None:
+    return
+  saved_res = [{},{},{}]
+  for i, r in enumerate([prev_res, cur_res, next_res]):
+    for a in r.atoms():
+      saved_res[i][a.name.strip()] = a.xyz
+
+  if rotamer_manager is None:
+    rotamer_manager = RotamerEval()
+
+  prev_ca = prev_res.find_atom_by(name=" CA ")
+  cur_ca = cur_res.find_atom_by(name=" CA ")
+  next_ca = next_res.find_atom_by(name=" CA ")
+  assert prev_ca is not None
+  assert next_ca is not None
+  atoms_to_move = []
+  atoms_to_move.append(prev_res.find_atom_by(name=" C  "))
+  atoms_to_move.append(prev_res.find_atom_by(name=" O  "))
+  for atom in cur_res.atoms():
+    atoms_to_move.append(atom)
+  atoms_to_move.append(next_res.find_atom_by(name=" N  "))
+
+  for atom in atoms_to_move:
+    assert atom is not None
+    new_xyz = rotate_point_around_axis(
+        axis_point_1 = prev_ca.xyz,
+        axis_point_2 = next_ca.xyz,
+        point        = atom.xyz,
+        angle        = angle,
+        deg          = True)
+    atom.xyz = new_xyz
+  if move_oxygens:
+    registry = RestraintsRegistry()
+    if rama_manager is None:
+      rama_manager = rama_eval()
+    tpr = ThreeProteinResidues(geometry=None, registry=registry)
+    tpr.append(prev_res)
+    tpr.append(cur_res)
+    tpr.append(next_res)
+    phi_psi_angles = tpr.get_phi_psi_angles()
+    rama_key = tpr.get_ramalyze_key()
+    ev_before = rama_manager.evaluate_angles(rama_key, phi_psi_angles[0], phi_psi_angles[1])
+    theta1 = _find_theta(
+        ap1 = prev_ca.xyz,
+        ap2 = cur_ca.xyz,
+        cur_xyz = prev_res.find_atom_by(name=" O  ").xyz,
+        needed_xyz = saved_res[0]["O"])
+    theta2 = _find_theta(
+        ap1 = cur_ca.xyz,
+        ap2 = next_ca.xyz,
+        cur_xyz = cur_res.find_atom_by(name=" O  ").xyz,
+        needed_xyz = saved_res[1]["O"])
+    for a in [prev_res.find_atom_by(name=" C  "),
+        prev_res.find_atom_by(name=" O  "),
+        cur_res.find_atom_by(name=" C  ")]:
+      new_xyz = rotate_point_around_axis(
+              axis_point_1 = prev_ca.xyz,
+              axis_point_2 = cur_ca.xyz,
+              point        = a.xyz,
+              angle        = theta1,
+              deg          = True)
+      a.xyz = new_xyz
+    for a in [cur_res.find_atom_by(name=" C  "),
+        cur_res.find_atom_by(name=" O  "),
+        next_res.find_atom_by(name=" N  ")]:
+      new_xyz = rotate_point_around_axis(
+              axis_point_1 = cur_ca.xyz,
+              axis_point_2 = next_ca.xyz,
+              point        = a.xyz,
+              angle        = theta2,
+              deg          = True)
+      a.xyz = new_xyz
+    phi_psi_angles = tpr.get_phi_psi_angles()
+    rama_key = tpr.get_ramalyze_key()
+    ev_after = rama_manager.evaluate_angles(rama_key, phi_psi_angles[0], phi_psi_angles[1])
+    if ev_before > ev_after and not accept_worse_rama:
+      for a in [prev_res.find_atom_by(name=" C  "),
+          prev_res.find_atom_by(name=" O  "),
+          cur_res.find_atom_by(name=" C  ")]:
+        new_xyz = rotate_point_around_axis(
+                axis_point_1 = prev_ca.xyz,
+                axis_point_2 = cur_ca.xyz,
+                point        = a.xyz,
+                angle        = -theta1,
+                deg          = True)
+        a.xyz = new_xyz
+      for a in [cur_res.find_atom_by(name=" C  "),
+          cur_res.find_atom_by(name=" O  "),
+          next_res.find_atom_by(name=" N  ")]:
+        new_xyz = rotate_point_around_axis(
+                axis_point_1 = cur_ca.xyz,
+                axis_point_2 = next_ca.xyz,
+                point        = a.xyz,
+                angle        = -theta2,
+                deg          = True)
+        a.xyz = new_xyz
 
 def fix_rotamer_outliers(
     pdb_hierarchy,
@@ -2354,12 +2488,16 @@ def fix_rotamer_outliers(
     radius=5,
     mon_lib_srv=None,
     rotamer_manager=None,
-    backrub_range=None,
-    asc=None):
+    backrub_range=20,
+    asc=None,
+    verbose=False,
+    log=None):
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
+  if log is None:
+    log = sys.stdout
   get_class = iotbx.pdb.common_residue_names_get_class
   assert pdb_hierarchy is not None
   assert grm is not None
@@ -2371,30 +2509,78 @@ def fix_rotamer_outliers(
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for conf in chain.conformers():
-        for res in conf.residues():
-          # print "Working on ", res.id_str()
+        residues = conf.residues()
+        n_res = len(residues)
+        for i_res, res in enumerate(residues):
+          if verbose:
+            print >> log, "Working on", res.id_str()
           cl = get_class(res.resname)
           if cl not in ["common_amino_acid","modified_amino_acid"]:
             continue
           ev = rotamer_manager.evaluate_residue_2(res)
-          # print ev,
           if ev != "OUTLIER" or ev is None:
             continue
-          s_inf = _get_rotamers_evaluated(
-              pdb_hierarchy=pdb_hierarchy,
-              res=res,
-              grm=grm,
-              special_position_settings=special_position_settings,
-              mon_lib_srv=mon_lib_srv,
-              radius=radius)
-          if s_inf is None:
-            continue
-          if s_inf[-1][5] > -0.01 or backrub_range is None:
-            res.atoms().set_xyz(s_inf[-1][-1])
-          else:
-            #try backrub motions here
-            # print "Backrub would be useful here...."
-            pass
+          sample_backrub_angles = [0]
+          if backrub_range is not None:
+            inc = 5
+            f = 5
+            while f <= backrub_range:
+              sample_backrub_angles.append(-f)
+              sample_backrub_angles.append(f)
+              f += inc
+          all_inf = []
+          for backrub_angle in sample_backrub_angles:
+            if verbose:
+              print >> log, "  Backrub angle:", backrub_angle
+            # make backrub, check ramachandran status
+            prev_res = None
+            if i_res > 0:
+              prev_res = residues[i_res-1]
+            next_res = None
+            if i_res < n_res:
+              next_res = residues[i_res+1]
+            backrub_move(
+                prev_res = prev_res,
+                cur_res = res,
+                next_res = next_res,
+                angle=backrub_angle,
+                move_oxygens=False,
+                accept_worse_rama=False,
+                rotamer_manager=rotamer_manager)
+            # sample rotamers
+            s_inf = _get_rotamers_evaluated(
+                pdb_hierarchy=pdb_hierarchy,
+                res=res,
+                grm=grm,
+                special_position_settings=special_position_settings,
+                mon_lib_srv=mon_lib_srv,
+                radius=radius,
+                prefix="%d" % backrub_angle)
+            if s_inf is None:
+              continue
+            all_inf.extend(s_inf)
+            all_inf = sorted(all_inf, key=lambda x: (x[5], x[2]))
+            if verbose:
+              for inf_elem in all_inf:
+                print >> log, "    ", inf_elem[:-1]
+            # see if need to continue to another backrubs
+            # pdb_hierarchy.write_pdb_file(
+            #     file_name="%s_%d.pdb" % (res.id_str()[7:], backrub_angle))
+            if verbose:
+              print >> log, "  The best clashscore 2:", all_inf[-1][5]
+            if all_inf[-1][5] > -0.01:
+              break
+            backrub_move(
+                prev_res = prev_res,
+                cur_res = res,
+                next_res = next_res,
+                angle=-backrub_angle,
+                move_oxygens=False,
+                accept_worse_rama=False,
+                rotamer_manager=rotamer_manager)
+          if verbose:
+            print >> log, "Setting best available rotamer:", all_inf[-1][:-1]
+          res.atoms().set_xyz(all_inf[-1][-1])
   return pdb_hierarchy
 
 def switch_rotamers(

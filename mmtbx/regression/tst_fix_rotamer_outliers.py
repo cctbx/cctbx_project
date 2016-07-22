@@ -157,10 +157,8 @@ def exercise_2(mon_lib_srv, ener_lib, rotamer_manager):
   rotamers = []
   for res in pdb_h.only_chain().only_conformer().residues():
     rotamers.append(rotamer_manager.evaluate_residue(res))
-  assert rotamers == ['mtt180', 'tttt', 'm-30', 'pt', 'm', 'mp0',
-    'm-40', 'EXCEPTION' ,'tt', 'tttt'], rotamers
-
-
+  assert rotamers == ['mtt180', 'tttt', 'm-30', 'pt', 'p', 'mt-10', 'm-40',
+      'EXCEPTION', 'tt', 'tttt'], rotamers
 
 if (__name__ == "__main__"):
   mon_lib_srv = mmtbx.monomer_library.server.server()
