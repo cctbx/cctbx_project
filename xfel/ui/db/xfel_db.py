@@ -387,7 +387,7 @@ class xfel_db_application(object):
       final_where = ""
     else:
       final_where = where.strip()
-      where = ""
+    where = ""
     if only_indexed or isoform is not None:
       where = " JOIN `%s_imageset_event` is_e ON event.id = is_e.event_id"%tag
     if trial is not None:
@@ -412,7 +412,7 @@ class xfel_db_application(object):
         if len(rungroups) > 0:
           where += " AND event.rungroup_id in (%s)"%rungroups
 
-    if len(where) > 0:
+    if len(where) > 0 and len(final_where) > 0:
       final_where = "AND " + final_where.lstrip("WHERE")
     return self.get_all_x(Event, "event", where + " " + final_where)
 
