@@ -10,7 +10,7 @@
 #  This code is distributed under the X license, a copy of which is
 #  included in the root directory of this package.
 #
-# LIBTBX_SET_DISPATCHER_NAME dev.xfel.filter_experiments_by_rmsd
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.filter_experiments_by_rmsd
 #
 from __future__ import division
 from dials.array_family import flex
