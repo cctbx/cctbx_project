@@ -1069,7 +1069,7 @@ class StatusTab(BaseTab):
     self.tag_trial_changed = False
     self.redraw_windows = True
     self.multiplicity_goal = 10
-    self.isigi_cutoff = None
+    self.isigi_cutoff = 2
     self.info = {}
 
     self.status_panel = ScrolledPanel(self, size=(900, 120))
@@ -1103,7 +1103,7 @@ class StatusTab(BaseTab):
                                      label='I/sigI cutoff:',
                                      label_size=(120, -1),
                                      ctrl_size=(100, -1),
-                                     items=[('isigi', 'None')])
+                                     items=[('isigi', '2')])
 
     self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 10)
 

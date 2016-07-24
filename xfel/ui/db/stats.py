@@ -140,7 +140,10 @@ class HitrateStats(object):
         timestamps.append(rts)
         n_strong.append(n_s)
         if str(b_id) in low_res_bin_ids:
-          average_i_sigi_low.append(avg_i_sigi)
+          if avg_i_sigi is None:
+            average_i_sigi_low.append(1e-6)
+          else:
+            average_i_sigi_low.append(avg_i_sigi)
           average_i_sigi_high.append(0)
         elif str(b_id) in high_res_bin_ids:
           average_i_sigi_low.append(0)
