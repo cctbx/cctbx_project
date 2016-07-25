@@ -18,7 +18,7 @@ run_no = sys.argv[1]
 #read .paramhist files and display refinement results
 import os
 cn_file = 0
-for file_in in os.listdir(run_no):
+for file_in in os.listdir(run_no+'/hist/'):
   if file_in.endswith('.paramhist'):
     cn_file += 1
 
@@ -30,7 +30,7 @@ if cn_file == 0:
 
 param_file_list = []
 for i in range(cn_file):
-  param_file_list.append(run_no+'/'+str(i)+'.paramhist')
+  param_file_list.append(run_no+'/hist/'+str(i)+'.paramhist')
 
 data_dict_list = []
 for param_file in param_file_list:

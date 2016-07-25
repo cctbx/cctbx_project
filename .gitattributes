@@ -2582,10 +2582,15 @@ prime/SConscript -text
 prime/__init__.py -text
 prime/api.py -text
 prime/command_line/__init__.py -text
+prime/command_line/_genref_determine_mean_I.py -text
+prime/command_line/_genref_scale_frame_by_mean_I.py -text
+prime/command_line/_postrefine_frame.py -text
 prime/command_line/change_path_indexing_ambiguity.py -text
 prime/command_line/comparestats.py -text
 prime/command_line/frame_extractor_by_scan.py -text
+prime/command_line/genref.py -text
 prime/command_line/iotacc.py -text
+prime/command_line/merge.py -text
 prime/command_line/plot_energy_spectrum.py -text
 prime/command_line/plotstats.py -text
 prime/command_line/postrefine.py -text
@@ -2593,6 +2598,7 @@ prime/command_line/prime_gui.py -text
 prime/command_line/print_integration_pickle.py -text
 prime/command_line/r_mtz_mtz.py -text
 prime/command_line/ray_trace.py -text
+prime/command_line/run.py -text
 prime/command_line/spot_param_visualizer.py -text
 prime/command_line/view_fineslices.py -text
 prime/command_line/viewstats.py -text
@@ -2610,9 +2616,11 @@ prime/postrefine/mod_partiality.py -text
 prime/postrefine/mod_pdb.py -text
 prime/postrefine/mod_plotter.py -text
 prime/postrefine/mod_results.py -text
+prime/postrefine/mod_run.py -text
 prime/postrefine/mod_util.py -text
 prime/postrefine/postrefine.py -text
 prime/postrefine/whiteboard.tex -text
+prime/readme.txt -text
 prime/whiteboard.tex -text
 rstbx/README -text
 rstbx/SConscript -text

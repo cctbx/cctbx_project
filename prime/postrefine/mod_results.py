@@ -25,7 +25,11 @@ class postref_results(object):
       pickle_filename=None,
       wavelength=None,
       crystal_orientation=None,
-      detector_distance_mm=None):
+      detector_distance_mm=None,
+      identified_isoform=None,
+      mapped_predictions=None,
+      xbeam=None,
+      ybeam=None):
 
     self.observations = observations
     self.observations_original = observations_original
@@ -37,6 +41,10 @@ class postref_results(object):
     self.pickle_filename = pickle_filename
     self.wavelength = wavelength
     self.detector_distance_mm = detector_distance_mm
+    self.identified_isoform = identified_isoform
+    self.mapped_predictions = mapped_predictions
+    self.xbeam = xbeam
+    self.ybeam = ybeam
 
     #refined_params
     #note params = G,B,rotx,roty,ry,a,b,c,alpha,beta,gamma
@@ -67,3 +75,14 @@ class postref_results(object):
     self.CC_iso_init = stats[8]
     self.CC_iso_final = stats[9]
 
+  def generate_observations_pickle(self):
+    observations_pickle = {'observations': [], \
+      'identified_isoform': self.identified_isoform, \
+      'distance': self.detector_distance_mm, \
+      'wavelength': self.wavelength, \
+      'mapped_predictions': [], \
+      'xbeam': self.xbeam, \
+      'ybeam': self.ybeam}
+    observations_pickle['observations'].append(self.observations_original)
+    observations_pickle['mapped_predictions'].append(self.mapped_predictions)
+    return observations_pickle

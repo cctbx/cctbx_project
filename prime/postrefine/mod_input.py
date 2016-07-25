@@ -296,6 +296,22 @@ percent_cone_fraction = 5.0
 isoform_name = None
   .type = str
   .help = Use this isoform.
+timeout_seconds = 300
+  .type = int
+  .help = Time limits used when queing system is activated.
+queue
+  .help = "Parameters used for submitting jobs to queuing system."
+{
+  flag_on = False
+    .type = bool
+    .help = Set to True to activate queuing jobs.
+  queue_name = None
+    .type = str
+    .help = For system with queue name, specify your queue name here.
+  n_nodes = 5
+    .type = int
+    .help = No. of nodes used.
+}
 """)
 
 txt_help = """**************************************************************************************************
@@ -319,7 +335,7 @@ For feedback, please contact monarin@stanford.edu.
 List of available parameters:
 """
 
-def process_input(argv=None):
+def process_input(argv=None, flag_check_exist=True):
   if argv == None:
     argv = sys.argv[1:]
 
@@ -367,11 +383,14 @@ def process_input(argv=None):
     raise Sorry("Oops, you asked to resolve indexing ambiguity and gave the solution file as an mtz file. \nPlease give the assigned basis (eg. indexing_ambiguity.assigned_basis=k,h,-l) to proceed.")
 
   #generate run_no folder
-  if os.path.exists(params.run_no):
-    raise Sorry("Oops, the run number %s already exists."%params.run_no)
-
-  os.makedirs(params.run_no)
-
+  if flag_check_exist:
+    if os.path.exists(params.run_no):
+      raise Sorry("Oops, the run number %s already exists."%params.run_no)
+    #make folders
+    os.makedirs(params.run_no+'/pickles')
+    os.makedirs(params.run_no+'/inputs')
+    os.makedirs(params.run_no+'/mtz')
+    os.makedirs(params.run_no+'/hist')
   #capture input read out by phil
   from cStringIO import StringIO
   class Capturing(list):
@@ -391,3 +410,28 @@ def process_input(argv=None):
     txt_out += one_output + '\n'
 
   return params, txt_out
+
+def read_pickles(data):
+  frame_files = []
+  for p in data:
+    if os.path.isdir(p) == False:
+      if os.path.isfile(p):
+        #check if list-of-pickle text file is given
+        pickle_list_file = open(p,'r')
+        pickle_list = pickle_list_file.read().split("\n")
+      else:
+        # p is a glob
+        import glob
+        pickle_list = glob.glob(p)
+      for pickle_filename in pickle_list:
+        if os.path.isfile(pickle_filename):
+          frame_files.append(pickle_filename)
+    else:
+      for pickle_filename in os.listdir(p):
+        if pickle_filename.endswith('.pickle'):
+          frame_files.append(p+'/'+pickle_filename)
+  #check if pickle_dir is given in input file instead of from cmd arguments.
+  if len(frame_files)==0:
+    print 'No pickle files found.'
+    exit()
+  return frame_files
