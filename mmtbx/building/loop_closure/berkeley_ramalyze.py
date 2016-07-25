@@ -9,7 +9,7 @@ def run(args, log=sys.stdout):
   pdb_h = iotbx.pdb.input(source_info=None, file_name=args[0]).\
       construct_hierarchy()
   r = ramachandran_eval.RamachandranEval()
-  outp = list_rama_outliers_h(pdb_h, r)
+  outp = list_rama_outliers_h(pdb_h, r.rama_eval)
   print outp
   print "END"
 
