@@ -50,6 +50,11 @@ class deflate_encoding_small(encoding):
 
 
 # Storages
+def no_storage(stream):
+
+  return stream
+
+
 def memory_storage(stream):
 
   import cStringIO
@@ -150,7 +155,7 @@ def openurl(
   url,
   data = None,
   encodings = [ gzip_encoding, deflate_encoding_small ],
-  storage = memory_storage,
+  storage = no_storage,
   ):
 
   import urllib2

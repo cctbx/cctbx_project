@@ -1674,6 +1674,7 @@ libtbx/phil/tst_interface.py -text
 libtbx/program_utils/__init__.py -text
 libtbx/program_utils/result.py -text
 libtbx/program_utils/statistics_info.py -text
+libtbx/progress.py -text
 libtbx/pyplot.py svneol=native#text/x-python
 libtbx/pythonpath/__init__.py -text
 libtbx/pythonpath/deep_thought.py svneol=native#text/x-python
@@ -2209,6 +2210,7 @@ mmtbx/polygon/__init__.py -text
 mmtbx/polygon/output.py -text
 mmtbx/polygon/tst.py -text
 mmtbx/polygon/tst_gui.py -text
+mmtbx/proq2.py -text
 mmtbx/real_space_correlation.py -text
 mmtbx/refinement/ensemble_refinement/__init__.py svneol=native#text/x-python
 mmtbx/refinement/ensemble_refinement/ensemble_probability.py -text
