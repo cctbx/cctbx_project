@@ -27,9 +27,10 @@ phil_scope = parse("""
     .help = Refine a random subset of the provided files
   split_dataset = False
     .type = bool
-    .help = Whether to split the data in two using odd and even file numbers. Each \
-            half is refined seperately and _1 or _2 is appended to the tag. If used \
-            with n_subset, each half will have n_subset images.
+    .help = After refining the full set of images, if split_dataset is True, the \
+            data will be split in two using odd and even file numbers and each half \
+            will be refined independently. For each half, _1 or _2 is appended to \
+            the tag. If used with n_subset, each half will have n_subset/2 images.
   data_phil = None
     .type = str
     .help = Optional phil file with all experiments and reflections for use during \
@@ -130,18 +131,34 @@ def run(args):
           odd_ref.append(ref)
 
       base_tag = params.tag
+      base_n_subset = params.n_subset
+
+      params.n_subset = base_n_subset // 2
+      odd_exp, odd_ref = generate_exp_list(params, odd_exp, odd_ref)
+      even_exp, even_ref = generate_exp_list(params, even_exp, even_ref)
+
+      params.tag = base_tag + "_1"
+      odd_combine_phil = write_combine_phil(params, odd_exp, odd_ref)
+      params.tag = base_tag + "_2"
+      even_combine_phil = write_combine_phil(params, even_exp, even_ref)
+
+      params.tag = base_tag
+      params.n_subset = base_n_subset
+      full_combine_phil = write_combine_phil(params, odd_exp+even_exp, odd_ref+even_ref)
+
+      print "Refining full dataset using tag", params.tag
+      refine(params, merged_scope, full_combine_phil)
 
       params.tag = base_tag + "_1"
       print "Refining odd numbered data using tag", params.tag
-      combine_phil = generate_combine_phil(params, odd_exp, odd_ref)
-      refine(params, merged_scope, combine_phil)
+      refine(params, merged_scope, odd_combine_phil)
 
       params.tag = base_tag + "_2"
       print "Refining even numbered data using tag", params.tag
-      combine_phil = generate_combine_phil(params, even_exp, even_ref)
-      refine(params, merged_scope, combine_phil)
+      refine(params, merged_scope, even_combine_phil)
     else:
-      combine_phil = generate_combine_phil(params, all_exp, all_ref)
+      all_exp, all_ref = generate_exp_list(params, all_exp, all_ref)
+      combine_phil = write_combine_phil(params, all_exp, all_ref)
       refine(params, merged_scope, combine_phil)
   else:
     assert len(paths) == 0
@@ -149,7 +166,7 @@ def run(args):
     assert not params.split_dataset
     refine(params, merged_scope, params.data_phil)
 
-def generate_combine_phil(params, all_exp, all_ref):
+def generate_exp_list(params, all_exp, all_ref):
   if params.n_subset is not None:
     subset_all_exp = []
     subset_all_ref = []
@@ -163,7 +180,9 @@ def generate_combine_phil(params, all_exp, all_ref):
 
     all_exp = subset_all_exp
     all_ref = subset_all_ref
+  return all_exp, all_ref
 
+def write_combine_phil(params, all_exp, all_ref):
   combine_phil = "%s_combine.phil"%params.tag
   f = open(combine_phil, 'w')
   for exp_path, ref_path in zip(all_exp, all_ref):
