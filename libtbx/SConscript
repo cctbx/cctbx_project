@@ -207,6 +207,7 @@ def gcc_common_warn_options():
     "-Wall",
     "-Wno-sign-compare",
     "-Wno-unknown-pragmas",
+    "-Wno-unused-local-typedefs",
     "-Wno-parentheses"]
   if (    env_etc.gcc_version is not None
       and env_etc.gcc_version >= 40000):
@@ -219,7 +220,7 @@ def gcc_common_warn_options():
 
 def clang_common_warn_options():
   return [ '-Wmost', '-Wno-unknown-pragmas', '-Wno-logical-op-parentheses',
-           '-Wno-unused-local-typedef' ]
+           '-Wno-unused-local-typedefs' ]
 
 def enable_more_warnings(env):
   """ Enable more warning for debug_level == 0 """
