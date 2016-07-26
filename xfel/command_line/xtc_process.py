@@ -272,15 +272,27 @@ class InMemScript(DialsProcessScript):
       phil = phil_scope)
 
     self.debug_file_path = None
+    self.debug_str = None
     self.mpi_log_file_path = None
 
-  def debug_write(self, string):
-    debug_file_handle = open(self.debug_file_path, 'a')#, 0)  # 0 for unbuffered
-    debug_file_handle.write(string)
+  def debug_start(self, ts):
+    self.debug_str = "%s,%s"%(socket.gethostname(), ts)
+    self.debug_str += ",%s,%s,%s\n"
+    self.debug_write("start")
+
+  def debug_write(self, string, state = None):
+    ts = cspad_tbx.evt_timestamp() # Now
+    debug_file_handle = open(self.debug_file_path, 'a')
+    if string == "":
+      debug_file_handle.write("\n")
+    else:
+      if state is None:
+        state = "    "
+      debug_file_handle.write(self.debug_str%(ts, state, string))
     debug_file_handle.close()
 
   def mpi_log_write(self, string):
-    mpi_log_file_handle = open(self.mpi_log_file_path, 'a')#, 0)  # 0 for unbuffered
+    mpi_log_file_handle = open(self.mpi_log_file_path, 'a')
     mpi_log_file_handle.write(string)
     mpi_log_file_handle.close()
 
@@ -366,22 +378,25 @@ class InMemScript(DialsProcessScript):
         pass # due to multiprocessing, makedirs can sometimes fail
     assert os.path.exists(debug_dir)
 
-    if params.debug.skip_processed_events or params.debug.skip_processed_events or params.debug.skip_bad_events:
+    if params.debug.skip_processed_events or params.debug.skip_unprocessed_events or params.debug.skip_bad_events:
       print "Reading debug files..."
       self.known_events = {}
       for filename in os.listdir(debug_dir):
-        # format: hostname,timestamp,status
+        # format: hostname,timestamp_event,timestamp_now,status,detail
         for line in open(os.path.join(debug_dir, filename)):
           vals = line.strip().split(',')
-          if len(vals) == 2:
-            self.known_events[vals[1]] = "unknown"
-          elif len(vals) == 3:
-            self.known_events[vals[1]] = vals[2]
+          if len(vals) != 5:
+            continue
+          _, ts, _, status, detail = vals
+          if status in ["done", "stop", "fail"]:
+            self.known_events[ts] = status
+          else:
+            self.known_events[ts] = "unknown"
 
     self.debug_file_path = os.path.join(debug_dir, "debug_%d.txt"%rank)
     write_newline = os.path.exists(self.debug_file_path)
     if write_newline: # needed if the there was a crash
-      self.debug_write("\n")
+      self.debug_write("")
 
     if params.mp.method != 'mpi' or params.mp.mpi.method == 'client_server':
       if rank == 0:
@@ -518,8 +533,8 @@ class InMemScript(DialsProcessScript):
 
     if self.params_cache.debug.skip_processed_events or self.params_cache.debug.skip_unprocessed_events or self.params_cache.debug.skip_bad_events:
       if ts in self.known_events:
-        if self.known_events[ts] == "unknown":
-          if self.params_cache.debug.skip_bad_events and self.known_events[ts] == "unknown":
+        if self.known_events[ts] not in ["stop", "done", "fail"]:
+          if self.params_cache.debug.skip_bad_events:
             print "Skipping event %s: possibly caused an unknown exception previously"%ts
             return
         elif self.params_cache.debug.skip_processed_events:
@@ -530,12 +545,12 @@ class InMemScript(DialsProcessScript):
           print "Skipping event %s: not processed previously"%ts
           return
 
-    self.debug_write("%s,%s"%(socket.gethostname(), ts))
+    self.debug_start(ts)
 
     evt = run.event(timestamp)
     if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
       print "Skipping event",ts
-      self.debug_write(",psana_skip\n")
+      self.debug_write("psana_skip", "skip")
       return
 
     print "Accepted", ts
@@ -551,14 +566,14 @@ class InMemScript(DialsProcessScript):
                                                     per_pixel_gain=False)
       if data is None:
         print "No data"
-        self.debug_write(",no_data\n")
+        self.debug_write("no_data", "skip")
         return
 
       if self.params.format.cbf.override_distance is None:
         distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
         if distance is None:
           print "No distance, skipping shot"
-          self.debug_write(",no_distance\n")
+          self.debug_write("no_distance", "skip")
           return
       else:
         distance = self.params.format.cbf.override_distance
@@ -567,7 +582,7 @@ class InMemScript(DialsProcessScript):
         wavelength = cspad_tbx.evt_wavelength(evt)
         if wavelength is None:
           print "No wavelength, skipping shot"
-          self.debug_write(",no_wavelength\n")
+          self.debug_write("no_wavelength", "skip")
           return
       else:
         wavelength = 12398.4187/self.params.format.cbf.override_energy
@@ -622,19 +637,20 @@ class InMemScript(DialsProcessScript):
     self.params.spotfinder.lookup.mask = mask
     self.params.integration.lookup.mask = mask
 
+    self.debug_write("spotfind_start")
     try:
       observed = self.find_spots(datablock)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_write(",spotfinding_exception\n")
+      self.debug_write("spotfinding_exception", "fail")
       return
 
     print "Found %d bright spots"%len(observed)
 
     if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
       print "Not enough spots to index"
-      self.debug_write(",not_enough_spots_%d\n"%len(observed))
+      self.debug_write("not_enough_spots_%d"%len(observed), "stop")
       self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
@@ -661,59 +677,63 @@ class InMemScript(DialsProcessScript):
             len(observed), os.path.basename(strong_filename)))
 
     if not self.params.dispatch.index:
-      self.debug_write(",strong_shot_%d\n"%len(observed))
+      self.debug_write("strong_shot_%d"%len(observed), "done")
       self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     # index and refine
+    self.debug_write("index_start")
     try:
       experiments, indexed = self.index(datablock, observed)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_write(",indexing_failed_%d\n"%len(observed))
+      self.debug_write("indexing_failed_%d"%len(observed), "stop")
       self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     if self.params.dispatch.dump_indexed:
       self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
 
+    self.debug_write("refine_start")
     try:
       experiments = self.refine(experiments, indexed)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_write(",refine_failed_%d\n"%len(indexed))
+      self.debug_write("refine_failed_%d"%len(indexed), "fail")
       self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     if self.params.dispatch.reindex_strong:
+      self.debug_write("reindex_start")
       try:
         self.reindex_strong(experiments, observed)
       except Exception, e:
         import traceback; traceback.print_exc()
         print str(e), "event", timestamp
-        self.debug_write(",reindexstrong_failed_%d\n"%len(indexed))
+        self.debug_write("reindexstrong_failed_%d"%len(indexed), "fail")
         self.log_frame(None, None, run.run(), len(observed), timestamp)
         return
 
     if not self.params.dispatch.integrate:
-      self.debug_write(",index_ok_%d\n"%len(indexed))
+      self.debug_write("index_ok_%d"%len(indexed), "done")
       self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     # integrate
+    self.debug_write("integrate_start")
     try:
       integrated = self.integrate(experiments, indexed)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_write(",integrate_failed_%d\n"%len(indexed))
+      self.debug_write("integrate_failed_%d"%len(indexed), "fail")
       self.log_frame(None, None, run.run(), len(observed), timestamp)
       return
 
     self.log_frame(experiments, integrated, run.run(), len(observed), timestamp)
-    self.debug_write(",integrate_ok_%d\n"%len(integrated))
+    self.debug_write("integrate_ok_%d"%len(integrated), "done")
 
   def log_frame(self, experiments, reflections, run, n_strong, timestamp = None):
     if self.params.experiment_tag is None:
@@ -724,7 +744,7 @@ class InMemScript(DialsProcessScript):
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_write(",db_logging_failed_%d\n" % len(integrated))
+      self.debug_write("db_logging_failed_%d" % len(integrated), "fail")
 
   def save_image(self, image, params, root_path):
     """ Save an image, in either cbf or pickle format.
