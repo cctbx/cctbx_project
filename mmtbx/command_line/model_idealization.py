@@ -123,11 +123,12 @@ def run(args):
     cs = box.crystal_symmetry()
     shift_vector = box.shift_vector
   pdb_h_raw = pdb_input.construct_hierarchy()
-  write_whole_pdb_file(
-      file_name="%s_boxed.pdb" % os.path.basename(pdb_file_names[0]),
-      pdb_hierarchy=pdb_h_raw,
-      crystal_symmetry=cs,
-      ss_annotation=pdb_input.extract_secondary_structure())
+  if shift_vector is not None:
+    write_whole_pdb_file(
+        file_name="%s_boxed.pdb" % os.path.basename(pdb_file_names[0]),
+        pdb_hierarchy=pdb_h_raw,
+        crystal_symmetry=cs,
+        ss_annotation=pdb_input.extract_secondary_structure())
   if work_params.trim_alternative_conformations:
     asc = pdb_h_raw.atom_selection_cache()
     sel = asc.selection("altloc ' '")
@@ -303,6 +304,7 @@ def run(args):
     ss_annotation=ann)
 
   if using_ncs:
+    print >> log, "Using ncs"
     ssb.set_xyz_smart(pdb_h, fixed_rot_pdb_h)
     # multiply back and do geometry_minimization for the whole molecule
     for ncs_gr in ncs_restr_group_list:
@@ -323,6 +325,8 @@ def run(args):
         ss_annotation=original_ann)
   else:
     # still need to run gm if rotamers were fixed
+    print >> log, "Not using ncs"
+    print "loop_ideal.ref_exclusion_selection", loop_ideal.ref_exclusion_selection
     if work_params.additionally_fix_rotamer_outliers:
       ssb.set_xyz_smart(pdb_h, fixed_rot_pdb_h) # get out of if?
       minimize_wrapper_for_ramachandran(
