@@ -47,7 +47,10 @@ def cbf_gonio_to_effective_axis_fixed(cbf_gonio):
   angle = rot.angle()
   if angle < 0:
     axis = -1 * axis
-    start = -start
+    # common sense would suggest in here that if the angle is -ve should
+    # be made +ve - works OK for omega scans but not phi scans, probably
+    # incomplete goniometer definition problem...
+    # start = -start
 
   S = axis.axis_and_angle_as_r3_rotation_matrix(start, deg=True)
 
