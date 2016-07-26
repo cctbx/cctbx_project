@@ -1618,6 +1618,34 @@ Estimated memory allocation for cubicles exceeds max_number_of_bytes:
     fast_pair_generator_init()
     sites_cart.pop_back()
 
+def exercise_asu_mappings():
+  import pickle
+  structure = trial_structure_2()
+  original = structure.asu_mappings( buffer_thickness=2)
+  restored = pickle.loads( pickle.dumps( original ) )
+
+  assert original.n_sites_in_asu_and_buffer() == restored.n_sites_in_asu_and_buffer()
+
+  for ( o, r ) in zip( original.mapped_sites_min(), restored.mapped_sites_min() ):
+    assert approx_equal( o, r, 1E-7 )
+
+  for ( o, r ) in zip( original.mapped_sites_max(), restored.mapped_sites_max() ):
+    assert approx_equal( o, r, 1E-7 )
+
+  mappings_o = original.mappings()
+  mappings_r = restored.mappings()
+  assert len( mappings_o ) == len( mappings_r )
+
+  for ( sitemap_o, sitemap_r ) in zip( mappings_o, mappings_r ):
+    assert len( sitemap_o ) == len( sitemap_r )
+
+    for ( site_o, site_r ) in zip( sitemap_o, sitemap_r ):
+      assert site_o.i_sym_op() == site_r.i_sym_op()
+      assert site_o.unit_shifts() == site_r.unit_shifts()
+
+      for( c_o, c_r ) in zip( site_o.mapped_site(), site_r.mapped_site() ):
+        assert approx_equal( c_o, c_r, 1E-7 )
+
 def run():
   exercise_symmetry()
   exercise_direct_space_asu()
@@ -1630,6 +1658,7 @@ def run():
   exercise_ext_symmetry()
   exercise_incremental_pairs_and_site_cluster_analysis()
   exercise_cubicles_max_memory()
+  exercise_asu_mappings()
   print "OK"
 
 if (__name__ == "__main__"):
