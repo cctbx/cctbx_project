@@ -97,7 +97,7 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
 
-MATPLOTLIB_PKG = "matplotlib-1.3.1.tar.gz"
+MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
