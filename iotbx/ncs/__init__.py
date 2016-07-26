@@ -28,23 +28,25 @@ ncs_search
     .type = atom_selection
     .help = Atoms selected by this selection will be excluded from the model \
       before NCS search procedures will run.
+    .expert_level = 2
   residue_match_radius = 4.0
     .type = float
     .help = Max allowed distance difference between pairs of matching \
         atoms of two residues
+    .expert_level = 0
   chain_similarity_threshold = 0.85
     .type=float
     .short_caption = Sequence alignment threshold
     .help='''Threshold for similarity between matching chains.
       A smaller value cause more chains to be grouped together and can lower
       the number of common residues'''
+    .expert_level = 0
   chain_max_rmsd = 2.
     .type = float
     .short_caption = Max RMSD between matching chains
     .help = '''limit of rms difference between chains to be considered
        as copies'''
     .expert_level = 0
-    .style = bold noauto
 }
 """
 
