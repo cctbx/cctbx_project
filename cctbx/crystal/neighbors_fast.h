@@ -53,8 +53,8 @@ namespace cctbx { namespace crystal { namespace neighbors {
         FloatType const& min_cubicle_edge=5,
         FloatType const& epsilon=1e-6)
       :
-        epsilon_(epsilon),
         min_cubicle_edge_(min_cubicle_edge),
+        epsilon_(epsilon),
         cubicles_(
           asu_mappings.get()->mapped_sites_min(),
           asu_mappings.get()->mapped_sites_span(),
