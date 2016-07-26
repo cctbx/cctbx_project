@@ -109,6 +109,34 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
     return vd0
 
 
+  def run_all_tests(self, g, reference):
+
+    self.manipulation(
+      g,
+      reference = reference,
+      maxiter = None,
+      expected = self.full_count_with_weight,
+      )
+    self.manipulation(
+      g,
+      reference = reference,
+      maxiter = 150,
+      expected = self.full_count_with_weight,
+      )
+    self.manipulation(
+      g,
+      reference = reference,
+      maxiter = 24,
+      expected = self.truncated_count_with_weight24,
+      )
+    self.manipulation(
+      g,
+      reference = reference,
+      maxiter = 27,
+      expected = self.truncated_count_with_weight27,
+      )
+
+
   def manipulation(self, g, reference, maxiter, expected):
 
     stiter = minimum_cut_enumerate.stirling_adaptive_tree_enumeration(
@@ -147,24 +175,7 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
 
     else:
       reference = self.build_graph( g )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = None,
-        expected = self.full_count_with_weight,
-        )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = 24,
-        expected = self.truncated_count_with_weight24,
-        )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = 27,
-        expected = self.truncated_count_with_weight27,
-        )
+      self.run_all_tests(g, reference = reference )
 
 
   def test_adjacency_list_undirected_list_set(self):
@@ -181,24 +192,7 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
 
     else:
       reference = self.build_graph( g )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = None,
-        expected = self.full_count_with_weight,
-        )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = 24,
-        expected = self.truncated_count_with_weight24,
-        )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = 27,
-        expected = self.truncated_count_with_weight27,
-        )
+      self.run_all_tests(g, reference = reference )
 
 
   def test_adjacency_list_undirected_vector_vector(self):
@@ -215,24 +209,7 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
 
     else:
       reference = self.build_graph( g )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = None,
-        expected = self.full_count_with_weight,
-        )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = 24,
-        expected = self.truncated_count_with_weight24,
-        )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = 27,
-        expected = self.truncated_count_with_weight27,
-        )
+      self.run_all_tests(g, reference = reference )
 
 
   def test_adjacency_list_undirected_list_vector(self):
@@ -249,24 +226,7 @@ class TestStirlingAdaptiveEnumeration(unittest.TestCase):
 
     else:
       reference = self.build_graph( g )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = None,
-        expected = self.full_count_with_weight,
-        )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = 24,
-        expected = self.truncated_count_with_weight24,
-        )
-      self.manipulation(
-        g,
-        reference = reference,
-        maxiter = 27,
-        expected = self.truncated_count_with_weight27,
-        )
+      self.run_all_tests(g, reference = reference )
 
 
 suite_stirling_adaptive_enumeration = unittest.TestLoader().loadTestsFromTestCase(
