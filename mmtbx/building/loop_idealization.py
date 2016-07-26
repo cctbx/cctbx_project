@@ -166,6 +166,8 @@ class loop_idealization():
           berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after min:", berkeley_count, duke_count
+      else:
+        print >> self.log, "Number of Rama outliers after min:", berkeley_count
     # return new_h
 
   def process_params(self, params):
@@ -203,8 +205,9 @@ class loop_idealization():
     # get list of residue numbers that should be excluded from reference
     list_of_reference_exclusion = []
     for resnum in rama_out_resnums:
-      start_rn, prev_rn = get_res_nums_around(hierarchy, resnum, 2, 2)
-      list_of_reference_exclusion += [start_rn, resnum, prev_rn]
+      excl_res = get_res_nums_around(
+          hierarchy, resnum, 2, 2, include_intermediate=True)
+      list_of_reference_exclusion += excl_res
     out_i = 0
     for rama_out_resnum in rama_out_resnums:
       print >> self.log
