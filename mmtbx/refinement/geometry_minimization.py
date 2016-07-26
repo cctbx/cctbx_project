@@ -427,6 +427,7 @@ def minimize_wrapper_for_ramachandran(
   params.pdb_interpretation.max_reasonable_bond_distance = None
   params.pdb_interpretation.peptide_link.apply_peptide_plane = True
   params.pdb_interpretation.ncs_search.enabled = True
+  params.pdb_interpretation.restraints_library.rdl = True
 
   processed_pdb_files_srv = mmtbx.utils.\
       process_pdb_file_srv(
@@ -438,6 +439,9 @@ def minimize_wrapper_for_ramachandran(
   processed_pdb_file, junk = processed_pdb_files_srv.\
       process_pdb_files(raw_records=flex.split_lines(hierarchy.as_pdb_string()))
 
+  mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
+  ener_lib = processed_pdb_files_srv.ener_lib
+
   ncs_restraints_group_list = []
   if processed_pdb_file.ncs_obj is not None:
     ncs_restraints_group_list = processed_pdb_file.ncs_obj.get_ncs_restraints_group_list()
@@ -445,22 +449,36 @@ def minimize_wrapper_for_ramachandran(
   grm = get_geometry_restraints_manager(
       processed_pdb_file, xrs, params=params)
 
-  if reference_rotamers:
+  if reference_rotamers and original_pdb_h is not None:
+    # make selection excluding rotamer outliers
+    from mmtbx.rotamer.rotamer_eval import RotamerEval
+    rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
+    non_rot_outliers_selection = flex.bool([False]*hierarchy.atoms().size())
+    for model in original_pdb_h.models():
+      for chain in model.chains():
+        for conf in chain.conformers():
+          for res in conf.residues():
+            ev = rotamer_manager.evaluate_residue_2(res)
+            if ev != "OUTLIER" or ev is None:
+              for a in res.atoms():
+                non_rot_outliers_selection[a.i_seq] = True
+
+
     rm_params = reference_model_params.extract()
     rm_params.reference_model.enabled=True
-    rm_params.reference_model.strict_rotamer_matching=True
+    rm_params.reference_model.strict_rotamer_matching=False
     rm_params.reference_model.main_chain=False
     rm = reference_model(
       processed_pdb_file=processed_pdb_file,
       reference_file_list=None,
       reference_hierarchy_list=[original_pdb_h],
-      mon_lib_srv=None,
-      ener_lib=None,
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
       has_hd=None,
       params=rm_params.reference_model,
-      selection=None,
+      selection=non_rot_outliers_selection,
       log=log)
-    # rm.show_reference_summary(log=log)
+    rm.show_reference_summary(log=log)
     grm.geometry.adopt_reference_dihedral_manager(rm)
 
   # dealing with SS
@@ -471,7 +489,7 @@ def minimize_wrapper_for_ramachandran(
         geometry_restraints_manager=grm.geometry,
         sec_str_from_pdb_file=ss_annotation,
         params=None,
-        mon_lib_srv=None,
+        mon_lib_srv=mon_lib_srv,
         verbose=-1,
         log=log)
     grm.geometry.set_secondary_structure_restraints(
@@ -511,18 +529,20 @@ def minimize_wrapper_for_ramachandran(
       fix_rotamer_outliers=True,
       log=log)
 
-  if len(excl_string_selection) == 0:
-    excl_string_selection = "all"
-  asc = original_pdb_h.atom_selection_cache()
-  sel = asc.selection("(%s) and (name CA or name C or name N or name O)" % excl_string_selection)
+
+  if original_pdb_h is not None:
+    if len(excl_string_selection) == 0:
+      excl_string_selection = "all"
+    asc = original_pdb_h.atom_selection_cache()
+    sel = asc.selection("(%s) and (name CA or name C or name N or name O)" % excl_string_selection)
 
 
-  grm.geometry.append_reference_coordinate_restraints_in_place(
-      reference.add_coordinate_restraints(
-          sites_cart = original_pdb_h.atoms().extract_xyz().select(sel),
-          selection  = sel,
-          sigma      = reference_sigma,
-          top_out_potential=True))
+    grm.geometry.append_reference_coordinate_restraints_in_place(
+        reference.add_coordinate_restraints(
+            sites_cart = original_pdb_h.atoms().extract_xyz().select(sel),
+            selection  = sel,
+            sigma      = reference_sigma,
+            top_out_potential=True))
   obj = run2(
       restraints_manager       = grm,
       pdb_hierarchy            = hierarchy,
