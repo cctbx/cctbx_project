@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 06/01/2016
+Last Changed: 07/26/2016
 Description : PRIME GUI Initialization module
 '''
 
@@ -571,7 +571,7 @@ class PRIMEThread(Thread):
     if os.path.isfile(self.out_file):
       os.remove(self.out_file)
     if self.command is None:
-      cmd = 'prime.postrefine {} > {}'.format(self.prime_file, self.out_file)
+      cmd = 'prime.run {} > {}'.format(self.prime_file, self.out_file)
     else:
       cmd = self.command
 
