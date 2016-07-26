@@ -46,4 +46,3 @@ def test_spacegroup_tidy_pickling():
 if (__name__ == "__main__"):
   test_spacegroup_tidy_pickling()
   print "OK"
-
