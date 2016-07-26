@@ -37,7 +37,23 @@ namespace {
     {
       return boost::python::make_tuple(o.type().hall_symbol());
     }
+/* Must tidy the spacegroup order of operations because 
+   asu_mappings.find_i_sym(i_seq, rt_mx) rely on the order being retained.
+   We do this in a setstate method that ignores its arguments and only calls make_tidy()
+   on itself. Likewise the corresponding getstate() is a dummy returning an empty tuple.
+*/
+    static boost::python::tuple
+      getstate(w_t const& o)
+    {
+      return boost::python::tuple();
+    }
 
+    static void
+      setstate(w_t& o, boost::python::tuple state)
+    {
+      o.make_tidy();
+    }
+      
     static void
     wrap()
     {
