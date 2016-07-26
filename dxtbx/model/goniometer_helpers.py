@@ -47,6 +47,7 @@ def cbf_gonio_to_effective_axis_fixed(cbf_gonio):
   angle = rot.angle()
   if angle < 0:
     axis = -1 * axis
+    start = -start
 
   S = axis.axis_and_angle_as_r3_rotation_matrix(start, deg=True)
 
