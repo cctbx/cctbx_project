@@ -15,6 +15,9 @@ phil_scope = parse("""
   tag = cspad
     .type = str
     .help = Name of this refinement run. Output filenames will use this tag.
+  start_at_hierarchy_level = 0
+    .type = int
+    .help = Start refinement at this hierarchy level
   refine_to_hierarchy_level = 2
     .type = int
     .help = maximum level to refine cspad to
@@ -218,18 +221,18 @@ def refine(params, merged_scope, combine_phil):
   print command
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
-  for i in xrange(params.refine_to_hierarchy_level+1):
+  for i in xrange(params.start_at_hierarchy_level, params.refine_to_hierarchy_level+1):
     if params.rmsd_filter.enable:
       input_name = "filtered"
     else:
-      if i == 0:
+      if i == params.start_at_hierarchy_level:
         input_name = "combined"
       else:
         input_name = "refined"
 
     if params.rmsd_filter.enable:
       command = "cctbx.xfel.filter_experiments_by_rmsd %s %s output.filtered_experiments=%s output.filtered_reflections=%s"
-      if i == 0:
+      if i == params.start_at_hierarchy_level:
         command = command%("%s_combined_experiments.json"%params.tag, "%s_combined_reflections.pickle"%params.tag,
                            "%s_filtered_experiments.json"%params.tag, "%s_filtered_reflections.pickle"%params.tag)
       else:
@@ -247,10 +250,14 @@ def refine(params, merged_scope, combine_phil):
         diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
       else:
         diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
-      command = "dials.refine %s %s_%s_experiments.json %s_%s_reflections.pickle"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
     else:
       diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
+      
+    if i == params.start_at_hierarchy_level:
+      command = "dials.refine %s %s_%s_experiments.json %s_%s_reflections.pickle"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
+    else:
       command = "dials.refine %s %s_%s_experiments_level%d.json %s_%s_reflections_level%d.pickle"%(refine_phil_file, params.tag, input_name, i-1, params.tag, input_name, i-1)
+
     diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
     command += " output.experiments=%s_refined_experiments_level%d.json output.reflections=%s_refined_reflections_level%d.pickle"%( \
