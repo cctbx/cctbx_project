@@ -490,6 +490,7 @@ dxtbx/boost_python/to_ewald_sphere_helpers.cc -text
 dxtbx/command_line/display_parallax_correction.py -text
 dxtbx/command_line/export_bitmaps.py -text
 dxtbx/command_line/from_xds.py -text
+dxtbx/command_line/image2pickle.py -text
 dxtbx/command_line/import_datablock.py -text
 dxtbx/command_line/install_format.py -text
 dxtbx/command_line/overload.py -text
@@ -3798,7 +3799,6 @@ xfel/command_line/cxi_calibdir2cbfheader.py -text
 xfel/command_line/cxi_cbfheader2slaccalib.py -text
 xfel/command_line/cxi_detector_format_versions.py -text
 xfel/command_line/cxi_diff.py -text
-xfel/command_line/cxi_image2pickle.py -text
 xfel/command_line/cxi_index.py -text
 xfel/command_line/cxi_mpi_submit.py -text
 xfel/command_line/cxi_parameters.py -text
