@@ -255,7 +255,7 @@ def import_xds_integrate_hkl(integrate_hkl_file):
     # now need to dig out the values I want, convert and return
 
     distance = None
-    
+
     for record in header:
         if record.startswith('!ROTATION_AXIS='):
             axis = map(float, record.split()[-3:])
@@ -315,7 +315,7 @@ def import_xds_integrate_hkl(integrate_hkl_file):
 
     # check parameters set
     assert not distance is None
-        
+
     # XDS defines the beam vector as s0 rather than from sample -> source.
     # Keep in mind that any inversion of a vector needs to be made with great
     # care!
