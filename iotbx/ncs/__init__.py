@@ -15,8 +15,8 @@ import sys
 
 ncs_search_options = """\
 ncs_search
-  .short_caption = NCS search options
-  .style = box noauto
+  .short_caption = Search options
+  .style = box
 {
   enabled = False
     .type = bool
@@ -27,7 +27,7 @@ ncs_search
   exclude_selection = "not (protein or nucleotide) or element H or element D"
     .type = atom_selection
     .help = Atoms selected by this selection will be excluded from the model \
-      before NCS search procedures will run.
+      before search procedures will run.
     .expert_level = 2
   chain_similarity_threshold = 0.85
     .type=float
