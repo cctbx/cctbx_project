@@ -24,6 +24,10 @@ renamed_ncs_search_str = renamed_ncs_search_str.replace(
     "chain_max_rmsd = 2.", "chain_max_rmsd = 100.")
 renamed_ncs_search_str = renamed_ncs_search_str.replace(
     "residue_match_radius = 4.0", "residue_match_radius = 1000")
+# removing 'enabled' parameter
+i1 = renamed_ncs_search_str.find("enabled")
+i2 = renamed_ncs_search_str.find("exclude_selection")
+renamed_ncs_search_str = renamed_ncs_search_str[:i1]+renamed_ncs_search_str[i2:]
 
 reference_model_str = """
 reference_model
