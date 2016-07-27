@@ -80,6 +80,11 @@ class scan_factory:
     gonio = cbf_handle.construct_goniometer()
     angles = tuple(gonio.get_rotation_range())
 
+    # xia2-56 handle gracefully reverse turning goniometers - this assumes the
+    # rotation axis is correctly inverted in the goniometer factory
+    if angles[1] < 0:
+      angles = -angles[0], -angles[1]
+
     index = scan_helper_image_files.image_to_index(cif_file)
 
     gonio.__swig_destroy__(gonio)
