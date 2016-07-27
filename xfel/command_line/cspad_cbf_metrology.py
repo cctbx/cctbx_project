@@ -45,6 +45,12 @@ phil_scope = parse("""
       .type = float
       .help = Interquartile multiplier
   }
+  n_subset_method = *random n_refl
+      .type = choice
+      .help = Algorithm to be used for choosing the n_subset images/experiments for \
+              refinement.  n_refl chooses the set with the largest numbers of reflections \
+              listed in the pickle files, thus giving maximal coverage of the detector tiles \
+              with the fewest refineable parameters.
 
 """, process_includes=True)
 
@@ -171,12 +177,24 @@ def generate_exp_list(params, all_exp, all_ref):
     subset_all_exp = []
     subset_all_ref = []
     n_picked = 0
-
-    while n_picked < params.n_subset:
-      idx = random.randint(0, len(all_exp)-1)
-      subset_all_exp.append(all_exp.pop(idx))
-      subset_all_ref.append(all_ref.pop(idx))
-      n_picked += 1
+    if params.n_subset_method=="random":
+      while n_picked < params.n_subset:
+        idx = random.randint(0, len(all_exp)-1)
+        subset_all_exp.append(all_exp.pop(idx))
+        subset_all_ref.append(all_ref.pop(idx))
+        n_picked += 1
+    elif params.n_subset_method=="n_refl":
+      from dials.array_family import flex
+      import cPickle as pickle
+      len_all_ref = flex.size_t(
+        [ len(pickle.load(open(A,"rb"))) for A in all_ref ]
+      )
+      sort_order = flex.sort_permutation(len_all_ref,reverse=True)
+      for idx in sort_order[:params.n_subset]:
+        subset_all_exp.append(all_exp[idx])
+        subset_all_ref.append(all_ref[idx])
+      print "Selecting a subset of %d images with highest n_refl out of %d total."%(
+        params.n_subset, len(len_all_ref))
 
     all_exp = subset_all_exp
     all_ref = subset_all_ref
