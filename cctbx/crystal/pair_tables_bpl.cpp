@@ -27,8 +27,7 @@ namespace {
       scitbx::stl::boost_python::map_wrapper<pair_sym_dict, rir>::wrap(
         "pair_sym_dict");
       typedef scitbx::af::boost_python::shared_wrapper<pair_sym_dict, rir> shared_w_t;
-      shared_w_t::wrap(
-        "pair_sym_table")
+      shared_w_t::wrap("pair_sym_table")
         .def("proxy_select",
           (pair_sym_table(*)(
             af::const_ref<pair_sym_dict> const&,
@@ -62,6 +61,30 @@ namespace {
     {
         return boost::python::make_tuple(self.asu_mappings());
     }
+
+
+    static boost::python::tuple
+      getstate(w_t const& self)
+    {
+      return boost::python::make_tuple(
+         boost::python::list(self.table_)
+        );
+    }
+
+    static void
+      setstate(w_t& self, boost::python::tuple state)
+    {
+      // table_ is of type pair_asu_table_table. It doesn't unpickle but its
+      // individual elements do. So create a new pair_asu_table_table and
+      // unpickle the individual elements one by one
+      self.table_ = pair_asu_table_table();
+
+      for (std::size_t index = 0; index < boost::python::len(state[0]); ++index)
+      {
+        self.table_.push_back(boost::python::extract<pair_asu_dict>(state[0][index]));
+      }
+    }
+
 
     static void
     wrap()

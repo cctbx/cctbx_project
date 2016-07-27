@@ -1646,6 +1646,33 @@ def exercise_asu_mappings():
       for( c_o, c_r ) in zip( site_o.mapped_site(), site_r.mapped_site() ):
         assert approx_equal( c_o, c_r, 1E-7 )
 
+def exercise_pair_sym_table_pickling():
+  # Test pickling of pair_asu_table in cctbx_project\cctbx\crystal\pair_tables_bpl.cpp
+  import pickle
+  from cctbx import geometry_restraints
+  bond = geometry_restraints.bond(sites=[(1,2,3),(2,3,4)], distance_ideal=2, weight=10)
+  quartz_structure = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+    unit_cell=(5.01,5.01,5.47,90,90,120),
+    space_group_symbol="P6222"),
+    scatterers=flex.xray_scatterer([
+      xray.scatterer(label="Si", site=(1/2.,1/2.,1/3.), u=0.2), xray.scatterer(
+      label="O",
+      site=(0.197,-0.197,0.83333),
+      u=0)
+    ])
+  )
+  asu_mappings = quartz_structure.asu_mappings(buffer_thickness=2)
+  pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  pair_asu_table.add_all_pairs(distance_cutoff=1.7)
+  pair_sym_table = pair_asu_table.extract_pair_sym_table()
+  new_asu_mappings = quartz_structure.asu_mappings(buffer_thickness=5)
+  new_pair_asu_table = crystal.pair_asu_table(asu_mappings=new_asu_mappings)
+  new_pair_asu_table.add_pair_sym_table(sym_table=pair_sym_table)
+  ptable = pickle.loads(pickle.dumps(new_pair_asu_table))
+  assert new_pair_asu_table.as_nested_lists() == ptable.as_nested_lists()
+
+
 def run():
   exercise_symmetry()
   exercise_direct_space_asu()
@@ -1659,6 +1686,7 @@ def run():
   exercise_incremental_pairs_and_site_cluster_analysis()
   exercise_cubicles_max_memory()
   exercise_asu_mappings()
+  exercise_pair_sym_table_pickling()
   print "OK"
 
 if (__name__ == "__main__"):

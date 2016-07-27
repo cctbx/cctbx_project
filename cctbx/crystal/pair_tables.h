@@ -751,6 +751,7 @@ namespace cctbx { namespace crystal {
           asu_mappings_owner_;
       const direct_space_asu::asu_mappings<FloatType, IntShiftType>*
         asu_mappings_;
+    public:
       pair_asu_table_table table_;
   };
 
