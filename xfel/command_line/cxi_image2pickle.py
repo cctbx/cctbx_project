@@ -109,14 +109,8 @@ def run(argv=None):
     raise Usage("No files specified")
 
   for imgpath in paths:
-    destpath = os.path.join(os.path.dirname(imgpath), os.path.splitext(os.path.basename(imgpath))[0] + ".pickle")
-    if command_line.options.skip_converted and os.path.isfile(destpath):
-      if command_line.options.verbose:
-        print "Skipping %s, file exists"%imgpath
-        continue
-
     if command_line.options.verbose:
-      print "Converting %s to %s..."%(imgpath, destpath)
+      print "Reading %s"%(imgpath)
 
     try:
       img = dxtbx.load(imgpath)
@@ -137,8 +131,14 @@ def run(argv=None):
       detector = None
       beam = None
       scan = None
+      is_multi_image = False
     else:
-      raw_data = img.get_raw_data()
+      try:
+        raw_data = img.get_raw_data()
+        is_multi_image = False
+      except TypeError:
+        raw_data = img.get_raw_data(0)
+        is_multi_image = True
       detector = img.get_detector()
       beam = img.get_beam()
       scan = img.get_scan()
@@ -157,7 +157,7 @@ def run(argv=None):
     else:
       detector = detector[0]
       if command_line.options.distance is None:
-        distance   = detector.get_directed_distance()
+        distance   = detector.get_distance()
       else:
         distance = command_line.options.distance
 
@@ -210,28 +210,48 @@ def run(argv=None):
       msec, sec = math.modf(scan.get_epochs()[0])
       timestamp = evt_timestamp((sec,msec))
 
-    data = dpack(data=raw_data,
-                 distance=distance,
-                 pixel_size=pixel_size,
-                 wavelength=wavelength,
-                 beam_center_x=beam_x,
-                 beam_center_y=beam_y,
-                 ccd_image_saturation=overload,
-                 saturated_value=overload,
-                 timestamp=timestamp
-                 )
+    if is_multi_image:
+      for i in xrange(img.get_num_images()):
+        save_image(command_line, imgpath, scan, img.get_raw_data(i), distance, pixel_size, wavelength, beam_x, beam_y, overload, timestamp, image_number = i)
+    else:
+      save_image(command_line, imgpath, scan, raw_data, distance, pixel_size, wavelength, beam_x, beam_y, overload, timestamp)
 
-    if scan is not None:
-      osc_start, osc_range = scan.get_oscillation()
-      if osc_start != osc_range:
-        data['OSC_START'] = osc_start
-        data['OSC_RANGE'] = osc_range
+def save_image(command_line, imgpath, scan, raw_data, distance, pixel_size, wavelength, beam_x, beam_y, overload, timestamp, image_number = None):
+  if image_number is None:
+    destpath = os.path.join(os.path.dirname(imgpath), os.path.splitext(os.path.basename(imgpath))[0] + ".pickle")
+  else:
+    destpath = os.path.join(os.path.dirname(imgpath), os.path.splitext(os.path.basename(imgpath))[0] + "%05d.pickle"%image_number)
+  if command_line.options.skip_converted and os.path.isfile(destpath):
+    if command_line.options.verbose:
+      print "Skipping %s, file exists"%imgpath
+      return
 
-        data['TIME'] = scan.get_exposure_times()[0]
+  data = dpack(data=raw_data,
+               distance=distance,
+               pixel_size=pixel_size,
+               wavelength=wavelength,
+               beam_center_x=beam_x,
+               beam_center_y=beam_y,
+               ccd_image_saturation=overload,
+               saturated_value=overload,
+               timestamp=timestamp
+               )
 
-    if command_line.options.crop:
-      data = crop_image_pickle(data)
-    easy_pickle.dump(destpath, data)
+  if scan is not None:
+    osc_start, osc_range = scan.get_oscillation()
+    if osc_start != osc_range:
+      data['OSC_START'] = osc_start
+      data['OSC_RANGE'] = osc_range
+
+      data['TIME'] = scan.get_exposure_times()[0]
+
+  if command_line.options.crop:
+    data = crop_image_pickle(data)
+
+  if command_line.options.verbose:
+    print "Writing", destpath
+
+  easy_pickle.dump(destpath, data)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
