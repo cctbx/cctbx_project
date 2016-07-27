@@ -11,7 +11,25 @@ from __future__ import division
 from scitbx import matrix
 from scitbx.math import r3_rotation_axis_and_angle_from_matrix
 
+# this function no longer appears to be needed - the cbflib call now gives the
+# correct rotation axis
+
 def cbf_gonio_to_effective_axis_fixed(cbf_gonio):
+  axis = matrix.col(cbf_gonio.get_rotation_axis())
+  start, increment = cbf_gonio.get_rotation_range()
+
+  assert(increment > 0)
+
+  x = cbf_gonio.rotate_vector(0.0, 1, 0, 0)
+  y = cbf_gonio.rotate_vector(0.0, 0, 1, 0)
+  z = cbf_gonio.rotate_vector(0.0, 0, 0, 1)
+  R = matrix.rec(x + y + z, (3, 3)).transpose()
+  S = axis.axis_and_angle_as_r3_rotation_matrix(start, deg=True)
+
+  fixed = S.inverse() * R
+  return axis, fixed
+
+def cbf_gonio_to_effective_axis_fixed_old(cbf_gonio):
   '''Given a cbf goniometer handle, first determine the real rotation
   axis, then determine the fixed component of rotation which is rotated
   about this axis.'''
