@@ -12,6 +12,7 @@ from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 from libtbx.utils import null_out
 from libtbx.utils import multi_out
+from scitbx import matrix
 
 legend = """\
 
@@ -67,12 +68,12 @@ class atom_info(object):
 # a0, a1 are objects "atom_info"
 # ----------------------------------------------------------------------------
 def determine_H_neighbors(
-  geometry_restraints, bond_proxies, angle_proxies, xray_structure):
+  geometry_restraints, bond_proxies, angle_proxies, hd_selection, sites_cart):
   fsc2=geometry_restraints.shell_sym_tables[2].full_simple_connectivity()
   fsc1=geometry_restraints.shell_sym_tables[1].full_simple_connectivity()
   #fsc0=geometry_restraints.shell_sym_tables[0].full_simple_connectivity()
-  hd_selection = xray_structure.hd_selection()
-  sites_cart = xray_structure.sites_cart()
+  #hd_selection = xray_structure.hd_selection()
+  #sites_cart = xray_structure.sites_cart()
   # Maybe there is better way to get number of atoms?
   # (needed to select angle proxy)
   n_atoms = len(sites_cart)
@@ -89,9 +90,13 @@ def determine_H_neighbors(
       elif(is_j_hd): ih, ix = j_seq, i_seq
       else:
         raise Sorry("Something went wrong in bond proxies")
+    rh = matrix.col(sites_cart[ih])
+    r0 = matrix.col(sites_cart[ix])
+    dist = (r0 - rh).length()
     parent = atom_info(
-      iseq = ix,
-      dist_ideal = bproxy.distance_ideal)
+      iseq       = ix,
+      dist_ideal = bproxy.distance_ideal,
+      dist       = dist)
     connectivity[ih]=[parent]
     connectivity[ih].append([])
     # find second neighbors
@@ -132,6 +137,14 @@ def determine_H_neighbors(
             neighbor = atom_info(
               iseq = i_third)
             connectivity[ih][2].append(neighbor)
+    if (len(reduced_neighbs) == 2 or len(reduced_neighbs) == 3):
+      ix = i_parent
+      iy = (reduced_neighbs[0]).iseq
+      iz = (reduced_neighbs[1]).iseq
+      iselection = flex.size_t([ix,iy,iz])
+      (connectivity[ih][0]).angle_ideal =  angle_proxies.proxy_select(
+        n_seq      = n_atoms,
+        iselection = iselection)[0].angle_ideal
   return connectivity
 
 def run(args, out=sys.stdout):
@@ -175,7 +188,9 @@ def run(args, out=sys.stdout):
 
   names = list(pdb_hierarchy.atoms().extract_name())
   sites_cart = xray_structure.sites_cart()
-  scatterers = xray_structure.scatterers()
+  #scatterers = xray_structure.scatterers()
+  hd_selection = xray_structure.hd_selection()
+  sites_cart = xray_structure.sites_cart()
 
   print >>log, '\nNow determining connectivity table for H atoms...'
   connectivity = determine_H_neighbors(

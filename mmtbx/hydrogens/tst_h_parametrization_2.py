@@ -41,39 +41,30 @@ def exercise():
   bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
       sites_cart = sites_cart)
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
+  hd_selection = xray_structure.hd_selection()
 
   connectivity = hydrogen_connectivity.determine_H_neighbors(
     geometry_restraints   = geometry_restraints,
     bond_proxies          = bond_proxies_simple,
     angle_proxies         = angle_proxies,
-    xray_structure        = xray_structure)
-
-#-----------------------------------------------------------------------------
-# This is useful to keep for debugging: human readable output of connectivity
-#-----------------------------------------------------------------------------
-#  for ih in connectivity.keys():
-#    if(len(connectivity[ih])==3):
-#      string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
-#    else:
-#      string = 'n/a'
-#    print  names[ih],': ', names[(connectivity[ih][0]).iseq], \
-#      ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), ',', string
-#-----------------------------------------------------------------------------
+    hd_selection          = hd_selection,
+    sites_cart            = sites_cart)
 
   h_parameterization = hydrogen_parametrization.get_h_parameterization(
     connectivity   = connectivity,
     sites_cart     = sites_cart,
-    names          = names,
-    atoms_list     = atoms_list)
+    idealize       = False)
 
 # There are 90 H atoms in the pdb_string, check if all of them are recognized
   assert (len(h_parameterization.keys()) == 90), 'Not all H atoms are parameterized'
 
 # For each H atom, check if distance compared to input model is not changed
   n_unk = 0
+  type_list = []
   for ih in h_parameterization.keys():
     residue = atoms_list[ih].resseq
     hp = h_parameterization[ih]
+    type_list.append(hp.htype)
     h_obj = hydrogen_parametrization.generate_H_positions(
       sites_cart        = sites_cart,
       ih                = ih,
@@ -83,7 +74,12 @@ def exercise():
     if(hp.htype == 'unk'):
       n_unk = n_unk + 1
 
+# Check if there are atoms with unknown parameterization
   assert(n_unk == 0), 'Some H atoms are not recognized'
+
+# Check that parameterization types are correct
+  for type1, type2 in zip(type_list, type_list_known):
+    assert (type1 == type2)
 
 
 # DNA and RNA nucleic acids
@@ -353,6 +349,21 @@ ATOM      0  H6    U B   4      21.871  20.354  20.163  1.00 20.00           H
 TER
 END
 """
+
+type_list_known = ['2neigbs', '2neigbs', '3neigbs', '3neigbs', '2neigbs',
+  '2neigbs', '3neigbs', 'flat_2neigbs', 'alg1a', 'alg1a', 'flat_2neigbs',
+  '2neigbs', '2neigbs', '3neigbs', '3neigbs', '2neigbs', '2neigbs', '3neigbs',
+  'alg1a', 'alg1a', 'flat_2neigbs', 'flat_2neigbs', '2neigbs', '2neigbs',
+  '3neigbs', '3neigbs', '2neigbs', '2neigbs', '3neigbs', 'flat_2neigbs',
+  'flat_2neigbs', 'alg1a', 'alg1a', '2neigbs', '2neigbs', '3neigbs', '3neigbs',
+  'alg1b', '2neigbs', '2neigbs', '3neigbs', 'flat_2neigbs', 'alg1b', 'alg1b',
+  'alg1b', 'flat_2neigbs', '2neigbs', '2neigbs', '3neigbs', '3neigbs', '3neigbs',
+  'alg1b', '3neigbs', 'flat_2neigbs', 'alg1a', 'alg1a', 'flat_2neigbs', '2neigbs',
+  '2neigbs', '3neigbs', '3neigbs', '3neigbs', 'alg1b', '3neigbs', 'alg1a', 'alg1a',
+  'flat_2neigbs', 'flat_2neigbs', '2neigbs', '2neigbs', '3neigbs', '3neigbs',
+  '3neigbs', 'alg1b', '3neigbs', 'flat_2neigbs', 'flat_2neigbs', 'alg1a', 'alg1a',
+  '2neigbs', '2neigbs', '3neigbs', '3neigbs', 'alg1b', '3neigbs', 'alg1b', '3neigbs',
+  'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs']
 
 if (__name__ == "__main__"):
   t0 = time.time()

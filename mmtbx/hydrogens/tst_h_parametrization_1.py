@@ -41,39 +41,30 @@ def exercise():
   bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
       sites_cart = sites_cart)
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
+  hd_selection = xray_structure.hd_selection()
 
   connectivity = hydrogen_connectivity.determine_H_neighbors(
     geometry_restraints   = geometry_restraints,
     bond_proxies          = bond_proxies_simple,
     angle_proxies         = angle_proxies,
-    xray_structure        = xray_structure)
-
-#-----------------------------------------------------------------------------
-# This is useful to keep for debugging: human readable output of connectivity
-#-----------------------------------------------------------------------------
-#  for ih in connectivity.keys():
-#    if(len(connectivity[ih])==3):
-#      string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
-#    else:
-#      string = 'n/a'
-#    print  names[ih],': ', names[(connectivity[ih][0]).iseq], \
-#      ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), ',', string
-#-----------------------------------------------------------------------------
+    hd_selection          = hd_selection,
+    sites_cart            = sites_cart)
 
   h_parameterization = hydrogen_parametrization.get_h_parameterization(
     connectivity   = connectivity,
     sites_cart     = sites_cart,
-    names          = names,
-    atoms_list     = atoms_list)
+    idealize       = False)
 
 # There are 152 H atoms in the pdb_string, check if all of them are recognized
   assert (len(h_parameterization.keys()) == 152), 'Not all H atoms are parameterized'
 
 # For each H atom, check if distance compared to input model is not > 0.001
   n_unk = 0
+  type_list = []
   for ih in h_parameterization.keys():
     residue = atoms_list[ih].resseq
     hp = h_parameterization[ih]
+    type_list.append(hp.htype)
     h_obj = hydrogen_parametrization.generate_H_positions(
       sites_cart        = sites_cart,
       ih                = ih,
@@ -85,14 +76,25 @@ def exercise():
 
   assert(n_unk == 0), 'Some H atoms are not recognized'
 
+  for type1, type2 in zip(type_list, type_list_known):
+    #print type1, type2
+    assert (type1 == type2)
+
 #-----------------------------------------------------------------------------
 # This is useful to keep for debugging
 #-----------------------------------------------------------------------------
+  #for ih in h_parameterization.keys():
+  #  hp = h_parameterization[ih]
     #if(h_obj.distance is not None):
     #  print hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
     #    residue, 'distance:', h_obj.distance
     #else:
     #  print hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', residue
+  #for ih in h_parameterization.keys():
+  #  hp = h_parameterization[ih]
+  #  print 'htype = ', hp.htype, 'a0 = ', hp.a0, 'a1 = ', hp.a1, 'a2 = ', hp.a2, \
+  #    'a = ', hp.a, 'b = ', hp.b, 'h = ', hp.h, 'chi = ', hp.chi, 'eps = ', hp.eps, \
+  #    'alpha = ', hp.alpha, 'dist_h =', hp.dist_h
 #-----------------------------------------------------------------------------
 
 # Ideal amino acids
@@ -426,6 +428,29 @@ ATOM      0 HG23 VAL D   9      23.915  11.489   8.951  1.00  0.00           H
 TER
 END
 """
+
+type_list_known = ['3neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs',
+  '2neigbs', 'flat_2neigbs', 'alg1a', 'alg1a', 'alg1a', 'alg1a', 'flat_2neigbs',
+  '3neigbs', '2neigbs', '2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs',
+  '3neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs',
+  '2neigbs', '2neigbs', 'alg1b', 'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs',
+  '2neigbs', '2neigbs', 'flat_2neigbs', '3neigbs', '2neigbs', '2neigbs', '2neigbs',
+  '2neigbs', '3neigbs', '2neigbs', '2neigbs', 'alg1b', 'flat_2neigbs', '3neigbs',
+  '3neigbs', 'alg1b', 'alg1b', 'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs', '2neigbs',
+  '2neigbs', 'alg1a', 'alg1a', 'flat_2neigbs', '3neigbs', '2neigbs', '2neigbs', '2neigbs',
+  '2neigbs', 'alg1a', 'alg1a', '3neigbs', '2neigbs', '2neigbs', 'alg1b', 'flat_2neigbs',
+  '2neigbs', '2neigbs', '3neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs',
+  '2neigbs', '3neigbs', 'alg1b', 'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs', '2neigbs',
+  '2neigbs', '3neigbs', 'alg1b', 'alg1b', 'alg1b', 'alg1b', 'alg1b', 'alg1b',
+  'flat_2neigbs', '3neigbs', '3neigbs', '2neigbs', '2neigbs', 'alg1b', 'alg1b', 'alg1b',
+  'alg1b', 'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs', '2neigbs', '2neigbs', '2neigbs',
+  '2neigbs', 'alg1b', 'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs', '2neigbs', '2neigbs',
+  'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs',
+  'flat_2neigbs', '3neigbs', '2neigbs', '2neigbs', 'flat_2neigbs', 'flat_2neigbs',
+  'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs',
+  '3neigbs', '2neigbs', '2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs',
+  'flat_2neigbs', 'alg1b', 'flat_2neigbs', '3neigbs', '3neigbs', 'alg1b', 'alg1b',
+  'alg1b', 'alg1b', 'alg1b', 'alg1b']
 
 if (__name__ == "__main__"):
   t0 = time.time()
