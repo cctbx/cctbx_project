@@ -207,7 +207,6 @@ def gcc_common_warn_options():
     "-Wall",
     "-Wno-sign-compare",
     "-Wno-unknown-pragmas",
-    "-Wno-unused-local-typedefs",
     "-Wno-parentheses"]
   if (    env_etc.gcc_version is not None
       and env_etc.gcc_version >= 40000):
@@ -216,6 +215,13 @@ def gcc_common_warn_options():
         and env_etc.gcc_version < 40501):
       # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43949
       result.append("-Wno-array-bounds")
+
+    # compiler for CentOS 5 does not support -Wno-unused-local-typedefs
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=33255
+    # flag supported only on gcc releases after September 2011
+    if ( (env_etc.gcc_version == 40407) or (env_etc.gcc_version == 40504) or
+         (env_etc.gcc_version >= 40602) ):
+      result.append("-Wno-unused-local-typedefs")
   return result
 
 def clang_common_warn_options():
