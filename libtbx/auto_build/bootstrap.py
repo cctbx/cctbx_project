@@ -232,6 +232,12 @@ class Toolbox(object):
 
     # Open connection to remote server
     try:
+      if sys.platform == "win32":
+# Downloading from http://cci.lbl.gov/cctbx_dependencies caused
+# SSL: CERTIFICATE_VERIFY_FAILED error on Windows only as of today (why?).
+# Quick and dirty hack to disable ssl certificate verification.
+        import ssl
+        ssl._create_default_https_context = ssl._create_unverified_context
       url_request = urllib2.Request(url)
       if etag:
         url_request.add_header("If-None-Match", etag)
