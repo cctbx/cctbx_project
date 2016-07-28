@@ -5,13 +5,12 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.monomer_library import idealized_aa
 from libtbx.utils import Sorry, null_out
 from mmtbx.validation import ramalyze
-from mmtbx.building.loop_closure.ccd import ccd_python, ccd_cpp
+from mmtbx.building.loop_closure.ccd import ccd_cpp
 from mmtbx.building.loop_closure import utils, starting_conformations
 from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.secondary_structure.build import side_chain_placement, \
     set_xyz_smart
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
-from libtbx.test_utils import approx_equal
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -239,8 +238,6 @@ class loop_idealization():
       # this deserves relaxed criteria...
       return mc_rmsd < 5 and anchor_rmsd < 0.4
 
-
-
   def fix_rama_outlier(self,
       pdb_hierarchy, out_res_num, prefix="", minimize=True):
 
@@ -296,27 +293,11 @@ class loop_idealization():
         ccd_obj = ccd_cpp(fixed_ref_atoms_coors, h, moving_ref_atoms_iseqs)
         ccd_obj.run()
         resulting_rmsd = ccd_obj.resulting_rmsd
-
-        # Testing for the same results from different implementations
-        # h_temp = h.deep_copy()
-        # h_temp.reset_atom_i_seqs()
-        # ccd_obj_py = ccd_python(fixed_ref_atoms, h_temp, moving_ref_atoms_iseqs)
-        # ccd_obj_py.run()
-        # print " rmsd comparison:", ccd_obj.resulting_rmsd, ccd_obj_py.resulting_rmsd
-        # assert approx_equal(ccd_obj.n_iter, ccd_obj_py.n_iter)
-        # assert approx_equal(ccd_obj.resulting_rmsd, ccd_obj_py.resulting_rmsd)
-        # print "atom coors", list(h.atoms().extract_xyz() - h_temp.atoms().extract_xyz())
-        # assert approx_equal(h.atoms().extract_xyz(), h_temp.atoms().extract_xyz())
-        # End of testing for the same results ================================
-
+        n_iter = ccd_obj.n_iter
 
         # states = ccd_obj.states
-        n_iter = ccd_obj.n_iter
         # if self.params.save_states:
         #   states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num, ccd_radius, change_all, change_radius, i))
-
-        # resulting_rmsd, states, n_iter = ccd(
-        #     fixed_ref_atoms, h, moving_ref_atoms_iseqs, moving_h)
 
         mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
         print >> self.log, "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i,
@@ -355,8 +336,6 @@ class loop_idealization():
         #
         # finalizing with geometry_minimization
         #
-        # !!! This is the condition of acceptance of transformation!
-        # if mc_rmsd < adaptive_mc_rmsd[ccd_radius]:
         all_results.append((moved_with_side_chains_h.deep_copy(), mc_rmsd, resulting_rmsd, n_iter))
         if self.ccd_solution_is_ok(
             anchor_rmsd=resulting_rmsd,
@@ -390,8 +369,8 @@ class loop_idealization():
     for ar in all_results:
       print ar[1:],
       if ar[2] < 0.4:
-        fn = "variant_%d.pdb" % i
-        ar[0].write_pdb_file(file_name=fn)
+        # fn = "variant_%d.pdb" % i
+        # ar[0].write_pdb_file(file_name=fn)
         print fn
         i += 1
       else:
@@ -429,7 +408,6 @@ class loop_idealization():
           print >> self.log, i[1:]
       # === end of duplication!!!!
 
-
     else:
       print >> self.log, "Epic FAIL: failed to fix rama outlier"
       print >> self.log, "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
@@ -457,6 +435,7 @@ class loop_idealization():
         resnum = phi_psi_pair[0][2].parent().parent().resseq
         result.append(resnum)
     return result
+
 
 def place_side_chains(hierarchy, original_h,
     rotamer_manager, placing_range):
@@ -499,7 +478,6 @@ def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
         min(len(residue_list)-1,center_index+n_following+1)):
       res.append(residue_list[i].resseq)
     return res
-
 
 def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
   # limitation: only one  chain in pdb_hierarchy!!!
