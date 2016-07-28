@@ -49,12 +49,13 @@ phil_scope = parse("""
       .help = Interquartile multiplier
   }
   n_subset_method = *random n_refl
-      .type = choice
-      .help = Algorithm to be used for choosing the n_subset images/experiments for \
-              refinement.  n_refl chooses the set with the largest numbers of reflections \
-              listed in the pickle files, thus giving maximal coverage of the detector tiles \
-              with the fewest refineable parameters.
-
+    .type = choice
+    .help = Algorithm to be used for choosing the n_subset images/experiments for \
+            refinement.  n_refl chooses the set with the largest numbers of reflections \
+            listed in the pickle files, thus giving maximal coverage of the detector tiles \
+            with the fewest refineable parameters.
+  doit = False
+    .type = bool
 """, process_includes=True)
 
 refine_defaults_scope = parse("""
@@ -252,7 +253,7 @@ def refine(params, merged_scope, combine_phil):
         diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
     else:
       diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
-      
+
     if i == params.start_at_hierarchy_level:
       command = "dials.refine %s %s_%s_experiments.json %s_%s_reflections.pickle"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
     else:
