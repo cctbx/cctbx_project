@@ -31,6 +31,10 @@ additionally_fix_rotamer_outliers = True
   .type = bool
   .help = At the late stage if rotamer is still outlier choose another one \
     with minimal clash with surrounding atoms
+use_starting_model_for_final_gm = True
+  .type = bool
+  .help = Use supplied model for final geometry minimization. Otherwise just \
+    use self.
 include scope mmtbx.secondary_structure.build.ss_idealization_master_phil_str
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -166,7 +170,7 @@ def run(args):
       pdb_h, ncs_restr_group_list)
   if len(filtered_ncs_restr_group_list) > 0:
     using_ncs = True
-    master_sel = flex.bool([True]*pdb_h.atoms().size())
+    master_sel = flex.bool(pdb_h.atoms_size(), True)
     for ncs_gr in filtered_ncs_restr_group_list:
       for copy in ncs_gr.copies:
         master_sel.set_selected(copy.iselection, False)
@@ -303,6 +307,11 @@ def run(args):
     crystal_symmetry=cs_to_write,
     ss_annotation=ann)
 
+
+  ref_hierarchy_for_final_gm = original_hierarchy
+  if not work_params.use_starting_model_for_final_gm:
+    ref_hierarchy_for_final_gm = pdb_h
+  ref_hierarchy_for_final_gm.reset_atom_i_seqs()
   if using_ncs:
     print >> log, "Using ncs"
     ssb.set_xyz_smart(pdb_h, fixed_rot_pdb_h)
@@ -319,7 +328,8 @@ def run(args):
     minimize_wrapper_for_ramachandran(
         hierarchy=pdb_h,
         xrs=xrs,
-        original_pdb_h=original_hierarchy,
+        # original_pdb_h=original_hierarchy,
+        original_pdb_h=ref_hierarchy_for_final_gm,
         excl_string_selection=loop_ideal.ref_exclusion_selection,
         log=log,
         ss_annotation=original_ann)
@@ -332,7 +342,7 @@ def run(args):
       minimize_wrapper_for_ramachandran(
           hierarchy=pdb_h,
           xrs=xrs,
-          original_pdb_h=original_hierarchy,
+          original_pdb_h=ref_hierarchy_for_final_gm,
           excl_string_selection=loop_ideal.ref_exclusion_selection,
           log=log,
           ss_annotation=original_ann)
