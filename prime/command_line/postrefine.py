@@ -29,6 +29,7 @@ class postrefine_handler(object):
     try:
       DIR = iparams.run_no+'/pickles/'
       pickle_results = [pickle.load(open(DIR+fname, "rb")) for fname in os.listdir(DIR)]
+      file_no_results = [int(fname.split('.')[0]) for fname in os.listdir(DIR)]
       n_results = len(pickle_results)
     except Exception:
       print "Error reading input pickles."
@@ -45,16 +46,30 @@ class postrefine_handler(object):
       hklrefin = iparams.hklrefin
     if hklrefin is None:
       print "No reference set found. Exit program"
-    print "Reference set:", hklrefin
+    print "Reference set:", hklrefin, " No. of images:", n_results
     mxh = mx_handler()
     flag_hklrefin_found, miller_array_ref = mxh.get_miller_array_from_reflection_file(hklrefin)
     #post-refinement
     avg_mode = 'weighted'
     #run command for post-refinement
-    frames = [(i, pickle_results[i], iparams, miller_array_ref, avg_mode) for i in range(n_results)]
-    inp_pickle = {'iparams':iparams, 'frames':frames}
-    pickle.dump(inp_pickle, open(iparams.run_no+'/inputs/0.inp',"wb"))
-    call(["prime._postrefine_frame", iparams.run_no+'/inputs/0.inp'])
+    if iparams.queue.mode is None:
+      frames = [(file_no_results[i], pickle_results[i], iparams, miller_array_ref, avg_mode) for i in range(n_results)]
+      inp_pickle = {'iparams':iparams, 'frames':frames}
+      pickle.dump(inp_pickle, open(iparams.run_no+'/inputs/0.inp',"wb"))
+      call(["prime._postrefine_frame", iparams.run_no+'/inputs/0.inp'])
+    else:
+      #run on n_nodes
+      n_imgs_per_node = int(round(n_results/iparams.queue.n_nodes))
+      for i_node in range(iparams.queue.n_nodes):
+        start_frame = i_node*n_imgs_per_node
+        if i_node < iparams.queue.n_nodes - 1:
+          end_frame = start_frame + n_imgs_per_node
+        else:
+          end_frame = n_results
+        frames = [(i, pickle_results[i], iparams, miller_array_ref, avg_mode) for i in range(start_frame, end_frame)]
+        inp_pickle = {'iparams':iparams, 'frames':frames}
+        pickle.dump(inp_pickle, open(iparams.run_no+'/inputs/'+str(i_node)+'.inp',"wb"))
+        call(["bsub","-q",iparams.queue.qname,"-o",iparams.run_no+"/qout/qout_pr.txt","prime._postrefine_frame", iparams.run_no+"/inputs/"+str(i_node)+".inp"])
     runh.check_done(iparams, n_results)
     print "Post-refinement completed. Run prime.merge for the merged reflection file."
 

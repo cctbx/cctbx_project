@@ -40,8 +40,8 @@ class genref_handler(object):
       print "No integration pickle found. Exit program."
       exit()
     frames = [(i, frame_files[i], iparams) for i in range(n_frames)]
-    #run command to calculate mean_I
     mm_I = 0
+    #run command to calculate mean_I
     if iparams.flag_apply_b_by_frame == False:
       inp_pickle = {'iparams':iparams, 'frames':frames}
       pickle.dump(inp_pickle, open(iparams.run_no+'/inputs/0.inp',"wb"))
@@ -49,10 +49,25 @@ class genref_handler(object):
       runh.check_done(iparams, n_frames)
       mm_I = calc_mean_of_mean_I(iparams)
     #run command for scaling
-    frames = [(i, frame_files[i], iparams, mm_I) for i in range(n_frames)]
-    inp_pickle = {'iparams':iparams, 'frames':frames}
-    pickle.dump(inp_pickle, open(iparams.run_no+'/inputs/0.inp',"wb"))
-    call(["prime._genref_scale_frame_by_mean_I", iparams.run_no+'/inputs/0.inp'])
+    if iparams.queue.mode is None:
+      #run single node
+      frames = [(i, frame_files[i], iparams, mm_I) for i in range(n_frames)]
+      inp_pickle = {'iparams':iparams, 'frames':frames}
+      pickle.dump(inp_pickle, open(iparams.run_no+'/inputs/0.inp',"wb"))
+      call(["prime._genref_scale_frame_by_mean_I", iparams.run_no+'/inputs/0.inp'])
+    else:
+      #run on n_nodes
+      n_imgs_per_node = int(round(n_frames/iparams.queue.n_nodes))
+      for i_node in range(iparams.queue.n_nodes):
+        start_frame = i_node*n_imgs_per_node
+        if i_node < iparams.queue.n_nodes - 1:
+          end_frame = start_frame + n_imgs_per_node
+        else:
+          end_frame = n_frames
+        frames = [(i, frame_files[i], iparams, mm_I) for i in range(start_frame, end_frame)]
+        inp_pickle = {'iparams':iparams, 'frames':frames}
+        pickle.dump(inp_pickle, open(iparams.run_no+'/inputs/'+str(i_node)+'.inp',"wb"))
+        call(["bsub","-q",iparams.queue.qname,"-o",iparams.run_no+"/qout/qout_gr.txt","prime._genref_scale_frame_by_mean_I", iparams.run_no+"/inputs/"+str(i_node)+".inp"])
     runh.check_done(iparams, n_frames)
     #write output to logfile
     txt_out = 'Scaling complete. Run prime.merge your_input_phil.phil to merge for a reference set.\n'

@@ -16,8 +16,7 @@ def postrefine_by_frame_mproc(args):
   prh = postref_handler()
   pres, txt_out = prh.postrefine_by_frame(frame_no, pickle_result, iparams, miller_array_ref, avg_mode)
   #overwrite to the original frame_no file.
-  if pres is not None:
-    pickle.dump(pres, open(iparams.run_no+'/pickles/'+str(pres.frame_no)+".o","wb"),pickle.HIGHEST_PROTOCOL)
+  pickle.dump(pres, open(iparams.run_no+'/pickles/'+str(frame_no)+".o","wb"),pickle.HIGHEST_PROTOCOL)
 
 if (__name__ == "__main__"):
   if len(sys.argv)==1:

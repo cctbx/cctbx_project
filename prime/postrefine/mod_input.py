@@ -298,17 +298,17 @@ isoform_name = None
   .help = Use this isoform.
 timeout_seconds = 300
   .type = int
-  .help = Time limits used when queing system is activated.
+  .help = Time limits used for multiprocessing.
 queue
   .help = "Parameters used for submitting jobs to queuing system."
 {
-  flag_on = False
-    .type = bool
-    .help = Set to True to activate queuing jobs.
-  queue_name = None
+  mode = None
     .type = str
-    .help = For system with queue name, specify your queue name here.
-  n_nodes = 5
+    .help = Queing system type. Only bsub is available now.
+  qname = psanaq
+    .type = str
+    .help = For system with queue name, specify your queue name here. For LCLS users, primary queue is the default value while high priority queue at NEH and FEH are psnehhiprioq and psfehhiprioq.
+  n_nodes = 10
     .type = int
     .help = No. of nodes used.
 }
@@ -391,6 +391,7 @@ def process_input(argv=None, flag_check_exist=True):
     os.makedirs(params.run_no+'/inputs')
     os.makedirs(params.run_no+'/mtz')
     os.makedirs(params.run_no+'/hist')
+    os.makedirs(params.run_no+'/qout')
   #capture input read out by phil
   from cStringIO import StringIO
   class Capturing(list):
