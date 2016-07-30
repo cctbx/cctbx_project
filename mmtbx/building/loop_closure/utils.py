@@ -18,7 +18,11 @@ def get_phi_psi_atoms(hierarchy):
   for three in generate_protein_threes(
         hierarchy=hierarchy,
         geometry=None):
-    phi_atoms, psi_atoms = three.get_phi_psi_atoms()
+    psatoms = three.get_phi_psi_atoms()
+    if psatoms is not None:
+      phi_atoms, psi_atoms = psatoms
+    else:
+      phi_atoms, psi_atoms = None, None
     rama_key = three.get_ramalyze_key()
     # print "rama_key", rama_key
     phi_psi_atoms.append(([phi_atoms, psi_atoms],rama_key))
@@ -28,6 +32,8 @@ def get_dihedral_angle(atoms, round_coords=False):
   # round here is to emulate rounding when dumping to pdb, to get more
   # consistent result for rama outliers inside program and when calculating
   # from resulted pdb file.
+  if atoms is None:
+    return None
   sites = []
   if round_coords:
     for x in atoms:
@@ -88,6 +94,8 @@ def list_rama_outliers(phi_psi_atoms, r):
 def get_rama_score(phi_psi_pair, r, rama_key, round_coords=False):
   # phi_psi_angles = get_pair_angles(phi_psi_pair, round_coords=round_coords)
   phi_psi_angles = get_pair_angles(phi_psi_pair, round_coords=False)
+  if phi_psi_angles[0] is None or phi_psi_angles[1] is None:
+    return None
   rama_score = r.get_score(rama_key, phi_psi_angles[0], phi_psi_angles[1])
   if round_coords:
     return rama_score*0.98
@@ -95,6 +103,8 @@ def get_rama_score(phi_psi_pair, r, rama_key, round_coords=False):
 
 def rama_evaluate(phi_psi_pair, r, rama_key, round_coords=False):
   score = get_rama_score(phi_psi_pair, r, rama_key, round_coords=round_coords)
+  if score is None:
+    return None
   # print "  score, rama_key", score, rama_key
   return r.evaluate_score(rama_key, score)
 
