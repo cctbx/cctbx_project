@@ -63,10 +63,15 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
     work_params = params
   pdb_files = work_params.file_name
 
+  from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+  params = iotbx.phil.parse(
+      input_string=grand_master_phil_str, process_includes=True).extract()
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ppf_srv = mmtbx.utils.process_pdb_file_srv(
       crystal_symmetry          = None,
-      pdb_interpretation_params = None,
+      pdb_interpretation_params = params.pdb_interpretation,
       stop_for_unknowns         = False,
       log                       = log,
       cif_objects               = None, # need to figure out how to get them
