@@ -2281,60 +2281,62 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
     result = math.sqrt(flex.sum(values) / values.size())
   return result
 
-def _get_rotamers_evaluated(
-    pdb_hierarchy,
+
+def _get_selections_around_residue(
+    n_atoms,
+    xrs,
     res,
-    grm,
     special_position_settings,
-    mon_lib_srv,
-    radius,
-    prefix="a"):
-  from mmtbx.command_line import lockit
-  from cctbx.geometry_restraints import nonbonded_overlaps as nbo
-  sel = flex.size_t([])
-  sel_res_mc = flex.size_t([])
+    radius,):
+  sel = flex.size_t()
+  sel_res_mc = flex.size_t()
   for a in res.atoms():
     sel.append(a.i_seq)
     if a.name.strip() in ["N", "CA", "C", "O"]:
       sel_res_mc.append(a.i_seq)
-  xrs = pdb_hierarchy.extract_xray_structure()
-  bsel = flex.bool([False]*pdb_hierarchy.atoms().size())
+  bsel = flex.bool(n_atoms, False)
   bsel.set_selected(sel, True)
   selection_around_residue = special_position_settings.pair_generator(
       sites_cart      = xrs.sites_cart(),
       distance_cutoff = radius
-        ).neighbors_of(primary_selection = bsel).iselection()
-  sel_h = pdb_hierarchy.select(selection_around_residue)
-  sel_around_no_mc = flex.size_t(sorted(list(set(list(selection_around_residue)) - set(list(sel_res_mc)))))
-  bsel_around_no_mc = flex.bool([False]*pdb_hierarchy.atoms().size())
-  bsel_around_no_mc.set_selected(sel_around_no_mc, True)
+        ).neighbors_of(primary_selection = bsel)
+  bsel_around_no_mc = selection_around_residue.deep_copy()
+  bsel_around_no_mc.set_selected(sel_res_mc, False)
+  return sel, bsel_around_no_mc, selection_around_residue
 
+def _get_rotamers_evaluated(
+    pdb_hierarchy,
+    sel,
+    bsel_around_no_mc,
+    hd_sel,
+    res,
+    grm,
+    reind_dict,
+    mon_lib_srv,
+    prefix="a"):
+  from mmtbx.command_line import lockit
+  from cctbx.geometry_restraints import nonbonded_overlaps as nbo
   rotamer_iterator = lockit.get_rotamer_iterator(
       mon_lib_srv         = mon_lib_srv,
       residue             = res,
       atom_selection_bool = None)
   if rotamer_iterator is None:
     return None
-  site_labels = xrs.scatterers().extract_labels()
-  hd_sel = xrs.hd_selection()
   i = 0
   inf = []
   sites_for_nb_overlaps = pdb_hierarchy.atoms().extract_xyz().deep_copy()
   for rotamer, rotamer_sites_cart in rotamer_iterator:
     assert rotamer_sites_cart.size() == res.atoms().size()
     for j, i_seq in enumerate(sel):
-      sites_for_nb_overlaps[i_seq] = rotamer_sites_cart[j]
-    out_pdb_h = pdb_hierarchy.deep_copy()
-    out_pdb_h.atoms().set_xyz(sites_for_nb_overlaps)
-    # out_pdb_h.write_pdb_file(
-    #     file_name="%s_%s_%s.pdb" % (prefix, res.id_str()[7:],rotamer.id))
+      sites_for_nb_overlaps[reind_dict[i_seq]] = rotamer_sites_cart[j]
     nb_overlaps = nbo.info(
         geometry_restraints_manager=grm,
         macro_molecule_selection=bsel_around_no_mc,
         sites_cart=sites_for_nb_overlaps,
-        site_labels=site_labels,
+        site_labels=None,
         hd_sel=hd_sel,
-        do_only_macro_molecule=True)
+        do_only_macro_molecule=True,
+        check_for_unknown_pairs=False)
     overlap_proxies = nb_overlaps.result.nb_overlaps_proxies_macro_molecule
     summ = 0
     for p in overlap_proxies:
@@ -2349,7 +2351,6 @@ def _get_rotamers_evaluated(
         rotamer_sites_cart))
     i += 1
   return sorted(inf, key=lambda x: (x[5], x[2])  )
-
 
 def _find_theta(ap1, ap2, cur_xyz, needed_xyz):
   from mmtbx.building.loop_closure.ccd import ccd_python
@@ -2390,22 +2391,19 @@ def backrub_move(
   for i, r in enumerate([prev_res, cur_res, next_res]):
     for a in r.atoms():
       saved_res[i][a.name.strip()] = a.xyz
-
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
-
   prev_ca = prev_res.find_atom_by(name=" CA ")
   cur_ca = cur_res.find_atom_by(name=" CA ")
   next_ca = next_res.find_atom_by(name=" CA ")
-  assert prev_ca is not None
-  assert next_ca is not None
+  if prev_ca is None or next_ca is None or cur_ca is None:
+    return
   atoms_to_move = []
   atoms_to_move.append(prev_res.find_atom_by(name=" C  "))
   atoms_to_move.append(prev_res.find_atom_by(name=" O  "))
   for atom in cur_res.atoms():
     atoms_to_move.append(atom)
   atoms_to_move.append(next_res.find_atom_by(name=" N  "))
-
   for atom in atoms_to_move:
     assert atom is not None
     new_xyz = rotate_point_around_axis(
@@ -2492,6 +2490,10 @@ def fix_rotamer_outliers(
     asc=None,
     verbose=False,
     log=None):
+  import boost.python
+  boost.python.import_ext("scitbx_array_family_flex_ext")
+  from scitbx_array_family_flex_ext import reindexing_array
+
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   if rotamer_manager is None:
@@ -2506,6 +2508,8 @@ def fix_rotamer_outliers(
     asc = pdb_hierarchy.atom_selection_cache()
   special_position_settings = crystal.special_position_settings(
       crystal_symmetry = xrs.crystal_symmetry())
+  n_atoms = pdb_hierarchy.atoms_size()
+  hd_sel = xrs.hd_selection()
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for conf in chain.conformers():
@@ -2518,7 +2522,7 @@ def fix_rotamer_outliers(
           if cl not in ["common_amino_acid","modified_amino_acid"]:
             continue
           ev = rotamer_manager.evaluate_residue_2(res)
-          if ev != "OUTLIER" or ev is None:
+          if ev != "OUTLIER":
             continue
           sample_backrub_angles = [0]
           if backrub_range is not None:
@@ -2529,6 +2533,21 @@ def fix_rotamer_outliers(
               sample_backrub_angles.append(f)
               f += inc
           all_inf = []
+          sel, bsel_around_no_mc, selection_around_residue = _get_selections_around_residue(
+              n_atoms,
+              xrs,
+              res,
+              special_position_settings,
+              radius)
+          r_a = list(reindexing_array(n_atoms,
+              selection_around_residue.iselection().as_int()))
+          reindexing_dict = {}
+          for i in sel:
+            reindexing_dict[i] = r_a[i]
+          pdb_selected = pdb_hierarchy.select(selection_around_residue)
+          bsel_around_no_mc_selected = bsel_around_no_mc.select(selection_around_residue)
+          hd_sel_selected = hd_sel.select(selection_around_residue)
+          grm_selected = grm.select(selection_around_residue)
           for backrub_angle in sample_backrub_angles:
             if verbose:
               print >> log, "  Backrub angle:", backrub_angle
@@ -2549,12 +2568,14 @@ def fix_rotamer_outliers(
                 rotamer_manager=rotamer_manager)
             # sample rotamers
             s_inf = _get_rotamers_evaluated(
-                pdb_hierarchy=pdb_hierarchy,
+                pdb_hierarchy=pdb_selected,
+                sel=sel,
+                bsel_around_no_mc=bsel_around_no_mc_selected,
+                hd_sel=hd_sel_selected,
                 res=res,
-                grm=grm,
-                special_position_settings=special_position_settings,
+                grm=grm_selected,
+                reind_dict=reindexing_dict,
                 mon_lib_srv=mon_lib_srv,
-                radius=radius,
                 prefix="%d" % backrub_angle)
             if s_inf is None:
               continue
@@ -2591,7 +2612,7 @@ def switch_rotamers(
       mon_lib_srv=None,
       rotamer_manager=None):
   if(mode is None): return pdb_hierarchy
-  pdb_hierarchy.reset_i_seq_if_necessary()
+  pdb_hierarchy.reset_atom_i_seqs()
   assert mode in ["max_distant","min_distant","exact_match","fix_outliers"],mode
   from mmtbx.command_line import lockit
   if mon_lib_srv is None:
