@@ -365,7 +365,8 @@ class info(object):
     sites_cart,
     hd_sel,
     site_labels=None,
-    do_only_macro_molecule=False):
+    do_only_macro_molecule=False,
+    check_for_unknown_pairs=True):
     '''
     Construct nonbonded_overlaps_info, the non-bonded overlaps number and list
 
@@ -418,7 +419,8 @@ class info(object):
         site_label = site_labels.select(sel)
       else:
         site_label = site_labels
-      if unknown_pairs_present(grm=grm,sites_cart=cart,site_labels=site_label):
+      if (check_for_unknown_pairs and
+          unknown_pairs_present(grm=grm,sites_cart=cart,site_labels=site_label)):
         msg = "nonbonded overlaps can't be calculated."
         msg += " PDB file contains unknown type pairs. Please provide cif file."
         raise Sorry(msg)
