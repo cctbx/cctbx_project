@@ -371,7 +371,7 @@ class loop_idealization():
       if ar[2] < 0.4:
         # fn = "variant_%d.pdb" % i
         # ar[0].write_pdb_file(file_name=fn)
-        print fn
+        # print fn
         i += 1
       else:
         print "  no output"
