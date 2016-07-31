@@ -86,7 +86,22 @@ class slots_getstate_setstate(object):
   __slots__ = []
 
   def __getstate__(self):
-    return dict([(name, getattr(self, name)) for name in self.__slots__])
+    """
+    The name of some attributes may start with a double underscore such as
+    cif_types.comp_comp_id.__rotamer_info. Python name mangling will rename such
+    an attribute to _comp_comp_id_rotamer_info. Our __getstate__ function would then
+    complain that the __slots__ list contains the non-existent attribute __rotamer_info.
+    To fix this we manually mangle attributes with the compiler.misc.mangle function
+    which does the right name mangling.
+    """
+    import warnings
+    with warnings.catch_warnings():
+      # avoid printing deprecation warning to stderr when loading mangle
+      warnings.simplefilter("ignore")
+      from compiler.misc import mangle
+    mnames = [ mangle(name, self.__class__.__name__) for name in self.__slots__ ]
+
+    return dict([(name, getattr(self, name)) for name in mnames])
 
   def __setstate__(self, state):
     for name,value in state.items(): setattr(self, name, value)
