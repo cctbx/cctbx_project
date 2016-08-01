@@ -68,7 +68,11 @@ class PRIMEWindow(wx.Frame):
                                                  bitmap=wx.Bitmap('{}/32x32/exit.png'.format(icons)),
                                                  shortHelp='Quit',
                                                  longHelp='Exit PRIME')
-
+    self.tb_btn_prefs = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                  label='Preferences',
+                                                  bitmap=wx.Bitmap('{}/32x32/config.png'.format(icons)),
+                                                  shortHelp='Preferences',
+                                                  longHelp='PRIME Preferences')
     self.toolbar.AddSeparator()
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
@@ -112,6 +116,7 @@ class PRIMEWindow(wx.Frame):
 
     # Toolbar button bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
+    self.Bind(wx.EVT_TOOL, self.onPreferences, self.tb_btn_prefs)
     self.Bind(wx.EVT_BUTTON, self.onInput,
               self.input_window.inp_box.btn_browse)
     self.Bind(wx.EVT_TEXT, self.onInput, self.input_window.inp_box.ctr)
@@ -136,6 +141,16 @@ class PRIMEWindow(wx.Frame):
     info.AddDeveloper('Monarin Uervirojnangkoorn')
     info.AddDeveloper('Axel Brunger')
     wx.AboutBox(info)
+
+  def onPreferences(self, e):
+    self.pparams = self.input_window.pparams
+    dlg = PRIMEPreferences(self)
+    dlg.set_choices(method=self.pparams.queue.mode,
+                          queue=self.pparams.queue.qname)
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.pparams.queue.mode = dlg.method
+      self.pparams.queue.qname = dlg.queue
 
   def onInput(self, e):
     if self.input_window.inp_box.ctr.GetValue() != '':
@@ -478,8 +493,9 @@ class PRIMEAdvancedOptions(wx.Dialog):
                              label='Resolution: ',
                              label_size=(120, -1),
                              label_style='normal',
-                             ctrl_size=(60, -1),
-                             items={'high':50, 'low':1.5})
+                             ctrl_size=wx.DefaultSize,
+                             items=[('high', 50),
+                                    ('low', 1.5)])
     vbox.Add(self.res, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Target space group
@@ -488,7 +504,7 @@ class PRIMEAdvancedOptions(wx.Dialog):
                             label_size=(120, -1),
                             label_style='normal',
                             ctrl_size=(100, -1),
-                            items={'spacegroup':'P212121'})
+                            items=[('spacegroup','P212121')])
     vbox.Add(self.sg, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Target unit cell
@@ -497,7 +513,7 @@ class PRIMEAdvancedOptions(wx.Dialog):
                             label_size=(120, -1),
                             label_style='normal',
                             ctrl_size=(300, -1),
-                            items={'unit_cell':'72 120 134 90 90 90'})
+                            items=[('unit_cell', '72 120 134 90 90 90')])
     self.uc_override = wx.CheckBox(self,
                                    label='Unit cell override')
     self.uc_override.SetValue(False)
@@ -513,7 +529,7 @@ class PRIMEAdvancedOptions(wx.Dialog):
                             label_size=(120, -1),
                             label_style='normal',
                             ctrl_size=(100, -1),
-                            items={'cc_cutoff':0.25})
+                            items=[('cc_cutoff', 0.25)])
     vbox.Add(self.cc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Pixel size
@@ -522,7 +538,7 @@ class PRIMEAdvancedOptions(wx.Dialog):
                              label_size=(120, -1),
                              label_style='normal',
                              ctrl_size=(100, -1),
-                             items={'pixel_size':0.172})
+                             items=[('pixel_size', 0.172)])
     vbox.Add(self.pix, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     self.cycles = ct.SpinCtrl(self,
@@ -1037,3 +1053,93 @@ class PRIMERunWindow(wx.Frame):
     self.display_log()
     self.gauge_prime.Hide()
     self.prime_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+
+# ---------------------------------  Dialogs --------------------------------  #
+
+class PRIMEPreferences(wx.Dialog):
+  def __init__(self, *args, **kwargs):
+    super(PRIMEPreferences, self).__init__(*args, **kwargs)
+
+    self.method = None
+    self.queue = None
+    main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    main_box = wx.StaticBox(self, label='IOTA Preferences')
+    vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
+
+    self.SetSizer(main_sizer)
+
+    q_choices = ['psanaq', 'psnehq', 'psfehq'] + ['custom']
+    self.queues = ct.ChoiceCtrl(self,
+                                label='Queue:',
+                                label_size=(100, -1),
+                                label_style='bold',
+                                ctrl_size=wx.DefaultSize,
+                                choices=q_choices)
+    vbox.Add(self.queues, flag=wx.ALL, border=10)
+
+    self.custom_queue = ct.OptionCtrl(self,
+                                      items=[('cqueue', '')],
+                                      label='Custom Queue:',
+                                      label_size=(100, -1),
+                                      label_style='normal',
+                                      ctrl_size=(150, -1))
+    self.custom_queue.Disable()
+    vbox.Add(self.custom_queue, flag=wx.ALL, border=10)
+
+    mp_choices = ['multiprocessing', 'bsub']
+    self.mp_methods = ct.ChoiceCtrl(self,
+                                    label='Method:',
+                                    label_size=(100, -1),
+                                    label_style='bold',
+                                    ctrl_size=wx.DefaultSize,
+                                    choices=mp_choices)
+    vbox.Add(self.mp_methods, flag=wx.ALL, border=10)
+
+    main_sizer.Add(vbox, flag=wx.EXPAND)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    main_sizer.Add(dialog_box,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    self.Bind(wx.EVT_CHOICE, self.onQueue, self.queues.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def set_choices(self, method, queue):
+    # Set queue to default value
+    if queue is None:
+      queue = 'None'
+    inp_queue = self.queues.ctr.FindString(queue)
+    if inp_queue != wx.NOT_FOUND:
+      self.queues.ctr.SetSelection(inp_queue)
+    else:
+      self.custom_queue.Enable()
+      self.custom_queue.cqueue.SetValue(queue)
+
+    # Set method to default value
+    print method
+    inp_method = self.mp_methods.ctr.FindString(str(method))
+    if inp_method != wx.NOT_FOUND:
+      self.mp_methods.ctr.SetSelection(inp_method)
+
+  def onQueue(self, e):
+    choice = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+    if choice == 'custom':
+      self.custom_queue.Enable()
+    else:
+      self.custom_queue.Disable()
+
+  def onOK(self, e):
+    self.method = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
+    queue_selection = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+    if queue_selection == 'custom':
+      if self.custom_queue.cqueue.GetValue() == '':
+        wx.MessageBox('Please choose or enter a queue', wx.OK)
+      else:
+        self.queue = self.custom_queue.cqueue.GetValue()
+        e.Skip()
+    else:
+      self.queue = queue_selection
+      e.Skip()
