@@ -6,6 +6,12 @@ class Job(db_proxy):
     db_proxy.__init__(self, app, "%s_job" % app.params.experiment_tag, id = job_id, **kwargs)
     self.job_id = self.id
 
+  def get_log_path(self):
+    from xfel.ui.db import get_run_path
+    import os
+    run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run)
+    return os.path.join(run_path, "stdout", "log.out")
+
 # Support classes and functions for job submission
 
 class _job(object):
@@ -40,18 +46,21 @@ def submit_all_jobs(app):
       for run in rg_runs:
         needed_jobs.append(_job(trial, rungroup, run))
 
+  all_jobs = [j for j in submitted_jobs] # shallow copy
   for job in needed_jobs:
     if job in submitted_jobs:
       continue
 
     print "Submitting job: trial %d, rungroup %d, run %d"%(job.trial.trial, job.rungroup.id, job.run.run)
-    app.create_job(
-      trial_id = job.trial.id,
-      rungroup_id = job.rungroup.id,
-      run_id = job.run.id,
-      status = "Submitted")
 
+    j = app.create_job(trial_id = job.trial.id,
+                       rungroup_id = job.rungroup.id,
+                       run_id = job.run.id,
+                       status = "Submitted")
+    all_jobs.append(j)
     submit_job(app, job)
+
+  # TODO: use all_jobs array and get_log_path method to parse log files to get job status
 
 def submit_job(app, job):
   import os, libtbx.load_env
@@ -63,7 +72,20 @@ def submit_job(app, job):
     (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
   backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(app.params.dispatcher)]
 
-  if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None or backend == 'labelit':
+  phil_str = job.trial.target_phil_str
+  if job.rungroup.extra_phil_str is not None:
+    phil_str += "\n" + job.rungroup.extra_phil_str
+
+  if backend == 'dials':
+    from xfel.command_line.xtc_process import phil_scope
+    from iotbx.phil import parse
+    trial_params = phil_scope.fetch(parse(phil_str)).extract()
+    image_format = trial_params.format.file_format
+    assert image_format in ['cbf', 'pickle']
+  else:
+    image_format = 'pickle'
+
+  if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None or backend == 'labelit' or image_format == 'pickle':
     config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
       (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
   else:
@@ -71,7 +93,7 @@ def submit_job(app, job):
 
   # Dictionary for formating the submit phil and, if used, the labelit cfg file
   d = dict(
-    # Generally for the LABELIT backend
+    # Generally for the LABELIT backend or image pickles
     address                   = job.rungroup.detector_address,
     default_calib_dir         = libtbx.env.find_in_repositories("xfel/metrology/CSPad/run4/CxiDs1.0_Cspad.0"),
     dark_avg_path             = job.rungroup.dark_avg_path,
@@ -111,21 +133,12 @@ def submit_job(app, job):
 
   phil = open(target_phil_path, "w")
 
-  phil_str = job.trial.target_phil_str
-  if job.rungroup.extra_phil_str is not None:
-    phil_str += "\n" + job.rungroup.extra_phil_str
-
   if backend == 'dials':
-    from xfel.command_line.xtc_process import phil_scope
-    from iotbx.phil import parse
-    trial_params = phil_scope.fetch(parse(phil_str)).extract()
     if trial_params.format.file_format == "cbf":
       trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
       trial_params.format.cbf.override_energy = job.rungroup.energy
       trial_params.format.cbf.invalid_pixel_mask = job.rungroup.untrusted_pixel_mask_path
       trial_params.format.cbf.gain_mask_value = job.rungroup.gain_mask_level
-    else:
-      assert False
     trial_params.dispatch.process_percent = job.trial.process_percent
 
     working_phil = phil_scope.format(python_object=trial_params)
@@ -149,6 +162,8 @@ def submit_job(app, job):
           modules.append(line.lstrip('[').rstrip(']'))
     if backend == 'labelit':
       modules.extend(['my_ana_pkg.mod_hitfind:index','my_ana_pkg.mod_dump:index'])
+    elif image_format == 'pickle':
+      modules.extend(['my_ana_pkg.mod_image_dict'])
 
     if len(modules) > 0:
       config_str += "modules = %s\n"%(" ".join(modules))
@@ -156,9 +171,12 @@ def submit_job(app, job):
     if job.rungroup.config_str is not None:
       config_str += job.rungroup.config_str + "\n"
 
-    if backend == 'labelit':
+    if backend == 'labelit' or image_format == 'pickle':
       d['address'] = d['address'].replace('.','-').replace(':','|') # old style address
-      template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "index_all.cfg"))
+      if backend == 'labelit':
+        template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "index_all.cfg"))
+      elif image_format == 'pickle':
+        template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "image_dict.cfg"))
       for line in template.readlines():
         config_str += line.format(**d)
       template.close()
