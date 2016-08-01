@@ -140,25 +140,37 @@ class OptionCtrl(CtrlBase):
                label='',
                label_size=(100, -1),
                label_style='normal',
+               sub_labels=[],
                ctrl_size=(300, -1)):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
-    opt_box = wx.FlexGridSizer(1, len(items) * 2 + 1, 0, 10)
-    self.txt = wx.StaticText(self, label=label, size=label_size)
-    self.txt.SetFont(self.font)
-    opt_box.Add(self.txt)
+    if label != '':
+      opt_box = wx.FlexGridSizer(1, len(items) * 2 + 1, 0, 10)
+      self.txt = wx.StaticText(self, label=label, size=label_size)
+      self.txt.SetFont(self.font)
+      opt_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+    else:
+      opt_box = wx.FlexGridSizer(1, len(items) * 2, 0, 10)
 
-    for key, value in items.iteritems():
+    for key, value in items:
+      if sub_labels != []:
+        sub_label = sub_labels[items.index((key, value))].decode('utf-8')
+      else:
+        sub_label = key
+
       if len(items) > 1:
-        opt_box.Add(wx.StaticText(self, id=wx.ID_ANY, label=key))
+        opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
+        opt_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL)
 
-      item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size)
+      item = wx.TextCtrl(self, id=wx.ID_ANY, size=ctrl_size,
+                         style=wx.TE_PROCESS_ENTER)
       item.SetValue(str(value))
-      opt_box.Add(item)
+      opt_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL)
       self.__setattr__(key, item)
 
     self.SetSizer(opt_box)
+
 
 class SpinCtrl(CtrlBase):
   ''' Generic panel will place a spin control w/ label '''

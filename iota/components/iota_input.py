@@ -226,9 +226,12 @@ advanced
 n_processors = 32
   .type = int
   .help = No. of processing units
-mp_method = *multiprocessing mpi
+mp_method = *multiprocessing mpi lsf
   .type = choice
   .help = Multiprocessing method
+mp_queue = None
+  .type = str
+  .help = Multiprocessing queue
 prime_prefix = prime
   .type = str
   .multiple = False

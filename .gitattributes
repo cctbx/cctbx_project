@@ -1213,6 +1213,7 @@ iota/command_line/iota_bulletproof.py -text
 iota/command_line/iota_main.py -text
 iota/command_line/iota_mpi.py -text
 iota/command_line/iota_mpi_submit.py -text
+iota/command_line/iota_process.py -text
 iota/command_line/iota_run.py -text
 iota/command_line/iota_single_image.py -text
 iota/components/__init__.py -text

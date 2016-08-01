@@ -1,6 +1,6 @@
-IOTA v1.0.007 - XTerm IOTA updates
+IOTA v1.0.009 - Multiprocessing update
 
-1. Selection-only mode now works (previously ran full integration)
-2. Option to bypass summary graphs (spot-finding heatmap, resolution
-histogram and beam XY graph), so that IOTA can be run remotely w/o X11
-forwarding.
+1. New module (iota_process.py) submits jobs to multiprocessing queue
+2. Called from GUI with command that depends on the multiprocessing method
+3. Workaround - needs to be better
+4. PRIME GUI also has options for queue submissions

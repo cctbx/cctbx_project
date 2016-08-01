@@ -9,6 +9,7 @@ Description : IOTA GUI Initialization module
 
 import os
 import wx
+import shutil
 from threading import Thread
 
 import math
@@ -21,6 +22,7 @@ from matplotlib.figure import Figure
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
+from libtbx import easy_run
 from cctbx.uctbx import unit_cell
 
 from iota.components.iota_analysis import Analyzer, Plotter
@@ -104,20 +106,35 @@ class ProcThread(Thread):
                parent,
                init,
                iterable,
-               stage='import',
                input_type='image'):
     Thread.__init__(self)
     self.parent = parent
     self.init = init
     self.iterable = iterable
-    self.stage = stage
     self.type = input_type
 
   def run(self):
-    img_objects = parallel_map(iterable=self.iterable,
-                               func = self.full_proc_wrapper,
-                               callback = self.callback,
-                               processes=self.init.params.n_processors)
+    if self.init.params.mp_method == 'multiprocessing':
+      img_objects = parallel_map(iterable=self.iterable,
+                                 func = self.full_proc_wrapper,
+                                 callback = self.callback,
+                                 processes=self.init.params.n_processors)
+    elif self.init.params.mp_method == 'lsf':
+      # write iterable
+      img_objects = None
+      queue = self.init.params.mp_queue
+      iter_path = os.path.join(self.init.params.output, 'iter.cfg')
+      init_path = os.path.join(self.init.params.output, 'init.cfg')
+      nproc = self.init.params.n_processors
+      ep.dump(iter_path, self.iterable)
+      ep.dump(init_path, self.init)
+
+      command = 'bsub -q {} -n {} iota.process {} --files {} --type {}' \
+                ''.format(queue, nproc, init_path, iter_path, self.type)
+      print command
+      easy_run.fully_buffered(command, join_stdout_stderr=True)
+
+    # Send "all done" event to GUI
     evt = AllDone(tp_EVT_ALLDONE, -1, img_objects)
     wx.PostEvent(self.parent, evt)
 
@@ -163,6 +180,11 @@ class MainWindow(wx.Frame):
                                                  bitmap=wx.Bitmap('{}/32x32/exit.png'.format(icons)),
                                                  shortHelp='Quit',
                                                  longHelp='Quit IOTA')
+    self.tb_btn_prefs = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                  label='Preferences',
+                                                  bitmap=wx.Bitmap('{}/32x32/config.png'.format(icons)),
+                                                  shortHelp='Preferences',
+                                                  longHelp='IOTA Preferences')
 
     self.toolbar.AddSeparator()
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
@@ -222,6 +244,7 @@ class MainWindow(wx.Frame):
 
     # Toolbar button bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
+    self.Bind(wx.EVT_TOOL, self.onPreferences, self.tb_btn_prefs)
     self.Bind(wx.EVT_BUTTON, self.onInput, self.input_window.inp_box.btn_browse)
     self.Bind(wx.EVT_TEXT, self.onInput, self.input_window.inp_box.ctr)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
@@ -233,6 +256,15 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_MENU, self.OnAboutBox, self.mb_about)
     self.Bind(wx.EVT_MENU, self.onOutputScript, self.mb_save_script)
     self.Bind(wx.EVT_MENU, self.onLoadScript, self.mb_load_script)
+
+  def onPreferences(self, e):
+    dlg = IOTAPreferences(self)
+    dlg.set_choices(method=self.gparams.mp_method,
+                          queue=self.gparams.mp_queue)
+
+    if dlg.ShowModal() == wx.ID_OK:
+      self.gparams.mp_method = dlg.method
+      self.gparams.mp_queue = dlg.queue
 
   def init_settings(self):
     # Grab params from main window class
@@ -781,6 +813,10 @@ class ProcWindow(wx.Frame):
       self.process_images()
       self.good_to_go = True
       self.timer.Start(5000)
+
+      # write init file
+      ep.dump(os.path.join(self.gparams.output, 'init.cfg'), self.init)
+
     else:
       self.good_to_go = False
 
@@ -1050,8 +1086,24 @@ class ProcWindow(wx.Frame):
     except ValueError, e:
       pass
 
-
   def onTimer(self, e):
+    if os.path.isfile(self.tmp_abort_file):
+      self.finish_process()
+
+    if self.gparams.mp_method == 'lsf':
+      img_object_files = [os.path.join(self.init.obj_base, i) for i in
+                          os.listdir(self.init.obj_base) if i.endswith('fin')]
+      self.objects_in_progress = [ep.load(i) for i in img_object_files]
+      if len(self.objects_in_progress) > 0:
+        for obj in self.objects_in_progress:
+          self.nref_list[obj.img_index - 1] = obj.final['strong']
+          self.res_list[obj.img_index - 1] = obj.final['res']
+
+      end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
+      if os.path.isfile(end_filename):
+        self.img_objects = self.objects_in_progress
+        self.finish_process()
+
     if len(self.objects_in_progress) > self.obj_counter:
       if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
         self.plot_integration()
@@ -1083,13 +1135,16 @@ class ProcWindow(wx.Frame):
     if not os.path.isfile(self.tmp_abort_file):
       obj = e.GetValue()
       self.objects_in_progress.append(obj)
-      #self.nref_list = [i.final['strong'] for i in self.objects_in_progress]
-      #self.res_list = [i.final['res'] for i in self.objects_in_progress]
       self.nref_list[obj.img_index - 1] = obj.final['strong']
       self.res_list[obj.img_index - 1] = obj.final['res']
 
 
   def onFinishedProcess(self, e):
+    if self.gparams.mp_method != 'lsf':
+      self.img_objects = e.GetValue()
+      self.finish_process()
+
+  def finish_process(self):
     if os.path.isfile(self.tmp_abort_file):
       self.gauge_process.Hide()
       font = self.sb.GetFont()
@@ -1100,7 +1155,6 @@ class ProcWindow(wx.Frame):
       self.timer.Stop()
       return
     else:
-      self.img_objects = e.GetValue()
       self.final_objects = [i for i in self.img_objects if i.fail == None]
       self.gauge_process.Hide()
       self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
@@ -2233,6 +2287,93 @@ class AnalysisWindow(wx.Dialog):
       self.an_ctr_cluster.Disable()
       self.an_txt_cluster.Disable()
 
+
+class IOTAPreferences(wx.Dialog):
+  def __init__(self, *args, **kwargs):
+    super(IOTAPreferences, self).__init__(*args, **kwargs)
+
+    self.method = None
+    self.queue = None
+    main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    main_box = wx.StaticBox(self, label='IOTA Preferences')
+    vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
+
+    self.SetSizer(main_sizer)
+
+    q_choices = ['psanaq', 'psnehq', 'psfehq'] + ['custom']
+    self.queues = ct.ChoiceCtrl(self,
+                                label='Queue:',
+                                label_size=(100, -1),
+                                label_style='bold',
+                                ctrl_size=wx.DefaultSize,
+                                choices=q_choices)
+    vbox.Add(self.queues, flag=wx.ALL, border=10)
+
+    self.custom_queue = ct.OptionCtrl(self,
+                                      items=[('cqueue', '')],
+                                      label='Custom Queue:',
+                                      label_size=(100, -1),
+                                      label_style='normal',
+                                      ctrl_size=(150, -1))
+    self.custom_queue.Disable()
+    vbox.Add(self.custom_queue, flag=wx.ALL, border=10)
+
+    mp_choices = ['multiprocessing', 'lsf']
+    self.mp_methods = ct.ChoiceCtrl(self,
+                                    label='Method:',
+                                    label_size=(100, -1),
+                                    label_style='bold',
+                                    ctrl_size=wx.DefaultSize,
+                                    choices=mp_choices)
+    vbox.Add(self.mp_methods, flag=wx.ALL, border=10)
+
+    main_sizer.Add(vbox, flag=wx.EXPAND)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    main_sizer.Add(dialog_box,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    self.Bind(wx.EVT_CHOICE, self.onQueue, self.queues.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def set_choices(self, method, queue):
+    # Set queue to default value
+    if queue is None:
+      queue = 'None'
+    inp_queue = self.queues.ctr.FindString(queue)
+    if inp_queue != wx.NOT_FOUND:
+      self.queues.ctr.SetSelection(inp_queue)
+    else:
+      self.custom_queue.Enable()
+      self.custom_queue.cqueue.SetValue(queue)
+
+    # Set method to default value
+    inp_method = self.mp_methods.ctr.FindString(method)
+    if inp_method != wx.NOT_FOUND:
+      self.mp_methods.ctr.SetSelection(inp_method)
+
+  def onQueue(self, e):
+    choice = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+    if choice == 'custom':
+      self.custom_queue.Enable()
+    else:
+      self.custom_queue.Disable()
+
+  def onOK(self, e):
+    self.method = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
+    queue_selection = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+    if queue_selection == 'custom':
+      if self.custom_queue.cqueue.GetValue() == '':
+        wx.MessageBox('Please choose or enter a queue', wx.OK)
+      else:
+        self.queue = self.custom_queue.cqueue.GetValue()
+        e.Skip()
+    else:
+      self.queue = queue_selection
+      e.Skip()
 
 # ------------------------------ Initialization  ----------------------------- #
 
