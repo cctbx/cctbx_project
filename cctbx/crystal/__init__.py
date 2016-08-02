@@ -356,11 +356,11 @@ class symmetry(object):
         mat = s.as_double_array()
         for j in range(3):
           outl += "REMARK 290   SMTRY%d%4d%10.6f%10.6f%10.6f%15.5f\n" %(
-            i+1,
             j+1,
-            mat[j],
-            mat[j+3],
-            mat[j+6],
+            i+1,
+            mat[j*3],
+            mat[j*3+1],
+            mat[j*3+2],
             mat[j+9]*params[j],
           )
     return outl
