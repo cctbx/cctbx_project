@@ -292,7 +292,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
 
   def GetSelectionInfo (self) :
     from scitbx.array_family import flex
-    selection = flex.bool(self._hierarchy.atoms().size(), False)
+    selection = flex.bool(self._hierarchy.atoms_size(), False)
     object_types = set([])
     for item in self.GetSelections() :
       pdb_object = self.GetItemPyData(item)

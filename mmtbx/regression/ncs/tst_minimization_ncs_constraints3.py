@@ -31,7 +31,7 @@ class TestMinimizationFunctions(unittest.TestCase):
       ncs_restraints_group_list=nrgl,
       refine_selection=refine_selection)
     #
-    self.assertEqual(asu_length, ph.atoms().size())
+    self.assertEqual(asu_length, ph.atoms_size())
     self.assertEqual(asu_length, 18)
     #
     xrs_one_ncs_copy = xrs.select(extended_ncs_selection)

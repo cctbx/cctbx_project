@@ -291,7 +291,7 @@ def get_helix(helix_class, rotamer_manager, sequence=None, pdb_hierarchy_templat
     pdb_hierarchy_template=pdb_hierarchy_template)
 
 def calculate_rmsd_smart(h1, h2):
-  assert h1.atoms().size() == h2.atoms().size()
+  assert h1.atoms_size() == h2.atoms_size()
   rmsd = 0
   for atom in h1.atoms():
     for c in h2.chains():
@@ -313,8 +313,8 @@ def set_xyz_smart(dest_h, source_h):
   Even more careful setting of coordinates than set_xyz_carefully below
   """
   # try shortcut
-  # print "SHORTCUT atoms:", dest_h.atoms().size(), source_h.atoms().size()
-  if dest_h.atoms().size() == source_h.atoms().size():
+  # print "SHORTCUT atoms:", dest_h.atoms_size(), source_h.atoms_size()
+  if dest_h.atoms_size() == source_h.atoms_size():
     # print "TRYING SHORTCUT"
     good = True
     for a1, a2 in zip(dest_h.atoms(), source_h.atoms()):
@@ -326,7 +326,7 @@ def set_xyz_smart(dest_h, source_h):
       dest_h.atoms().set_xyz(source_h.atoms().extract_xyz())
       # print "SHORTCUT DONE"
       return
-  assert dest_h.atoms().size() >= source_h.atoms().size()
+  assert dest_h.atoms_size() >= source_h.atoms_size()
   for atom in source_h.atoms():
     chains = []
     if hasattr(dest_h, 'chains'):
@@ -349,7 +349,7 @@ def set_xyz_smart(dest_h, source_h):
             a.set_xyz(atom.xyz)
 
 def set_xyz_carefully(dest_h, source_h):
-  assert dest_h.atoms().size() >= source_h.atoms().size()
+  assert dest_h.atoms_size() >= source_h.atoms_size()
   for d_ag, s_ag in zip(dest_h.atom_groups(), source_h.atom_groups()):
     for s_atom in s_ag.atoms():
       d_atom = d_ag.get_atom(s_atom.name.strip())
@@ -363,7 +363,7 @@ def get_matching_sites_cart_in_both_h(old_h, new_h):
   moving_sites = flex.vec3_double()
   isel_for_old = flex.size_t()
   isel_for_new = flex.size_t()
-  if old_h.atoms().size() == new_h.atoms().size():
+  if old_h.atoms_size() == new_h.atoms_size():
     good = True
     for a1, a2 in zip(old_h.atoms(), new_h.atoms()):
       if a1.id_str()[:-6] != a2.id_str()[:-6]:
@@ -460,7 +460,7 @@ def substitute_ss(real_h,
   for h in ann.helices:
     expected_n_hbonds += h.get_n_maximum_hbonds()
   edited_h = real_h.deep_copy()
-  n_atoms_in_real_h = real_h.atoms().size()
+  n_atoms_in_real_h = real_h.atoms_size()
   selection_cache = real_h.atom_selection_cache()
   # check the annotation for correctness (atoms are actually in hierarchy)
   error_msg = "The following secondary structure annotations result in \n"
@@ -545,7 +545,7 @@ def substitute_ss(real_h,
   t3 = time()
   pre_result_h = edited_h
   pre_result_h.reset_i_seq_if_necessary()
-  n_atoms = real_h.atoms().size()
+  n_atoms = real_h.atoms_size()
   bsel = flex.bool(n_atoms, False)
   helix_selection = flex.bool(n_atoms, False)
   sheet_selection = flex.bool(n_atoms, False)

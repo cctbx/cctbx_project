@@ -71,7 +71,7 @@ class ramachandran_manager(object):
     adopt_init_args(self, locals())
     self.bool_atom_selection = None
     if self.atom_selection is None:
-      self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms().size(), True)
+      self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
     else:
       cache = pdb_hierarchy.atom_selection_cache()
       self.bool_atom_selection = cache.selection(atom_selection)

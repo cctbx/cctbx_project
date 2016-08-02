@@ -150,12 +150,12 @@ def run (args=(), params=None, out=sys.stdout) :
                       "too high.")
                   old_atom.set_occ(old_atom.occ - params.new_occ)
                   new_atom.set_occ(params.new_occ)
-              assert (new_group.atoms().size() == flags.count(1))
+              assert (new_group.atoms_size() == flags.count(1))
               residue_group.insert_atom_group(i_ag + 1, new_group)
               i_ag += 1
               new_altloc = increment_altloc(new_altloc)
           i_ag += 1
-  n_atoms_new = hierarchy.atoms().size()
+  n_atoms_new = hierarchy.atoms_size()
   hierarchy.atoms().reset_i_seq()
   hierarchy.atoms_reset_serial()
   if (params.output is None) :

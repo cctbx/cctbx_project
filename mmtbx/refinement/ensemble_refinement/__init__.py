@@ -1782,7 +1782,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   # Remove alternative conformations if present
   hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   if er_params.remove_alt_conf_from_input_pdb:
-    atoms_size_pre = hierarchy.atoms().size()
+    atoms_size_pre = hierarchy.atoms_size()
     for model in hierarchy.models() :
       for chain in model.chains() :
         for residue_group in chain.residue_groups() :
@@ -1800,7 +1800,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     atoms = hierarchy.atoms()
     new_occ = flex.double(atoms.size(), 1.0)
     atoms.set_occ(new_occ)
-    atoms_size_post = hierarchy.atoms().size()
+    atoms_size_post = hierarchy.atoms_size()
     if atoms_size_pre != atoms_size_post:
       pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
       print >> log, "\nRemoving alternative conformations"

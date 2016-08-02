@@ -517,7 +517,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
 
   const_h.reset_atom_i_seqs()
   flip_h.reset_atom_i_seqs()
-  assert const_h.atoms().size() == flip_h.atoms().size()
+  assert const_h.atoms_size() == flip_h.atoms_size()
   flipped_other_selection = flex.size_t([])
   ch_const = const_h.only_model().chains()
   ch_flip = flip_h.only_model().chains()
@@ -527,7 +527,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
       if (residue.resname in flippable_sidechains
           and should_be_flipped(residue, res_flip)):
         fl_atom_list = flippable_sidechains[residue.resname]
-        iseqs = [0]*residue.atoms().size()
+        iseqs = [0]*residue.atoms_size()
         for i, a in enumerate(residue.atoms()):
           try:
             ind = fl_atom_list.index(a.name)
@@ -545,14 +545,14 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
         for a in residue.atoms():
           flipped_other_selection.append(a.i_seq)
   # print "flipped_other_selection", list(flipped_other_selection)
-  assert flipped_other_selection.size() == const_h.atoms().size()
+  assert flipped_other_selection.size() == const_h.atoms_size()
   return flipped_other_selection
 
 # def make_flips_if_necessary(const_h, flip_h):
 #   """ 3 times slower than make_flips_if_necessary_torsion."""
 #   def dist(a,b):
 #     return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)
-#   assert const_h.atoms().size() == flip_h.atoms().size()
+#   assert const_h.atoms_size() == flip_h.atoms_size()
 #   # this check takes quater of the runtime.
 #   if not const_h.contains_protein():
 #     return None
@@ -580,7 +580,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
 #     for residue in ch.only_conformer().residues():
 #       if (residue.resname in ["GLU", "ASP", "PHE", "HIS", "LEU",
 #                               "ASN", "GLN", "ARG", "VAL", "TYR"] and
-#           residue.atoms().size() > 1):
+#           residue.atoms_size() > 1):
 #         # find interesting pair and decide on flip straight away
 #         flippable_iseqs = []
 #         atoms = residue.atoms()
@@ -614,7 +614,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
 #         # residue is not flippable, goes straight to flipped_other_selection
 #         for a in residue.atoms():
 #           flipped_other_selection.append(a.i_seq)
-#   assert flipped_other_selection.size() == const_h.atoms().size()
+#   assert flipped_other_selection.size() == const_h.atoms_size()
 #   # print "flipped_other_selection", list(flipped_other_selection)
 #   return flipped_other_selection
 
@@ -1027,7 +1027,7 @@ def get_chains_info(ph, selection_list=None):
       # coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
       # chains_info[ch.id].center_of_coordinates = coc
       chains_info[ch.id].center_of_coordinates = None
-    chains_info[ch.id].chains_atom_number += ch.atoms().size()
+    chains_info[ch.id].chains_atom_number += ch.atoms_size()
     resids = chains_info[ch.id].resid
     res_names = chains_info[ch.id].res_names
     atom_names = chains_info[ch.id].atom_names

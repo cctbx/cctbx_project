@@ -335,7 +335,7 @@ def exercise_model () :
           [pdb_file, pdb_file2])
   pdb_hierarchy = model_handler.get_pdb_hierarchy(pdb_file2)
   xrs = model_handler.get_xray_structure(pdb_file2)
-  assert (pdb_hierarchy.atoms().size() == xrs.scatterers().size() == 2127)
+  assert (pdb_hierarchy.atoms_size() == xrs.scatterers().size() == 2127)
   model_handler.remove_file(pdb_file)
   assert (model_handler.get_param_files("refinement.input.pdb.file_name") ==
           [pdb_file2])

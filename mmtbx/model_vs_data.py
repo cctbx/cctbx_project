@@ -291,7 +291,7 @@ def show_geometry(
       resname_classes.append(" ".join([k.replace("common_",""), str(v)]))
     #
     xray_structure = xray_structures.select(model_selection)
-    assert hierarchy_i_seq.atoms().size() == xray_structure.scatterers().size()
+    assert hierarchy_i_seq.atoms_size() == xray_structure.scatterers().size()
     hd_sel = xray_structure.hd_selection()
     def select_atom_selections(selection       = model_selection,
                                atom_selections = atom_selections):

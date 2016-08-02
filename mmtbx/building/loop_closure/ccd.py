@@ -148,7 +148,7 @@ class ccd_python():
     assert len(fixed_ref_atoms) == 3
     assert len(moving_ref_atoms_iseqs) == 3
     assert moving_h is not None
-    assert moving_h.atoms().size() > 10 # arbitrary
+    assert moving_h.atoms_size() > 10 # arbitrary
     # adopt_init_args(self, locals())
     self.moving_h = moving_h
     self.fixed_ref_atoms = fixed_ref_atoms

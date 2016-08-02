@@ -436,7 +436,7 @@ def strip_model (
     i_seqs = pdb_hierarchy.atoms().extract_i_seq()
     xray_structure = xray_structure.select(i_seqs)
     pdb_hierarchy.atoms().reset_i_seq()
-  assert xray_structure.scatterers().size() == pdb_hierarchy.atoms().size()
+  assert xray_structure.scatterers().size() == pdb_hierarchy.atoms_size()
   if (output_file is not None) :
     f = open(output_file, "w")
     if (add_remarks is not None) :

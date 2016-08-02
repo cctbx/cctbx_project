@@ -858,7 +858,7 @@ def iselection_ncs_to_asu(iselection_ncs,ncs_chain_id,hierarchy_asu):
   Returns:
     iselection_asu (flex.size_t)
   """
-  asu_len = hierarchy_asu.atoms().size()
+  asu_len = hierarchy_asu.atoms_size()
   atom_cache = hierarchy_asu.atom_selection_cache().selection
   sel = atom_cache('chain ' + ncs_chain_id)
   sel = sel.iselection(True)

@@ -625,7 +625,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     """
     from iotbx.pdb import common_residue_names_get_class as gc
     from cctbx import adptbx
-    if(self.atoms().size() != xray_structure.scatterers().size()):
+    if(self.atoms_size() != xray_structure.scatterers().size()):
       raise RuntimeError("Incompatible size of hierarchy and scatterers array.")
     awl = self.atoms_with_labels()
     scatterers = xray_structure.scatterers()
@@ -2483,7 +2483,7 @@ def sites_diff (hierarchy_1,
   """
   if (log is None) : log = null_out()
   atom_lookup = {}
-  deltas = flex.double(hierarchy_2.atoms().size(), -1.)
+  deltas = flex.double(hierarchy_2.atoms_size(), -1.)
   for atom in hierarchy_1.atoms_with_labels() :
     if (atom.resname in ["HOH", "WAT"]) and (exclude_waters) :
       continue

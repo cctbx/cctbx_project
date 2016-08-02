@@ -143,10 +143,10 @@ class torsion_ncs(object):
           for ii, i_chain in enumerate(h_i.chains()):
             for jj, j_chain in enumerate(h_j.chains()):
               # print "Checking chains:", i_chain.id, j_chain.id
-              # print "  ", i_chain.atoms().size(), j_chain.atoms().size()
+              # print "  ", i_chain.atoms_size(), j_chain.atoms_size()
               # print "  ", i_chain.is_similar_hierarchy(j_chain)
               # print "  ", i_chain.as_sequence(), j_chain.as_sequence(), i_chain.as_sequence() == j_chain.as_sequence()
-              if (i_chain.atoms().size() == j_chain.atoms().size()
+              if (i_chain.atoms_size() == j_chain.atoms_size()
                   # and i_chain.is_similar_hierarchy(j_chain)
                   and i_chain.as_sequence() == j_chain.as_sequence()):
                 matching_chain_numbers.append((ii, jj))

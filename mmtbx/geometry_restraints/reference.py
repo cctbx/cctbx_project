@@ -17,7 +17,7 @@ def generate_torsion_restraints(
       top_out_potential=False,
       origin_id=2):
   torsion_proxies = geometry_restraints.shared_dihedral_proxy()
-  if pdb_hierarchy.atoms().size() < 4:
+  if pdb_hierarchy.atoms_size() < 4:
     return torsion_proxies
   assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0)
   bool_pdbh_selection = flex.bool(pdb_hierarchy.atoms_size(), False)

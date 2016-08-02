@@ -91,8 +91,8 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(chain_a_id,'A')
     self.assertEqual(chain_b_id,'B')
     #
-    atoms_in_A = self.hierarchy_a.atoms().size()
-    atoms_in_B = self.hierarchy_b.atoms().size()
+    atoms_in_A = self.hierarchy_a.atoms_size()
+    atoms_in_B = self.hierarchy_b.atoms_size()
     # atom count including  water
     self.assertEqual(32,atoms_in_A)
     self.assertEqual(44,atoms_in_B)

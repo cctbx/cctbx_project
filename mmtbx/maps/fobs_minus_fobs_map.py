@@ -474,7 +474,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   #
   pdb_in = iotbx.pdb.input(source_info = None, lines = raw_recs)
   hierarchy = pdb_in.construct_hierarchy()
-  omit_sel = flex.bool(hierarchy.atoms().size(), False)
+  omit_sel = flex.bool(hierarchy.atoms_size(), False)
   if (params.advanced.omit_selection is not None) :
     print >> log, "Will omit selection from phasing model:"
     print >> log, "  " + params.advanced.omit_selection

@@ -361,7 +361,7 @@ def insert_atom_into_model(xs, atom, atom_name, site_frac, occupancy, uiso, elem
   h.element = "%2s" % element.strip()
   ag = atom.parent() # atom group
   rg = ag.parent()
-  na =  ag.atoms().size()
+  na =  ag.atoms_size()
   assert na==2 or na==1
   j_seq = i_seq+1
   if na==2:

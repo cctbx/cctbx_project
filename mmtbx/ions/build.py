@@ -371,7 +371,7 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
     reset_labels=True)
   n_sites_end = new_model.xray_structure.scatterers().size()
   new_hierarchy = new_model.pdb_hierarchy()
-  n_sites_pdb = new_hierarchy.atoms().size()
+  n_sites_pdb = new_hierarchy.atoms_size()
   assert (n_sites_start == n_sites_end == n_sites_pdb)
   new_selection = new_hierarchy.atom_selection_cache().selection("segid ION")
   ion_atoms = new_hierarchy.atoms().select(new_selection)

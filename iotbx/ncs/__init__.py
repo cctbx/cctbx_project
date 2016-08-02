@@ -210,14 +210,14 @@ class input(object):
         self.truncated_hierarchy = hierarchy.select(sel)
       else:
         # this could be to save iseqs but I'm not sure
-        self.truncated_hierarchy = hierarchy.select(flex.size_t_range(hierarchy.atoms().size()))
+        self.truncated_hierarchy = hierarchy.select(flex.size_t_range(hierarchy.atoms_size()))
       self.old_i_seqs = self.truncated_hierarchy.atoms().extract_i_seq()
       # print "self.old_i_seqs", list(self.old_i_seqs)
       # self.truncated_hierarchy.atoms().reset_i_seq()
       self.truncated_hierarchy.reset_atom_i_seqs()
       # self.truncated_hierarchy.hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
 
-      if self.truncated_hierarchy.atoms().size() == 0:
+      if self.truncated_hierarchy.atoms_size() == 0:
         self.total_asu_length = 0
         return
 
@@ -723,7 +723,7 @@ class input(object):
     if len(pdb_h.models()) > 1:
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
-    self.total_asu_length = pdb_h.atoms().size()
+    self.total_asu_length = pdb_h.atoms_size()
     if len(chain_ids) > 1:
       chains_info = ncs_search.get_chains_info(pdb_h)
       group_dict = ncs_search.find_ncs_in_hierarchy(
@@ -734,7 +734,7 @@ class input(object):
         log=self.log,
         residue_match_radius=self.residue_match_radius)
       # process atom selections
-      self.total_asu_length = pdb_h.atoms().size()
+      self.total_asu_length = pdb_h.atoms_size()
       self.build_ncs_obj_from_group_dict(group_dict, pdb_h, chains_info)
       if not self.model_unique_chains_ids:
         model = pdb_h.models()[0]
@@ -1079,7 +1079,7 @@ class input(object):
     chain_ids = {x.id for x in model.chains()}
     # Collect order if chains IDs and unique IDs
     self.model_unique_chains_ids = tuple(sorted(chain_ids))
-    model_order_ch_ids = [(x.id,x.atoms().size()) for x in model.chains()]
+    model_order_ch_ids = [(x.id,x.atoms_size()) for x in model.chains()]
     ch_n_atoms = {x:None for x in self.model_unique_chains_ids}
     for (ch,n) in model_order_ch_ids:
       if ch_n_atoms[ch] is None:
@@ -1361,7 +1361,7 @@ class input(object):
     sorted_keys = sort_dict_keys(self.ncs_copies_chains_names)
     only_master_ncs_in_hierarchy = False
     if (self.truncated_hierarchy is not None and self.ncs_atom_selection is not None and
-        self.ncs_atom_selection.count(True) == self.truncated_hierarchy.atoms().size()):
+        self.ncs_atom_selection.count(True) == self.truncated_hierarchy.atoms_size()):
       only_master_ncs_in_hierarchy = True
     sc = self.truncated_hierarchy.atom_selection_cache()
     #
@@ -1462,9 +1462,9 @@ class input(object):
     # When hierarchy available, test ncs_restraints_group_list
     if self.original_hierarchy and raise_sorry:
       # check that hierarchy is for the complete ASU
-      if self.original_hierarchy.atoms().size() == self.total_asu_length:
+      if self.original_hierarchy.atoms_size() == self.total_asu_length:
         import mmtbx.ncs.ncs_utils as nu
-        # print "number of atoms in original h", self.original_hierarchy.atoms().size()
+        # print "number of atoms in original h", self.original_hierarchy.atoms_size()
         nrgl_ok = nu.check_ncs_group_list(
           ncs_restraints_group_list,
           self.original_hierarchy,
@@ -1636,7 +1636,7 @@ class input(object):
     if [bool(xrs),bool(pdb_hierarchy_asu),bool(fmodel)].count(True) == 0:
       # if not input containing coordinates is given
       if self.truncated_hierarchy:
-        if (self.truncated_hierarchy.atoms().size() == self.total_asu_length):
+        if (self.truncated_hierarchy.atoms_size() == self.total_asu_length):
           xyz = self.truncated_hierarchy.atoms().extract_xyz()
         else:
           # get the ASU coordinates
@@ -1854,7 +1854,7 @@ class input(object):
       ncs_coordinates = pdb_hierarchy.atoms().extract_xyz(),
       ncs_restraints_group_list = ncs_restraints_group_list,
       total_asu_length =  self.total_asu_length,
-      extended_ncs_selection = flex.size_t_range(pdb_hierarchy.atoms().size()),
+      extended_ncs_selection = flex.size_t_range(pdb_hierarchy.atoms_size()),
       round_coordinates = round_coordinates)
     model = new_ph.models()[0]
     tr_assignment_order = []
@@ -2307,7 +2307,7 @@ def sensible_unit_cell_volume(
 
   # todo:  check units of unit_cell().volume()
   if cs:
-    n_atoms_in_ncs = hierarchy.atoms().size()
+    n_atoms_in_ncs = hierarchy.atoms_size()
     unit_cell_volume = cs.unit_cell().volume()
     # get z, the number of ASU in the cell unit
     space_group = cs.space_group_info()
