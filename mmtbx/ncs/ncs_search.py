@@ -131,16 +131,19 @@ def find_ncs_in_hierarchy(ph,
   if chains_info is None:
     chains_info = get_chains_info(ph)
   # Get the list of matching chains
-  chain_match_list = search_ncs_relations(
+  match_dict = search_ncs_relations(
+    ph=ph,
     chains_info=chains_info,
     chain_similarity_threshold=chain_similarity_threshold,
+    chain_max_rmsd=chain_max_rmsd,
+    residue_match_radius=residue_match_radius,
     log=None)
   #
-  match_dict = clean_chain_matching(
-    chain_match_list=chain_match_list,
-    ph=ph,
-    chain_max_rmsd=chain_max_rmsd,
-    residue_match_radius=residue_match_radius)
+  # match_dict = clean_chain_matching(
+  #   chain_match_list=chain_match_list,
+  #   ph=ph,
+  #   chain_max_rmsd=chain_max_rmsd,
+  #   residue_match_radius=residue_match_radius)
   # print "match_dict.keys()", match_dict.keys()
   # print "match_dict"
   # for k, v in match_dict.iteritems():
@@ -616,76 +619,43 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
 #   return flipped_other_selection
 
 
-def clean_chain_matching(chain_match_list,ph,
-                         chain_max_rmsd=10.0,
-                         residue_match_radius=4.0):
-  """
-  Remove all bad matches from chain_match_list
+def get_match_rmsd(ph, match):
+  [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
+  # print "Cleaning chains", ch_a_id, ch_b_id, similarity,
+  t0 = time()
+  sel_a = make_selection_from_lists(list_a)
+  sel_b = make_selection_from_lists(list_b)
+  if sel_a.size == 0:
+    # is it possible at all?
+    return None, None, None, None, None
 
-  Args:
-    ph (object): hierarchy
-    chain_match_list (list): list of
-      [chain_ID_1, chain_ID_2, sel_1, sel_2,res_m/res_c similarity]
-      chain_ID (str), sel_1/2 (list of lists)
-      res_m/res_c (lists): indices of the aligned components
-      similarity (float): similarity between chains
-    chain_max_rmsd (float): limit of rms difference chains
-    residue_match_radius (float): max allow distance difference between pairs of matching
-      atoms of two residues
-    chain_similarity_threshold (float): min similarity between matching chains
+  other_h = ph.select(sel_a)
+  other_atoms = other_h.atoms()
+  ref_h = ph.select(sel_b)
+  ref_atoms = ref_h.atoms()
+  #
+  # Here we want to flip atom names, even before chain alignment, so
+  # we will get correct chain RMSD
 
-  Returns:
-    match_dict(dict): key:(chains_id_a,chains_id_b)
-                      val:[selection_a,selection_b,
-                           res_list_a,res_list_b,rot,trans,rmsd]
-  """
-  # remove all non-matching pairs, where similarity == 0
-  match_list = [x for x in chain_match_list if x[4] > 0]
-  match_dict = {}
-  # print "match_list", match_list
-  for match in match_list:
-    [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
-    t0 = time()
-    sel_a = make_selection_from_lists(list_a)
-    sel_b = make_selection_from_lists(list_b)
-
-    other_h = ph.select(sel_a)
-    other_atoms = other_h.atoms()
-    ref_h = ph.select(sel_b)
-    ref_atoms = ref_h.atoms()
-    #
-    # Here we want to flip atom names, even before chain alignment, so
-    # we will get correct chain RMSD
-
-    # flipped_other_selection = make_flips_if_necessary(ref_h.deep_copy(), other_h.deep_copy())
-    flipped_other_selection = make_flips_if_necessary_torsion(
-        ref_h.deep_copy(), other_h.deep_copy())
-    # if flipped_other_selection is not None:
-    other_sites = other_atoms.select(flipped_other_selection).extract_xyz()
-    # else:
-    #   other_sites = other_atoms.extract_xyz()
-    ref_sites = ref_atoms.extract_xyz()
-    lsq_fit_obj = superpose.least_squares_fit(
-      reference_sites = ref_sites,
-      other_sites     = other_sites)
-    r = lsq_fit_obj.r
-    t = lsq_fit_obj.t
-    # todo: find r_2*A = r*A + t (where the translation is zero)
-    # use B = r*A + t, r_2*A = B , r_2 = B*A.inverse()
-    other_sites_best = lsq_fit_obj.other_sites_best_fit()
-    rmsd = round(ref_sites.rms_difference(other_sites_best),4)
-    # print "chain rmsd after flip:", rmsd
-    if rmsd <= chain_max_rmsd:
-      # get the chains atoms and convert selection to flex bool
-      sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
-        remove_far_atoms(
-          list_a, list_b,
-          res_list_a,res_list_b,
-          ref_sites,lsq_fit_obj.other_sites_best_fit(),
-          residue_match_radius=residue_match_radius)
-      if sel_a.size() > 0:
-        match_dict[ch_a_id,ch_b_id]=[sel_aa,sel_bb,res_list_a,res_list_b,r,t,rmsd]
-  return match_dict
+  # flipped_other_selection = make_flips_if_necessary(ref_h.deep_copy(), other_h.deep_copy())
+  flipped_other_selection = make_flips_if_necessary_torsion(
+      ref_h.deep_copy(), other_h.deep_copy())
+  # if flipped_other_selection is not None:
+  other_sites = other_atoms.select(flipped_other_selection).extract_xyz()
+  # else:
+  #   other_sites = other_atoms.extract_xyz()
+  ref_sites = ref_atoms.extract_xyz()
+  lsq_fit_obj = superpose.least_squares_fit(
+    reference_sites = ref_sites,
+    other_sites     = other_sites)
+  r = lsq_fit_obj.r
+  t = lsq_fit_obj.t
+  # todo: find r_2*A = r*A + t (where the translation is zero)
+  # use B = r*A + t, r_2*A = B , r_2 = B*A.inverse()
+  other_sites_best = lsq_fit_obj.other_sites_best_fit()
+  rmsd = round(ref_sites.rms_difference(other_sites_best),4)
+  # print "chain rmsd after flip:", rmsd
+  return rmsd, ref_sites, other_sites_best, r,t
 
 def remove_far_atoms(list_a, list_b,
                      res_list_a,res_list_b,
@@ -796,6 +766,8 @@ def get_sequence_from_array(arr):
 def search_ncs_relations(ph=None,
                          chains_info = None,
                          chain_similarity_threshold=0.85,
+                         chain_max_rmsd=2.0,
+                         residue_match_radius=4,
                          log=None):
   """
   Search for NCS relations between chains or parts of chains, in a protein
@@ -813,12 +785,10 @@ def search_ncs_relations(ph=None,
 
   Returns:
     msg (str): message regarding matching residues with different atom number
-    chain_match_list (list): list of
-      [chain_ID_1,chain_ID_2,sel_1,sel_2,res_sel_m, res_sel_c,similarity]
-      chain_ID (str), sel_1/2 (flex.size_t),
-      res_sel_m/c (lists of lists): indices of the aligned components
-      similarity (float): similarity between chains
-    We use sel_2 to avoid problems when residues have different number of atoms
+    match_dict(dict): key:(chains_id_a,chains_id_b)
+                      val:[selection_a,selection_b,
+                           res_list_a,res_list_b,rot,trans,rmsd]
+
   """
   # print "searching ncs relations..."
   if not log: log = StringIO.StringIO()
@@ -826,12 +796,12 @@ def search_ncs_relations(ph=None,
     assert bool(ph)
     chains_info = get_chains_info(ph)
   # collect all chain IDs
-  chain_match_list = []
   msg = ''
   sorted_ch = sorted(chains_info)
 
   n_chains = len(sorted_ch)
   chains_in_copies = set()
+  match_dict = {}
   for i in xrange(n_chains-1):
     m_ch_id = sorted_ch[i]
 
@@ -862,13 +832,20 @@ def search_ncs_relations(ph=None,
       sel_m, sel_c,res_sel_m,res_sel_c,new_msg = get_matching_atoms(
         chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c)
       msg += new_msg
-      if res_sel_m:
-        # add only non empty matches
-        rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
-        chain_match_list.append(rec)
-      # Collect only very good matches, to allow better similarity search
+      rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
       if similarity > chain_similarity_threshold:
-        chains_in_copies.add(c_ch_id)
+        rmsd, ref_sites, other_sites_best, r,t = get_match_rmsd(ph, rec)
+        if rmsd is not None and rmsd <= chain_max_rmsd:
+          # get the chains atoms and convert selection to flex bool
+          sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
+            remove_far_atoms(
+              sel_m, sel_c,
+              res_sel_m,res_sel_c,
+              ref_sites,other_sites_best,
+              residue_match_radius=residue_match_radius)
+          match_dict[m_ch_id,c_ch_id]=[sel_aa,sel_bb,res_list_a,res_list_b,r,t,rmsd]
+        if rmsd < chain_max_rmsd:
+          chains_in_copies.add(c_ch_id)
         # print "  good"
   # loop over all chains
   if msg:
@@ -876,7 +853,7 @@ def search_ncs_relations(ph=None,
   if (chain_similarity_threshold == 1) and msg:
     # must be identical
     raise Sorry('NCS copies are not identical')
-  return chain_match_list
+  return match_dict
 
 def mmtbx_res_alignment(seq_a, seq_b,
                         min_percent=0.85, atomnames=False):

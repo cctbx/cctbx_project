@@ -1443,7 +1443,7 @@ def exercise_09():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_8)
   ph = pdb_inp.construct_hierarchy()
   #
-  chain_match_list = ncs_search.search_ncs_relations(
+  match_dict = ncs_search.search_ncs_relations(
     ph=ph,chain_similarity_threshold=0)
   # make sure that all possible chains compared
   model  = ph.models()[0]
@@ -1451,30 +1451,7 @@ def exercise_09():
   chain_ids = sorted(chain_ids)
   n_chains = len(chain_ids)
   assert n_chains==9
-  # print chain_match_list
-  assert len(chain_match_list)==8, len(chain_match_list)
-  #
-  match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
-  chains_info = ncs_search.get_chains_info(ph)
-
-  # Test minimal master NCS
-  # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-  #     match_dict=match_dict, hierarchy=ph)
-  # group_dict = ncs_search.build_group_dict(
-  #   transform_to_group,match_dict,chains_info)
-  # assert len(group_dict)==1
-  # gr_obj = group_dict[('A',)]
-  # assert len(gr_obj.transforms)==len(gr_obj.copies)
-  # assert len(gr_obj.iselections)==len(gr_obj.copies)
-  # expected = [['A'], ['B'], ['C'], ['D'], ['E'], ['F'], ['G'], ['H'], ['I']]
-  # assert gr_obj.copies == expected
-  # # make sure identity transform was entered as the first transform
-  # tr = gr_obj.transforms[0]
-  # assert tr.r.is_r3_identity_matrix()
-  # assert tr.t.is_col_zero()
-  # tr = gr_obj.transforms[1]
-  # assert not tr.r.is_r3_identity_matrix()
-  # assert not tr.t.is_col_zero()
+  assert len(match_dict)==8, len(match_dict)
 
 def exercise_10():
   """ Test minimal NCS operators """
@@ -1482,11 +1459,10 @@ def exercise_10():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_8)
   ph = pdb_inp.construct_hierarchy()
   #
-  chain_match_list = ncs_search.search_ncs_relations(
+  match_dict = ncs_search.search_ncs_relations(
     ph=ph,
     chain_similarity_threshold=0)
   #
-  match_dict = ncs_search.clean_chain_matching(chain_match_list,ph)
   chains_info = ncs_search.get_chains_info(ph)
   #
   group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)

@@ -81,11 +81,12 @@ class TestSimpleAlignment(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     asc = self.ph.atom_selection_cache()
     no_water_h = self.ph.select(asc.selection("not water"))
-    chain_match_list = ncs_search.search_ncs_relations(
+    match_dict = ncs_search.search_ncs_relations(
       ph=no_water_h,
       chain_similarity_threshold=0.70)
 
-    [chain_a_id,chain_b_id,sel_a,sel_b,r1,r2,_] = chain_match_list[0]
+    chain_a_id, chain_b_id = match_dict.keys()[0]
+    sel_a,sel_b,r1,r2,_,_,_ = match_dict[chain_a_id, chain_b_id]
     #
     self.assertEqual(chain_a_id,'A')
     self.assertEqual(chain_b_id,'B')
@@ -96,8 +97,6 @@ class TestSimpleAlignment(unittest.TestCase):
     self.assertEqual(32,atoms_in_A)
     self.assertEqual(44,atoms_in_B)
     #
-    sel_a = ncs_search.make_selection_from_lists(sel_a)
-    sel_b = ncs_search.make_selection_from_lists(sel_b)
     self.assertEqual(sel_a.size(),25)
     self.assertEqual(sel_b.size(),25)
     # atom count including  water
@@ -156,15 +155,13 @@ class TestSimpleAlignment(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
     ph = pdb_inp.construct_hierarchy(sort_atoms=False)
     chains_info = ncs_search.get_chains_info(ph)
-    chain_match_list = ncs_search.search_ncs_relations(
-      chains_info=chains_info,chain_similarity_threshold=0.10)
-    match_dict = ncs_search.clean_chain_matching(
-      chain_match_list=chain_match_list,ph=ph)
-    # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-    #   match_dict, ph)
-    # group_dict = ncs_search.build_group_dict(
-    #   transform_to_group,match_dict,chains_info)
+    match_dict = ncs_search.search_ncs_relations(
+        ph=ph,
+        chains_info=chains_info,
+        chain_similarity_threshold=0.10,
+        chain_max_rmsd=2.3)
     group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
+    # print group_dict
 
     a_res_list = group_dict[('A',)].residue_index_list[0]
     b_res_list = group_dict[('A',)].residue_index_list[1]
@@ -262,12 +259,8 @@ class TestSimpleAlignment(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_7)
     ph = pdb_inp.construct_hierarchy()
     chains_info = ncs_search.get_chains_info(ph)
-    chain_match_list = ncs_search.search_ncs_relations(
+    match_dict = ncs_search.search_ncs_relations(ph=ph,
       chains_info=chains_info,chain_similarity_threshold=0.10)
-    match_dict = ncs_search.clean_chain_matching(
-      chain_match_list=chain_match_list,ph=ph)
-    # transform_to_group,match_dict = ncs_search.minimal_master_ncs_grouping(
-    #   match_dict, ph)
     group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
     #
     # r = transform_to_group[1][2][0]
@@ -1384,7 +1377,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_1']
+  tests = ['test_update_atom_selections']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

@@ -445,19 +445,13 @@ class input(object):
         # print "chain_info", chain_info
         # Here we want to use relaxed criteria to extract maximum from
         # user's selection
-        match_list = ncs_search.search_ncs_relations(
+        match_dict = ncs_search.search_ncs_relations(
+            ph=combined_h,
             chains_info=chain_info,
             chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
-            )
-        # print "match_list", match_list
-        match_dict = ncs_search.clean_chain_matching(
-            chain_match_list=match_list,
-            ph = combined_h,
             chain_max_rmsd=max(self.chain_max_rmsd, 10.0),
             residue_match_radius=max(self.residue_match_radius, 1000.0),
             )
-        # print "="*80
-        # print "="*80
         group_dict = ncs_search.ncs_grouping_and_group_dict(
             match_dict, combined_h)
         # print "group_dict", group_dict
