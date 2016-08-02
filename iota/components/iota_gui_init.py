@@ -9,7 +9,6 @@ Description : IOTA GUI Initialization module
 
 import os
 import wx
-import shutil
 from threading import Thread
 
 import math
