@@ -853,7 +853,7 @@ class PRIMERunWindow(wx.Frame):
     self.logtext = ''
     self.pparams = params
     self.prime_file = prime_file
-    self.out_file = out_file
+    self.out_file = os.path.join(self.pparams.run_no, 'qout', 'qout_pr.txt')
     self.bookmark = 0
     self.prev_pids = []
     self.aborted = False
@@ -1006,7 +1006,8 @@ class PRIMERunWindow(wx.Frame):
   def onTimer(self, e):
 
     # Inspect output and update gauge
-    mtzs = [i for i in os.listdir(self.pparams.run_no) if
+    mtz_dir = os.path.join(self.pparams.run_no, 'mtz')
+    mtzs = [i for i in os.listdir(mtz_dir) if
             ('cycle' in i and i.endswith('mtz'))]
     self.gauge_prime.Show()
     self.gauge_prime.SetValue(len(mtzs))
@@ -1119,7 +1120,7 @@ class PRIMEPreferences(wx.Dialog):
       self.custom_queue.cqueue.SetValue(queue)
 
     # Set method to default value
-    print method
+    print "method: ", method
     inp_method = self.mp_methods.ctr.FindString(str(method))
     if inp_method != wx.NOT_FOUND:
       self.mp_methods.ctr.SetSelection(inp_method)
