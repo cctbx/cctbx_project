@@ -345,6 +345,26 @@ class symmetry(object):
       d_min=d_min,
       d_max=d_max)
 
+  def as_pdb_remark_290(self):
+    outl = ""
+    if ( self.space_group() is not None and
+         self.unit_cell() is not None
+         ):
+      uc = self.unit_cell()
+      params = list(uc.parameters())
+      for i,s in enumerate(self.space_group()):
+        mat = s.as_double_array()
+        for j in range(3):
+          outl += "REMARK 290   SMTRY%d%4d%10.6f%10.6f%10.6f%15.5f\n" %(
+            i+1,
+            j+1,
+            mat[j],
+            mat[j+3],
+            mat[j+6],
+            mat[j+9]*params[j],
+          )
+    return outl
+
   def as_cif_block(self,
       cell_covariance_matrix=None,
       format="coreCIF",
