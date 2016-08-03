@@ -43,15 +43,24 @@ if (__name__ == "__main__") :
     # Try dxtbx first to see if this is a regular diffraction image
     from dxtbx.format.Registry import Registry
     try:
+      # Read the detector object using dxtbx
       reader = Registry.find(params.metrology)
+      detector = reader(params.metrology).get_detector()
     except IOError:
-      reader = None
+      # See if it's a json file
+      from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+      try:
+        experiments = ExperimentListFactory.from_json_file(params.metrology)
+        assert len(experiments) == 1
+        detector = experiments[0].detector
+      except Exception, e:
+        detector = None
 
-    if reader is None:
+    if detector is None:
       # see if it's a SLAC geometry file
-      from PSCalib.GeometryAccess import GeometryAccess
       from scitbx import matrix
       try:
+        from PSCalib.GeometryAccess import GeometryAccess
         geometry = GeometryAccess(params.metrology)
       except Exception, e:
         geometry = None
@@ -185,11 +194,6 @@ if (__name__ == "__main__") :
             ax.set_ylim((0, 200))
 
     else:
-      # Read the detector object using dxtbx
-      img = reader(params.metrology)
-
-      detector = img.get_detector()
-
       for i, panel in enumerate(detector):
         size = panel.get_image_size()
         p0 = col(panel.get_pixel_lab_coord((0,0)))
