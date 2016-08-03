@@ -5160,7 +5160,7 @@ class build_all_chain_proxies(linking_mixins):
         rdl_proxies=rdl_proxies,
         data_version="8000",
         log=log,
-        verbose=True,
+        verbose=False,
         )
       rdl_time = time.time()-t0
       print >> log, """\
