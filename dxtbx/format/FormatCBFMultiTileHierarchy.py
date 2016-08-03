@@ -191,6 +191,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       cbf_detector = cbf.construct_detector(i)
       axis0 = cbf_detector.get_detector_surface_axes(0)
       detector_axes.append(axis0)
+      cbf_detector.__swig_destroy__(cbf_detector)
     panel_names_detectororder = []
     cbf.find_category("array_structure_list")
     for detector_axis in detector_axes:
