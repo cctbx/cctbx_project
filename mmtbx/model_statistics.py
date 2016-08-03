@@ -15,24 +15,13 @@ from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
 
-class geometry(object):
+class geometry_no_grm(object):
   def __init__(
-        self,
-        pdb_hierarchy,
-        restraints_manager,
-        molprobity_scores=False,
-        n_histogram_slots=10,
-        cdl_restraints=False,
-        ignore_hydrogens=False,  #only used by amber
-        ):
+      self,
+      pdb_hierarchy,
+      molprobity_scores=False,
+      ):
     self.pdb_hierarchy = pdb_hierarchy
-    self.cdl_restraints=cdl_restraints
-    sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    energies_sites = \
-      restraints_manager.energies_sites(
-        sites_cart        = sites_cart,
-        compute_gradients = False)
-    # molprobity scores
     self.clashscore            = None
     self.ramachandran_outliers = None
     self.ramachandran_allowed  = None
@@ -41,6 +30,10 @@ class geometry(object):
     self.c_beta_dev            = None
     self.mpscore               = None
     self.omglz = None
+    self.n_cis_proline = None
+    self.n_cis_general = None
+    self.n_twisted_proline = None
+    self.n_twisted_general = None
     if(molprobity_scores):
       self.ramalyze_obj = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
       self.ramachandran_outliers = self.ramalyze_obj.percent_outliers
@@ -60,7 +53,64 @@ class geometry(object):
         rama_fav   = self.ramachandran_favored)
       self.omglz = omegalyze.omegalyze(
         pdb_hierarchy=self.pdb_hierarchy, quiet=True)
-    #
+      self.n_cis_proline = self.omglz.n_cis_proline()
+      self.n_cis_general = self.omglz.n_cis_general()
+      self.n_twisted_proline = self.omglz.n_twisted_proline()
+      self.n_twisted_general = self.omglz.n_twisted_general()
+
+  def format_molprobity_scores(self, prefix=""):
+    result="%s" % prefix
+    if(self.ramachandran_outliers is not None):
+      result = """%sMOLPROBITY STATISTICS.
+%s ALL-ATOM CLASHSCORE : %s
+%s RAMACHANDRAN PLOT:
+%s   OUTLIERS : %-5.2f %s
+%s   ALLOWED  : %-5.2f %s
+%s   FAVORED  : %-5.2f %s
+%s ROTAMER OUTLIERS : %s %s
+%s CBETA DEVIATIONS : %-d
+%s PEPTIDE PLANE:
+%s   CIS-PROLINE     : %s
+%s   CIS-GENERAL     : %s
+%s   TWISTED PROLINE : %s
+%s   TWISTED GENERAL : %s"""%(
+        prefix,
+        prefix, format_value("%-6.2f", self.clashscore, replace_none_with="NONE").strip(),
+        prefix,
+        prefix, self.ramachandran_outliers, "%",
+        prefix, self.ramachandran_allowed, "%",
+        prefix, self.ramachandran_favored, "%",
+        prefix, str("%6.2f"%(self.rotamer_outliers)).strip(),"%",
+        prefix, self.c_beta_dev,
+        prefix,
+        prefix, str(self.n_cis_proline),
+        prefix, str(self.n_cis_general),
+        prefix, str(self.n_twisted_proline),
+        prefix, str(self.n_twisted_general))
+    if not prefix:
+      result = self._capitalize(result)
+    return result
+
+
+class geometry(geometry_no_grm):
+  def __init__(
+        self,
+        pdb_hierarchy,
+        restraints_manager,
+        molprobity_scores=False,
+        n_histogram_slots=10,
+        cdl_restraints=False,
+        ignore_hydrogens=False,  #only used by amber
+        ):
+    super(geometry, self).__init__(
+        pdb_hierarchy=pdb_hierarchy,
+        molprobity_scores=molprobity_scores)
+    self.cdl_restraints=cdl_restraints
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    energies_sites = \
+      restraints_manager.energies_sites(
+        sites_cart        = sites_cart,
+        compute_gradients = False)
     if(hasattr(energies_sites, "geometry")):
       esg = energies_sites.geometry
     else: esg = energies_sites
@@ -200,39 +250,6 @@ class geometry(object):
        prefix, fmt2(self.n),
        prefix,
        )
-    if not prefix:
-      result = self._capitalize(result)
-    return result
-
-  def format_molprobity_scores(self, prefix=""):
-    result="%s" % prefix
-    if(self.ramachandran_outliers is not None):
-      result = """%sMOLPROBITY STATISTICS.
-%s ALL-ATOM CLASHSCORE : %s
-%s RAMACHANDRAN PLOT:
-%s   OUTLIERS : %-5.2f %s
-%s   ALLOWED  : %-5.2f %s
-%s   FAVORED  : %-5.2f %s
-%s ROTAMER OUTLIERS : %s %s
-%s CBETA DEVIATIONS : %-d
-%s PEPTIDE PLANE:
-%s   CIS-PROLINE     : %s
-%s   CIS-GENERAL     : %s
-%s   TWISTED PROLINE : %s
-%s   TWISTED GENERAL : %s"""%(
-        prefix,
-        prefix, format_value("%-6.2f", self.clashscore, replace_none_with="NONE").strip(),
-        prefix,
-        prefix, self.ramachandran_outliers, "%",
-        prefix, self.ramachandran_allowed, "%",
-        prefix, self.ramachandran_favored, "%",
-        prefix, str("%6.2f"%(self.rotamer_outliers)).strip(),"%",
-        prefix, self.c_beta_dev,
-        prefix,
-        prefix, str(self.omglz.n_cis_proline()),
-        prefix, str(self.omglz.n_cis_general()),
-        prefix, str(self.omglz.n_twisted_proline()),
-        prefix, str(self.omglz.n_twisted_general()))
     if not prefix:
       result = self._capitalize(result)
     return result
