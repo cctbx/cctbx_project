@@ -591,6 +591,37 @@ class annotation(structure_base):
   def deep_copy(self):
     return copy.deepcopy(self)
 
+  def remove_empty_annotations(self, hierarchy, asc=None):
+    # returns annotation of deleted helices and sheets
+    if asc is None:
+      asc = hierarchy.atom_selection_cache()
+    h_indeces_to_delete = []
+    sh_indeces_to_delete = []
+    for i, h in enumerate(self.helices):
+      selstring = h.as_atom_selections()
+      isel = asc.iselection(selstring[0])
+      if len(isel) == 0:
+        h_indeces_to_delete.append(i)
+    for i, sh in enumerate(self.sheets):
+      for st in sh.strands:
+        selstring = st.as_atom_selections()
+        isel = asc.iselection(selstring)
+        if len(isel) == 0:
+          if i not in sh_indeces_to_delete:
+            sh_indeces_to_delete.append(i)
+    deleted_helices = []
+    deleted_sheets = []
+    if len(h_indeces_to_delete) > 0:
+      for i in reversed(h_indeces_to_delete):
+        deleted_helices.append(self.helices[i])
+        del self.helices[i]
+    if len(sh_indeces_to_delete) > 0:
+      for i in reversed(sh_indeces_to_delete):
+        deleted_sheets.append(self.sheets[i])
+        del self.sheets[i]
+    return annotation(helices=deleted_helices, sheets=deleted_sheets)
+
+
   def multiply_to_asu(self, ncs_copies_chain_names, n_copies):
     from iotbx.ncs import format_num_as_str
     # ncs_copies_chain_names = {'chain B_022':'CD' ...}
@@ -851,6 +882,9 @@ class annotation(structure_base):
 
   def get_n_sheets(self):
     return len(self.sheets)
+
+  def is_empty(self):
+    return self.get_n_helices() + self.get_n_sheets() == 0
 
   def get_n_defined_hbonds(self):
     n_hb = 0

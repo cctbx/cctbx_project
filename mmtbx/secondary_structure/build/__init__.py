@@ -462,47 +462,31 @@ def substitute_ss(real_h,
   edited_h = real_h.deep_copy()
   n_atoms_in_real_h = real_h.atoms_size()
   selection_cache = real_h.atom_selection_cache()
+
   # check the annotation for correctness (atoms are actually in hierarchy)
   error_msg = "The following secondary structure annotations result in \n"
   error_msg +="empty atom selections. They don't match the structre: \n"
-  error_flg = False
-
   t1 = time()
   # Checking for SS selections
-  h_indeces_to_delete = []
-  sh_indeces_to_delete = []
-  for i, h in enumerate(ann.helices):
-    selstring = h.as_atom_selections()
-    isel = selection_cache.iselection(selstring[0])
-    if len(isel) == 0:
-      error_flg = True
-      error_msg += "  %s\n" % h
-      h_indeces_to_delete.append(i)
-  for i, sh in enumerate(ann.sheets):
-    for st in sh.strands:
-      selstring = st.as_atom_selections()
-      isel = selection_cache.iselection(selstring)
-      if len(isel) == 0:
-        error_flg = True
-        error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
-        if i not in sh_indeces_to_delete:
-          sh_indeces_to_delete.append(i)
-  if processed_params.skip_empty_ss_elements and error_flg:
-    print >> log, error_msg
-    if len(h_indeces_to_delete) > 0:
-      print >> log, "Removing the following helices because there are"
-      print >> log, "no corresponding atoms in the model:"
-      for i in reversed(h_indeces_to_delete):
-        print >> log, ann.helices[i].as_pdb_str()
-        del ann.helices[i]
-    if len(sh_indeces_to_delete) > 0:
-      print >> log, "Removing the following sheets because there are"
-      print >> log, "no corresponding atoms in the model:"
-      for i in reversed(sh_indeces_to_delete):
-        print >> log, ann.sheets[i]
-        del ann.sheets[i]
-  elif error_flg:
-    raise Sorry(error_msg)
+  deleted_annotations = ann.remove_empty_annotations(
+      hierarchy=real_h,
+      asc=selection_cache)
+  if not deleted_annotations.is_empty():
+    if processed_params.skip_empty_ss_elements:
+      if len(deleted_annotations.helices) > 0:
+        print >> log, "Removing the following helices because there are"
+        print >> log, "no corresponding atoms in the model:"
+        for h in deleted_annotations.helices:
+          print >> log, h.as_pdb_str()
+          error_msg += "  %s\n" % h
+      if len(deleted_annotations.sheets) > 0:
+        print >> log, "Removing the following sheets because there are"
+        print >> log, "no corresponding atoms in the model:"
+        for sh in deleted_annotations.sheets:
+          print >> log, sh.as_pdb_str()
+          error_msg += "  %s\n" % sh.as_pdb_str(strand_id=st.strand_id)
+    else:
+      raise Sorry(error_msg)
   phil_str = ann.as_restraint_groups()
 
   t2 = time()
