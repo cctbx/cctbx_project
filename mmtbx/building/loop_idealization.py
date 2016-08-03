@@ -24,7 +24,7 @@ loop_idealization
   change_non_rama_outliers = True
     .type = bool
     .help = Allow changing non-outlier ramachandran residues angles
-  output_prefix = rama_fixed
+  output_prefix = None
     .type = str
   minimize_whole = True
     .type = bool
@@ -137,7 +137,7 @@ class loop_idealization():
           berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
     if len(self.ref_exclusion_selection) > 0:
       self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
-    self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minimization.pdb" % self.params.output_prefix)
+    # self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minimization.pdb" % self.params.output_prefix)
     ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
     self.p_before_minimization_rama_outliers = ram.out_percent
 
@@ -179,7 +179,8 @@ class loop_idealization():
       assert hasattr(params, "enabled") and hasattr(params, "change_non_rama_outliers"), \
           "Something wrong with parameters passed to model_idealization"
       p_pars = params
-
+    if p_pars.output_prefix is None:
+      p_pars.output_prefix = "rama_fixed"
     assert isinstance(p_pars.enabled, bool)
     assert isinstance(p_pars.change_non_rama_outliers, bool)
     return p_pars
@@ -221,7 +222,7 @@ class loop_idealization():
       outp = utils.list_rama_outliers_h(new_h, self.r)
       print >> self.log, outp
       self.log.flush()
-      fn = "%s_after_loop_%d.pdb" % (self.params.output_prefix, out_i)
+      # fn = "%s_after_loop_%d.pdb" % (self.params.output_prefix, out_i)
       # print >> self.log, "  writing file %s" % fn
       # new_h.write_pdb_file(file_name=fn)
       working_h = new_h
@@ -347,16 +348,16 @@ class loop_idealization():
           self.log.flush()
           if minimize:
             print >> self.log, "minimizing..."
-            moved_with_side_chains_h.write_pdb_file(
-                file_name="%s_result_before_min_%d.pdb" % (prefix, i))
+            # moved_with_side_chains_h.write_pdb_file(
+            #     file_name="%s_result_before_min_%d.pdb" % (prefix, i))
             minimize_wrapper_for_ramachandran(
                 hierarchy=moved_with_side_chains_h,
                 xrs=xrs,
                 original_pdb_h=original_pdb_h,
                 log=self.log,
                 ss_annotation=self.secondary_structure_annotation)
-          moved_with_side_chains_h.write_pdb_file(
-              file_name="%s_result_minimized_%d.pdb" % (prefix, i))
+          # moved_with_side_chains_h.write_pdb_file(
+          #     file_name="%s_result_minimized_%d.pdb" % (prefix, i))
           final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
               original_pdb_h, placing_range)
           print >> self.log, "FINAL RMSD after minimization:", final_rmsd
@@ -388,16 +389,16 @@ class loop_idealization():
         print >> self.log, all_results[i][1:]
         if minimize:
           print >> self.log, "minimizing..."
-          all_results[i][0].write_pdb_file(
-              file_name="%s_result_before_min_%d.pdb" % (prefix, i))
+          # all_results[i][0].write_pdb_file(
+          #     file_name="%s_result_before_min_%d.pdb" % (prefix, i))
           minimize_wrapper_for_ramachandran(
               hierarchy=all_results[i][0],
               xrs=xrs,
               original_pdb_h=original_pdb_h,
               log=self.log,
               ss_annotation=self.secondary_structure_annotation)
-        all_results[i][0].write_pdb_file(
-            file_name="%s_result_minimized_%d.pdb" % (prefix, i))
+        # all_results[i][0].write_pdb_file(
+        #     file_name="%s_result_minimized_%d.pdb" % (prefix, i))
         final_rmsd = get_main_chain_rmsd_range(all_results[i][0],
             original_pdb_h, placing_range)
         print >> self.log, "FINAL RMSD after minimization:", final_rmsd
@@ -495,8 +496,8 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
   # print dir(moving_h)
   # STOP()
   m_cache = moving_h.atom_selection_cache()
-  # print "len inp h atoms", pdb_hierarchy.atoms().size()
-  # print "len moving_h atoms", moving_h.atoms().size()
+  # print "len inp h atoms", pdb_hierarchy.atoms_size()
+  # print "len moving_h atoms", moving_h.atoms_size()
   moving_ref_atoms_iseqs = []
   # here we need N, CA, C atoms from the end_res_num residue
   eff_end_resnum = end_res_num
