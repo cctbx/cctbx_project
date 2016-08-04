@@ -127,6 +127,9 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       if group_rows:
         xmin, xmax = 0, 2463
 
+        # OK two calls to add_panel here for detector like things => two
+        # copies of the panel then? https://github.com/dials/dials/issues/189
+
         p = detector.add_panel()
 
         # OBS! you need to set the panel to a root before set local frame...

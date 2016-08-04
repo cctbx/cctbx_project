@@ -165,7 +165,8 @@ namespace dxtbx { namespace model {
 
     /** Add a panel to the list of panels */
     panel_type& add_panel() {
-      return add_panel(Panel());
+      Panel panel;
+      return add_panel(panel);
     }
 
     /** Get the number of panels */
