@@ -129,6 +129,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
         # OK two calls to add_panel here for detector like things => two
         # copies of the panel then? https://github.com/dials/dials/issues/189
+        # ... this is also not the source of the leak
 
         p = detector.add_panel()
 
