@@ -157,7 +157,7 @@ namespace dxtbx { namespace model {
 
     /** Add a panel to the list of panels */
     panel_type& add_panel(const Panel &panel) {
-      // note that new Panel(panel) allocated here is never deleted =>
+      // note that new Panel(panel) allocated here may be never deleted =>
       // source of memory leak? see https://github.com/dials/dials/issues/189
       panel_list_->push_back(new Panel(panel));
       return panel_list_->back();
@@ -165,8 +165,7 @@ namespace dxtbx { namespace model {
 
     /** Add a panel to the list of panels */
     panel_type& add_panel() {
-      Panel panel;
-      return add_panel(panel);
+      return add_panel(Panel());
     }
 
     /** Get the number of panels */
