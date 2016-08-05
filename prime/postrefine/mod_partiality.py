@@ -19,7 +19,10 @@ class partiality_handler(object):
 
   def calc_full_refl(self, I_o_p_set, sin_theta_over_lambda_sq_set,
                    G, B, p_set, rs_set, flag_volume_correction=True):
-    I_o_full_set = I_o_p_set/(G * flex.exp(-2*B*sin_theta_over_lambda_sq_set) * p_set)
+    # avoid a floating-point exception
+    argument = -2*B*sin_theta_over_lambda_sq_set
+    if (argument<-75).count(True)>0 or (argument>75).count(True)>0:  raise ValueError("flex.exp arg out of bounds")
+    I_o_full_set = I_o_p_set/(G * flex.exp(argument) * p_set)
     return I_o_full_set
 
   def calc_spot_radius(self, a_star_matrix, miller_indices, wavelength):
