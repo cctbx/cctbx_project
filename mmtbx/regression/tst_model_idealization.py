@@ -1,6 +1,7 @@
 from __future__ import division
 from libtbx import easy_run
 from mmtbx.secondary_structure.build.tst_2 import tst_01_start_lines
+import libtbx.load_env
 import os.path
 import time
 
@@ -55,7 +56,10 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  exercise_01()
-  exercise_02()
+  if (not libtbx.env.has_module(name="probe")):
+    print "Skipping exercise_clashscore(): probe not configured"
+  else:
+    exercise_01()
+    exercise_02()
   print "Time: %.2f" % (time.time() - t0)
   print "OK"
