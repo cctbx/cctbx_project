@@ -149,7 +149,10 @@ class PRIMEWindow(wx.Frame):
                           queue=self.pparams.queue.qname)
 
     if dlg.ShowModal() == wx.ID_OK:
-      self.pparams.queue.mode = dlg.method
+      if dlg.method == 'multiprocessing':
+        self.pparams.queue.mode = None
+      else:
+        self.pparams.queue.mode = dlg.method
       self.pparams.queue.qname = dlg.queue
 
   def onInput(self, e):
@@ -587,13 +590,13 @@ class PRIMEThread(Thread):
     if os.path.isfile(self.out_file):
       os.remove(self.out_file)
     if self.command is None:
-      cmd = 'prime.run {} > {}'.format(self.prime_file, self.out_file)
+      cmd = 'prime.run {}'.format(self.prime_file, self.out_file)
     else:
       cmd = self.command
 
     easy_run.fully_buffered(cmd, join_stdout_stderr=True)
-    evt = AllDone(tp_EVT_ALLDONE, -1)
-    wx.PostEvent(self.parent, evt)
+    #evt = AllDone(tp_EVT_ALLDONE, -1)
+    #wx.PostEvent(self.parent, evt)
 
 # ----------------------------  Processing Window ---------------------------  #
 
@@ -853,7 +856,7 @@ class PRIMERunWindow(wx.Frame):
     self.logtext = ''
     self.pparams = params
     self.prime_file = prime_file
-    self.out_file = os.path.join(self.pparams.run_no, 'qout', 'qout_pr.txt')
+    self.out_file = os.path.join(self.pparams.run_no, 'log.txt')
     self.bookmark = 0
     self.prev_pids = []
     self.aborted = False
@@ -1007,15 +1010,17 @@ class PRIMERunWindow(wx.Frame):
 
     # Inspect output and update gauge
     mtz_dir = os.path.join(self.pparams.run_no, 'mtz')
-    mtzs = [i for i in os.listdir(mtz_dir) if
-            ('cycle' in i and i.endswith('mtz'))]
+    if os.path.isdir(mtz_dir):
+      mtzs = [i for i in os.listdir(mtz_dir) if i.endswith('mtz')]
+    else:
+      mtzs = []
     self.gauge_prime.Show()
     self.gauge_prime.SetValue(len(mtzs))
     if len(mtzs) == 0:
       self.sb.SetStatusText(('Merging...'), 1)
     else:
       self.sb.SetStatusText('Macrocycle {} of {} completed...' \
-                            ''.format(len(mtzs),
+                            ''.format(len(mtzs) - 1,
                                       self.pparams.n_postref_cycle), 1)
 
     # Plot runtime results
@@ -1024,13 +1029,15 @@ class PRIMERunWindow(wx.Frame):
     # Update log
     self.display_log()
 
+    if len(mtzs) >= self.pparams.n_postref_cycle:
+      self.final_step()
+
 
   def onFinishedProcess(self, e):
     self.final_step()
 
 
   def final_step(self):
-    self.timer.Stop()
     font = self.status_txt.GetFont()
     font.SetWeight(wx.BOLD)
 
@@ -1054,6 +1061,7 @@ class PRIMERunWindow(wx.Frame):
     self.display_log()
     self.gauge_prime.Hide()
     self.prime_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+    self.timer.Stop()
 
 # ---------------------------------  Dialogs --------------------------------  #
 
