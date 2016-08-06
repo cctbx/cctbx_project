@@ -862,6 +862,7 @@ class PRIMERunWindow(wx.Frame):
     self.aborted = False
     self.command=command
     self.mp_method = mp_method
+    self.current_cycle = -1
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -980,9 +981,10 @@ class PRIMERunWindow(wx.Frame):
       info = ep.load(stat_file)
     else:
       info = {}
-    total_cycles = self.pparams.n_postref_cycle
+
     if 'binned_resolution' in info:
-      self.graph_tab.draw_plots(info, total_cycles)
+      self.graph_tab.draw_plots(info, self.pparams.n_postref_cycle)
+      self.current_cycle = len(info['total_cc12']) - 1
 
   def plot_final_results(self):
     ''' Plot final results '''
@@ -1009,19 +1011,15 @@ class PRIMERunWindow(wx.Frame):
   def onTimer(self, e):
 
     # Inspect output and update gauge
-    mtz_dir = os.path.join(self.pparams.run_no, 'mtz')
-    if os.path.isdir(mtz_dir):
-      mtzs = [i for i in os.listdir(mtz_dir) if i.endswith('mtz')]
-    else:
-      mtzs = []
     self.gauge_prime.Show()
-    self.gauge_prime.SetValue(len(mtzs))
-    if len(mtzs) == 0:
+    if self.current_cycle == -1:
       self.sb.SetStatusText(('Merging...'), 1)
+      self.gauge_prime.SetValue(0)
     else:
       self.sb.SetStatusText('Macrocycle {} of {} completed...' \
-                            ''.format(len(mtzs) - 1,
+                            ''.format(self.current_cycle,
                                       self.pparams.n_postref_cycle), 1)
+      self.gauge_prime.SetValue(self.current_cycle)
 
     # Plot runtime results
     self.plot_runtime_results()
@@ -1029,7 +1027,8 @@ class PRIMERunWindow(wx.Frame):
     # Update log
     self.display_log()
 
-    if len(mtzs) >= self.pparams.n_postref_cycle:
+    # Sense end of cycle
+    if self.current_cycle >= self.pparams.n_postref_cycle:
       self.final_step()
 
 
