@@ -2486,7 +2486,7 @@ def fix_rotamer_outliers(
     radius=5,
     mon_lib_srv=None,
     rotamer_manager=None,
-    backrub_range=20,
+    backrub_range=10,
     asc=None,
     verbose=False,
     log=None):
@@ -2526,8 +2526,8 @@ def fix_rotamer_outliers(
             continue
           sample_backrub_angles = [0]
           if backrub_range is not None:
-            inc = 5
-            f = 5
+            inc = 3
+            f = 3
             while f <= backrub_range:
               sample_backrub_angles.append(-f)
               sample_backrub_angles.append(f)
