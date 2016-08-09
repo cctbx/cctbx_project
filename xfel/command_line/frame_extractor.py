@@ -61,8 +61,8 @@ class ConstructFrame(object):
 
   # get detector distance in mm
   def populate_distance(self):
-    assert self.det[0].get_directed_distance() is not None, "no detector distance"
-    self.frame['distance'] = self.det[0].get_directed_distance()
+    assert self.det[0].get_distance() is not None, "no detector distance"
+    self.frame['distance'] = self.det[0].get_distance()
 
   # get xbeam and ybeam in mm
   def populate_beam_dir(self):
