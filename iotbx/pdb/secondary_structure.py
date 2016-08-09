@@ -533,7 +533,6 @@ class annotation(structure_base):
           print >> log, "  %s" % l
       else:
         sheets.append(sh)
-
     return cls(helices=helices, sheets=sheets)
 
   @classmethod
@@ -567,7 +566,7 @@ class annotation(structure_base):
           sh = pdb_sheet.from_cif_rows(sheet_id, number_of_strands,
               struct_sheet_order_loop, struct_sheet_range_loop,
               struct_sheet_hbond_loop)
-        except ValueError:
+        except ValueError as e:
           print >> log, "Bad sheet records.\n"
         else:
           sheets.append(sh)
@@ -621,6 +620,54 @@ class annotation(structure_base):
         del self.sheets[i]
     return annotation(helices=deleted_helices, sheets=deleted_sheets)
 
+  def remove_short_annotations(self):
+    # returns nothing
+    # Remove short annotations
+    h_indeces_to_delete = []
+    for i, h in enumerate(self.helices):
+      if h.length < 5:
+        h_indeces_to_delete.append(i)
+    if len(h_indeces_to_delete) > 0:
+      for i in reversed(h_indeces_to_delete):
+        del self.helices[i]
+    sh_indeces_to_delete = []
+    for i, sh in enumerate(self.sheets):
+      sh.remove_short_strands()
+      if sh.n_strands == 0:
+        sh_indeces_to_delete.append(i)
+    if len(sh_indeces_to_delete) > 0:
+      for i in reversed(sh_indeces_to_delete):
+        del self.sheets[i]
+
+  def split_helices_with_prolines(self, hierarchy, asc=None):
+    # If hierarchy is present: break helices with PRO inside
+    if asc is None:
+      asc = hierarchy.atom_selection_cache()
+    new_helices = []
+    for i,h in enumerate(self.helices):
+      selected_h = hierarchy.select(asc.selection(h.as_atom_selections()[0]))
+      i_pro_res = []
+      rgs = selected_h.only_model().only_chain().residue_groups()
+      for j,rg in enumerate(rgs):
+        if rg.atom_groups()[0].resname.strip() == "PRO":
+          i_pro_res.append(j)
+      for j in i_pro_res:
+        h1 = h.deep_copy()
+        h1.end_resname = rgs[j-1].atom_groups()[0].resname.strip()
+        h1.end_resseq = rgs[j-1].resseq
+        h1.end_icode = rgs[j-1].icode
+        h1.length = j-1
+        h1.erase_hbond_list()
+        h.start_resname = rgs[j].atom_groups()[0].resname.strip()
+        h.start_resseq = rgs[j].resseq
+        h.start_icode = rgs[j].icode
+        h.length -= j-1
+        h.erase_hbond_list()
+        new_helices.append(h1)
+      new_helices.append(h)
+    for i, h in enumerate(new_helices):
+      h.set_new_serial(serial=i+1, adopt_as_id=True)
+    self.helices=new_helices
 
   def multiply_to_asu(self, ncs_copies_chain_names, n_copies):
     from iotbx.ncs import format_num_as_str
@@ -1515,6 +1562,9 @@ class pdb_helix (structure_base) :
       top_out=helix_params.top_out,
       )
 
+  def deep_copy(self):
+    return copy.deepcopy(self)
+
   def get_start_resseq_as_int(self):
     if self.start_resseq is not None:
       return hy36decode(4, self.start_resseq)
@@ -1583,11 +1633,8 @@ class pdb_helix (structure_base) :
     else:
       return stripped
 
-
-
   def as_cif_dict(self):
     """Returns dict. keys - cif field names, values - appropriate values."""
-
     result = {}
     result['conf_type_id'] = "HELX_P"
     result['id'] = "%s" % self.serial
@@ -1706,9 +1753,12 @@ class pdb_strand(structure_base):
     assert (sense in [-1, 0, 1]), "Bad sense."
     self.start_chain_id = self.parse_chain_id(start_chain_id)
     self.end_chain_id = self.parse_chain_id(end_chain_id)
+    self.set_start_resseq(self.start_resseq)
+    self.set_end_resseq(self.end_resseq)
     if self.start_chain_id != self.end_chain_id:
-      raise RuntimeError("Don't know how to deal with helices with multiple "+
+      raise RuntimeError("Don't know how to deal with strands with multiple "+
         "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
+    self.approx_length = self.get_end_resseq_as_int() - self.get_start_resseq_as_int()
 
   @classmethod
   def from_pdb_record(cls, line):
@@ -1750,7 +1800,6 @@ class pdb_strand(structure_base):
         cif_dict,
         '_struct_sheet_range.end_auth_seq_id',
         '_struct_sheet_range.end_label_seq_id')
-
     return cls(
         sheet_id=cif_dict['_struct_sheet_range.sheet_id'],
         strand_id=int(cif_dict['_struct_sheet_range.id']),
@@ -2204,6 +2253,50 @@ class pdb_sheet(structure_base):
     elif str_sense == "antiparallel":
       sense = -1
     return sense
+
+  def remove_short_strands(self, size=3):
+    strand_indices_to_delete = []
+    # need to make sure we are not deleting strands from the middle and
+    # brake registrations...
+    cont = True
+    i = 0
+    while cont and i < self.n_strands:
+      if self.strands[i].approx_length < size:
+        if i not in strand_indices_to_delete:
+          strand_indices_to_delete.append(i)
+      else:
+        cont = False
+      i += 1
+    cont = True
+    i = len(self.strands) - 1
+    while cont and i >= 0:
+      if self.strands[i].approx_length < size:
+        if i not in strand_indices_to_delete:
+          strand_indices_to_delete.append(i)
+      else:
+        cont = False
+      i -= 1
+    if len(strand_indices_to_delete) == self.n_strands:
+      self.sheet_id=0
+      self.n_strands=0
+      self.strands=[]
+      self.registrations=[]
+    else:
+      for i in reversed(sorted(strand_indices_to_delete)):
+        del self.strands[i]
+        del self.registrations[i]
+        self.n_strands -= 1
+      self.registrations[0] = None
+      self.strands[0].sense = 0
+      if len(strand_indices_to_delete) > 0:
+        self.renumber_strands()
+        self.erase_hbond_list()
+
+  def renumber_strands(self):
+    i = 1
+    for s in self.strands:
+      s.strand_id = i
+      i += 1
 
   def erase_hbond_list(self):
     self.hbond_list = []
