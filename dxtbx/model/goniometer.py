@@ -13,6 +13,8 @@ from __future__ import division
 import pycbf
 from dxtbx_model_ext import Goniometer, KappaGoniometer, MultiAxisGoniometer
 
+import scitbx.math # import dependency
+
 class goniometer_factory:
   '''A factory class for goniometer objects, which will encapsulate
   some standard goniometer designs to make it a little easier to get
