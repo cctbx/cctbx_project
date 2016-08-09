@@ -13,8 +13,6 @@ from __future__ import division
 import pycbf
 from dxtbx_model_ext import Goniometer, KappaGoniometer, MultiAxisGoniometer
 
-from goniometer_helpers import cbf_gonio_to_effective_axis_fixed
-
 class goniometer_factory:
   '''A factory class for goniometer objects, which will encapsulate
   some standard goniometer designs to make it a little easier to get
@@ -108,25 +106,71 @@ class goniometer_factory:
     cbf_handle = pycbf.cbf_handle_struct()
     cbf_handle.read_file(cif_file, pycbf.MSG_DIGEST)
 
-    cbf_gonio = cbf_handle.construct_goniometer()
-
-    axis, fixed = cbf_gonio_to_effective_axis_fixed(cbf_gonio)
-
-    cbf_gonio.__swig_destroy__(cbf_gonio)
-    del(cbf_gonio)
-
-    return goniometer_factory.make_goniometer(axis, fixed)
+    return goniometer_factory.imgCIF_H(cbf_handle)
 
   @staticmethod
   def imgCIF_H(cbf_handle):
     '''Initialize a goniometer model from an imgCIF file handle, where
     it is assumed that the file has already been read.'''
 
-    cbf_gonio = cbf_handle.construct_goniometer()
+    # find the goniometer axes and dependencies
+    from scitbx.array_family import flex
+    axis_names = flex.std_string()
+    depends_on = flex.std_string()
+    axes = flex.vec3_double()
+    angles = flex.double()
+    scan_axis = None
+    cbf_handle.find_category("axis")
+    for i in range(cbf_handle.count_rows()):
+      cbf_handle.find_column("equipment")
+      if cbf_handle.get_value() == "goniometer":
+        cbf_handle.find_column("id")
+        axis_names.append(cbf_handle.get_value())
+        axis = []
+        for i in range(3):
+          cbf_handle.find_column("vector[%i]" %(i+1))
+          axis.append(float(cbf_handle.get_value()))
+        axes.append(axis)
+        cbf_handle.find_column("depends_on")
+        depends_on.append(cbf_handle.get_value())
+        cbf_handle.next_row()
 
-    axis, fixed = cbf_gonio_to_effective_axis_fixed(cbf_gonio)
+    # find the starting angles of each goniometer axis and figure out which one
+    # is the scan axis (i.e. non-zero angle_increment)
+    cbf_handle.find_category("diffrn_scan_axis")
+    for i in range(cbf_handle.count_rows()):
+      cbf_handle.find_column("axis_id")
+      axis_name = cbf_handle.get_value()
+      if axis_name not in axis_names: continue
+      cbf_handle.find_column("angle_start")
+      axis_angle = float(cbf_handle.get_value())
+      cbf_handle.find_column("angle_increment")
+      increment = float(cbf_handle.get_value())
+      angles.append(axis_angle)
+      if abs(increment) > 0:
+        assert scan_axis is None, "More than one scan axis is defined: not currently supported"
+        scan_axis = flex.first_index(axis_names, axis_name)
+      cbf_handle.next_row()
+    assert axes.size() == angles.size()
+    assert scan_axis is not None
 
-    cbf_gonio.__swig_destroy__(cbf_gonio)
-    del(cbf_gonio)
+    # figure out the order of the axes from the depends_on values
+    order = flex.size_t()
+    for i in range(axes.size()):
+      if depends_on[i] == '.':
+        o = 0
+      else:
+        o = flex.first_index(axis_names, depends_on[i])+1
+      assert o not in order
+      order.append(o)
 
-    return goniometer_factory.make_goniometer(axis, fixed)
+    # multi-axis gonio requires axes in order as viewed from crystal to gonio base
+    # i.e. the reverse of the order we have from cbf header
+    order = order.reversed()
+    axes = axes.select(order)
+    angles = angles.select(order)
+    scan_axis = axes.size() - scan_axis - 1
+
+    # construct a multi-axis goniometer
+    gonio = goniometer_factory.multi_axis(axes, angles, scan_axis)
+    return gonio
