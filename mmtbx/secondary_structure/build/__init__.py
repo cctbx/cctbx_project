@@ -290,10 +290,13 @@ def get_helix(helix_class, rotamer_manager, sequence=None, pdb_hierarchy_templat
     rotamer_manager=rotamer_manager,
     pdb_hierarchy_template=pdb_hierarchy_template)
 
-def calculate_rmsd_smart(h1, h2):
+def calculate_rmsd_smart(h1, h2, backbone_only=False):
   assert h1.atoms_size() == h2.atoms_size()
   rmsd = 0
+  n = 0
   for atom in h1.atoms():
+    if backbone_only and atom.name.strip() not in ['N', 'CA', 'C', 'O']:
+      continue
     for c in h2.chains():
       if c.id != atom.parent().parent().parent().id:
         continue
@@ -306,7 +309,10 @@ def calculate_rmsd_smart(h1, h2):
           a = ag.get_atom(atom.name.strip())
           if a is not None:
             rmsd += a.distance(atom)**2
-  return rmsd ** 0.5
+            n += 1
+  if n == 0:
+    return rmsd ** 0.5
+  return (rmsd/float(n)) ** 0.5
 
 def set_xyz_smart(dest_h, source_h):
   """
