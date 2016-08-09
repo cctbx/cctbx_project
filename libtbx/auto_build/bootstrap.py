@@ -613,7 +613,7 @@ class amber_module(SourceModule):
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'AmberTools15.tar.gz', '/net/cci/auto_build/externals']
   authenticated = [
     'rsync',
-    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/amber14/',
+    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/amber16/',
     'externals', # not mapped yet!
     'amber_rsync', # not plumbed ...
   ]
@@ -1777,13 +1777,13 @@ class PhenixExternalRegression(PhenixBuilder):
          # not windows compatible
          ['ln', '-sf', '%s' % rosetta_version, "rosetta"],
          ['modules']],
-        ['Rosetta compile',
-         ["./scons.py",
-          "-j",
-          self.nproc,
-          #"mode=release",
-         ],
-         ["modules", 'rosetta', "main", "source"]],
+        #['Rosetta compile', # not really needed
+        # ["./scons.py",
+        #  "-j",
+        #  self.nproc,
+        #  #"mode=release",
+        # ],
+        # ["modules", 'rosetta', "main", "source"]],
         ]:
       if self.subcategory:
         if name.lower().find(self.subcategory)==-1: continue
