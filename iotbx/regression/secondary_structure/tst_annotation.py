@@ -1121,7 +1121,7 @@ def tst_split_helices_with_prolines():
   ann = annotation.from_records(pdb_records_2.split("\n"))
   pdb_h = iotbx.pdb.input(source_info=None, lines=pdb_string_2.split('\n')).\
       construct_hierarchy()
-  pdb_h.write_pdb_file(file_name='1.pdb')
+  # pdb_h.write_pdb_file(file_name='1.pdb')
   ann.remove_empty_annotations(hierarchy=pdb_h, asc=None)
   # print ann
   ann.split_helices_with_prolines(hierarchy=pdb_h, asc=None)
@@ -1129,7 +1129,111 @@ def tst_split_helices_with_prolines():
   # print ann
   assert ann.get_n_helices() == 4
   h_sizes = [x.length for x in ann.helices]
-  assert h_sizes == [6,16,23,6]
+  assert h_sizes == [7, 15, 24, 5], h_sizes
+
+def tst_split_helices_with_prolines_2():
+  """ Corner case when the helix begins with PRO, 2nd residue is also PRO"""
+  pro_ann = "HELIX   16  16 PRO B  463  ALA B  467  5                                   5"
+  pdb_str = """\
+ATOM   5910  N   PRO B 463     239.715 263.725 264.122  1.00 10.00           N
+ATOM   5911  CA  PRO B 463     238.974 264.849 264.695  1.00 10.00           C
+ATOM   5912  C   PRO B 463     238.267 264.611 266.069  1.00 10.00           C
+ATOM   5913  O   PRO B 463     238.533 265.320 267.055  1.00 10.00           O
+ATOM   5914  CB  PRO B 463     237.997 265.183 263.567  1.00 10.00           C
+ATOM   5915  CG  PRO B 463     238.911 265.060 262.343  1.00 10.00           C
+ATOM   5916  CD  PRO B 463     239.700 263.801 262.637  1.00 10.00           C
+ATOM   5917  N   PRO B 464     237.359 263.619 266.160  1.00 10.00           N
+ATOM   5918  CA  PRO B 464     236.693 263.407 267.459  1.00 10.00           C
+ATOM   5919  C   PRO B 464     237.446 262.481 268.415  1.00 10.00           C
+ATOM   5920  O   PRO B 464     236.830 261.688 269.109  1.00 10.00           O
+ATOM   5921  CB  PRO B 464     235.345 262.820 267.063  1.00 10.00           C
+ATOM   5922  CG  PRO B 464     235.738 261.949 265.934  1.00 10.00           C
+ATOM   5923  CD  PRO B 464     236.751 262.765 265.124  1.00 10.00           C
+ATOM   5924  N   ASP B 465     238.768 262.633 268.474  1.00 10.00           N
+ATOM   5925  CA  ASP B 465     239.620 261.794 269.304  1.00 10.00           C
+ATOM   5926  C   ASP B 465     240.116 262.429 270.606  1.00 10.00           C
+ATOM   5927  O   ASP B 465     240.198 261.761 271.642  1.00 10.00           O
+ATOM   5928  CB  ASP B 465     240.822 261.329 268.465  1.00 10.00           C
+ATOM   5929  CG  ASP B 465     241.926 262.387 268.361  1.00 10.00           C
+ATOM   5930  OD1 ASP B 465     241.627 263.557 268.042  1.00 10.00           O
+ATOM   5931  OD2 ASP B 465     243.106 262.040 268.593  1.00 10.00           O
+ATOM   5932  N   ASN B 466     240.420 263.721 270.572  1.00 10.00           N
+ATOM   5933  CA  ASN B 466     240.960 264.382 271.760  1.00 10.00           C
+ATOM   5934  C   ASN B 466     240.023 264.651 272.935  1.00 10.00           C
+ATOM   5935  O   ASN B 466     240.482 265.044 273.998  1.00 10.00           O
+ATOM   5936  CB  ASN B 466     241.654 265.686 271.349  1.00 10.00           C
+ATOM   5937  CG  ASN B 466     240.831 266.505 270.376  1.00 10.00           C
+ATOM   5938  OD1 ASN B 466     239.714 266.921 270.685  1.00 10.00           O
+ATOM   5939  ND2 ASN B 466     241.380 266.739 269.189  1.00 10.00           N
+ATOM   5940  N   ALA B 467     238.694 264.465 272.767  1.00 10.00           N
+ATOM   5941  CA  ALA B 467     237.910 264.755 273.973  1.00 10.00           C
+ATOM   5942  C   ALA B 467     238.085 263.704 275.100  1.00 10.00           C
+ATOM   5943  O   ALA B 467     237.157 263.430 275.874  1.00 10.00           O
+ATOM   5944  CB  ALA B 467     236.468 264.889 273.432  1.00 10.00           C
+  """
+  ann = annotation.from_records(pro_ann.split("\n"))
+  pdb_h = iotbx.pdb.input(source_info=None, lines=pdb_str.split('\n')).\
+      construct_hierarchy()
+  assert ann.get_n_helices() == 1
+  ann.split_helices_with_prolines(hierarchy=pdb_h)
+  # print ann
+  assert ann.get_n_helices() == 1
+  assert ann.helices[0].length == 4
+
+def tst_split_helices_with_prolines_3():
+  """ Corner case when the helix ends with PRO"""
+  pro_ann = "HELIX   16  16 THR B  223  PRO B  227  5                                   5"
+  pdb_str = """\
+ATOM   4732  N   TYR B 223     237.498 243.916 256.959  1.00 10.00           N
+ATOM   4733  CA  TYR B 223     236.998 243.193 255.797  1.00 10.00           C
+ATOM   4734  C   TYR B 223     235.642 243.731 255.357  1.00 10.00           C
+ATOM   4735  O   TYR B 223     235.112 243.268 254.374  1.00 10.00           O
+ATOM   4736  CB  TYR B 223     236.908 241.695 256.094  1.00 10.00           C
+ATOM   4737  CG  TYR B 223     235.804 241.324 257.057  1.00 10.00           C
+ATOM   4738  CD1 TYR B 223     234.480 241.272 256.641  1.00 10.00           C
+ATOM   4739  CD2 TYR B 223     236.085 241.027 258.384  1.00 10.00           C
+ATOM   4740  CE1 TYR B 223     233.468 240.932 257.518  1.00 10.00           C
+ATOM   4741  CE2 TYR B 223     235.080 240.686 259.269  1.00 10.00           C
+ATOM   4742  CZ  TYR B 223     233.774 240.641 258.831  1.00 10.00           C
+ATOM   4743  OH  TYR B 223     232.772 240.302 259.711  1.00 10.00           O
+ATOM   4744  N   THR B 224     235.127 244.742 256.068  1.00 10.00           N
+ATOM   4745  CA  THR B 224     233.888 245.465 255.737  1.00 10.00           C
+ATOM   4746  C   THR B 224     234.274 246.452 254.592  1.00 10.00           C
+ATOM   4747  O   THR B 224     233.527 246.682 253.621  1.00 10.00           O
+ATOM   4748  CB  THR B 224     233.390 246.267 256.985  1.00 10.00           C
+ATOM   4749  OG1 THR B 224     232.815 245.365 257.938  1.00 10.00           O
+ATOM   4750  CG2 THR B 224     232.338 247.298 256.604  1.00 10.00           C
+ATOM   4751  N   ILE B 225     235.481 246.993 254.709  1.00 10.00           N
+ATOM   4752  CA  ILE B 225     236.079 247.939 253.743  1.00 10.00           C
+ATOM   4753  C   ILE B 225     236.203 247.150 252.435  1.00 10.00           C
+ATOM   4754  O   ILE B 225     235.800 247.601 251.358  1.00 10.00           O
+ATOM   4755  CB  ILE B 225     237.546 248.405 254.230  1.00 10.00           C
+ATOM   4756  CG1 ILE B 225     237.487 249.823 254.873  1.00 10.00           C
+ATOM   4757  CG2 ILE B 225     238.554 248.277 253.078  1.00 10.00           C
+ATOM   4758  CD1 ILE B 225     238.802 250.372 255.483  1.00 10.00           C
+ATOM   4759  N   VAL B 226     236.723 245.926 252.549  1.00 10.00           N
+ATOM   4760  CA  VAL B 226     236.904 245.129 251.334  1.00 10.00           C
+ATOM   4761  C   VAL B 226     235.606 245.025 250.571  1.00 10.00           C
+ATOM   4762  O   VAL B 226     235.621 245.119 249.364  1.00 10.00           O
+ATOM   4763  CB  VAL B 226     237.478 243.708 251.567  1.00 10.00           C
+ATOM   4764  CG1 VAL B 226     238.787 243.804 252.297  1.00 10.00           C
+ATOM   4765  CG2 VAL B 226     236.480 242.836 252.257  1.00 10.00           C
+ATOM   4766  N   PRO B 227     234.471 244.784 251.253  1.00 10.00           N
+ATOM   4767  CA  PRO B 227     233.225 244.717 250.484  1.00 10.00           C
+ATOM   4768  C   PRO B 227     233.110 246.013 249.736  1.00 10.00           C
+ATOM   4769  O   PRO B 227     233.251 246.069 248.522  1.00 10.00           O
+ATOM   4770  CB  PRO B 227     232.142 244.666 251.550  1.00 10.00           C
+ATOM   4771  CG  PRO B 227     232.785 243.987 252.657  1.00 10.00           C
+ATOM   4772  CD  PRO B 227     234.206 244.487 252.661  1.00 10.00           C
+"""
+  ann = annotation.from_records(pro_ann.split("\n"))
+  pdb_h = iotbx.pdb.input(source_info=None, lines=pdb_str.split('\n')).\
+      construct_hierarchy()
+  assert ann.get_n_helices() == 1
+  ann.split_helices_with_prolines(hierarchy=pdb_h)
+  # print ann
+  assert ann.get_n_helices() == 1
+  assert ann.helices[0].length == 4
 
 def tst_remove_short_annotations():
   ann = annotation.from_records(pdb_records_2.split("\n"))
@@ -1155,5 +1259,7 @@ if (__name__ == "__main__"):
   # tst_to_cif_annotation()
   tst_remove_empty_annotations()
   tst_split_helices_with_prolines()
+  tst_split_helices_with_prolines_2()
+  tst_split_helices_with_prolines_3()
   tst_remove_short_annotations()
   print "OK time =%8.3f"%(time.time() - t0)

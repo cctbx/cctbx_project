@@ -652,19 +652,22 @@ class annotation(structure_base):
         if rg.atom_groups()[0].resname.strip() == "PRO":
           i_pro_res.append(j)
       for j in i_pro_res:
-        h1 = h.deep_copy()
-        h1.end_resname = rgs[j-1].atom_groups()[0].resname.strip()
-        h1.end_resseq = rgs[j-1].resseq
-        h1.end_icode = rgs[j-1].icode
-        h1.length = j-1
-        h1.erase_hbond_list()
-        h.start_resname = rgs[j].atom_groups()[0].resname.strip()
-        h.start_resseq = rgs[j].resseq
-        h.start_icode = rgs[j].icode
-        h.length -= j-1
-        h.erase_hbond_list()
-        new_helices.append(h1)
-      new_helices.append(h)
+        if j > 0:
+          h1 = h.deep_copy()
+          h1.end_resname = rgs[j-1].atom_groups()[0].resname.strip()
+          h1.end_resseq = rgs[j-1].resseq
+          h1.end_icode = rgs[j-1].icode
+          h1.length = j
+          h1.erase_hbond_list()
+          h.start_resname = rgs[j].atom_groups()[0].resname.strip()
+          h.start_resseq = rgs[j].resseq
+          h.start_icode = rgs[j].icode
+          h.length = len(rgs) - j
+          h.erase_hbond_list()
+          if h1.length > 2:
+            new_helices.append(h1)
+      if h.length > 3:
+        new_helices.append(h)
     for i, h in enumerate(new_helices):
       h.set_new_serial(serial=i+1, adopt_as_id=True)
     self.helices=new_helices
