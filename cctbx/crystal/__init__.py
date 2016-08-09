@@ -346,6 +346,7 @@ class symmetry(object):
       d_max=d_max)
 
   def as_pdb_remark_290(self):
+    raise Sorry("do not use this method - not tested yet!")
     outl = ""
     if ( self.space_group() is not None and
          self.unit_cell() is not None
