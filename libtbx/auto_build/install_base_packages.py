@@ -1179,10 +1179,14 @@ _replace_sysconfig_paths(build_time_vars)
       old_cflags = os.environ.get('CXXFLAGS', '')
       os.environ['CXXFLAGS'] = old_cflags + ' -march=i686'
 
-    # cairo, harfbuzz, pango, atk
-    for pkg, name in zip([CAIRO_PKG, HARFBUZZ_PKG, PANGO_PKG, ATK_PKG],
-                         ["cairo", "harfbuzz", "pango", "atk"]) :
+    for pkg, name in zip([CAIRO_PKG, HARFBUZZ_PKG],["cairo", "harfbuzz"]) :
       self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
+    self.build_compiled_package_simple(
+      pkg_name=PANGO_PKG, pkg_name_label="pango",
+      extra_config_args=["--enable-introspection=no"])
+    self.build_compiled_package_simple(
+      pkg_name=ATK_PKG, pkg_name_label="atk",
+      extra_config_args=["--enable-introspection=no"])
 
     # reset CXXFLAGS for CentOS 5 32-bit
     if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
@@ -1205,13 +1209,16 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_gtk(self):
     # gdk-pixbuf, gtk+, clearlooks
-    extra_config_args = ["--without-libjpeg", "--enable-relocations"]
+    extra_config_args = ["--without-libjpeg", "--enable-relocations",
+                         "--enable-introspection=no"]
     self.build_compiled_package_simple(pkg_name=GDK_PIXBUF_PKG,
                                        pkg_name_label='gdk-pixbuf',
                                        extra_config_args=extra_config_args)
-    for pkg, name in zip([GTK_PKG, GTK_ENGINE_PKG],
-                         ["gtk+", "gtk-engine"]):
-      self.build_compiled_package_simple(pkg_name=pkg, pkg_name_label=name)
+    self.build_compiled_package_simple(
+      pkg_name=GTK_PKG, pkg_name_label='gtk+',
+      extra_config_args=["--enable-introspection=no"])
+    self.build_compiled_package_simple(
+      pkg_name=GTK_ENGINE_PKG, pkg_name_label='gtk-engine')
 
   def build_fonts(self):
     # fonts
