@@ -15,6 +15,9 @@
 //#include <boost/geometry.hpp>
 //#include <boost/geometry/geometries/point.hpp>
 //#include <boost/geometry/geometries/polygon.hpp>
+#include <vector>
+#include <boost/ptr_container/ptr_vector.hpp>
+#include <boost/iterator/indirect_iterator.hpp>
 #include <scitbx/vec2.h>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
@@ -113,90 +116,506 @@ namespace dxtbx { namespace model {
 
   }
 
-
   /**
-  * A class representing a detector made up of multiple flat panel detectors.
-  * The detector elements can be accessed in the same way as an array:
-  *  detector[0] -> 1st detector panel.
-  */
+   * A class representing a multi-panel hierarchical detector.
+   *
+   * The detector is a composite object made up of 1 or more panels and optionally
+   * a hierarchy which encodes groups of panels. The panels can be accessed as a
+   * flat data structure (i.e. an array) and the panels and groups can be accessed
+   * through a tree interface.
+   */
   class Detector {
   public:
 
+
+
+    /**
+     * A class representing a node in the detector hierarchy. The node class
+     * inherits from the panel class and adds some methods for adding children,
+     * querying parents and roots etc.
+     *
+     */
+    class Node : public Panel {
+    public:
+
+      typedef Node* pointer;
+      typedef const Node* const_pointer;
+      typedef boost::ptr_vector<Node>::iterator iterator;
+      typedef boost::ptr_vector<Node>::const_iterator const_iterator;
+
+      /**
+       * Construct using a parent detector reference. The detector reference keeps
+       * hold of the flat array of panels so that when the hierarchy is built, the
+       * panels are added automatically to the flat array of panels.
+       */
+      Node(Detector *detector)
+        : detector_(detector),
+          parent_(NULL),
+          is_panel_(false) {}
+
+      /**
+       * Construct using a parent detector reference. The detector reference keeps
+       * hold of the flat array of panels so that when the hierarchy is built, the
+       * panels are added automatically to the flat array of panels.
+       */
+      Node(Detector *detector, const Panel &panel)
+        : Panel(panel),
+          detector_(detector),
+          parent_(NULL),
+          is_panel_(false) {}
+
+      /**
+       * Add a group to the detector node.
+       */
+      pointer add_group() {
+        DXTBX_ASSERT(!is_panel());
+        Node *node = new Node(detector_);
+        node->parent_ = this;
+        node->is_panel_ = false;
+        node->set_parent_frame(
+            get_fast_axis(),
+            get_slow_axis(),
+            get_origin());
+        children_.push_back(node);
+        return node;
+      }
+
+      /**
+       * Add a group to the detector node.
+       */
+      pointer add_group(const Panel &group) {
+        DXTBX_ASSERT(!is_panel());
+        Node *node = new Node(detector_, group);
+        node->parent_ = this;
+        node->is_panel_ = false;
+        node->set_parent_frame(
+            get_fast_axis(),
+            get_slow_axis(),
+            get_origin());
+        children_.push_back(node);
+        return node;
+      }
+
+      /**
+       * Add a panel to the detector node
+       */
+      pointer add_panel() {
+        DXTBX_ASSERT(!is_panel());
+        Node *node = new Node(detector_);
+        node->parent_ = this;
+        node->is_panel_ = true;
+        node->set_parent_frame(
+            get_fast_axis(),
+            get_slow_axis(),
+            get_origin());
+        children_.push_back(node);
+        detector_->data_->panels.push_back(node);
+        return node;
+      }
+
+      /**
+       * Add a panel to the detector node
+       */
+      pointer add_panel(const Panel &panel) {
+        DXTBX_ASSERT(!is_panel());
+        Node *node = new Node(detector_, panel);
+        node->parent_ = this;
+        node->is_panel_ = true;
+        node->set_parent_frame(
+            get_fast_axis(),
+            get_slow_axis(),
+            get_origin());
+        children_.push_back(node);
+        detector_->data_->panels.push_back(node);
+        return node;
+      }
+
+      /**
+       * Add a panel to the detector node
+       */
+      pointer add_panel(const Panel &panel, std::size_t index) {
+        DXTBX_ASSERT(!is_panel());
+        Node *node = new Node(detector_, panel);
+        node->parent_ = this;
+        node->is_panel_ = true;
+        node->set_parent_frame(
+            get_fast_axis(),
+            get_slow_axis(),
+            get_origin());
+        children_.push_back(node);
+        if (detector_->data_->panels.size() <= index) {
+          detector_->data_->panels.resize(index+1, NULL);
+        }
+        DXTBX_ASSERT(detector_->data_->panels[index] == NULL);
+        detector_->data_->panels[index] = node;
+        return node;
+      }
+
+      /**
+       * Get the node's parent
+       */
+      const_pointer parent() const {
+        return parent_;
+      }
+
+      /**
+       * Get the node's parent
+       */
+      pointer parent() {
+        return parent_;
+      }
+
+      /**
+       * Get the tree root
+       */
+      const_pointer root() const {
+        return parent_ == NULL ? this : parent_->root();
+      }
+
+      /**
+       * Get the tree root
+       */
+      pointer root() {
+        return parent_ == NULL ? this : parent_->root();
+      }
+
+      /**
+       * Get the child node at the given index
+       */
+      const_pointer operator[](std::size_t i) const {
+        DXTBX_ASSERT(i < children_.size());
+        return &children_[i];
+      }
+
+      /**
+       * Get the child node at the given index
+       */
+      pointer operator[](std::size_t i) {
+        DXTBX_ASSERT(i < children_.size());
+        return &children_[i];
+      }
+
+      /**
+       * Get the iterator to the beginning of the child list
+       */
+      const_iterator begin() const {
+        return children_.begin();
+      }
+
+      /**
+       * Get the iterator to the beginning of the child list
+       */
+      iterator begin() {
+        return children_.begin();
+      }
+
+      /**
+       * Get the iterator to the end of the child list
+       */
+      const_iterator end() const {
+        return children_.end();
+      }
+
+      /**
+       * Get the iterator to the end of the child list
+       */
+      iterator end() {
+        return children_.end();
+      }
+
+      /**
+       * Check if the child list is empty
+       */
+      bool empty() const {
+        return children_.empty();
+      }
+
+      /**
+       * Get the number of children
+       */
+      std::size_t size() const {
+        return children_.size();
+      }
+
+      std::size_t index() const {
+        DXTBX_ASSERT(is_panel());
+        for (std::size_t i = 0; i < detector_->size(); ++i) {
+          if (this == detector_->data_->panels[i]) {
+            return i;
+          }
+        }
+        DXTBX_ERROR("Programmer Error: no panel in detector");
+        return 0;
+      }
+
+      /**
+       * Is the node a panel
+       */
+      bool is_panel() const {
+        return is_panel_;
+      }
+
+      /**
+       * Is the node a group
+       */
+      bool is_group() const {
+        return !is_panel();
+      }
+
+      /**
+       * Set the global frame. Normalize the d1 and d2 axes and update the
+       * local frame with this new information.
+       * @param d1 The fast axis
+       * @param d2 The slow axis
+       * @param d0 The origin vector.
+       */
+      void set_frame(const vec3<double> &d1,
+                     const vec3<double> &d2,
+                     const vec3<double> &d0) {
+        Panel::set_frame(d1, d2, d0);
+        for (std::size_t i = 0; i < children_.size(); ++i) {
+          children_[i].set_parent_frame(
+              get_fast_axis(),
+              get_slow_axis(),
+              get_origin());
+        }
+      }
+
+      /**
+       * Set the local frame. Normalize the d1 and d2 axes and update the
+       * global frame with this new information.
+       * @param d1 The fast axis
+       * @param d2 The slow axis
+       * @param d0 The origin vector.
+       */
+      void set_local_frame(const vec3<double> &d1,
+                           const vec3<double> &d2,
+                           const vec3<double> &d0) {
+        Panel::set_local_frame(d1, d2, d0);
+        for (std::size_t i = 0; i < children_.size(); ++i) {
+          children_[i].set_parent_frame(
+              get_fast_axis(),
+              get_slow_axis(),
+              get_origin());
+        }
+      }
+
+      /**
+       * Set the parent frame. Normalize the d1 and d2 axes and update the
+       * global frame with this new information.
+       * @param d1 The fast axis
+       * @param d2 The slow axis
+       * @param d0 The origin vector.
+       */
+      void set_parent_frame(const vec3<double> &d1,
+                            const vec3<double> &d2,
+                            const vec3<double> &d0) {
+        Panel::set_parent_frame(d1, d2, d0);
+        for (std::size_t i = 0; i < children_.size(); ++i) {
+          children_[i].set_parent_frame(
+              get_fast_axis(),
+              get_slow_axis(),
+              get_origin());
+        }
+      }
+
+      /**
+       * Test if everything is equal
+       */
+      bool operator==(const Node &rhs) const {
+        if (Panel::operator==(rhs)) {
+          if (size() == rhs.size()) {
+            bool all_eq = true;
+            for (std::size_t i = 0; i < size(); ++i) {
+              if (children_[i] != rhs.children_[i]) {
+                all_eq = false;
+                break;
+              }
+            }
+            return all_eq;
+          }
+        }
+        return false;
+      }
+
+      /**
+       * Test inequality
+       */
+      bool operator!=(const Node &rhs) const {
+        return !(*this == rhs);
+      }
+
+      /**
+       * Check that the nodes are similar
+       */
+      bool is_similar_to(
+          const Node &rhs,
+          double fast_axis_tolerance,
+          double slow_axis_tolerance,
+          double origin_tolerance,
+          bool static_only) const {
+        if (Panel::is_similar_to(
+              rhs,
+              fast_axis_tolerance,
+              slow_axis_tolerance,
+              origin_tolerance,
+              static_only)) {
+          if (size() == rhs.size()) {
+            bool all_eq = true;
+            for (std::size_t i = 0; i < size(); ++i) {
+              if (!children_[i].is_similar_to(
+                    rhs.children_[i],
+                    fast_axis_tolerance,
+                    slow_axis_tolerance,
+                    origin_tolerance,
+                    static_only)) {
+                all_eq = false;
+                break;
+              }
+            }
+            return all_eq;
+          }
+        }
+        return false;
+      }
+
+    protected:
+
+      Detector *detector_;
+      pointer parent_;
+      boost::ptr_vector<Node> children_;
+      bool is_panel_;
+    };
+
+
+
     typedef std::pair<int, vec2<double> > coord_type;
+    typedef Node::pointer node_pointer;
+    typedef Node::const_pointer const_node_pointer;
     typedef Panel panel_type;
-    typedef boost::ptr_vector <panel_type> panel_list_type;
-    typedef panel_list_type::iterator iterator;
+    typedef boost::indirect_iterator<std::vector<Node::pointer>::iterator> iterator;
+    typedef boost::indirect_iterator<std::vector<Node::pointer>::const_iterator> const_iterator;
 
-    /** Default constructor */
+    /**
+     * A helper class to contain the data
+     */
+    class DetectorData {
+    public:
+
+      DetectorData(Detector *detector)
+        : root(detector) {}
+
+      Node root;
+      std::vector<Node::pointer> panels;
+    };
+
+    /**
+     * Initialise the detector
+     */
     Detector()
-      : panel_list_(new panel_list_type()) {}
+      : data_(boost::make_shared<DetectorData>(this)) {}
 
-    /**  Construct from a single panel */
+    /**
+     * Construct with a single panel
+     */
     Detector(const Panel &panel)
-      : panel_list_(new panel_list_type()) {
-      panel_list_->push_back(new Panel(panel));
+      : data_(boost::make_shared<DetectorData>(this)) {
+      add_panel(panel);
     }
 
-    /** Virtual destructor */
-    virtual ~Detector() {}
+    /**
+     * Add a group to the root node.
+     */
+    node_pointer add_group() {
+      return data_->root.add_group();
+    }
+
+    /**
+     * Add a group to the root node.
+     */
+    node_pointer add_group(const Panel &group) {
+      return data_->root.add_group(group);
+    }
+
+    /**
+     * Add a panel to the root node
+     */
+    node_pointer add_panel() {
+      return data_->root.add_panel();
+    }
+
+    /**
+     * Add a panel to the root node
+     */
+    node_pointer add_panel(const Panel &panel) {
+      return data_->root.add_panel(panel);
+    }
+
+    /**
+     * Get the root node
+     */
+    node_pointer root() {
+      return &(data_->root);
+    }
+
+    /**
+     * Get the root node
+     */
+    const_node_pointer root() const {
+      return &(data_->root);
+    }
+
+    /**
+     * Get the panel at the current position
+     */
+    panel_type& operator[](std::size_t i) {
+      DXTBX_ASSERT(i < data_->panels.size());
+      return *(data_->panels[i]);
+    }
+
+    /** Return a const reference to a panel */
+    const panel_type& operator[](std::size_t i) const {
+     DXTBX_ASSERT(i < size());
+      return *(data_->panels[i]);
+    }
+
+    /** Return a pointer to a panel */
+    panel_type* at(std::size_t i) {
+      DXTBX_ASSERT(i < size());
+      return data_->panels[i];
+    }
+
+    std::size_t size() const {
+      return data_->panels.size();
+    }
+
+    /** Get the begin iterator */
+    const_iterator begin() const {
+      return const_iterator(data_->panels.begin());
+    }
 
     /** Get the begin iterator */
     iterator begin() {
-      return panel_list_->begin();
+      return iterator(data_->panels.begin());
+    }
+
+    /** Get the end iterator */
+    const_iterator end() const {
+      return const_iterator(data_->panels.end());
     }
 
     /** Get the end iterator */
     iterator end() {
-      return panel_list_->end();
-    }
-
-    /** Add a panel to the list of panels */
-    void add_panel(Panel *panel) {
-      panel_list_->push_back(panel);
-    }
-
-    /** Add a panel to the list of panels */
-    panel_type& add_panel(const Panel &panel) {
-      // note that new Panel(panel) allocated here may be never deleted =>
-      // source of memory leak? see https://github.com/dials/dials/issues/189
-      panel_list_->push_back(new Panel(panel));
-      return panel_list_->back();
-    }
-
-    /** Add a panel to the list of panels */
-    panel_type& add_panel() {
-      return add_panel(Panel());
-    }
-
-    /** Get the number of panels */
-    std::size_t size() const {
-      return panel_list_->size();
-    }
-
-    /** Return a reference to a panel */
-    panel_type& operator[](std::size_t index) {
-      DXTBX_ASSERT(index < size());
-      return (*panel_list_)[index];
-    }
-
-    /** Return a reference to a panel */
-    panel_type* at(std::size_t index) {
-      DXTBX_ASSERT(index < size());
-      return &(*panel_list_)[index];
-    }
-
-    /** Return a const reference to a panel */
-    const panel_type& operator[](std::size_t index) const {
-      DXTBX_ASSERT(index < size());
-      return (*panel_list_)[index];
+      return iterator(data_->panels.end());
     }
 
     /** Check the detector panels are the same */
     bool operator==(const Detector &detector) const {
-      bool same = panel_list_->size() == detector.panel_list_->size();
-      if (same) {
-        for (std::size_t i = 0; i < panel_list_->size(); ++i) {
-          same = same && ((*panel_list_)[i] == (*detector.panel_list_)[i]);
+      bool same = false;
+      if (size() == detector.size() && (data_->root == detector.data_->root)) {
+        same = true;
+        for (std::size_t i = 0; i < size(); ++i) {
+          same = same && *(data_->panels[i]) == *(detector.data_->panels[i]);
         }
       }
       return same;
@@ -213,11 +632,17 @@ namespace dxtbx { namespace model {
                         double slow_axis_tolerance,
                         double origin_tolerance,
                         bool static_only) const {
-      bool similar = panel_list_->size() == rhs.panel_list_->size();
-      if (similar) {
-        for (std::size_t i = 0; i < panel_list_->size(); ++i) {
-          similar = similar && ((*panel_list_)[i].is_similar_to(
-            (*rhs.panel_list_)[i],
+      bool similar = false;
+      if (data_->root.is_similar_to(
+            rhs.data_->root,
+            fast_axis_tolerance,
+            slow_axis_tolerance,
+            origin_tolerance,
+            static_only) && size() == rhs.size()) {
+        similar = true;
+        for (std::size_t i = 0; i < size(); ++i) {
+          similar = similar && (data_->panels[i]->is_similar_to(
+            *rhs.data_->panels[i],
             fast_axis_tolerance,
             slow_axis_tolerance,
             origin_tolerance,
@@ -230,8 +655,8 @@ namespace dxtbx { namespace model {
     /** Get the maximum resolution of the detector */
     double get_max_resolution(vec3<double> s0) const {
       double d_min = 0;
-      for (std::size_t i = 0; i < panel_list_->size(); ++i) {
-        double d = (*panel_list_)[i].get_max_resolution_at_corners(s0);
+      for (std::size_t i = 0; i < size(); ++i) {
+        double d = (*this)[i].get_max_resolution_at_corners(s0);
         if (d < d_min || i == 0) d_min = d;
       }
       return d_min;
@@ -262,16 +687,16 @@ namespace dxtbx { namespace model {
 
       // Compute the stereographic projection of panel corners
       scitbx::af::shared< vec2<double> > points;
-      for (std::size_t i = 0; i < panel_list_->size(); ++i) {
-        std::size_t width = (*panel_list_)[i].get_image_size()[0];
-        std::size_t height = (*panel_list_)[i].get_image_size()[1];
+      for (std::size_t i = 0; i < size(); ++i) {
+        std::size_t width = (*this)[i].get_image_size()[0];
+        std::size_t height = (*this)[i].get_image_size()[1];
         scitbx::af::tiny< vec2<double>, 4 > corners;
         corners[0] = vec2<double>(0,0);
         corners[1] = vec2<double>(width,0);
         corners[2] = vec2<double>(0,height);
         corners[3] = vec2<double>(width,height);
         for (std::size_t j = 0; j < 4; ++j) {
-          vec3<double> p = (*panel_list_)[i].get_pixel_lab_coord(corners[j]).normalize();
+          vec3<double> p = (*this)[i].get_pixel_lab_coord(corners[j]).normalize();
           double pdotx = p * xa;
           double pdoty = p * ya;
           double pdotz = p * za;
@@ -316,11 +741,11 @@ namespace dxtbx { namespace model {
       // the current closest valid coordinate, then calculate the coordinate.
       // If the coordinate is valid, then set this coordinate as the current
       // best bet.
-      for (std::size_t i = 0; i < panel_list_->size(); ++i) {
-        vec3 <double> v = (*panel_list_)[i].get_D_matrix() * s1;
+      for (std::size_t i = 0; i < size(); ++i) {
+        vec3 <double> v = (*this)[i].get_D_matrix() * s1;
         if (v[2] > w_max) {
           vec2<double> xy_temp(v[0] / v[2], v[1] / v[2]);
-          if ((*panel_list_)[i].is_coord_valid_mm(xy_temp)) {
+          if ((*this)[i].is_coord_valid_mm(xy_temp)) {
             pxy = coord_type((int)i, xy_temp);
             w_max = v[2];
           }
@@ -336,10 +761,10 @@ namespace dxtbx { namespace model {
     /** finds the panel id with which s1 intersects.  Returns -1 if none do. **/
     int get_panel_intersection(vec3<double> s1) {
       int found_panel = -1;
-      for (std::size_t i = 0; i < panel_list_->size(); ++i) {
+      for (std::size_t i = 0; i < size(); ++i) {
         try {
-          vec2<double> intersection = (*panel_list_)[i].get_ray_intersection(s1);
-          if ((*panel_list_)[i].is_coord_valid_mm(intersection)) {
+          vec2<double> intersection = (*this)[i].get_ray_intersection(s1);
+          if ((*this)[i].is_coord_valid_mm(intersection)) {
             found_panel = (int)i;
             break;
           }
@@ -365,68 +790,19 @@ namespace dxtbx { namespace model {
 
     /** Rotate the detector about an axis */
     void rotate_around_origin(vec3<double> axis, double angle) {
-      for (std::size_t i = 0; i < panel_list_->size(); ++i) {
-        (*panel_list_)[i].rotate_around_origin(axis, angle);
+      for (std::size_t i = 0; i < size(); ++i) {
+        (*this)[i].rotate_around_origin(axis, angle);
       }
     }
 
 
   protected:
-
-    /**
-     * Check if the detector planes intersect.
-     * @param a The first detector
-     * @param b The second detector
-     * @returns True/False do the detector planes intersect?
-     */
-//    static bool
-//    panels_intersect(const Panel &a, const Panel &b) {
-
-//      using namespace boost::geometry;
-
-//      typedef boost::geometry::model::point <double, 3, cs::cartesian> point;
-//      typedef boost::geometry::model::polygon <point> polygon;
-
-//      // Get coordinates for panel a
-//      std::size_t aw = a.get_image_size()[0];
-//      std::size_t ah = a.get_image_size()[1];
-//      vec3<double> a00 = a.get_pixel_lab_coord(vec2<double>(0, 0));
-//      vec3<double> a01 = a.get_pixel_lab_coord(vec2<double>(aw, 0));
-//      vec3<double> a10 = a.get_pixel_lab_coord(vec2<double>(0, ah));
-//      vec3<double> a11 = a.get_pixel_lab_coord(vec2<double>(aw, ah));
-
-//      // Get coordinates for panel a
-//      std::size_t bw = b.get_image_size()[0];
-//      std::size_t bh = b.get_image_size()[1];
-//      vec3<double> b00 = b.get_pixel_lab_coord(vec2<double>(0, 0));
-//      vec3<double> b01 = b.get_pixel_lab_coord(vec2<double>(bw, 0));
-//      vec3<double> b10 = b.get_pixel_lab_coord(vec2<double>(0, bh));
-//      vec3<double> b11 = b.get_pixel_lab_coord(vec2<double>(bw, bh));
-
-//      // Create a polygon for the panel a plane
-//      polygon poly_a;
-//      append(poly_a, point(a00[0], a00[1], a00[2]));
-//      append(poly_a, point(a01[0], a01[1], a01[2]));
-//      append(poly_a, point(a11[0], a11[1], a11[2]));
-//      append(poly_a, point(a10[0], a10[1], a10[2]));
-//      append(poly_a, point(a00[0], a00[1], a00[2]));
-
-//      // Create a polygon for the panel b plane
-//      polygon poly_b;
-//      append(poly_b, point(b00[0], b00[1], b00[2]));
-//      append(poly_b, point(b01[0], b01[1], b01[2]));
-//      append(poly_b, point(b11[0], b11[1], b11[2]));
-//      append(poly_b, point(b10[0], b10[1], b10[2]));
-//      append(poly_b, point(b00[0], b00[1], b00[2]));
-
-//      // Check if the polygons intersect
-//      return intersects(poly_a, poly_b);
-//    }
-
     friend std::ostream& operator<<(std::ostream &os, const Detector &d);
 
-    boost::shared_ptr<panel_list_type> panel_list_;
+    boost::shared_ptr<DetectorData> data_;
+
   };
+
 
   /** Print detector information */
   inline

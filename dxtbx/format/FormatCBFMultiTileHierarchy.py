@@ -12,7 +12,7 @@ from __future__ import division
 import pycbf
 
 from FormatCBFMultiTile import FormatCBFMultiTile
-from dxtbx.model.detector import HierarchicalDetector
+from dxtbx.model import Detector
 from scitbx.matrix import sqr, col
 from libtbx.utils import Sorry
 
@@ -126,7 +126,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
     name = group_id
 
-    for subobj in d.hierarchy().iter_preorder():
+    for subobj in d.iter_preorder():
       if subobj.get_name() == name:
         return subobj
 
@@ -162,7 +162,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
     cbf = self._get_cbf_handle()
 
-    d = HierarchicalDetector()
+    d = Detector()
 
     # find the panel elment names. Either array ids or section ids
     cbf.find_category("array_structure_list")
@@ -238,7 +238,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
       pg = self._add_panel_group(parent, d)
 
-      p = pg.add_panel(d.add_panel())
+      p = pg.add_panel()
 
       fast = cbf.get_axis_vector(axis0)
       slow = cbf.get_axis_vector(axis1)

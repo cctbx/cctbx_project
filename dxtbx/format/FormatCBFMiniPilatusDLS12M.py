@@ -69,7 +69,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     # module positions from detector blueprints - modelling at the moment as
     # 24 modules, each consisting of 5 sensors (the latter is ignored)
 
-    from dxtbx.model.detector import HierarchicalDetector
+    from dxtbx.model import Detector
     from scitbx import matrix
     import math
 
@@ -98,7 +98,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
     z += beam_shift_y * y
 
-    detector = HierarchicalDetector()
+    detector = Detector()
     root = detector.hierarchy()
     root.set_frame(
       x.elems,
@@ -131,10 +131,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         # copies of the panel then? https://github.com/dials/dials/issues/189
         # ... this is also not the source of the leak
 
-        p = detector.add_panel()
-
         # OBS! you need to set the panel to a root before set local frame...
-        root.add_panel(p)
+        p = root.add_panel()
         p.set_type('SENSOR_PAD')
         p.set_name('row-%02d' % j)
         p.set_raw_image_offset((xmin, ymin))
@@ -157,11 +155,10 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
         for i in range(5):
           xmin, xmax = i * shift_x, i * shift_x + 487
-          p = detector.add_panel()
           origin = row_origin + i * (487+7) * 0.172 * fast
 
           # OBS! you need to set the panel to a root before set local frame...
-          root.add_panel(p)
+          p = root.add_panel()
           p.set_type('SENSOR_PAD')
           p.set_name('row-%02d-col-%02d' % (j, i))
           p.set_raw_image_offset((xmin, ymin))

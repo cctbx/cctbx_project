@@ -628,7 +628,7 @@ class DataBlockDictImporter(object):
     from dxtbx.format.Registry import Registry
     from dxtbx.model import Beam, Detector, Goniometer, Scan
     from dxtbx.model import MultiAxisGoniometer
-    from dxtbx.model import HierarchicalDetector
+    from dxtbx.model import Detector
     from dxtbx.serialize.filename import load_path
     from dxtbx.imageset import ImageSetFactory, ImageGrid
     import pickle
@@ -653,10 +653,7 @@ class DataBlockDictImporter(object):
         beam = None
       try:
         dobj = dlist[obj['detector']]
-        if 'hierarchy' in dobj:
-          detector = HierarchicalDetector.from_dict(dobj)
-        else:
-          detector = Detector.from_dict(dobj)
+        detector = Detector.from_dict(dobj)
       except Exception:
         detector = None
       try:

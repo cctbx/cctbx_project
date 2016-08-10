@@ -56,7 +56,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     self.tag = self._images[0]
 
   def _detector(self, index=None):
-    from dxtbx.model.detector import HierarchicalDetector
+    from dxtbx.model import Detector
     from scitbx import matrix
     import math
 
@@ -73,7 +73,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     #    t0 = thickness
     #    px_mm = ParallaxCorrectedPxMmStrategy(mu, t0)
 
-    detector = HierarchicalDetector()
+    detector = Detector()
     root = detector.hierarchy()
     root.set_frame(
       (1, 0, 0),
@@ -105,10 +105,8 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
                             self.panel_origins[i][1],
                             self.panel_origins[i][2])) / 1000.0
 
-      p = detector.add_panel()
-
       # OBS! you need to set the panel to a root before set local frame...
-      root.add_panel(p)
+      p = root.add_panel()
       p.set_name('panel-%01d' % i)
       p.set_image_size((512, 1024))
       p.set_trusted_range((-1, 1000000))

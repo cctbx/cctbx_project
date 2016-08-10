@@ -80,7 +80,7 @@ class FormatPYmultitile(FormatPY):
     '''
 
     from dxtbx.model import SimplePxMmStrategy
-    from dxtbx.model.detector import HierarchicalDetector
+    from dxtbx.model import Detector
     from scitbx.matrix import col
 
     # XXX Introduces dependency on cctbx.xfel!  Should probably be
@@ -97,7 +97,7 @@ class FormatPYmultitile(FormatPY):
       col((0, 0, -self._metrology_params.distance * 1e-3)))[1]
 
     self._raw_data = []
-    detector = HierarchicalDetector()
+    detector = Detector()
 
     for p in d.panel:
       Tb_p = Tb_d * _transform(

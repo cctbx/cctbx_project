@@ -684,11 +684,8 @@ class ExperimentListDict(object):
   @staticmethod
   def _detector_from_dict(obj):
     ''' Get the detector from a dictionary. '''
-    from dxtbx.model import Detector, HierarchicalDetector
-    if 'hierarchy' in obj:
-      return HierarchicalDetector.from_dict(obj)
-    else:
-      return Detector.from_dict(obj)
+    from dxtbx.model import Detector
+    return Detector.from_dict(obj)
 
   @staticmethod
   def _goniometer_from_dict(obj):

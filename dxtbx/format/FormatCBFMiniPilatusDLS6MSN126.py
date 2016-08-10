@@ -224,10 +224,10 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
 
     # got to here means 60-panel version
 
-    from dxtbx.model.detector import HierarchicalDetector
+    from dxtbx.model import Detector
     from scitbx import matrix
 
-    d = HierarchicalDetector()
+    d = Detector()
 
     beam_centre = matrix.col((beam_x * pixel_x,
                               beam_y * pixel_y, 0))
@@ -266,7 +266,7 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
         panel_name = "Panel%d" % panel_idx
         panel_idx += 1
 
-        p = d.add_panel()
+        p = root.add_panel()
         p.set_type("SENSOR_PAD")
         p.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, t0))
         p.set_name(panel_name)
@@ -282,8 +282,6 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
           origin_panel.elems)
         p.set_raw_image_offset((xmin, ymin))
         self.coords[panel_name] = (xmin,ymin,xmax,ymax)
-
-        root.add_panel(p)
 
     return d
 

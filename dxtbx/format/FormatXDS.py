@@ -78,8 +78,8 @@ class FormatXDS(Format):
   def _detector(self):
     '''Return a working detector instance.'''
     if self._panel_origin is not None:
-      from dxtbx.model.detector import HierarchicalDetector
-      detector = HierarchicalDetector()
+      from dxtbx.model import Detector
+      detector = Detector()
       root = detector.hierarchy()
       root.set_frame(self._fast_axis, self._slow_axis, self._detector_origin)
 
@@ -90,8 +90,7 @@ class FormatXDS(Format):
         # ensure mutual orthogonality in presence of numerical rounding errors
         normal = fast.cross(slow)
         slow = normal.cross(fast)
-        p = detector.add_panel()
-        root.add_panel(p)
+        p = root.add_panel()
         p.set_type('unknown')
         p.set_raw_image_offset(p_offset)
         p.set_image_size(p_size)
