@@ -336,6 +336,14 @@ class input(object):
       # print "exiting here"
       ncs_phil_groups=None
       return None
+    if (ncs_phil_groups is not None and
+        len(ncs_phil_groups)==1 and
+        ncs_phil_groups[0].reference is None and
+        len(ncs_phil_groups[0].selection) == 1 and
+        ncs_phil_groups[0].selection[0] is None):
+      # This is empty ncs_group definition somehow creeped into here.
+      # Not a big deal.
+      return None
     if(ncs_phil_groups is not None):
       print >> self.log, "Validating user-supplied NCS groups..."
       empty_cntr = 0
