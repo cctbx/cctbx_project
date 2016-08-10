@@ -57,7 +57,7 @@ class loop_idealization():
                params=None,
                secondary_structure_annotation=None,
                log=null_out(),
-               verbose=True):
+               verbose=False):
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry("Multi-model files are not supported")
     self.original_pdb_h = pdb_hierarchy
@@ -301,9 +301,10 @@ class loop_idealization():
         #   states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num, ccd_radius, change_all, change_radius, i))
 
         mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
-        print >> self.log, "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i,
-        print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", n_iter
-        self.log.flush()
+        if self.verbose:
+          print >> self.log, "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i,
+          print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", n_iter
+          self.log.flush()
         #
         # setting new coordinates
         #
