@@ -142,7 +142,8 @@ def test_multi_axis_goniometer():
   scan_axis = 0
   multi_axis_phi_scan = goniometer_factory.multi_axis(axes, angles, scan_axis)
   assert approx_equal(multi_axis_phi_scan.get_fixed_rotation(), kappa_phi_scan.get_fixed_rotation())
-  assert approx_equal(multi_axis_phi_scan.get_rotation_axis(), kappa_phi_scan.get_rotation_axis())
+  from scitbx import matrix
+  assert approx_equal(matrix.sqr(multi_axis_phi_scan.get_setting_rotation()) * multi_axis_phi_scan.get_rotation_axis(), kappa_phi_scan.get_rotation_axis())
 
   recycle_phi = MultiAxisGoniometer.from_dict(multi_axis_phi_scan.to_dict())
   assert approx_equal(recycle_phi.get_axes(), multi_axis_phi_scan.get_axes())
