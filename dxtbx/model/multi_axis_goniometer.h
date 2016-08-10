@@ -127,9 +127,9 @@ namespace dxtbx { namespace model {
   inline
   std::ostream& operator<<(std::ostream& os, const MultiAxisGoniometer &g) {
     os << "Goniometer:\n";
-    os << "    Rotation axis:  " << g.get_rotation_axis().const_ref() << "\n";
-    os << "    Fixed rotation: " << g.get_fixed_rotation().const_ref() << "\n";
-    os << "    Setting rotation: " << g.get_setting_rotation().const_ref() << "\n";
+    os << "    Rotation axis:   " << g.get_rotation_axis().const_ref() << "\n";
+    os << "    Fixed rotation:  " << g.get_fixed_rotation().const_ref() << "\n";
+    os << "    Setting rotation:" << g.get_setting_rotation().const_ref() << "\n";
     for (std::size_t i=0; i < g.get_axes().size(); i++) {
       os << "    Axis " << i << ":  " << g.get_axes()[i].const_ref() << "\n";
     }
