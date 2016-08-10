@@ -21,7 +21,7 @@ phil_scope = parse("""
   refine_to_hierarchy_level = 2
     .type = int
     .help = maximum level to refine cspad to
-  refine_distance = False
+  refine_distance = True
     .type = bool
     .help = If true, allow root hierarchy level to refine in Z. Otherwise fix this \
             axis. Regardless, higher hierarchy levels will refine in Z.
@@ -119,12 +119,9 @@ def run(args):
 
   if params.data_phil is None:
     for path in paths:
-      for filename in os.listdir(path):
-        if params.reflections in filename:
-          exp_path = os.path.join(path, filename.rstrip("_%s.pickle"%params.reflections) + "_refined_experiments.json")
-          if not os.path.exists(exp_path): continue
-          all_exp.append(exp_path)
-          all_ref.append(os.path.join(path, filename))
+      exp, ref = find_files(path, params.reflections)
+      all_exp.extend(exp)
+      all_ref.extend(ref)
 
     if params.split_dataset:
       import re
@@ -175,6 +172,17 @@ def run(args):
     assert params.n_subset is None
     assert not params.split_dataset
     refine(params, merged_scope, params.data_phil)
+
+def find_files(path, reflections):
+  all_exp = []
+  all_ref = []
+  for filename in os.listdir(path):
+    if reflections in filename:
+      exp_path = os.path.join(path, filename.rstrip("_%s.pickle"%reflections) + "_refined_experiments.json")
+      if not os.path.exists(exp_path): continue
+      all_exp.append(exp_path)
+      all_ref.append(os.path.join(path, filename))
+  return all_exp, all_ref
 
 def generate_exp_list(params, all_exp, all_ref):
   if params.n_subset is not None:
@@ -248,9 +256,9 @@ def refine(params, merged_scope, combine_phil):
     refine_phil_file = "%s_refine_level%d.phil"%(params.tag, i)
     if i == 0:
       if params.refine_distance:
-        diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
-      else:
         diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
+      else:
+        diff_phil = "refinement.parameterisation.detector.fix_list=Dist1,Tau1\n" # fix detector rotz, distance
     else:
       diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
 
