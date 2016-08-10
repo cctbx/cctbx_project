@@ -1,9 +1,9 @@
 from __future__ import division
 
-from libtbx.scheduling import SchedulingError
+from libtbx.scheduling import SetupError
 
 # Module exception
-class ConfigurationError(SchedulingError):
+class ConfigurationError(SetupError):
   """
   Error in setting up the PHIL generator
   """

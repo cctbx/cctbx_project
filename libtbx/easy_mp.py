@@ -495,7 +495,8 @@ def parallel_map (
     callback=None,
     preserve_order=True,
     preserve_exception_message=False,
-    use_manager=False) :
+    use_manager=False,
+    stacktrace_handling = "ignore") :
   """
   Generic parallel map() implementation for a variety of platforms, including
   the multiprocessing module and supported queuing systems, via the module
@@ -526,8 +527,8 @@ def parallel_map (
     processes = params.nproc
     qsub_command = params.qsub_command
 
-  from libtbx.queuing_system_utils.processing import errors
   from libtbx.utils import Sorry
+  from libtbx.scheduling import SetupError
 
   if processes == 1 and "LIBTBX_FORCE_PARALLEL" not in os.environ:
     from libtbx.scheduling import mainthread
@@ -565,14 +566,14 @@ def parallel_map (
         )
 
       assert method in technology.platforms # perhaps something less intrusive
-      from libtbx.scheduling import file_queue
 
       try:
         jfactory = technology.jfactory( platform = method, command = qsub_command )
 
-      except errors.BatchQueueError, e:
-        raise Sorry, "Queue error: %s" % e
+      except SetupError, e:
+        raise Sorry, e
 
+      from libtbx.scheduling import file_queue
       qfactory = file_queue.qfactory()
 
       if processes is Auto or processes is None:
@@ -587,7 +588,20 @@ def parallel_map (
       capacity = capacity,
       )
 
-  from libtbx.scheduling import holder
+  import libtbx.scheduling
+
+  if stacktrace_handling == "ignore":
+    sthandler = libtbx.scheduling.ignore
+
+  elif stacktrace_handling == "excepthook":
+    sthandler = libtbx.scheduling.excepthook
+
+  elif stacktrace_handling == "decorate":
+    sthandler = libtbx.scheduling.decorate
+
+  else:
+    raise Sorry, "Unknown stacktrace handling method: %s" % stacktrace_handling
+
   from libtbx.scheduling import parallel_for
 
   if callback is None:
@@ -595,22 +609,23 @@ def parallel_map (
 
   results = []
 
-  with holder( creator = creator ) as manager:
+  with libtbx.scheduling.holder( creator = creator, stacktrace = sthandler ) as manager:
     adfunc = iterable_type( func )
-    pfi = parallel_for.iterator(
-      calculations = ( ( adfunc, ( args, ), {} ) for args in iterable ),
-      manager = manager,
-      keep_input_order = preserve_order,
-      )
 
     try:
+      pfi = parallel_for.iterator(
+        calculations = ( ( adfunc, ( args, ), {} ) for args in iterable ),
+        manager = manager,
+        keep_input_order = preserve_order,
+        )
+
       for ( calc, res ) in pfi:
         result = res()
         results.append( result )
         callback( result )
 
-    except errors.BatchQueueError, e:
-      raise Sorry, "Queue error: %s" % e
+    except SetupError, e:
+      raise Sorry, e
 
   return results
 

@@ -1,10 +1,60 @@
 from __future__ import division
 
 from libtbx.queuing_system_utils import processing
+from libtbx.queuing_system_utils.processing import errors
+
+from libtbx.scheduling import SetupError
+
+class Job(processing.Job):
+  """
+  Customisation of the processing.Job class that translates errors into SetupError
+  """
+
+  @staticmethod
+  def __exception_converting_call(self, name):
+
+    try:
+      return getattr( super( Job, self ), name )()
+
+    except errors.BatchQueueError, e:
+      raise SetupError, "Queue error: %s" % e
+
+
+  @property
+  def exitcode(self):
+
+    try:
+      return super( self, Job ).exitcode
+
+    except errors.BatchQueueError, e:
+      raise SetupError, "Queue error: %s" % e
+
+
+  def start(self):
+
+    return self.__exception_converting_call( name = "start" )
+
+
+  def is_alive(self):
+
+    return self.__exception_converting_call( name = "is_alive" )
+
+
+  def join(self):
+
+    return self.__exception_converting_call( name = "join" )
+
+
+  def terminate(self):
+
+    return self.__exception_converting_call( name = "terminate" )
+
 
 class JobFactory(object):
   """
-  Creator for Queue.Job objects
+  Creator for Job objects
+
+  Note this bypasses the Qinteface's own Job method
   """
 
   def __init__(self,
@@ -20,19 +70,29 @@ class JobFactory(object):
     ):
 
     from libtbx.queuing_system_utils.processing import transfer
-    self.qinterface = processing.INTERFACE_FOR[ platform ][0](
-      name = name,
-      command = command,
-      asynchronous = asynchronous,
-      input = transfer.TemporaryFile if use_target_file else transfer.Stdin,
-      include = include,
-      poller = poller,
-      handler = handler,
-      save_error = save_error,
-      display_stderr = False,
-      )
+
+    try:
+      self.qinterface = processing.INTERFACE_FOR[ platform ][0](
+        name = name,
+        command = command,
+        asynchronous = asynchronous,
+        input = transfer.TemporaryFile if use_target_file else transfer.Stdin,
+        include = include,
+        poller = poller,
+        handler = handler,
+        save_error = save_error,
+        display_stderr = False,
+        )
+
+    except errors.BatchQueueError, e:
+      raise SetupError, "Queue error: %s" % e
 
 
   def __call__(self, target, args = (), kwargs = {}):
 
-    return self.qinterface.Job( target = target, args = args, kwargs = kwargs)
+    return Job(
+      qinterface = self.qinterface,
+      target = target,
+      args = args,
+      kwargs = kwargs,
+      )

@@ -10,31 +10,39 @@ def set_last_exception(exception, printout):
   __last_exception = ( exception, printout )
 
 
+def cleanup():
+
+  set_last_exception( None, None )
+
+
 def exc_info():
 
   return __last_exception
+
+
+def is_enabled():
+
+  return __prev_excepthook is not None
 
 
 def enable():
 
   global __prev_excepthook
 
-  if __prev_excepthook is None:
+  if not is_enabled():
     import sys
     __prev_excepthook = sys.excepthook
     sys.excepthook = stacktrace_excepthook
-    set_last_exception( None, None )
 
 
 def disable():
 
   global __prev_excepthook
 
-  if __prev_excepthook is not None:
+  if is_enabled():
     import sys
     sys.excepthook = __prev_excepthook
     __prev_excepthook = None
-    set_last_exception( None, None )
 
 
 def stacktrace_excepthook(ex_cls, ex, tb):
