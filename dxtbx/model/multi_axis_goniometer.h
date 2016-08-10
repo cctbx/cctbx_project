@@ -87,7 +87,9 @@ namespace dxtbx { namespace model {
 
     /* Calculate the rotation axis */
     vec3 <double> calculate_rotation_axis() {
-      return setting_rotation_ * axes_[scan_axis_];
+      // if we are using the setting rotation then this should be 
+      // applied before this axis => do not include the setting here...
+      return axes_[scan_axis_];
     }
 
     /* Calculate the fixed rotation */
