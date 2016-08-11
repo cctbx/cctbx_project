@@ -2264,6 +2264,7 @@ mmtbx/refinement/real_space/tst_individual_sites_3.py -text
 mmtbx/refinement/real_space/tst_monitor.py -text
 mmtbx/refinement/real_space/tst_rigid_body.py -text
 mmtbx/refinement/real_space/tst_weight.py -text
+mmtbx/refinement/real_space/utils.py -text
 mmtbx/refinement/real_space/weight.py -text
 mmtbx/refinement/refinement_flags.py -text
 mmtbx/refinement/select_best_starting_model.py -text
@@ -2281,6 +2282,7 @@ mmtbx/refinement/tst_select_best_starting_model.py -text
 mmtbx/refinement/tst_tardy_comprehensive.py svneol=native#text/x-python
 mmtbx/refinement/tst_tardy_eval.py svneol=native#text/x-python
 mmtbx/refinement/tst_tardy_pdb.py svneol=native#text/x-python
+mmtbx/refinement/utils.py -text
 mmtbx/refinement/weights_params.py -text
 mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
 mmtbx/regression/__init__.py -text
