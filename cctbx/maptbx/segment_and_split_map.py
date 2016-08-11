@@ -177,7 +177,9 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = resolution
        .help = Nominal resolution of the map. This is used later to decide on\
-               resolution cutoffs for Fourier inversion of the map
+               resolution cutoffs for Fourier inversion of the map. Note: \
+               the resolution is not cut at this value, it is cut at \
+               resolution*d_min_ratio if at all.
 
      b_iso = None
        .type = float
@@ -199,15 +201,26 @@ master_phil = iotbx.phil.parse("""
                connected regions vs b_iso to identify sharpening (excessive \
                sharpening leads to a very large number of regions)
 
+     k_sharpen = 10
+       .type = float
+       .short_caption = sharpening transition
+       .help = Steepness of transition between sharpening (up to resolution \
+           ) and not sharpening (d < resolution).  Note: for blurring, \
+           all data are blurred (regardless of resolution), while for \
+           sharpening, only data with d about resolution or lower are \
+           sharpened. This prevents making very high-resolution data too \
+           strong.  Note 2: if k_sharpen is zero or None, then no \
+           transition is applied and all data is sharpened or blurred.
+
      search_b_min = None
        .type = float
        .short_caption = Low bound for b_iso search
-       .help = Low bound for b_iso search. Only applies if auto_sharpen is sed
+       .help = Low bound for b_iso search. Only applies if auto_sharpen is set
 
      search_b_max = None
        .type = float
        .short_caption = High bound for b_iso search
-       .help = High bound for b_iso search. Only applies if auto_sharpen is sed
+       .help = High bound for b_iso search. Only applies if auto_sharpen is set
 
      search_b_n = None
        .type = int
@@ -955,14 +968,32 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
 
 
 def apply_sharpening(n_real=None,b_sharpen=None,crystal_symmetry=None,
-    f_array=None,phases=None,d_min=None,out=sys.stdout):
-    from cctbx import adptbx # next lines from xtriage (basic_analysis.py)
-    b_cart_aniso_removed=[ b_sharpen, b_sharpen, b_sharpen, 0, 0, 0]
-    from mmtbx.scaling import absolute_scaling
-    u_star_aniso_removed=adptbx.u_cart_as_u_star(
-      f_array.unit_cell(), adptbx.b_as_u( b_cart_aniso_removed  ) )
-    f_array_sharpened=absolute_scaling.anisotropic_correction(
-      f_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
+    f_array=None,phases=None,d_min=None,k_sharpen=None,out=sys.stdout):
+    if b_sharpen < 0 or k_sharpen<=0 or k_sharpen is None or d_min is None:
+      # 2016-08-10 original method: apply b_sharpen to all data
+      # Use this if blurring (b_sharpen<0) or if k_sharpen is not set
+      from cctbx import adptbx # next lines from xtriage (basic_analysis.py)
+      b_cart_aniso_removed=[ b_sharpen, b_sharpen, b_sharpen, 0, 0, 0]
+      from mmtbx.scaling import absolute_scaling
+      u_star_aniso_removed=adptbx.u_cart_as_u_star(
+        f_array.unit_cell(), adptbx.b_as_u( b_cart_aniso_removed  ) )
+      f_array_sharpened=absolute_scaling.anisotropic_correction(
+        f_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
+    else:
+      # Apply sharpening only to data from infinity to d_min, with transition
+      # steepness of k_sharpen.
+      data_array=f_array.data()
+      sthol_array=f_array.sin_theta_over_lambda_sq()
+      d_spacings=f_array.d_spacings()
+      scale_array=flex.double()
+      import math
+      for x,(ind,sthol),(ind1,d) in zip(data_array,sthol_array,d_spacings):
+        value=min(20.,max(-20.,k_sharpen*(d_min-d)))
+        log_scale=b_sharpen*sthol/(1.+math.exp(value))
+        scale_array.append(math.exp(log_scale))
+      data_array=data_array*scale_array
+      f_array_sharpened=f_array.customized_copy(data=data_array)
+
     res_cut_array=f_array_sharpened.resolution_filter(d_max=None, d_min=d_min)
     actual_b_iso=get_b_iso(res_cut_array)
     print >>out, "B-iso after sharpening by b_sharpen=%5.1f is %7.2f\n" %(
@@ -985,7 +1016,8 @@ def apply_sharpening(n_real=None,b_sharpen=None,crystal_symmetry=None,
     return map_data
 
 def sharpen_map(map_data=None,crystal_symmetry=None,
-       d_min_ratio=None,d_min=None,b_iso=None,out=sys.stdout):
+       d_min_ratio=None,d_min=None,b_iso=None,
+       k_sharpen=None,out=sys.stdout):
 
     f_array,phases=get_f_phases_from_map(map_data=map_data,
        crystal_symmetry=crystal_symmetry,d_min=d_min,
@@ -1003,7 +1035,7 @@ def sharpen_map(map_data=None,crystal_symmetry=None,
     map_data=apply_sharpening(n_real=map_data.all(),b_sharpen=b_sharpen,
       crystal_symmetry=crystal_symmetry,
       f_array=f_array,phases=phases,
-
+      k_sharpen=k_sharpen,
       d_min=d_min,out=out)
 
     return map_data
@@ -1205,6 +1237,7 @@ def get_params(args,out=sys.stdout):
     map_data=sharpen_map(map_data=map_data,crystal_symmetry=crystal_symmetry,
       d_min=params.crystal_info.resolution,
       d_min_ratio=params.crystal_info.d_min_ratio,
+      k_sharpen=params.crystal_info.k_sharpen,
       b_iso=params.crystal_info.b_iso,out=out)
 
     if params.output_files.sharpening_map_file:
@@ -3929,7 +3962,9 @@ def run_auto_sharpen(
         b_sharpen=-delta_b_iso,
         crystal_symmetry=tracking_data.crystal_symmetry,
         f_array=f_array,phases=phases,
-        d_min=tracking_data.params.crystal_info.resolution,out=out)
+        d_min=tracking_data.params.crystal_info.resolution,
+        k_sharpen=tracking_data.params.crystal_info.k_sharpen,
+        out=out)
 
       b_vs_region.b_iso=b_iso
       if fixed_threshold is not None:
@@ -3972,6 +4007,7 @@ def run_auto_sharpen(
         crystal_symmetry=tracking_data.crystal_symmetry,
         f_array=f_array,phases=phases,
         d_min=tracking_data.params.crystal_info.resolution,
+        k_sharpen=tracking_data.params.crystal_info.k_sharpen,
         out=out)
       # And set shifted_map_info if map_data is new
       shifted_sharpened_map_file=os.path.join(
