@@ -452,6 +452,7 @@ def minimize_wrapper_for_ramachandran(
   if reference_rotamers and original_pdb_h is not None:
     # make selection excluding rotamer outliers
     from mmtbx.rotamer.rotamer_eval import RotamerEval
+    # print "Excluding rotamer outliers"
     rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
     non_rot_outliers_selection = flex.bool(hierarchy.atoms_size(), False)
     for model in original_pdb_h.models():
@@ -462,6 +463,8 @@ def minimize_wrapper_for_ramachandran(
             if ev != "OUTLIER" or ev is None:
               for a in res.atoms():
                 non_rot_outliers_selection[a.i_seq] = True
+            # else:
+            #   print "  ", res.id_str()
 
 
     rm_params = reference_model_params.extract()
@@ -519,7 +522,7 @@ def minimize_wrapper_for_ramachandran(
       correct_special_position_tolerance=1.0,
       ncs_restraints_group_list=ncs_restraints_group_list,
       max_number_of_iterations=300,
-      number_of_macro_cycles=5,
+      number_of_macro_cycles=10,
       bond=True,
       nonbonded=True,
       angle=True,
@@ -543,13 +546,17 @@ def minimize_wrapper_for_ramachandran(
             selection  = sel,
             sigma      = reference_sigma,
             top_out_potential=True))
+  # grm.geometry.write_geo_file(
+  #     sites_cart=hierarchy.atoms().extract_xyz(),
+  #     site_labels=[atom.id_str() for atom in hierarchy.atoms()],
+  #     file_name="last_gm.geo")
   obj = run2(
       restraints_manager       = grm,
       pdb_hierarchy            = hierarchy,
       correct_special_position_tolerance = 1.0,
       ncs_restraints_group_list=ncs_restraints_group_list,
       max_number_of_iterations = 300,
-      number_of_macro_cycles   = 5,
+      number_of_macro_cycles   = 10,
       bond                     = True,
       nonbonded                = True,
       angle                    = True,
