@@ -1753,7 +1753,7 @@ class pdb_strand(structure_base):
       sense) :
     adopt_init_args(self, locals())
     assert (sheet_id > 0) and (strand_id > 0)
-    assert (sense in [-1, 0, 1]), "Bad sense."
+    assert (sense in [-1, 0, 1]), "Bad sense: '%s'" % sense
     self.start_chain_id = self.parse_chain_id(start_chain_id)
     self.end_chain_id = self.parse_chain_id(end_chain_id)
     self.set_start_resseq(self.start_resseq)
