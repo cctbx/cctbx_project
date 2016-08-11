@@ -4,6 +4,7 @@ Mainthread
 Offers low-overhead execution on a single thread
 
 Methods:
+  has_results(): returns whether there are any results available
   results(): return an iterator yielding ( identifier, result ) tuples
   submit(target, args = (), kwargs = {}): submits job, return identifier
   is_empty(): returns whether there are no more jobs or results waiting
@@ -37,10 +38,15 @@ class manager(object):
     return len( self.outqueue )
 
 
+  def has_results(self):
+
+    return self.inqueue
+
+
   def results(self):
 
     while not self.is_empty():
-      while not self.inqueue:
+      while not self.has_results():
         self.poll()
 
       yield self.inqueue.popleft()

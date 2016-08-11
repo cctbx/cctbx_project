@@ -4,6 +4,7 @@ Job scheduler
 Dispatch jobs with each submitted calculation
 
 Common methods:
+  has_results(): returns whether there are any results available
   results(): return an iterator yielding ( identifier, result ) tuples
   submit(target, args = (), kwargs = {}): submits job, return identifier
   is_empty(): returns whether there are no more jobs or results waiting
@@ -14,8 +15,8 @@ Common methods:
   terminate(): kills all processing
 
 Scheduler methods:
-  job_count(): return number of jobs currently running
-  process_count(): return number of currently active processes
+  job_count(): return number of unfinished jobs (waiting + running)
+  process_count(): return number of running processes
 """
 
 from __future__ import division
@@ -115,10 +116,15 @@ class manager(object):
     return self.capacity.is_full( njobs = self.process_count() )
 
 
+  def has_results(self):
+
+    return self.completed_results
+
+
   def results(self):
 
     while not self.is_empty():
-      while not self.completed_results:
+      while not self.has_results():
         self.wait()
         self.poll()
 

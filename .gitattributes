@@ -1713,6 +1713,7 @@ libtbx/scheduling/parallel_for.py -text
 libtbx/scheduling/philgen.py -text
 libtbx/scheduling/process_pool.py -text
 libtbx/scheduling/result.py -text
+libtbx/scheduling/shared_resource.py -text
 libtbx/scheduling/socket_queue.py -text
 libtbx/scheduling/stacktrace.py -text
 libtbx/scheduling/thread_handler.py -text

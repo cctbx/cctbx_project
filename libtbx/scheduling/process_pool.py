@@ -5,6 +5,7 @@ Pools offer lower control over execution, as it is not possible to know the
 state of individual workers
 
 Common methods:
+  has_results(): returns whether there are any results available
   results(): return an iterator yielding ( identifier, result ) tuples
   submit(target, args = (), kwargs = {}): submits job, return identifier
   is_empty(): returns whether there are no more jobs or results waiting
@@ -15,8 +16,8 @@ Common methods:
   terminate(): kills all processing
 
 Pool methods:
-  job_count(): return number of jobs currently running
-  worker_count(): return number of currently active workers
+  job_count(): return number of jobs submitted (waiting + running)
+  worker_count(): return an approximate number of active workers
 """
 
 from __future__ import division
@@ -463,10 +464,15 @@ class manager(object):
     return self.autoscaling.capacity <= self.job_count()
 
 
+  def has_results(self):
+
+    return self.completed_results
+
+
   def results(self):
 
     while not self.is_empty():
-      while not self.completed_results:
+      while not self.has_results():
         self.wait()
         self.poll()
         self.manage()

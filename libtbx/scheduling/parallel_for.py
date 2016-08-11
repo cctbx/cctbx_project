@@ -146,6 +146,60 @@ class submission_order(object):
       del self.result_for[ top ]
 
 
+class ongoing_state(object):
+  """
+  The iteration is ongoing, iterable has not been exhausted
+
+  Note this is a singleton
+  """
+
+  @staticmethod
+  def iterate(pfi):
+
+    ( identifier, calcdata ) = pfi.pooler.submit_one_job(
+      calcsiter = pfi.calcsiter,
+      manager = pfi.manager,
+      )
+
+    pfi.calculation_data_for[ identifier ] = calcdata
+    pfi.orderer.next_submitted_job( identifier = identifier )
+
+
+  @classmethod
+  def fillup(cls, pfi):
+
+    if pfi.manager.is_empty():
+      cls.iterate( pfi = pfi )
+
+    while not pfi.manager.is_full():
+      cls.iterate( pfi = pfi )
+
+
+  @staticmethod
+  def emptyhandler():
+
+    pass
+
+
+class exhausted_state(object):
+  """
+  The iteration is finishing, iterable has been exhausted
+
+  Note this is a singleton
+  """
+
+  @staticmethod
+  def fillup(pfi):
+
+    pass
+
+
+  @staticmethod
+  def emptyhandler():
+
+    raise StopIteration
+
+
 class iterator(object):
   """
   Creates an iterator that executes calls on a Manager-like object
@@ -177,7 +231,6 @@ class iterator(object):
       self.orderer = finishing_order
 
     self.resume()
-    self.submit()
 
 
   def __del__(self):
@@ -201,55 +254,41 @@ class iterator(object):
 
     while not self.resiter:
       self.process_next_one()
-      self.submit()
+
+      try:
+        self.state.fillup( pfi = self )
+
+      except StopIteration:
+        self.state = exhausted_state
 
     return self.resiter.popleft()
 
 
   def suspend(self):
 
-    self.submit = self._stopped
+    self.state = exhausted_state
 
 
   def resume(self):
 
-    self.submit = self._ongoing
-    self.submit()
+    self.state = ongoing_state
 
 
   # Internal
   def process_next_one(self):
 
-    ( identifier, result ) = self.manager.results().next() # raise StopIteration
-    processed = self.pooler.process_one_job(
-      calculation = self.calculation_data_for[ identifier ],
-      result = result,
-      )
-    self.orderer.next_returned_result(
-      identifier = identifier,
-      result = processed,
-      pooler = self.pooler,
-      resiter = self.resiter,
-      )
+    try:
+      ( identifier, result ) = self.manager.results().next() # raise StopIteration
+      processed = self.pooler.process_one_job(
+        calculation = self.calculation_data_for[ identifier ],
+        result = result,
+        )
+      self.orderer.next_returned_result(
+        identifier = identifier,
+        result = processed,
+        pooler = self.pooler,
+        resiter = self.resiter,
+        )
 
-  # Iterable state
-  def _ongoing(self):
-
-    while not self.manager.is_full():
-      try:
-        ( identifier, calcdata ) = self.pooler.submit_one_job(
-          calcsiter = self.calcsiter,
-          manager = self.manager,
-          )
-
-      except StopIteration:
-        self.suspend()
-        break
-
-      self.calculation_data_for[ identifier ] = calcdata
-      self.orderer.next_submitted_job( identifier = identifier )
-
-
-  def _stopped(self):
-
-    pass
+    except StopIteration:
+      self.state.emptyhandler()
