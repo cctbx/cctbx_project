@@ -310,16 +310,21 @@ class ThreeProteinResidues(list):
     else: return ramalyze.RAMA_GENERAL
 
   def get_dummy_dihedral_proxies(self, only_psi_phi_pairs=True):
+    #
+    # Needs testing. One of the candidates is 3j0d, chain I, the first
+    # residue is missing CA atom.
+    #
     from cctbx.geometry_restraints import dihedral_proxy
     atoms = self.get_phi_psi_atoms(only_psi_phi_pairs=only_psi_phi_pairs)
     proxies = []
     if atoms is None: return proxies
     for dihedral in atoms:
-      proxy = dihedral_proxy(
-          i_seqs=[atom.i_seq for atom in dihedral],
-          angle_ideal=0,
-          weight=1)
-      proxies.append(proxy)
+      if None not in dihedral:
+        proxy = dihedral_proxy(
+            i_seqs=[atom.i_seq for atom in dihedral],
+            angle_ideal=0,
+            weight=1)
+        proxies.append(proxy)
     return proxies
 
   def apply_updates(self,
