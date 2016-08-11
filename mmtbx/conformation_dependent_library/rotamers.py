@@ -3,12 +3,15 @@ import sys
 import time
 
 from libtbx.utils import Sorry
-from mmtbx.conformation_dependent_library.rdl_database import rdl_database
+from mmtbx.conformation_dependent_library.rdl_database import \
+  get_rdl_database
 from mmtbx.validation import rotalyze
 
 substitute_residue_lookup = {
   "MSE" : "MET",
   }
+
+rdl_database = get_rdl_database()
 
 def get_rotamer_data(atom_group,
                      sa,
@@ -272,13 +275,18 @@ def update_restraints(hierarchy,
           if rc is None: continue
           rotamer_name, chis, value = rc
           if verbose:
+            chis_str = "["
+            if chis:
+              for chi in chis:
+                chis_str += " %6.1f," % chi
+              chis_str = chis_str[:-1]+']'
             try:
               print >> log, "  %s %s %s %-5s %-60s %0.1f" % (
                 chain.id,
                 atom_group.resname,
                 residue_group.resseq,
                 rotamer_name,
-                chis,
+                chis_str,
                 value,
               )
             except TypeError, e:
@@ -287,7 +295,7 @@ def update_restraints(hierarchy,
                 atom_group.resname,
                 residue_group.resseq,
                 rotamer_name,
-                chis,
+                chis_str,
                 value,
               )
           if loud: print 'exclude_backbone',exclude_backbone

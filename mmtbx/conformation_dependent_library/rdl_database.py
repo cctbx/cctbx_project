@@ -3636,10 +3636,39 @@ rdl_database = {
   },
 }
 
+def get_rdl_database(apply_unrestrained_diehdrals=True):
+  from investigate_rotamer_space import results
+  pdbs = []
+  if apply_unrestrained_diehdrals:
+    for resname, rotamers in results.items():
+      rdl_d = rdl_database.get(resname, None)
+      if type(rotamers)==type(1): continue
+      for rotamer, action in rotamers.items():
+        rdl_d_r = rdl_d.get(rotamer, None)
+        if action is None: continue
+        for dihedral, restraint in action.items():
+          rdl_d_r[dihedral] = restraint
+          print "RDL update",resname, rotamer, dihedral, restraint
+          pdbs.append("%s_%s.pdb" % (resname.lower(), rotamer))
+  print 'tar cvf rdls.tar ' + ' '.join(pdbs)
+  return rdl_database
 
 def run(args):
   assert len(args) == 0
+  rdl_database = get_rdl_database()
+  print '='*80
   print rdl_database["ARG"]["mtp85"][("N", "CA", "C")]
+  for resname, rotamer, key, period in [
+    ["ASP", 'p0',   ("CA", "CB", "CG", "OD1"), 36],
+    ["TYR", 'm-10', ("CA", "CB", "CG", "CD1"), 2],
+    ["TYR", 'm-80', ("CA", "CB", "CG", "CD1"), 1],
+    ["GLN", 'mp10', ("CB", "CG", "CD", "OE1"), 1],
+    ]:
+    print resname, rotamer, key, rdl_database[resname][rotamer][key]
+    assert rdl_database[resname][rotamer][key][-1]==period, "%s != %s" % (
+      rdl_database[resname][rotamer][key],
+      period,
+      )
   for res_type in sorted(rdl_database):
     print res_type, len(rdl_database[res_type])
 
