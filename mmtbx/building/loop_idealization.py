@@ -81,7 +81,7 @@ class loop_idealization():
         berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
 
     # self.berkeley_p_before_minimization_rama_outliers = None
-    self.berkeley_p_after_minimiaztion_rama_outliers = None
+    self.berkeley_p_after_minimiaztion_rama_outliers = self.berkeley_p_before_minimization_rama_outliers
     self.ref_exclusion_selection = ""
     number_of_ccd_trials = 0
     # print "logic expr outcome:", (number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
@@ -92,7 +92,7 @@ class loop_idealization():
     if not self.params.enabled:
       print >> self.log, "Loop idealization is not enabled, use 'enabled=True'."
     while (number_of_ccd_trials < self.params.number_of_ccd_trials
-        and self.berkeley_p_before_minimization_rama_outliers > 0.001
+        and self.berkeley_p_after_minimiaztion_rama_outliers > 0.001
         and self.params.enabled):
       print "CCD try number, outliers:", number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
       number_of_ccd_trials += 1
@@ -135,34 +135,34 @@ class loop_idealization():
       berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
       self.berkeley_p_before_minimization_rama_outliers = \
           berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
-    if len(self.ref_exclusion_selection) > 0:
-      self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
-    # self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minimization.pdb" % self.params.output_prefix)
-    ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
-    self.p_before_minimization_rama_outliers = ram.out_percent
-
-    duke_count = ram.get_outliers_count_and_fraction()[0]
-    if berkeley_count != duke_count:
-      print >> self.log, "Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count
-
-    if self.params.minimize_whole:
-      print >> self.log, "minimizing whole thing..."
-      print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
-      # print >> sel
-      minimize_wrapper_for_ramachandran(
-          hierarchy=self.resulting_pdb_h,
-          xrs=xrs,
-          original_pdb_h=self.original_pdb_h,
-          excl_string_selection=self.ref_exclusion_selection,
-          log=None,
-          ss_annotation=self.secondary_structure_annotation)
-      # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
+      if len(self.ref_exclusion_selection) > 0:
+        self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
+      # self.resulting_pdb_h.write_pdb_file(file_name="%s_before_minimization.pdb" % self.params.output_prefix)
       ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
-      self.p_after_minimiaztion_rama_outliers = ram.out_percent
-      berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+      self.p_before_minimization_rama_outliers = ram.out_percent
+
       duke_count = ram.get_outliers_count_and_fraction()[0]
-      self.berkeley_p_after_minimiaztion_rama_outliers = \
-          berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
+      if berkeley_count != duke_count:
+        print >> self.log, "Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count
+
+      if self.params.minimize_whole:
+        print >> self.log, "minimizing whole thing..."
+        print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
+        # print >> sel
+        minimize_wrapper_for_ramachandran(
+            hierarchy=self.resulting_pdb_h,
+            xrs=xrs,
+            original_pdb_h=self.original_pdb_h,
+            excl_string_selection=self.ref_exclusion_selection,
+            log=None,
+            ss_annotation=self.secondary_structure_annotation)
+        # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
+        ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
+        self.p_after_minimiaztion_rama_outliers = ram.out_percent
+        berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+        duke_count = ram.get_outliers_count_and_fraction()[0]
+        self.berkeley_p_after_minimiaztion_rama_outliers = \
+            berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after min:", berkeley_count, duke_count
       else:
