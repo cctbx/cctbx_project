@@ -1757,7 +1757,8 @@ class PhenixExternalRegression(PhenixBuilder):
          ['modules']],
         ['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
         ['Amber configure',
-          ["./configure",
+          ['yes', 'n', "|", # needed for questions in configure file
+           "./configure",
            "--no-updates",
            "-noX11",
            "-macAccelerate", # ignored if not on Mac
