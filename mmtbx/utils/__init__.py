@@ -2975,7 +2975,9 @@ class extract_box_around_model_and_map(object):
                box_cushion,
                selection=None,
                density_select=None,
-               threshold=None):
+               threshold=None,
+               mask_atoms=False,
+               mask_atoms_atom_radius=3.0):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     self.initial_shift = None
@@ -3064,17 +3066,19 @@ class extract_box_around_model_and_map(object):
     else:
       self.shift_to_map_boxed_sites_back = None
     ###
-    #import boost.python
-    #cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
-    #mask = cctbx_maptbx_ext.mask(
-    #  sites_frac                  = self.xray_structure_box.sites_frac(),
-    #  unit_cell                   = self.xray_structure_box.unit_cell(),
-    #  n_real                      = self.map_box.all(),
-    #  mask_value_inside_molecule  = 1,
-    #  mask_value_outside_molecule = 0,
-    #  radii                       =
-    #    flex.double(self.xray_structure_box.sites_frac().size(), 2.0))
-    #self.map_box = self.map_box*mask
+    if(mask_atoms):
+      import boost.python
+      cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+      radii = flex.double(
+        self.xray_structure_box.sites_frac().size(), mask_atoms_atom_radius)
+      mask = cctbx_maptbx_ext.mask(
+        sites_frac                  = self.xray_structure_box.sites_frac(),
+        unit_cell                   = self.xray_structure_box.unit_cell(),
+        n_real                      = self.map_box.all(),
+        mask_value_inside_molecule  = 1,
+        mask_value_outside_molecule = 0,
+        radii                       = radii)
+      self.map_box = self.map_box*mask
     ###
 
   def select_box(self,threshold,xrs=None):
@@ -3191,13 +3195,12 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       labels=flex.std_string([" "]))
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
-    box_map_coeffs = self.box_map_coefficients(d_min = d_min,
-      resolution_factor = resolution_factor)
+    box_map_coeffs = self.box_map_coefficients(d_min = d_min)
     fft_map = box_map_coeffs.fft_map(resolution_factor=resolution_factor)
     fft_map.apply_sigma_scaling()
     return fft_map
 
-  def box_map_coefficients(self, d_min, resolution_factor):
+  def box_map_coefficients(self, d_min):
     from scitbx import fftpack
     fft = fftpack.real_to_complex_3d([i for i in self.map_box.all()])
     map_box = maptbx.copy(
@@ -3213,16 +3216,16 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       complex_map=map_box,
       conjugate_flag=True,
       discard_indices_affected_by_aliasing=True)
+    n = map_box.all()[0] * map_box.all()[1] * map_box.all()[2]
     box_map_coeffs = miller.set(
       crystal_symmetry=cs,
       anomalous_flag=False,
       indices=box_structure_factors.miller_indices(),
-      ).array(data=box_structure_factors.data())
+      ).array(data=box_structure_factors.data()/n)
     return box_map_coeffs
 
   def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz"):
-    box_map_coeffs = self.box_map_coefficients(d_min = d_min,
-      resolution_factor = resolution_factor)
+    box_map_coeffs = self.box_map_coefficients(d_min = d_min)
     if(file_name is not None):
       mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
       mtz_object = mtz_dataset.mtz_object()

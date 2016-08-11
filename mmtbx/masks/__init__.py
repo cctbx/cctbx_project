@@ -144,13 +144,18 @@ class bulk_solvent(around_atoms):
     self.data.set_selected(non_uniform_mask > 0, 0)
 
 class asu_mask(object):
-  def __init__(self, xray_structure, d_min=None, n_real=None, mask_params = None):
+  def __init__(self, xray_structure, d_min=None, n_real=None, mask_params = None,
+               atom_radius = None):
     adopt_init_args(self, locals())
     assert [d_min, n_real].count(None) == 1
     if(self.mask_params is None):
       self.mask_params = mask_master_params.extract()
-    self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
-      self.xray_structure)
+    if(atom_radius is None):
+      self.atom_radii = vdw_radii_from_xray_structure(xray_structure =
+        self.xray_structure)
+    else:
+      self.atom_radii = flex.double(self.xray_structure.scatterers().size(),
+        atom_radius)
     if(d_min is not None):
       self.asu_mask = atom_mask(
         unit_cell                = self.xray_structure.unit_cell(),

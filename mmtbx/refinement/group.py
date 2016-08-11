@@ -55,7 +55,7 @@ class sphere_similarity_restraints(object):
     if(to_compute_weight):
       pmin = flex.min(params)
       pmax = flex.max(params)
-      if(abs(pmin-pmax)/abs(pmin+pmax)*2*100<1.e-3):
+      if(abs(pmin+pmax)!=0. and abs(pmin-pmax)/abs(pmin+pmax)*2*100<1.e-3):
         pmean = flex.mean(params)
         n_par = params.size()
         params = flex.double()

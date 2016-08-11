@@ -1447,6 +1447,7 @@ class manager(manager_mixin):
         show = False,
         verbose=None,
         log = None):
+    self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
     o = f_model_all_scales.run(
       fmodel=self, apply_back_trace = apply_back_trace,
@@ -1457,12 +1458,13 @@ class manager(manager_mixin):
 
   def apply_scale_k1_to_f_obs(self, threshold=10):
     assert threshold > 0
-    r_start = self.r_work()
-    one = flex.double(self.f_obs().data().size(), 1)
     k_total = self.k_isotropic()*self.k_anisotropic()
-    sc = flex.sum(one*k_total)/flex.sum(one*one)
-    if(sc == 0 or r_start>0.5 or
-       (abs(sc)<threshold and abs(sc)>1./threshold) or
+    if(k_total.all_ne(1.0)): return
+    r_start = self.r_work()
+    fo = self.f_obs().data()
+    fc = abs(self.f_model()).data()
+    sc = flex.sum(fo*fc)/flex.sum(fc*fc)
+    if(sc == 0 or (abs(sc)<threshold and abs(sc)>1./threshold) or
        self.twin_law is not None): return
     sigmas = self.f_obs().sigmas()
     if(sigmas is not None):
@@ -1470,9 +1472,7 @@ class manager(manager_mixin):
     f_obs_new = self.f_obs().customized_copy(
       data   = self.f_obs().data()/sc,
       sigmas = sigmas)
-    self.update(
-      f_obs         = f_obs_new,
-      k_anisotropic = self.k_anisotropic()/sc)
+    self.update(f_obs = f_obs_new)
     r_final = self.r_work()
     assert approx_equal(r_start, r_final), [r_start, r_final]
 

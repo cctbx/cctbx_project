@@ -204,7 +204,7 @@ def exercise(d_min=1.5, resolution_factor = 0.25):
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
   ####
   target_map_object = group_args(
-    data             = target_map,
+    map_data         = target_map,
     miller_array     = f_calc,
     crystal_gridding = fft_map)
   grm = mmtbx.restraints.manager(

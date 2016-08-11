@@ -355,7 +355,7 @@ class structure_monitor(object):
     current_map = self.compute_map(xray_structure = self.xray_structure)
     return correlation.histogram_per_atom(
       map_1      = current_map,
-      map_2      = self.target_map_object.data,
+      map_2      = self.target_map_object.map_data,
       sites_cart = self.xray_structure.sites_cart(),
       unit_cell  = self.xray_structure.unit_cell(),
       radius     = radius,
@@ -368,21 +368,21 @@ class structure_monitor(object):
       if(per_atom):
         result = correlation.from_map_map_atoms_per_atom(
           map_1      = other_map,
-          map_2      = self.target_map_object.data,
+          map_2      = self.target_map_object.map_data,
           sites_cart = sites_cart,
           unit_cell  = self.xray_structure.unit_cell(),
           radius     = atom_radius)
       else:
         result = correlation.from_map_map_atoms(
           map_1      = other_map,
-          map_2      = self.target_map_object.data,
+          map_2      = self.target_map_object.map_data,
           sites_cart = sites_cart,
           unit_cell  = self.xray_structure.unit_cell(),
           radius     = atom_radius)
     else:
       result = correlation.from_map_map(
         map_1 = other_map,
-        map_2 = self.target_map_object.data)
+        map_2 = self.target_map_object.map_data)
     return result
 
   def show(self, prefix="", log=None):
