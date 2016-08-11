@@ -31,6 +31,9 @@ xtc_phil_str = '''
       .type = bool
       .help = Use to print estimated gain parameters for each event, then exit without attempting \
               further processing.
+    find_spots = True
+      .type = bool
+      .help = Whether to do spotfinding. Needed for indexing/integration
     hit_finder{
       enable = True
         .type = bool
@@ -506,13 +509,26 @@ class InMemScript(DialsProcessScript):
           print "Error caught in main loop"
           print str(e)
       else:
+        import resource
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
         print "Striping events"
         mytimes = [times[i] for i in xrange(len(times)) if (i+rank)%size == 0]
 
+        last = 0
+        first = 0
         for i in xrange(len(mytimes)):
           self.process_event(run, mytimes[i])
+
+          mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+          if i < 50:
+            print "Mem test rank %03d"%rank, i, mem
+            continue
+          print "Mem test rank %03d"%rank, 'Cycle %6d total %7dkB increase %4dkB' % (i, mem, mem - last)
+          if not first:
+            first = mem
+          last = mem
+        print 'Total memory leaked in %d cycles: %dkB' % (i+1-50, mem - first)
 
       run.end()
     ds.end()
@@ -598,6 +614,7 @@ class InMemScript(DialsProcessScript):
     if self.params.format.file_format == 'cbf':
       # stitch together the header, data and metadata into the final dxtbx format object
       cspad_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
+
     elif self.params.format.file_format == 'pickle':
       from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
       cspad_img = FormatPYunspecifiedStillInMemory(image_dict)
@@ -613,6 +630,10 @@ class InMemScript(DialsProcessScript):
     if self.params.dispatch.estimate_gain_only:
       from dials.command_line.estimate_gain import estimate_gain
       estimate_gain(imgset)
+      return
+
+    if not self.params.dispatch.find_spots:
+      self.debug_write("data_loaded", "done")
       return
 
     datablock = DataBlockFactory.from_imageset(imgset)[0]
