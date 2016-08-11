@@ -68,8 +68,9 @@ class ignore(object):
   @staticmethod
   def exit(exc_type, exc_val, exc_tb):
 
-    from libtbx.scheduling import stacktrace
-    stacktrace.cleanup()
+    if exc_type is None:
+      from libtbx.scheduling import stacktrace
+      stacktrace.cleanup()
 
 
 class excepthook(object):
