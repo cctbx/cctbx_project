@@ -1961,6 +1961,7 @@ mmtbx/conformation_dependent_library/cdl_utils.py -text
 mmtbx/conformation_dependent_library/histidines.py -text
 mmtbx/conformation_dependent_library/hpdl_database.py -text
 mmtbx/conformation_dependent_library/hydrogen_bonding.py -text
+mmtbx/conformation_dependent_library/investigate_rotamer_space.py -text
 mmtbx/conformation_dependent_library/multi_residue_class.py -text
 mmtbx/conformation_dependent_library/omega.py -text
 mmtbx/conformation_dependent_library/omega_database.py -text
