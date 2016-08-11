@@ -20,6 +20,45 @@ namespace mmtbx { namespace detail {
 
 template <typename FloatType=double,
           typename ComplexType=std::complex<double> >
+class d_f_model_d_p_one_h
+{
+public:
+  d_f_model_d_p_one_h(
+    f_model::core<FloatType,ComplexType> const& fm, std::size_t i)
+  {
+    // Note: ss = s**2/4
+    grad_p.resize(fm.n_shells(), 0.);
+    curv_p.resize(fm.n_shells(), 0.);
+    ComplexType f_model      = fm.f_model_no_aniso_scale[i];//fm.f_model[i];
+    FloatType   f_model_abs  = std::abs(f_model);
+    ComplexType f_model_conj = std::conj(f_model);
+    FloatType   f_model_abs_sq = f_model_abs*f_model_abs;
+    FloatType   f_model_abs_qb = f_model_abs*f_model_abs_sq;
+    FloatType k_aniso = 1.;//fm.k_anisotropic[i];
+    FloatType ss = fm.ss[i];
+    if(f_model_abs > 0){
+      for(unsigned short j=0; j<fm.n_shells(); ++j) {
+        ComplexType f_mask        = fm.shell_f_mask(j)[i];
+        ComplexType f_mask_conj   = std::conj(f_mask);
+        FloatType   f_mask_abs    = std::abs(f_mask);
+        FloatType   f_mask_abs_sq = f_mask_abs*f_mask_abs;
+        ComplexType zvs_zsv = f_model*f_mask_conj+f_model_conj*f_mask;
+        FloatType   theta = std::real(zvs_zsv/(2*f_model_abs));
+        grad_p[j] = theta;
+        FloatType   omega = std::real(
+          (4*f_model_abs_sq*f_mask_abs_sq-zvs_zsv*zvs_zsv)/(4*f_model_abs_qb) );
+        curv_p[j] = omega;
+      }
+    }
+  }
+  af::shared<FloatType> grad_p;
+  af::shared<FloatType> curv_p;
+};
+
+//------------------------------------------------------------------------------
+
+template <typename FloatType=double,
+          typename ComplexType=std::complex<double> >
 class d_f_model_d_k_sol_and_d_b_sol_one_h
 {
 public:
@@ -130,19 +169,14 @@ std::size_t i;
 FloatType scale;
 FloatType scale_all;
 FloatType mtsd;
-bool compute_kb_grad;
-bool compute_kb_curv;
 
 public:
   one_h_ls(FloatType const& fo_,
            f_model::core<FloatType,ComplexType> const& fm_,
            std::size_t const& i_,
-           FloatType const& scale_,
-           bool const& compute_kb_grad_,
-           bool const& compute_kb_curv_)
+           FloatType const& scale_)
   :
-  fo(fo_), fm(fm_), i(i_), scale(scale_), compute_kb_grad(compute_kb_grad_),
-  compute_kb_curv(compute_kb_curv_)
+  fo(fo_), fm(fm_), i(i_), scale(scale_)
   {
     FloatType f_model_abs = std::abs(fm.f_model_no_aniso_scale[i]);
     scale_all = scale * fm.k_anisotropic[i];
@@ -150,13 +184,22 @@ public:
     mtsd = -2. * scale_all * diff;
   }
 
-  void compute_kb_grad_curv()
+  void compute_kbp_grad_curv(bool compute_kb_grad,
+                            bool compute_kb_curv,
+                            bool compute_p_grad,
+                            bool compute_p_curv)
   {
-    grad_k_sols.resize(fm.n_shells(), 0.);
-    grad_b_sols.resize(fm.n_shells(), 0.);
-    curv_k_sols.resize(fm.n_shells(), 0.);
-    curv_b_sols.resize(fm.n_shells(), 0.);
+    MMTBX_ASSERT(compute_kb_grad || compute_kb_curv);
+    if(compute_kb_grad) {
+      grad_k_sols.resize(fm.n_shells(), 0.);
+      grad_b_sols.resize(fm.n_shells(), 0.);
+    }
+    if(compute_kb_curv) {
+      curv_k_sols.resize(fm.n_shells(), 0.);
+      curv_b_sols.resize(fm.n_shells(), 0.);
+    }
     FloatType tss = 2*scale_all*scale_all;
+    // kb sol
     if(compute_kb_grad || compute_kb_curv) {
       d_f_model_d_k_sol_and_d_b_sol_one_h<FloatType,ComplexType> r =
         d_f_model_d_k_sol_and_d_b_sol_one_h<FloatType,ComplexType> (fm,i);
@@ -170,6 +213,20 @@ public:
         if(compute_kb_curv) {
           curv_k_sols[j] = tss*gk*gk + mtsd*r.curv_k_sols[j];
           curv_b_sols[j] = tss*gb*gb + mtsd*r.curv_b_sols[j];
+        }
+      }
+    }
+    // p
+    if(compute_p_grad || compute_p_curv) {
+      d_f_model_d_p_one_h<FloatType,ComplexType> r =
+        d_f_model_d_p_one_h<FloatType,ComplexType> (fm,i);
+      for(std::size_t j=0; j<grad_k_sols.size(); ++j) {
+        FloatType gp = r.grad_p[j];
+        if(compute_p_grad) {
+          grad_p_sols[j] = mtsd*gp;
+        }
+        if(compute_p_curv) {
+          curv_p_sols[j] = tss*gp*gp + mtsd*r.curv_p[j];
         }
       }
     }
@@ -187,8 +244,10 @@ public:
   scitbx::af::tiny<FloatType, 6> grad_u_star;
   scitbx::af::shared<FloatType> grad_k_sols;
   scitbx::af::shared<FloatType> grad_b_sols;
+  scitbx::af::shared<FloatType> grad_p_sols;
   scitbx::af::shared<FloatType> curv_k_sols;
   scitbx::af::shared<FloatType> curv_b_sols;
+  scitbx::af::shared<FloatType> curv_p_sols;
 };
 
 template <typename FloatType=double,
@@ -498,18 +557,20 @@ private:
 template <typename FloatType=double,
           typename ComplexType=std::complex<double>,
           typename OneHLsType=detail::one_h_ls<FloatType, ComplexType> >
-class ls_kb_sol_u_star
+class ls_kbp_sol_u_star
 {
 public:
-  ls_kb_sol_u_star() {}
+  ls_kbp_sol_u_star() {}
 
-  ls_kb_sol_u_star(
+  ls_kbp_sol_u_star(
     f_model::core<FloatType,ComplexType> const& f_model,
     af::const_ref<FloatType> const& f_obs,
     FloatType scale,
     bool const& kb_sol_grad,
+    bool const& p_sol_grad,
     bool const& u_star_grad,
-    bool const& kb_sol_curv)
+    bool const& kb_sol_curv,
+    bool const& p_sol_curv)
   {
     MMTBX_ASSERT(f_obs.size() == f_model.f_calc.size());
     if(kb_sol_grad) {
@@ -527,15 +588,15 @@ public:
     sum_f_obs_sq = 0;
     for(std::size_t i=0; i < f_obs.size(); i++) {
       sum_f_obs_sq += f_obs[i]*f_obs[i];
-      OneHLsType one_h = OneHLsType(f_obs[i],f_model,i,scale,
-        kb_sol_grad, kb_sol_curv);
+      OneHLsType one_h = OneHLsType(f_obs[i],f_model,i,scale);
       target_ += one_h.diff * one_h.diff;
       if(u_star_grad) {
         one_h.compute_u_star_grad();
         for(std::size_t j=0; j<6; j++) grad_u_star_[j] += one_h.grad_u_star[j];
       }
+      // kb
       if(kb_sol_grad || kb_sol_curv) {
-        one_h.compute_kb_grad_curv();
+        one_h.compute_kbp_grad_curv(kb_sol_grad, kb_sol_curv, false, false);
         for(std::size_t j=0; j<grad_k_sols_.size(); j++) {
           if(kb_sol_grad) {
             grad_k_sols_[j] += one_h.grad_k_sols[j];
@@ -544,6 +605,18 @@ public:
           if(kb_sol_curv) {
             curv_k_sols_[j] += one_h.curv_k_sols[j];
             curv_b_sols_[j] += one_h.curv_b_sols[j];
+          }
+        }
+      }
+      // p
+      if(p_sol_grad || p_sol_curv) {
+        one_h.compute_kbp_grad_curv(false, false, p_sol_grad, p_sol_curv);
+        for(std::size_t j=0; j<grad_k_sols_.size(); j++) {
+          if(p_sol_grad) {
+            grad_p_sols_[j] += one_h.grad_p_sols[j];
+          }
+          if(p_sol_curv) {
+            curv_p_sols_[j] += one_h.curv_p_sols[j];
           }
         }
       }
@@ -566,14 +639,26 @@ public:
         curv_b_sols_[i] /= sum_f_obs_sq;
       }
     }
+    if(p_sol_grad) {
+      for(std::size_t i=0; i<grad_p_sols_.size(); i++) {
+        grad_p_sols_[i] /= sum_f_obs_sq;
+      }
+    }
+    if(p_sol_curv) {
+      for(std::size_t i=0; i<curv_p_sols_.size(); i++) {
+        curv_p_sols_[i] /= sum_f_obs_sq;
+      }
+    }
   }
 
   FloatType target() { return target_; }
   scitbx::af::tiny<FloatType, 6> grad_u_star() { return grad_u_star_; }
   scitbx::af::shared<FloatType> grad_k_sols() { return grad_k_sols_; }
   scitbx::af::shared<FloatType> grad_b_sols() { return grad_b_sols_; }
+  scitbx::af::shared<FloatType> grad_p_sols() { return grad_p_sols_; }
   scitbx::af::shared<FloatType> curv_k_sols() { return curv_k_sols_; }
   scitbx::af::shared<FloatType> curv_b_sols() { return curv_b_sols_; }
+  scitbx::af::shared<FloatType> curv_p_sols() { return curv_p_sols_; }
 
 private:
   FloatType target_;
@@ -581,8 +666,10 @@ private:
   scitbx::af::tiny<FloatType, 6> grad_u_star_;
   scitbx::af::shared<FloatType> grad_k_sols_;
   scitbx::af::shared<FloatType> grad_b_sols_;
+  scitbx::af::shared<FloatType> grad_p_sols_;
   scitbx::af::shared<FloatType> curv_k_sols_;
   scitbx::af::shared<FloatType> curv_b_sols_;
+  scitbx::af::shared<FloatType> curv_p_sols_;
 };
 
 //------------------------------------------------------------------------------

@@ -64,13 +64,15 @@ class cpp_tg(object):
       u_star        = list(u_star),
       hkl           = self.fmodel.f_calc().indices(),
       ss            = self.fmodel.ss)
-    return bss.bulk_solvent.ls_kb_sol_u_star(
+    return bss.bulk_solvent.ls_kbp_sol_u_star(
       f_model     = fmodel_data,
       f_obs       = self.fmodel.f_obs().data(),
       scale       = 10.0,
       kb_sol_grad = True,
+      p_sol_grad  = False,
       u_star_grad = True,
-      kb_sol_curv = True)
+      kb_sol_curv = True,
+      p_sol_curv  = False)
 
 class cpp_tg_u_star_only(object):
   def __init__(self, fmodel):

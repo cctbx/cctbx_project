@@ -36,13 +36,15 @@ def get_mask_data(xrs, d_min):
 def fd_k_sols(kbu, f_obs, eps=1.e-3):
   p = flex.double([0.1, 0.2])
   kbu.update(k_sols = p)
-  tg = bulk_solvent.ls_kb_sol_u_star(
+  tg = bulk_solvent.ls_kbp_sol_u_star(
     f_model     = kbu.data,
     f_obs       = f_obs.data(),
     scale       = 1.0,
     kb_sol_grad = True,
+    p_sol_grad  = False,
     u_star_grad = True,
-    kb_sol_curv = True)
+    kb_sol_curv = True,
+    p_sol_curv  = False)
   g_k_sols_anal = list(tg.grad_k_sols())
   c_k_sols_anal = list(tg.curv_k_sols())
   print "C anal k:", c_k_sols_anal
@@ -54,23 +56,27 @@ def fd_k_sols(kbu, f_obs, eps=1.e-3):
                 flex.double([0,eps])]:
     # plus shift
     kbu.update(k_sols = p+shift)
-    tg = bulk_solvent.ls_kb_sol_u_star(
+    tg = bulk_solvent.ls_kbp_sol_u_star(
       f_model     = kbu.data,
       f_obs       = f_obs.data(),
       scale       = 1.0,
       kb_sol_grad = True,
+      p_sol_grad  = False,
       u_star_grad = True,
-      kb_sol_curv = True)
+      kb_sol_curv = True,
+      p_sol_curv  = False)
     t1 = tg.target()
     # minus shift
     kbu.update(k_sols = p-shift)
-    tg = bulk_solvent.ls_kb_sol_u_star(
+    tg = bulk_solvent.ls_kbp_sol_u_star(
       f_model     = kbu.data,
       f_obs       = f_obs.data(),
       scale       = 1.0,
       kb_sol_grad = True,
+      p_sol_grad  = False,
       u_star_grad = True,
-      kb_sol_curv = True)
+      kb_sol_curv = True,
+      p_sol_curv  = False)
     t2 = tg.target()
     g_k_sols_fd.append( (t1-t2)/(2*eps) )
     c_k_sols_fd.append( (t1+t2-2*t0)/eps**2 )
@@ -81,13 +87,15 @@ def fd_k_sols(kbu, f_obs, eps=1.e-3):
 def fd_b_sols(kbu, f_obs):
   p = flex.double([10, 20])
   kbu.update(b_sols = p)
-  tg = bulk_solvent.ls_kb_sol_u_star(
+  tg = bulk_solvent.ls_kbp_sol_u_star(
     f_model     = kbu.data,
     f_obs       = f_obs.data(),
     scale       = 1.0,
     kb_sol_grad = True,
+    p_sol_grad  = False,
     u_star_grad = True,
-    kb_sol_curv = True)
+    kb_sol_curv = True,
+    p_sol_curv  = False)
   g_b_sols_anal = list(tg.grad_b_sols())
   c_b_sols_anal = list(tg.curv_b_sols())
   print "C anal b:", c_b_sols_anal
@@ -99,23 +107,27 @@ def fd_b_sols(kbu, f_obs):
                 flex.double([0,1.e-3])]:
     # plus shift
     kbu.update(b_sols = p+shift)
-    tg = bulk_solvent.ls_kb_sol_u_star(
+    tg = bulk_solvent.ls_kbp_sol_u_star(
       f_model     = kbu.data,
       f_obs       = f_obs.data(),
       scale       = 1.0,
       kb_sol_grad = True,
+      p_sol_grad  = False,
       u_star_grad = True,
-      kb_sol_curv = True)
+      kb_sol_curv = True,
+      p_sol_curv  = False)
     t1 = tg.target()
     # minus shift
     kbu.update(b_sols = p-shift)
-    tg = bulk_solvent.ls_kb_sol_u_star(
+    tg = bulk_solvent.ls_kbp_sol_u_star(
       f_model     = kbu.data,
       f_obs       = f_obs.data(),
       scale       = 1.0,
       kb_sol_grad = True,
+      p_sol_grad  = False,
       u_star_grad = True,
-      kb_sol_curv = True)
+      kb_sol_curv = True,
+      p_sol_curv  = False)
     t2 = tg.target()
     g_b_sols_fd.append( (t1-t2)/(2*1.e-3) )
     c_b_sols_fd.append( (t1+t2-2*t0)/1.e-3**2 *2)

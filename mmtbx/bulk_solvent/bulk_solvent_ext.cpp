@@ -19,12 +19,14 @@ namespace {
     using boost::python::arg;
     typedef return_value_policy<return_by_value> rbv;
 
-    class_<ls_kb_sol_u_star<> >(
-      "ls_kb_sol_u_star")
+    class_<ls_kbp_sol_u_star<> >(
+      "ls_kbp_sol_u_star")
       .def(init<
            f_model::core<double, std::complex<double> > const&,
            af::const_ref<double> const&,
            double,
+           bool const&,
+           bool const&,
            bool const&,
            bool const&,
            bool const& >(
@@ -32,14 +34,18 @@ namespace {
               arg("f_obs"),
               arg("scale"),
               arg("kb_sol_grad"),
+              arg("p_sol_grad"),
               arg("u_star_grad"),
-              arg("kb_sol_curv"))))
-      .def("target",      &ls_kb_sol_u_star<>::target)
-      .def("grad_u_star", &ls_kb_sol_u_star<>::grad_u_star)
-      .def("grad_k_sols", &ls_kb_sol_u_star<>::grad_k_sols)
-      .def("grad_b_sols", &ls_kb_sol_u_star<>::grad_b_sols)
-      .def("curv_k_sols", &ls_kb_sol_u_star<>::curv_k_sols)
-      .def("curv_b_sols", &ls_kb_sol_u_star<>::curv_b_sols)
+              arg("kb_sol_curv"),
+              arg("p_sol_curv"))))
+      .def("target",      &ls_kbp_sol_u_star<>::target)
+      .def("grad_u_star", &ls_kbp_sol_u_star<>::grad_u_star)
+      .def("grad_k_sols", &ls_kbp_sol_u_star<>::grad_k_sols)
+      .def("grad_b_sols", &ls_kbp_sol_u_star<>::grad_b_sols)
+      .def("grad_p_sols", &ls_kbp_sol_u_star<>::grad_p_sols)
+      .def("curv_k_sols", &ls_kbp_sol_u_star<>::curv_k_sols)
+      .def("curv_b_sols", &ls_kbp_sol_u_star<>::curv_b_sols)
+      .def("curv_p_sols", &ls_kbp_sol_u_star<>::curv_p_sols)
    ;
 
    class_<ls_u_star<> >(

@@ -65,7 +65,6 @@ class run(mmtbx.f_model.manager):
         apply_back_trace     = apply_back_trace,
         refine_hd_scattering = refine_hd_scattering,
         log                  = log)
-      self.apply_scale_k1_to_f_obs()
     #XXX if(remove_outliers and not self.twinned()):
     #XXX   self.remove_outliers(use_model = True, log = None) # XXX
     if(remove_outliers and not self.twinned()):
@@ -170,7 +169,8 @@ class run(mmtbx.f_model.manager):
       k_isotropic   = k_isotropic)
     self.show(prefix = "bulk-solvent and scaling", log = log)
     # Consistency check
-    assert approx_equal(self.r_all(), r_all_from_scaler)
+    if(not apply_back_trace):
+      assert approx_equal(self.r_all(), r_all_from_scaler)
     # Add contribution from H (if present and riding). This goes to f_part2.
     kh, bh = 0, 0
     if(refine_hd_scattering and

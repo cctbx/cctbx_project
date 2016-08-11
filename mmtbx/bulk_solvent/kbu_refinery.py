@@ -213,13 +213,15 @@ class tgc(object):
       sc = bulk_solvent.scale(self.f_obs.data(), self.kbu.data.f_model)
     else:
       sc = 1.0
-    self.t_g_c = bulk_solvent.ls_kb_sol_u_star(
+    self.t_g_c = bulk_solvent.ls_kbp_sol_u_star(
       f_model     = self.kbu.data,
       f_obs       = self.f_obs.data(),
       scale       = sc,
       kb_sol_grad = self.refine_k or self.refine_b or self.refine_kb,
+      p_sol_grad  = False,
       u_star_grad = self.refine_u,
-      kb_sol_curv = self.refine_k or self.refine_b or self.refine_kb)
+      kb_sol_curv = self.refine_k or self.refine_b or self.refine_kb,
+      p_sol_curv  = False)
 
   def minimize_k_once(self, use_curvatures):
     self.set_refine_k()
