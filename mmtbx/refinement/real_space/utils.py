@@ -1,6 +1,7 @@
 from __future__ import division
 from cctbx import miller
 from cctbx import maptbx
+import mmtbx.masks
 
 class target_map(object):
   """
