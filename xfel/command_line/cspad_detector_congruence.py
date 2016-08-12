@@ -78,7 +78,7 @@ def iterate_panels(panelgroup):
   @param panelgroup the panel group of interest
   @return the next panel
   """
-  if hasattr(panelgroup, 'children'):
+  if panelgroup.is_group():
     for child in panelgroup:
       for subitem in iterate_panels(child):
         yield subitem
@@ -95,7 +95,7 @@ def id_from_name(detector, name):
 
 def get_center(pg):
   """ Find the center of a panel group pg, projected on its fast/slow plane """
-  if hasattr(pg, 'children'):
+  if pg.is_group():
     # find the average center of all this group's children
     children_center = col((0,0,0))
     count = 0
@@ -130,7 +130,7 @@ def get_bounds(root, pg):
 
     return [col((p.dot(rf), + p.dot(rs),0)) for p in [p0, p1, p2, p3]]
 
-  if hasattr(pg, 'children'):
+  if pg.is_group():
     minx = miny = float('inf')
     maxx = maxy = float('-inf')
     for panel in iterate_panels(pg):
@@ -750,7 +750,13 @@ class Script(object):
     else:
       cmap = plt.cm.get_cmap(self.params.colormap)
     sm = cm.ScalarMappable(norm=norm, cmap=cmap)
-    sm.set_array(np.arange(flex.min(values), flex.max(values), (flex.max(values)-flex.min(values))/20)) # needed for colorbar
+    if len(values) == 0:
+      print "no values"
+      return
+    elif len(values) == 1:
+      sm.set_array(np.arange(values[0], values[0], 1)) # needed for colorbar
+    else:
+      sm.set_array(np.arange(flex.min(values), flex.max(values), (flex.max(values)-flex.min(values))/20)) # needed for colorbar
 
     fig = plt.figure()
     ax = fig.add_subplot(111, aspect='equal')
