@@ -22,6 +22,7 @@ def generator(xray_structure,
               overall_scale_factor=None,
               weighting_scheme_params=None,
               sort_scatterers=True,
+              unit_cell_dims=None,
               unit_cell_esds=None
               ):
   space_group = xray_structure.space_group()
@@ -37,9 +38,11 @@ def generator(xray_structure,
   uc = xray_structure.unit_cell()
 
   yield 'TITL %s in %s\n' % (title, sgi.type().lookup_symbol())
+  if unit_cell_dims is None:
+    unit_cell_dims = uc.parameters()
   yield 'CELL %.5f %s\n' % (
     wavelength,
-    ' '.join(('%.4f ',)*3 + ('%.3f',)*3) % uc.parameters())
+    ' '.join(('%.4f ',)*3 + ('%.3f',)*3) % unit_cell_dims)
   if unit_cell_esds:
     yield 'ZERR %i %f %f %f %f %f %f\n' % ((sgi.group().order_z(),) + unit_cell_esds)
   else:
