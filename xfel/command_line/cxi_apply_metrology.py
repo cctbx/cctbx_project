@@ -60,13 +60,22 @@ if (__name__ == "__main__") :
                          ("array_structure_list"        , None),
                          ("array_structure_list_axis"   , "axis_set_id"),
                          ("array_structure_list_section", None)]
+  optional_categories = [("diffrn_radiation"            , "diffrn_id"),
+                         ("diffrn_radiation_wavelength" , "id"),
+                         ("diffrn_measurement"          , "diffrn_id"),
+                         ("diffrn_scan"                 , "id"),
+                         ("diffrn_scan_frame"           , "frame_id"),
+                         ("array_intensities"           , "array_id"),
+                         ("array_structure"             , "id"),
+                         ("array_data"                  , "array_id")]
 
   # categories whose data to copy from one cbf to another
   copy_categories =     [("axis"                     , "id"),
                          ("diffrn_scan_axis"         , "axis_id"),
                          ("diffrn_scan_frame_axis"   , "axis_id")]
-  names = [n[0] for n in required_categories]; names.extend([c[0] for c in copy_categories])
-  keys  = [n[1] for n in required_categories]; keys .extend([c[1] for c in copy_categories])
+  req_names = [n[0] for n in required_categories]; req_names.extend([c[0] for c in copy_categories])
+  opt_names = [n[0] for n in optional_categories]
+  keys      = [n[1] for n in required_categories]; keys .extend([c[1] for c in copy_categories])
 
   src_cbf = pycbf.cbf_handle_struct()
   src_cbf.read_widefile(params.source_cbf, pycbf.MSG_DIGEST)
@@ -76,16 +85,18 @@ if (__name__ == "__main__") :
   src_cbf.select_category(0)
   n_found = 0
   while True:
-    if not src_cbf.category_name() in names:
-      raise Sorry("%s not a recognized category"%src_cbf.category_name())
-    print "Found", src_cbf.category_name()
-    n_found += 1
+    if src_cbf.category_name() in req_names:
+      print "Found", src_cbf.category_name()
+      n_found += 1
+    else:
+      if src_cbf.category_name() not in opt_names:
+        raise Sorry("%s not a recognized category"%src_cbf.category_name())
     try:
       src_cbf.next_category()
     except Exception, e:
       assert "CBF_NOTFOUND" in e.message
       break
-  assert n_found == len(names)
+  assert n_found == len(req_names)
   print "OK"
 
   # iterate through the files, validate the required tables and copy the others
