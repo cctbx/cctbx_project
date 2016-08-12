@@ -61,24 +61,18 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
     ''' If the dectector object has been changed, due to refinment or manual repositioning
     in a gui, call this function to synchronize these changes to the underlying CBF handle'''
 
-    def recursive_sync(cbf, group, root = False):
+    def recursive_sync(cbf, group, cbf_detectors = None, root = False):
       ''' Walks the hierarchy and synchronizes the dxtbx matrices to the CBF axes.'''
-      try:
-        iterator = iter(group) # root object is panel which is not iteratable
-      except TypeError, e:
-        is_panel = True
-      else:
-        is_panel = False
 
       d_mat = group.get_local_d_matrix()
       fast = col((d_mat[0],d_mat[3],d_mat[6])).normalize()
       slow = col((d_mat[1],d_mat[4],d_mat[7])).normalize()
       orig = col((d_mat[2],d_mat[5],d_mat[8]))
 
-      if is_panel:
+      if group.is_panel():
         if cbf.has_sections():
           # use the pre-mapping
-          cbf_detector = group._cbf_detector
+          cbf_detector = cbf_detectors[group.get_name()]
         else:
           # figure out which panel number this panel is by finding it in diffrn_data_frame
           cbf.find_category("diffrn_data_frame")
@@ -148,9 +142,9 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
           assert cbf.get_axis_type(axis_name) == 'translation'
           cbf.set_axis_setting(axis_name, setting_value, 0)
 
-      if not is_panel:
-        for subgroup in iterator:
-          recursive_sync(cbf, subgroup)
+      if group.is_group():
+        for subgroup in group:
+          recursive_sync(cbf, subgroup, cbf_detectors)
 
 
     if detector is None:
@@ -186,14 +180,10 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
       for cbf_d in all_cbfdetectors:
         root_axis = cbf_d.get_detector_surface_axes(0)
         mapped_detectors[panel_name_mapping[root_axis]] = cbf_d
+    else:
+      mapped_detectors = None
 
-      # save the mapped cbf detector objects on the panel objects
-      for quad in detector.hierarchy():
-        for sensor in quad:
-          for panel in sensor:
-            panel._cbf_detector = mapped_detectors[panel.get_name()]
-
-    recursive_sync(cbf, root, True)
+    recursive_sync(cbf, root, mapped_detectors, True)
 
 class FormatCBFCspadInMemory(FormatCBFCspad):
   """ Overrides the Format object's init method to accept a cbf handle instead

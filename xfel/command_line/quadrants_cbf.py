@@ -9,6 +9,7 @@ from xfel.cftbx.detector.cspad_cbf_tbx import center
 import dxtbx
 import libtbx.load_env
 from libtbx.utils import Usage
+from scitbx.array_family import flex
 
 
 if (__name__ == "__main__"):
@@ -32,11 +33,12 @@ if (__name__ == "__main__"):
     beam = image.get_beam()
 
     from xfel.metrology.quadrant import one_panel
+    ccs = flex.double()
     for i_quad, quad in enumerate(detector.hierarchy()):
       # find panel closest to the beam center
       panels = []
       def recursive_get_panels(group):
-        if hasattr(group, "children"):
+        if group.is_group():
           for child in group:
             recursive_get_panels(child)
         else:
@@ -65,6 +67,8 @@ if (__name__ == "__main__"):
       quad.set_frame(quad.get_fast_axis(),
                      quad.get_slow_axis(),
                      col(quad.get_origin())-col((delta[0],delta[1],0)))
+      ccs.append(Q.ccmax)
+    print "Average CC: %7.4f"%flex.mean(ccs)
 
     import pycbf
     image.sync_detector_to_cbf()

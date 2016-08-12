@@ -129,6 +129,7 @@ class one_panel(object):
       plt.show()
 
     self.coordmax = coordmax
+    self.ccmax = gmax
 
   def CC(self, beam_center):
     detector = self.image.get_detector()
