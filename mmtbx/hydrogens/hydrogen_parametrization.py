@@ -16,6 +16,7 @@ from libtbx import group_args
 from libtbx.utils import null_out
 from libtbx.utils import multi_out
 from stdlib import math
+from scitbx.math import dihedral_angle
 
 import hydrogen_connectivity
 
@@ -52,18 +53,14 @@ class parameterization_info(object):
     a          = None,  # coefficient for reconstruction
     b          = None,  # coefficient for reconstruction
     h          = None,  # coefficient for reconstruction
-    chi        = None,  # angle
-    eps        = None,  # angle
+    phi        = None,  # angle
     alpha      = None,  # angle
-    dist_h     = None):  # measured or ideal distance
+    dist_h     = None): # measured or ideal distance
     adopt_init_args(self, locals())
 
 
 # for every H atom, determine type of bond
-def get_h_parameterization(
-  connectivity, sites_cart, idealize):
-  #connectivity, xray_structure, names, atoms_list, idealize):
-  #sites_cart = xray_structure.sites_cart()
+def get_h_parameterization(connectivity, sites_cart, idealize):
   h_parameterization = {}
   for ih in connectivity.keys():
     a0 = connectivity[ih][0]
@@ -96,14 +93,13 @@ def get_h_parameterization(
         c0 = (u10).dot(u20)
         c1 = (u10).dot(uh0)
         c2 = (uh0).dot(u20)
-      #sumang = math.degrees(alpha0) + math.degrees(alpha1) + math.degrees(alpha2)
-      #c0, c1, c2 = math.cos(alpha0), math.cos(alpha1), math.cos(alpha2)
       sumang = alpha0 + alpha1 + alpha2
       denom = (1.0-c0**2)
       if(denom==0):
         raise RuntimeError(
           "Denominator zero: (1-c0*c0) in get_h_parameterization.")
-      a, b = (c1-c0*c2)/(1-c0*c0), (c2-c0*c1)/(1-c0*c0)
+      a = (c1-c0*c2)/(1-c0*c0)
+      b = (c2-c0*c1)/(1-c0*c0)
       h_parameterization[ih] = parameterization_info(
         a0     = a0.iseq,
         a1     = a1.iseq,
@@ -114,7 +110,7 @@ def get_h_parameterization(
       #if ((sumang < 361 and sumang > 359) and idealize == True ):
       #if (0):
       #if (sumang < 361 and sumang > 359):
-      if (sumang < (2*math.pi + 0.01) and (sumang > 2*math.pi - 0.01)):
+      if (sumang < (2*math.pi + 0.05) and (sumang > 2*math.pi - 0.05)):
         h_parameterization[ih].htype = 'flat_2neigbs'
       else:
         root = 1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2
@@ -135,8 +131,10 @@ def get_h_parameterization(
           h_parameterization[ih].htype = '2neigbs'
         elif (n_red_neigbs == 3): # case 3
           h_parameterization[ih].htype = '3neigbs'
+        #if(count_H == 1):
+        #  print h_parameterization[ih].htype
     # case 1a
-    elif(n_red_neigbs == 1 and count_H == 1):
+    elif(n_red_neigbs == 1 and count_H == 1 and len(connectivity[ih][2])==2):
       neigbs_14 = connectivity[ih][2]
       a1 = reduced_neighbs[0]
       b1, b2 = neigbs_14[0], neigbs_14[1]
@@ -147,7 +145,7 @@ def get_h_parameterization(
       if((rh-rb2).length() < (rh-rb1).length()):
         neigbs_14[0], neigbs_14[1] = neigbs_14[1], neigbs_14[0]
       rb1 = matrix.col(sites_cart[neigbs_14[0].iseq])
-      r2 = r0 + (r1 - rb1).normalize()
+      r2 = r0 + (r1 - rb1)
       uh0 = (rh - r0).normalize()
       u10 = (r1 - r0).normalize()
       u20 = (r2 - r0).normalize()
@@ -159,7 +157,8 @@ def get_h_parameterization(
       if(denom==0):
         raise RuntimeError(
           "Denominator zero: (1-c0*c0) in get_h_parameterization.")
-      a, b = (c1-c0*c2)/(1-c0*c0), (c2-c0*c1)/(1-c0*c0)
+      a = (c1-c0*c2)/(1-c0*c0)
+      b = (c2-c0*c1)/(1-c0*c0)
       root = 1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2
       if(root < 0):
         raise RuntimeError(
@@ -185,71 +184,29 @@ def get_h_parameterization(
     # case 1b
     elif(n_red_neigbs == 1 and (count_H == 0 or count_H ==2)):
       a1 = reduced_neighbs[0]
-      a, b = 1, 1
       sec_neigbs = connectivity[ih][2]
       b1 = sec_neigbs[0]
       r1 = matrix.col(sites_cart[a1.iseq])
       rb1 = matrix.col(sites_cart[b1.iseq])
-      #dh = a0.dist_ideal
       uh0 = (rh - r0).normalize()
       u10 = (r1 - r0).normalize()
       if idealize:
         alpha = math.radians(a1.angle_ideal)
       else:
         alpha = (u10).angle(uh0)
+      phi = dihedral_angle(
+        sites=[sites_cart[ih], sites_cart[a0.iseq],
+        sites_cart[a1.iseq],sites_cart[b1.iseq]])
+      u1 = (r0 - r1).normalize()
       rb10 = rb1 - r1
-      v10 = (rb10 - ((rb10).dot(u10)) * u10).normalize()
-      if(v10.dot(uh0) < 0):
-        v10 = -v10
-        a = -1
-      #if(abs((u10.cross(v10)).dot(uh0)) < 0.001):
-      #  h_parameterization[ih] = parameterization_info(
-      #    htype  = 'alg1b_flat',
-      #    a0     = a0.iseq,
-      #    a1     = a1.iseq,
-      #    a2     = b1.iseq,
-      #    a      = a,
-      #    alpha  = alpha,
-      #    dist_h = dist_h)
-      #else:
-      #  w10 = (u10.cross(v10)).normalize()
-      #  if(w10.dot(uh0) < 0):
-      #    w10 = -w10
-      #    b   = -1
-      #  chi = math.asin((uh0).dot(w10))
-      #  c_chi, s_chi = math.cos(abs(chi)), math.sin(abs(chi))
-      #  rp = rh - dh * s_chi * w10
-      #  rp0 = rp - r0
-      #  eps = (rp0).angle(u10)
-      #  h_parameterization[ih] = parameterization_info(
-      #    htype  = 'alg1b',
-      #    a0     = a0.iseq,
-      #    a1     = a1.iseq,
-      #    a2     = b1.iseq,
-      #    a      = a,
-      #    b      = b,
-      #    chi    = chi,
-      #    eps    = eps,
-      #    alpha  = alpha,
-      #    dist_h = dist_h)
-      w10 = (u10.cross(v10)).normalize()
-      if(w10.dot(uh0) < 0):
-        w10 = -w10
-        b   = -1
-      chi = math.asin((uh0).dot(w10))
-      c_chi, s_chi = math.cos(abs(chi)), math.sin(abs(chi))
-      rp = rh - dist_h * s_chi * w10
-      rp0 = rp - r0
-      eps = (rp0).angle(u10)
+      u2 = (rb10 - ((rb10).dot(u1)) * u1).normalize()
+      u3 = u1.cross(u2)
       h_parameterization[ih] = parameterization_info(
         htype  = 'alg1b',
         a0     = a0.iseq,
         a1     = a1.iseq,
         a2     = b1.iseq,
-        a      = a,
-        b      = b,
-        chi    = chi,
-        eps    = eps,
+        phi    = phi,
         alpha  = alpha,
         dist_h = dist_h)
     else:
@@ -261,63 +218,51 @@ def get_h_parameterization(
 
 
 def generate_H_positions(sites_cart, ih, para_info):
-  #sites_cart = xray_structure.sites_cart()
   r0 = matrix.col(sites_cart[para_info.a0])
   r1 = matrix.col(sites_cart[para_info.a1])
   dh = para_info.dist_h
-  # case 2a
+  a, b, h = para_info.a, para_info.b, para_info.h
+  # alg2a
   if (para_info.htype == 'flat_2neigbs'):
     a, b = para_info.a, para_info.b
     r2 = matrix.col(sites_cart[para_info.a2])
     u10, u20 = (r1 - r0).normalize(), (r2 - r0).normalize()
-    #uh0 = (a * u10 + b * u20).normalize()
     uh0 = (a * u10 + b * u20)
     rH_gen = r0 + dh * uh0
     deltaH = (rH_gen - matrix.col(sites_cart[ih])).length()
-  # case 2b and 3
+  # alg2b and alg3
   elif (para_info.htype == '2neigbs' or para_info.htype == '3neigbs'):
-    a, b, h= para_info.a, para_info.b, para_info.h
+    a, b, h = para_info.a, para_info.b, para_info.h
     r2 = matrix.col(sites_cart[para_info.a2])
     u10, u20 = (r1 - r0).normalize(), (r2 - r0).normalize()
     v = u10.cross(u20)
-    uh0 = (a * u10 + b * u20 + h * v).normalize()
+    uh0 = (a * u10 + b * u20 + h * v)
     rH_gen = r0 + dh * uh0
     deltaH = (rH_gen - matrix.col(sites_cart[ih])).length()
-  # case 1a
+  # alg1a
   elif (para_info.htype == 'alg1a'):
     a, b, h = para_info.a, para_info.b, para_info.h
     rb1 = matrix.col(sites_cart[para_info.a2])
-    r2 = r0 + (r1 - rb1).normalize()
+    r2 = r0 + (r1 - rb1)
     u10, u20 = (r1 - r0).normalize(), (r2 - r0).normalize()
     v = u10.cross(u20)
-    uh0 = (a * u10 + b * u20 + h * v).normalize()
+    uh0 = (a * u10 + b * u20 + h * v)
     rH_gen = r0 + dh * uh0
     deltaH = (rH_gen - matrix.col(sites_cart[ih])).length()
-  elif (para_info.htype == 'alg1b_flat'):
-    rb1 = matrix.col(sites_cart[para_info.a2])
-    a = para_info.a
-    alpha = para_info.alpha
-    u10 = (r1 - r0).normalize()
-    rb10 = rb1 - r1
-    v10 = a * (rb10 - ((rb10).dot(u10)) * u10).normalize()
-    calpha, salpha = math.cos(alpha), math.sin(alpha)
-    rH_gen = r0 + dh * (calpha * u10 + salpha * v10)
-    deltaH = (rH_gen - matrix.col(sites_cart[ih])).length()
-  # case one H atom free rotation
+#
   elif (para_info.htype == 'alg1b'):
     rb1 = matrix.col(sites_cart[para_info.a2])
-    a, b = para_info.a, para_info.b
-    chi, eps = para_info.chi, para_info.eps
+    phi = para_info.phi
     alpha = para_info.alpha
-    u10 = (r1 - r0).normalize()
-    rb10 = rb1 - r1
-    v10 = a * (rb10 - ((rb10).dot(u10)) * u10).normalize()
-    w10 = b * (u10.cross(v10)).normalize()
-    c_chi, s_chi = math.cos(abs(chi)), math.sin(abs(chi))
-    c1, s1  = math.cos(eps), math.sin(eps)
+    salpha = math.sin(alpha)
     calpha = math.cos(alpha)
-    rH_gen = r0 + dh * ((calpha * u10) + (calpha * s1/c1 * v10)  + (s_chi * w10))
-    #rH_gen = r0 + dh * ((c1 * c_chi * u10) + (s1 * c_chi * v10) + (s_chi * w10))
+    sphi = math.sin(phi)
+    cphi = math.cos(phi)
+    u1 = (r0 - r1).normalize()
+    rb10 = rb1 - r1
+    u2 = (rb10 - ((rb10).dot(u1)) * u1).normalize()
+    u3 = u1.cross(u2)
+    rH_gen = r0 + dh * (salpha*(cphi*u2 + sphi*u3) - calpha*u1)
     deltaH = (rH_gen - matrix.col(sites_cart[ih])).length()
   else:
     deltaH, rH_gen = None, None
@@ -391,7 +336,7 @@ def run(args, out=sys.stdout):
   h_parameterization = get_h_parameterization(
     connectivity   = connectivity,
     sites_cart     = sites_cart,
-    idealize       = False)
+    idealize       = True)
 
   print >>log, '\nNow reconstructing H atoms...'
   long_distance_list = []
@@ -413,38 +358,38 @@ def run(args, out=sys.stdout):
       unk_list.append(ih)
 
   # some informative output for residues with unknown algorithm
-  print >>log, '*'*79
-  print >>log, 'Warning: The following atoms where not assigned an H type'
-  for ih in unk_list:
-    residue = atoms_list[ih].resseq
-    hp = h_parameterization[ih]
-    print >> log, 'atom:', names[ih], 'residue:', residue, \
-      'chain', atoms_list[ih].chain_id
-  print >>log, '*'*79
+  if unk_list:
+    print >>log, '*'*79
+    print >>log, 'Warning: The following atoms where not assigned an H type'
+    for ih in unk_list:
+      residue = atoms_list[ih].resseq
+      hp = h_parameterization[ih]
+      print >> log, 'atom:', names[ih], 'residue:', residue, \
+        'chain', atoms_list[ih].chain_id
+    print >>log, '*'*79
 
   # some informative output for residues where position is NOT reproduced
   # -> wronlgy assigned
-  print >>log, 'Warning: The position of the following H atoms was not reproduced'
-  for ih in long_distance_list:
-    residue = atoms_list[ih].resseq
-    hp = h_parameterization[ih]
-    h_obj = generate_H_positions(
-      sites_cart        = sites_cart,
-      ih                = ih,
-      para_info         = hp)
-    if(h_obj.distance is not None and h_obj.distance > 0.05):
-      print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
-        residue, 'chain', atoms_list[ih].chain_id, 'distance:', h_obj.distance
+  if long_distance_list:
+    print >>log, '*'*79
+    print >>log, 'Warning: The position of the following H atoms was not reproduced'
+    for ih in long_distance_list:
+      residue = atoms_list[ih].resseq
+      hp = h_parameterization[ih]
+      h_obj = generate_H_positions(
+        sites_cart        = sites_cart,
+        ih                = ih,
+        para_info         = hp)
+      if(h_obj.distance is not None and h_obj.distance > 0.05):
+        print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
+          residue, 'chain', atoms_list[ih].chain_id, 'distance:', h_obj.distance
   print >>log, '*'*79
 
-  for ih in h_parameterization.keys():
-    hp = h_parameterization[ih]
-    print 'htype = ', hp.htype, 'a0 = ', hp.a0, 'a1 = ', hp.a1, 'a2 = ', hp.a2, \
-      'a = ', hp.a, 'b = ', hp.b, 'h = ', hp.h, 'chi = ', hp.chi, 'eps = ', hp.eps, \
-      'alpha = ', hp.alpha, 'dist_h =', hp.dist_h
-
-
-
+  #for ih in h_parameterization.keys():
+  #  hp = h_parameterization[ih]
+  #  print 'htype = ', hp.htype, 'a0 = ', hp.a0, 'a1 = ', hp.a1, 'a2 = ', hp.a2, \
+  #    'a = ', hp.a, 'b = ', hp.b, 'h = ', hp.h, 'phi = ', hp.phi, \
+  #    'alpha = ', hp.alpha, 'dist_h =', hp.dist_h
 
 if (__name__ == "__main__"):
   t0 = time.time()

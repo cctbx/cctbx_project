@@ -74,6 +74,10 @@ def exercise():
     if(hp.htype == 'unk'):
       n_unk = n_unk + 1
 
+  #for ih in h_parameterization.keys():
+  #  hp = h_parameterization[ih]
+  #  print "'"+hp.htype+"'"+',',
+#
   assert(n_unk == 0), 'Some H atoms are not recognized'
 
   for type1, type2 in zip(type_list, type_list_known):
@@ -95,6 +99,7 @@ def exercise():
   #  print 'htype = ', hp.htype, 'a0 = ', hp.a0, 'a1 = ', hp.a1, 'a2 = ', hp.a2, \
   #    'a = ', hp.a, 'b = ', hp.b, 'h = ', hp.h, 'chi = ', hp.chi, 'eps = ', hp.eps, \
   #    'alpha = ', hp.alpha, 'dist_h =', hp.dist_h
+
 #-----------------------------------------------------------------------------
 
 # Ideal amino acids
@@ -451,6 +456,28 @@ type_list_known = ['3neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neig
   '3neigbs', '2neigbs', '2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs',
   'flat_2neigbs', 'alg1b', 'flat_2neigbs', '3neigbs', '3neigbs', 'alg1b', 'alg1b',
   'alg1b', 'alg1b', 'alg1b', 'alg1b']
+
+#type_list_known = ['3neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs',
+#'2neigbs', 'flat_2neigbs', 'alg1a', 'alg1a', 'alg1a', 'alg1a', 'flat_2neigbs', '3neigbs',
+#'2neigbs', '2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', '3neigbs', '2neigbs',
+#'2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs', 'alg1b_flat',
+#'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs', '2neigbs', '2neigbs', 'flat_2neigbs', '3neigbs',
+#'2neigbs', '2neigbs', '2neigbs', '2neigbs', '3neigbs', '2neigbs', '2neigbs', 'alg1b',
+#'flat_2neigbs', '3neigbs', '3neigbs', 'alg1b', 'alg1b_flat', 'alg1b', 'alg1b', 'flat_2neigbs',
+#'3neigbs', '2neigbs', '2neigbs', 'alg1a', 'alg1a', 'flat_2neigbs', '3neigbs', '2neigbs',
+#'2neigbs', '2neigbs', '2neigbs', 'alg1a', 'alg1a', '3neigbs', '2neigbs', '2neigbs', 'alg1b',
+#'flat_2neigbs', '2neigbs', '2neigbs', '3neigbs', '2neigbs', '2neigbs', '2neigbs', '2neigbs',
+#'2neigbs', '2neigbs', '3neigbs', 'alg1b_flat', 'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs',
+#'2neigbs', '2neigbs', '3neigbs', 'alg1b_flat', 'alg1b', 'alg1b', 'alg1b_flat', 'alg1b',
+#'alg1b', 'flat_2neigbs', '3neigbs', '3neigbs', '2neigbs', '2neigbs', 'alg1b_flat', 'alg1b',
+#'alg1b', 'alg1b_flat', 'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs', '2neigbs', '2neigbs',
+#'2neigbs', '2neigbs', 'alg1b_flat', 'alg1b', 'alg1b', 'flat_2neigbs', '3neigbs', '2neigbs',
+#'2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs',
+#'flat_2neigbs', '3neigbs', '2neigbs', '2neigbs', 'flat_2neigbs', 'flat_2neigbs',
+#'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', '3neigbs',
+#'2neigbs', '2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'alg1b',
+#'flat_2neigbs', '3neigbs', '3neigbs', 'alg1b_flat', 'alg1b', 'alg1b', 'alg1b_flat',
+#'alg1b', 'alg1b']
 
 if (__name__ == "__main__"):
   t0 = time.time()
