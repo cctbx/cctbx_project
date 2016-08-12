@@ -10,7 +10,6 @@ class Job(processing.Job):
   Customisation of the processing.Job class that translates errors into SetupError
   """
 
-  @staticmethod
   def __exception_converting_call(self, name):
 
     try:
@@ -24,7 +23,7 @@ class Job(processing.Job):
   def exitcode(self):
 
     try:
-      return super( self, Job ).exitcode
+      return super( Job, self ).exitcode
 
     except errors.BatchQueueError, e:
       raise SetupError, "Queue error: %s" % e

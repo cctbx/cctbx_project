@@ -233,18 +233,6 @@ class iterator(object):
     self.resume()
 
 
-  def __del__(self):
-
-    self.suspend()
-
-    while True:
-      try:
-        self.process_next_one()
-
-      except StopIteration:
-        break
-
-
   def __iter__(self):
 
     return self
