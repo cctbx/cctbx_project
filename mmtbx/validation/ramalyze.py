@@ -4,7 +4,14 @@ from mmtbx.validation import residue, validation, atom
 from mmtbx.validation import graphics
 from iotbx import data_plots
 from libtbx import slots_getstate_setstate
+from mmtbx.conformation_dependent_library import generate_protein_threes
+from mmtbx.conformation_dependent_library.cdl_utils import get_c_ca_n
 import sys
+from scitbx.array_family import flex
+from mmtbx.validation import utils
+import mmtbx.rotamer
+from mmtbx.rotamer import ramachandran_eval
+#import wxtbx.plots.molprobity
 
 # XXX Use these constants internally, never strings!
 RAMA_GENERAL = 0
@@ -46,7 +53,8 @@ class ramachandran (residue) :
     "score",
     "phi",
     "psi",
-    "c_alphas",
+    #"c_alphas",
+    "markup",
   ]
   __slots__ = residue.__slots__ + __rama_attr__
 
@@ -78,13 +86,14 @@ class ramachandran (residue) :
 
   def as_kinemage (self) :
     assert self.is_outlier()
-    ram_out = "{%s CA}P %s\n" % (self.c_alphas[0].id_str, "%.3f %.3f %.3f" %
-      self.c_alphas[0].xyz)
-    ram_out += "{%s CA} %s\n" % (self.c_alphas[1].id_str, "%.3f %.3f %.3f" %
-      self.c_alphas[1].xyz)
-    ram_out += "{%s CA} %s\n" % (self.c_alphas[2].id_str, "%.3f %.3f %.3f" %
-      self.c_alphas[2].xyz)
-    return ram_out
+#    ram_out = "{%s CA}P %s\n" % (self.c_alphas[0].id_str, "%.3f %.3f %.3f" %
+#      self.c_alphas[0].xyz)
+#    ram_out += "{%s CA} %s\n" % (self.c_alphas[1].id_str, "%.3f %.3f %.3f" %
+#      self.c_alphas[1].xyz)
+#    ram_out += "{%s CA} %s\n" % (self.c_alphas[2].id_str, "%.3f %.3f %.3f" %
+#      self.c_alphas[2].xyz)
+#    return ram_out
+    return self.markup
 
   # GUI output
   def as_table_row_phenix (self) :
@@ -98,7 +107,6 @@ class ramachandran_ensemble (residue) :
     self._copy_constructor(all_results[0])
     self.res_type = all_results[0].res_type
     self.rama_type = [ r.rama_type for r in all_results ]
-    from scitbx.array_family import flex
     self.phi = flex.double([ r.phi for r in all_results ])
     self.psi = flex.double([ r.psi for r in all_results ])
     self.score = flex.double([ r.score for r in all_results ])
@@ -140,10 +148,6 @@ class ramalyze (validation) :
     self.n_allowed = 0
     self.n_favored = 0
     self.n_type = [ 0 ] * 6
-    from mmtbx.validation import utils
-    import mmtbx.rotamer
-    from mmtbx.rotamer import ramachandran_eval
-    from scitbx.array_family import flex
     self._outlier_i_seqs = flex.size_t()
     pdb_atoms = pdb_hierarchy.atoms()
     all_i_seqs = pdb_atoms.extract_i_seq()
@@ -153,122 +157,88 @@ class ramalyze (validation) :
       hierarchy=pdb_hierarchy)
     analysis = ""
     output_list = []
+    count_keys = []
+    uniqueness_keys = []
     r = ramachandran_eval.RamachandranEval()
-    prev_rezes, next_rezes = None, None
-    prev_resid = None
-    cur_resseq = None
-    next_resseq = None
-    for model in pdb_hierarchy.models():
-      for chain in model.chains():
-        if use_segids:
-          chain_id = utils.get_segid_as_chainid(chain=chain)
-        else:
-          chain_id = chain.id
-        residues = list(chain.residue_groups())
-        for i, residue_group in enumerate(residues):
-          # The reason I pass lists of atom_groups to get_phi and get_psi is to
-          # deal with the particular issue where some residues have an A alt
-          # conf that needs some atoms from a "" alt conf to get calculated
-          # correctly.  See 1jxt.pdb for examples.  This way I can search both
-          # the alt conf atoms and the "" atoms if necessary.
-          prev_atom_list, next_atom_list, atom_list = None, None, None
-          if cur_resseq is not None:
-            prev_rezes = rezes
-            prev_resseq = cur_resseq
-          rezes = construct_complete_residues(residues[i])
-          cur_resseq = residue_group.resseq_as_int()
-          cur_icode = residue_group.icode.strip()
-          if (i > 0):
-            #check for insertion codes
-            if (cur_resseq == residues[i-1].resseq_as_int()) :
-              if (cur_icode == '') and (residues[i-1].icode.strip() == '') :
-                continue
-            elif (cur_resseq != (residues[i-1].resseq_as_int())+1):
-              continue
-          if (i < len(residues)-1):
-            #find next residue
-            if residue_group.resseq_as_int() == \
-               residues[i+1].resseq_as_int():
-              if (cur_icode == '') and (residues[i+1].icode.strip() == '') :
-                continue
-            elif residue_group.resseq_as_int() != \
-               (residues[i+1].resseq_as_int())-1:
-              continue
-            next_rezes = construct_complete_residues(residues[i+1])
-            next_resid = residues[i+1].resseq_as_int()
+    ##if use_segids:
+    ##      chain_id = utils.get_segid_as_chainid(chain=chain)
+    ##    else:
+    ##      chain_id = chain.id
+    for three in generate_protein_threes(hierarchy=pdb_hierarchy, geometry=None):
+      main_residue = three[1]
+      phi_psi_atoms = three.get_phi_psi_atoms()
+      if phi_psi_atoms is None:
+        continue
+      phi_atoms, psi_atoms = phi_psi_atoms
+      phi = get_dihedral(phi_atoms)
+      psi = get_dihedral(psi_atoms)
+      coords = get_center(main_residue) #should find the CA of the center residue
+
+      if (phi is not None and psi is not None):
+        res_type = RAMA_GENERAL
+        #self.n_total += 1
+        if (main_residue.resname[0:3] == "GLY"):
+          res_type = RAMA_GLYCINE
+        elif (main_residue.resname[0:3] == "PRO"):
+          is_cis = is_cis_peptide(three)
+          if is_cis:
+            res_type = RAMA_CISPRO
           else:
-            next_rezes = None
-            next_resid = None
-          for atom_group in residue_group.atom_groups():
-            alt_conf = atom_group.altloc
-            if rezes is not None:
-              atom_list = rezes.get(alt_conf)
-            if prev_rezes is not None:
-              prev_atom_list = prev_rezes.get(alt_conf)
-              if (prev_atom_list is None):
-                prev_keys = sorted(prev_rezes.keys())
-                prev_atom_list = prev_rezes.get(prev_keys[0])
-            if next_rezes is not None:
-              next_atom_list = next_rezes.get(alt_conf)
-              if (next_atom_list is None):
-                next_keys = sorted(next_rezes.keys())
-                next_atom_list = next_rezes.get(next_keys[0])
-            phi = get_phi(prev_atom_list, atom_list)
-            psi = get_psi(atom_list, next_atom_list)
-            coords = get_center(atom_group)
-            if (phi is not None and psi is not None):
-              res_type = RAMA_GENERAL
-              self.n_total += 1
-              if (atom_group.resname[0:3] == "GLY"):
-                res_type = RAMA_GLYCINE
-              elif (atom_group.resname[0:3] == "PRO"):
-                is_cis = is_cis_peptide(prev_atom_list, atom_list)
-                if is_cis:
-                  res_type = RAMA_CISPRO
-                else:
-                  res_type = RAMA_TRANSPRO
-              elif (isPrePro(residues, i)):
-                res_type = RAMA_PREPRO
-              elif (atom_group.resname[0:3] == "ILE" or \
-                    atom_group.resname[0:3] == "VAL"):
-                res_type = RAMA_ILE_VAL
-              self.n_type[res_type] += 1
-              value = r.evaluate(res_types[res_type], [phi, psi])
-              ramaType = self.evaluateScore(res_type, value)
-              is_outlier = ramaType == RAMALYZE_OUTLIER
-              c_alphas = None
-              # XXX only save kinemage data for outliers
-              if is_outlier :
-                c_alphas = []
-                for atoms in [prev_atom_list, atom_list, next_atom_list] :
-                  for a in atoms :
-                    if (a.name.strip() == "CA") :
-                      a_ = atom(pdb_atom=a)
-                      c_alphas.append(c_alpha(
-                        id_str=a_.atom_group_id_str(),
-                        xyz=a_.xyz))
-                assert (len(c_alphas) == 3)
-              result = ramachandran(
-                chain_id=chain_id,
-                resseq=residue_group.resseq,
-                icode=residue_group.icode,
-                resname=atom_group.resname,
-                altloc=atom_group.altloc,
-                segid=None, # XXX ???
-                phi=phi,
-                psi=psi,
-                rama_type=ramaType,
-                res_type=res_type,
-                score=value*100,
-                outlier=is_outlier,
-                xyz=coords,
-                c_alphas=c_alphas)
-              if (not outliers_only or is_outlier) :
-                self.results.append(result)
-              if is_outlier :
-                i_seqs = atom_group.atoms().extract_i_seq()
-                assert (not i_seqs.all_eq(0))
-                self._outlier_i_seqs.extend(i_seqs)
+            res_type = RAMA_TRANSPRO
+        elif (three[2].resname == "PRO"):
+          res_type = RAMA_PREPRO
+        elif (main_residue.resname[0:3] == "ILE" or \
+              main_residue.resname[0:3] == "VAL"):
+          res_type = RAMA_ILE_VAL
+        #self.n_type[res_type] += 1
+        value = r.evaluate(res_types[res_type], [phi, psi])
+        ramaType = self.evaluateScore(res_type, value)
+        is_outlier = ramaType == RAMALYZE_OUTLIER
+
+        c_alphas = None
+        # XXX only save kinemage data for outliers
+        if is_outlier :
+          c_alphas = get_cas_from_three(three)
+          assert (len(c_alphas) == 3)
+          markup = self.as_markup_for_kinemage(c_alphas)
+        else:
+          markup = None
+        result = ramachandran(
+          chain_id=main_residue.parent().parent().id,
+          resseq=main_residue.resseq,
+          icode=main_residue.icode,
+          resname=main_residue.resname,
+          #altloc=main_residue.parent().altloc,
+          altloc=get_altloc_from_three(three),
+          segid=None, # XXX ???
+          phi=phi,
+          psi=psi,
+          rama_type=ramaType,
+          res_type=res_type,
+          score=value*100,
+          outlier=is_outlier,
+          xyz=coords,
+          markup=markup)
+        #if result.chain_id+result.resseq+result.icode not in count_keys:
+        if result.altloc in ['','A'] and result.chain_id+result.resseq+result.icode not in count_keys:
+          self.n_total += 1
+          self.n_type[res_type] += 1
+          self.add_to_validation_counts(ramaType)
+          count_keys.append(result.chain_id+result.resseq+result.icode)
+        if (not outliers_only or is_outlier) :
+          if (result.altloc != '' or
+            result.chain_id+result.resseq+result.icode not in uniqueness_keys):
+            #the threes/conformers method results in some redundant result
+            #  calculations in structures with alternates. Using the
+            #  uniqueness_keys list prevents redundant results being added to
+            #  the final list
+            self.results.append(result)
+            uniqueness_keys.append(result.chain_id+result.resseq+result.icode)
+        if is_outlier :
+          i_seqs = main_residue.atoms().extract_i_seq()
+          assert (not i_seqs.all_eq(0))
+          self._outlier_i_seqs.extend(i_seqs)
+    self.results.sort(key=lambda r: r.id_str())
     out_count, out_percent = self.get_outliers_count_and_fraction()
     fav_count, fav_percent = self.get_favored_count_and_fraction()
     self.out_percent = out_percent * 100.0
@@ -281,7 +251,6 @@ class ramalyze (validation) :
     :param plot_file_base: file name prefix
     :param out: log filehandle
     """
-    from mmtbx.validation import utils
     print >> out, ""
     print >> out, "Creating images of plots..."
     for pos in range(6) :
@@ -301,13 +270,13 @@ class ramalyze (validation) :
 
   def display_wx_plots (self, parent=None,
       title="MolProbity - Ramachandran plots") :
-    import wxtbx.plots.molprobity
     frame = wxtbx.plots.molprobity.ramalyze_frame(
       parent=parent, title=title, validation=self)
     frame.Show()
     return frame
 
   def show_summary (self, out=sys.stdout, prefix="") :
+    print >> out, prefix + 'SUMMARY: %i Favored, %i Allowed, %i Outlier out of %i residues (altloc A where applicable)' % (self.n_favored, self.n_allowed, self.n_outliers, self.n_total)
     print >> out, prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
       (self.out_percent, self.get_outliers_goal())
     print >> out, prefix + 'SUMMARY: %.2f%% favored (Goal: %s)' % \
@@ -353,13 +322,21 @@ class ramalyze (validation) :
   def evaluateScore(self, resType, value):
     ev = ramalyze.evalScore(resType, value)
     assert ev in [RAMALYZE_FAVORED, RAMALYZE_ALLOWED, RAMALYZE_OUTLIER]
+    #if ev == RAMALYZE_FAVORED:
+    #  self.n_favored += 1
+    #elif ev == RAMALYZE_ALLOWED:
+    #  self.n_allowed += 1
+    #elif ev == RAMALYZE_OUTLIER:
+    #  self.n_outliers += 1
+    return ev
+
+  def add_to_validation_counts(self, ev):
     if ev == RAMALYZE_FAVORED:
       self.n_favored += 1
     elif ev == RAMALYZE_ALLOWED:
       self.n_allowed += 1
     elif ev == RAMALYZE_OUTLIER:
       self.n_outliers += 1
-    return ev
 
   def get_outliers_goal(self):
     return "< 0.2%"
@@ -420,6 +397,17 @@ class ramalyze (validation) :
   def get_phi_psi_residues_count(self):
     return self.n_total
 
+  def as_markup_for_kinemage (self,c_alphas):
+    #atom.id_str() returns 'pdb=" CA  LYS    16 "'
+    #The [9:-1] slice gives ' LYS    16 '
+    ram_out = "{%s CA}P %s\n" % (c_alphas[0].id_str()[9:-1], "%.3f %.3f %.3f" %
+      c_alphas[0].xyz)
+    ram_out += "{%s CA} %s\n" % (c_alphas[1].id_str()[9:-1], "%.3f %.3f %.3f" %
+      c_alphas[1].xyz)
+    ram_out += "{%s CA} %s\n" % (c_alphas[2].id_str()[9:-1], "%.3f %.3f %.3f" %
+      c_alphas[2].xyz)
+    return ram_out
+
   def as_kinemage (self) :
     ram_out = "@subgroup {Rama outliers} master= {Rama outliers}\n"
     ram_out += "@vectorlist {bad Rama Ca} width= 4 color= green\n"
@@ -443,6 +431,15 @@ def get_matching_atom_group(residue_group, altloc):
       if (ag.altloc == "" and match == None): match = ag
       if (ag.altloc == altloc): match = ag
   return match
+
+def get_dihedral(four_atom_list):
+  from cctbx import geometry_restraints
+  if None in four_atom_list:
+    return None
+  return geometry_restraints.dihedral(
+    sites=[atom.xyz for atom in four_atom_list],
+    angle_ideal=-40,
+    weight=1).angle_model
 
 def get_phi(prev_atoms, atoms):
   import mmtbx.rotamer
@@ -472,26 +469,53 @@ def get_psi(atoms, next_atoms):
   if (nextN is not None and resN is not None and resCA is not None and resC is not None):
     return mmtbx.rotamer.psi_from_atoms(resN, resCA, resC, nextN)
 
-def get_omega(prev_atoms, atoms):
-  import mmtbx.rotamer
-  prevCA, prevC, thisN, thisCA = None, None, None, None
-  if (prev_atoms is not None):
-    for atom in prev_atoms:
-      if (atom.name == " CA "): prevCA = atom
-      if (atom.name == " C  "): prevC = atom
-  if (atoms is not None):
-    for atom in atoms:
-      if (atom.name == " N  "): thisN = atom
-      if (atom.name == " CA "): thisCA = atom
-  if (prevCA is not None and prevC is not None and thisN is not None and thisCA is not None):
-    return mmtbx.rotamer.omega_from_atoms(prevCA, prevC, thisN, thisCA)
+def get_omega_atoms(three):
+  ccn1, outl1 = get_c_ca_n(three[1])
+  ccn2, outl2 = get_c_ca_n(three[2])
+  ca1, c, n, ca2 = ccn1[1], ccn1[0], ccn2[2], ccn2[1]
+  omega_atoms = [ca1, c, n, ca2]
+  return omega_atoms
 
-def is_cis_peptide(prev_atoms, atoms):
-  omega = get_omega(prev_atoms, atoms)
+def is_cis_peptide(three):
+  omega_atoms = get_omega_atoms(three)
+  omega = get_dihedral(omega_atoms)
+  if omega is None:
+    return False
   if(omega > -30 and omega < 30):
     return True
   else:
     return False
+
+def get_cas_from_three(three):
+  cas = []
+  for residue in three:
+    c_ca_n = get_c_ca_n(residue)
+    cas.append(c_ca_n[0][1])
+  return cas
+
+def get_altloc_from_three(three):
+  #in conformer world, where threes come from, altlocs are most accurately
+  #  stored at the atom level, in the .id_str()
+  #look at all atoms in the main residues, plus the atoms used in calculations
+  #  from adjacent residues to find if any have altlocs
+  ##mc_atoms = (" N  ", " CA ", " C  ", " O  ")
+  for atom in three[1].atoms():
+    altchar = atom.id_str()[9:10]
+    if altchar != ' ':
+      return altchar
+  for atom in three[0].atoms():
+    if atom.name != ' C  ':
+      continue
+    altchar = atom.id_str()[9:10]
+    if altchar != ' ':
+      return altchar
+  for atom in three[2].atoms():
+    if atom.name != ' N  ':
+      continue
+    altchar = atom.id_str()[9:10]
+    if altchar != ' ':
+      return altchar
+  return ''
 
 def construct_complete_residues(res_group):
   if (res_group is not None):
