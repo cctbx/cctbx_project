@@ -1860,7 +1860,6 @@ mmtbx/command_line/compare_ligands.py -text
 mmtbx/command_line/compute_map_coefficients.py -text
 mmtbx/command_line/density_modification.py -text
 mmtbx/command_line/development_fem.py -text
-mmtbx/command_line/development_model_map_statistics.py -text
 mmtbx/command_line/distance_difference.py -text
 mmtbx/command_line/dssp.py -text
 mmtbx/command_line/dynamics.py -text
@@ -1904,6 +1903,7 @@ mmtbx/command_line/model_idealization.py -text
 mmtbx/command_line/model_map.py -text
 mmtbx/command_line/model_model_distances.py -text
 mmtbx/command_line/model_vs_data.py -text
+mmtbx/command_line/model_vs_map.py -text
 mmtbx/command_line/model_vs_sequence.py -text
 mmtbx/command_line/models_as_chains.py -text
 mmtbx/command_line/molprobity.py svneol=native#text/x-python

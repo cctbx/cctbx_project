@@ -1,5 +1,5 @@
 from __future__ import division
-# LIBTBX_SET_DISPATCHER_NAME phenix.development.model_map_statistics
+# LIBTBX_SET_DISPATCHER_NAME phenix.model_vs_map
 
 from scitbx.array_family import flex
 import sys, math, time
