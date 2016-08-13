@@ -1365,6 +1365,7 @@ template <typename FloatType, typename ComplexType>
    }
    bulk_solvent_scale.push_back(k_best);
    bulk_solvent_scale.push_back(b_best);
+   bulk_solvent_scale.push_back(r_best);
    //for(std::size_t k=0; k < f_obs.size(); k++) {
    //  bulk_solvent_scale[k] = k_best * std::exp(-b_best * ss[k]);
    //}

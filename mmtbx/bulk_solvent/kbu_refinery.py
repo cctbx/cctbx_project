@@ -102,8 +102,17 @@ class minimizer:
     return self.x, self.f, self.g, self.d
 
 class tgc(object):
-  def __init__(self, f_obs, f_calc, f_masks, ss, k_sols, b_sols,
-               u_star=[0,0,0,0,0,0], b_max=5000, b_min=0, k_min=0.001, k_max=5):
+  def __init__(self,
+               f_obs,
+               f_calc,
+               f_masks,
+               ss,
+               k_sols=None,
+               b_sols=None,
+               ps=None,
+               u_star=[0,0,0,0,0,0], b_max=300, b_min=0, k_min=0.001, k_max=50):
+    if(ps is not None): assert [k_sols, b_sols].count(None) == 2
+    else:               assert [k_sols, b_sols].count(None) == 0
     adopt_init_args(self, locals())
     self.kbu = mmtbx.f_model.manager_kbu(
       f_obs   = self.f_obs,
@@ -119,6 +128,7 @@ class tgc(object):
     self.refine_k=False
     self.refine_b=False
     self.refine_u=False
+    self.refine_p=False
     self.space_group = self.f_obs.space_group()
     self.adp_constraints = self.space_group.adp_constraints()
 
@@ -127,27 +137,38 @@ class tgc(object):
     self.refine_u=False
     self.refine_k=False
     self.refine_b=False
+    self.refine_p=False
 
   def set_refine_k(self):
     self.refine_k=True
     self.refine_b=False
     self.refine_kb=False
     self.refine_u=False
+    self.refine_p=False
 
   def set_refine_b(self):
     self.refine_k=False
     self.refine_b=True
     self.refine_kb=False
     self.refine_u=False
+    self.refine_p=False
 
   def set_refine_u(self):
     self.refine_k=False
     self.refine_b=False
     self.refine_kb=False
     self.refine_u=True
+    self.refine_p=False
     u_star = self.space_group.average_u_star(u_star = self.kbu.u_star())
     self.kbu.update(u_star = u_star)
     assert self.adp_constraints.n_independent_params() <= 6
+
+  def set_refine_p(self):
+    self.refine_kb=False
+    self.refine_u=False
+    self.refine_k=False
+    self.refine_b=False
+    self.refine_p=True
 
   def set_use_scale(self, value):
     assert value in [True, False]
@@ -243,17 +264,17 @@ class tgc(object):
 
   def minimize_kbu_sequential(self, use_curvatures_options=[False, True],
                                     n_cycles=5):
-    print "start r:", self.kbu.r_factor()
+    #print "start r:", self.kbu.r_factor()
     for use_curvatures in use_curvatures_options*n_cycles:
       self.set_use_scale(value = True)
       m = self.minimize_k_once(use_curvatures=use_curvatures)
-      print "k_sols r:", self.kbu.r_factor(), "curv:", use_curvatures
+      #print "k_sols r:", self.kbu.r_factor(), "curv:", use_curvatures
       m = self.minimize_b_once(use_curvatures=use_curvatures)
-      print "b_sols r:", self.kbu.r_factor(), "curv:", use_curvatures
+      #print "b_sols r:", self.kbu.r_factor(), "curv:", use_curvatures
       m = self.minimize_kb_once(use_curvatures=use_curvatures)
-      print "kb_sols r:", self.kbu.r_factor(), "curv:", use_curvatures
+      #print "kb_sols r:", self.kbu.r_factor(), "curv:", use_curvatures
       m = self.minimize_u_once()
-      print "u_star r:", self.kbu.r_factor(), "curv:", use_curvatures
+      #print "u_star r:", self.kbu.r_factor(), "curv:", use_curvatures
 
   def minimize_kb_once(self, use_curvatures):
     self.set_refine_kb()
