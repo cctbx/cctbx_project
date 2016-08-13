@@ -366,17 +366,18 @@ class loop_idealization():
 
 
     all_results.sort(key=lambda tup: tup[1])
-    print "ALL RESULTS:"
-    i = 0
-    for ar in all_results:
-      print ar[1:],
-      if ar[2] < 0.4:
-        # fn = "variant_%d.pdb" % i
-        # ar[0].write_pdb_file(file_name=fn)
-        # print fn
-        i += 1
-      else:
-        print "  no output"
+    if self.verbose:
+      print >> self.log, "ALL RESULTS:"
+      i = 0
+      for ar in all_results:
+        print >> self.log, ar[1:],
+        if ar[2] < 0.4:
+          # fn = "variant_%d.pdb" % i
+          # ar[0].write_pdb_file(file_name=fn)
+          # print fn
+          i += 1
+        else:
+          print >> self.log, "  no output"
     if self.params.force_rama_fixes:
       # find and apply the best varian from all_results. This would be the one
       # with the smallest rmsd given satisfactory closure
