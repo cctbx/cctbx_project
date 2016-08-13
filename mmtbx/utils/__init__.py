@@ -2599,6 +2599,8 @@ def fix_rotamer_outliers(
                 move_oxygens=False,
                 accept_worse_rama=False,
                 rotamer_manager=rotamer_manager)
+          if len(all_inf) == 0:
+            continue
           if verbose:
             print >> log, "Setting best available rotamer:", all_inf[-1][:-1]
           res.atoms().set_xyz(all_inf[-1][-1])

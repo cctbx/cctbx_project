@@ -332,7 +332,10 @@ def set_xyz_smart(dest_h, source_h):
       dest_h.atoms().set_xyz(source_h.atoms().extract_xyz())
       # print "SHORTCUT DONE"
       return
-  assert dest_h.atoms_size() >= source_h.atoms_size()
+  if dest_h.atoms_size() >= source_h.atoms_size():
+    dest_h.write_pdb_file("dest_h.pdb")
+    source_h.write_pdb_file("source_h.pdb")
+    assert 0
   for atom in source_h.atoms():
     chains = []
     if hasattr(dest_h, 'chains'):
