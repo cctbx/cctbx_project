@@ -34,7 +34,7 @@ additionally_fix_rotamer_outliers = True
   .type = bool
   .help = At the late stage if rotamer is still outlier choose another one \
     with minimal clash with surrounding atoms
-use_starting_model_for_final_gm = True
+use_starting_model_for_final_gm = False
   .type = bool
   .help = Use supplied model for final geometry minimization. Otherwise just \
     use self.
@@ -185,11 +185,11 @@ class model_idealization():
     xrs = (master_pdb_h if master_pdb_h is not None else self.pdb_h).extract_xray_structure(crystal_symmetry=self.cs)
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
-    original_ann = None
+    self.original_ann = None
     if self.ann is not None:
-      original_ann = self.ann.deep_copy()
+      self.original_ann = self.ann.deep_copy()
       print >> self.log, "Original SS annotation"
-      print >> self.log, original_ann.as_pdb_str()
+      print >> self.log, self.original_ann.as_pdb_str()
     if self.ann is not None:
       self.ann.remove_empty_annotations(
           hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h)
@@ -315,7 +315,7 @@ class model_idealization():
       ref_hierarchy_for_final_gm = self.pdb_h
     ref_hierarchy_for_final_gm.reset_atom_i_seqs()
     if self.params.additionally_fix_rotamer_outliers:
-      ssb.set_xyz_smart(self.pdb_h, fixed_rot_pdb_h)
+      ssb.set_xyz_smart((master_pdb_h if master_pdb_h is not None else self.pdb_h), fixed_rot_pdb_h)
     if using_ncs:
       print >> self.log, "Using ncs"
       # multiply back and do geometry_minimization for the whole molecule
@@ -357,16 +357,16 @@ class model_idealization():
       atoms = pdb_h_shifted.atoms()
       sites_cart = atoms.extract_xyz()
       atoms.set_xyz(new_xyz=sites_cart-self.shift_vector)
-    write_whole_pdb_file(
-        file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
-        pdb_hierarchy=hierarchy,
-        crystal_symmetry=cs_to_write,
-        ss_annotation=self.ann)
+    # write_whole_pdb_file(
+    #     file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
+    #     pdb_hierarchy=hierarchy,
+    #     crystal_symmetry=self.cs,
+    #     ss_annotation=self.ann)
     write_whole_pdb_file(
         file_name="%s_%s.pdb" % (self.params.output_prefix, fname_suffix),
         pdb_hierarchy=pdb_h_shifted,
         crystal_symmetry=cs_to_write,
-        ss_annotation=self.ann)
+        ss_annotation=self.original_ann)
 
   def get_rmsd_from_start(self):
     if self.rmsd_from_start is not None:
