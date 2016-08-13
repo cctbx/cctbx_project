@@ -14,6 +14,7 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
 import mmtbx.masks
+asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 
 number_of_mask_calculations = 0
 
@@ -339,11 +340,18 @@ class mask_from_xray_structure(object):
         self,
         xray_structure,
         p1,
-        solvent_radius,
-        shrink_truncation_radius,
         for_structure_factors,
-        n_real):
+        n_real,
+        solvent_radius=None,
+        shrink_truncation_radius=None,
+        in_asu=False):
+    if([solvent_radius, shrink_truncation_radius].count(None)>0):
+      mask_params = mask_master_params.extract()
+      if(solvent_radius is None): solvent_radius = mask_params.solvent_radius
+      if(shrink_truncation_radius is None):
+        shrink_truncation_radius = mask_params.shrink_truncation_radius
     xrs = xray_structure
+    sgt = xrs.space_group().type() # must be BEFORE going to P1, obviously!
     if(p1): xrs = xrs.expand_to_p1(sites_mod_positive=True)
     atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
     self.asu_mask = mmtbx.masks.atom_mask(
@@ -356,3 +364,7 @@ class mask_from_xray_structure(object):
     self.mask_data = self.asu_mask.mask_data_whole_uc()
     if(for_structure_factors):
       self.mask_data = self.mask_data / xrs.space_group().order_z()
+    if(in_asu):
+      assert p1
+      asu_map_ = asu_map_ext.asymmetric_map(sgt, self.mask_data)
+      self.mask_data = asu_map_.data()

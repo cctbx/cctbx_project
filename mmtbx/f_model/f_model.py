@@ -2064,19 +2064,11 @@ class manager(manager_mixin):
     if (result is None): return None
     return result**0.5
 
-  def r_work_low(self, size=500, reverse=False):
-    sel = self.f_obs_work().sort_permutation(reverse=reverse)
-    fo = self.f_obs_work().select(sel)
-    fm = self.f_model_scaled_with_k1_w().select(sel)
-    ds = fo.d_spacings().data()[:size]
-    d_min = flex.max(ds)
-    d_max = flex.min(ds)
-    fo = fo.data()[:size]
-    fm = fm.data()[:size]
-    return group_args(
-      r_work = abs(bulk_solvent.r_factor(fo, fm, 1)),
-      d_min  = d_min,
-      d_max  = d_max)
+  def r_work_low(self):
+    return self.select(self.bin_selections[0]).r_work()
+
+  def r_work_high(self):
+    return self.select(self.bin_selections[len(self.bin_selections)-1]).r_work()
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()
