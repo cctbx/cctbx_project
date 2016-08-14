@@ -2366,7 +2366,50 @@ def exercise_karle_normalization():
       cntr += 1
   assert cntr == 2
 
+def exercise_structure_factors_from_map_and_asu_map(d_min=2.):
+  import boost.python
+  asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
+  def rfactor(x,y):
+    x = flex.abs(x.data())
+    y = flex.abs(y.data())
+    num = flex.sum(flex.abs(x-y))
+    den = flex.sum(flex.abs(x+y))
+    return num/den*2*100.
+  for sg_number in range(1,231):
+    xrs = random_structure.xray_structure(
+      space_group_info = sgtbx.space_group_info(number=sg_number),
+      elements=["C"]*50,
+      volume_per_atom=50,
+      min_distance=1.0,
+      general_positions_only=False)
+    fc = xrs.structure_factors(
+      d_min=d_min).f_calc().set_observation_type_xray_amplitude()
+    crystal_gridding = fc.crystal_gridding(
+      d_min              = fc.d_min(),
+      symmetry_flags     = maptbx.use_space_group_symmetry,
+      resolution_factor  = 1./4)
+    n_real = crystal_gridding.n_real()
+    fft_map = fc.fft_map(
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      crystal_gridding = crystal_gridding)
+    fft_map.apply_volume_scaling()
+    map_data = fft_map.real_map_unpadded()
+    fc_from_map = fc.structure_factors_from_map(
+      map       = map_data,
+      use_scale = True,
+      use_sg    = False)
+    assert approx_equal(rfactor(x=fc,y=fc_from_map), 0.0)
+    # ASU map
+    asu_map = asu_map_ext.asymmetric_map(
+      xrs.space_group().type(), map_data).data()
+    #asu_map = asu_map.shift_origin() # This brakes assertion in rare SG
+    fc_from_asu_map = fc.structure_factors_from_asu_map(
+      asu_map_data = asu_map,
+      n_real       = n_real)
+    assert approx_equal(rfactor(x=fc,y=fc_from_asu_map), 0.0)
+
 def run(args):
+  exercise_structure_factors_from_map_and_asu_map()
   exercise_karle_normalization()
   exercise_systematic_absences_info()
   exercise_change_symmetry()
