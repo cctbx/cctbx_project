@@ -170,6 +170,12 @@ def run(args, log=sys.stdout):
   for chain in ph.chains():
     print >> log, "  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
       selection=chain.atoms().extract_i_seq()))
+  # per residue
+  print >> log, "Per residue:"
+  for rg in ph.residue_groups():
+    cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
+    print >> log, "  chain id: %s resid %s: %6.4f"%(
+      rg.parent().id, rg.resid(), cc)
   # per residue detailed counts
   print >> log, "Per residue (histogram):"
   crystal_gridding = maptbx.crystal_gridding(

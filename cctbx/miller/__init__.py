@@ -4,6 +4,7 @@ import cctbx.sgtbx
 
 import boost.python
 ext = boost.python.import_ext("cctbx_miller_ext")
+asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from cctbx_miller_ext import *
 
 from cctbx import crystal
@@ -1411,6 +1412,14 @@ class set(crystal.symmetry):
       mandatory_factors=mandatory_factors,
       max_prime=max_prime,
       assert_shannon_sampling=assert_shannon_sampling)
+
+  def structure_factors_from_asu_map(self, asu_map_data, n_real):
+    asu_m = asu_map_ext.asymmetric_map(
+      self.space_group().type(), asu_map_data, n_real)
+    indices = self.indices()
+    return self.customized_copy(
+      indices = indices,
+      data    = asu_m.structure_factors(indices)*self.unit_cell().volume())
 
   def structure_factors_from_map(self, map, in_place_fft=False,
       use_scale=False, anomalous_flag=None, use_sg=False):
