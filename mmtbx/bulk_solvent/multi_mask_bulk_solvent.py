@@ -33,6 +33,7 @@ def multi_mask_bulk_solvent(fmodel, log=None):
   # mask connectivity analysis
   co = maptbx.connectivity(map_data=mask_data_asu, threshold=0.9)
   conn = co.result()
+  conn.reshape(mask_data_asu.accessor()) #XXX should be part of connectivity?
   z = zip(co.regions(),range(0,co.regions().size()))
   sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
   cntr=0
