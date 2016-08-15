@@ -1,18 +1,14 @@
 from __future__ import division
 # -*- coding: utf-8 -*-
 from cctbx.array_family import flex
-
 import boost.python
 ext = boost.python.import_ext("cctbx_crystal_ext")
 from cctbx_crystal_ext import *
-
 from cctbx.crystal.find_best_cell import find_best_cell
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import covariance, geometry
 from libtbx.containers import OrderedDict
-
-
 from scitbx.array_family import shared
 from scitbx import stl
 import scitbx.stl.set
@@ -20,7 +16,10 @@ import scitbx.stl.vector
 import libtbx
 from libtbx.utils import Keep, Sorry
 import sys
-
+from libtbx.utils import format_float_with_standard_uncertainty \
+     as format_float_with_su
+import math
+from scitbx import matrix
 import scitbx.cubicle_neighbors
 cubicles_max_memory_allocation_set(
   number_of_bytes=scitbx.cubicle_neighbors.cubicles_max_memory_allocation_get())
