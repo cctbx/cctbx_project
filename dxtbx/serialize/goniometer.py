@@ -35,7 +35,7 @@ def from_dict(d, t=None):
       The goniometer model
 
   '''
-  from dxtbx.model import Goniometer
+  from dxtbx.model import Goniometer, MultiAxisGoniometer
 
   # If None, return None
   if d == None:
@@ -45,4 +45,6 @@ def from_dict(d, t=None):
     d = dict(t.items() + d.items())
 
   # Create the model from the dictionary
+  if 'axes' in d and 'angles' in d and 'scan_axis' in d:
+    return MultiAxisGoniometer.from_dict(d)
   return Goniometer.from_dict(d)

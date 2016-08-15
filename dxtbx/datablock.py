@@ -626,8 +626,7 @@ class DataBlockDictImporter(object):
     ''' Create the datablock from a dictionary. '''
     from libtbx.containers import OrderedDict
     from dxtbx.format.Registry import Registry
-    from dxtbx.model import Beam, Detector, Goniometer, Scan
-    from dxtbx.model import MultiAxisGoniometer
+    from dxtbx.model import Beam, Detector, Scan
     from dxtbx.model import Detector
     from dxtbx.serialize.filename import load_path
     from dxtbx.imageset import ImageSetFactory, ImageGrid
@@ -657,10 +656,8 @@ class DataBlockDictImporter(object):
       except Exception:
         detector = None
       try:
-        if 'rotation_axis' in glist[obj['goniometer']]:
-          gonio = Goniometer.from_dict(glist[obj['goniometer']])
-        else:
-          gonio = MultiAxisGoniometer.from_dict(glist[obj['goniometer']])
+        from dxtbx.serialize import goniometer
+        gonio = goniometer.from_dict(glist[obj['goniometer']])
       except Exception:
         gonio = None
       try:
