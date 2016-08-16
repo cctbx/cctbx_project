@@ -5742,6 +5742,8 @@ class process(object):
       chain_max_rmsd              = params.chain_max_rmsd,
       residue_match_radius        = params.residue_match_radius,
       log                         = self.log)
+    print >> self.log, "Found NCS groups:"
+    print >> self.log, ncs_obj.print_ncs_phil_param()
     return ncs_obj
 
 def run(
