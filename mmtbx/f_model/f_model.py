@@ -7,7 +7,6 @@ import math, sys, os
 from cctbx import miller
 from cctbx import adptbx
 from libtbx import adopt_init_args
-from mmtbx import bulk_solvent
 from mmtbx import masks
 from cctbx import xray
 from mmtbx import max_lik
@@ -41,6 +40,7 @@ import scitbx.math
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 import libtbx
+import mmtbx.bulk_solvent
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -290,7 +290,7 @@ class manager_kbu(object):
   def u_star(self): return self.data.u_star
 
   def r_factor(self):
-    return bulk_solvent.r_factor(self.f_obs.data(), self.data.f_model)
+    return mmtbx.bulk_solvent.r_factor(self.f_obs.data(), self.data.f_model)
 
   def check_f_mask_all_zero(self):
     for fm in self.f_masks:
@@ -322,7 +322,7 @@ class manager_kbu(object):
 
   def k_isotropic(self):
     return flex.double(self.f_obs.data().size(),
-      bulk_solvent.scale(self.f_obs.data(), self.f_model.data()))
+      mmtbx.bulk_solvent.scale(self.f_obs.data(), self.f_model.data()))
 
 class manager(manager_mixin):
 
@@ -536,7 +536,7 @@ class manager(manager_mixin):
     twin_fraction = 0.0
     tf_best = tfb
     while twin_fraction <= 1.0:
-      r_work_= abs(bulk_solvent.r_factor(
+      r_work_= abs(mmtbx.bulk_solvent.r_factor(
         self.f_obs_work().data(),
         self.arrays.core.data.f_model.select(self.arrays.work_sel),
         self.arrays.core_twin.data.f_model.select(self.arrays.work_sel),
@@ -956,7 +956,7 @@ class manager(manager_mixin):
       r_shrink=r_shrink,
       r_work=self.r_work(),
       r_free=self.r_free(),
-      r_work_low=self.r_work_low().r_work)
+      r_work_low=self.r_work_low())
 
   def check_f_mask_all_zero(self):
     for fm in self.f_masks():
@@ -1236,7 +1236,7 @@ class manager(manager_mixin):
       cmpl     = fo.completeness(d_max=d_max)*100.
       ki       = flex.mean(k_isotropic.select(sel))
       ka       = flex.mean(k_anisotropic.select(sel))
-      r        = bulk_solvent.r_factor(
+      r        = mmtbx.bulk_solvent.r_factor(
         f_obs.select(sel_work).data(),
         f_model.select(sel_work).data(), 1)
       km = " ".join(["%5.3f"%flex.mean(km_.select(sel)) for km_ in k_masks])
@@ -1953,7 +1953,7 @@ class manager(manager_mixin):
     if(selection is not None):
       f_obs   = f_obs.select(selection)
       f_model = f_model.select(selection)
-    result = abs(bulk_solvent.r_factor(f_obs, f_model, 1.0))
+    result = abs(mmtbx.bulk_solvent.r_factor(f_obs, f_model, 1.0))
     time_r_factors += timer.elapsed()
     if(result >= 1.e+9): result = None
     return result
