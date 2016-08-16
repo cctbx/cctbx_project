@@ -1230,7 +1230,7 @@ def get_params(args,out=sys.stdout):
   # Set origin shift now
   tracking_data.set_origin_shift(origin_shift)
 
-  if params.crystal_info.b_iso:
+  if params.crystal_info.b_iso is not None:
     print >>out,"\nAdjusting sharpening to obtain overall b_iso of %7.2f\n" %(
        params.crystal_info.b_iso)
 
