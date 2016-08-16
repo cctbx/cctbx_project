@@ -191,6 +191,7 @@ class model_idealization():
       print >> self.log, "Original SS annotation"
       print >> self.log, self.original_ann.as_pdb_str()
     if self.ann is not None:
+      self.ann.concatenate_consecutive_helices()
       self.ann.remove_empty_annotations(
           hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h)
       self.ann.split_helices_with_prolines(

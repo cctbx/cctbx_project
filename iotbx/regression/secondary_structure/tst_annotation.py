@@ -1246,6 +1246,24 @@ def tst_remove_short_annotations():
   # print ann
   assert nstr == [5,3,2], nstr
 
+def tst_concatenate_consecutive_helices():
+  ann_str = """\
+HELIX  233 233 PHE Z   12  CYS Z   43  1                                  32
+HELIX  234 234 LEU Z   49  ILE Z   54  1                                   6
+HELIX  235 235 ILE Z   54  ILE Z   62  1                                   9
+HELIX  236 236 ILE Z   62  SER Z   77  1                                  16
+HELIX  237 237 ALA Z   83  GLN Z  122  1                                  40
+HELIX  238 238 LEU Z  125  ALA Z  136  1                                  12
+  """
+  ann = annotation.from_records(ann_str.split("\n"))
+  assert ann.get_n_helices() == 6
+  assert ann.get_n_sheets() == 0
+  ann.concatenate_consecutive_helices()
+  assert ann.get_n_helices() == 4
+  # print ann
+  h_sizes = [x.length for x in ann.helices]
+  assert h_sizes == [32, 29, 40, 12], h_sizes
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test_helix_interface()
@@ -1262,4 +1280,5 @@ if (__name__ == "__main__"):
   tst_split_helices_with_prolines_2()
   tst_split_helices_with_prolines_3()
   tst_remove_short_annotations()
+  tst_concatenate_consecutive_helices()
   print "OK time =%8.3f"%(time.time() - t0)
