@@ -39,7 +39,6 @@ def multi_mask_bulk_solvent(fmodel, log=None):
   cntr=0
   f_masks = []
   accumulate = False
-  n_accumulated = 0
   m_final = 0
   for p in sorted_by_volume:
     v, i = p
@@ -52,20 +51,23 @@ def multi_mask_bulk_solvent(fmodel, log=None):
       print >> log, "region: %5d volume: %5d fraction: %6.2f  counter: %5d"%(
         i, v, fr, cntr)
       log.flush()
-    if(fr>5.):
+    if(fr>1.):
       m_final = m_final + mask_data_asu_i
       accumulate = True
-      n_accumulated += 1
     else:
       if(accumulate):
         f_mask_i = f_calc.structure_factors_from_asu_map(
-          asu_map_data = m_final/n_accumulated, n_real = n_real)
+          asu_map_data = m_final, n_real = n_real)
         accumulate = False
       else:
         f_mask_i = f_calc.structure_factors_from_asu_map(
           asu_map_data = mask_data_asu_i, n_real = n_real)
       f_masks.append(f_mask_i)
     cntr += 1 # MUST BE LAST
+  if(len(f_masks)==0): # just one region
+    f_mask_i = f_calc.structure_factors_from_asu_map(
+      asu_map_data = m_final, n_real = n_real)
+    f_masks.append(f_mask_i)
   # filter sub-masks
   # account for biggest lake first...
   fmodel = mmtbx.f_model.manager(
@@ -80,6 +82,7 @@ def multi_mask_bulk_solvent(fmodel, log=None):
   one = flex.double(ss.size(),1.)
   ks = flex.double([k/100 for k in range(0,105,1)])
   bs = flex.double([0,])
+  #bs = flex.double(range(0,50,5))
   # ... then score others
   for i, f in enumerate(f_masks):
     if(i==0):
