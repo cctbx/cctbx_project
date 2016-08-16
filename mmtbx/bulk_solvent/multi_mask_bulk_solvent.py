@@ -73,7 +73,7 @@ def multi_mask_bulk_solvent(fmodel, log=None):
     r_free_flags = r_free_flags,
     f_calc       = f_calc,
     f_mask       = [f_masks[0]])
-  fmodel.update_all_scales(remove_outliers=False)
+  fmodel.update_all_scales(remove_outliers=False, update_f_part1=False)
   k_anisotropic = fmodel.k_isotropic()*fmodel.k_anisotropic()
   sc = fmodel.scale_k1()
   f_mask_biggest = fmodel.f_bulk().data()
@@ -118,7 +118,7 @@ def multi_mask_bulk_solvent(fmodel, log=None):
       r_free_flags = r_free_flags,
       f_calc       = F,
       f_mask       = [f])
-    fmodel.update_all_scales(remove_outliers=False)
+    fmodel.update_all_scales(remove_outliers=False, update_f_part1=False)
     if(log is not None):
       print >> log, "mask: %3d r_work: %6.4f r_free: %6.4f"%(i, fmodel.r_work(),
         fmodel.r_free()), fmodel.r_work_low()
