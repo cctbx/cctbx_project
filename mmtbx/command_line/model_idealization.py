@@ -93,6 +93,8 @@ class model_idealization():
         corrupted_cs = True
         self.cs = None
     self.original_hierarchy = self.pdb_input.construct_hierarchy()
+    h_sel = self.original_hierarchy.atom_selection_cache().selection("not (element H or element D)")
+    self.original_hierarchy = self.original_hierarchy.select(h_sel)
     self.original_hierarchy.reset_atom_i_seqs()
     pdb_h_raw = self.original_hierarchy.deep_copy()
     pdb_h_raw.reset_atom_i_seqs()
@@ -294,12 +296,16 @@ class model_idealization():
       # to this moment in different procedures :(
       print >> self.log, "Fixing rotamers..."
       self.log.flush()
+      shift_and_write_result(
+        hierarchy=fixed_rot_pdb_h,
+        fname_suffix="just_before_rota")
       fixed_rot_pdb_h = fix_rotamer_outliers(
           pdb_hierarchy=fixed_rot_pdb_h,
           grm=grm.geometry,
           xrs=xrs,
           mon_lib_srv=None,
-          rotamer_manager=None)
+          rotamer_manager=None,
+          verbose=True)
 
     self.shift_and_write_result(
         hierarchy=fixed_rot_pdb_h,
@@ -358,11 +364,11 @@ class model_idealization():
       atoms = pdb_h_shifted.atoms()
       sites_cart = atoms.extract_xyz()
       atoms.set_xyz(new_xyz=sites_cart-self.shift_vector)
-    # write_whole_pdb_file(
-    #     file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
-    #     pdb_hierarchy=hierarchy,
-    #     crystal_symmetry=self.cs,
-    #     ss_annotation=self.ann)
+    write_whole_pdb_file(
+        file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
+        pdb_hierarchy=hierarchy,
+        crystal_symmetry=self.cs,
+        ss_annotation=self.ann)
     write_whole_pdb_file(
         file_name="%s_%s.pdb" % (self.params.output_prefix, fname_suffix),
         pdb_hierarchy=pdb_h_shifted,
