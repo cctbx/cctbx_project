@@ -33,13 +33,35 @@ class goniometer_factory:
 
   @staticmethod
   def make_kappa_goniometer(alpha, omega, kappa, phi, direction, scan_axis):
-    return KappaGoniometer(
-        float(alpha),
-        float(omega),
-        float(kappa),
-        float(phi),
-        str(direction),
-        str(scan_axis))
+    import math
+
+    omega_axis = (1, 0, 0)
+    phi_axis = (1, 0, 0)
+
+    c = math.cos(alpha * math.pi / 180);
+    s = math.sin(alpha * math.pi / 180);
+    if direction == "+y":
+      kappa_axis = (c, s, 0.0)
+    elif direction == "+z":
+      kappa_axis = (c, 0.0, s)
+    elif direction == "-y":
+      kappa_axis = (c, -s, 0.0)
+    elif direction == "-z":
+      kappa_axis = (c, 0.0, -s)
+    else:
+      raise RuntimeError("Invalid direction")
+
+    if scan_axis == "phi":
+      scan_axis = 0
+    else:
+      scan_axis = 2
+
+    from scitbx.array_family import flex
+    axes = flex.vec3_double((phi_axis, kappa_axis, omega_axis))
+    angles = flex.double((phi, kappa, omega))
+    names = flex.std_string(("PHI", "KAPPA", "OMEGA"))
+    return goniometer_factory.make_multi_axis_goniometer(
+      axes, angles, names, scan_axis)
 
   @staticmethod
   def make_multi_axis_goniometer(axes, angles, names, scan_axis):
