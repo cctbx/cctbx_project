@@ -296,7 +296,7 @@ class model_idealization():
       # to this moment in different procedures :(
       print >> self.log, "Fixing rotamers..."
       self.log.flush()
-      shift_and_write_result(
+      self.shift_and_write_result(
         hierarchy=fixed_rot_pdb_h,
         fname_suffix="just_before_rota")
       fixed_rot_pdb_h = fix_rotamer_outliers(
