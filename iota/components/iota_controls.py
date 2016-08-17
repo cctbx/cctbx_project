@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/02/2014
-Last Changed: 06/01/2016
+Last Changed: 08/16/2016
 Description : IOTA Custom Widgets
 '''
 
@@ -256,3 +256,58 @@ class TableCtrl(CtrlBase):
         self.sizer.Add(cell)
 
     self.SetSizer(self.sizer)
+
+class PHILBox(CtrlBase):
+  def __init__(self, parent,
+               btn_import=True,
+               btn_import_size=(120, -1),
+               btn_import_label='Import PHIL',
+               btn_export=False,
+               btn_export_size=(120, -1),
+               btn_export_label='Export PHIL',
+               btn_default=True,
+               btn_default_size=(120, -1),
+               btn_default_label='Default PHIL',
+               ctr_size=(-1, 125),
+               ctr_value='',
+               label_style='normal',
+               content_style='normal'):
+
+    CtrlBase.__init__(self, parent=parent, label_style=label_style,
+                      content_style=content_style)
+
+    self.sizer = wx.GridBagSizer(5, 5)
+    self.SetSizer(self.sizer)
+    self.sizer.AddGrowableCol(1)
+
+    self.ctr = wx.richtext.RichTextCtrl(self,
+                                        size=ctr_size,
+                                        style=wx.VSCROLL,
+                                        value=ctr_value)
+    span_counter = 0
+    if btn_import:
+      self.btn_import = wx.Button(self,
+                                  label=btn_import_label,
+                                  size=btn_import_size)
+      self.sizer.Add(self.btn_import, pos=(span_counter, 0))
+      span_counter += 1
+    if btn_export:
+      self.btn_export = wx.Button(self,
+                                  label=btn_export_label,
+                                  size=btn_export_size)
+      self.sizer.Add(self.btn_export, pos=(span_counter, 0))
+      span_counter += 1
+    if btn_default:
+      self.btn_default = wx.Button(self,
+                                   label=btn_default_label,
+                                   size=btn_default_size)
+      self.sizer.Add(self.btn_default, pos=(span_counter, 0))
+      span_counter += 1
+
+    if span_counter > 0:
+      self.sizer.AddGrowableRow(span_counter)
+      self.sizer.Add(self.ctr, pos=(0, 1), span=(span_counter + 1, 1),
+                     flag=wx.EXPAND)
+    elif span_counter == 0:
+      self.sizer = wx.BoxSizer(wx.VERTICAL)
+      self.sizer.Add(self.ctr, 1, flag=wx.EXPAND)

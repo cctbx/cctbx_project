@@ -355,7 +355,8 @@ def process_input(args,
   return params, diff_out
 
 
-def write_defaults(current_path, txt_out, method='cctbx'):
+def write_defaults(current_path=None, txt_out=None, method='cctbx',
+                   write_target_file=True, write_param_file=True):
   """ Generates list of default parameters for a reasonable target file:
         - if cctbx.xfel, target.phil will be created in the folder from which IOTA is
           being run.
@@ -415,6 +416,9 @@ def write_defaults(current_path, txt_out, method='cctbx'):
                       '    space_group = None',
                       '    unit_cell = None',
                       '  }',
+                      'output {',
+                      '  shoeboxes = True',
+                      '  }',
                       '  method=fft1d',
                       '  #method=real_space_grid_search',
                       '  refinement_protocol.n_macro_cycles = 1',
@@ -454,12 +458,16 @@ def write_defaults(current_path, txt_out, method='cctbx'):
                       '}'
                       ]
 
-  with open(def_target_file, 'w') as targ:
-    for line in default_target:
-      targ.write('{}\n'.format(line))
+  if write_target_file:
+    with open(def_target_file, 'w') as targ:
+      for line in default_target:
+        targ.write('{}\n'.format(line))
 
-  with open('{}/iota.param'.format(current_path), 'w') as default_settings_file:
-    default_settings_file.write(txt_out)
+  if write_param_file:
+    with open('{}/iota.param'.format(current_path), 'w') as default_param_file:
+      default_param_file.write(txt_out)
+
+  return default_target, txt_out
 
 def print_params():
   """ Print out master parameters for IOTA """

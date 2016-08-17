@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/19/2016
+Last Changed: 08/16/2016
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -781,7 +781,8 @@ class SingleImage(object):
 
       # Run DIALS
       self.fail, self.final, int_log = integrator.run()
-      self.status = 'final'
+      if self.fail != None:
+        self.status = 'final'
       self.log_info.append(int_log)
       log_entry = "\n".join(self.log_info)
       misc.main_log(self.main_log, log_entry)

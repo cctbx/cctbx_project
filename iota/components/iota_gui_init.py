@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 06/19/2016
+Last Changed: 08/16/2016
 Description : IOTA GUI Initialization module
 '''
 
@@ -268,6 +268,7 @@ class MainWindow(wx.Frame):
   def init_settings(self):
     # Grab params from main window class
     self.gparams = self.input_window.gparams
+    self.target_phil = self.input_window.target_phil
     int_index = self.input_window.int_box.ctr.GetCurrentSelection()
     self.gparams.advanced.integrate_with = str(
       self.input_window.int_box.ctr.GetString(int_index)[:5]).lower()
@@ -316,22 +317,15 @@ class MainWindow(wx.Frame):
     else:
       title = 'Image Processing'
     self.init_settings()
-    self.proc_window = ProcWindow(self, -1, title=title, params=self.gparams)
+    self.proc_window = ProcWindow(self, -1, title=title,
+                                  target_phil=self.target_phil,
+                                  params=self.gparams)
     if self.proc_window.good_to_go:
       self.proc_window.Show(True)
 
   def onOutputScript(self, e):
-    self.init_settings()
 
-    # Generate text of params
-    final_phil = inp.master_phil.format(python_object=self.gparams)
-    with misc.Capturing() as txt_output:
-      final_phil.show()
-    txt_out = ''
-    for one_output in txt_output:
-      txt_out += one_output + '\n'
-
-    # Save param file
+    # Determine param filepath
     save_dlg = wx.FileDialog(self,
                              message="Save IOTA Script",
                              defaultDir=os.curdir,
@@ -340,8 +334,34 @@ class MainWindow(wx.Frame):
                              style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
                              )
     if save_dlg.ShowModal() == wx.ID_OK:
-      with open(save_dlg.GetPath(), 'w') as savefile:
-        savefile.write(txt_out)
+      script_filepath = save_dlg.GetPath()
+
+      # Finalize settings
+      self.init_settings()
+
+      # Save target PHIL file, if a PHIL script exists
+      if self.target_phil is not None:
+        if self.gparams.advanced.integrate_with == 'cctbx':
+          phil_filepath = os.path.join(os.path.dirname(script_filepath), 'cctbx.phil')
+          self.gparams.cctbx.target = phil_filepath
+        if self.gparams.advanced.integrate_with == 'dials':
+          phil_filepath = os.path.join(os.path.dirname(script_filepath), 'dials.phil')
+          self.gparams.dials.target = phil_filepath
+
+      # Generate text of params
+      final_phil = inp.master_phil.format(python_object=self.gparams)
+      with misc.Capturing() as txt_output:
+        final_phil.show()
+      txt_out = ''
+      for one_output in txt_output:
+        txt_out += one_output + '\n'
+
+      # Save files
+      with open(script_filepath, 'w') as param_file:
+        param_file.write(txt_out)
+      with open(phil_filepath, 'w') as phil_file:
+        phil_file.write(self.target_phil)
+
 
   def onLoadScript(self, e):
     load_dlg = wx.FileDialog(self,
@@ -364,6 +384,15 @@ class MainWindow(wx.Frame):
       self.input_window.gparams = self.gparams
 
       # Set input window params
+      if self.gparams.advanced.integrate_with == 'cctbx' and \
+                      str(self.gparams.cctbx.target).lower() != 'none':
+        with open(self.gparams.cctbx.target, 'r') as tf:
+          self.input_window.target_phil = tf.read()
+      elif self.gparams.advanced.integrate_with == 'dials' and \
+           str(self.gparams.dials.target).lower() != 'none':
+        with open(self.gparams.dials.target, 'r') as tf:
+          self.input_window.target_phil = tf.read()
+
       self.input_window.inp_box.ctr.SetValue(str(self.gparams.input[1]))
       self.input_window.out_box.ctr.SetValue(str(self.gparams.output))
       self.input_window.title_box.ctr.SetValue(str(self.gparams.description))
@@ -393,7 +422,9 @@ class MainWindow(wx.Frame):
     if img_list_dlg.ShowModal() == wx.ID_OK:
       self.init_settings()
       self.init = InitAll(iota_version)
-      good_init = self.init.run(self.gparams, list_file = img_list_dlg.GetPath())
+      good_init = self.init.run(self.gparams,
+                                target_phil=self.target_phil,
+                                list_file = img_list_dlg.GetPath())
 
       if good_init:
         wx.MessageBox('List of images saved in {}'.format(img_list_dlg.GetPath()),
@@ -705,7 +736,7 @@ class SummaryTab(wx.Panel):
 class ProcWindow(wx.Frame):
   ''' New frame that will show processing info '''
 
-  def __init__(self, parent, id, title, params, test=False):
+  def __init__(self, parent, id, title, params, target_phil=None, test=False):
     wx.Frame.__init__(self, parent, id, title, size=(800, 900),
                       style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER)
 
@@ -714,6 +745,7 @@ class ProcWindow(wx.Frame):
     self.obj_counter = 0
     self.bookmark = 0
     self.gparams = params
+    self.target_phil = target_phil
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -802,7 +834,7 @@ class ProcWindow(wx.Frame):
   def run(self):
     # Initialize IOTA parameters and log
     self.init = InitAll(iota_version)
-    good_init = self.init.run(self.gparams)
+    good_init = self.init.run(self.gparams, target_phil=self.target_phil)
 
     # Start process
     if good_init:
@@ -1119,7 +1151,7 @@ class ProcWindow(wx.Frame):
                             ''.format(len(self.objects_in_progress), len(self.init.input_list),
                                       len(img_with_diffraction)), 1)
     else:
-      processed_images = [i for i in self.objects_in_progress if i.status == 'final']
+      processed_images = [i for i in self.objects_in_progress if i.final['final'] != None]
       self.sb.SetStatusText('{} of {} images processed, {} successfully integrated' \
                             ''.format(len(self.objects_in_progress), len(self.img_list), len(processed_images)), 1)
 
@@ -1159,8 +1191,9 @@ class ProcWindow(wx.Frame):
       self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
       self.sb.SetStatusText('{} of {} images successfully integrated'\
                             ''.format(len(self.final_objects), len(self.img_objects)), 1)
-      self.plot_integration()
-      self.analyze_results()
+      if len(self.final_objects) > 0:
+        self.plot_integration()
+        self.analyze_results()
 
 
 # ------------------------------ Window Panels ------------------------------- #
@@ -1170,6 +1203,8 @@ class InputWindow(wx.Panel):
 
   def __init__(self, parent):
     super(InputWindow, self).__init__(parent)
+
+    self.target_phil = None
 
     # Generate default parameters
     from iota.components.iota_input import master_phil
@@ -1201,6 +1236,7 @@ class InputWindow(wx.Panel):
     self.out_box = ct.InputCtrl(self, label='Output: ',
                                 label_size=(120, -1),
                                 label_style='bold',
+                                value=os.path.abspath(os.curdir),
                                 button=True)
     vbox.Add(self.out_box,
              flag=wx.LEFT | wx.TOP | wx.RIGHT | wx.EXPAND,
@@ -1332,14 +1368,13 @@ class InputWindow(wx.Panel):
     # For cctbx.xfel options
     if self.int_box.ctr.GetCurrentSelection() == 0:
       int_dialog = CCTBXOptions(self, title='cctbx.xfel Options',
-                                style=wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP)
+                                style=wx.DEFAULT_DIALOG_STYLE |
+                                      wx.STAY_ON_TOP | wx.RESIZE_BORDER)
       int_dialog.Fit()
 
       # Set values to defaults or previously-selected params
-      if str(self.gparams.cctbx.target).lower() == 'none':
-        int_dialog.cctbx_ctr_target.SetValue('')
-      else:
-        int_dialog.cctbx_ctr_target.SetValue(self.gparams.cctbx.target)
+      if self.target_phil is not None:
+          int_dialog.phil.ctr.SetValue(self.target_phil)
       if self.gparams.cctbx.grid_search.type == 'None':
         int_dialog.gs_rb1_type.SetValue(True)
       elif self.gparams.cctbx.grid_search.type == 'brute_force':
@@ -1403,10 +1438,8 @@ class InputWindow(wx.Panel):
 
       # Get values and set parameters
       if (int_dialog.ShowModal() == wx.ID_OK):
-        if int_dialog.cctbx_ctr_target.GetValue() == '':
-          self.gparams.cctbx.target = None
-        else:
-          self.gparams.cctbx.target = int_dialog.cctbx_ctr_target.GetValue()
+        if int_dialog.phil.ctr.GetValue() != '':
+          self.target_phil = int_dialog.phil.ctr.GetValue()
         if int_dialog.gs_rb1_type.GetValue():
           self.gparams.cctbx.grid_search.type = 'None'
         elif int_dialog.gs_rb2_type.GetValue():
@@ -1483,15 +1516,20 @@ class InputWindow(wx.Panel):
     # For DIALS options
     elif self.int_box.ctr.GetCurrentSelection() == 1:
       int_dialog = DIALSOptions(self, title='DIALS Options',
-                                style=wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP)
+                                style=wx.DEFAULT_DIALOG_STYLE |
+                                      wx.STAY_ON_TOP | wx.RESIZE_BORDER)
       int_dialog.Fit()
 
       # Set values to defaults or previously-selected params
+      if self.target_phil is not None:
+        int_dialog.phil.ctr.SetValue(self.target_phil)
       int_dialog.d_ctr_smin.SetValue(str(self.gparams.dials.min_spot_size))
       int_dialog.d_ctr_gthr.SetValue(str(self.gparams.dials.global_threshold))
 
       # Get values and set parameters
       if (int_dialog.ShowModal() == wx.ID_OK):
+        if int_dialog.phil.ctr.GetValue() != '':
+          self.target_phil = int_dialog.phil.ctr.GetValue()
         if int_dialog.d_ctr_smin.GetValue() != '':
           self.gparams.dials.min_spot_size = int(int_dialog.d_ctr_smin.GetValue())
         if int_dialog.d_ctr_gthr.GetValue() != '':
@@ -1802,31 +1840,26 @@ class CCTBXOptions(wx.Dialog):
 
     main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    main_box = wx.StaticBox(self, label='cctbx.xfel Options')
-    cctbx_box = wx.StaticBoxSizer(main_box, wx.VERTICAL)
+    phil_box = wx.StaticBox(self, label='LABELIT Target Settings')
+    phil_box_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
 
     # Target file input
-    target_box = wx.BoxSizer(wx.HORIZONTAL)
-    self.cctbx_txt_target = wx.StaticText(self, label='CCTBX.XFEL target file:')
-    self.cctbx_btn_target = wx.Button(self, label='Browse...')
-    ctr_length = 540 - self.cctbx_btn_target.GetSize()[0] - \
-                 self.cctbx_txt_target.GetSize()[0]
-    self.cctbx_ctr_target = wx.TextCtrl(self, size=(ctr_length, -1))
-    target_box.Add(self.cctbx_txt_target)
-    target_box.Add(self.cctbx_ctr_target, flag=wx.LEFT, border=5)
-    target_box.Add(self.cctbx_btn_target, flag=wx.LEFT, border=5)
-    cctbx_box.Add((-1, 25))
-    cctbx_box.Add(target_box, flag=wx.LEFT | wx.RIGHT, border=5)
 
-    # Grid search separator
-    gs_sep_box = wx.BoxSizer(wx.HORIZONTAL)
-    self.gs_stl = wx.StaticLine(self, size=(550, -1))
-    gs_sep_box.Add(self.gs_stl, flag=wx.ALIGN_BOTTOM)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(gs_sep_box, flag=wx.LEFT | wx.TOP | wx.BOTTOM, border=5)
+    self.phil = ct.PHILBox(self,
+                             btn_import=True,
+                             btn_import_label='Import PHIL',
+                             btn_export=False,
+                             btn_default=True,
+                             btn_default_label='Default PHIL',
+                             ctr_size=(-1, 300),
+                             ctr_value='')
+    phil_box_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Grid search options
     # Type selection
+    gs_box = wx.StaticBox(self, label='Grid Search Options')
+    gs_box_sizer = wx.StaticBoxSizer(gs_box, wx.VERTICAL)
+
     gs_type_box = wx.BoxSizer(wx.HORIZONTAL)
     gs_txt_type = wx.StaticText(self, label='Grid Search:')
     self.gs_rb1_type = wx.RadioButton(self, label='None', style=wx.RB_GROUP)
@@ -1842,8 +1875,8 @@ class CCTBXOptions(wx.Dialog):
     gs_type_box.Add(self.gs_rb2_type, flag=wx.LEFT, border=5)
     gs_type_box.Add(self.gs_rb3_type, flag=wx.LEFT, border=5)
     gs_type_box.Add(self.gs_chk_sih, flag=wx.LEFT, border=45)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(gs_type_box, flag=wx.LEFT | wx.BOTTOM, border=5)
+    gs_box_sizer.Add((-1, 10))
+    gs_box_sizer.Add(gs_type_box, flag=wx.LEFT | wx.BOTTOM, border=5)
 
     # Grid search parameter options
     gs_prm_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -1863,18 +1896,14 @@ class CCTBXOptions(wx.Dialog):
     gs_prm_box.Add(self.gs_ctr_area, flag=wx.LEFT, border=5)
     gs_prm_box.Add(self.gs_txt_arange, flag=wx.LEFT, border=5)
     gs_prm_box.Add(self.gs_ctr_arange, flag=wx.LEFT, border=1)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(gs_prm_box, flag=wx.LEFT | wx.TOP | wx.BOTTOM, border=5)
-
-    # Selection separator
-    sel_sep_box = wx.BoxSizer(wx.HORIZONTAL)
-    self.sel_stl = wx.StaticLine(self, size=(550, -1))
-    sel_sep_box.Add(self.sel_stl, flag=wx.ALIGN_BOTTOM)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(sel_sep_box, flag=wx.LEFT | wx.TOP | wx.BOTTOM, border=5)
+    gs_box_sizer.Add((-1, 10))
+    gs_box_sizer.Add(gs_prm_box, flag=wx.LEFT | wx.TOP | wx.BOTTOM, border=5)
 
     # Selection options
-    sel_box = wx.BoxSizer(wx.HORIZONTAL)
+    sel_box = wx.StaticBox(self, label='Grid Search Options')
+    sel_box_sizer = wx.StaticBoxSizer(sel_box, wx.VERTICAL)
+
+    sel_box_1 = wx.BoxSizer(wx.HORIZONTAL)
     self.sel_chk_only = wx.CheckBox(self, label="Select only")
     self.sel_chk_only.SetValue(False)
     self.sel_txt_objpath = wx.StaticText(self, label='Image objects:')
@@ -1887,12 +1916,12 @@ class CCTBXOptions(wx.Dialog):
                  self.sel_chk_only.GetSize()[0]
     self.sel_ctr_objpath = wx.TextCtrl(self, size=(ctr_length, -1))
     self.sel_ctr_objpath.Disable()
-    sel_box.Add(self.sel_chk_only)
-    sel_box.Add(self.sel_txt_objpath, flag=wx.LEFT, border=15)
-    sel_box.Add(self.sel_ctr_objpath, flag=wx.LEFT, border=5)
-    sel_box.Add(self.sel_btn_objpath, flag=wx.LEFT, border=5)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(sel_box, flag=wx.LEFT | wx.RIGHT, border=5)
+    sel_box_1.Add(self.sel_chk_only)
+    sel_box_1.Add(self.sel_txt_objpath, flag=wx.LEFT, border=15)
+    sel_box_1.Add(self.sel_ctr_objpath, flag=wx.LEFT, border=5)
+    sel_box_1.Add(self.sel_btn_objpath, flag=wx.LEFT, border=5)
+    sel_box_sizer.Add((-1, 10))
+    sel_box_sizer.Add(sel_box_1, flag=wx.LEFT | wx.RIGHT, border=5)
 
     sel_box_2 = wx.BoxSizer(wx.HORIZONTAL)
     self.sel_txt_selby = wx.StaticText(self, label='Select by')
@@ -1909,8 +1938,8 @@ class CCTBXOptions(wx.Dialog):
     sel_box_2.Add(self.sel_rb2_selby, flag=wx.LEFT, border=5)
     sel_box_2.Add(self.sel_txt_minsigma, flag=wx.LEFT, border=35)
     sel_box_2.Add(self.sel_ctr_minsigma, flag=wx.LEFT, border=5)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(sel_box_2, flag=wx.LEFT | wx.RIGHT, border=5)
+    sel_box_sizer.Add((-1, 10))
+    sel_box_sizer.Add(sel_box_2, flag=wx.LEFT | wx.RIGHT, border=5)
 
     sel_box_3 = wx.BoxSizer(wx.HORIZONTAL)
     self.sel_txt_filter = wx.StaticText(self, label='Filter by:')
@@ -1920,8 +1949,8 @@ class CCTBXOptions(wx.Dialog):
     sel_box_3.Add(self.sel_txt_filter)
     sel_box_3.Add(self.sel_chk_lattice, flag=wx.LEFT, border=5)
     sel_box_3.Add(self.sel_ctr_lattice, flag=wx.LEFT, border=5)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(sel_box_3, flag=wx.LEFT | wx.RIGHT, border=5)
+    sel_box_sizer.Add((-1, 10))
+    sel_box_sizer.Add(sel_box_3, flag=wx.LEFT | wx.RIGHT, border=5)
 
     sel_box_4 = wx.BoxSizer(wx.HORIZONTAL)
     uc_spacer_1 = self.sel_txt_filter.GetSize()[0] + 5
@@ -1945,9 +1974,8 @@ class CCTBXOptions(wx.Dialog):
     sel_box_4.Add(self.sel_ctr_uc_b, flag=wx.LEFT, border=5)
     sel_box_4.Add(self.sel_txt_uc_c, flag=wx.LEFT, border=5)
     sel_box_4.Add(self.sel_ctr_uc_c, flag=wx.LEFT, border=5)
-
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(sel_box_4, flag=wx.LEFT | wx.RIGHT, border=5)
+    sel_box_sizer.Add((-1, 10))
+    sel_box_sizer.Add(sel_box_4, flag=wx.LEFT | wx.RIGHT, border=5)
 
     sel_box_4a = wx.BoxSizer(wx.HORIZONTAL)
     uc_spacer_2 = uc_spacer_1 + self.sel_chk_unitcell.GetSize()[0] + 5
@@ -1972,8 +2000,8 @@ class CCTBXOptions(wx.Dialog):
     sel_box_4a.Add(self.sel_ctr_uc_beta, flag=wx.LEFT, border=5)
     sel_box_4a.Add(self.sel_txt_uc_gamma, flag=wx.LEFT, border=5)
     sel_box_4a.Add(self.sel_ctr_uc_gamma, flag=wx.LEFT, border=5)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(sel_box_4a, flag=wx.LEFT | wx.RIGHT, border=5)
+    sel_box_sizer.Add((-1, 10))
+    sel_box_sizer.Add(sel_box_4a, flag=wx.LEFT | wx.RIGHT, border=5)
 
     sel_box_4b = wx.BoxSizer(wx.HORIZONTAL)
     self.sel_txt_uc_tol = wx.StaticText(self, label='tolerance:')
@@ -1982,8 +2010,8 @@ class CCTBXOptions(wx.Dialog):
     self.sel_ctr_uc_tol.Disable()
     sel_box_4b.Add(self.sel_txt_uc_tol, flag=wx.LEFT, border=uc_spacer_2)
     sel_box_4b.Add(self.sel_ctr_uc_tol, flag=wx.LEFT, border=5)
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(sel_box_4b, flag=wx.LEFT | wx.RIGHT, border=5)
+    sel_box_sizer.Add((-1, 10))
+    sel_box_sizer.Add(sel_box_4b, flag=wx.LEFT | wx.RIGHT, border=5)
 
     sel_box_5 = wx.BoxSizer(wx.HORIZONTAL)
     self.sel_chk_minref = wx.CheckBox(self, label='Number of reflections:')
@@ -1998,12 +2026,15 @@ class CCTBXOptions(wx.Dialog):
     sel_box_5.Add(self.sel_txt_res)
     self.sel_ctr_minref.Disable()
     self.sel_ctr_res.Disable()
-    cctbx_box.Add((-1, 10))
-    cctbx_box.Add(sel_box_5, flag=wx.LEFT | wx.RIGHT, border=5)
-    cctbx_box.Add((-1, 10))
+    sel_box_sizer.Add((-1, 10))
+    sel_box_sizer.Add(sel_box_5, flag=wx.LEFT | wx.RIGHT, border=5)
+    sel_box_sizer.Add((-1, 10))
 
     # Button bindings
-    self.cctbx_btn_target.Bind(wx.EVT_BUTTON, self.onTargetBrowse)
+
+    self.Bind(wx.EVT_BUTTON, self.onImportPHIL, self.phil.btn_import)
+    self.Bind(wx.EVT_BUTTON, self.onDefaultPHIL, self.phil.btn_default)
+
     self.sel_btn_objpath.Bind(wx.EVT_BUTTON, self.onSelOnlyBrowse)
     self.gs_rb1_type.Bind(wx.EVT_RADIOBUTTON, self.onGSType)
     self.gs_rb2_type.Bind(wx.EVT_RADIOBUTTON, self.onGSType)
@@ -2016,12 +2047,38 @@ class CCTBXOptions(wx.Dialog):
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    main_sizer.Add(cctbx_box, flag=wx.ALL, border=15)
-    main_sizer.Add(dialog_box,
-                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+    main_sizer.Add(phil_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    main_sizer.Add(gs_box_sizer, flag=wx.ALL | wx.EXPAND, border=10)
+    main_sizer.Add(sel_box_sizer, flag=wx.ALL | wx.EXPAND, border=10)
+    main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
 
     self.SetSizer(main_sizer)
+
+  def onImportPHIL(self, e):
+    dlg = wx.FileDialog(
+      self, message="Select CCTBX.XFEL target file",
+      defaultDir=os.curdir,
+      defaultFile="*.phil",
+      wildcard="*",
+      style=wx.OPEN | wx.CHANGE_DIR
+    )
+    if dlg.ShowModal() == wx.ID_OK:
+      filepath = dlg.GetPaths()[0]
+
+      with open(filepath, 'r') as phil_file:
+        phil_content = phil_file.read()
+      self.phil.ctr.SetValue(phil_content)
+
+  def onDefaultPHIL(self, e):
+    from iota.components.iota_input import write_defaults
+    default_phil, _ = write_defaults(current_path=None,
+                                     txt_out=None,
+                                     method='cctbx',
+                                     write_target_file=False,
+                                     write_param_file=False)
+    self.phil.ctr.SetValue('\n'.join(default_phil))
+
 
   def onFilterCheck(self, e):
     # Controls prefilter options
@@ -2162,29 +2219,23 @@ class DIALSOptions(wx.Dialog):
 
     main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    main_box = wx.StaticBox(self, label='DIALS Options')
-    dials_box = wx.StaticBoxSizer(main_box, wx.VERTICAL)
-    target_box = wx.BoxSizer(wx.HORIZONTAL)
+    phil_box = wx.StaticBox(self, label='LABELIT Target Settings')
+    phil_box_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
 
-    self.dials_txt_target = wx.StaticText(self, label='DIALS target file:')
-    self.dials_btn_target = wx.Button(self, label='Browse...')
-    ctr_length = 540 -\
-                 self.dials_btn_target.GetSize()[0] -\
-                 self.dials_txt_target.GetSize()[0]
-    self.dials_ctr_target = wx.TextCtrl(self, size=(ctr_length, -1))
+    # Target file input
 
-    target_box.Add(self.dials_txt_target)
-    target_box.Add(self.dials_ctr_target, flag=wx.LEFT, border=5)
-    target_box.Add(self.dials_btn_target, flag=wx.LEFT, border=5)
-    dials_box.Add((-1, 25))
-    dials_box.Add(target_box, flag=wx.LEFT | wx.RIGHT, border=5)
+    self.phil = ct.PHILBox(self,
+                           btn_import=True,
+                           btn_import_label='Import PHIL',
+                           btn_export=False,
+                           btn_default=True,
+                           btn_default_label='Default PHIL',
+                           ctr_size=(500, 300),
+                           ctr_value='')
+    phil_box_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Options separator
-    # opt_sep_box = wx.BoxSizer(wx.HORIZONTAL)
-    # opt_stl = wx.StaticLine(self, size=(550, -1))
-    # opt_sep_box.Add(opt_stl, flag=wx.ALIGN_BOTTOM)
-    # dials_box.Add((-1, 10))
-    # dials_box.Add(opt_sep_box, flag=wx.LEFT|wx.TOP|wx.BOTTOM, border=5)
+    dials_box = wx.StaticBox(self, label='DIALS Options')
+    dials_box_sizer = wx.StaticBoxSizer(dials_box, wx.VERTICAL)
 
     # DIALS options
     d_opt_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -2196,25 +2247,26 @@ class DIALSOptions(wx.Dialog):
     d_opt_box.Add(self.d_ctr_smin, flag=wx.LEFT | wx.RIGHT, border=5)
     d_opt_box.Add(self.d_txt_gthr, flag=wx.LEFT | wx.RIGHT, border=5)
     d_opt_box.Add(self.d_ctr_gthr, flag=wx.LEFT | wx.RIGHT, border=5)
-    dials_box.Add((-1, 10))
-    dials_box.Add(d_opt_box, flag=wx.LEFT | wx.RIGHT, border=5)
-    dials_box.Add((-1, 10))
+    dials_box_sizer.Add((-1, 10))
+    dials_box_sizer.Add(d_opt_box, flag=wx.LEFT | wx.RIGHT, border=5)
+    dials_box_sizer.Add((-1, 10))
 
     # Button bindings
-    self.dials_btn_target.Bind(wx.EVT_BUTTON, self.onTargetBrowse)
+    self.Bind(wx.EVT_BUTTON, self.onImportPHIL, self.phil.btn_import)
+    self.Bind(wx.EVT_BUTTON, self.onDefaultPHIL, self.phil.btn_default)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    main_sizer.Add(dials_box, flag=wx.ALL, border=15)
+    main_sizer.Add(phil_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    main_sizer.Add(dials_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
     main_sizer.Add(dialog_box,
                    flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
 
     self.SetSizer(main_sizer)
 
-  def onTargetBrowse(self, e):
-    # Opens file dialog for target file browsing
 
+  def onImportPHIL(self, e):
     dlg = wx.FileDialog(
       self, message="Select DIALS target file",
       defaultDir=os.curdir,
@@ -2224,7 +2276,22 @@ class DIALSOptions(wx.Dialog):
     )
     if dlg.ShowModal() == wx.ID_OK:
       filepath = dlg.GetPaths()[0]
-      self.dials_ctr_target.SetLabel(filepath)
+
+      with open(filepath, 'r') as phil_file:
+        phil_content = phil_file.read()
+      self.phil.ctr.SetValue(phil_content)
+
+
+  def onDefaultPHIL(self, e):
+    from iota.components.iota_input import write_defaults
+    default_phil, _ = write_defaults(current_path=None,
+                                     txt_out=None,
+                                     method='dials',
+                                     write_target_file=False,
+                                     write_param_file=False)
+    self.phil.ctr.SetValue('\n'.join(default_phil))
+
+
 
 
 class AnalysisWindow(wx.Dialog):
@@ -2303,7 +2370,7 @@ class IOTAPreferences(wx.Dialog):
     q_choices = ['psanaq', 'psnehq', 'psfehq'] + ['custom']
     self.queues = ct.ChoiceCtrl(self,
                                 label='Queue:',
-                                label_size=(100, -1),
+                                label_size=(120, -1),
                                 label_style='bold',
                                 ctrl_size=wx.DefaultSize,
                                 choices=q_choices)
@@ -2312,22 +2379,22 @@ class IOTAPreferences(wx.Dialog):
     self.custom_queue = ct.OptionCtrl(self,
                                       items=[('cqueue', '')],
                                       label='Custom Queue:',
-                                      label_size=(100, -1),
+                                      label_size=(120, -1),
                                       label_style='normal',
                                       ctrl_size=(150, -1))
-    self.custom_queue.Disable()
+    # self.custom_queue.Disable()
     vbox.Add(self.custom_queue, flag=wx.ALL, border=10)
 
     mp_choices = ['multiprocessing', 'lsf']
     self.mp_methods = ct.ChoiceCtrl(self,
                                     label='Method:',
-                                    label_size=(100, -1),
+                                    label_size=(120, -1),
                                     label_style='bold',
                                     ctrl_size=wx.DefaultSize,
                                     choices=mp_choices)
     vbox.Add(self.mp_methods, flag=wx.ALL, border=10)
 
-    main_sizer.Add(vbox, flag=wx.EXPAND)
+    main_sizer.Add(vbox, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -2336,6 +2403,7 @@ class IOTAPreferences(wx.Dialog):
                    border=10)
 
     self.Bind(wx.EVT_CHOICE, self.onQueue, self.queues.ctr)
+    self.Bind(wx.EVT_CHOICE, self.onMethod, self.mp_methods.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def set_choices(self, method, queue):
@@ -2353,6 +2421,22 @@ class IOTAPreferences(wx.Dialog):
     inp_method = self.mp_methods.ctr.FindString(method)
     if inp_method != wx.NOT_FOUND:
       self.mp_methods.ctr.SetSelection(inp_method)
+
+    self.check_method()
+
+  def onMethod(self, e):
+    self.check_method()
+
+  def check_method(self):
+    choice = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
+    if choice == 'multiprocessing':
+      self.queues.Disable()
+      self.custom_queue.Disable()
+    else:
+      self.queues.Enable()
+      queue = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+      if queue == 'custom':
+        self.custom_queue.Enable()
 
   def onQueue(self, e):
     choice = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
@@ -2499,43 +2583,32 @@ class InitAll(object):
     # Check for existence of appropriate target files. If none are specified,
     # ask to generate defaults; if user says no, fail sanity check. If file is
     # specified but doesn't exist, show error message and fail sanity check
-    if not self.params.image_conversion.convert_only:
+    if self.target_phil == None:
       if self.params.advanced.integrate_with == 'cctbx':
-        if self.params.cctbx.target == None:
-          self.params.cctbx.target = 'cctbx.phil'
-          write_def = wx.MessageDialog(None,
-                                       'WARNING! No target file for CCTBX.XFEL. '
-                                       'Generate defaults?','WARNING',
-                                       wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
-          if (write_def.ShowModal() == wx.ID_YES):
-            inp.write_defaults(self.params.output, self.txt_out, method='cctbx')
-            return True
-          else:
-            return False
-        elif not os.path.isfile(self.params.cctbx.target):
-          wx.MessageBox('ERROR: CCTBX.XFEL target file not found!',
-                        'ERROR', wx.OK | wx.ICON_ERROR)
+        write_def = wx.MessageDialog(None,
+                                     'WARNING! No target file for CCTBX.XFEL. '
+                                     'Generate defaults?','WARNING',
+                                     wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
+        if (write_def.ShowModal() == wx.ID_YES):
+          self.target_phil, _ = inp.write_defaults(method='cctbx')
+          return True
+        else:
           return False
+
       elif self.params.advanced.integrate_with == 'dials':
-        if self.params.dials.target == None:
-          self.params.dials.target = 'dials.phil'
           write_def = wx.MessageDialog(None,
                                        'WARNING! No target file for DIALS. '
                                        'Generate defaults?', 'WARNING',
                                        wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION)
           if (write_def.ShowModal() == wx.ID_YES):
-            inp.write_defaults(self.params.output, self.txt_out, method='dials')
+            self.target_phil, _ = inp.write_defaults(method='dials')
             return True
           else:
             return False
-        elif not os.path.isfile(self.params.dials.target):
-          wx.MessageBox('ERROR: DIALS target file not found!',
-                        'ERROR', wx.OK | wx.ICON_ERROR)
-          return False
+    else:
+      return True
 
-    return True
-
-  def run(self, gparams, list_file=None):
+  def run(self, gparams, target_phil=None, list_file=None):
     ''' Run initialization for IOTA GUI
 
         gparams = IOTA parameters from the GUI elements in PHIL format
@@ -2547,14 +2620,7 @@ class InitAll(object):
     from iota.components.iota_init import parse_command_args
     self.args, self.phil_args = parse_command_args(self.iver, '').parse_known_args()
     self.params = gparams
-    final_phil = inp.master_phil.format(python_object=self.params)
-
-    # Generate text of params
-    with misc.Capturing() as txt_output:
-      final_phil.show()
-    self.txt_out = ''
-    for one_output in txt_output:
-      self.txt_out += one_output + '\n'
+    self.target_phil = target_phil
 
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
@@ -2576,14 +2642,14 @@ class InitAll(object):
           lf.write('{}\n'.format(input_file))
       return True
 
+    # Run the sanity check procedure
+    if not self.sanity_check():
+      return False
+
     # If fewer images than requested processors are supplied, set the number of
     # processors to the number of images
     if self.params.n_processors > len(self.input_list):
       self.params.n_processors = len(self.input_list)
-
-    # Run the sanity check procedure
-    if not self.sanity_check():
-      return False
 
     # Generate base folder paths
     self.conv_base = misc.set_base_dir('converted_pickles',
@@ -2606,6 +2672,27 @@ class InitAll(object):
     # Initialize main log
     self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))
 
+    # Write target file and record its location in params
+    local_target_file = os.path.join(self.int_base, 'target.phil')
+    if type(self.target_phil) == list:
+      self.target_phil = '\n'.join(self.target_phil)
+    with open(local_target_file, 'w') as tf:
+      tf.write(self.target_phil)
+
+    if self.params.advanced.integrate_with == 'cctbx':
+      self.params.cctbx.target = local_target_file
+    elif self.params.advanced.integrate_with == 'dials':
+      self.params.dials.target = local_target_file
+
+    # Collect final params and convert to PHIL object
+    final_phil = inp.master_phil.format(python_object=self.params)
+
+    # Generate text of params
+    with misc.Capturing() as txt_output:
+      final_phil.show()
+    self.txt_out = ''
+    for one_output in txt_output:
+      self.txt_out += one_output + '\n'
 
     # Log starting info
     misc.main_log(self.logfile, '{:=^80} \n'.format(' IOTA MAIN LOG '))
@@ -2613,15 +2700,9 @@ class InitAll(object):
     misc.main_log(self.logfile, self.txt_out)
 
     # Log cctbx.xfel / DIALS settings
-    if self.params.advanced.integrate_with == 'cctbx':
-      target_file = self.params.cctbx.target
-    elif self.params.advanced.integrate_with == 'dials':
-      target_file = self.params.dials.target
     misc.main_log(self.logfile, '{:-^80} \n\n'
                                 ''.format(' TARGET FILE ({}) CONTENTS '
-                                          ''.format(target_file)))
-    with open(target_file, 'r') as phil_file:
-      phil_file_contents = phil_file.read()
-    misc.main_log(self.logfile, phil_file_contents)
+                                          ''.format(local_target_file)))
+    misc.main_log(self.logfile, self.target_phil)
 
     return True

@@ -132,7 +132,7 @@ class Triage(object):
                                 N_Bragg_spots, w = len(img_filename)))
       status = None
     else:
-      log_info.append('REJECTED!')
+      log_info.append('REJECTED! ({} Bragg peaks found)'.format(N_Bragg_spots))
       status = 'failed triage'
 
     log_entry = "\n".join(log_info)

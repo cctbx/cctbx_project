@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/01/2015
+Last Changed: 08/16/2016
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -30,6 +30,9 @@ phil_scope = parse('''
    }
 
   output {
+    shoeboxes = True
+      .type = bool
+
     datablock_filename = datablock.json
       .type = str
       .help = "The filename for output datablock"
@@ -187,7 +190,7 @@ class Integrator(object):
     imagesets = self.datablock.extract_imagesets()
 
     # Necessary settings for stills processing
-    self.phil.refinement.parameterisation.crystal.scan_varying = False
+    #self.phil.refinement.parameterisation.crystal.scan_varying = False
     self.phil.indexing.scan_range=[]
 
     # Check if unit cell / space group have been provided

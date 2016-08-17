@@ -1,6 +1,10 @@
-IOTA v1.0.009 - Multiprocessing update
+IOTA v1.0.010 - GUI updates
 
-1. New module (iota_process.py) submits jobs to multiprocessing queue
-2. Called from GUI with command that depends on the multiprocessing method
-3. Workaround - needs to be better
-4. PRIME GUI also has options for queue submissions
+1. Cosmetic tweaks to the multiprocessing preferences dialog
+2. Reworked the "Processing options" dialog; users can now directly import
+and edit the full PHIL file or generate defaults.
+3. Processing options dialog can now be resized to accommodate PHIL text.
+4. Some tweaks to the DIALS option of IOTA:
+   a. Still doesn't work very well; need better defaults
+   b. Failed images no longer register as successfully processed in GUI
+   c. Fixed errors associated with calling settings that no longer exist
