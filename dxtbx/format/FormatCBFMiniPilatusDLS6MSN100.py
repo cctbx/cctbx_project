@@ -96,16 +96,21 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     else:
       kappa_value = 0.0
 
+    if 'Omega' in self._cif_header_dictionary:
+      omega_value = float(self._cif_header_dictionary['Omega'].split()[0])
+    else:
+      omega_value = 0.0
+
     from scitbx import matrix
-    axis = matrix.col((1, 0, 0))
-    phi = matrix.col((1, 0, 0))
-    kappa = matrix.col((0.914, 0.279, -0.297))
-
-    Rphi = phi.axis_and_angle_as_r3_rotation_matrix(phi_value, deg=True)
-    Rkappa = kappa.axis_and_angle_as_r3_rotation_matrix(kappa_value, deg=True)
-    fixed = Rkappa * Rphi
-
-    return self._goniometer_factory.make_goniometer(axis, fixed)
+    from scitbx.array_family import flex
+    phi = (1.0, 0.0, 0.0)
+    kappa = (0.914, 0.279, -0.297)
+    omega = (1.0, 0.0, 0.0)
+    axes = flex.vec3_double((phi, kappa, omega))
+    angles = flex.double((phi_value, kappa_value, omega_value))
+    names = flex.std_string(("GON_PHI", "GON_KAPPA", "GON_OMEGA"))
+    return self._goniometer_factory.make_multi_axis_goniometer(
+      axes, angles, names, scan_axis=2)
 
   def _detector(self):
     '''Detector model, allowing for small offsets in the positions of 60
