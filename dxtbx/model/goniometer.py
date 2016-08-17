@@ -11,7 +11,7 @@ from __future__ import division
 # of the XSweep classes.
 
 import pycbf
-from dxtbx_model_ext import Goniometer, KappaGoniometer, MultiAxisGoniometer
+from dxtbx_model_ext import Goniometer, MultiAxisGoniometer
 
 import scitbx.math # import dependency
 
