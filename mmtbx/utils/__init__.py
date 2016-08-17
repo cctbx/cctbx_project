@@ -2556,7 +2556,7 @@ def fix_rotamer_outliers(
             if i_res > 0:
               prev_res = residues[i_res-1]
             next_res = None
-            if i_res < n_res:
+            if i_res+1 < n_res:
               next_res = residues[i_res+1]
             backrub_move(
                 prev_res = prev_res,
