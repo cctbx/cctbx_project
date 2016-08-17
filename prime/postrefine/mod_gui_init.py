@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 07/26/2016
+Last Changed: 08/16/2016
 Description : PRIME GUI Initialization module
 '''
 
@@ -443,6 +443,8 @@ class PRIMEInputWindow(wx.Panel):
     if advanced.ShowModal() == wx.ID_OK:
       self.pparams.scale.d_max = float(advanced.res.high.GetValue())
       self.pparams.scale.d_min = float(advanced.res.low.GetValue())
+      self.pparams.merge.d_max = float(advanced.res.high.GetValue())
+      self.pparams.merge.d_min = float(advanced.res.low.GetValue())
       self.pparams.postref.scale.d_max = float(advanced.res.high.GetValue())
       self.pparams.postref.scale.d_min = float(advanced.res.low.GetValue())
       self.pparams.postref.crystal_orientation.d_max = \
@@ -1080,7 +1082,7 @@ class PRIMEPreferences(wx.Dialog):
     q_choices = ['psanaq', 'psnehq', 'psfehq'] + ['custom']
     self.queues = ct.ChoiceCtrl(self,
                                 label='Queue:',
-                                label_size=(100, -1),
+                                label_size=(120, -1),
                                 label_style='bold',
                                 ctrl_size=wx.DefaultSize,
                                 choices=q_choices)
@@ -1089,7 +1091,7 @@ class PRIMEPreferences(wx.Dialog):
     self.custom_queue = ct.OptionCtrl(self,
                                       items=[('cqueue', '')],
                                       label='Custom Queue:',
-                                      label_size=(100, -1),
+                                      label_size=(120, -1),
                                       label_style='normal',
                                       ctrl_size=(150, -1))
     self.custom_queue.Disable()
@@ -1098,13 +1100,13 @@ class PRIMEPreferences(wx.Dialog):
     mp_choices = ['multiprocessing', 'bsub']
     self.mp_methods = ct.ChoiceCtrl(self,
                                     label='Method:',
-                                    label_size=(100, -1),
+                                    label_size=(120, -1),
                                     label_style='bold',
                                     ctrl_size=wx.DefaultSize,
                                     choices=mp_choices)
     vbox.Add(self.mp_methods, flag=wx.ALL, border=10)
 
-    main_sizer.Add(vbox, flag=wx.EXPAND)
+    main_sizer.Add(vbox, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -1113,6 +1115,7 @@ class PRIMEPreferences(wx.Dialog):
                    border=10)
 
     self.Bind(wx.EVT_CHOICE, self.onQueue, self.queues.ctr)
+    self.Bind(wx.EVT_CHOICE, self.onMethod, self.mp_methods.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def set_choices(self, method, queue):
@@ -1131,6 +1134,22 @@ class PRIMEPreferences(wx.Dialog):
     inp_method = self.mp_methods.ctr.FindString(str(method))
     if inp_method != wx.NOT_FOUND:
       self.mp_methods.ctr.SetSelection(inp_method)
+
+    self.check_method()
+
+  def onMethod(self, e):
+    self.check_method()
+
+  def check_method(self):
+    choice = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
+    if choice == 'multiprocessing':
+      self.queues.Disable()
+      self.custom_queue.Disable()
+    else:
+      self.queues.Enable()
+      queue = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+      if queue == 'custom':
+        self.custom_queue.Enable()
 
   def onQueue(self, e):
     choice = self.queues.ctr.GetString(self.queues.ctr.GetSelection())

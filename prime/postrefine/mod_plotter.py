@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 06/01/2016
+Last Changed: 08/11/2016
 Description : PRIME Result Plotter module
 '''
 
