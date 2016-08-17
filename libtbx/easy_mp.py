@@ -627,6 +627,9 @@ def parallel_map (
     except SetupError, e:
       raise Sorry, e
 
+    manager.shutdown()
+    manager.join()
+
   return results
 
 

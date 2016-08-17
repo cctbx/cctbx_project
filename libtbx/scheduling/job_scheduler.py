@@ -123,7 +123,12 @@ class manager(object):
 
   def results(self):
 
-    while not self.is_empty():
+    self.poll()
+
+    while (
+      self.process_data_for or self.waiting_results or self.completed_results
+      or ( self.waiting_jobs and self.active )
+      ):
       while not self.has_results():
         self.wait()
         self.poll()
@@ -150,8 +155,6 @@ class manager(object):
 
 
   def join(self):
-
-    self.shutdown()
 
     while self.process_data_for:
       self.poll()
