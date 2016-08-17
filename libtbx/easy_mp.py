@@ -682,6 +682,7 @@ def run_parallel(
       method=method,
       processes=nproc,
       callback=None,
+      preserve_exception_message=True, # 2016-08-17
       qsub_command=qsub_command,
       use_manager=True )#  Always use manager 2015-10-13 TT (sys.platform == "win32"))
   return results

@@ -197,9 +197,14 @@ master_phil = iotbx.phil.parse("""
      auto_sharpen = True
        .type = bool
        .short_caption = Automatically determine sharpening
-       .help = Automatically determine sharpening.  Uses number of \
-               connected regions vs b_iso to identify sharpening (excessive \
-               sharpening leads to a very large number of regions)
+       .help = Automatically determine sharpening using target_b_ratio.
+
+     target_b_ratio = 10.
+      .type = float
+      .help = "Default ratio of b_iso value to resolution for "
+              " anisotropy correction. "
+              "Used if auto_sharpen=True. Ignored if b_iso is set. "
+      .short_caption = Target B ratio to resolution
 
      k_sharpen = 10
        .type = float
@@ -215,17 +220,17 @@ master_phil = iotbx.phil.parse("""
      search_b_min = None
        .type = float
        .short_caption = Low bound for b_iso search
-       .help = Low bound for b_iso search. Only applies if auto_sharpen is set
+       .help = Low bound for b_iso search. Not used
 
      search_b_max = None
        .type = float
        .short_caption = High bound for b_iso search
-       .help = High bound for b_iso search. Only applies if auto_sharpen is set
+       .help = High bound for b_iso search. Not used.
 
      search_b_n = None
        .type = int
        .short_caption = Number of b_iso values to search
-       .help = Number of b_iso values to search
+       .help = Number of b_iso values to search. Not used
 
 
      magnification = None
@@ -1229,6 +1234,15 @@ def get_params(args,out=sys.stdout):
 
   # Set origin shift now
   tracking_data.set_origin_shift(origin_shift)
+
+  # Set b_iso if needed
+
+  if params.crystal_info.b_iso is None and params.crystal_info.auto_sharpen\
+       and params.crystal_info.resolution:
+    params.crystal_info.b_iso=\
+       params.crystal_info.target_b_ratio*params.crystal_info.resolution
+    print >>out,"\nCarrying out auto_sharpening. B_iso=%7.2f" %(
+        params.crystal_info.b_iso)
 
   if params.crystal_info.b_iso is not None:
     print >>out,"\nAdjusting sharpening to obtain overall b_iso of %7.2f\n" %(
@@ -4173,6 +4187,7 @@ def run(args,
     tracking_data=get_solvent_fraction(params,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
 
+    """ No longer doing it here
     if params.crystal_info.auto_sharpen and params.crystal_info.b_iso is None:
       print >>out,"\nCarrying out auto_sharpening"
       map_data,tracking_data=run_auto_sharpen(
@@ -4182,6 +4197,7 @@ def run(args,
         tracking_data=tracking_data,
         out=out)
       params.crystal_info.auto_sharpen=None # so we don't do it again later
+    """
 
     tracking_data.show_summary(out=out)
 
