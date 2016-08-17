@@ -500,9 +500,7 @@ class manager(object):
 
   def join(self):
 
-    self.shutdown()
-
-    while self.process_numbered_as:
+    while self.running_jobs:
       self.poll()
       self.wait()
 
