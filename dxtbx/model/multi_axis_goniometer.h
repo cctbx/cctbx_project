@@ -51,9 +51,11 @@ namespace dxtbx { namespace model {
      */
     MultiAxisGoniometer(const scitbx::af::const_ref<vec3<double> > &axes,
                         const scitbx::af::const_ref<double> &angles,
+                        const scitbx::af::const_ref<std::string> &names,
                         std::size_t scan_axis)
       : axes_(axes.begin(), axes.end()),
         angles_(angles.begin(), angles.end()),
+        names_(names.begin(), names.end()),
         scan_axis_(scan_axis)
     {
       DXTBX_ASSERT(axes.size() >= 1);
@@ -74,6 +76,11 @@ namespace dxtbx { namespace model {
     /* Get the angles */
     scitbx::af::shared<double> get_angles() const {
       return scitbx::af::shared<double>(angles_.begin(), angles_.end());
+    }
+
+    /* Get the axis names */
+    scitbx::af::shared<std::string> get_names() const {
+      return scitbx::af::shared<std::string>(names_.begin(), names_.end());
     }
 
     /* Get the scan axis */
@@ -120,6 +127,7 @@ namespace dxtbx { namespace model {
 
     scitbx::af::shared<vec3<double> > axes_;
     scitbx::af::shared<double> angles_;
+    scitbx::af::shared<std::string> names_;
     std::size_t scan_axis_;
   };
 
@@ -131,9 +139,11 @@ namespace dxtbx { namespace model {
     os << "    Fixed rotation:  " << g.get_fixed_rotation().const_ref() << "\n";
     os << "    Setting rotation:" << g.get_setting_rotation().const_ref() << "\n";
     for (std::size_t i=0; i < g.get_axes().size(); i++) {
-      os << "    Axis " << i << ":  " << g.get_axes()[i].const_ref() << "\n";
+      os << "    Axis #" << i << " (" << g.get_names()[i] << ")" << ":  "
+         << g.get_axes()[i].const_ref() << "\n";
     }
-    os << "    scan axis: #" << g.get_scan_axis() << "\n";
+    os << "    scan axis: #" << g.get_scan_axis()
+       << " (" << g.get_names()[g.get_scan_axis()] << ")" << "\n";
     return os;
   }
 

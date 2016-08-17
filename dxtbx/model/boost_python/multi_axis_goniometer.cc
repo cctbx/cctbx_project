@@ -33,6 +33,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       return boost::python::make_tuple(
         obj.get_axes(),
         obj.get_angles(),
+        obj.get_names(),
         obj.get_scan_axis());
     }
   };
@@ -41,6 +42,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::dict result;
     result["axes"] = boost::python::list(obj.get_axes());
     result["angles"] = boost::python::list(obj.get_angles());
+    result["names"] = boost::python::list(obj.get_names());
     result["scan_axis"] = obj.get_scan_axis();
     return result;
   };
@@ -50,18 +52,21 @@ namespace dxtbx { namespace model { namespace boost_python {
       boost::python::extract< scitbx::af::shared<vec3<double> > >(obj["axes"]);
     scitbx::af::shared<double> angles =
       boost::python::extract< scitbx::af::shared<double> >(obj["angles"]);
+    scitbx::af::shared<std::string> names =
+      boost::python::extract< scitbx::af::shared<std::string> >(obj["names"]);
     return new MultiAxisGoniometer(
-      axes.const_ref(), angles.const_ref(),
+      axes.const_ref(), angles.const_ref(), names.const_ref(),
       boost::python::extract< std::size_t >(obj["scan_axis"]));
   };
 
   static boost::shared_ptr<MultiAxisGoniometer> make_multi_axis_goniometer(
     const scitbx::af::const_ref<vec3<double> > &axes,
     const scitbx::af::const_ref<double> &angles,
+    const scitbx::af::const_ref<std::string> &names,
     std::size_t scan_axis)
   {
     return boost::shared_ptr<MultiAxisGoniometer>(new MultiAxisGoniometer(
-      axes, angles, scan_axis));
+      axes, angles, names, scan_axis));
   }
 
   void export_multi_axis_goniometer()
@@ -70,15 +75,19 @@ namespace dxtbx { namespace model { namespace boost_python {
     class_ <MultiAxisGoniometer, bases <Goniometer> > ("MultiAxisGoniometer")
       .def(init <const scitbx::af::const_ref<vec3<double> > &,
                  const scitbx::af::const_ref<double> &,
+                 const scitbx::af::const_ref<std::string> &,
                  std::size_t> ((
           arg("axes"),
           arg("angles"),
+          arg("names"),
           arg("scan_axis"))))
       .def("__init__", make_constructor(&make_multi_axis_goniometer))
       .def("get_axes",
         &MultiAxisGoniometer::get_axes)
       .def("get_angles",
         &MultiAxisGoniometer::get_angles)
+      .def("get_names",
+        &MultiAxisGoniometer::get_names)
       .def("get_scan_axis",
         &MultiAxisGoniometer::get_scan_axis)
       .def("__str__", &multi_axis_goniometer_to_string)
