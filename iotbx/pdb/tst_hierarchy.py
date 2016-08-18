@@ -2225,8 +2225,8 @@ histogram of residue name frequency:
   "   " 10    other
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
-  group "ATOM                 A     .*.        "
-        "ATOM                 A     .*.        "
+  group "ATOM    .*.          A     .*.        "
+        "ATOM    .*.          A     .*.        "
 """)
   #
   check("""\
@@ -2279,8 +2279,8 @@ histogram of residue name frequency:
   "GLY" 1
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
-  group "ATOM     54  CA  GLY A   9 .*.        "
-        "ATOM     55  CA  GLY A   9 .*.        "
+  group "ATOM    .*.  CA  GLY A   9 .*.        "
+        "ATOM    .*.  CA  GLY A   9 .*.        "
 """)
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -2301,9 +2301,9 @@ ATOM     73  HD2 LEU B 441
     assert not show_diff(str(e), '''\
 number of groups of duplicate atom labels: 2
   total number of affected atoms:          6
-  group "ATOM     68  HD1 LEU B 441 .*.        "
-        "ATOM     69  HD1 LEU B 441 .*.        "
-        "ATOM     70  HD1 LEU B 441 .*.        "
+  group "ATOM    .*.  HD1 LEU B 441 .*.        "
+        "ATOM    .*.  HD1 LEU B 441 .*.        "
+        "ATOM    .*.  HD1 LEU B 441 .*.        "
   ... 1 remaining group not shown''')
   else: raise Exception_expected
   sio = StringIO()
@@ -2311,12 +2311,12 @@ number of groups of duplicate atom labels: 2
   assert not show_diff(sio.getvalue(), """\
 number of groups of duplicate atom labels: 2
   total number of affected atoms:          6
-  group "ATOM     68  HD1 LEU B 441 .*.        "
-        "ATOM     69  HD1 LEU B 441 .*.        "
-        "ATOM     70  HD1 LEU B 441 .*.        "
-  group "ATOM     71  HD2 LEU B 441 .*.        "
-        "ATOM     72  HD2 LEU B 441 .*.        "
-        "ATOM     73  HD2 LEU B 441 .*.        "
+  group "ATOM    .*.  HD1 LEU B 441 .*.        "
+        "ATOM    .*.  HD1 LEU B 441 .*.        "
+        "ATOM    .*.  HD1 LEU B 441 .*.        "
+  group "ATOM    .*.  HD2 LEU B 441 .*.        "
+        "ATOM    .*.  HD2 LEU B 441 .*.        "
+        "ATOM    .*.  HD2 LEU B 441 .*.        "
 """)
   #
   check("""\
@@ -2351,12 +2351,12 @@ histogram of residue name frequency:
   "LEU" 1
 number of groups of duplicate atom labels: 4
   total number of affected atoms:          8
-  group "ATOM     68  HD1 LEU B 441 .*.        "
-        "ATOM     72  HD1 LEU B 441 .*.        "
-  group "ATOM     69  HD2 LEU B 441 .*.        "
-        "ATOM     73  HD2 LEU B 441 .*.        "
-  group "ATOM     70  HD3 LEU B 441 .*.        "
-        "ATOM     74  HD3 LEU B 441 .*.        "
+  group "ATOM    .*.  HD1 LEU B 441 .*.        "
+        "ATOM    .*.  HD1 LEU B 441 .*.        "
+  group "ATOM    .*.  HD2 LEU B 441 .*.        "
+        "ATOM    .*.  HD2 LEU B 441 .*.        "
+  group "ATOM    .*.  HD3 LEU B 441 .*.        "
+        "ATOM    .*.  HD3 LEU B 441 .*.        "
   ... 1 remaining group not shown
 """)
   #
@@ -2373,8 +2373,8 @@ ATOM     72  HD1 LEU   441
         assert not show_diff(str(e), '''\
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
-  group "ATOM     68  HD1 LEU   441 .*.        "
-        "ATOM     72  HD1 LEU   441 .*.        "''')
+  group "ATOM    .*.  HD1 LEU   441 .*.        "
+        "ATOM    .*.  HD1 LEU   441 .*.        "''')
       else: raise Exception_expected
   #
   check("""\

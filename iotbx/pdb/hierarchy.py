@@ -315,8 +315,10 @@ class overall_counts(object):
     for atoms in dup[:max_show]:
       prfx = "  group "
       for atom in atoms:
-        print >> out, prefix+prfx+'"%s"' % atom.format_atom_record(
-          replace_floats_with=".*.")
+        atom_str = atom.format_atom_record(replace_floats_with=".*.")
+        # replacing atom number with .*.
+        a_s = atom_str[:4]+ "    .*." + atom_str[11:]
+        print >> out, prefix+prfx+'"%s"' % a_s
         prfx = "        "
     if (len(dup) > max_show):
       print >> out, prefix+"  ... %d remaining group%s not shown" % \
