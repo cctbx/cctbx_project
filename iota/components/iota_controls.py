@@ -279,7 +279,6 @@ class PHILBox(CtrlBase):
 
     self.sizer = wx.GridBagSizer(5, 5)
     self.SetSizer(self.sizer)
-    self.sizer.AddGrowableCol(1)
 
     self.ctr = wx.richtext.RichTextCtrl(self,
                                         size=ctr_size,
@@ -305,10 +304,11 @@ class PHILBox(CtrlBase):
       self.sizer.Add(self.btn_default, pos=(span_counter, 0))
       span_counter += 1
 
+    self.sizer.AddGrowableRow(span_counter)
     if span_counter > 0:
-      self.sizer.AddGrowableRow(span_counter)
+      self.sizer.AddGrowableCol(1)
       self.sizer.Add(self.ctr, pos=(0, 1), span=(span_counter + 1, 1),
                      flag=wx.EXPAND)
     elif span_counter == 0:
-      self.sizer = wx.BoxSizer(wx.VERTICAL)
-      self.sizer.Add(self.ctr, 1, flag=wx.EXPAND)
+      self.sizer.AddGrowableCol(0)
+      self.sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 08/17/2016
+Last Changed: 08/18/2016
 Description : IOTA GUI Initialization module
 '''
 
@@ -1193,9 +1193,6 @@ class ProcWindow(wx.Frame):
 
     # Update gauge
     self.gauge_process.Show()
-    print "DEBUG: Obj = {}, GaugeMax = {}" \
-          "".format(len(self.objects_in_progress),
-                    self.gauge_process.GetRange())
     self.gauge_process.SetValue(len(self.objects_in_progress))
 
     # Update status bar
@@ -1893,7 +1890,6 @@ class CCTBXOptions(wx.Dialog):
     phil_box_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
 
     # Target file input
-
     self.phil = ct.PHILBox(self,
                              btn_import=True,
                              btn_import_label='Import PHIL',
@@ -2080,10 +2076,8 @@ class CCTBXOptions(wx.Dialog):
     sel_box_sizer.Add((-1, 10))
 
     # Button bindings
-
     self.Bind(wx.EVT_BUTTON, self.onImportPHIL, self.phil.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onDefaultPHIL, self.phil.btn_default)
-
     self.sel_btn_objpath.Bind(wx.EVT_BUTTON, self.onSelOnlyBrowse)
     self.gs_rb1_type.Bind(wx.EVT_RADIOBUTTON, self.onGSType)
     self.gs_rb2_type.Bind(wx.EVT_RADIOBUTTON, self.onGSType)

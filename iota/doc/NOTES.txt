@@ -1,9 +1,6 @@
-IOTA v1.0.011 - GUI / multiprocessing updates
+IOTA v1.0.012 - PRIME GUI changes
 
-1. Changed how output is read when local multiprocessing is used
-2. Accelerated output read; should not slow down with increased file volume
-3. Pie chart updated even when no images are integrated successfully
-4. Static pie chart colors that don't change when new category is added
-5. Resolution and number of reflections per frame now in separate charts
-6. Median resolution and number of reflections shown on charts
-
+1. Added a PHIL box in Advanced Options for the full file of params
+2. GUI-altered Advanced Options override PHIL string
+3. Slight tweak to the PHIL Box generic control (for display w/o buttons)
+4. Cleaned up some of the IOTA GUI code (removed debug messages)
