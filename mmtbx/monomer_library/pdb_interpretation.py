@@ -408,7 +408,7 @@ master_params_str = """\
     .type = float
     .short_caption = Nonbonded weight
     .help = Weighting of nonbonded restraints term.  By default, this will be \
-      set to 16 if explicit hydrogens are used (this was the defaault in \
+      set to 16 if explicit hydrogens are used (this was the default in \
       earlier versions of Phenix), or 100 if hydrogens are missing.
   const_shrink_donor_acceptor = 0.6
     .type=float
