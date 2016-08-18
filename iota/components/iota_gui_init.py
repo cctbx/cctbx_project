@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 08/16/2016
+Last Changed: 08/17/2016
 Description : IOTA GUI Initialization module
 '''
 
@@ -57,18 +57,8 @@ icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 # -------------------------------- Threading --------------------------------- #
 
 # Set up events for finishing one cycle and for finishing all cycles
-tp_EVT_ONEDONE = wx.NewEventType()
-EVT_ONEDONE = wx.PyEventBinder(tp_EVT_ONEDONE, 1)
 tp_EVT_ALLDONE = wx.NewEventType()
 EVT_ALLDONE = wx.PyEventBinder(tp_EVT_ALLDONE, 1)
-
-class OneDone(wx.PyCommandEvent):
-  ''' Send event when finished one cycle'''
-  def __init__(self, etype, eid, result=None):
-    wx.PyCommandEvent.__init__(self, etype, eid)
-    self.result = result
-  def GetValue(self):
-    return self.result
 
 class AllDone(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
@@ -96,6 +86,8 @@ class ProcessImage():
       return img_object
     else:
       img_object.process()
+      result_file = os.path.splitext(img_object.obj_file)[0] + '.fin'
+      ep.dump(result_file, img_object)
       return img_object
 
 class ProcThread(Thread):
@@ -116,7 +108,6 @@ class ProcThread(Thread):
     if self.init.params.mp_method == 'multiprocessing':
       img_objects = parallel_map(iterable=self.iterable,
                                  func = self.full_proc_wrapper,
-                                 callback = self.callback,
                                  processes=self.init.params.n_processors)
     elif self.init.params.mp_method == 'lsf':
       # write iterable
@@ -135,10 +126,6 @@ class ProcThread(Thread):
 
     # Send "all done" event to GUI
     evt = AllDone(tp_EVT_ALLDONE, -1, img_objects)
-    wx.PostEvent(self.parent, evt)
-
-  def callback(self, result):
-    evt = OneDone(tp_EVT_ONEDONE, -1, result)
     wx.PostEvent(self.parent, evt)
 
   def full_proc_wrapper(self, input_entry):
@@ -471,11 +458,22 @@ class ProcessingTab(wx.Panel):
     self.int_axes = self.proc_figure.add_subplot(gsp[2:, 2:])
     self.int_axes.axis('off')
     self.bxy_axes = self.proc_figure.add_subplot(gsp[2:, :2])
-    self.nsref_axes = self.proc_figure.add_subplot(gsp[:2, :])
+
+    gsub = gridspec.GridSpecFromSubplotSpec(2, 1,
+                                            subplot_spec=gsp[:2, :],
+                                            hspace=0)
+
+    self.nsref_axes = self.proc_figure.add_subplot(gsub[1])
+    self.res_axes = self.proc_figure.add_subplot(gsub[0])
     self.nsref_axes.set_xlabel('Frame')
     self.nsref_axes.set_ylabel('Strong Spots')
-    self.res_axes = self.nsref_axes.twinx()
+    self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+    #self.res_axes = self.nsref_axes.twinx()
     self.res_axes.set_ylabel('Resolution')
+    self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.res_axes.get_xticklabels(), visible=False)
     self.proc_figure.set_tight_layout(True)
     self.canvas = FigureCanvas(self, -1, self.proc_figure)
     self.proc_sizer.Add(self.canvas, proportion=1, flag =wx.EXPAND | wx.ALL, border=10)
@@ -742,6 +740,7 @@ class ProcWindow(wx.Frame):
 
     self.logtext = ''
     self.objects_in_progress = []
+    self.read_object_files = []
     self.obj_counter = 0
     self.bookmark = 0
     self.gparams = params
@@ -801,7 +800,6 @@ class ProcWindow(wx.Frame):
     self.timer = wx.Timer(self)
 
     # Event bindings
-    self.Bind(EVT_ONEDONE, self.onFinishedOneTask)
     self.Bind(EVT_ALLDONE, self.onFinishedProcess)
     self.sb.Bind(wx.EVT_SIZE, self.onStatusBarResize)
     self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
@@ -888,7 +886,7 @@ class ProcWindow(wx.Frame):
 
       # Do analysis
       analysis = Analyzer(self.init,
-                          self.img_objects,
+                          self.objects_in_progress,
                           iota_version,
                           gui_mode=True)
       plot = Plotter(self.gparams,
@@ -990,190 +988,241 @@ class ProcWindow(wx.Frame):
   def plot_integration(self):
     try:
       # Summary pie chart
-      names_numbers = [
-        ['failed triage', len([i for i in self.objects_in_progress if i.fail == 'failed triage'])],
-        ['failed indexing / integration', len([i for i in self.objects_in_progress if i.fail == 'failed grid search'])],
-        ['failed prefilter', len([i for i in self.objects_in_progress if i.fail == 'failed prefilter'])],
-        ['failed spotfinding', len([i for i in self.objects_in_progress if i.fail == 'failed spotfinding'])],
-        ['failed indexing', len([i for i in self.objects_in_progress if i.fail == 'failed indexing'])],
-        ['failed integration', len([i for i in self.objects_in_progress if i.fail == 'failed integration'])],
-        ['integrated', len([i for i in self.objects_in_progress if i.status == 'final' and i.final['final'] != None])]
+      categories = [
+        ['failed triage', '#d73027',
+         len([i for i in self.objects_in_progress if i.fail == 'failed triage'])],
+        ['failed indexing / integration', '#f46d43',
+         len([i for i in self.objects_in_progress if i.fail == 'failed grid search'])],
+        ['failed filter', '#ffffbf',
+         len([i for i in self.objects_in_progress if i.fail == 'failed prefilter'])],
+        ['failed spotfinding', '#f46d43',
+         len([i for i in self.objects_in_progress if i.fail == 'failed spotfinding'])],
+        ['failed indexing', '#fdae61',
+         len([i for i in self.objects_in_progress if i.fail == 'failed indexing'])],
+        ['failed integration', '#fee090',
+         len([i for i in self.objects_in_progress if i.fail == 'failed integration'])],
+        ['integrated', '#4575b4',
+         len([i for i in self.objects_in_progress if i.status == 'final' and i.final['final'] != None])]
       ]
-      names_numbers.append(['not processed', len(self.img_list) - sum([i[1] for i in names_numbers])])
-      names = [i[0] for i in names_numbers if i[1] > 0]
-      numbers = [i[1] for i in names_numbers if i[1] > 0]
-      colors = ['crimson', 'darkorchid', 'plum', 'salmon', 'coral', 'sandybrown', 'gold']
+      categories.append(['not processed', '#e0f3f8',
+                         len(self.img_list) - sum([i[2] for i in categories])])
+      names = [i[0] for i in categories if i[2] > 0]
+      colors = [i[1] for i in categories if i[2] > 0]
+      numbers = [i[2] for i in categories if i[2] > 0]
+
       self.chart_tab.int_axes.clear()
       self.chart_tab.int_axes.pie(numbers, autopct='%.0f%%', colors=colors)
       self.chart_tab.int_axes.legend(names, loc='lower left', fontsize=9, fancybox=True)
       self.chart_tab.int_axes.axis('equal')
 
-      # Strong reflections per frame
-      self.chart_tab.nsref_axes.clear()
-      nsref_x = [i + 1 for i in range(len(self.img_list))]
-      nsref_y = np.array([np.nan if i==0 else i for i in
-                          self.nref_list]).astype(np.double)
-      nsref_ylabel = 'Reflections (I / sigI > {})' \
-                     ''.format(self.gparams.cctbx.selection.min_sigma)
-      nsref = self.chart_tab.nsref_axes.bar(nsref_x, nsref_y, align='center',
-                                            linewidth=0, color='red',
-                                            label=nsref_ylabel)
-      self.chart_tab.nsref_axes.set_xlim(0, np.nanmax(nsref_x) + 2)
-      nsref_ymax = np.nanmax(nsref_y) * 1.25 + 10
-      self.chart_tab.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
-      self.chart_tab.nsref_axes.set_ylabel(nsref_ylabel)
-      self.chart_tab.nsref_axes.set_xlabel('Frame')
-      self.chart_tab.nsref_axes.set_xticks(np.arange(len(nsref_x)) + .5,
-                                           minor=False)
-
-      # Resolution per frame
-      self.chart_tab.res_axes.clear()
-      res_x = np.array([i + 1.5 for i in range(len(self.img_list))])\
-        .astype(np.double)
-      res_y = np.array([np.nan if i==0 else i for i in self.res_list])\
-        .astype(np.double)
-      res_m = np.isfinite(res_y)
-      self.chart_tab.res_axes.plot(res_x[res_m], res_y[res_m],
-                                   'deepskyblue', lw=3)
-
-      res = self.chart_tab.res_axes.scatter(res_x[res_m], res_y[res_m], s=45,
-                                            marker='o', edgecolors='black',
-                                            color='deepskyblue',
-                                            label="Resolution",
-                                            picker=True)
-      self.chart_tab.res_axes.set_xlim(0, np.nanmax(res_x) + 2)
-      res_ymax = np.nanmax(res_y) * 1.1
-      res_ymin = np.nanmin(res_y) * 0.9
-      self.chart_tab.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
-      res_ylabel = 'Resolution ({})'.format(r'$\AA$')
-      self.chart_tab.res_axes.set_ylabel(res_ylabel)
-      labels = [nsref.get_label(), res.get_label()]
-      self.chart_tab.res_axes.legend([nsref, res], labels, loc='upper right',
-                                     fontsize=9, fancybox=True)
-
-      # Beam XY (cumulative)
-      info = []
-      wavelengths = []
-      distances = []
-      cells = []
-
-      # Import relevant info
-      for root, dirs, files in os.walk(self.init.fin_base):
-        for filename in files:
-          found_file = os.path.join(root, filename)
-          if found_file.endswith(('pickle')):
-            beam = ep.load(found_file)
-            info.append([found_file, beam['xbeam'], beam['ybeam']])
-            wavelengths.append(beam['wavelength'])
-            distances.append(beam['distance'])
-            cells.append(beam['observations'][0].unit_cell().parameters())
-
-      # Calculate beam center coordinates and distances
-      if len(info) > 0:
-        beamX = [i[1] for i in info]
-        beamY = [j[2] for j in info]
-        beam_dist = [math.hypot(i[1] - np.median(beamX), i[2] -
-                                np.median(beamY)) for i in info]
-
-        wavelength = np.median(wavelengths)
-        det_distance = np.median(distances)
-        a = np.median([i[0] for i in cells])
-        b = np.median([i[1] for i in cells])
-        c = np.median([i[2] for i in cells])
-
-        # Calculate predicted L +/- 1 misindexing distance for each cell edge
-        aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
-        bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
-        cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
-
-        # Calculate axis limits of beam center scatter plot
-        beamxy_delta = np.ceil(np.max(beam_dist))
-        xmax = round(np.median(beamX) + beamxy_delta)
-        xmin = round(np.median(beamX) - beamxy_delta)
-        ymax = round(np.median(beamY) + beamxy_delta)
-        ymin = round(np.median(beamY) - beamxy_delta)
-
-        # Plot beam center scatter plot
-        self.chart_tab.bxy_axes.clear()
-        self.chart_tab.bxy_axes.axis('equal')
-        self.chart_tab.bxy_axes.axis([xmin, xmax, ymin, ymax])
-        self.chart_tab.bxy_axes.scatter(beamX, beamY, alpha=1, s=20, c='grey', lw=1)
-        self.chart_tab.bxy_axes.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o', c='yellow', lw=2)
-
-        # Plot projected mis-indexing limits for all three axes
-        circle_a = plt.Circle((np.median(beamX), np.median(beamY)), radius=aD, color='r', fill=False, clip_on=True)
-        circle_b = plt.Circle((np.median(beamX), np.median(beamY)), radius=bD, color='g', fill=False, clip_on=True)
-        circle_c = plt.Circle((np.median(beamX), np.median(beamY)), radius=cD, color='b', fill=False, clip_on=True)
-        self.chart_tab.bxy_axes.add_patch(circle_a)
-        self.chart_tab.bxy_axes.add_patch(circle_b)
-        self.chart_tab.bxy_axes.add_patch(circle_c)
-        self.chart_tab.bxy_axes.set_xlabel('BeamX (mm)', fontsize=15)
-        self.chart_tab.bxy_axes.set_ylabel('BeamY (mm)', fontsize=15)
-        self.chart_tab.bxy_axes.set_title('Beam Center Coordinates')
-
-      self.chart_tab.canvas.draw()
-      self.chart_tab.Layout()
-
     except ValueError, e:
       pass
+
+    if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
+      try:
+        # Strong reflections per frame
+        self.chart_tab.nsref_axes.clear()
+        nsref_x = np.array([i + 1.5 for i in range(len(
+          self.img_list))]).astype(np.double)
+        nsref_y = np.array([np.nan if i==0 else i for i in
+                            self.nref_list]).astype(np.double)
+        nsref_ylabel = 'Reflections (I / sigI > {})' \
+                       ''.format(self.gparams.cctbx.selection.min_sigma)
+        nsref = self.chart_tab.nsref_axes.scatter(nsref_x, nsref_y, s=45,
+                                                  marker='o',
+                                                  edgecolors='black',
+                                                  color='#ca0020',
+                                                  label=nsref_ylabel,
+                                                  picker=True)
+
+        nsref_median = np.median([i for i in self.nref_list if i > 0])
+        nsref_mlabel = 'Reflections (I / sigI > {}) median' \
+                       ''.format(self.gparams.cctbx.selection.min_sigma)
+        nsref_med = self.chart_tab.nsref_axes.axhline(nsref_median,
+                                                      c='#ca0020', ls='--',
+                                                      label=nsref_mlabel)
+
+        self.chart_tab.nsref_axes.set_xlim(0, np.nanmax(nsref_x) + 2)
+        nsref_ymax = np.nanmax(nsref_y) * 1.25 + 10
+        if nsref_ymax == 0:
+          nsref_ymax = 100
+        self.chart_tab.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
+        self.chart_tab.nsref_axes.set_ylabel(nsref_ylabel)
+        self.chart_tab.nsref_axes.set_xlabel('Frame')
+        self.chart_tab.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+        self.chart_tab.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+        # Resolution per frame
+        self.chart_tab.res_axes.clear()
+        res_x = np.array([i + 1.5 for i in range(len(self.img_list))])\
+          .astype(np.double)
+        res_y = np.array([np.nan if i==0 else i for i in self.res_list])\
+          .astype(np.double)
+        res_m = np.isfinite(res_y)
+
+        res = self.chart_tab.res_axes.scatter(res_x[res_m], res_y[res_m], s=45,
+                                              marker='o', edgecolors='black',
+                                              color='#0571b0',
+                                              label="Resolution",
+                                              picker=True)
+        res_median = np.median([i for i in self.res_list if i > 0])
+        res_med = self.chart_tab.res_axes.axhline(res_median,
+                                                  c='#0571b0',
+                                                  ls='--',
+                                                  label='Median resolution')
+
+        self.chart_tab.res_axes.set_xlim(0, np.nanmax(res_x) + 2)
+        res_ymax = np.nanmax(res_y) * 1.1
+        res_ymin = np.nanmin(res_y) * 0.9
+        if res_ymin == res_ymax:
+          res_ymax = res_ymin + 1
+        self.chart_tab.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
+        res_ylabel = 'Resolution ({})'.format(r'$\AA$')
+        self.chart_tab.res_axes.set_ylabel(res_ylabel)
+        self.chart_tab.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+        self.chart_tab.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+        plt.setp(self.chart_tab.res_axes.get_xticklabels(), visible=False)
+        labels = [nsref.get_label(), res.get_label(),
+                  nsref_med.get_label(), res_med.get_label()]
+        self.chart_tab.res_axes.legend([nsref, res], labels, loc='upper right',
+                                       fontsize=9, fancybox=True)
+
+      except ValueError, e:
+        pass
+
+      try:
+        # Beam XY (cumulative)
+        info = []
+        wavelengths = []
+        distances = []
+        cells = []
+
+        # Import relevant info
+        for root, dirs, files in os.walk(self.init.fin_base):
+          for filename in files:
+            found_file = os.path.join(root, filename)
+            if found_file.endswith(('pickle')):
+              beam = ep.load(found_file)
+              info.append([found_file, beam['xbeam'], beam['ybeam']])
+              wavelengths.append(beam['wavelength'])
+              distances.append(beam['distance'])
+              cells.append(beam['observations'][0].unit_cell().parameters())
+
+        # Calculate beam center coordinates and distances
+        if len(info) > 0:
+          beamX = [i[1] for i in info]
+          beamY = [j[2] for j in info]
+          beam_dist = [math.hypot(i[1] - np.median(beamX), i[2] -
+                                  np.median(beamY)) for i in info]
+
+          wavelength = np.median(wavelengths)
+          det_distance = np.median(distances)
+          a = np.median([i[0] for i in cells])
+          b = np.median([i[1] for i in cells])
+          c = np.median([i[2] for i in cells])
+
+          # Calculate predicted L +/- 1 misindexing distance for each cell edge
+          aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
+          bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
+          cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
+
+          # Calculate axis limits of beam center scatter plot
+          beamxy_delta = np.ceil(np.max(beam_dist))
+          xmax = round(np.median(beamX) + beamxy_delta)
+          xmin = round(np.median(beamX) - beamxy_delta)
+          ymax = round(np.median(beamY) + beamxy_delta)
+          ymin = round(np.median(beamY) - beamxy_delta)
+
+          if xmax == xmin:
+            xmax += 0.5
+            xmin -= 0.5
+          if ymax == ymin:
+            ymax += 0.5
+            ymin -= 0.5
+
+          # Plot beam center scatter plot
+          self.chart_tab.bxy_axes.clear()
+          self.chart_tab.bxy_axes.axis('equal')
+          self.chart_tab.bxy_axes.axis([xmin, xmax, ymin, ymax])
+          self.chart_tab.bxy_axes.scatter(beamX, beamY, alpha=1, s=20, c='grey', lw=1)
+          self.chart_tab.bxy_axes.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o', c='yellow', lw=2)
+
+          # Plot projected mis-indexing limits for all three axes
+          circle_a = plt.Circle((np.median(beamX), np.median(beamY)), radius=aD, color='r', fill=False, clip_on=True)
+          circle_b = plt.Circle((np.median(beamX), np.median(beamY)), radius=bD, color='g', fill=False, clip_on=True)
+          circle_c = plt.Circle((np.median(beamX), np.median(beamY)), radius=cD, color='b', fill=False, clip_on=True)
+          self.chart_tab.bxy_axes.add_patch(circle_a)
+          self.chart_tab.bxy_axes.add_patch(circle_b)
+          self.chart_tab.bxy_axes.add_patch(circle_c)
+          self.chart_tab.bxy_axes.set_xlabel('BeamX (mm)', fontsize=15)
+          self.chart_tab.bxy_axes.set_ylabel('BeamY (mm)', fontsize=15)
+          self.chart_tab.bxy_axes.set_title('Beam Center Coordinates')
+
+      except ValueError, e:
+        pass
+
+    self.chart_tab.canvas.draw()
+    self.chart_tab.Layout()
+
 
   def onTimer(self, e):
     if os.path.isfile(self.tmp_abort_file):
       self.finish_process()
 
-    if self.gparams.mp_method == 'lsf':
-      img_object_files = [os.path.join(self.init.obj_base, i) for i in
-                          os.listdir(self.init.obj_base) if i.endswith('fin')]
-      self.objects_in_progress = [ep.load(i) for i in img_object_files]
-      if len(self.objects_in_progress) > 0:
-        for obj in self.objects_in_progress:
-          self.nref_list[obj.img_index - 1] = obj.final['strong']
-          self.res_list[obj.img_index - 1] = obj.final['res']
+    img_object_files = [os.path.join(self.init.obj_base, i) for i in
+                        os.listdir(self.init.obj_base) if i.endswith('fin')]
+    img_object_files = [i for i in img_object_files if i not in self.read_object_files]
 
-      end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
-      if os.path.isfile(end_filename):
-        self.img_objects = self.objects_in_progress
-        self.finish_process()
+    self.objects_in_progress.extend([ep.load(i) for i in img_object_files])
+    self.read_object_files.extend(img_object_files)
+
+    if len(self.objects_in_progress) > 0:
+      for obj in self.objects_in_progress:
+        self.nref_list[obj.img_index - 1] = obj.final['strong']
+        self.res_list[obj.img_index - 1] = obj.final['res']
+
+    end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
+
+    if os.path.isfile(end_filename):
+      self.img_objects = self.objects_in_progress
+      self.finish_process()
 
     if len(self.objects_in_progress) > self.obj_counter:
-      if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
-        self.plot_integration()
+      self.plot_integration()
       self.obj_counter = len(self.objects_in_progress)
 
     # Update gauge
     self.gauge_process.Show()
+    print "DEBUG: Obj = {}, GaugeMax = {}" \
+          "".format(len(self.objects_in_progress),
+                    self.gauge_process.GetRange())
     self.gauge_process.SetValue(len(self.objects_in_progress))
 
     # Update status bar
     if self.gparams.image_conversion.convert_only:
       img_with_diffraction = [i for i in self.objects_in_progress if i.status == 'imported' and i.fail == None]
       self.sb.SetStatusText('{} of {} images imported, {} have diffraction'\
-                            ''.format(len(self.objects_in_progress), len(self.init.input_list),
+                            ''.format(self.obj_counter, len(self.init.input_list),
                                       len(img_with_diffraction)), 1)
     else:
-      processed_images = [i for i in self.objects_in_progress if i.final['final'] != None]
+      processed_images = [i for i in self.objects_in_progress if i.fail == None]
       self.sb.SetStatusText('{} of {} images processed, {} successfully integrated' \
-                            ''.format(len(self.objects_in_progress), len(self.img_list), len(processed_images)), 1)
+                            ''.format(self.obj_counter, len(self.img_list),
+                                      len(processed_images)), 1)
 
     # Update log
     self.display_log()
 
-
-  def onFinishedOneTask(self, e):
-    ''' Called by event at the end of each process
-    @param e: event object
-    '''
-    if not os.path.isfile(self.tmp_abort_file):
-      obj = e.GetValue()
-      self.objects_in_progress.append(obj)
-      self.nref_list[obj.img_index - 1] = obj.final['strong']
-      self.res_list[obj.img_index - 1] = obj.final['res']
+    # Check if all images have been looked at; if yes, finish process
+    if self.obj_counter >= len(self.img_list):
+      self.finish_process()
 
 
   def onFinishedProcess(self, e):
-    if self.gparams.mp_method != 'lsf':
-      self.img_objects = e.GetValue()
-      self.finish_process()
+    pass
+    # if self.gparams.mp_method != 'lsf':
+    #   self.img_objects = e.GetValue()
+    #   self.finish_process()
 
   def finish_process(self):
     if os.path.isfile(self.tmp_abort_file):
@@ -1186,11 +1235,11 @@ class ProcWindow(wx.Frame):
       self.timer.Stop()
       return
     else:
-      self.final_objects = [i for i in self.img_objects if i.fail == None]
+      self.final_objects = [i for i in self.objects_in_progress if i.fail == None]
       self.gauge_process.Hide()
       self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
       self.sb.SetStatusText('{} of {} images successfully integrated'\
-                            ''.format(len(self.final_objects), len(self.img_objects)), 1)
+                            ''.format(len(self.final_objects), len(self.img_list)), 1)
       if len(self.final_objects) > 0:
         self.plot_integration()
         self.analyze_results()

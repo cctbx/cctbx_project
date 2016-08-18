@@ -1,10 +1,9 @@
-IOTA v1.0.010 - GUI updates
+IOTA v1.0.011 - GUI / multiprocessing updates
 
-1. Cosmetic tweaks to the multiprocessing preferences dialog
-2. Reworked the "Processing options" dialog; users can now directly import
-and edit the full PHIL file or generate defaults.
-3. Processing options dialog can now be resized to accommodate PHIL text.
-4. Some tweaks to the DIALS option of IOTA:
-   a. Still doesn't work very well; need better defaults
-   b. Failed images no longer register as successfully processed in GUI
-   c. Fixed errors associated with calling settings that no longer exist
+1. Changed how output is read when local multiprocessing is used
+2. Accelerated output read; should not slow down with increased file volume
+3. Pie chart updated even when no images are integrated successfully
+4. Static pie chart colors that don't change when new category is added
+5. Resolution and number of reflections per frame now in separate charts
+6. Median resolution and number of reflections shown on charts
+

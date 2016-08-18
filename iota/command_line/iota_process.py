@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/26/2014
-Last Changed: 07/26/2016
+Last Changed: 08/17/2016
 Description : IOTA image processing submission module
 '''
 
@@ -37,8 +37,6 @@ class ProcessImage():
       img_object.process()
       result_file = os.path.splitext(img_object.obj_file)[0] + '.fin'
       ep.dump(result_file, img_object)
-      print 'DEBUG: Processed object'
-      print 'DEBUG: Wrote file {}'.format(result_file)
       return img_object
 
 class ProcessAll():

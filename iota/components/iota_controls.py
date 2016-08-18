@@ -3,12 +3,13 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/02/2014
-Last Changed: 08/16/2016
+Last Changed: 08/17/2016
 Description : IOTA Custom Widgets
 '''
 
 import os
 import wx
+import wx.richtext
 from wxtbx import metallicbutton as mb
 
 # Platform-specific stuff
