@@ -400,6 +400,7 @@ class ramalyze (validation) :
   def as_markup_for_kinemage (self,c_alphas):
     #atom.id_str() returns 'pdb=" CA  LYS    16 "'
     #The [9:-1] slice gives ' LYS    16 '
+    if None in c_alphas: return ''
     ram_out = "{%s CA}P %s\n" % (c_alphas[0].id_str()[9:-1], "%.3f %.3f %.3f" %
       c_alphas[0].xyz)
     ram_out += "{%s CA} %s\n" % (c_alphas[1].id_str()[9:-1], "%.3f %.3f %.3f" %
@@ -489,9 +490,19 @@ def is_cis_peptide(three):
 def get_cas_from_three(three):
   cas = []
   for residue in three:
-    c_ca_n = get_c_ca_n(residue)
-    cas.append(c_ca_n[0][1])
+    for atom in residue.atoms():
+      if atom.name == " CA ":
+        cas.append(atom)
+        break
+    else:
+      cas.append(None)
   return cas
+  ##  c_ca_n = get_c_ca_n(residue)
+  ##  if c_ca_n[0] is None:
+  ##    cas.append(None)
+  ##  else:
+  ##    cas.append(c_ca_n[0][1])
+  ##return cas
 
 def get_altloc_from_three(three):
   #in conformer world, where threes come from, altlocs are most accurately
