@@ -224,13 +224,18 @@ def helper_3(
       ss,
       log):
   from mmtbx.bulk_solvent import kbu_refinery
+  mask_params = mmtbx.masks.mask_master_params.extract()
+  mask_params.grid_step_factor=5.
   fmodel = mmtbx.f_model.manager(
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
+    mask_params    = mask_params,
     xray_structure = xrs)
   fmodel.update_all_scales(remove_outliers=False, update_f_part1=False)
   k_anisotropic = fmodel.k_isotropic()*fmodel.k_anisotropic()*fmodel.scale_k1()
   #fmodel.show()
+
+  f_masks = fmodel.f_masks() + f_masks[0:]
 
   f_bulk_data = flex.complex_double(f_obs.data().size(), 0)
 
@@ -251,10 +256,11 @@ def helper_3(
         f_mask    = f.data(),
         selection = sel)
       k_mask = obj.x_best
+      k_masks.append(k_mask)
       r = obj.r_best
       if(abs(k_mask) < 1.e-6):
         one = flex.double(ss.select(sel).size(),1.)
-        ks = flex.double([k/100 for k in range(0,105,1)])
+        ks = flex.double([k/100 for k in range(-105,105,1)])
         bs = flex.double([0,])
         res = mmtbx.bulk_solvent.ksol_bsol_grid_search(
           f_obs_.data().select(sel),

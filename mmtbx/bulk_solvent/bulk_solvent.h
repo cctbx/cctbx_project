@@ -727,9 +727,9 @@ public:
     for(std::size_t j=0; j < 3; j++) {
       if(ceo.x[j]) {
         FloatType root = *ceo.x[j];
-        if(root>=0) {
+        //if(root>=0) {
           x.push_back(root);
-        }
+        //}
         // MMTBX_ASSERT(std::abs(*ceo.residual()[j]) < 1.e-4); XXX enable back
       }
     }
@@ -737,17 +737,17 @@ public:
     bool zero = false;
     af::shared<ComplexType> f_model(f_obs.size());
     for(std::size_t j=0; j < x.size(); j++) {
-      if((x[j]>0) || (x[j]==0 && zero==false)) {
+      //if((x[j]>0) || (x[j]==0 && zero==false)) {
         for(std::size_t i=0; i < f_obs.size(); i++) {
           if(selection[i]) {
             f_model[i] = f_calc[i] + x[j] * f_mask[i];
           }
         }
         r.push_back(r_factor(f_obs, f_model.const_ref(), selection));
-      }
-      else {
-        r.push_back(-1);
-      }
+      //}
+      //else {
+      //  r.push_back(-1);
+      //}
       if(x[j]==0) zero = true;
     }
     // select best result
