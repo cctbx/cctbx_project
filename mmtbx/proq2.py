@@ -75,7 +75,7 @@ class Job(object):
       "pdb": pdbstr,
       "bfactorPDB": "Yes",
       "name": name,
-      "email": "noreply@fake.fake",
+      "email": "noreply@example.com",
       "do": "Submit",
       }
 
