@@ -7,7 +7,6 @@ import mmtbx.masks
 import mmtbx.bulk_solvent
 import boost.python
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
-import time
 
 def ccp4_map(cg, file_name, mc=None, map_data=None):
   assert [mc, map_data].count(None)==1
