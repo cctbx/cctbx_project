@@ -144,7 +144,7 @@ def t_1(xray_structure, d_min=3.5):
                 assert b.data().all_approx_equal(0.0, 1.e-9)
                 assert approx_equal(fmodel.model_error_ml(), 0)
                 #
-                # update k_isotropic, k_anisotorpic, resolution_filter
+                # update k_isotropic, k_anisotropic, resolution_filter
                 #
                 fmodel.update_core(
                   k_isotropic   = flex.double(f_obs.data().size(), 1./2),
