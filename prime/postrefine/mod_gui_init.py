@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 08/16/2016
+Last Changed: 08/18/2016
 Description : PRIME GUI Initialization module
 '''
 
@@ -14,6 +14,7 @@ from threading import Thread
 from cctbx.uctbx import unit_cell
 from libtbx import easy_run
 from libtbx import easy_pickle as ep
+import iotbx.phil as ip
 import numpy as np
 
 import matplotlib.gridspec as gridspec
@@ -103,7 +104,6 @@ class PRIMEWindow(wx.Frame):
 
     # Instantiate windows
     self.input_window = PRIMEInputWindow(self, phil)
-    #self.pparams = self.input_window.pparams
 
     # Single input window
     main_box.Add(self.input_window, flag=wx.ALL | wx.EXPAND, border=10)
@@ -253,12 +253,14 @@ class PRIMEWindow(wx.Frame):
 
   def load_script(self, out_dir):
     ''' Loads PRIME script '''
-    import iotbx.phil as ip
-
     script = os.path.join(out_dir, self.prime_filename)
-    user_phil = ip.parse(open(script).read())
+    with open(script, 'r') as sf:
+      phil_string = sf.read()
+
+    user_phil = ip.parse(phil_string)
     self.pparams = master_phil.fetch(sources=[user_phil]).extract()
     self.input_window.pparams = self.pparams
+    self.input_window.phil_string = phil_string
 
     self.input_window.inp_box.ctr.SetValue(str(self.pparams.data[0]))
     current_dir = os.path.dirname(self.pparams.run_no)
@@ -289,11 +291,7 @@ class PRIMEInputWindow(wx.Panel):
     self.parent = parent
     super(PRIMEInputWindow, self).__init__(self.parent)
 
-    #Generate default parameters
-    if phil is not None:
-      self.pparams = master_phil.format(python_object=phil).extract()
-    else:
-      self.pparams = master_phil.extract()
+    self.regenerate_params(phil)
 
     main_box = wx.StaticBox(self, label='Main Settings')
     vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
@@ -422,8 +420,11 @@ class PRIMEInputWindow(wx.Panel):
   def onAdvancedOptions(self, e):
     advanced = PRIMEAdvancedOptions(self,
                                title='Advanced PRIME Options',
-                               style=wx.DEFAULT_DIALOG_STYLE)
+                               style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     advanced.Fit()
+
+    # Populate the PHIL textbox
+    advanced.phil.ctr.SetValue(self.phil_string)
 
     # Set values to default parameters
     advanced.res.high.SetValue('{:4.2f}'.format(self.pparams.scale.d_max))
@@ -441,6 +442,12 @@ class PRIMEInputWindow(wx.Panel):
     advanced.cycles.ctr.SetValue(int(self.pparams.n_postref_cycle))
 
     if advanced.ShowModal() == wx.ID_OK:
+      # Read PHIL string from window, convert to params
+      self.phil_string = advanced.phil.ctr.GetValue()
+      new_phil = ip.parse(self.phil_string)
+      self.pparams = master_phil.fetch(sources=[new_phil]).extract()
+
+      # Param controls will override the PHIL string (clunky, but for now)
       self.pparams.scale.d_max = float(advanced.res.high.GetValue())
       self.pparams.scale.d_min = float(advanced.res.low.GetValue())
       self.pparams.merge.d_max = float(advanced.res.high.GetValue())
@@ -477,9 +484,25 @@ class PRIMEInputWindow(wx.Panel):
         self.pparams.pixel_size_mm = None
       self.pparams.n_postref_cycle = int(advanced.cycles.ctr.GetValue())
 
+      self.regenerate_params(self.pparams)
 
     advanced.Destroy()
     e.Skip()
+
+  def regenerate_params(self, phil=None):
+
+    if phil is not None:
+      current_phil = master_phil.format(python_object=phil)
+    else:
+      current_phil = master_phil
+
+    # Generate Python object and text of parameters
+    self.pparams = current_phil.extract()
+    with misc.Capturing() as txt_output:
+      current_phil.show()
+    self.phil_string = ''
+    for one_output in txt_output:
+      self.phil_string += one_output + '\n'
 
 
 class PRIMEAdvancedOptions(wx.Dialog):
@@ -490,8 +513,21 @@ class PRIMEAdvancedOptions(wx.Dialog):
 
     main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    main_box = wx.StaticBox(self, label='Advanced PRIME Options')
-    vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
+    phil_box = wx.StaticBox(self, label='PRIME Input')
+    phil_box_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
+
+    # Target file input
+    self.phil = ct.PHILBox(self,
+                           btn_import=False,
+                           btn_export=False,
+                           btn_default=False,
+                           ctr_size=(500, 300),
+                           ctr_value='')
+    phil_box_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # PRIME Options (there is some redundancy with the PHIL textbox)
+    opt_box = wx.StaticBox(self, label='Advanced Options')
+    opt_box_sizer = wx.StaticBoxSizer(opt_box, wx.VERTICAL)
 
     # Resolution
     self.res = ct.OptionCtrl(self,
@@ -501,7 +537,7 @@ class PRIMEAdvancedOptions(wx.Dialog):
                              ctrl_size=wx.DefaultSize,
                              items=[('high', 50),
                                     ('low', 1.5)])
-    vbox.Add(self.res, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.res, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Target space group
     self.sg = ct.OptionCtrl(self,
@@ -510,7 +546,7 @@ class PRIMEAdvancedOptions(wx.Dialog):
                             label_style='normal',
                             ctrl_size=(100, -1),
                             items=[('spacegroup','P212121')])
-    vbox.Add(self.sg, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.sg, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Target unit cell
     self.uc = ct.OptionCtrl(self,
@@ -524,9 +560,9 @@ class PRIMEAdvancedOptions(wx.Dialog):
     self.uc_override.SetValue(False)
     self.anom = wx.CheckBox(self, label='Anomalous')
     self.anom.SetValue(False)
-    vbox.Add(self.uc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
-    vbox.Add(self.uc_override, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
-    vbox.Add(self.anom, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.uc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.uc_override, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.anom, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # CC cutoff
     self.cc = ct.OptionCtrl(self,
@@ -535,7 +571,7 @@ class PRIMEAdvancedOptions(wx.Dialog):
                             label_style='normal',
                             ctrl_size=(100, -1),
                             items=[('cc_cutoff', 0.25)])
-    vbox.Add(self.cc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.cc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Pixel size
     self.pix = ct.OptionCtrl(self,
@@ -544,18 +580,19 @@ class PRIMEAdvancedOptions(wx.Dialog):
                              label_style='normal',
                              ctrl_size=(100, -1),
                              items=[('pixel_size', 0.172)])
-    vbox.Add(self.pix, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.pix, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     self.cycles = ct.SpinCtrl(self,
                               label='No. of Cycles:',
                               label_size=(120, -1),
                               label_style='normal',
                               ctrl_size=(60, -1))
-    vbox.Add(self.cycles, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.cycles, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Dialog controls
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    main_sizer.Add(vbox, flag=wx.ALL, border=15)
+    main_sizer.Add(phil_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    main_sizer.Add(opt_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
     main_sizer.Add(dialog_box,
                    flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=15)
