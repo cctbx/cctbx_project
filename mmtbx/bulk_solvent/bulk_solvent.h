@@ -743,7 +743,7 @@ public:
             f_model[i] = f_calc[i] + x[j] * f_mask[i];
           }
         }
-        r.push_back(r_factor(f_obs, f_model.const_ref()));
+        r.push_back(r_factor(f_obs, f_model.const_ref(), selection));
       }
       else {
         r.push_back(-1);
