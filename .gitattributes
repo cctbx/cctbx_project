@@ -19,6 +19,8 @@ boost_adaptbx/graph/SConscript -text
 boost_adaptbx/graph/__init__.py -text
 boost_adaptbx/graph/breadth_first_search.py -text
 boost_adaptbx/graph/breadth_first_search_ext.cpp -text
+boost_adaptbx/graph/clustering_algorithm.py -text
+boost_adaptbx/graph/clustering_algorithm_ext.cpp -text
 boost_adaptbx/graph/connected_component_algorithm.py -text
 boost_adaptbx/graph/connected_component_algorithm_ext.cpp -text
 boost_adaptbx/graph/graph_export_adaptor.hpp -text
@@ -37,6 +39,7 @@ boost_adaptbx/graph/min_cut_max_flow_ext.cpp -text
 boost_adaptbx/graph/minimum_cut_enumerate.py -text
 boost_adaptbx/graph/tests/tst_graph.py -text
 boost_adaptbx/graph/tests/tst_graph_breadth_first_search.py -text
+boost_adaptbx/graph/tests/tst_graph_clustering_algorithm.py -text
 boost_adaptbx/graph/tests/tst_graph_connected_component_algorithm.py -text
 boost_adaptbx/graph/tests/tst_graph_graph_structure_comparison.py -text
 boost_adaptbx/graph/tests/tst_graph_maximum_clique.py -text

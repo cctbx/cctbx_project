@@ -12,9 +12,6 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/betweenness_centrality.hpp>
 
-#include <boost/mpl/if.hpp>
-#include <boost/type_traits.hpp>
-
 namespace boost_adaptbx
 {
 namespace
