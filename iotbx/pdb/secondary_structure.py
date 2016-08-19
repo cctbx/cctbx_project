@@ -633,7 +633,7 @@ class annotation(structure_base):
     sh_indeces_to_delete = []
     for i, sh in enumerate(self.sheets):
       sh.remove_short_strands()
-      if sh.n_strands == 0:
+      if sh.n_strands < 2:
         sh_indeces_to_delete.append(i)
     if len(sh_indeces_to_delete) > 0:
       for i in reversed(sh_indeces_to_delete):
