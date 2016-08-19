@@ -84,9 +84,9 @@ def crystal_symmetry_to_ncs(crystal_symmetry=None):
   center_orth=[]
   center=matrix.col((0.11,0.11,0.11)) # just a point not anywhere special...
   for rt_mx in crystal_symmetry.space_group().all_ops():
-    r_orth=matrix.sqr(a * 
+    r_orth=matrix.sqr(a *
        (matrix.sqr(rt_mx.inverse().r().as_rational().as_float()) * a_inv))
-    t_orth = matrix.col(a * 
+    t_orth = matrix.col(a *
        matrix.col(rt_mx.inverse().t().as_rational().as_float()))
     c_value=crystal_symmetry.unit_cell().orthogonalize(
        rt_mx * center )
@@ -96,7 +96,7 @@ def crystal_symmetry_to_ncs(crystal_symmetry=None):
 
     chain_residue_id= [
         len(r_orth)*[None],
-        len(r_orth)*[[]] 
+        len(r_orth)*[[]]
         ]
 
   ncs_obj=ncs()
@@ -105,7 +105,7 @@ def crystal_symmetry_to_ncs(crystal_symmetry=None):
        center_orth=center_orth,
        trans_orth=trans_orth,
        chain_residue_id=chain_residue_id)
- 
+
   return ncs_obj
 
 
