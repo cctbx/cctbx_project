@@ -1222,9 +1222,81 @@ def tst_05():
 
   if remove_blank(" ".join(found_text.split("source_info")[1:]) ) != \
      remove_blank(" ".join(expected_text2c.split("source_info")[1:])):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text_group_specification,found_text)
+    print "Expected: \n%s \nFound: \n%s" %(expected_text2c,found_text)
     raise AssertionError, "FAILED"
 
+
+  print "OK"
+
+expected_text6="""
+  -4.25    21.78   33.21  ::   -4.25    21.78   33.21
+ -16.74   -14.57   33.21  ::  -16.74   -14.57   33.21
+  20.99    -7.21   33.21  ::   20.99    -7.21   33.21
+  -4.25    56.42   99.88  ::   -4.25    56.42   99.88
+ -16.74    20.07   99.88  ::  -16.74    20.07   99.88
+  20.99    27.43   99.88  ::   20.99    27.43   99.88
+  25.75    39.10   66.54  ::   25.75    39.10   66.54
+  13.26     2.75   66.54  ::   13.26     2.75   66.54
+  50.99    10.11   66.54  ::   50.99    10.11   66.54
+"""
+def tst_06():
+  print "Convert space group operators to NCS operators"
+
+  from mmtbx.ncs.ncs import crystal_symmetry_to_ncs
+  from cctbx import crystal
+  from cctbx import sgtbx
+  from cctbx import uctbx
+  from scitbx import matrix
+  from cctbx.array_family import flex
+
+  SpaceGroup=sgtbx.space_group_info(symbol=str('h3'))
+  unit_cell=uctbx.unit_cell((60.,60.,100.,90.,90.,120.,))
+  crystal_symmetry=crystal.symmetry(
+  unit_cell=unit_cell,space_group_info=SpaceGroup)
+
+  ncs_obj=crystal_symmetry_to_ncs(crystal_symmetry)
+  ncs_obj.display_all()
+
+  # apply ncs or apply crystal symmetry and make sure we get same answer.
+  xyz_fract=matrix.col((0.1387,0.41915,0.3321))
+
+  sites_fract=flex.vec3_double()
+  sites_fract.append(xyz_fract)
+  for sf in sites_fract:
+    print "SITES FRACT: %7.2f %7.2f %7.2f " %(sf)
+
+  sites_cart=crystal_symmetry.unit_cell().orthogonalize(sites_fract)
+
+  ncs_group=ncs_obj.ncs_groups()[0]
+  ncs_sites_cart=flex.vec3_double()
+  for xyz_cart in sites_cart:
+      for i0 in xrange(len(ncs_group.translations_orth())):
+        r=ncs_group.rota_matrices_inv()[i0] # inverse maps pos 0 on to pos i
+        t=ncs_group.translations_orth_inv()[i0]
+        new_xyz_cart=r * matrix.col(xyz_cart) + t
+        ncs_sites_cart.append(new_xyz_cart)
+
+  cryst_sites_frac=flex.vec3_double()
+  for xyz_frac in sites_fract:
+    for rt_mx in crystal_symmetry.space_group().all_ops():
+      xyz_frac_ncs=rt_mx*xyz_frac
+      cryst_sites_frac.append(xyz_frac_ncs)
+  cryst_sites_cart=crystal_symmetry.unit_cell().orthogonalize(cryst_sites_frac)
+
+  f=StringIO()
+
+  for ncs_xx,cryst_xx in zip(ncs_sites_cart,cryst_sites_cart):
+    text= "%7.2f  %7.2f %7.2f  :: %7.2f  %7.2f %7.2f " %(
+       tuple(list(ncs_xx)+list(cryst_xx)))
+    print >>f, text
+    print text
+    assert "%7.2f  %7.2f %7.2f" %(ncs_xx) == "%7.2f  %7.2f %7.2f" %(cryst_xx)
+
+  found_text=f.getvalue()
+
+  if remove_blank(found_text) != remove_blank(expected_text6):
+    print "Expected: \n%s \nFound: \n%s" %(expected_text6,found_text)
+    raise AssertionError, "FAILED"
 
   print "OK"
 
@@ -1234,4 +1306,4 @@ if __name__=="__main__":
   tst_03()
   tst_04()
   tst_05()
-
+  tst_06()
