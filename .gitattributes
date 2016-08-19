@@ -30,6 +30,8 @@ boost_adaptbx/graph/maximum_clique.py -text
 boost_adaptbx/graph/maximum_clique_ext.cpp -text
 boost_adaptbx/graph/maximum_clique_greedy.hpp -text
 boost_adaptbx/graph/maximum_clique_rascal.hpp -text
+boost_adaptbx/graph/metric.py -text
+boost_adaptbx/graph/metric_ext.cpp -text
 boost_adaptbx/graph/min_cut_max_flow.py -text
 boost_adaptbx/graph/min_cut_max_flow_ext.cpp -text
 boost_adaptbx/graph/minimum_cut_enumerate.py -text
@@ -38,6 +40,7 @@ boost_adaptbx/graph/tests/tst_graph_breadth_first_search.py -text
 boost_adaptbx/graph/tests/tst_graph_connected_component_algorithm.py -text
 boost_adaptbx/graph/tests/tst_graph_graph_structure_comparison.py -text
 boost_adaptbx/graph/tests/tst_graph_maximum_clique.py -text
+boost_adaptbx/graph/tests/tst_graph_metric.py -text
 boost_adaptbx/graph/tests/tst_graph_min_cut_max_flow.py -text
 boost_adaptbx/graph/tests/tst_graph_minimum_cut_enumerate.py -text
 boost_adaptbx/graph/tests/tst_graph_utility.py -text
