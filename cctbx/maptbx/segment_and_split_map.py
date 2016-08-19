@@ -159,19 +159,28 @@ master_phil = iotbx.phil.parse("""
   }
 
   crystal_info {
+
      chain_type = *None PROTEIN RNA DNA
        .type = choice
        .short_caption = Chain type
        .help = Chain type. Determined automatically from sequence file if \
                not given. Mixed chain types are fine (leave blank if so).
 
+     is_crystal = False
+       .type = bool
+       .short_caption = Is a crystal
+       .help = Defines whether this is a crystal (or cryo-EM). Only affects \
+               printout of what the NCS represents.
+
      use_sg_symmetry = False
        .type = bool
        .short_caption = Use space-group symmetry
        .help = If you set use_sg_symmetry=True then the symmetry of the space\
-               group will be used. For example in P1 a point at one end of the \
+               group will be used. For example in P1 a point at one end of \
+               the \
                unit cell is next to a point on the other end.  Normally for \
-               cryo-EM data this should be set to False.
+               cryo-EM data this should be set to False and for crystal data \
+               it should be set to True.
 
      resolution = None
        .type = float
@@ -888,10 +897,13 @@ def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
     site=xyz_frac, u=0.1, occupancy=1.0))
   """
 
-def write_atoms(tracking_data=None,sites=None,file_name=None):
-    xrs,scatterers=set_up_xrs(crystal_symmetry=tracking_data.crystal_symmetry)
+def write_atoms(tracking_data=None,sites=None,file_name=None,
+      crystal_symmetry=None):
+    if crystal_symmetry is None:
+       crystal_symmetry=tracking_data.crystal_symmetry
+    xrs,scatterers=set_up_xrs(crystal_symmetry=crystal_symmetry)
     from cctbx import xray
-    unit_cell=tracking_data.crystal_symmetry.unit_cell()
+    unit_cell=crystal_symmetry.unit_cell()
     for xyz_cart in sites:
       scatterers.append( xray.scatterer(scattering_type="O", label="O",
         site=unit_cell.fractionalize(xyz_cart), u=0.1, occupancy=1.0))
@@ -1313,6 +1325,8 @@ def get_ncs(params,tracking_data=None,out=sys.stdout):
       is_helical_symmetry=True
     elif ncs_object.is_point_group_symmetry(abs_tol_t=.50):
       print >>out,"This NCS is point-group symmetry"
+    elif params.crystal_info.is_crystal:
+      print >>out,"This NCS is crystal symmetry"
     else:
       raise Sorry("Need point-group or helical symmetry.")
   if not ncs_object or ncs_object.max_operators()<1:
@@ -4081,8 +4095,12 @@ def get_one_au(tracking_data=None,
     print "Points in starting mask:",starting_mask.count(True)
     print "Points in overall mask:",overall_mask.count(True)
     print "Points in both:",(starting_mask & overall_mask).count(True)
-    # make sure overall mask is at least as big..
-    overall_mask=(overall_mask | starting_mask)
+    if tracking_data.params.crystal_info.is_crystal:
+      # take starting mask as overall...
+      overall_mask= starting_mask
+    else: # usual
+      # make sure overall mask is at least as big..
+      overall_mask=(overall_mask | starting_mask)
     print >>out,"New size of overall mask: ",overall_mask.count(True)
   else:
     if not sites_cart: # pick top of map

@@ -65,6 +65,49 @@ def is_same_transform(r1,t1,r2,t2,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
       if dd>abs_tol_t and dd>rel_tol_t*dd2: # definitely does not match
         return False
     return True
+def crystal_symmetry_to_ncs(crystal_symmetry=None):
+
+  # convert r,t fractional to r_orth,t_orth  orthogonal
+  #  r x + t = x'
+  #   x_orth=Ax   A = orthogonalization_matrix
+  #  r_orth  (Ax) + t_orth = Ax'
+  #  A-1 r_orth A  x + A-1 t_orth = x'
+  #  r= (A-1 r_orth A)     t=A-1 t_orth
+  #  r_orth = A r A-1     t_orth = A t
+
+  from scitbx import matrix
+  a=matrix.sqr(crystal_symmetry.unit_cell().orthogonalization_matrix())
+  a_inv=a.inverse()
+
+  trans_orth=[]
+  ncs_rota_matr=[]
+  center_orth=[]
+  center=matrix.col((0.11,0.11,0.11)) # just a point not anywhere special...
+  for rt_mx in crystal_symmetry.space_group().all_ops():
+    r_orth=matrix.sqr(a * 
+       (matrix.sqr(rt_mx.inverse().r().as_rational().as_float()) * a_inv))
+    t_orth = matrix.col(a * 
+       matrix.col(rt_mx.inverse().t().as_rational().as_float()))
+    c_value=crystal_symmetry.unit_cell().orthogonalize(
+       rt_mx * center )
+    ncs_rota_matr.append(r_orth)
+    trans_orth.append(t_orth)
+    center_orth.append(c_value)
+
+    chain_residue_id= [
+        len(r_orth)*[None],
+        len(r_orth)*[[]] 
+        ]
+
+  ncs_obj=ncs()
+  ncs_obj.import_ncs_group(
+       ncs_rota_matr=ncs_rota_matr,
+       center_orth=center_orth,
+       trans_orth=trans_orth,
+       chain_residue_id=chain_residue_id)
+ 
+  return ncs_obj
+
 
 class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
