@@ -193,15 +193,15 @@ class model_idealization():
       print >> self.log, "Original SS annotation"
       print >> self.log, self.original_ann.as_pdb_str()
     if self.ann is not None:
-      self.ann.concatenate_consecutive_helices()
+      self.ann.remove_short_annotations()
       self.ann.remove_empty_annotations(
           hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h)
+      # self.ann.concatenate_consecutive_helices()
       self.ann.split_helices_with_prolines(
           hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
           asc=None)
       # print >> self.log, "Splitted SS annotation"
       # print >> self.log, ann.as_pdb_str()
-      self.ann.remove_short_annotations()
       print >> self.log, "Filtered SS annotation"
       print >> self.log, self.ann.as_pdb_str()
       # STOP()
