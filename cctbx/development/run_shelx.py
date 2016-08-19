@@ -163,6 +163,7 @@ def check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose):
   assert TotalMismatches == 0
 
 def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
+  run_shelx.counter += 1
   xray_structure = structure_factors.xray_structure()
   assert xray_structure.scatterers().size() > 0
   pre_check(xray_structure)
@@ -183,34 +184,31 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
   l("WPDB 2")
   lines += atoms(xray_structure, short_sfac)
   HKLF(l, f_calc)
-  f = open("tmp.ins", "w")
-  for l in lines:
-    if (0 or verbose): print l
-    f.write(l + "\n")
-  f.close()
+  with open("tmp%02d.ins" % run_shelx.counter, "w") as f:
+    for l in lines:
+      if (0 or verbose): print l
+      f.write(l + "\n")
   sys.stdout.flush()
   sys.stderr.flush()
-  try: os.unlink("tmp.lst")
+  try: os.unlink("tmp%02d.lst" % run_shelx.counter)
   except KeyboardInterrupt: raise
   except Exception: pass
-  shelxl_out = easy_run.fully_buffered(command="shelxl tmp") \
+  shelxl_out = easy_run.fully_buffered(command="shelxl tmp%02d" % run_shelx.counter) \
     .raise_if_errors() \
     .stdout_lines
   if (0 or verbose):
     for l in shelxl_out: print l
-  f = open("tmp.lst", "r")
-  shelx_lst = f.readlines()
-  f.close()
   sys.stderr.flush()
-  f = open("tmp.pdb", "r")
-  shelx_pdb = f.readlines()
-  f.close()
-  sys.stderr.flush()
+  with open("tmp%02d.lst" % run_shelx.counter, "r") as f:
+    shelx_lst = f.readlines()
+  with open("tmp%02d.pdb" % run_shelx.counter, "r") as f:
+    shelx_pdb = f.readlines()
   if (0 or verbose):
     for l in shelx_lst: print l[:-1]
   sys.stdout.flush()
   check_r1(f_calc, shelx_lst, verbose)
   check_anisou(shelx_titl, xray_structure, shelx_pdb, verbose)
+run_shelx.counter = 0
 
 def exercise(space_group_info,
              anomalous_flag=False,
