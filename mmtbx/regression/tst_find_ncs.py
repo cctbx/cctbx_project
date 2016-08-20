@@ -1229,15 +1229,15 @@ def tst_05():
   print "OK"
 
 expected_text6="""
-  -4.25    21.78   33.21  ::   -4.25    21.78   33.21
- -16.74   -14.57   33.21  ::  -16.74   -14.57   33.21
-  20.99    -7.21   33.21  ::   20.99    -7.21   33.21
-  -4.25    56.42   99.88  ::   -4.25    56.42   99.88
- -16.74    20.07   99.88  ::  -16.74    20.07   99.88
-  20.99    27.43   99.88  ::   20.99    27.43   99.88
-  25.75    39.10   66.54  ::   25.75    39.10   66.54
-  13.26     2.75   66.54  ::   13.26     2.75   66.54
-  50.99    10.11   66.54  ::   50.99    10.11   66.54
+  11.70    22.34   39.00  ::   11.70    22.34   39.00 
+   4.80    50.92   39.00  ::    4.80    50.92   39.00 
+ -16.50    30.66   39.00  ::  -16.50    30.66   39.00 
+  41.70     5.02    5.67  ::   41.70     5.02    5.67 
+  34.80    33.60    5.67  ::   34.80    33.60    5.67 
+  13.50    13.34    5.67  ::   13.50    13.34    5.67 
+ -18.30    39.66   72.33  ::  -18.30    39.66   72.33 
+   4.80    16.28   72.33  ::    4.80    16.28   72.33 
+  13.50    47.98   72.33  ::   13.50    47.98   72.33 
 """
 def tst_06():
   print "Convert space group operators to NCS operators"
@@ -1258,7 +1258,7 @@ def tst_06():
   ncs_obj.display_all()
 
   # apply ncs or apply crystal symmetry and make sure we get same answer.
-  xyz_fract=matrix.col((0.1387,0.41915,0.3321))
+  xyz_fract=matrix.col((0.41,0.43,0.39))
 
   sites_fract=flex.vec3_double()
   sites_fract.append(xyz_fract)
@@ -1277,10 +1277,13 @@ def tst_06():
         ncs_sites_cart.append(new_xyz_cart)
 
   cryst_sites_frac=flex.vec3_double()
+  from mmtbx.ncs.ncs import offset_inside_cell
   for xyz_frac in sites_fract:
     for rt_mx in crystal_symmetry.space_group().all_ops():
       xyz_frac_ncs=rt_mx*xyz_frac
-      cryst_sites_frac.append(xyz_frac_ncs)
+      coordinate_offset=matrix.col(offset_inside_cell(xyz_frac_ncs,
+        unit_cell=crystal_symmetry.unit_cell(),orthogonalize=False))
+      cryst_sites_frac.append(matrix.col(xyz_frac_ncs)+coordinate_offset)
   cryst_sites_cart=crystal_symmetry.unit_cell().orthogonalize(cryst_sites_frac)
 
   f=StringIO()

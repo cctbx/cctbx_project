@@ -81,18 +81,30 @@ def crystal_symmetry_to_ncs(crystal_symmetry=None):
 
   trans_orth=[]
   ncs_rota_matr=[]
-  center_orth=[]
-  center=matrix.col((0.11,0.11,0.11)) # just a point not anywhere special...
+  ncs_center_orth=[]
+  center=matrix.col((0.41,0.43,0.39)) # just a point near center of cell
+  center_orth=crystal_symmetry.unit_cell().orthogonalize(center)
+
   for rt_mx in crystal_symmetry.space_group().all_ops():
-    r_orth=matrix.sqr(a *
-       (matrix.sqr(rt_mx.inverse().r().as_rational().as_float()) * a_inv))
-    t_orth = matrix.col(a *
-       matrix.col(rt_mx.inverse().t().as_rational().as_float()))
-    c_value=crystal_symmetry.unit_cell().orthogonalize(
-       rt_mx * center )
-    ncs_rota_matr.append(r_orth)
-    trans_orth.append(t_orth)
-    center_orth.append(c_value)
+    r=matrix.sqr(rt_mx.r().as_rational().as_float())
+    t=matrix.col(rt_mx.t().as_rational().as_float())
+
+    # Try to put each center for this ncs operator inside the cell
+    c=matrix.col(rt_mx * center) # Note: forward (not inverse)
+    coordinate_offset=matrix.col(offset_inside_cell(c,
+       unit_cell=crystal_symmetry.unit_cell(),orthogonalize=False))
+    c_offset=c+coordinate_offset
+
+    r_orth=matrix.sqr(a * r * a_inv)
+    t_orth= matrix.col(a * (t + coordinate_offset))
+    c_value=crystal_symmetry.unit_cell().orthogonalize(c_offset)
+
+    r_orth_inv=r_orth.inverse()
+    t_orth_inv=-r_orth_inv*t_orth
+
+    ncs_rota_matr.append(r_orth_inv)
+    trans_orth.append(t_orth_inv)
+    ncs_center_orth.append(c_value)
 
     chain_residue_id= [
         len(r_orth)*[None],
@@ -102,12 +114,33 @@ def crystal_symmetry_to_ncs(crystal_symmetry=None):
   ncs_obj=ncs()
   ncs_obj.import_ncs_group(
        ncs_rota_matr=ncs_rota_matr,
-       center_orth=center_orth,
+       center_orth=ncs_center_orth,
        trans_orth=trans_orth,
        chain_residue_id=chain_residue_id)
 
   return ncs_obj
 
+def offset_inside_zero_one(x):
+    if x >=0.0:
+      return -1.0*int(x)  # 2.1 gives -2 to place inside (0,1)
+    else:
+      return 1.0-int(x)   # -2.1 gives + 3 to place inside (0,1)
+
+def offset_inside_cell(center,unit_cell,orthogonalize=True):
+    # put the center inside (0,1)
+    from scitbx.math import  matrix
+    c=matrix.col(center)
+    if orthogonalize:
+      c_frac=unit_cell.fractionalize(c)
+    else:
+      c_frac=c
+    offset_frac=[]
+    for x in c_frac:
+     offset_frac.append(offset_inside_zero_one(x))
+    if orthogonalize:
+      return unit_cell.orthogonalize(matrix.col(offset_frac))
+    else:
+      return matrix.col(offset_frac)
 
 class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
@@ -1020,21 +1053,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       return None,None
 
 
-  def offset_inside_zero_one(self,x):
-    if x >=0.0:
-      return -1.0*int(x)  # 2.1 gives -2 to place inside (0,1)
-    else:
-      return 1.0-int(x)   # -2.1 gives + 3 to place inside (0,1)
-
-  def offset_inside_cell(self,center,unit_cell):
-    # put the center inside (0,1)
-    from scitbx.math import  matrix
-    c=matrix.col(center)
-    c_frac=unit_cell.fractionalize(c)
-    offset_frac=[]
-    for x in c_frac:
-     offset_frac.append(self.offset_inside_zero_one(x))
-    return unit_cell.orthogonalize(matrix.col(offset_frac))
 
   def identity_op_id(self):
     # return id of identity operator
@@ -1060,14 +1078,14 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     for center,trans_orth,ncs_rota_matr in zip (
        self._centers, self._translations_orth,self._rota_matrices):
       if is_identity(ncs_rota_matr,trans_orth):
-        first_coordinate_offset=matrix.col(self.offset_inside_cell(
+        first_coordinate_offset=matrix.col(offset_inside_cell(
           center,unit_cell=unit_cell))
         break
     if first_coordinate_offset is None:
       raise Sorry("Identity not found in NCS matrices?")
     for center,trans_orth,ncs_rota_matr in zip (
        self._centers, self._translations_orth,self._rota_matrices):
-      coordinate_offset=self.offset_inside_cell(center,unit_cell=unit_cell)
+      coordinate_offset=offset_inside_cell(center,unit_cell=unit_cell)
 
       new_centers.append(matrix.col(center)+matrix.col(coordinate_offset))
       #  T'=T - R x_i + x_1
