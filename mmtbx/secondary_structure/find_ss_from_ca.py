@@ -1846,7 +1846,7 @@ class find_beta_strand(find_segment):
     else:
       end=get_indexed_residue(segment.hierarchy,index=end_index)
     if start is None or end is None:
-       raise Sorry("Something is not right in get_pdb_strand function")
+      return None
 
     chain_id=get_chain_id(segment.hierarchy)
     pdb_strand = secondary_structure.pdb_strand(
@@ -1925,6 +1925,7 @@ class find_beta_strand(find_segment):
         n_strands=len(sheet),
         strands=[],
         registrations=[])
+      ok=True
 
       # figure out what residues to include in each sheet. It is not a well-
       #   defined problem because a middle strand might H-bond to one but not
@@ -1934,11 +1935,18 @@ class find_beta_strand(find_segment):
 
       first_strand = self.get_pdb_strand(sheet_id=sheet_id,strand_id=strand_id,
         segment=s,sense=0,start_index=start_dict[k],end_index=end_dict[k])
+      if first_strand is None:
+        print >>out,"Note: failed to identify strand %s in sheet %s index %s" %(
+          k,strand_id,sheet_id)
+        ok=False
+        continue # found nothing (something went wrong in get_pdb_strand)
+
       current_sheet.add_strand(first_strand)
       current_sheet.add_registration(None)
       previous_s=s
       i=k
       for j in remainder: # previous strand is i, current is j
+        if not ok: break
         s=segment_list[j]
         strand_id+=1
         if not s.hierarchy or not s.hierarchy.overall_counts().n_residues:
@@ -1957,6 +1965,11 @@ class find_beta_strand(find_segment):
           sense=-1
         next_strand = self.get_pdb_strand(sheet_id=sheet_id,strand_id=strand_id,
           segment=s,sense=sense,start_index=start_dict[j],end_index=end_dict[j])
+        if next_strand is None:
+          print >>out,"Note: failed to "+\
+            "identify strand %s in sheet %s index %s" %(j,strand_id,sheet_id)
+          ok=False
+          continue# found nothing (something went wrong in get_pdb_strand)
 
         current_sheet.add_strand(next_strand)
         all_h_bonds,n_good,n_poor=self.list_h_bonds(
@@ -1975,6 +1988,8 @@ class find_beta_strand(find_segment):
         current_sheet.add_registration(register)
         previous_s=s
         i=j
+
+      if not ok: continue # skip
 
       if require_h_bonds:
         if good_in_sheet<minimum_h_bonds or (
