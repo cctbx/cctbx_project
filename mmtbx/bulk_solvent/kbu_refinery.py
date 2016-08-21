@@ -110,7 +110,7 @@ class tgc(object):
                k_sols=None,
                b_sols=None,
                ps=None,
-               u_star=[0,0,0,0,0,0], b_max=300, b_min=0, k_min=0., k_max=1.):
+               u_star=[0,0,0,0,0,0], b_max=300, b_min=0, k_min=0.001, k_max=50):
     if(ps is not None): assert [k_sols, b_sols].count(None) == 2
     else:               assert [k_sols, b_sols].count(None) == 0
     adopt_init_args(self, locals())
