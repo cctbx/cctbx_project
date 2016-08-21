@@ -324,7 +324,7 @@ class run(mmtbx.f_model.manager):
       self.update(
         k_mask        = o_kbu_sol.k_mask(),
         k_anisotropic = o_kbu_sol.k_anisotropic())
-      assert approx_equal(self.r_all(), o_kbu_sol.r())
+      assert approx_equal(self.r_all(), o_kbu_sol.r(), 1.e-5)
       ##############
       # use apply_back_trace in if below
       if(self.xray_structure is not None):

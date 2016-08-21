@@ -171,6 +171,8 @@ class run(object):
   def to_asu_map(self, map_data):
     r = asu_map_ext.asymmetric_map(self.sgt, map_data).data()
     if(self.acc_asu is None): self.acc_asu = r.accessor()
+    # Why I'm doing this? This may be a bug for some SG!
+    # See: exercise_structure_factors_from_map_and_asu_map in miller tests.
     return r.shift_origin()
 
   def omit_box(self, start, end):

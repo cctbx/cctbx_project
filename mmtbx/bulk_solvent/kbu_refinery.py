@@ -110,7 +110,7 @@ class tgc(object):
                k_sols=None,
                b_sols=None,
                ps=None,
-               u_star=[0,0,0,0,0,0], b_max=300, b_min=0, k_min=0.001, k_max=50):
+               u_star=[0,0,0,0,0,0], b_max=300, b_min=0, k_min=0., k_max=1.):
     if(ps is not None): assert [k_sols, b_sols].count(None) == 2
     else:               assert [k_sols, b_sols].count(None) == 0
     adopt_init_args(self, locals())
@@ -246,6 +246,7 @@ class tgc(object):
 
   def minimize_k_once(self, use_curvatures):
     self.set_refine_k()
+    self.set_use_scale(value = True)
     return minimizer(tgc = self).run(use_curvatures=use_curvatures)
 
   def minimize_b_once(self, use_curvatures):
@@ -341,6 +342,9 @@ class tgc(object):
       if(r>start_r and r>1.e-2 and max(bc)>100):
         self.kbu.update(b_cart = save_b_cart)
         break
+
+  def show_k_sols(self):
+    print "k_sols:", [round(k,3) for k in self.kbu.k_sols()], self.kbu.r_factor()
 
   def show_kbu(self):
     print "k_sols:", [round(k,3) for k in self.kbu.k_sols()]

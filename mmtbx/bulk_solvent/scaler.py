@@ -754,6 +754,7 @@ class tmp(object):
     k,b = r.a, r.b
     #
     k,b,r = mmtbx.bulk_solvent.fit_k_exp_b_to_k_total(k_total, self.ss, k, b)
+    k_exp_overall, b_exp_overall = None,None
     if(r<0.7): k_exp_overall, b_exp_overall = k,b
     if(self.xray_structure is None): return None
     b_adj = 0
