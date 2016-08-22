@@ -298,8 +298,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
   if enable_shadowing:
 
-    def get_mask(self):
-      mask = super(FormatCBFMiniPilatusDLS6MSN100, self).get_mask()
+    def get_goniometer_shadow_masker(self):
       from dials.util.masking import GoniometerShadowMaskGenerator
       from scitbx.array_family import flex
       import math
@@ -319,11 +318,15 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
       coords.insert(0, (0,0,0))
 
       gonio = self.get_goniometer()
+
+      return GoniometerShadowMaskGenerator(
+        gonio, coords, flex.size_t(len(coords), 0))
+
+    def get_mask(self):
+      gonio_masker = self.get_goniometer_shadow_masker()
       scan = self.get_scan()
       detector = self.get_detector()
-
-      gonio_masker = GoniometerShadowMaskGenerator(
-        gonio, coords, flex.size_t(len(coords), 0))
+      mask = super(FormatCBFMiniPilatusDLS6MSN100, self).get_mask()
       shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
       assert len(mask) == len(shadow_mask)
       for m, sm in zip(mask, shadow_mask):

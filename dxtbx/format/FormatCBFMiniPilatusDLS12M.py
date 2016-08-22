@@ -26,6 +26,11 @@ if 'P12M_120_PANEL' in os.environ:
 else:
   group_rows = True
 
+if 'DXTBX_ENABLE_SHADOWING' in os.environ:
+  enable_shadowing = True
+else:
+  enable_shadowing = False
+
 def read_mask():
   global __mask
   if not __mask:
@@ -225,6 +230,82 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
     return tuple(self._raw_data)
 
+  if enable_shadowing:
+
+    def get_goniometer_shadow_masker(self):
+      from dials.util.masking import GoniometerShadowMaskGenerator
+      from scitbx.array_family import flex
+      import math
+
+      coords = flex.vec3_double((
+        (0,0,0),
+      ))
+
+      r = flex.double(19, 40)
+      alpha = flex.double_range(0, 190, step=10) * math.pi / 180
+      x = flex.double(r.size(), 107.61)
+      y = -r*flex.sin(alpha)
+      z = -r*flex.cos(alpha)
+      coords.extend(flex.vec3_double(x, y, z))
+
+      coords.extend(flex.vec3_double((
+        # fixed
+        (107.49, 7.84, 39.49),
+        (107.39, 15.69, 38.97),
+        (107.27, 23.53, 38.46),
+        (107.16, 31.37, 37.94),
+        (101.76, 33.99, 36.25),
+        (96.37, 36.63, 34.56),
+        (90.98, 39.25, 33.00),
+        (85.58, 41.88, 31.18),
+        (80.89, 47.06, 31.00),
+        (76.55, 51.51, 31.03),
+        (72.90, 55.04, 31.18),
+        (66.86, 60.46, 31.67),
+        (62.10, 64.41, 32.25),
+      )))
+
+      r = flex.double(19, 33)
+      alpha = flex.double_range(180, 370, step=10) * math.pi / 180
+      x = (flex.sqrt(flex.pow2(r * flex.sin(alpha)) + 89.02**2) * flex.cos((50 * math.pi/180) - flex.atan(r/89.02 * flex.sin(alpha))))
+      y = (flex.sqrt(flex.pow2(r * flex.sin(alpha)) + 89.02**2) * flex.sin((50 * math.pi/180) - flex.atan(r/89.02 * flex.sin(alpha))))
+      z = -r*flex.cos(alpha)
+      coords.extend(flex.vec3_double(x, y, z))
+
+      coords.extend(flex.vec3_double((
+        # fixed
+        (62.10, 64.41, -32.25),
+        (66.86, 60.46, -31.67),
+        (72.90, 55.04, -31.18),
+        (76.55, 51.51, -31.03),
+        (80.89, 47.06, -31.00),
+        (85.58, 41.88, -31.18),
+        (90.98, 39.25, -33.00),
+        (96.37, 36.63, -34.56),
+        (101.76, 33.99, -36.25),
+        (107.16, 31.37, -37.94),
+        (107.27, 23.53, -38.46),
+        (107.39, 15.69, -38.97),
+        (107.49, 7.84, -39.49),
+        (107.61, 0.00, -40.00)
+      )))
+
+      gonio = self.get_goniometer()
+      return GoniometerShadowMaskGenerator(
+        gonio, coords, flex.size_t(len(coords), 0))
+
+    def get_mask(self):
+      gonio_masker = self.get_goniometer_shadow_masker()
+      scan = self.get_scan()
+      detector = self.get_detector()
+      mask = super(FormatCBFMiniPilatusDLS6MSN100, self).get_mask()
+      shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
+      assert len(mask) == len(shadow_mask)
+      for m, sm in zip(mask, shadow_mask):
+        m &= sm
+
+      return mask
+
   def _goniometer(self):
     '''Return a model for a simple single-axis goniometer. This should
     probably be checked against the image header.'''
@@ -237,7 +318,26 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     # calendar.timegm(time.strptime('2016-04-01T00:00:00', '%Y-%m-%dT%H:%M:%S'))
     if timestamp < 1459468800:
       return self._goniometer_factory.single_axis_reverse()
-    return self._goniometer_factory.single_axis()
+
+    alpha = 50.0
+    if 'Phi' in self._cif_header_dictionary:
+      phi_value = float(self._cif_header_dictionary['Phi'].split()[0])
+    else:
+      phi_value = 0.0
+
+    if 'Kappa' in self._cif_header_dictionary:
+      kappa_value = float(self._cif_header_dictionary['Kappa'].split()[0])
+    else:
+      kappa_value = 0.0
+
+    if 'Omega' in self._cif_header_dictionary:
+      omega_value = float(self._cif_header_dictionary['Omega'].split()[0])
+    else:
+      omega_value = 0.0
+
+    return self._goniometer_factory.make_kappa_goniometer(
+      alpha, omega_value, kappa_value, phi_value, '+y', 'omega')
+
 
 if __name__ == '__main__':
 
