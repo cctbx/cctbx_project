@@ -87,7 +87,7 @@ class Script(ParentScript):
     if params.max_hierarchy_level is None or str(params.max_hierarchy_level).lower() == 'auto':
       params.max_hierarchy_level = 0
       root = detector.hierarchy()
-      while hasattr(root, 'children'):
+      while root.is_group():
         root = root[0]
         params.max_hierarchy_level += 1
       print "Found", params.max_hierarchy_level+1, "hierarchy levels"
@@ -111,18 +111,12 @@ class Script(ParentScript):
     table_header = ["PanelG","BC dist","Delta XY","R Offsets","T Offsets","Z Offsets","dR Norm","dT Norm","Local dNorm","Rot Z","N Refls"]
     table_header2 = ["ID","(mm)","(microns)","(microns)","(microns)","(microns)","(deg)","(deg)","(deg)","(deg)",""]
 
-    def get_parent(pg):
-      if hasattr(pg, 'children'):
-        return pg.parent()
-      else:
-        return pg.parent
-
     from xfel.cftbx.detector.cspad_cbf_tbx import basis
     def get_full_basis_shift(pg):
       """Compute basis shift from pg to lab space"""
       shift = basis(panelgroup=pg)
       while True:
-        parent = get_parent(pg)
+        parent = pg.parent()
         if parent is None:
           break
         shift = basis(panelgroup=parent) * shift
