@@ -10,6 +10,8 @@ import cStringIO
 import os
 import sys
 
+from libtbx.utils import to_unicode, to_str
+
 ALN_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 
 class InfoPanelBase (wx.MiniFrame) :
@@ -71,8 +73,8 @@ class ReflectionFileInfo (InfoPanelBase) :
       raise_sorry_if_errors=True,
       raise_sorry_if_not_expected_format=True)
     self._hkl_in.check_file_type("hkl")
-    self.SetTitle("Info for %s" % self.file_name.decode("utf-8"))
-    self.file_txt.SetLabel(self.file_name.decode("utf-8"))
+    self.SetTitle("Info for %s" % to_unicode(self.file_name))
+    self.file_txt.SetLabel(to_unicode(self.file_name))
     self.miller_arrays = self._hkl_in.file_server.miller_arrays
     labels = [ array.info().label_string() for array in self.miller_arrays ]
     self.array_choice.SetItems(labels)
@@ -165,8 +167,8 @@ class PDBFileInfo (InfoPanelBase) :
     info_list = iotbx.pdb.show_file_summary(
       pdb_in=self._pdb_in.file_object,
       hierarchy=self._hierarchy)
-    self.SetTitle("Info for %s" % self.file_name.decode("utf-8"))
-    self.file_txt.SetLabel(self.file_name.decode("utf-8"))
+    self.SetTitle("Info for %s" % to_unicode(self.file_name))
+    self.file_txt.SetLabel(to_unicode(self.file_name))
     if (self.info_panel is not None) :
       self.panel_sizer.Detach(self.info_panel)
       self.info_panel.Destroy()
@@ -185,7 +187,7 @@ class PDBFileInfo (InfoPanelBase) :
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt1.SetFont(font)
       grid.Add(txt1, 0, ALN_FLAGS, 5)
-      str_value = str(value)
+      str_value = to_str(value)
       alert = False
       if (str_value.endswith("***")) :
         str_value = re.sub("\s*\*\*\*", "", str_value)
@@ -250,8 +252,8 @@ class PDBChainBisoPanel (InfoPanelBase) :
     if (len(hierarchy.models()) > 1) :
       raise Sorry("Multi-MODEL PDB files not supported.")
     self._hierarchy = hierarchy
-    self.SetTitle("B-factors by chain for %s" % self.file_name.decode("utf-8"))
-    self.file_txt.SetLabel(self.file_name.decode("utf-8"))
+    self.SetTitle("B-factors by chain for %s" % to_unicode(self.file_name))
+    self.file_txt.SetLabel(to_unicode(self.file_name))
     chain_list = wx.ListCtrl(self.panel, -1, style=wx.LC_REPORT, size=(480,160))
     chain_list.InsertColumn(0, "Chain info")
     chain_list.InsertColumn(1, "Mean B-iso (range)")
@@ -314,8 +316,8 @@ class ImageFileInfo (InfoPanelBase) :
     out = cStringIO.StringIO()
     img_in.file_object.show_header()
     img_in.file_object.show_header(out=out)
-    self.SetTitle("Info for %s" % self.file_name.decode("utf-8"))
-    self.file_txt.SetLabel(self.file_name.decode("utf-8"))
+    self.SetTitle("Info for %s" % to_unicode(self.file_name))
+    self.file_txt.SetLabel(to_unicode(self.file_name))
     if (self.info_panel is not None) :
       self.panel_sizer.Detach(self.info_panel)
       self.info_panel.Destroy()
@@ -370,7 +372,7 @@ class MapCoeffsInfo (InfoPanelBase) :
     grid.Add(self.map_txt, 0, ALN_FLAGS, 5)
 
   def set_file (self, file_name) :
-    self.file_txt.SetLabel(file_name.decode("utf-8"))
+    self.file_txt.SetLabel(to_unicode(file_name))
 
   def set_map_coeffs (self, array) :
     assert (array.is_complex_array())
@@ -395,7 +397,7 @@ class MapCoeffsInfo (InfoPanelBase) :
       font.SetWeight(wx.FONTWEIGHT_BOLD)
       txt1.SetFont(font)
       grid.Add(txt1, 0, ALN_FLAGS, 5)
-      str_value = str(value)
+      str_value = to_str(value)
       alert = False
       if (str_value.endswith("***")) :
         str_value = re.sub("\s*\*\*\*", "", str_value)

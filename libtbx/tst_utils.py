@@ -333,6 +333,13 @@ def exercise_retrieve_unless_exists():
   with open(filename) as source, open(targetname) as target:
     assert source.read() == target.read()
 
+def exercise_str_unicode():
+  # tests for to_unicode and to_str
+  s = '\xc3\x85'
+  u = u'\xc5'
+  assert(to_unicode(s) == u)
+  assert(to_str(u) == s)
+
 def run(args):
   assert len(args) == 0
   if '--exercise-retrieve-unless-exists' in args:

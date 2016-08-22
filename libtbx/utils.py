@@ -2294,3 +2294,48 @@ def try_send_to_trash (path_name, delete_if_not_available=False,
           "not installed.")
     else :
       send2trash.send2trash(path_name)
+
+def to_unicode(text, codec='utf8'):
+  '''
+  Function for handling text when it is first encountered
+  Changes str type to unicode type
+  The input is returned unmodified if it is already unicode
+  Will convert other types (e.g. int, float) to str
+  '''
+  if (isinstance(text, unicode)):
+    return text
+  elif (isinstance(text, str)):
+    new_text = text
+    try:
+      new_text = text.decode(codec)
+    except UnicodeDecodeError:
+      raise Sorry('Unable to decode text with %s' % codec)
+    finally:
+      return new_text
+  elif (text is not None):
+    return unicode(text)
+  else:
+    return None
+
+def to_str(text, codec='utf8'):
+  '''
+  Function for handling text when it is passed to cctbx functions that expect
+  the str type
+  Changes unicode type to str type
+  The input is returned unmodified if it is already str
+  Will convert other types (e.g. int, float) to str
+  '''
+  if (isinstance(text, str)):
+    return text
+  elif (isinstance(text, unicode)):
+    new_text = text
+    try:
+      new_text = text.encode(codec)
+    except UnicodeDecodeError:
+      raise Sorry('Unable to encode text with %s' % codec)
+    finally:
+      return new_text
+  elif (text is not None):
+    return str(text)
+  else:
+    return None

@@ -3,7 +3,7 @@ from __future__ import division
 from wxtbx.utils import add_ok_cancel_buttons, std_sizer_flags
 from wxtbx.phil_controls import choice_multi, path
 import wx
-from libtbx.utils import Abort, Sorry
+from libtbx.utils import Abort, Sorry, to_unicode
 import libtbx.path
 import os.path
 
@@ -47,8 +47,8 @@ class manager (object) :
         default_dir, default_file = os.path.split(current_file)
       else :
         default_file = current_file
-    if isinstance(default_dir, str) :
-      default_dir = default_dir.decode("utf-8")
+    default_dir = to_unicode(default_dir)
+    default_file = to_unicode(default_file)
     dlg = wx.FileDialog(
       parent=parent,
       message=message,
@@ -84,8 +84,7 @@ class manager (object) :
     default_path = self.last_dir
     if (current_path is not None) and (current_path != "") :
       default_path = current_path
-    if isinstance(default_path, str) :
-      default_path = default_path.decode("utf-8")
+    default_path = to_unicode(default_path)
     new_path = wx.DirSelector(
       message=message,
       defaultPath=default_path,

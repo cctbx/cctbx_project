@@ -1,6 +1,7 @@
 
 from __future__ import division
 from libtbx import object_oriented_patterns as oop
+from libtbx.utils import to_unicode
 import wx.lib.colourselect
 import wx
 import sys
@@ -145,22 +146,14 @@ class LogViewer (wx.TextCtrl) :
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
 
   def WriteText (self, text) :
-    if isinstance(text, str) and UNICODE_BUILD :
-      try :
-        text = text.decode("utf8")
-      except UnicodeDecodeError, e :
-        print "warning: %s (string = '%s')" % (str(e), text)
-        return
+    if UNICODE_BUILD :
+      text = to_unicode(text)
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
     wx.TextCtrl.WriteText(self, text)
 
   def AppendText (self, text) :
-    if isinstance(text, str) and UNICODE_BUILD :
-      try :
-        text = text.decode("utf8")
-      except UnicodeDecodeError, e :
-        print "warning: %s (string = '%s')" % (str(e), text)
-        return
+    if UNICODE_BUILD :
+      text = to_unicode(text)
     self.SetFont(wx.Font(self.font_size, wx.MODERN, wx.NORMAL, wx.NORMAL))
     wx.TextCtrl.AppendText(self, text)
     # keep text to be a certain size for performance

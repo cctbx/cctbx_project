@@ -55,6 +55,7 @@ from __future__ import division
 # --------------------------------------------------------------------
 
 from libtbx import adopt_init_args
+from libtbx.utils import to_str
 import xmlrpclib
 import httplib
 import socket
@@ -117,6 +118,8 @@ class ServerProxy (object) :
     self.raise_errors = raise_errors
 
   def __request(self, methodname, params):
+    if (isinstance(params, unicode)):
+      params = to_str(params)
     self._pending.append((methodname, params))
     return self.flush_requests()
 
@@ -125,6 +128,8 @@ class ServerProxy (object) :
     result = None
     while len(self._pending) > 0 :
       (methodname, params) = self._pending.pop(0)
+      if (isinstance(params, unicode)):
+        params = to_str(params)
       # call a method on the remote server
       try :
         request = xmlrpclib.dumps(params, methodname,
@@ -143,7 +148,7 @@ class ServerProxy (object) :
       except KeyboardInterrupt :
         raise
       except Exception, e :
-        msg = str(e)
+        msg = to_str(e)
         if (hasattr(e, "errno")) :
           if (e.errno in [32,54,61,104,111,10054,10061]) :
             self._pending.insert(0, (methodname, params))
@@ -153,15 +158,15 @@ class ServerProxy (object) :
         if ("timed out" in msg) :
           print "XMLRPC timeout, ignoring request"
           self._timeouts += 1
-        elif str(e).startswith("<ProtocolError ") :
+        elif msg.startswith("<ProtocolError ") :
           self._pending = []
           break
-        elif ("exceptions.SystemExit" in str(e)) :
+        elif ("exceptions.SystemExit" in msg) :
           self._pending = []
           break
         else :
           msg = "XMLRPC error: %s\nMethod: %s\nParams: %s\n" % \
-            (str(e), str(methodname), ", ".join([ str(p) for p in params ]))
+            (msg, to_str(methodname), ", ".join([ to_str(p) for p in params ]))
           if (not self.raise_errors) :
             print >> sys.stderr, msg
           else :

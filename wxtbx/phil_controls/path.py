@@ -2,7 +2,7 @@ from __future__ import division
 from wxtbx.phil_controls import text_base
 from wxtbx import phil_controls
 import wxtbx.icons
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, to_unicode, to_str
 from libtbx import Auto
 import wx
 import os
@@ -88,7 +88,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
   def GetValue (self) :
     val = self._path_text.GetValue().strip()
     if (isinstance(val, unicode)) and wxtbx.is_unicode_build() :
-      return val.encode('utf8')
+      return to_str(val)
     else :
       assert isinstance(val, str)
       return val
@@ -97,9 +97,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     if (value is None) or (value is Auto) :
       self._path_text.SetValue("")
     else :
-      assert isinstance(value, str) or isinstance(value, unicode)
-      if isinstance(value, str) :
-        value = value.decode("utf-8")
+      value = to_unicode(value)
       self._path_text.SetValue(value)
 
   def SetBackgroundColour (self, *args, **kwds) :
@@ -139,7 +137,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     if (self._path_style & WXTBX_PHIL_PATH_DIRECTORY) :
       new_path = path_manager.select_directory(
         message="Choose a directory: %s" % self.GetName(),
-        current_path=self.GetValue().decode("utf-8"),
+        current_path=to_unicode(self.GetValue()),
         style=flags|wx.DD_NEW_DIR_BUTTON,
         parent=self)
     else :
@@ -148,7 +146,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
       new_path = path_manager.select_file(
         parent=self,
         message="Choose a file: %s" % self.GetName(),
-        current_file=self.GetValue().decode("utf-8"),
+        current_file=to_unicode(self.GetValue()),
         style=flags,
         wildcard=wildcard)
     if (new_path is not None) :

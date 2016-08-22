@@ -4,6 +4,7 @@ from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from wxtbx import phil_controls
 import wxtbx
 from libtbx.phil import tokenizer
+from libtbx.utils import to_unicode, to_str
 from libtbx import Auto
 import libtbx.phil
 import wx
@@ -27,7 +28,7 @@ class StrCtrl (ValidatedTextCtrl) :
     else :
       if isinstance(value, str) :
         if wxtbx.is_unicode_build() :
-          ValidatedTextCtrl.SetValue(self, value.decode("utf-8"))
+          ValidatedTextCtrl.SetValue(self, to_unicode(value))
         else :
           ValidatedTextCtrl.SetValue(self, value)
       else :
@@ -52,7 +53,7 @@ class StrCtrl (ValidatedTextCtrl) :
 
   def FormatValue (self, value) :
     if wxtbx.is_unicode_build() :
-      return value.encode("utf-8")
+      return to_str(value)
     else :
       return value
 

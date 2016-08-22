@@ -2,7 +2,7 @@
 from __future__ import division
 from wxtbx import phil_controls
 import wxtbx
-from libtbx.utils import Abort
+from libtbx.utils import Abort, to_unicode, to_str
 from libtbx import Auto
 import wx
 
@@ -23,12 +23,14 @@ class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
     self.Bind(wx.EVT_TEXT_ENTER, self.OnEnter, self)
     self.Bind(wx.EVT_KILL_FOCUS, self.OnFocusLost, self)
     if saved_value is not None:
+      if (type(saved_value) == str):
+        save_value = to_unicode(saved_value)
       self.SetValue(saved_value)
 
   def GetValue (self) :
     val = wx.TextCtrl.GetValue(self)
-    if (isinstance(val, unicode)) and wxtbx.is_unicode_build() :
-      return val.encode('utf8')
+    if wxtbx.is_unicode_build() :
+      return to_str(val)
     else :
       assert isinstance(val, str)
       return val
@@ -92,16 +94,16 @@ class TextCtrlValidator (wx.PyValidator) :
   def Validate (self, win) :
     ctrl = self.GetWindow()
     try :
-      value_str = ctrl.GetValue()
-      if isinstance(value_str, str) :
-        value_str = value_str.decode("utf-8")
-      if (value_str == "") :
+      value = to_unicode(ctrl.GetValue())
+      # if isinstance(value, str) :
+      #   value = value.decode("utf-8")
+      if (value == "") :
         ctrl.SetBackgroundColour(
           wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
         return True
-      reformatted = self.CheckFormat(value_str)
+      reformatted = self.CheckFormat(value)
       if isinstance(reformatted, str) :
-        reformatted = reformatted.decode("utf-8")
+        reformatted = to_unicode(reformatted)
       ctrl.SetValue(reformatted)
       ctrl.SetBackgroundColour(
         wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
@@ -116,7 +118,7 @@ class TextCtrlValidator (wx.PyValidator) :
       if (type(e).__name__ == "UnicodeEncodeError") :
         msg = ("You have entered characters which cannot be converted to "+
           "Latin characters in the control '%s'; due to limitations of the "+
-          "underlying code, only the standard ASCII character set is "+
+          "underlying code, only the standard UTF-8 character set is "+
           "allowed.") % ctrl_name
       wx.MessageBox(caption="Format error", message=msg)
       ctrl.SetBackgroundColour("red")
