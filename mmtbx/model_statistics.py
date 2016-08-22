@@ -116,6 +116,8 @@ class geometry(geometry_no_grm):
     else: esg = energies_sites
     self.a = None
     self.b = None
+    self.angle_deltas = None
+    self.bond_deltas = None
     if not hasattr(esg, "angle_deviations"): return
     if hasattr(esg, "amber"):
       amber_parm = restraints_manager.amber_structs.parm
@@ -172,20 +174,20 @@ class geometry(geometry_no_grm):
     if(hasattr(restraints_manager, "geometry")):
       rmg = restraints_manager.geometry
     else: rmg = restraints_manager
-    bond_deltas = geometry_restraints.bond_deltas(
+    self.bond_deltas = geometry_restraints.bond_deltas(
       sites_cart         = sites_cart,
       sorted_asu_proxies = rmg.pair_proxies().bond_proxies)
-    angle_deltas = geometry_restraints.angle_deltas(
+    self.angle_deltas = geometry_restraints.angle_deltas(
       sites_cart = sites_cart,
       proxies    = rmg.angle_proxies)
-    nonbonded_distances = esg.nonbonded_distances()
-    self.number_of_worst_clashes = (nonbonded_distances<0.5).count(True)
+    self.nonbonded_distances = esg.nonbonded_distances()
+    self.number_of_worst_clashes = (self.nonbonded_distances<0.5).count(True)
     self.bond_deltas_histogram = \
-      flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
+      flex.histogram(data = flex.abs(self.bond_deltas), n_slots = n_histogram_slots)
     self.angle_deltas_histogram = \
-      flex.histogram(data = flex.abs(angle_deltas), n_slots = n_histogram_slots)
+      flex.histogram(data = flex.abs(self.angle_deltas), n_slots = n_histogram_slots)
     self.nonbonded_distances_histogram = flex.histogram(
-      data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
+      data = flex.abs(self.nonbonded_distances), n_slots = n_histogram_slots)
     #
     assert approx_equal(
       esg.target,

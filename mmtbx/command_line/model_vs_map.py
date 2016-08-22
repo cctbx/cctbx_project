@@ -52,12 +52,11 @@ def broadcast(m, log):
   print >> log, m
   print >> log, "*"*len(m)
 
-def show_histogram(data=None, n_slots=None, histogram=None, log=None):
+def show_histogram(data=None, n_slots=None, data_min=None, data_max=None,
+                   log=None):
   from cctbx.array_family import flex
-  if(histogram is None):
-    hm = flex.histogram(data = data, n_slots = n_slots)
-  else:
-    hm = histogram
+  hm = flex.histogram(data = data, n_slots = n_slots, data_min = data_min,
+    data_max = data_max)
   lc_1 = hm.data_min()
   s_1 = enumerate(hm.slots())
   for (i_1,n_1) in s_1:
@@ -112,7 +111,9 @@ def run(args, log=sys.stdout):
   print >> log, "  Actual map (min,max,mean):", \
     map_data.as_1d().min_max_mean().as_tuple()
   make_sub_header("Histogram of map values", out=log)
-  show_histogram(data=map_data.as_1d(), n_slots=10, log=log)
+  md = map_data.as_1d()
+  show_histogram(data=md, n_slots=10, data_min=flex.min(md),
+    data_max=flex.max(md), log=log)
   # shift origin if needed
   shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
@@ -139,17 +140,21 @@ def run(args, log=sys.stdout):
     molprobity_scores  = True)
   ms.show()
   make_sub_header("Histogram of devations from ideal bonds", out=log)
-  show_histogram(histogram=ms.bond_deltas_histogram, log=log)
+  show_histogram(data=ms.bond_deltas, n_slots=10, data_min=0, data_max=0.2,
+    log=log)
   #
   make_sub_header("Histogram of devations from ideal angles", out=log)
-  show_histogram(histogram=ms.angle_deltas_histogram, log=log)
+  show_histogram(data=ms.angle_deltas, n_slots=10, data_min=0, data_max=30.,
+    log=log)
   #
   make_sub_header("Histogram of non-bonded distances", out=log)
-  show_histogram(histogram=ms.nonbonded_distances_histogram, log=log)
+  show_histogram(data=ms.nonbonded_distances, n_slots=10, data_min=0,
+    data_max=5., log=log)
   #
   make_sub_header("Histogram of ADPs", out=log)
-  show_histogram(data=xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.),
-    n_slots=10, log=log)
+  bs = xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+  show_histogram(data=bs, n_slots=10, data_min=flex.min(bs),
+    data_max=flex.max(bs), log=log)
   #
   # Compute FSC(map, model)
   broadcast(m="Map-model FSC:", log=log)
@@ -198,7 +203,8 @@ def run(args, log=sys.stdout):
       unit_cell  = xrs.unit_cell(),
       radius     = 2.)
     cc_per_residue.append(cc)
-  show_histogram(data=cc_per_residue, n_slots=10, log=log)
+  show_histogram(data=cc_per_residue, n_slots=10, data_min=-1., data_max=1.0,
+    log=log)
   #
 
 """
