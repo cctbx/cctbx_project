@@ -1845,10 +1845,6 @@ class add_bond_proxies(object):
     self.broken_bond_i_seq_pairs = set()
     value = "value_dist"
     for bond in bond_list:
-      if use_neutron_distances:
-        value = "value_dist"
-        if getattr(bond, "value_dist_neutron", None):
-          value = "value_dist_neutron"
       if (   not m_i.monomer_atom_dict.has_key(bond.atom_id_1)
           or not m_j.monomer_atom_dict.has_key(bond.atom_id_2)):
         #
@@ -1875,6 +1871,15 @@ class add_bond_proxies(object):
       else:
         counters.resolved += 1
         i_seqs = [atom.i_seq for atom in atoms]
+        if use_neutron_distances:
+          deuterium = False
+          for atom in atoms:
+            if atom.element == " D":
+              deuterium = True
+              break
+          value = "value_dist"
+          if deuterium and getattr(bond, "value_dist_neutron", None):
+            value = "value_dist_neutron"
         proxy = geometry_restraints.bond_simple_proxy(
           i_seqs=i_seqs,
           distance_ideal=getattr(bond, value),
