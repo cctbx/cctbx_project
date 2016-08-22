@@ -1103,9 +1103,9 @@ class ImageSweep(ImageSet):
   def get_scan(self, index=None):
     ''' Get the scan.'''
     if self._scan == None:
-      self._scan = sum(
-        (self.reader().get_scan(i) for i in self._indices[1:]),
-        self.reader().get_scan(self._indices[0]))
+      self._scan = self.reader().get_scan(self._indices[0])
+      for i in self._indices[1:]:
+        self._scan += self.reader().get_scan(i)
     if index is not None:
       if index < 0 or index >= self._scan.get_num_images():
         raise IndexError('index out of range')
