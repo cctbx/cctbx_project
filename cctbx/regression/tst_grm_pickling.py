@@ -158,14 +158,10 @@ def make_geo_pickle_unpickle(geometry, xrs, prefix):
       f=init_out)
 
   t0 = time()
-  pklfile = open("%s.pkl" % prefix, 'wb')
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-  pickle.dump(geometry, pklfile)
-  pklfile.close()
+  pklstr = pickle.dumps(geometry)
   t1 = time()
-  pklfile = open("%s.pkl" % prefix, 'rb')
-  grm_from_file = pickle.load(pklfile)
-  pklfile.close()
+  grm_from_file = pickle.loads(pklstr)
   t2 = time()
   print "Time pickling/unpickling: %.4f, %.4f" % (t1-t0, t2-t1)
   grm_from_file.show_sorted(
@@ -407,13 +403,15 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
       model_raw_records, reference_raw_records
   from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     reference_model, reference_model_params
+  mstream = StringIO.StringIO()
   work_params = reference_model_params.extract()
   work_params.reference_model.enabled = True
   work_params.reference_model.fix_outliers = False
   processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
-      raw_records=model_raw_records.split('\n'))
+      raw_records=model_raw_records.split('\n'),
+      log=mstream)
   pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   reference_hierarchy_list = []
   tmp_hierarchy = iotbx.pdb.input(
@@ -424,7 +422,7 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
          processed_pdb_file=processed_pdb_file,
          reference_hierarchy_list=reference_hierarchy_list,
          params=work_params.reference_model,
-         log=None)
+         log=mstream)
   assert rm.get_n_proxies() == 5, "Got %d, expected 5" % rm.get_n_proxies()
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, model_raw_records)
   geometry.adopt_reference_dihedral_manager(rm)
@@ -443,18 +441,16 @@ def exercise_all(args):
   if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
     print "Skipping exercise(): chem_data directory not available"
     return
+
   test_simple_protein(mon_lib_srv, ener_lib)
   test_nucleic_acid(mon_lib_srv, ener_lib)
   test_ramachandran(mon_lib_srv, ener_lib)
   test_cbeta(mon_lib_srv, ener_lib)
   test_reference_coordinate(mon_lib_srv, ener_lib)
   test_secondary_structure(mon_lib_srv, ener_lib)
-  # Development
-
-  # Failing:
-  # test_secondary_structure_2(mon_lib_srv, ener_lib)
-  # test_across_symmetry(mon_lib_srv, ener_lib)
-  # test_reference_model(mon_lib_srv, ener_lib)
+  test_secondary_structure_2(mon_lib_srv, ener_lib)
+  test_across_symmetry(mon_lib_srv, ener_lib)
+  test_reference_model(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])

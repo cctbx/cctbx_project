@@ -41,7 +41,8 @@ from scitbx_array_family_flex_ext import reindexing_array
 #              1 - restraint for NA basepairs
 
 class manager(object):
-
+# This class is documented in
+# http://www.phenix-online.org/papers/iucrcompcomm_aug2004.pdf
   def __init__(self,
         crystal_symmetry=None,
         model_indices=None,

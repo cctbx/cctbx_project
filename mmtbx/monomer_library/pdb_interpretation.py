@@ -974,6 +974,50 @@ class monomer_mapping_summary(slots_getstate_setstate):
   def summary(self):
     return self
 
+  def __getstate__(self):
+    sdict = super(monomer_mapping_summary, self).__getstate__()
+    # The atom arrays have no pickling implemented so convert them to lists of
+    # indices of the atoms in the common root hierarchy. Since a hierarchy can
+    # be pickled we pass this on together with the sdict that holds the indices arrays.
+    import iotbx_pdb_hierarchy_ext
+    hroot = None
+    if len(self.expected_atoms) and type(self.expected_atoms[0]) == iotbx_pdb_hierarchy_ext.atom:
+      hroot = self.expected_atoms[0].parent().parent().parent().parent().parent()
+    if len(self.unexpected_atoms) and type(self.unexpected_atoms[0]) == iotbx_pdb_hierarchy_ext.atom:
+      hroot = self.unexpected_atoms[0].parent().parent().parent().parent().parent()
+    if len(self.duplicate_atoms) and type(self.duplicate_atoms[0]) == iotbx_pdb_hierarchy_ext.atom:
+      hroot = self.duplicate_atoms[0].parent().parent().parent().parent().parent()
+    if len(self.ignored_atoms) and type(self.ignored_atoms[0]) == iotbx_pdb_hierarchy_ext.atom:
+      hroot = self.ignored_atoms[0].parent().parent().parent().parent().parent()
+    if hroot:
+      # assuming atoms all come from the same hierarchy
+      indexer = dict( ( a, i) for ( i, a ) in enumerate( hroot.atoms() ) )
+      if len(self.expected_atoms) and type(self.expected_atoms[0]) == iotbx_pdb_hierarchy_ext.atom:
+        sdict["expected_atoms"] = [indexer[ a ] for a in self.expected_atoms]
+      if len(self.unexpected_atoms) and type(self.unexpected_atoms[0]) == iotbx_pdb_hierarchy_ext.atom:
+        sdict["unexpected_atoms"] = [indexer[ a ]  for a in self.unexpected_atoms]
+      if len(self.duplicate_atoms) and type(self.duplicate_atoms[0]) == iotbx_pdb_hierarchy_ext.atom:
+        sdict["duplicate_atoms"] = [indexer[ a ]  for a in self.duplicate_atoms]
+      if len(self.ignored_atoms) and type(self.ignored_atoms[0]) == iotbx_pdb_hierarchy_ext.atom:
+        sdict["ignored_atoms"] = [indexer[ a ]  for a in self.ignored_atoms]
+    return sdict, hroot
+
+  def __setstate__(self, state):
+    # Restore the atoms by using the indices arrays to pick the individual atoms
+    # from their common root hierarchy
+    sdict, hroot = state
+    sdict["expected_atoms"] = []
+    sdict["unexpected_atoms"] = []
+    sdict["duplicate_atoms"] = []
+    sdict["ignored_atoms"] = []
+    if hroot:
+      sdict["expected_atoms"] = [ hroot.atoms()[i] for i in sdict["expected_atoms"] ]
+      sdict["unexpected_atoms"] = [ hroot.atoms()[i] for i in sdict["unexpected_atoms"] ]
+      sdict["duplicate_atoms"] = [ hroot.atoms()[i] for i in sdict["duplicate_atoms"] ]
+      sdict["ignored_atoms"] = [ hroot.atoms()[i] for i in sdict["ignored_atoms"] ]
+    for name,value in sdict.items(): setattr(self, name, value)
+
+
 class monomer_mapping(slots_getstate_setstate):
 
   __slots__ = [
@@ -2903,7 +2947,7 @@ class build_all_chain_proxies(linking_mixins):
         log=None,
         carbohydrate_callback=None,
         restraints_loading_flags=None,
-               ):
+                ):
     import iotbx.cif.model
     self.cif = iotbx.cif.model.cif()
     self.pdb_link_records = {}
@@ -3412,6 +3456,23 @@ class build_all_chain_proxies(linking_mixins):
     # Make sure pdb_hierarchy and xray_structure are consistent
     if(self.special_position_settings is not None):
       self.pdb_hierarchy.adopt_xray_structure(self.extract_xray_structure())
+
+  def __getstate__(self):
+    indexer = dict( ( a, i) for ( i, a ) in enumerate( self.pdb_hierarchy.atoms() ) )
+    # pdb_atoms is an af_shared_atom array which has no pickling implemented
+    # so convert it to a list of indices of the atoms in pdb_hierarchy
+    import iotbx_pdb_hierarchy_ext
+    if type(self.pdb_atoms) == iotbx_pdb_hierarchy_ext.af_shared_atom:
+      self.pdb_atoms = [indexer[ a ] for a in self.pdb_atoms]
+    sdict = self.__dict__.copy()
+    return sdict
+
+  def __setstate__(self, state):
+    hroot = state["pdb_hierarchy"]
+    # Assuming pdb_atoms was stored as a list of indices of the atoms in
+    # pdb_hierarchy convert these back to an af_shared_atom array
+    state["pdb_atoms"] = [ hroot.atoms()[i] for i in state["pdb_atoms"] ]
+    self.__dict__.update( state )
 
   def update_internals_due_to_coordinates_change(self, pdb_h):
     self.pdb_hierarchy = pdb_h
