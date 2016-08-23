@@ -18,7 +18,6 @@ import zipfile
 
 windows_remove_list = []
 
-rosetta_version="rosetta_src_2015.39.58186_bundle"
 rosetta_version="rosetta_src_2016.02.58402_bundle"
 # LICENSE REQUIRED
 afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
@@ -1756,8 +1755,21 @@ class PhenixExternalRegression(PhenixBuilder):
          ['tar', 'xvf', '%s.gz' % afitt_version],
          ['modules']],
         ['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
+        #['Amber edit', ["sed",
+        #                '''s/"read answer"/"answer='n'"/''',
+        #                "configure2",
+        #                "|",
+        #                "tee",
+        #                "junk"],
+        # ["modules", "amber", "AmberTools", "src"]],
+        ['Amber copy',
+         ["cp", "../../../../amber_configure2", "configure2"],
+         ["modules", "amber", "AmberTools", "src"]],
+        #['Amber copy',
+        # ["cp", "junk", "configure2"],
+        # ["modules", "amber", "AmberTools", "src"]],
         ['Amber configure',
-          ['yes', 'n', "|", # needed for questions in configure file
+          [# 'yes', 'n', "|", # needed for questions in configure file
            "./configure",
            "--no-updates",
            "-noX11",
@@ -1788,12 +1800,16 @@ class PhenixExternalRegression(PhenixBuilder):
         ]:
       if self.subcategory:
         if name.lower().find(self.subcategory)==-1: continue
+      haltOnFailure=True
+      if name.lower() in ['amber compile']:
+        haltOnFailure=False
       self.add_step(self.shell(
         name       = name,
         command    = command,
         workdir    = workdir,
         description= "",
         env        = env,
+        haltOnFailure = haltOnFailure,
         ))
 
     self.add_refresh()
