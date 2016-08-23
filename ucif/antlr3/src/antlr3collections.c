@@ -2627,7 +2627,7 @@ sortVector       (pANTLR3_TOPO topo, pANTLR3_VECTOR v)
     //
     if  (topo->limit > v->count)
     {
-        // We can only sort the entries that we have dude! The caller is
+        // We can only sort the entries that we have! The caller is
         // responsible for ensuring the vector is the correct one and is the
         // correct size etc.
         //

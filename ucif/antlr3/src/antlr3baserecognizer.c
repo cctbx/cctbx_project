@@ -1266,7 +1266,7 @@ displayRecognitionError     (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8 *
                         }
                         else
                         {
-                                ANTLR3_FPRINTF(stderr, "Actually dude, we didn't seem to be expecting anything here, or at least\n");
+                                ANTLR3_FPRINTF(stderr, "Actually we didn't seem to be expecting anything here, or at least\n");
                                 ANTLR3_FPRINTF(stderr, "I could not work out what I was expecting, like so many of us these days!\n");
                         }
                 }
