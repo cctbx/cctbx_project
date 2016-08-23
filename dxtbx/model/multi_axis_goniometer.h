@@ -68,14 +68,22 @@ namespace dxtbx { namespace model {
     /* Virtual destructor */
     virtual ~MultiAxisGoniometer() {}
 
-    /* Get the axes */
+    /* Get the goniometer axes */
     scitbx::af::shared<vec3<double> > get_axes() const {
       return scitbx::af::shared<vec3<double> >(axes_.begin(), axes_.end());
     }
 
-    /* Get the angles */
+    /* Get the goniometer angles */
     scitbx::af::shared<double> get_angles() const {
       return scitbx::af::shared<double>(angles_.begin(), angles_.end());
+    }
+
+    /* Set the goniometer angles */
+    void set_angles(scitbx::af::shared<double> angles) {
+      DXTBX_ASSERT(angles.size() == angles_.size());
+      for (std::size_t i = 0; i < angles.size(); i++) {
+        angles_[i] = angles[i];
+      }
     }
 
     /* Get the axis names */

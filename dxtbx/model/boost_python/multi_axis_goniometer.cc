@@ -86,6 +86,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         &MultiAxisGoniometer::get_axes)
       .def("get_angles",
         &MultiAxisGoniometer::get_angles)
+      .def("set_angles",
+        &MultiAxisGoniometer::set_angles)
       .def("get_names",
         &MultiAxisGoniometer::get_names)
       .def("get_scan_axis",
