@@ -4,6 +4,8 @@ import time
 import os
 import sys
 
+from libtbx.utils import to_str
+
 t_wait = 250
 
 def start_coot_and_wait (
@@ -29,6 +31,7 @@ def start_coot_and_wait (
   base_script = __file__.replace(".pyc", ".py")
   ligand_xyzs = []
   for pdb_file in ligand_files :
+    pdb_file = to_str(pdb_file)
     pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
     pdb_in.assert_file_type("pdb")
     coords = pdb_in.file_object.atoms().extract_xyz()
@@ -39,10 +42,10 @@ def start_coot_and_wait (
   f.write("\n")
   f.write("import coot\n")
   cootbx.write_disable_nomenclature_errors(f)
-  f.write("read_pdb(\"%s\")\n" % pdb_file)
-  f.write("auto_read_make_and_draw_maps(\"%s\")\n" % map_file)
+  f.write("read_pdb(\"%s\")\n" % to_str(pdb_file))
+  f.write("auto_read_make_and_draw_maps(\"%s\")\n" % to_str(map_file))
   for cif_file in cif_files :
-    f.write("read_cif_dictionary(\"%s\")\n" % cif_file)
+    f.write("read_cif_dictionary(\"%s\")\n" % to_str(cif_file))
   f.write("m = manager(%s)\n" % str(ligand_info))
   f.close()
   make_header("Ligand selection in Coot", log)
@@ -77,7 +80,7 @@ class manager (object) :
     self.ligand_file_info = ligand_file_info
     self.ligand_imols = []
     for file_name, cc, xyz in ligand_file_info :
-      self.ligand_imols.append(read_pdb(file_name))
+      self.ligand_imols.append(read_pdb(to_str(file_name)))
     self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     self.window.set_default_size(300, 200)
     self.window.set_title(title)

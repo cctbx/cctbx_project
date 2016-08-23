@@ -2,6 +2,8 @@
 from __future__ import division
 import os.path
 
+from libtbx.utils import to_str
+
 class watch_model (object) :
   """
   Simple filesystem-only automatic loader for PDB files.  Once invoked with
@@ -22,9 +24,9 @@ class watch_model (object) :
       if file_mtime > self.last_mtime :
         if self.model_imol is not None :
           clear_and_update_molecule_from_file(self.model_imol,
-            self.file_name)
+            to_str(self.file_name))
         else :
-          self.model_imol = read_pdb(self.file_name)
+          self.model_imol = read_pdb(to_str(self.file_name))
         self.last_mtime = file_mtime
 
 
@@ -56,16 +58,16 @@ class watch_model_and_maps (object) :
     import coot # import dependency
     if (self.model_imol is not None) :
       clear_and_update_molecule_from_file(self.model_imol,
-        self.pdb_file)
+                                          to_str(self.pdb_file))
     else :
-      self.model_imol = read_pdb(self.pdb_file)
+      self.model_imol = read_pdb(to_str(self.pdb_file))
     if (len(self.map_imols) > 0) :
       set_colour_map_rotation_for_map(0)
       for imol in self._map_mols :
         close_molecule(imol)
     else :
       set_colour_map_rotation_for_map(10)
-    map_imol = auto_read_make_and_draw_maps(self.map_file)
+    map_imol = auto_read_make_and_draw_maps(to_str(self.map_file))
     if (isinstance(map_imol, int)) :
       # XXX this may be dangerous, but auto_read_make_and_draw_maps only returns
       # the last imol

@@ -16,6 +16,8 @@ import SimpleXMLRPCServer
 import traceback
 import os
 
+from libtbx.utils import to_str
+
 try :
   import coot_python
 except Exception, e :
@@ -94,7 +96,7 @@ class coot_interface (object) :
     """
     import coot
     if (self.current_imol is None) :
-      self.current_imol = read_pdb(pdb_file)
+      self.current_imol = read_pdb(to_str(pdb_file))
     else :
       clear_and_update_molecule_from_file(self.current_imol,
         pdb_file)

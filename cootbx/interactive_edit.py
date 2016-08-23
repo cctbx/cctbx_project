@@ -5,6 +5,8 @@ import time
 import os
 import sys
 
+from libtbx.utils import to_str
+
 t_wait = 250 # in milliseconds
 
 #-----------------------------------------------------------------------
@@ -110,7 +112,7 @@ class manager (object) :
     toolbar.insert(maps_button, -1)
     maps_button.connect("clicked", self.OnNewMaps)
     maps_button.show()
-    self._imol = read_pdb(pdb_file)
+    self._imol = read_pdb(to_str(pdb_file))
     set_molecule_bonds_colour_map_rotation(self._imol, 30)
     self._map_mols = []
     self.load_maps(map_file)
@@ -130,9 +132,9 @@ class manager (object) :
         close_molecule(imol)
     else :
       set_colour_map_rotation_for_map(10)
-    print "Loading %s" % map_file
+    print "Loading %s" % to_str(map_file)
     self._map_mols = []
-    map_imol = auto_read_make_and_draw_maps(map_file)
+    map_imol = auto_read_make_and_draw_maps(to_str(map_file))
     if (isinstance(map_imol, int)) :
       # XXX this may be dangerous, but auto_read_make_and_draw_maps only returns
       # the last imol
