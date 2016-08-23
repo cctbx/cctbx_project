@@ -232,7 +232,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
   if enable_shadowing:
 
-    def get_goniometer_shadow_masker(self):
+    def get_goniometer_shadow_masker(self, goniometer=None):
       from dials.util.masking import GoniometerShadowMaskGenerator
       from scitbx.array_family import flex
       import math
@@ -290,12 +290,38 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         (107.61, 0.00, -40.00)
       )))
 
-      gonio = self.get_goniometer()
-      return GoniometerShadowMaskGenerator(
-        gonio, coords, flex.size_t(len(coords), 0))
+      # I23 end station coordinate system:
+      #   X-axis: positive direction is facing away from the storage ring (from
+      #           sample towards goniometer)
+      #   Y-axis: positive direction is vertically up
+      #   Z-axis: positive direction is in the direction of the beam (from
+      #           sample towards detector)
+      #   K-axis (kappa): at an angle of +50 degrees from the X-axis
+      #   K & phi rotation axes: clockwise rotation is positive (right hand
+      #           thumb rule)
+      #   Omega-axis: along the X-axis; clockwise rotation is positive
 
-    def get_mask(self):
-      gonio_masker = self.get_goniometer_shadow_masker()
+      # End station x-axis is parallel to ImgCIF x-axis
+      # End station z-axis points in opposite direction to ImgCIF definition
+      # (ImgCIF: The Z-axis is derived from the source axis which goes from
+      # the sample to the source)
+      # Consequently end station y-axis (to complete set following right hand
+      # rule) points in opposite direction to ImgCIF y-axis.
+      # Kappa arm aligned with -y in ImgCIF convention
+
+      from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
+      from scitbx import matrix
+      R = align_reference_frame(matrix.col((1,0,0)), matrix.col((1,0,0)),
+                                matrix.col((0,1,0)), matrix.col((0,-1,0)))
+      coords = R.elems * coords
+
+      if goniometer is None:
+        goniometer = self.get_goniometer()
+      return GoniometerShadowMaskGenerator(
+        goniometer, coords, flex.size_t(len(coords), 0))
+
+    def get_mask(self, goniometer=None):
+      gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
       scan = self.get_scan()
       detector = self.get_detector()
       mask = super(FormatCBFMiniPilatusDLS6MSN100, self).get_mask()
@@ -336,7 +362,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       omega_value = 0.0
 
     return self._goniometer_factory.make_kappa_goniometer(
-      alpha, omega_value, kappa_value, phi_value, '+y', 'omega')
+      alpha, omega_value, kappa_value, phi_value, '-y', 'omega')
 
 
 if __name__ == '__main__':
