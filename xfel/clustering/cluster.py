@@ -114,16 +114,23 @@ class Cluster:
   @classmethod
   def from_directories(cls, path_to_integration_dir,
                        _prefix='cluster_from_dir',
+                       n_images = None,
                        **kwargs):
     """Constructor to get a cluster from pickle files, from the recursively
     walked paths. Can take more than one argument for multiple folders.
     usage: Cluster.from_directories(..)
     :param path_to_integration_dir: list of directories containing pickle files.
     Will be searched recursively.
+    :param n_images: find at most this number of images.
     :param use_b: Boolean. If True, intialise Scale and B. If false, use only
     mean intensity scalling.
     """
     data = []
+    def done():
+      if n_images is None:
+        return False
+      return len(data) >= n_images
+
     for arg in path_to_integration_dir:
       for (dirpath, dirnames, filenames) in os.walk(arg):
         for filename in filenames:
@@ -133,6 +140,9 @@ class Cluster:
             data.append(this_frame)
           else:
             logging.info('skipping file {}'.format(filename))
+          if done(): break
+        if done(): break
+      if done(): break
     return cls(data, _prefix,
                'Made from files in {}'.format(path_to_integration_dir[:]))
 

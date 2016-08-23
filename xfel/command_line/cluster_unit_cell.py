@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 def run(_args):
   if _args < 2:
     raise IOError("Must give at least one path to folder of pickles")
-  ucs = Cluster.from_directories(_args.folders, "cxi_targt_uc")
+  ucs = Cluster.from_directories(_args.folders, "cxi_targt_uc", n_images=args.n)
 
   if not _args.noplot:
     clusters, _ = ucs.ab_cluster(_args.t, log=_args.log,
@@ -48,6 +48,7 @@ if __name__ == "__main__":
   parser.add_argument('--nofiles', action='store_false',
                       help="Write files with lists of the images making up "
                            "each cluster")
+  parser.add_argument('-n', type=int, default=None, help="Maximum number of files to use")
   args = parser.parse_args()
   run(args)
   #import cProfile
