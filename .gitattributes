@@ -498,6 +498,7 @@ dxtbx/command_line/display_parallax_correction.py -text
 dxtbx/command_line/export_bitmaps.py -text
 dxtbx/command_line/from_xds.py -text
 dxtbx/command_line/image2pickle.py -text
+dxtbx/command_line/image_average.py -text
 dxtbx/command_line/import_datablock.py -text
 dxtbx/command_line/install_format.py -text
 dxtbx/command_line/overload.py -text
@@ -615,7 +616,6 @@ dxtbx/format/doc/adding_new_formats.txt -text
 dxtbx/format/nexus.py -text
 dxtbx/format/tests/TestFormat.py -text
 dxtbx/format/tests/TestRegistry.py -text
-dxtbx/image_average.py -text
 dxtbx/imageset.py -text
 dxtbx/libtbx_config -text
 dxtbx/license.txt -text

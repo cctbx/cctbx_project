@@ -1,6 +1,7 @@
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME dxtbx.image_average
+# LIBTBX_SET_DISPATCHER_NAME cxi.image_average
 #
 
 from __future__ import division
@@ -22,7 +23,7 @@ def run(argv=None):
   from libtbx import easy_pickle, option_parser
   from scitbx.array_family import flex
   from xfel.cxi.cspad_ana import cspad_tbx
-  from xfel.detector_formats import reverse_timestamp
+  from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 
   if argv is None:
     argv = sys.argv
