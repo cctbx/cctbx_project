@@ -20,7 +20,8 @@ from mmtbx.model_statistics import geometry_no_grm
 from time import time
 import datetime
 
-
+turned_on_ss = ssb.ss_idealization_master_phil_str
+turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
 master_params_str = """
 file_name = None
   .type = path
@@ -40,10 +41,10 @@ use_starting_model_for_final_gm = False
     use self.
 output_prefix = None
   .type = str
-include scope mmtbx.secondary_structure.build.ss_idealization_master_phil_str
+%s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
-"""
+""" % turned_on_ss
 
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
@@ -458,12 +459,6 @@ def run(args):
     pdb_file_names += work_params.file_name
   if len(pdb_file_names) == 0:
     raise Sorry("No PDB file specified")
-  # Massaging params, should be in the object probably
-  #
-  # !!!!!!!!!!!
-  #
-  work_params.ss_idealization.enabled=True
-  # work_params.ss_idealization.file_name_before_regularization="before.pdb"
   if work_params.output_prefix is None:
     work_params.output_prefix = os.path.basename(pdb_file_names[0])
   if work_params.loop_idealization.output_prefix is None:
@@ -473,6 +468,7 @@ def run(args):
     lines=flex.std_string(pdb_combined.raw_records))
   mi_object = model_idealization(
       pdb_input=pdb_input,
+      cif_objects=inputs.cif_objects,
       params=work_params,
       log=sys.stdout,
       verbose=True)
