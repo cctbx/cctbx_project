@@ -128,8 +128,21 @@ class ServerProxy (object) :
     result = None
     while len(self._pending) > 0 :
       (methodname, params) = self._pending.pop(0)
+
+      # remove any unicode types in params
       if (isinstance(params, unicode)):
         params = to_str(params)
+      elif (isinstance(params, list) or isinstance(params, tuple)):
+        new_params = list(params)
+        for i in xrange(len(params)):
+          if (isinstance(params[i], unicode)):
+            new_params[i] = to_str(params[i])
+          else:
+            new_params[i] = params[i]
+        if (isinstance(params, tuple)):
+          new_params = tuple(new_params)
+        params = new_params
+
       # call a method on the remote server
       try :
         request = xmlrpclib.dumps(params, methodname,
