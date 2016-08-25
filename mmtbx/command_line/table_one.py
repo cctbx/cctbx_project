@@ -167,6 +167,8 @@ class _ (oop.injector, molprobity.molprobity) :
     if (self.merging is not None) :
       merging_stats = self.merging.overall
       merging_outer = self.merging.bins[-1]
+      if (merging_outer.completeness is not None):
+        merging_outer.completeness = merging_outer.completeness * 100
       n_refl_uniq = merging_stats.n_uniq
       epsilon = 0.001
       if ((merging_stats.d_min > d_min + 2*epsilon) or
@@ -253,7 +255,7 @@ class _ (oop.injector, molprobity.molprobity) :
         r_pim=merging_outer.r_pim,
         i_over_sigma=merging_outer.i_over_sigma_mean,
         multiplicity=merging_outer.mean_redundancy,
-        completeness=merging_outer.completeness * 100.0,
+        completeness=merging_outer.completeness,
         cc_work=merging_outer.cc_work,
         cc_free=merging_outer.cc_free,
         r_work=data_stats.r_work_outer,
