@@ -5,7 +5,6 @@ import os
 import sys
 from cctbx.array_family import flex
 from libtbx.utils import plural_s
-from libtbx.utils import Usage
 import iotbx.phil
 import iotbx.cif.model
 from iotbx import reflection_file_utils
@@ -128,8 +127,23 @@ cif_labels = None
 }
 """)
 
+def format_usage_message(log=sys.stdout):
+  print >> log, "-"*79
+  msg = """\
+phenix.mtz_as_cif: Convert mtz to CIF format.
+Usage: phenix.mtz_as_cif data.mtz [params.eff] [options ...]
+
+Usage examples:
+  phenix.mtz_as_cif data.mtz
+"""
+  print >> log, msg
+  print >> log, "-"*79
+  print >> log, master_phil.show()
+
 def run(args, params=None, out=sys.stdout):
   from iotbx import file_reader
+  # print args
+  # STOP()
   work_params = params
   if (work_params is None) :
     cmdline = iotbx.phil.process_command_line_with_files(
@@ -138,7 +152,8 @@ def run(args, params=None, out=sys.stdout):
       reflection_file_def="mtz_as_cif.mtz_file")
     work_params = cmdline.work.extract()
   if (len(work_params.mtz_as_cif.mtz_file) == 0) :
-    raise Usage("phenix.mtz_as_cif data.mtz [params.eff] [options ...]")
+    format_usage_message(log = out)
+    return
   work_params = work_params.mtz_as_cif
   mtz_objects = []
   for file_name in work_params.mtz_file :
