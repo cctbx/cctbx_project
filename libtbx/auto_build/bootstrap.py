@@ -160,6 +160,8 @@ class ShellCommand(object):
     if 0:
       print 'command',command
       print 'workdir',workdir
+      print 'env',env
+      print os.environ.get("PATH", None)
     try:
       #if not os.path.isabs(command[0]):
         # executable path isn't located relative to workdir
@@ -1702,20 +1704,31 @@ class PhenixExternalRegression(PhenixBuilder):
   def add_tests(self):
     pass
 
-  def get_environment(self):
+  def get_environment(self, add_build_python_to_path=True):
     #  "AMBERHOME"           : amberhome, # used to trigger Property on slave
     environment = {}
     for env, dirs in envs.items():
       environment[env] = os.path.join(*dirs)
+    if add_build_python_to_path:
+      old_path = os.environ.get("PATH", "") # this is just another now
+                                            # universal hack to get Amber to
+                                            # compile...
+      environment["PATH"] = '%s:%s' % (os.path.join("modules", #os.getcwd(),
+                                                    "base",
+                                                    "bin",
+                                                  ),
+                                       old_path,
+                                       )
     return environment
 
   def write_environment(self,
                         env,
-                        filename="setup_externals",
+                        filename="setpaths_externals",
                        ):
     # called by add_make which is called in build
     outl = ""
     for key, path in env.items():
+      if key in ["PATH"]: continue
       outl += 'setenv %(key)s "%%(PWD)s/../%(path)s"\n' % locals()
     fname="%s.csh" % filename
     self.add_step(self.shell(command=[
@@ -1728,6 +1741,7 @@ class PhenixExternalRegression(PhenixBuilder):
     ))
     outl = ""
     for key, path in env.items():
+      if key in ["PATH"]: continue
       outl += 'export %(key)s="%%(PWD)s/../%(path)s"\n' % locals()
     fname="%s.sh" % filename
     self.add_step(self.shell(command=[
@@ -1740,7 +1754,9 @@ class PhenixExternalRegression(PhenixBuilder):
     ))
 
   def add_make(self):
-    # pre Phenix compile
+    # Phenix compile
+    PhenixBuilder.add_make(self)
+    # need to use the Phenix python for building
     # Amber
     # Rosetta
     # AFITT
@@ -1780,7 +1796,7 @@ class PhenixExternalRegression(PhenixBuilder):
            ],
           [env["AMBERHOME"]]],
         ['Amber compile',
-         ["make", "-j", self.nproc, "install"],
+         ["./make", "-j", self.nproc, "install"],
          [env["AMBERHOME"]]],
         #['Amber clean',   ["make", "clean"], [env["AMBERHOME"]]],
         ['Rosetta - untar',
@@ -1813,9 +1829,6 @@ class PhenixExternalRegression(PhenixBuilder):
         ))
 
     self.add_refresh()
-    # Phenix compile
-    PhenixBuilder.add_make(self)
-    # post Phenix compile
     # Amber
     if self.subcategory in [None, "amber"]:
       self.add_command(
