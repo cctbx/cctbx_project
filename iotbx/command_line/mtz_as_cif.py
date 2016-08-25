@@ -142,8 +142,6 @@ Usage examples:
 
 def run(args, params=None, out=sys.stdout):
   from iotbx import file_reader
-  # print args
-  # STOP()
   work_params = params
   if (work_params is None) :
     cmdline = iotbx.phil.process_command_line_with_files(
