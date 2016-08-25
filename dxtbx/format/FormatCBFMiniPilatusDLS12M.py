@@ -241,8 +241,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         (0,0,0),
       ))
 
-      r = flex.double(19, 40)
       alpha = flex.double_range(0, 190, step=10) * math.pi / 180
+      r = flex.double(alpha.size(), 40)
       x = flex.double(r.size(), 107.61)
       y = -r*flex.sin(alpha)
       z = -r*flex.cos(alpha)
@@ -265,8 +265,8 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
         (62.10, 64.41, 32.25),
       )))
 
-      r = flex.double(19, 33)
       alpha = flex.double_range(180, 370, step=10) * math.pi / 180
+      r = flex.double(alpha.size(), 33)
       x = (flex.sqrt(flex.pow2(r * flex.sin(alpha)) + 89.02**2) * flex.cos((50 * math.pi/180) - flex.atan(r/89.02 * flex.sin(alpha))))
       y = (flex.sqrt(flex.pow2(r * flex.sin(alpha)) + 89.02**2) * flex.sin((50 * math.pi/180) - flex.atan(r/89.02 * flex.sin(alpha))))
       z = -r*flex.cos(alpha)
@@ -324,7 +324,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
       scan = self.get_scan()
       detector = self.get_detector()
-      mask = super(FormatCBFMiniPilatusDLS6MSN100, self).get_mask()
+      mask = super(FormatCBFMiniPilatusDLS12M, self).get_mask()
       shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
       assert len(mask) == len(shadow_mask)
       for m, sm in zip(mask, shadow_mask):
