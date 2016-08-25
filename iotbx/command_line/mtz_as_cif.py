@@ -131,10 +131,19 @@ def format_usage_message(log=sys.stdout):
   print >> log, "-"*79
   msg = """\
 phenix.mtz_as_cif: Convert mtz to CIF format.
+The tool will automatically recognize most of the labels from Phenix and CCP4
+and convert them to appropriate mmCIF format. If some labels are not recognized,
+or another mmCIF labels are needed for them, one may use mtz_labels and
+cif_labels parameters to provide pairs of mtz and cif labels. Note that provided
+cif_labels must comply with mmCIF format. Number of mtz_labels should be equal
+to number of cif_labels.
+
 Usage: phenix.mtz_as_cif data.mtz [params.eff] [options ...]
 
 Usage examples:
   phenix.mtz_as_cif data.mtz
+  phenix.mtz_as_cif data.mtz output_file=custom.cif mtz_labels="FOBS SIGFOBS"
+      cif_labels="_refln.custom1 _refln.custom2"
 """
   print >> log, msg
   print >> log, "-"*79
