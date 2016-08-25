@@ -1061,32 +1061,35 @@ def u_tls_vs_u_ens(
         w_M_lx=[0,0,0], w_M_ly=[0,0,0], w_M_lz=[0,0,0],
         origin=None,
         n_models=10000,
-        assert_similarity=True):
+        assert_similarity=True,
+        show=False,
+        log = sys.stdout):
   from mmtbx.tls import analysis, tls_as_xyz
   from scitbx import matrix
   from libtbx.utils import null_out
   #
-  print "INPUTS:","-"*73
-  print "dx    :", dx
-  print "dy    :", dy
-  print "dz    :", dz
-  print "sx    :", sx
-  print "sy    :", sy
-  print "sz    :", sz
-  print "lx    :", [i for i in lx]
-  print "ly    :", [i for i in ly]
-  print "lz    :", [i for i in lz]
-  print "tx    :", tx
-  print "ty    :", ty
-  print "tz    :", tz
-  print "vx    :", [i for i in vx]
-  print "vy    :", [i for i in vy]
-  print "vz    :", [i for i in vz]
-  print "w_M_lx:", [i for i in w_M_lx]
-  print "w_M_ly:", [i for i in w_M_ly]
-  print "w_M_lz:", [i for i in w_M_lz]
-  print "origin:", origin
-  print "-"*79
+  if(show):
+    print >> log, "INPUTS:","-"*73
+    print >> log, "dx    :", dx
+    print >> log, "dy    :", dy
+    print >> log, "dz    :", dz
+    print >> log, "sx    :", sx
+    print >> log, "sy    :", sy
+    print >> log, "sz    :", sz
+    print >> log, "lx    :", [i for i in lx]
+    print >> log, "ly    :", [i for i in ly]
+    print >> log, "lz    :", [i for i in lz]
+    print >> log, "tx    :", tx
+    print >> log, "ty    :", ty
+    print >> log, "tz    :", tz
+    print >> log, "vx    :", [i for i in vx]
+    print >> log, "vy    :", [i for i in vy]
+    print >> log, "vz    :", [i for i in vz]
+    print >> log, "w_M_lx:", [i for i in w_M_lx]
+    print >> log, "w_M_ly:", [i for i in w_M_ly]
+    print >> log, "w_M_lz:", [i for i in w_M_lz]
+    print >> log, "origin:", origin
+    print >> log, "-"*79
   #
   #p1 = "dx"+str(dx)+"_"+"dy"+str(dy)+"_"+"dz"+str(dz)
   #p2 = "sx"+str(sx)+"_"+"sy"+str(sy)+"_"+"sz"+str(sz)
@@ -1134,7 +1137,7 @@ def u_tls_vs_u_ens(
     n_models             = n_models,
     origin               = origin,
     log                  = null_out())
-  r.write_pdb_file(file_name="%s_ensemble.pdb"%prefix)
+  if 0: r.write_pdb_file(file_name="%s_ensemble.pdb"%prefix)
   #
   xyz_all = []
   for m in r.states.root.models():
@@ -1155,15 +1158,17 @@ def u_tls_vs_u_ens(
     u2.extend(ui)
   r = flex.sum(flex.abs(u1-u2))/\
         flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
-  print "R(U_tls,U_ens)=%6.4f"%(r)
-  print "-"*79
+  if 0: print "R(U_tls,U_ens)=%6.4f"%(r)
+  if 0: print "-"*79
   ###
   for i in xrange(n_atoms):
-    print "atom %d:"%i
+    if 0: print "atom %d:"%i
     ut=["%8.5f"%u for u in u_cart_from_tls[i]]
     ue=["%8.5f"%u for u in u_cart_from_xyz(sites_cart=xyz_atoms_all[i])]
-    print "  Ucart(from TLS):", ut
-    print "  Ucart(from ens):", ue
+    if 0: print "  Ucart(from TLS):", ut
+    if 0: print "  Ucart(from ens):", ue
     if(assert_similarity):
       for j in xrange(6):
         assert approx_equal(abs(float(ut[j])), abs(float(ue[j])), 1.e-3)
+  #
+  return r
