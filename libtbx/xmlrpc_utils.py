@@ -118,8 +118,6 @@ class ServerProxy (object) :
     self.raise_errors = raise_errors
 
   def __request(self, methodname, params):
-    if (isinstance(params, unicode)):
-      params = to_str(params)
     self._pending.append((methodname, params))
     return self.flush_requests()
 
