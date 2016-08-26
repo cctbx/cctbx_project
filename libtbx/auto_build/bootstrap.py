@@ -1782,7 +1782,7 @@ class PhenixExternalRegression(PhenixBuilder):
          ["cp", "../../../../amber_configure2", "configure2"],
          ["modules", "amber", "AmberTools", "src"]],
         ['Amber configure',
-           "./configure",
+          ["./configure",
            "--no-updates",
            "-noX11",
            "-macAccelerate", # ignored if not on Mac
