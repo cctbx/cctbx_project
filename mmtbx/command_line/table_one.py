@@ -374,7 +374,7 @@ def run_single_structure (params,
       params.use_internal_variance
     ])
   if (params.data_type == "neutron") :
-    molprobity_args.append(["scattering_table=neutron", "keep_hydrogens=True"])
+    molprobity_args.extend(["scattering_table=neutron", "keep_hydrogens=True"])
   if (params.cif_directory is not None) :
     files = os.listdir(params.cif_directory)
     for file_name in files :
