@@ -104,7 +104,9 @@ class data_statistics (slots_getstate_setstate) :
       d_min=self.d_min_outer)
     self.r_work_outer = fmodel.r_work(d_max=self.d_max_outer,
       d_min=self.d_min_outer)
-    self.completeness_outer = raw_data.completeness(d_max=self.d_max_outer)
+    i_bin = f_obs.binner().range_used()[-1]
+    outer_shell = f_obs.select(f_obs.binner().selection(i_bin))
+    self.completeness_outer = outer_shell.completeness(d_max=self.d_max_outer)
     self.n_refl_outer = raw_data.resolution_filter(d_max=self.d_max_outer,
       d_min=self.d_min_outer).indices().size()
     f_obs_outer = f_obs.resolution_filter(d_max=self.d_max_outer,
