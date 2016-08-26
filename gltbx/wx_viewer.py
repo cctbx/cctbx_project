@@ -727,6 +727,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         "Cannot save screen shot in any of the formats specified.")
     return n_written
 
+  def OnClose (self, event=None):
+    self.spintimer.Stop()
+
 class show_points_and_lines_mixin(wxGLWindow):
 
   def __init__(self, *args, **keyword_args):
@@ -939,7 +942,6 @@ class OpenGLSettingsToolbox (wx.MiniFrame) :
     self.parent.OnRedrawGL()
 
   def OnClose (self, event=None):
-    self.spintimer.Stop()
     self.Destroy()
     self.parent._settings_widget = None
 
