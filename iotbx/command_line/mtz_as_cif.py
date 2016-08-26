@@ -9,11 +9,16 @@ import iotbx.phil
 import iotbx.cif.model
 from iotbx import reflection_file_utils
 
+# Probably we can align with what PDB choose to use
+# http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Categories/refln.html
+
 phenix_to_cif_labels_dict = {
   'FOBS': '_refln.F_meas_au',
   'SIGFOBS': '_refln.F_meas_sigma_au',
-  'IOBS': '_refln.F_squared_meas',
-  'SIGIOBS': '_refln.F_squared_sigma',
+  # 'IOBS': '_refln.F_squared_meas',
+  'IOBS': '_refln.intensity_meas',      # This is used in PDB
+  # 'SIGIOBS': '_refln.F_squared_sigma',
+  'SIGIOBS': '_refln.intensity_sigma',  # This is used in PDB
   'FOBS(+)': '_refln.pdbx_F_plus',
   'SIGFOBS(+)': '_refln.pdbx_F_plus_sigma',
   'FOBS(-)': '_refln.pdbx_F_minus',
@@ -60,10 +65,10 @@ ccp4_to_cif_labels_dict = {
   'PHIC': '_refln.phase_calc',
   'PHIB': '_refln.phase_meas',
   'FOM': '_refln.fom',
-  'I': '_refln.intensity_meas',
-  'I': '_refln.F_squared_meas', # which I to prefer?
-  'SIGI': '_refln.intensity_sigma',
-  'SIGI': '_refln.F_squared_sigma', # which SIGI to prefer?
+  # 'I': '_refln.F_squared_meas', # which I to prefer?
+  'I': '_refln.intensity_meas',     # This is used in PDB
+  'SIGI': '_refln.intensity_sigma', # This is used in PDB
+  # 'SIGI': '_refln.F_squared_sigma', # which SIGI to prefer?
   'FPART': '_refln.F_part_au',
   'PHIP': '_refln.phase_part',
   'F(+)': '_refln.pdbx_F_plus',
