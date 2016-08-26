@@ -1018,24 +1018,6 @@ def u_cart_from_ensemble(models):
 
 # TEST utils
 
-def u_cart_from_xyz(sites_cart):
-  cm = sites_cart.mean()
-  x = flex.double()
-  y = flex.double()
-  z = flex.double()
-  sites_cart_cm = sites_cart - cm
-  for site_cart in sites_cart_cm:
-    x.append(site_cart[0])
-    y.append(site_cart[1])
-    z.append(site_cart[2])
-  u11 = flex.sum(x*x)/x.size()
-  u22 = flex.sum(y*y)/y.size()
-  u33 = flex.sum(z*z)/z.size()
-  u12 = flex.sum(x*y)/x.size()
-  u13 = flex.sum(x*z)/x.size()
-  u23 = flex.sum(y*z)/x.size()
-  return u11, u22, u33, u12, u13, u23
-
 def get_u_cart(o_tfm, origin, sites_cart):
   import math
   scale = 180./math.pi # trick to work-around c++ implementation
@@ -1136,20 +1118,14 @@ def u_tls_vs_u_ens(
     xray_structure       = xrs,
     n_models             = n_models,
     origin               = origin,
+    use_states           = False,
     log                  = null_out())
   if 0: r.write_pdb_file(file_name="%s_ensemble.pdb"%prefix)
   #
-  xyz_all = []
-  for m in r.states.root.models():
-    xyz_all.append(m.atoms().extract_xyz())
-    #
+  xyz_all = r.sites_cart_ens
   n_atoms = xyz_all[0].size()
-  xyz_atoms_all = []
-  for i in xrange(n_atoms):
-    xyz_atoms = flex.vec3_double()
-    for xyzs in xyz_all:
-      xyz_atoms.append(xyzs[i])
-    xyz_atoms_all.append(xyz_atoms)
+  ###
+  xyz_atoms_all = all_vs_all(xyz_all = xyz_all)
   ###
   u1 = u_cart_from_tls.as_double()
   u2 = flex.double()

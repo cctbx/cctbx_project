@@ -115,6 +115,50 @@ namespace {
                    arg("zeroize_trace")))
    ;
 
+   def("u_cart_from_xyz",
+         (sym_mat3<double>(*)
+             (af::shared<vec3<double> > const&)) u_cart_from_xyz,
+                (arg("sites_cart")))
+   ;
+
+   def("all_vs_all",
+         (boost::python::list(*)
+             (boost::python::list const&)) all_vs_all,
+                (arg("xyz_all")))
+   ;
+
+   def("apply_tls_shifts",
+         (af::shared<vec3<double> >(*)
+               (af::shared<vec3<double> > const&,
+                mat3<double> const&,
+                mat3<double> const&,
+                vec3<double> const&,
+                vec3<double> const&,
+                vec3<double> const&,
+                double const&,
+                double const&,
+                double const&,
+                double const&,
+                double const&,
+                double const&,
+                vec3<double> const&
+                )) apply_tls_shifts,
+                  (arg("sites_cart"),
+                   arg("R_ML_transposed"),
+                   arg("R_ML"),
+                   arg("d0"),
+                   arg("d_r_M_V"),
+                   arg("s"),
+                   arg("wy_lx"),
+                   arg("wz_lx"),
+                   arg("wz_ly"),
+                   arg("wx_ly"),
+                   arg("wx_lz"),
+                   arg("wy_lz"),
+                   arg("origin")
+                   ))
+   ;
+
    class_<tls_parts_one_group>("tls_parts_one_group",
                              init<tlso<double>,
                                   af::shared<vec3<double> > const&>())

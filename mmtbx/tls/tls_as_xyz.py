@@ -13,6 +13,9 @@ from mmtbx.tls import tools
 
 random.seed(2679941)
 
+from mmtbx_tls_ext import *
+
+
 def print_step(s, log):
   n = 50-len(s)
   print >> log, s, "*"*n
@@ -98,29 +101,42 @@ class ensemble_generator(object):
                xray_structure,
                n_models,
                origin,
+               use_states=True,
                log=None):
     if(log is None): log = sys.stdout
     xray_structure.convert_to_isotropic()
     xray_structure = xray_structure.set_b_iso(value=0)
     sites_cart = xray_structure.sites_cart()-origin
-    self.states = mmtbx.utils.states(
-      xray_structure = xray_structure,
-      pdb_hierarchy  = pdb_hierarchy)
+    if(use_states):
+      self.states = mmtbx.utils.states(
+        xray_structure = xray_structure,
+        pdb_hierarchy  = pdb_hierarchy)
     r = tls_from_motions_object
     print >> log
     print >> log, "Generating ensemble of %d models:"%n_models
+    self.sites_cart_ens = []
     for trial in xrange(n_models):
       print >> log, "model #%d"%trial
       dx0,dy0,dz0 = step_i__get_dxdydz(r=r, log = log)
       d_r_M_V  = formula_49(r=r, log = log)
-      sites_cart_new = flex.vec3_double()
-      for site_cart in sites_cart:
-        r_L = r.R_ML.transpose() * site_cart
-        d_r_M_L = step_i__compute_delta_L_r_dp(r=r,
-          r_L=r_L, dx0=dx0,dy0=dy0,dz0=dz0)
-        d_r_M = d_r_M_L + d_r_M_V # (42)
-        sites_cart_new.append(matrix.col(site_cart) + d_r_M)
-      self.states.add(sites_cart = sites_cart_new+origin)
+      sites_cart_new = apply_tls_shifts(
+        sites_cart = sites_cart,
+        R_ML_transposed = r.R_ML.transpose(),
+        R_ML = r.R_ML,
+        d0 = matrix.col((dx0,dy0,dz0)),
+        d_r_M_V = d_r_M_V,
+        s = matrix.col((r.sx,r.sy,r.sz)),
+        wy_lx = r.wy_lx,
+        wz_lx = r.wz_lx,
+        wz_ly = r.wz_ly,
+        wx_ly = r.wx_ly,
+        wx_lz = r.wx_lz,
+        wy_lz = r.wy_lz,
+        origin = origin
+        )
+      self.sites_cart_ens.append(sites_cart_new)
+      if(use_states):
+        self.states.add(sites_cart = sites_cart_new)
 
   def write_pdb_file(self, file_name):
     self.states.write(file_name = file_name)

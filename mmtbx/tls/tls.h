@@ -17,6 +17,7 @@
 #include <mmtbx/error.h>
 #include <cctbx/xray/targets.h>
 #include <scitbx/matrix/outer_product.h>
+#include <boost/python/list.hpp>
 
 using namespace std;
 namespace mmtbx { namespace tls {
@@ -110,6 +111,150 @@ private:
   sym_mat3<sym_mat3<double> > gT_,gL_;
   mat3<sym_mat3<double> > gS_;
 };
+
+/*
+
+def u_cart_from_xyz(sites_cart):
+  cm = sites_cart.mean()
+  x = flex.double()
+  y = flex.double()
+  z = flex.double()
+  sites_cart_cm = sites_cart - cm
+  for site_cart in sites_cart_cm:
+    x.append(site_cart[0])
+    y.append(site_cart[1])
+    z.append(site_cart[2])
+  u11 = flex.sum(x*x)/x.size()
+  u22 = flex.sum(y*y)/y.size()
+  u33 = flex.sum(z*z)/z.size()
+  u12 = flex.sum(x*y)/x.size()
+  u13 = flex.sum(x*z)/x.size()
+  u23 = flex.sum(y*z)/x.size()
+  return u11, u22, u33, u12, u13, u23
+
+
+*/
+
+sym_mat3<double> u_cart_from_xyz(af::shared<vec3<double> > const& sites_cart)
+{
+  int size = sites_cart.size();
+  double cmx=0;
+  double cmy=0;
+  double cmz=0;
+  for(std::size_t i=0; i < size; i++) {
+    cmx += sites_cart[i][0];
+    cmy += sites_cart[i][1];
+    cmz += sites_cart[i][2];
+  }
+  vec3<double> cm(cmx/size, cmy/size, cmz/size);
+  af::shared<double> x(size);
+  af::shared<double> y(size);
+  af::shared<double> z(size);
+  af::shared<vec3<double> > sites_cart_cm = sites_cart-cm;
+  for(std::size_t i=0; i < sites_cart_cm.size(); i++) {
+    x[i]=sites_cart_cm[i][0];
+    y[i]=sites_cart_cm[i][1];
+    z[i]=sites_cart_cm[i][2];
+  }
+  double u11 = 0.;
+  double u22 = 0.;
+  double u33 = 0.;
+  double u12 = 0.;
+  double u13 = 0.;
+  double u23 = 0.;
+  for(std::size_t i=0; i < sites_cart_cm.size(); i++) {
+    u11 += x[i]*x[i];
+    u22 += y[i]*y[i];
+    u33 += z[i]*z[i];
+    u12 += x[i]*y[i];
+    u13 += x[i]*z[i];
+    u23 += y[i]*z[i];
+  }
+  return sym_mat3<double>(u11/size,u22/size,u33/size,u12/size,u13/size,u23/size);;
+}
+
+
+boost::python::list all_vs_all(
+  boost::python::list const& xyz_all_
+  )
+
+{
+  boost::python::list xyz_atoms_all;
+  af::shared< af::shared<vec3<double> > > xyz_all;
+
+  for(std::size_t i=0;i<boost::python::len(xyz_all_);i++) {
+    xyz_all.push_back(
+        boost::python::extract<af::shared<vec3<double> > >(xyz_all_[i])());
+  }
+
+
+  //af::shared< af::shared<vec3<double> > > xyz_atoms_all(xyz_all[0].size());
+  for(std::size_t i=0; i < xyz_all[0].size(); i++) {
+    af::shared<vec3<double> > xyz_atoms;
+    for(std::size_t j=0; j < xyz_all.size(); j++) {
+      xyz_atoms.push_back(xyz_all[j][i]);
+    }
+    //xyz_atoms_all.push_back(xyz_atoms);
+    xyz_atoms_all.append(xyz_atoms);
+  }
+
+  return xyz_atoms_all;
+}
+
+
+af::shared<vec3<double> > apply_tls_shifts(
+  af::shared<vec3<double> > const& sites_cart,
+  mat3<double> const& R_ML_transposed,
+  mat3<double> const& R_ML,
+  vec3<double> const& d0,
+  vec3<double> const& d_r_M_V,
+  vec3<double> const& s,
+  double const& wy_lx,
+  double const& wz_lx,
+  double const& wz_ly,
+  double const& wx_ly,
+  double const& wx_lz,
+  double const& wy_lz,
+  vec3<double> const& origin
+  )
+{
+  af::shared<vec3<double> > sites_cart_new(sites_cart.size());
+  for(std::size_t i=0; i < sites_cart.size(); i++) {
+    vec3<double> r_L = R_ML_transposed * sites_cart[i];
+    //
+    double sxb = s[0];
+    double syb = s[1];
+    double szb = s[2];
+    double dx0 = d0[0];
+    double dy0 = d0[1];
+    double dz0 = d0[2];
+    double x = r_L[0];
+    double y = r_L[1];
+    double z = r_L[2];
+    vec3<double> d_lx_r_L = vec3<double>(
+      sxb*dx0,
+      (y-wy_lx)*(std::cos(dx0)-1) - (z-wz_lx)*std::sin(dx0),
+      (y-wy_lx)*std::sin(dx0)     + (z-wz_lx)*(std::cos(dx0)-1)
+      );
+    vec3<double> d_ly_r_L = vec3<double> (
+      (z-wz_ly)*std::sin(dy0)     + (x-wx_ly)*(std::cos(dy0)-1),
+      syb*dy0,
+      (z-wz_ly)*(std::cos(dy0)-1) - (x-wx_ly)*std::sin(dy0)
+      );
+    vec3<double> d_lz_r_L = vec3<double> (
+      (x-wx_lz)*(std::cos(dz0)-1) - (y-wy_lz)*std::sin(dz0),
+      (x-wx_lz)*std::sin(dz0)     + (y-wy_lz)*(std::cos(dz0)-1),
+      szb*dz0
+      );
+    vec3<double> d_r_L = d_lx_r_L + d_ly_r_L + d_lz_r_L;
+    vec3<double> d_r_M_L = R_ML * d_r_L;
+    //
+    vec3<double> d_r_M = d_r_M_L + d_r_M_V;
+    sites_cart_new[i] = sites_cart[i] + d_r_M + origin;
+  }
+
+  return sites_cart_new;
+}
 
 double uiso_from_tls(double const& T,
                      sym_mat3<double> const& L_deg,
