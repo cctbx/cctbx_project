@@ -46,7 +46,7 @@ structure_params_str = """
       .type = str
       .input_size = 160
       .style = renderer:draw_table_one_label_widget
-    r_free_flags.label = None
+    r_free_flags_label = None
       .type = str
       .short_caption = R-free flags label
       .input_size = 160
@@ -353,7 +353,7 @@ def run_single_structure (params,
     "xray_data.file_name=\"%s\"" % params.mtz_file,
     "xray_data.labels=\"%s\"" % params.data_labels,
     "xray_data.r_free_flags.file_name=\"%s\"" % params.mtz_file,
-    "xray_data.r_free_flags.label=\"%s\"" % params.r_free_flags.label,
+    "xray_data.r_free_flags.label=\"%s\"" % params.r_free_flags_label,
     "n_bins=%d" % n_bins,
     "count_anomalous_pairs_separately=%s" % \
     params.count_anomalous_pairs_separately,
@@ -437,7 +437,7 @@ def extract_labels (params, out, parameter_scope="structure") :
   for i, structure in enumerate(params.structure) :
     if (structure.mtz_file is None) :
       raise Sorry("Missing MTZ file for structure #%d." % (i+1))
-    if ([structure.data_labels, structure.r_free_flags.label].count(None)>0) :
+    if ([structure.data_labels, structure.r_free_flags_label].count(None)>0) :
       mtz_file = file_reader.any_file(structure.mtz_file, force_type="hkl")
       mtz_file.assert_file_type("hkl")
       server = mtz_file.file_server
@@ -451,7 +451,7 @@ def extract_labels (params, out, parameter_scope="structure") :
           parameter_scope=parameter_scope,
           parameter_name="data_labels")
         structure.data_labels = data.info().label_string()
-      if (structure.r_free_flags.label is None) :
+      if (structure.r_free_flags_label is None) :
         print >>out, "Attempting to guess R-free label for %s..." % file_name
         rfree = server.get_r_free_flags(
           file_name=file_name,
@@ -459,7 +459,7 @@ def extract_labels (params, out, parameter_scope="structure") :
           test_flag_value=None,
           disable_suitability_test=False,
           parameter_scope=parameter_scope+".r_free_flags")
-        structure.r_free_flags.label = rfree[0].info().label_string()
+        structure.r_free_flags_label = rfree[0].info().label_string()
 
 def run (args,
     out=sys.stdout,
@@ -573,7 +573,7 @@ def validate_params (params) :
     if (None in [struct.name, struct.pdb_file, struct.mtz_file]) :
       raise Sorry(("Structure #%d is missing either a PDB file or an MTZ "+
         "file or a structure name.") % (i+1))
-#    elif (None in [struct.data_labels, struct.r_free_flags.label]) :
+#    elif (None in [struct.data_labels, struct.r_free_flags_label]) :
 #      raise Sorry(("Need both data labels and R-free flag label for MTZ file "+
 #        "%s (structure #%d).") % (struct.mtz_file, i+1))
   if (params.table_one.output.text_field_separation < 1) :
