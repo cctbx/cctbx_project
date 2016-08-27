@@ -1,5 +1,6 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cxi.or_mask
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 from libtbx import easy_pickle
 from scitbx.array_family import flex
 import sys,os

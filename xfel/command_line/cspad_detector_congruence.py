@@ -11,6 +11,7 @@
 #  included in the root directory of this package.
 #
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_congruence
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 from __future__ import division
 from dials.array_family import flex

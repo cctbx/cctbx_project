@@ -3,6 +3,7 @@ from __future__ import division
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.mpi_submit
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.mpi_submit
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 # Submit a cctbx.xfel processing job to the cluster using bsub, after first creating
 # an appropiate trial directory in the requested location and copying and modifying

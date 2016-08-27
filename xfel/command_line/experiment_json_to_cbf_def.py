@@ -1,5 +1,6 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cxi.experiment_json_to_cbf_def
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 # Script to convert the output from a joint refinement using dials.refine to a CSPAD
 # cbf header file. Note hardcoded distance of 100 isn't relevant for just a cbf header
