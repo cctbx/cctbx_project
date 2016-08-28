@@ -167,7 +167,7 @@ master_phil = iotbx.phil.parse("""
        .help = Chain type. Determined automatically from sequence file if \
                not given. Mixed chain types are fine (leave blank if so).
 
-     ncs_type = None 
+     ncs_type = None
        .type = str
        .short_caption = NCS type
        .help = Symmetry used in reconstruction. For example D7, C3, C2\
@@ -193,7 +193,7 @@ master_phil = iotbx.phil.parse("""
 
      helical_rot_deg = None
        .type = float
-       .short_caption = helical rotation 
+       .short_caption = helical rotation
        .help = helical rotation about z in degrees
 
      helical_trans_z_angstrom = None
@@ -203,7 +203,7 @@ master_phil = iotbx.phil.parse("""
 
      two_fold_along_x = None
        .type = bool
-       .short_caption = D two-fold along x 
+       .short_caption = D two-fold along x
        .help = Specifies if D or I two-fold is along x (True) or y (False). \
                If None, both are tried.
 
@@ -261,7 +261,7 @@ master_phil = iotbx.phil.parse("""
 
      use_target_b_ratio = None
        .type = bool
-       .short_caption = Use target B ratio for sharpening 
+       .short_caption = Use target B ratio for sharpening
        .help =  Use target B ratio for sharpening.
 
      auto_sharpen = True
@@ -289,7 +289,7 @@ master_phil = iotbx.phil.parse("""
            transition is applied and all data is sharpened or blurred. \
            Note 3: only used if use_target_b_ratio=True or b_iso is set.
 
-     search_b_min = -100 
+     search_b_min = -100
        .type = float
        .short_caption = Low bound for b_iso search
        .help = Low bound for b_iso search. Not used
@@ -1311,7 +1311,7 @@ def sharpen_map(map_data=None,crystal_symmetry=None,
 
     return map_data
 
-def find_ncs_center(map_data,crystal_symmetry=None): 
+def find_ncs_center(map_data,crystal_symmetry=None):
   # find center if necessary:
   origin=list(map_data.origin())
   all=list(map_data.all())
@@ -1322,7 +1322,7 @@ def find_ncs_center(map_data,crystal_symmetry=None):
     centroid_wx[ai]=0.
     centroid_w[ai]=0.
     for i in xrange(0,all[ai]):
-      if ai==0: 
+      if ai==0:
         start_tuple=tuple((i,0,0))
         end_tuple=tuple((i,all[1],all[2]))
       elif ai==1:
@@ -1375,16 +1375,16 @@ def get_ncs_from_map(map_data=None,
   #  Use a library of symmetry matrices.  For helical symmetry generate it
   #  along the z axis.
   # Center of symmetry is as supplied, or center of map or center of density
-  #  If center is not supplied and use_center_of_map_as_center, try that 
+  #  If center is not supplied and use_center_of_map_as_center, try that
   #  and return None if it fails to achieve a map cc of min_ncs_cc
 
   if optimize_center is None:
     if ncs_center is None and (not use_center_of_map_as_center):
-      optimize_center=True 
+      optimize_center=True
       print >>out,"Setting optimize_center=True as no ncs_center is supplied"
     else:
       optimize_center=False
- 
+
   if ncs_center is not None:
     ncs_center=matrix.col(ncs_center)
   elif use_center_of_map_as_center:
@@ -1433,7 +1433,7 @@ def get_ncs_from_map(map_data=None,
     rescore_list=results_list[n_rescore:]
     new_sites_orth=get_points_in_map(
       map_data,n=10*random_points,crystal_symmetry=crystal_symmetry)
-    new_sites_orth.extend(sites_orth) 
+    new_sites_orth.extend(sites_orth)
     for orig_score,orig_cc_avg,ncs_obj,ncs_type in results_list[:n_rescore]:
       score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
         sites_orth=new_sites_orth,crystal_symmetry=crystal_symmetry,out=out)
@@ -1491,11 +1491,11 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
     two_fold_along_x=False
   else:
     two_fold_along_x=None
-  
+
   best_center=matrix.col(ncs_center)
   best_ncs_obj=ncs_obj
-  best_score=score 
-  best_cc_avg=cc_avg 
+  best_score=score
+  best_cc_avg=cc_avg
   print >>out,"Starting center: (%7.3f, %7.3f, %7.3f)" %(tuple(best_center))
   from libtbx.utils import null_out
   scale=5.
@@ -1503,7 +1503,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
     scale=scale/5.
     for i in xrange(-4,5):
      for j in xrange(-4,5):
-      local_center=matrix.col(ncs_center)+matrix.col((scale*i,scale*j,0.,)) 
+      local_center=matrix.col(ncs_center)+matrix.col((scale*i,scale*j,0.,))
       ncs_list,ncs_type_list=get_ncs_list(ncs_type,
        ncs_center=local_center,
        helical_rot_deg=helical_rot_deg,
@@ -1878,10 +1878,10 @@ def get_params(args,out=sys.stdout):
       op_max=params.crystal_info.op_max,
       two_fold_along_x=params.crystal_info.two_fold_along_x,
       crystal_symmetry=crystal_symmetry,
-      use_center_of_map_as_center=use_center_of_map, 
+      use_center_of_map_as_center=use_center_of_map,
       out=out
       )
-    if new_ncs_obj: 
+    if new_ncs_obj:
       # offset this back to where it would have been before the origin offset..
       new_ncs_obj=new_ncs_obj.coordinate_offset(
        coordinate_offset=-1*matrix.col(origin_shift))
@@ -1892,7 +1892,7 @@ def get_params(args,out=sys.stdout):
       f.close()
       print >>out,"Wrote NCS operators (for original map) to %s" %(file_name)
       params.input_files.ncs_file=file_name
-      break # found it, no need to continue 
+      break # found it, no need to continue
 
   # Set b_iso if needed
 
@@ -2367,9 +2367,9 @@ def get_connectivity(params,b_vs_region=None,
     """
     n_use=cntr
 
-  if calculate_sa: 
+  if calculate_sa:
     print >>out,"\nCalculating surface area..."
-  
+
     # Number of regions required to make up sa_fraction of target_in_top_regions
     target_in_all_regions=\
      map_data.size()*params.segmentation.fraction_occupied*(1-solvent_fraction)
@@ -4754,7 +4754,7 @@ def run_auto_sharpen(
        out=out)
 
   f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
-  res_cut_array=f_array.resolution_filter(d_max=None, 
+  res_cut_array=f_array.resolution_filter(d_max=None,
      d_min=tracking_data.params.crystal_info.resolution)
   original_b_iso=get_b_iso(res_cut_array)
   print >>out,"\nEffecive B-iso before sharpening %7.2f" %(original_b_iso)
@@ -4767,7 +4767,7 @@ def run_auto_sharpen(
   if new_map_coeffs:  # we improved them..
 
     f_array,phases=map_coeffs_as_fp_phi(new_map_coeffs)
-    res_cut_array=f_array.resolution_filter(d_max=None, 
+    res_cut_array=f_array.resolution_filter(d_max=None,
        d_min=tracking_data.params.crystal_info.resolution)
     final_b_iso=get_b_iso(res_cut_array)
     print >>out,"\nEffective B-iso after sharpening %7.2f" %(final_b_iso)

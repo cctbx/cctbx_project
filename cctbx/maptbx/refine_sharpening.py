@@ -69,7 +69,7 @@ def get_array(file_name=None,labels=None):
   print "Reading from %s" %(file_name)
   from iotbx import reflection_file_reader
   reflection_file = reflection_file_reader.any_reflection_file(
-       file_name=file_name) 
+       file_name=file_name)
   array_to_use=None
   if labels:
     for array in reflection_file.as_miller_arrays():
@@ -100,7 +100,7 @@ def get_amplitudes(args):
     return
 
   new_args=[]
-  file_name=None 
+  file_name=None
   for arg in args:
     if os.path.isfile(arg) and arg.endswith(".mtz"):
       file_name=arg
@@ -108,7 +108,7 @@ def get_amplitudes(args):
       new_args.append(arg)
   args=new_args
   labels=None
- 
+
   array_list=[]
   d_min=None
   d_max=None
@@ -122,7 +122,7 @@ def get_amplitudes(args):
 
 
 def adjust_amplitudes_linear(f_array,b1,b2,b3,d_cut=None):
-  # do something to the amplitudes.  
+  # do something to the amplitudes.
   #   b1=delta_b at midway between d=inf and d=d_cut,b2 at d_cut,
   #   b3 at d_min (added to b2)
   # pseudo-B at position of b1= -b1/sthol2_2= -b1*4*d_cut**2
@@ -148,7 +148,7 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,d_cut=None):
         value=b1+(sthol2-sthol2_1)*(b2-b1)/(sthol2_2-sthol2_1)
       else:
         value=b0+(sthol2-0.)*(b1-b0)/(sthol2_1-0.)
-      scale_array.append(math.exp(value)) 
+      scale_array.append(math.exp(value))
   data_array=data_array*scale_array
   return f_array.customized_copy(data=data_array)
 
@@ -220,10 +220,10 @@ class refinery:
     tol=0.01,
     max_iterations=20,
     dummy_run=False):
-   
+
     self.ma=ma
     self.phases=phases
-    self.d_cut=d_cut 
+    self.d_cut=d_cut
 
     self.tol=tol
     self.eps=eps
@@ -264,7 +264,7 @@ class refinery:
     return f, g
 
   def residual(self,b,restraint_weight=100.):
-  
+
     if self.residual_type=='kurtosis':
       resid=-1.*calculate_kurtosis(self.ma,self.phases,b,self.d_cut)
 
@@ -278,15 +278,15 @@ class refinery:
         use_sg_symmetry=self.use_sg_symmetry,)
     else:
       raise Sorry("residual_type must be kurtosis or adjusted_sa")
-  
+
     # put in restraint so b[1] is not bigger than b[0]
     if b[1]>b[0]:  resid+=(b[1]-b[0])*restraint_weight
     # put in restraint so b[2] <=0
     if b[2]>0:  resid+=b[2]*restraint_weight
     return resid
-  
+
   def gradients(self,b):
-  
+
     result = flex.double()
     for i in xrange(len(list(b))):
       rs = []
@@ -339,7 +339,7 @@ def run(map_coeffs=None,
 
 
   starting_result=refined.show_result()
-  print >>out,"Starting value: %7.2f" %(starting_result) 
+  print >>out,"Starting value: %7.2f" %(starting_result)
   best_sharpened_ma=ma
   best_result=starting_result
 
@@ -399,4 +399,3 @@ if (__name__ == "__main__"):
     eps=eps,residual_type=residual_type)
   mtz_dataset=new_map_coeffs.as_mtz_dataset(column_root_label="FWT")
   mtz_dataset.mtz_object().write(file_name='sharpened.mtz')
-
