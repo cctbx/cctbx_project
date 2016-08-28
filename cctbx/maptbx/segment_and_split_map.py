@@ -9,6 +9,7 @@ import sys, os
 from cctbx.array_family import flex
 from scitbx.math import matrix
 from copy import deepcopy
+from libtbx.utils import null_out
 
 master_phil = iotbx.phil.parse("""
 
@@ -269,6 +270,16 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Automatically determine sharpening
        .help = Automatically determine sharpening using kurtosis maximization.
 
+     auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
+                            *resolution_dependent
+       .type = choice(multi=True)
+       .short_caption = Sharpening methods
+       .help = Methods to use in sharpening. b_iso searches for b_iso to \
+          maximize sharpening target (kurtosis or adjusted_sa). \
+          b_iso_to_d_cut applies b_iso only up to resolution specified, with \
+          fall-over of k_sharpen.  Resolution dependent adjusts 3 parameters \
+          to sharpen variably over resolution range.
+
      target_b_ratio = 10.
       .type = float
       .help = "Default ratio of b_iso value to resolution for "
@@ -292,17 +303,17 @@ master_phil = iotbx.phil.parse("""
      search_b_min = -100
        .type = float
        .short_caption = Low bound for b_iso search
-       .help = Low bound for b_iso search. Not used
+       .help = Low bound for b_iso search. 
 
      search_b_max = 300
        .type = float
        .short_caption = High bound for b_iso search
-       .help = High bound for b_iso search. Not used.
+       .help = High bound for b_iso search. 
 
-     search_b_n = None
+     search_b_n = 21
        .type = int
        .short_caption = Number of b_iso values to search
-       .help = Number of b_iso values to search. Not used
+       .help = Number of b_iso values to search.
 
 
      magnification = None
@@ -310,6 +321,56 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Magnification
        .help = Magnification to apply to input map.  Input map grid will be \
                 scaled by magnification factor before anything else is done.
+
+     residual_type = 'kurtosis'
+       .type = str
+       .short_caption = Residual target
+       .help = Target for maximization steps in sharpening.  \
+          Can be kurtosis or adjusted_sa (adjusted surface area)
+       
+     sharpening_target = 'adjusted_sa'
+       .type = str
+       .short_caption = Overall sharpening target
+       .help = Overall target for sharpening.  Can be kurtosis or adjusted_sa \
+          (adjusted surface area).  Used to decide which sharpening approach \
+          is used. Note that during optimization, residual_type is used \
+          (they can be the same.)
+       
+     region_weight = 20
+       .type = float
+       .short_caption = Region weighting
+       .help = Region weighting in adjusted surface area calculation.\
+            Score is surface area minus region_weight times number of regions.\
+            Default is 20.
+
+     sa_percent = 30.
+       .type = float
+       .short_caption = Percent of target regions in adjusted_sa 
+       .help = Percent of target regions used in calulation of adjusted \
+         surface area.  Default is 30.
+
+     fraction_occupied = 0.20
+       .type = float
+       .short_caption = Fraction of molecular volume inside contours
+       .help = Fraction of molecular volume targeted to be inside contours. \
+           Used to set contour level. Default is 0.20
+
+      n_bins = 20
+        .type = int
+        .short_caption = Resolution bins
+        .help = Number of resolution bins for sharpening. Default is 20.
+
+      max_regions_to_test = 30
+        .type = int
+        .short_caption = Max regions to test
+        .help = Number of regions to test for surface area in adjusted_sa \
+                scoring of sharpening
+
+      eps = None
+        .type = float
+        .short_caption = Shift used in calculation of derivatives for \
+           sharpening maximization.  Default is 0.01 for kurtosis and 0.5 for \
+           adjusted_sa.
   }
 
   segmentation {
@@ -1168,9 +1229,10 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb"):
 
 def get_b_iso(miller_array):
   from mmtbx.scaling import absolute_scaling
-  aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
+  try:
+    aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
       miller_array=miller_array, n_residues=200, n_bases=0)
-  try: b_cart=aniso_scale_and_b.b_cart
+    b_cart=aniso_scale_and_b.b_cart
   except Exception,e:
     b_cart=[0,0,0]
   b_aniso_mean=0.
@@ -1188,7 +1250,6 @@ def map_coeffs_as_fp_phi(map_coeffs):
 def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       d_min_ratio=None,return_as_map_coeffs=False,out=sys.stdout):
     from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
-    from libtbx.utils import null_out
     if d_min and d_min_ratio is not None:
       d_min_ratio_use=d_min_ratio
       map_coeffs=None
@@ -1197,8 +1258,6 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       while d_min_ratio_use <= 1 and n_try<=max_try:
         n_try+=1
         args=['d_min=%s' %(d_min*d_min_ratio_use)]
-        print >>out,"Trying resolution of %7.2f for inversion" %(
-         d_min*d_min_ratio_use)
         try:
           map_coeffs=map_to_sf(args=args,
             space_group_number=crystal_symmetry.space_group().type().number(),
@@ -1231,9 +1290,19 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       return map_coeffs_as_fp_phi(map_coeffs)
 
 
-def apply_sharpening(n_real=None,b_sharpen=None,crystal_symmetry=None,
+def apply_sharpening(map_coeffs=None,
+    n_real=None,b_sharpen=None,crystal_symmetry=None,
     f_array=None,phases=None,d_min=None,k_sharpen=None,out=sys.stdout):
-    if b_sharpen < 0 or k_sharpen<=0 or k_sharpen is None or d_min is None:
+    if map_coeffs and f_array is None and phases is None:
+      f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+
+    if b_sharpen in [0,None] and k_sharpen in [0,None]:
+      if not map_coeffs:
+        map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
+      return get_map_from_map_coeffs(map_coeffs=map_coeffs,
+        crystal_symmetry=crystal_symmetry,n_real=n_real)
+
+    elif b_sharpen < 0 or k_sharpen<=0 or k_sharpen is None or d_min is None:
       # 2016-08-10 original method: apply b_sharpen to all data
       # Use this if blurring (b_sharpen<0) or if k_sharpen is not set
       from cctbx import adptbx # next lines from xtriage (basic_analysis.py)
@@ -1260,7 +1329,7 @@ def apply_sharpening(n_real=None,b_sharpen=None,crystal_symmetry=None,
 
     res_cut_array=f_array_sharpened.resolution_filter(d_max=None, d_min=d_min)
     actual_b_iso=get_b_iso(res_cut_array)
-    print >>out, "B-iso after sharpening by b_sharpen=%5.1f is %7.2f\n" %(
+    print >>out, "B-iso after sharpening by b_sharpen=%6.1f is %7.2f\n" %(
       b_sharpen,actual_b_iso)
     sharpened_map_coeffs=f_array_sharpened.phase_transfer(
       phase_source=phases,deg=True)
@@ -4687,6 +4756,7 @@ def get_kurtosis(data=None):
   return (x**4).min_max_mean().mean/sd**4
 
 def score_map(map_data=None,
+        tracking_data=None,
         solvent_fraction=None,
         fraction_occupied=None,
         wrapping=None,
@@ -4694,6 +4764,14 @@ def score_map(map_data=None,
         region_weight=None,
         max_regions_to_test=30, # may be helpful to avoid long times
         out=sys.stdout):
+
+  if tracking_data:
+    solvent_fraction=tracking_data.solvent_fraction
+    wrapping=tracking_data.params.crystal_info.use_sg_symmetry
+    fraction_occupied=tracking_data.params.crystal_info.fraction_occupied
+    sa_percent=tracking_data.params.crystal_info.sa_percent
+    region_weight=tracking_data.params.crystal_info.region_weight
+    max_regions_to_test=tracking_data.params.crystal_info.max_regions_to_test
 
   map_data=renormalize_map_data(
      map_data=map_data,solvent_fraction=solvent_fraction)
@@ -4753,28 +4831,127 @@ def run_auto_sharpen(
        d_min_ratio=tracking_data.params.crystal_info.d_min_ratio,
        return_as_map_coeffs=True,
        out=out)
-
   f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
   res_cut_array=f_array.resolution_filter(d_max=None,
      d_min=tracking_data.params.crystal_info.resolution)
   original_b_iso=get_b_iso(res_cut_array)
   print >>out,"\nEffecive B-iso before sharpening %7.2f" %(original_b_iso)
 
+  # Try various methods for sharpening.
+  from cctbx.maptbx.refine_sharpening import get_sharpened_map as linear_sharpen
 
-  from cctbx.maptbx.refine_sharpening import run as refine_sharpening
+  best_score=None
+  best_method=None
+  best_map_data=None
 
-  new_map_coeffs=refine_sharpening(map_coeffs,
-      d_cut=tracking_data.params.crystal_info.resolution,out=out)
-  if new_map_coeffs:  # we improved them..
+  print >>out,"\nTesting sharpening methods with target of %s" %(
+      tracking_data.params.crystal_info.sharpening_target) 
+  
+  for m in tracking_data.params.crystal_info.auto_sharpen_methods:
+    if m in ['no_sharpening','resolution_dependent']:
+      b_min=original_b_iso
+      b_max=original_b_iso
+      b_n=1
+      k_sharpen=None
+      delta_b=0
+    elif m in ['b_iso','b_iso_to_d_cut']:
+      b_min=min(original_b_iso,
+        tracking_data.params.crystal_info.search_b_min)
+      b_max=max(original_b_iso,
+        tracking_data.params.crystal_info.search_b_max)
+      b_n=tracking_data.params.crystal_info.search_b_n
+      delta_b=(b_max-b_min)/max(1,b_n-1)
+      print >>out,\
+        "\nTesting %s with b_iso from %7.1f to %7.1f in %d steps of %7.1f" %(
+        m,b_min,b_max,b_n,delta_b)
+      print >>out,"(b_sharpen from %7.1f to %7.1f ) " %(
+         original_b_iso-b_min,original_b_iso-b_max)
+      if m=='b_iso':
+        k_sharpen=None
+      else:
+        k_sharpen=tracking_data.params.crystal_info.k_sharpen
 
-    f_array,phases=map_coeffs_as_fp_phi(new_map_coeffs)
+    local_best_score=None
+    local_best_b_sharpen=0.
+    local_best_k_sharpen=0.
+    local_best_map_data=None
+    local_best_kurtosis=None
+    local_best_adjusted_sa=None
+
+    for i in xrange(b_n):
+      if m=='resolution_dependent':
+        print >>out,"\nRefining resolution-dependent sharpening based on %s" %(
+          tracking_data.params.crystal_info.residual_type)
+        from cctbx.maptbx.refine_sharpening import run as refine_sharpening
+        local_f_array,local_phases=refine_sharpening(map_coeffs=map_coeffs,
+          tracking_data=tracking_data,out=out)
+        b_sharpen=0.
+        b_iso=original_b_iso-b_sharpen
+      else: 
+        b_iso=b_min+i*delta_b
+        b_sharpen=original_b_iso-b_iso
+        local_f_array=f_array
+        local_phases=phases
+
+      local_map_data=apply_sharpening(n_real=map_data.all(),
+          f_array=local_f_array,phases=local_phases,
+          b_sharpen=b_sharpen,
+          k_sharpen=k_sharpen,
+          d_min=tracking_data.params.crystal_info.resolution,
+          crystal_symmetry=tracking_data.crystal_symmetry,
+          out=null_out())
+
+      target_in_all_regions,regions,sa_ratio,adjusted_sa,skew,kurtosis=\
+        score_map(map_data=local_map_data,tracking_data=tracking_data,
+        out=null_out())
+      print >>out,"B-sharpen: "+\
+        "%6.1f B-iso: %6.1f k_sharpen: %5s  SA: %7.3f  Kurtosis: %7.3f" %(
+         b_sharpen,b_iso,k_sharpen,adjusted_sa,kurtosis)
+
+      if tracking_data.params.crystal_info.sharpening_target=='kurtosis':
+        score=kurtosis
+      else:
+        score=adjusted_sa 
+      if local_best_score is None or score>local_best_score:
+        local_best_kurtosis=kurtosis
+        local_best_adjusted_sa=adjusted_sa
+        local_best_score=score
+        local_best_map_data=local_map_data
+        local_best_b_sharpen=b_sharpen
+        local_best_k_sharpen=k_sharpen
+
+    print >>out,"\nBest scores for sharpening with "+\
+       "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
+       original_b_iso-local_best_b_sharpen,local_best_b_sharpen,
+      local_best_k_sharpen) 
+
+    print >>out,\
+      "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
+      local_best_adjusted_sa,local_best_kurtosis,local_best_score)
+
+    if best_score is None or local_best_score > best_score:
+      best_score=local_best_score
+      best_method=m
+      best_map_data=local_best_map_data
+      print >>out,"This is the current best score\n"
+
+  print >>out,"\nOverall best sharpening method: %s Score: %7.3f\n" %(
+       best_method,best_score)
+
+  if best_method:  # we improved them..
+    best_map_coeffs=get_f_phases_from_map(map_data=best_map_data,
+       crystal_symmetry=tracking_data.crystal_symmetry,
+       d_min=tracking_data.params.crystal_info.resolution,
+       d_min_ratio=tracking_data.params.crystal_info.d_min_ratio,
+       return_as_map_coeffs=True,
+       out=out)
+
+    f_array,phases=map_coeffs_as_fp_phi(best_map_coeffs)
     res_cut_array=f_array.resolution_filter(d_max=None,
        d_min=tracking_data.params.crystal_info.resolution)
     final_b_iso=get_b_iso(res_cut_array)
     print >>out,"\nEffective B-iso after sharpening %7.2f" %(final_b_iso)
 
-    new_map_data=get_map_from_map_coeffs(map_coeffs=new_map_coeffs,
-      crystal_symmetry=tracking_data.crystal_symmetry,n_real=map_data.all())
 
     # And set shifted_map_info if map_data is new
     shifted_sharpened_map_file=os.path.join(
@@ -4782,20 +4959,20 @@ def run_auto_sharpen(
           params.output_files.shifted_sharpened_map_file)
     if shifted_sharpened_map_file:
       write_ccp4_map(tracking_data.crystal_symmetry,
-          shifted_sharpened_map_file,new_map_data)
+          shifted_sharpened_map_file,best_map_data)
       print >>out,"Wrote shifted, sharpened map to %s" %(
           shifted_sharpened_map_file)
       tracking_data.set_shifted_map_info(file_name=
           shifted_sharpened_map_file,
           crystal_symmetry=tracking_data.crystal_symmetry,
-          origin=new_map_data.origin(),
-          all=new_map_data.all(),
+          origin=best_map_data.origin(),
+          all=best_map_data.all(),
           b_sharpen=None)
   else:
     print >>out,"No sharpening identified...leaving map as is"
-    new_map_data=map_data
+    best_map_data=map_data
 
-  return new_map_data,tracking_data
+  return best_map_data,tracking_data
 
 def get_one_au(tracking_data=None,
     sites_cart=None,
