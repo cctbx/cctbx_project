@@ -14,7 +14,7 @@ master_phil = iotbx.phil.parse("""
 
   input_files {
 
-     seq_file = None
+    seq_file = None
        .type = path
        .short_caption = Sequence file
        .help = Sequence file (unique chains only,  \
@@ -32,7 +32,8 @@ master_phil = iotbx.phil.parse("""
       .type = path
       .help = File with NCS information (typically point-group NCS with \
                the center specified). Typically in  PDB format. \
-              Can also be a .ncs_spec file from phenix.
+              Can also be a .ncs_spec file from phenix. \
+              Created automatically if ncs_type is specified.
       .short_caption = NCS info file
 
     pdb_in = None
@@ -166,6 +167,61 @@ master_phil = iotbx.phil.parse("""
        .help = Chain type. Determined automatically from sequence file if \
                not given. Mixed chain types are fine (leave blank if so).
 
+     ncs_type = None 
+       .type = str
+       .short_caption = NCS type
+       .help = Symmetry used in reconstruction. For example D7, C3, C2\
+          I (icosahedral),T (tetrahedral), or ANY (try everything and \
+          use the highest symmetry found). Not needed if ncs_file is supplied. \
+          Note: ANY does not search for helical symmetry
+
+     ncs_center = None
+       .type = floats
+       .short_caption = NCS center
+       .help = Center (in A) for NCS operators (if ncs is found \
+          automatically). \
+          If set to None, first guess is the center of the cell and then \
+          if that fails, found automatically as the center of the \
+          density in the map.
+
+     optimize_center = None
+       .type = bool
+       .short_caption = Optimize NCS center
+       .help = Optimize position of NCS center. Default is False \
+           if ncs_center is supplied or center of map is used and \
+           True if it is found automatically).
+
+     helical_rot_deg = None
+       .type = float
+       .short_caption = helical rotation 
+       .help = helical rotation about z in degrees
+
+     helical_trans_z_angstrom = None
+       .type = float
+       .short_caption = helical translation
+       .help = helical translation along z in Angstrom units
+
+     two_fold_along_x = None
+       .type = bool
+       .short_caption = D two-fold along x 
+       .help = Specifies if D or I two-fold is along x (True) or y (False). \
+               If None, both are tried.
+
+     random_points = 100
+       .type = int
+       .short_caption = Random points
+       .help = Number of random points in map to examine in finding NCS
+
+     n_rescore = 5
+       .type = int
+       .short_caption = NCS operators to rescore
+       .help = Number of NCS operators to rescore
+
+     op_max = 14
+       .type = int
+       .short_caption = Max operators to try
+       .help = If ncs_type is ANY, try up to op_max-fold symmetries
+
      is_crystal = False
        .type = bool
        .short_caption = Is a crystal
@@ -203,16 +259,22 @@ master_phil = iotbx.phil.parse("""
              d_min_ratio times resolution. If None, box of reflections \
              with the same grid as the map used.
 
+     use_target_b_ratio = None
+       .type = bool
+       .short_caption = Use target B ratio for sharpening 
+       .help =  Use target B ratio for sharpening.
+
      auto_sharpen = True
        .type = bool
        .short_caption = Automatically determine sharpening
-       .help = Automatically determine sharpening using target_b_ratio.
+       .help = Automatically determine sharpening using kurtosis maximization.
 
      target_b_ratio = 10.
       .type = float
       .help = "Default ratio of b_iso value to resolution for "
-              " anisotropy correction. "
-              "Used if auto_sharpen=True. Ignored if b_iso is set. "
+              " sharpening. "
+              "Used if use_target_b_ratio=True. Ignored if b_iso is set. "
+              "Ignored if auto_sharpen=True"
       .short_caption = Target B ratio to resolution
 
      k_sharpen = 10
@@ -224,14 +286,15 @@ master_phil = iotbx.phil.parse("""
            sharpening, only data with d about resolution or lower are \
            sharpened. This prevents making very high-resolution data too \
            strong.  Note 2: if k_sharpen is zero or None, then no \
-           transition is applied and all data is sharpened or blurred.
+           transition is applied and all data is sharpened or blurred. \
+           Note 3: only used if use_target_b_ratio=True or b_iso is set.
 
-     search_b_min = None
+     search_b_min = -100 
        .type = float
        .short_caption = Low bound for b_iso search
        .help = Low bound for b_iso search. Not used
 
-     search_b_max = None
+     search_b_max = 300
        .type = float
        .short_caption = High bound for b_iso search
        .help = High bound for b_iso search. Not used.
@@ -420,6 +483,192 @@ master_phil = iotbx.phil.parse("""
    }
 """, process_includes=True)
 master_params = master_phil
+
+# Symmetry for icosahedron
+icosahedral_text=\
+"""
+REMARK 350   BIOMT1   1  1.000000  0.000000 -0.000000        0.00000
+REMARK 350   BIOMT2   1 -0.000000  1.000000  0.000000        0.00000
+REMARK 350   BIOMT3   1 -0.000000  0.000000  1.000000        0.00000
+REMARK 350   BIOMT1   2  0.309017 -0.951056 -0.000132        0.00000
+REMARK 350   BIOMT2   2  0.951057  0.309017  0.000181        0.00000
+REMARK 350   BIOMT3   2 -0.000132 -0.000181  1.000000        0.00000
+REMARK 350   BIOMT1   3 -0.809017 -0.587785 -0.000344        0.00000
+REMARK 350   BIOMT2   3  0.587785 -0.809017  0.000112        0.00000
+REMARK 350   BIOMT3   3 -0.000344 -0.000112  1.000000        0.00000
+REMARK 350   BIOMT1   4 -0.809017  0.587785 -0.000344        0.00000
+REMARK 350   BIOMT2   4 -0.587785 -0.809017 -0.000112        0.00000
+REMARK 350   BIOMT3   4 -0.000344  0.000112  1.000000        0.00000
+REMARK 350   BIOMT1   5  0.309017  0.951056 -0.000132        0.00000
+REMARK 350   BIOMT2   5 -0.951057  0.309017 -0.000181        0.00000
+REMARK 350   BIOMT3   5 -0.000132  0.000181  1.000000        0.00000
+REMARK 350   BIOMT1   6 -0.947319 -0.162298  0.276128        0.00000
+REMARK 350   BIOMT2   6 -0.162298 -0.500000 -0.850682        0.00000
+REMARK 350   BIOMT3   6  0.276128 -0.850682  0.447319        0.00000
+REMARK 350   BIOMT1   7 -0.447128  0.850751  0.276223        0.00000
+REMARK 350   BIOMT2   7 -0.525569  0.000000 -0.850751        0.00000
+REMARK 350   BIOMT3   7 -0.723777 -0.525569  0.447128        0.00000
+REMARK 350   BIOMT1   8  0.670906  0.688091  0.276436        0.00000
+REMARK 350   BIOMT2   8 -0.162298  0.500000 -0.850682        0.00000
+REMARK 350   BIOMT3   8 -0.723564  0.525862  0.447128        0.00000
+REMARK 350   BIOMT1   9  0.861698 -0.425487  0.276472        0.00000
+REMARK 350   BIOMT2   9  0.425487  0.309017 -0.850570        0.00000
+REMARK 350   BIOMT3   9  0.276472  0.850570  0.447319        0.00000
+REMARK 350   BIOMT1  10 -0.138420 -0.951056  0.276282        0.00000
+REMARK 350   BIOMT2  10  0.425487 -0.309017 -0.850570        0.00000
+REMARK 350   BIOMT3  10  0.894316 -0.000181  0.447437        0.00000
+REMARK 350   BIOMT1  11 -0.861698 -0.425487 -0.276472        0.00000
+REMARK 350   BIOMT2  11 -0.425487  0.309017  0.850570        0.00000
+REMARK 350   BIOMT3  11 -0.276472  0.850570 -0.447319        0.00000
+REMARK 350   BIOMT1  12 -0.670906  0.688091 -0.276436        0.00000
+REMARK 350   BIOMT2  12  0.162298  0.500000  0.850682        0.00000
+REMARK 350   BIOMT3  12  0.723564  0.525862 -0.447128        0.00000
+REMARK 350   BIOMT1  13  0.447128  0.850751 -0.276223        0.00000
+REMARK 350   BIOMT2  13  0.525569 -0.000000  0.850751        0.00000
+REMARK 350   BIOMT3  13  0.723777 -0.525569 -0.447128        0.00000
+REMARK 350   BIOMT1  14  0.947319 -0.162298 -0.276128        0.00000
+REMARK 350   BIOMT2  14  0.162298 -0.500000  0.850682        0.00000
+REMARK 350   BIOMT3  14 -0.276128 -0.850682 -0.447319        0.00000
+REMARK 350   BIOMT1  15  0.138420 -0.951056 -0.276282        0.00000
+REMARK 350   BIOMT2  15 -0.425487 -0.309017  0.850570        0.00000
+REMARK 350   BIOMT3  15 -0.894316 -0.000181 -0.447437        0.00000
+REMARK 350   BIOMT1  16  0.809017  0.587785  0.000344        0.00000
+REMARK 350   BIOMT2  16  0.587785 -0.809017  0.000112        0.00000
+REMARK 350   BIOMT3  16  0.000344  0.000112 -1.000000        0.00000
+REMARK 350   BIOMT1  17  0.809017 -0.587785  0.000344        0.00000
+REMARK 350   BIOMT2  17 -0.587785 -0.809017 -0.000112        0.00000
+REMARK 350   BIOMT3  17  0.000344 -0.000112 -1.000000        0.00000
+REMARK 350   BIOMT1  18 -0.309017 -0.951056  0.000132        0.00000
+REMARK 350   BIOMT2  18 -0.951057  0.309017 -0.000181        0.00000
+REMARK 350   BIOMT3  18  0.000132 -0.000181 -1.000000        0.00000
+REMARK 350   BIOMT1  19 -1.000000  0.000000  0.000000        0.00000
+REMARK 350   BIOMT2  19  0.000000  1.000000  0.000000        0.00000
+REMARK 350   BIOMT3  19 -0.000000  0.000000 -1.000000        0.00000
+REMARK 350   BIOMT1  20 -0.309017  0.951056  0.000132        0.00000
+REMARK 350   BIOMT2  20  0.951057  0.309017  0.000181        0.00000
+REMARK 350   BIOMT3  20  0.000132  0.000181 -1.000000        0.00000
+REMARK 350   BIOMT1  21 -0.138420 -0.425487  0.894316        0.00000
+REMARK 350   BIOMT2  21  0.951057 -0.309017  0.000181        0.00000
+REMARK 350   BIOMT3  21  0.276282  0.850570  0.447437        0.00000
+REMARK 350   BIOMT1  22 -0.447554 -0.000000  0.894257        0.00000
+REMARK 350   BIOMT2  22 -0.000000 -1.000000 -0.000000        0.00000
+REMARK 350   BIOMT3  22  0.894257 -0.000000  0.447554        0.00000
+REMARK 350   BIOMT1  23 -0.138420  0.425487  0.894316        0.00000
+REMARK 350   BIOMT2  23 -0.951057 -0.309017 -0.000181        0.00000
+REMARK 350   BIOMT3  23  0.276282 -0.850570  0.447437        0.00000
+REMARK 350   BIOMT1  24  0.361771  0.262966  0.894411        0.00000
+REMARK 350   BIOMT2  24 -0.587785  0.809017 -0.000112        0.00000
+REMARK 350   BIOMT3  24 -0.723623 -0.525681  0.447246        0.00000
+REMARK 350   BIOMT1  25  0.361771 -0.262966  0.894411        0.00000
+REMARK 350   BIOMT2  25  0.587785  0.809017  0.000112        0.00000
+REMARK 350   BIOMT3  25 -0.723623  0.525681  0.447246        0.00000
+REMARK 350   BIOMT1  26  0.447128 -0.525569  0.723777        0.00000
+REMARK 350   BIOMT2  26 -0.850751  0.000000  0.525569        0.00000
+REMARK 350   BIOMT3  26 -0.276223 -0.850751 -0.447128        0.00000
+REMARK 350   BIOMT1  27 -0.361771 -0.587785  0.723623        0.00000
+REMARK 350   BIOMT2  27 -0.262966  0.809017  0.525681        0.00000
+REMARK 350   BIOMT3  27 -0.894411 -0.000112 -0.447246        0.00000
+REMARK 350   BIOMT1  28 -0.670906  0.162298  0.723564        0.00000
+REMARK 350   BIOMT2  28  0.688091  0.500000  0.525862        0.00000
+REMARK 350   BIOMT3  28 -0.276436  0.850682 -0.447128        0.00000
+REMARK 350   BIOMT1  29 -0.053062  0.688091  0.723682        0.00000
+REMARK 350   BIOMT2  29  0.688091 -0.500000  0.525862        0.00000
+REMARK 350   BIOMT3  29  0.723682  0.525862 -0.446938        0.00000
+REMARK 350   BIOMT1  30  0.637921  0.262966  0.723813        0.00000
+REMARK 350   BIOMT2  30 -0.262966 -0.809017  0.525681        0.00000
+REMARK 350   BIOMT3  30  0.723813 -0.525681 -0.446938        0.00000
+REMARK 350   BIOMT1  31  0.053062  0.688091 -0.723682        0.00000
+REMARK 350   BIOMT2  31 -0.688091 -0.500000 -0.525862        0.00000
+REMARK 350   BIOMT3  31 -0.723682  0.525862  0.446938        0.00000
+REMARK 350   BIOMT1  32  0.670906  0.162298 -0.723564        0.00000
+REMARK 350   BIOMT2  32 -0.688091  0.500000 -0.525862        0.00000
+REMARK 350   BIOMT3  32  0.276436  0.850682  0.447128        0.00000
+REMARK 350   BIOMT1  33  0.361771 -0.587785 -0.723623        0.00000
+REMARK 350   BIOMT2  33  0.262966  0.809017 -0.525681        0.00000
+REMARK 350   BIOMT3  33  0.894411 -0.000112  0.447246        0.00000
+REMARK 350   BIOMT1  34 -0.447128 -0.525569 -0.723777        0.00000
+REMARK 350   BIOMT2  34  0.850751  0.000000 -0.525569        0.00000
+REMARK 350   BIOMT3  34  0.276223 -0.850751  0.447128        0.00000
+REMARK 350   BIOMT1  35 -0.637921  0.262966 -0.723813        0.00000
+REMARK 350   BIOMT2  35  0.262966 -0.809017 -0.525681        0.00000
+REMARK 350   BIOMT3  35 -0.723813 -0.525681  0.446938        0.00000
+REMARK 350   BIOMT1  36 -0.361771  0.262966 -0.894411        0.00000
+REMARK 350   BIOMT2  36  0.587785  0.809017  0.000112        0.00000
+REMARK 350   BIOMT3  36  0.723623 -0.525681 -0.447246        0.00000
+REMARK 350   BIOMT1  37  0.138420  0.425487 -0.894316        0.00000
+REMARK 350   BIOMT2  37  0.951057 -0.309017  0.000181        0.00000
+REMARK 350   BIOMT3  37 -0.276282 -0.850570 -0.447437        0.00000
+REMARK 350   BIOMT1  38  0.447554 -0.000000 -0.894257        0.00000
+REMARK 350   BIOMT2  38 -0.000000 -1.000000  0.000000        0.00000
+REMARK 350   BIOMT3  38 -0.894257  0.000000 -0.447554        0.00000
+REMARK 350   BIOMT1  39  0.138420 -0.425487 -0.894316        0.00000
+REMARK 350   BIOMT2  39 -0.951057 -0.309017 -0.000181        0.00000
+REMARK 350   BIOMT3  39 -0.276282  0.850570 -0.447437        0.00000
+REMARK 350   BIOMT1  40 -0.361771 -0.262966 -0.894411        0.00000
+REMARK 350   BIOMT2  40 -0.587785  0.809017 -0.000112        0.00000
+REMARK 350   BIOMT3  40  0.723623  0.525681 -0.447246        0.00000
+REMARK 350   BIOMT1  41 -0.138420  0.951056  0.276282        0.00000
+REMARK 350   BIOMT2  41 -0.425487 -0.309017  0.850570        0.00000
+REMARK 350   BIOMT3  41  0.894316  0.000181  0.447437        0.00000
+REMARK 350   BIOMT1  42  0.861698  0.425487  0.276472        0.00000
+REMARK 350   BIOMT2  42 -0.425487  0.309017  0.850570        0.00000
+REMARK 350   BIOMT3  42  0.276472 -0.850570  0.447319        0.00000
+REMARK 350   BIOMT1  43  0.670906 -0.688091  0.276436        0.00000
+REMARK 350   BIOMT2  43  0.162298  0.500000  0.850682        0.00000
+REMARK 350   BIOMT3  43 -0.723564 -0.525862  0.447128        0.00000
+REMARK 350   BIOMT1  44 -0.447128 -0.850751  0.276223        0.00000
+REMARK 350   BIOMT2  44  0.525569 -0.000000  0.850751        0.00000
+REMARK 350   BIOMT3  44 -0.723777  0.525569  0.447128        0.00000
+REMARK 350   BIOMT1  45 -0.947319  0.162298  0.276128        0.00000
+REMARK 350   BIOMT2  45  0.162298 -0.500000  0.850682        0.00000
+REMARK 350   BIOMT3  45  0.276128  0.850682  0.447319        0.00000
+REMARK 350   BIOMT1  46  0.053062 -0.688091 -0.723682        0.00000
+REMARK 350   BIOMT2  46  0.688091 -0.500000  0.525862        0.00000
+REMARK 350   BIOMT3  46 -0.723682 -0.525862  0.446938        0.00000
+REMARK 350   BIOMT1  47 -0.637921 -0.262966 -0.723813        0.00000
+REMARK 350   BIOMT2  47 -0.262966 -0.809017  0.525681        0.00000
+REMARK 350   BIOMT3  47 -0.723813  0.525681  0.446938        0.00000
+REMARK 350   BIOMT1  48 -0.447128  0.525569 -0.723777        0.00000
+REMARK 350   BIOMT2  48 -0.850751 -0.000000  0.525569        0.00000
+REMARK 350   BIOMT3  48  0.276223  0.850751  0.447128        0.00000
+REMARK 350   BIOMT1  49  0.361771  0.587785 -0.723623        0.00000
+REMARK 350   BIOMT2  49 -0.262966  0.809017  0.525681        0.00000
+REMARK 350   BIOMT3  49  0.894411  0.000112  0.447246        0.00000
+REMARK 350   BIOMT1  50  0.670906 -0.162298 -0.723564        0.00000
+REMARK 350   BIOMT2  50  0.688091  0.500000  0.525862        0.00000
+REMARK 350   BIOMT3  50  0.276436 -0.850682  0.447128        0.00000
+REMARK 350   BIOMT1  51 -0.361771  0.587785  0.723623        0.00000
+REMARK 350   BIOMT2  51  0.262966  0.809017 -0.525681        0.00000
+REMARK 350   BIOMT3  51 -0.894411  0.000112 -0.447246        0.00000
+REMARK 350   BIOMT1  52  0.447128  0.525569  0.723777        0.00000
+REMARK 350   BIOMT2  52  0.850751 -0.000000 -0.525569        0.00000
+REMARK 350   BIOMT3  52 -0.276223  0.850751 -0.447128        0.00000
+REMARK 350   BIOMT1  53  0.637921 -0.262966  0.723813        0.00000
+REMARK 350   BIOMT2  53  0.262966 -0.809017 -0.525681        0.00000
+REMARK 350   BIOMT3  53  0.723813  0.525681 -0.446938        0.00000
+REMARK 350   BIOMT1  54 -0.053062 -0.688091  0.723682        0.00000
+REMARK 350   BIOMT2  54 -0.688091 -0.500000 -0.525862        0.00000
+REMARK 350   BIOMT3  54  0.723682 -0.525862 -0.446938        0.00000
+REMARK 350   BIOMT1  55 -0.670906 -0.162298  0.723564        0.00000
+REMARK 350   BIOMT2  55 -0.688091  0.500000 -0.525862        0.00000
+REMARK 350   BIOMT3  55 -0.276436 -0.850682 -0.447128        0.00000
+REMARK 350   BIOMT1  56  0.447128 -0.850751 -0.276223        0.00000
+REMARK 350   BIOMT2  56 -0.525569  0.000000 -0.850751        0.00000
+REMARK 350   BIOMT3  56  0.723777  0.525569 -0.447128        0.00000
+REMARK 350   BIOMT1  57 -0.670906 -0.688091 -0.276436        0.00000
+REMARK 350   BIOMT2  57 -0.162298  0.500000 -0.850682        0.00000
+REMARK 350   BIOMT3  57  0.723564 -0.525862 -0.447128        0.00000
+REMARK 350   BIOMT1  58 -0.861698  0.425487 -0.276472        0.00000
+REMARK 350   BIOMT2  58  0.425487  0.309017 -0.850570        0.00000
+REMARK 350   BIOMT3  58 -0.276472 -0.850570 -0.447319        0.00000
+REMARK 350   BIOMT1  59  0.138420  0.951056 -0.276282        0.00000
+REMARK 350   BIOMT2  59  0.425487 -0.309017 -0.850570        0.00000
+REMARK 350   BIOMT3  59 -0.894316  0.000181 -0.447437        0.00000
+REMARK 350   BIOMT1  60  0.947319  0.162298 -0.276128        0.00000
+REMARK 350   BIOMT2  60 -0.162298 -0.500000 -0.850682        0.00000
+REMARK 350   BIOMT3  60 -0.276128  0.850682 -0.447319        0.00000
+"""
+
 
 class pdb_info_object:
   def __init__(self,
@@ -806,6 +1055,9 @@ class b_vs_region_info:
   def __init__(self):
     self.b_iso=0.
     self.b_vs_region_dict={}
+    self.sa_sum_v_vs_region_dict={}
+    self.sa_nn_vs_region_dict={}
+    self.sa_ratio_b_vs_region_dict={}
 
 class ncs_group_object:
   def __init__(self,
@@ -891,11 +1143,6 @@ def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
   xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
   scatterers = flex.xray_scatterer()
   return xrs,scatterers
-
-  """from cctbx import xray
-  scatterers.append( xray.scatterer(scattering_type="O", label="O",
-    site=xyz_frac, u=0.1, occupancy=1.0))
-  """
 
 def write_atoms(tracking_data=None,sites=None,file_name=None,
       crystal_symmetry=None):
@@ -1019,13 +1266,20 @@ def apply_sharpening(n_real=None,b_sharpen=None,crystal_symmetry=None,
       phase_source=phases,deg=True)
 
     # And get new map
+    return get_map_from_map_coeffs(map_coeffs=sharpened_map_coeffs,
+      crystal_symmetry=crystal_symmetry,
+       n_real=n_real)
+
+def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
+     n_real=None):
+
     from cctbx import maptbx
     from cctbx.maptbx import crystal_gridding
     cg=crystal_gridding(
         unit_cell=crystal_symmetry.unit_cell(),
         space_group_info=crystal_symmetry.space_group_info(),
         pre_determined_n_real=n_real)
-    fft_map = sharpened_map_coeffs.fft_map( resolution_factor = 0.25,
+    fft_map = map_coeffs.fft_map( resolution_factor = 0.25,
        crystal_gridding=cg,
        symmetry_flags=maptbx.use_space_group_symmetry)
     fft_map.apply_sigma_scaling()
@@ -1033,15 +1287,15 @@ def apply_sharpening(n_real=None,b_sharpen=None,crystal_symmetry=None,
     return map_data
 
 def sharpen_map(map_data=None,crystal_symmetry=None,
-       d_min_ratio=None,d_min=None,b_iso=None,
+       d_min_ratio=None,d_cut=None,b_iso=None,
        k_sharpen=None,out=sys.stdout):
 
     f_array,phases=get_f_phases_from_map(map_data=map_data,
-       crystal_symmetry=crystal_symmetry,d_min=d_min,
+       crystal_symmetry=crystal_symmetry,d_min=d_cut,
        d_min_ratio=d_min_ratio,out=out)
 
     # If we use very high-res data the b_iso will be way off, so use to d_min
-    res_cut_array=f_array.resolution_filter(d_max=None, d_min=d_min)
+    res_cut_array=f_array.resolution_filter(d_max=None, d_min=d_cut)
     original_b_iso=get_b_iso(res_cut_array)
 
     print >>out,"\nB-iso before sharpening %7.2f" %(original_b_iso)
@@ -1053,10 +1307,360 @@ def sharpen_map(map_data=None,crystal_symmetry=None,
       crystal_symmetry=crystal_symmetry,
       f_array=f_array,phases=phases,
       k_sharpen=k_sharpen,
-      d_min=d_min,out=out)
+      d_min=d_cut,out=out)
 
     return map_data
 
+def find_ncs_center(map_data,crystal_symmetry=None): 
+  # find center if necessary:
+  origin=list(map_data.origin())
+  all=list(map_data.all())
+  centroid_wx={}
+  centroid_w={}
+  from cctbx import maptbx
+  for ai in [0,1,2]:
+    centroid_wx[ai]=0.
+    centroid_w[ai]=0.
+    for i in xrange(0,all[ai]):
+      if ai==0: 
+        start_tuple=tuple((i,0,0))
+        end_tuple=tuple((i,all[1],all[2]))
+      elif ai==1:
+         start_tuple=tuple((0,i,0))
+         end_tuple=tuple((all[0],i,all[2]))
+      elif ai==2:
+         start_tuple=tuple((0,0,i))
+         end_tuple=tuple((all[0],all[1],i))
+      new_map_data = maptbx.copy(map_data,
+         start_tuple,end_tuple)
+      mean_value=max(0.,new_map_data.as_1d().as_double().min_max_mean().mean)
+      centroid_wx[ai]+=mean_value*(i-origin[ai])
+      centroid_w[ai]+=mean_value
+    if centroid_w[ai]>0:
+      centroid_wx[ai]=centroid_wx[ai]/centroid_w[ai]
+  print "CENTROID OF DENSITY: (%7.2f, %7.2f, %7.2f) (grid units) " %(
+    tuple((centroid_wx[0],centroid_wx[1],centroid_wx[2],)))
+  xyz_fract=matrix.col((centroid_wx[0]/all[0],centroid_wx[1]/all[1],centroid_wx[2]/all[2],))
+  xyz_cart=crystal_symmetry.unit_cell().orthogonalize(xyz_fract)
+  print "CENTROID (A): (%7.3f, %7.3f, %7.3f) " %(
+    tuple(xyz_cart))
+  return xyz_cart
+
+def get_center_of_map(map_data,crystal_symmetry):
+  all=list(map_data.all())
+  origin=list(map_data.origin())
+  sx,sy,sz=[all[0]/2+origin[0],all[1]/2+origin[1],all[2]/2+origin[2]]
+  site_fract=matrix.col((sx/all[0],sy/all[1],sz/all[2],))
+  return crystal_symmetry.unit_cell().orthogonalize(site_fract)
+
+def get_ncs_from_map(map_data=None,
+      map_ncs_center=None,
+      ncs_type=None,
+      ncs_center=None,
+      helical_rot_deg=None,
+      helical_trans_z_angstrom=None,
+      two_fold_along_x=None,
+      op_max=None,
+      crystal_symmetry=None,
+      optimize_center=None,
+      random_points=None,
+      n_rescore=None,
+      use_center_of_map_as_center=None,
+      min_ncs_cc=0.90,
+      out=sys.stdout):
+
+  # Purpose: check through standard point groups and helical symmetry to see
+  # if map has symmetry. If ncs_type==ANY then take highest symmetry that fits
+  # Otherwise limit to the one specified with ncs_type.
+  #  Use a library of symmetry matrices.  For helical symmetry generate it
+  #  along the z axis.
+  # Center of symmetry is as supplied, or center of map or center of density
+  #  If center is not supplied and use_center_of_map_as_center, try that 
+  #  and return None if it fails to achieve a map cc of min_ncs_cc
+
+  if optimize_center is None:
+    if ncs_center is None and (not use_center_of_map_as_center):
+      optimize_center=True 
+      print >>out,"Setting optimize_center=True as no ncs_center is supplied"
+    else:
+      optimize_center=False
+ 
+  if ncs_center is not None:
+    ncs_center=matrix.col(ncs_center)
+  elif use_center_of_map_as_center:
+    print >>out,"Using center of map as NCS center"
+    ncs_center=map_ncs_center
+  else: # Find it
+    print >>out,"Finding NCS center as it is not supplied"
+    ncs_center=find_ncs_center(map_data,crystal_symmetry=crystal_symmetry)
+  print "Center of NCS (A): (%7.3f, %7.3f, %7.3f) " %(
+    tuple(ncs_center))
+
+  print >>out,"\nFinding %s NCS" %(ncs_type)
+
+  ncs_list,ncs_type_list=get_ncs_list(ncs_type,
+   ncs_center=ncs_center,
+   helical_rot_deg=helical_rot_deg,
+   two_fold_along_x=two_fold_along_x,
+   op_max=op_max,
+   helical_trans_z_angstrom=helical_trans_z_angstrom,
+   out=out,
+   )
+
+  print >>out,"Total of %d NCS types to examine..." %(len(ncs_list))
+  sites_orth=get_points_in_map(map_data,n=random_points,crystal_symmetry=crystal_symmetry)
+  # some random points in the map
+
+  # Now make sure symmetry applied to points in points_list gives similar values
+
+  results_list=[]
+  for ncs_obj,ncs_type in zip(ncs_list,ncs_type_list):
+    score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
+      sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+    if score is None:
+      print "ncs_type:",ncs_type," no score",ncs_obj.max_operators()
+    else:
+      results_list.append([score,cc_avg,ncs_obj,ncs_type])
+  if not results_list:
+    return None
+
+  results_list.sort()
+  results_list.reverse()
+
+  # Rescore top n_rescore
+  if n_rescore:
+    print "Rescoring top %d results" %(min(n_rescore,len(results_list)))
+    rescore_list=results_list[n_rescore:]
+    new_sites_orth=get_points_in_map(
+      map_data,n=10*random_points,crystal_symmetry=crystal_symmetry)
+    new_sites_orth.extend(sites_orth) 
+    for orig_score,orig_cc_avg,ncs_obj,ncs_type in results_list[:n_rescore]:
+      score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
+        sites_orth=new_sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+      if score is None:
+        print "ncs_type:",ncs_type," no score",ncs_obj.max_operators()
+      else:
+        rescore_list.append([score,cc_avg,ncs_obj,ncs_type])
+    rescore_list.sort()
+    rescore_list.reverse()
+    results_list=rescore_list
+
+  print >>out,"Ranking of NCS types:"
+  print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
+  for score,cc_avg,ncs_obj,ncs_type in results_list:
+    print >>out," %6.2f  %5.2f    %2d          %s" %(
+       score,cc_avg,ncs_obj.max_operators(), ncs_type.strip(),)
+
+  score,cc_avg,ncs_obj,ncs_info=results_list[0]
+
+  # Optimize center if necessary
+  if optimize_center:
+    ncs_center,cc_avg,score,ncs_obj=optimize_center_position(map_data,sites_orth,
+       crystal_symmetry,
+       ncs_info,ncs_center,ncs_obj,score,cc_avg,
+       helical_rot_deg=helical_rot_deg,
+       two_fold_along_x=two_fold_along_x,
+       op_max=op_max,
+       helical_trans_z_angstrom=helical_trans_z_angstrom,out=out)
+    print >>out,"New center: (%7.3f, %7.3f, %7.3f)" %(tuple(ncs_center))
+
+  if cc_avg < min_ncs_cc:
+    print >>out,"No suitable symmetry found with center of map as center...\n"
+    return None
+
+  print >>out,"\nBest NCS type is: ",
+  print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
+  print >>out," %6.2f  %5.2f    %2d          %s" %(
+       score,cc_avg,ncs_obj.max_operators(), ncs_info.strip(),)
+  return ncs_obj
+
+
+def optimize_center_position(map_data,sites_orth,crystal_symmetry,
+     ncs_info,ncs_center,ncs_obj,score,cc_avg,
+     helical_rot_deg=None,
+     two_fold_along_x=None,
+     op_max=None,
+     helical_trans_z_angstrom=None,out=sys.stdout):
+
+  ncs_type=ncs_info.split()[0]
+  print >>out,"Optimizing center position...type is %s" %(ncs_info)
+
+  if len(ncs_info.split())>1 and ncs_info.split()[1]=='(a)':
+    two_fold_along_x=True
+  elif len(ncs_info.split())>1 and ncs_info.split()[1]=='(b)':
+    two_fold_along_x=False
+  else:
+    two_fold_along_x=None
+  
+  best_center=matrix.col(ncs_center)
+  best_ncs_obj=ncs_obj
+  best_score=score 
+  best_cc_avg=cc_avg 
+  print >>out,"Starting center: (%7.3f, %7.3f, %7.3f)" %(tuple(best_center))
+  from libtbx.utils import null_out
+  scale=5.
+  for itry in xrange(6):
+    scale=scale/5.
+    for i in xrange(-4,5):
+     for j in xrange(-4,5):
+      local_center=matrix.col(ncs_center)+matrix.col((scale*i,scale*j,0.,)) 
+      ncs_list,ncs_type_list=get_ncs_list(ncs_type,
+       ncs_center=local_center,
+       helical_rot_deg=helical_rot_deg,
+       two_fold_along_x=two_fold_along_x,
+       op_max=op_max,
+       helical_trans_z_angstrom=helical_trans_z_angstrom,
+       out=null_out(),
+       )
+      ncs_obj=ncs_list[0]
+      score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
+          sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+      if best_score is None or score>best_score:
+        best_cc_avg=cc_avg
+        best_score=score
+        best_center=local_center
+        best_ncs_obj=ncs_obj
+
+  ncs_center=best_center
+  cc_avg=best_cc_avg
+  score=best_score
+  ncs_obj=best_ncs_obj
+  return best_center,best_cc_avg,best_score,best_ncs_obj
+
+
+
+def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
+     crystal_symmetry=None,out=sys.stdout):
+  ncs_group=ncs_object.ncs_groups()[0]
+  all_value_lists=[]
+  for c,t,r in zip(ncs_group.centers(),
+                       ncs_group.translations_orth(),
+                       ncs_group.rota_matrices()):
+    new_sites_cart=flex.vec3_double()
+    r_inv=r.inverse()
+    for site in sites_orth:
+      new_sites_cart.append(r_inv * (matrix.col(site) - t))
+    # get value at new_sites cart and make sure they are all the same...
+    new_sites_fract=crystal_symmetry.unit_cell().fractionalize(new_sites_cart)
+    values=flex.double()
+    for site_fract in new_sites_fract:
+      values.append(map_data.value_at_closest_grid_point(site_fract))
+    all_value_lists.append(values)
+  a=all_value_lists[0]
+  cc_avg=0.
+  cc_low=None
+  cc_n=0.
+  for j in xrange(1,len(all_value_lists)):
+      b=all_value_lists[j]
+      cc=flex.linear_correlation(a,b).coefficient()
+      cc_avg+=cc
+      cc_n+=1.
+      if cc_low is None or cc<cc_low:
+        cc_low=cc
+  cc_avg=cc_avg/max(1.,cc_n)
+  if cc_n>0:
+    import math
+    return cc_low*math.sqrt(len(all_value_lists)),cc_avg
+  else:
+    return None,None
+
+
+def get_points_in_map(map_data,n=None,max_tries_ratio=100,crystal_symmetry=None):
+  map_1d=map_data.as_1d()
+  map_mean=map_1d.min_max_mean().mean
+  map_max=map_1d.min_max_mean().max
+  points_list=flex.vec3_double()
+  import random
+  nu,nv,nw=map_data.all()
+  xyz_fract=crystal_symmetry.unit_cell().fractionalize(tuple((17.4,27.40128571,27.32985714,)))
+  for i in xrange(int(max_tries_ratio*n)): # max tries
+    ix=random.randint(0,nu-1)
+    iy=random.randint(0,nv-1)
+    iz=random.randint(0,nw-1)
+    xyz_fract=matrix.col((ix/nu,iy/nv,iz/nw,))
+    value=map_data.value_at_closest_grid_point(xyz_fract)
+    if value > map_mean and value <map_max:
+      points_list.append(xyz_fract)
+      if points_list.size()>=n: break
+  sites_orth=crystal_symmetry.unit_cell().orthogonalize(points_list)
+  return sites_orth
+
+
+
+def get_ncs_list(ncs_type,
+   ncs_center=None,
+   helical_rot_deg=None,
+   helical_trans_z_angstrom=None,
+   op_max=None,
+   two_fold_along_x=None,
+    out=sys.stdout):
+  ncs_list=[]
+  ncs_type_list=[]
+  all=False
+  sym_type=None
+  sym_n=None
+  if ncs_type.lower() in ['all','any']:
+    all=True
+  elif ncs_type.lower() in ["i"]:
+    sym_type='I'
+  elif ncs_type.lower().startswith("d"):
+    sym_type='D'
+    sym_n=int(ncs_type[1:])
+  elif ncs_type.lower().startswith("c"):
+    sym_type='C'
+    sym_n=int(ncs_type[1:])
+  elif ncs_type.lower() in ['helical','helix']:
+    sym_type='helical'
+
+  print >>out,"Sym type: %s  Sym N: %s" %(
+     sym_type,sym_n)
+
+  if sym_n:
+    i_start=sym_n
+    i_end=sym_n
+  else:
+    i_start=2
+    i_end=op_max
+
+  from mmtbx.ncs.ncs import get_ncs_from_text, \
+      get_c_symmetry,get_d_symmetry,get_helical_symmetry
+  if sym_type=='I' or all:
+    if two_fold_along_x is None or two_fold_along_x==False:
+      ncs_list.append(get_ncs_from_text(text=icosahedral_text))
+      ncs_type_list.append('I (b)')
+    if two_fold_along_x is None or two_fold_along_x==True:
+      ncs_list.append(get_ncs_from_text(text=icosahedral_text,
+          rotate_about_z=90))
+      ncs_type_list.append('I (a)')
+  if sym_type=='C' or all:
+    for i in xrange(i_start,i_end+1):
+      ncs_list.append(get_c_symmetry(n=i))
+      ncs_type_list.append('C%d ' %(i))
+  if sym_type=='D' or all:
+    for i in xrange(i_start,i_end+1):
+      if two_fold_along_x is None or two_fold_along_x==True:
+        ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=True))
+        ncs_type_list.append('D%d (a)' %(i))
+      if two_fold_along_x is None or two_fold_along_x==False:
+        ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=False))
+        ncs_type_list.append('D%d (b)' %(i))
+  if sym_type=='helical':
+    ncs_list.append(get_helical_symmetry(
+     helical_rot_deg=helical_rot_deg,
+     helical_trans_z_angstrom=helical_trans_z_angstrom,))
+    ncs_type_list.append("Type: Helical %5.2f deg  %6.2f Z-trans " %(
+       helical_rot_deg,helical_trans_z_angstrom))
+
+  if ncs_center and tuple(ncs_center) != (0,0,0,):
+    print >>out,"Offsetting NCS center by (%.2f, %.2f, %.2f) A " %(tuple(ncs_center))
+    new_list=[]
+    for ncs_obj in ncs_list:
+      new_list.append(ncs_obj.coordinate_offset(coordinate_offset=ncs_center))
+    ncs_list=new_list
+
+  for ncs_obj in ncs_list:
+    assert ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
+  return ncs_list,ncs_type_list
 
 def get_params(args,out=sys.stdout):
 
@@ -1185,6 +1789,9 @@ def get_params(args,out=sys.stdout):
   tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
   tracking_data.set_original_crystal_symmetry(crystal_symmetry=crystal_symmetry)
 
+  # Save center of map
+  map_ncs_center=get_center_of_map(map_data,crystal_symmetry)
+
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:
     print >>out,"\nTrimming map to density..."
@@ -1247,13 +1854,53 @@ def get_params(args,out=sys.stdout):
   # Set origin shift now
   tracking_data.set_origin_shift(origin_shift)
 
+  map_ncs_center=matrix.col(map_ncs_center)+matrix.col(origin_shift) # New center
+
+
+  # Get NCS operators if needed and user did not supply them
+  if params.crystal_info.ncs_type and (not params.input_files.ncs_file):
+    center_try_list=[True,False]
+  elif params.crystal_info.optimize_center:
+    center_try_list=[None]
+  else:
+    center_try_list=[]
+
+  for use_center_of_map in center_try_list: # only if ncs_file missing
+    new_ncs_obj=get_ncs_from_map(map_data=map_data,
+      map_ncs_center=map_ncs_center,
+      ncs_type=params.crystal_info.ncs_type,
+      ncs_center=params.crystal_info.ncs_center,
+      optimize_center=params.crystal_info.optimize_center,
+      helical_rot_deg=params.crystal_info.helical_rot_deg,
+      helical_trans_z_angstrom=params.crystal_info.helical_trans_z_angstrom,
+      n_rescore=params.crystal_info.n_rescore,
+      random_points=params.crystal_info.random_points,
+      op_max=params.crystal_info.op_max,
+      two_fold_along_x=params.crystal_info.two_fold_along_x,
+      crystal_symmetry=crystal_symmetry,
+      use_center_of_map_as_center=use_center_of_map, 
+      out=out
+      )
+    if new_ncs_obj: 
+      # offset this back to where it would have been before the origin offset..
+      new_ncs_obj=new_ncs_obj.coordinate_offset(
+       coordinate_offset=-1*matrix.col(origin_shift))
+      file_name=os.path.join(params.output_files.output_directory,
+          'ncs_from_map.ncs_spec')
+      f=open(file_name,'w')
+      new_ncs_obj.format_all_for_group_specification(out=f)
+      f.close()
+      print >>out,"Wrote NCS operators (for original map) to %s" %(file_name)
+      params.input_files.ncs_file=file_name
+      break # found it, no need to continue 
+
   # Set b_iso if needed
 
-  if params.crystal_info.b_iso is None and params.crystal_info.auto_sharpen\
-       and params.crystal_info.resolution:
+  if params.crystal_info.b_iso is None and \
+     params.crystal_info.use_target_b_ratio and params.crystal_info.resolution:
     params.crystal_info.b_iso=\
        params.crystal_info.target_b_ratio*params.crystal_info.resolution
-    print >>out,"\nCarrying out auto_sharpening. B_iso=%7.2f" %(
+    print >>out,"\nCarrying out sharpening with target B ratio. B_iso=%7.2f" %(
         params.crystal_info.b_iso)
 
   if params.crystal_info.b_iso is not None:
@@ -1261,7 +1908,7 @@ def get_params(args,out=sys.stdout):
        params.crystal_info.b_iso)
 
     map_data=sharpen_map(map_data=map_data,crystal_symmetry=crystal_symmetry,
-      d_min=params.crystal_info.resolution,
+      d_cut=params.crystal_info.resolution,
       d_min_ratio=params.crystal_info.d_min_ratio,
       k_sharpen=params.crystal_info.k_sharpen,
       b_iso=params.crystal_info.b_iso,out=out)
@@ -1278,6 +1925,7 @@ def get_params(args,out=sys.stdout):
     else:
       raise Sorry("Need a file name to write out sharpening_map_file")
     params.crystal_info.b_iso=None  # no longer need it.
+    params.crystal_info.auto_sharpen=None  # no longer need it.
 
   if params.segmentation.expand_size is None:
 
@@ -1371,6 +2019,9 @@ def score_threshold(b_vs_region=None,threshold=None,
      weight_score_ratio=1.0,
      weight_near_one=0.1,
      min_ratio_of_ncs_copy_to_first=None,
+     target_in_all_regions=None,
+     calculate_sa=False, # calculate surface area of top sa_percent of target
+     sa_percent=None, # calculate surface area of top sa_percent of target
      out=sys.stdout):
 
    # We want about 1 region per 50-100 residues for the biggest region.
@@ -1384,7 +2035,6 @@ def score_threshold(b_vs_region=None,threshold=None,
    # So using this, make the median size as close to target_in_top_regions as
    # we can.
 
-   target_in_all_regions=map_data.size()*fraction_occupied*(1-solvent_fraction)
    expected_regions=max(ncs_copies,
     max(1,int(0.5+n_residues/residues_per_region)))
 
@@ -1392,6 +2042,20 @@ def score_threshold(b_vs_region=None,threshold=None,
 
    nn=len(sorted_by_volume)-1 # first one is total
    ok=True
+
+   # Number of regions required to make up sa_fraction of target_in_top_regions
+   target_sum= sa_percent* target_in_all_regions*0.01
+   print >>out,"Points for %.1f percent of target in all regions: %.1f" %(
+       sa_percent,target_sum)
+   sum=0.
+   sum_n=0.
+   for v,i in sorted_by_volume[1:]:
+     sum+=v
+     sum_n+=1.
+     if sum >=target_sum:
+       break
+   sa_percent_n=sum_n*(target_sum/sum)  # number of regions to get to sa_percent
+   print >>out,"SA_n: %.1f  %s  %s   %s %s %s" %(sa_percent_n,sum_n,sum,target_sum,b_vs_region.b_iso,threshold)
 
    too_low=None  # marker for way too low
    too_high=None
@@ -1475,7 +2139,14 @@ def score_threshold(b_vs_region=None,threshold=None,
        b_vs_region.b_iso,threshold,target_in_top_regions,expected_regions,
        v1,median_number,ratio,has_sufficient_regions,overall_score,ok,nn)
 
-   b_vs_region.b_vs_region_dict[b_vs_region.b_iso]=nn
+   if not b_vs_region.b_iso in b_vs_region.b_vs_region_dict.keys():
+     b_vs_region.b_vs_region_dict[b_vs_region.b_iso]={}
+     b_vs_region.sa_sum_v_vs_region_dict[b_vs_region.b_iso]={}
+     b_vs_region.sa_nn_vs_region_dict[b_vs_region.b_iso]={}
+     b_vs_region.sa_ratio_b_vs_region_dict[b_vs_region.b_iso]={}
+   b_vs_region.b_vs_region_dict[b_vs_region.b_iso][threshold]=nn
+   b_vs_region.sa_nn_vs_region_dict[b_vs_region.b_iso][threshold]=None
+   b_vs_region.sa_ratio_b_vs_region_dict[b_vs_region.b_iso][threshold]=None
 
    return overall_score,has_sufficient_regions,\
       too_low,too_high,expected_regions,ok
@@ -1487,6 +2158,8 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
      n_residues=None,
      ncs_copies=None,
      scale=0.95,
+     calculate_sa=None, # calculate surface area of top sa_percent of target
+     sa_percent=None, # calculate surface area of top sa_fraction of target
      out=sys.stdout):
 
   best_threshold=None
@@ -1521,6 +2194,17 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
   else:
     from libtbx.utils import null_out
     local_out=null_out()
+
+  target_in_all_regions=map_data.size()*fraction_occupied*(1-solvent_fraction)
+  print >>local_out,"\nTarget number of points in all regions: %.0f" %(
+    target_in_all_regions)
+
+
+  local_threshold=find_threshold_in_map(target_points=int(
+       target_in_all_regions),map_data=map_data)
+  print >>out,"Cutoff will be threshold of %7.2f marking %7.1f%% of cell" %(
+            local_threshold,100.*(1.-solvent_fraction))
+
   print >>local_out,\
     "B-iso  Threshold  Target    N     Biggest   Median     Ratio   Enough  Score   OK  Regions"
   unique_expected_regions=None
@@ -1561,6 +2245,9 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
          ncs_copies=ncs_copies,
          n_residues=n_residues,
          map_data=map_data,
+         target_in_all_regions=target_in_all_regions,
+         calculate_sa=calculate_sa,
+         sa_percent=sa_percent,
          out=local_out)
       if expected_regions:
         unique_expected_regions=max(1,
@@ -1591,15 +2278,24 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
   else:
     return None,unique_expected_regions,None,None
 
+def get_co(map_data=None,threshold=None,params=None):
+  co=maptbx.connectivity(map_data=map_data,threshold=threshold,
+         wrapping=params.crystal_info.use_sg_symmetry)
+  z = zip(co.regions(),range(0,co.regions().size()))
+  sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  min_b, max_b = co.get_blobs_boundaries_tuples() # As grid points, not A
+  return co,sorted_by_volume,min_b,max_b
+
 def get_connectivity(params,b_vs_region=None,
      map_data=None,
      ncs_object=None,
      solvent_fraction=None,
      n_residues=None,
      ncs_copies=None,
+     calculate_sa=False, # calculate surface area of top sa_percent of target
+     sa_percent=30., # calculate surface area of top sa_fraction of target
      out=sys.stdout):
   print >>out,"\nGetting connectivity"
-
   # Normalize map data now to SD of the part that is not solvent
   map_data=renormalize_map_data(
      map_data=map_data,solvent_fraction=solvent_fraction)
@@ -1621,6 +2317,8 @@ def get_connectivity(params,b_vs_region=None,
      fraction_occupied=params.segmentation.fraction_occupied,
      solvent_fraction=solvent_fraction,
      scale=scale,
+     calculate_sa=calculate_sa,
+     sa_percent=sa_percent,
      out=out)
     # Take it if it improves (score, ok)
     if threshold is not None:
@@ -1647,12 +2345,9 @@ def get_connectivity(params,b_vs_region=None,
     params.segmentation.starting_density_threshold=best_threshold
     # try it next time
 
-  co = maptbx.connectivity(map_data=map_data,threshold=best_threshold,
-         wrapping=params.crystal_info.use_sg_symmetry)
-  z = zip(co.regions(),range(0,co.regions().size()))
-  sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  co,sorted_by_volume,min_b,max_b=get_co(params=params,
+    map_data=map_data,threshold=best_threshold)
 
-  min_b, max_b = co.get_blobs_boundaries_tuples() # As grid points, not A
 
   cntr=0
   v1=sorted_by_volume[1][0]
@@ -1671,6 +2366,42 @@ def get_connectivity(params,b_vs_region=None,
      min_b[i][2],max_b[i][2])
     """
     n_use=cntr
+
+  if calculate_sa: 
+    print >>out,"\nCalculating surface area..."
+  
+    # Number of regions required to make up sa_fraction of target_in_top_regions
+    target_in_all_regions=\
+     map_data.size()*params.segmentation.fraction_occupied*(1-solvent_fraction)
+
+    target_sum= sa_percent* target_in_all_regions*0.01
+    print >>out,"Points for %.1f percent of target in all regions: %.1f" %(
+        sa_percent,target_sum)
+
+    cntr=0
+    sum_v=0.
+    sum_new_v=0.
+    for p in sorted_by_volume[1:]:
+      cntr+=1
+      v,i=p
+      sum_v+=v
+      bool_expanded=co.expand_mask(id_to_expand=i,expand_size=1)
+      new_v=bool_expanded.count(True)-v
+      sum_new_v+=new_v
+      sa_ratio=new_v/v
+
+      if sum_v>=target_sum: break
+    sa_ratio=sum_new_v/max(1.,sum_v)
+    nn=cntr*(target_sum/sum_v)
+
+    b_vs_region.sa_sum_v_vs_region_dict[b_vs_region.b_iso][best_threshold]=sum_v
+    b_vs_region.sa_nn_vs_region_dict[b_vs_region.b_iso][best_threshold]=nn
+    b_vs_region.sa_ratio_b_vs_region_dict[b_vs_region.b_iso][best_threshold]=sa_ratio
+
+    # get the co over again to make it clean
+    co,sorted_by_volume,min_b,max_b=get_co(params=params,
+      map_data=map_data,threshold=best_threshold)
+
   return co,sorted_by_volume,min_b,max_b,best_unique_expected_regions,\
       best_score,threshold
 
@@ -3942,6 +4673,72 @@ def get_overall_mask(
       100.*overall_mask.count(True)/overall_mask.size())
   return overall_mask,max_in_map,sd_map
 
+def get_skew(data=None):
+  mean=data.min_max_mean().mean
+  sd=data.standard_deviation_of_the_sample()
+  x=data-mean
+  return (x**3).min_max_mean().mean/sd**3
+
+def get_kurtosis(data=None):
+  mean=data.min_max_mean().mean
+  sd=data.standard_deviation_of_the_sample()
+  x=data-mean
+  return (x**4).min_max_mean().mean/sd**4
+
+def score_map(map_data=None,
+        solvent_fraction=None,
+        fraction_occupied=None,
+        wrapping=None,
+        sa_percent=None,
+        region_weight=None,
+        max_regions_to_test=30, # may be helpful to avoid long times
+        out=sys.stdout):
+
+  map_data=renormalize_map_data(
+     map_data=map_data,solvent_fraction=solvent_fraction)
+
+  target_in_all_regions=map_data.size()*fraction_occupied*(1-solvent_fraction)
+  print >>out,"\nTarget number of points in all regions: %.0f" %(
+    target_in_all_regions)
+
+  threshold=find_threshold_in_map(target_points=int(
+       target_in_all_regions),map_data=map_data)
+
+  print >>out,"Cutoff will be threshold of %7.2f marking %7.1f%% of cell" %(
+            threshold,100.*(1.-solvent_fraction))
+  co = maptbx.connectivity(map_data=map_data.deep_copy(),
+         threshold=threshold,
+         wrapping=wrapping,)
+  z = zip(co.regions(),range(0,co.regions().size()))
+  sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  if len(sorted_by_volume)<2:
+    return # skip it, nothing to do
+
+  target_sum= sa_percent* target_in_all_regions*0.01
+  print >>out,"Points for %.1f percent of target in all regions: %.1f" %(
+      sa_percent,target_sum)
+
+  cntr=0
+  sum_v=0.
+  sum_new_v=0.
+  for p in sorted_by_volume[1:max_regions_to_test+2]:
+    cntr+=1
+    v,i=p
+    sum_v+=v
+    bool_expanded=co.expand_mask(id_to_expand=i,expand_size=1)
+    new_v=bool_expanded.count(True)-v
+    sum_new_v+=new_v
+    sa_ratio=new_v/v
+    if sum_v>=target_sum: break
+  sa_ratio=sum_new_v/max(1.,sum_v) # ratio of SA to volume
+  regions=len(sorted_by_volume[1:])
+  normalized_regions=regions/max(1,target_in_all_regions)
+  score=sa_ratio - region_weight*normalized_regions
+  skew=get_skew(map_data.as_1d())
+  kurtosis=get_kurtosis(map_data.as_1d())
+  return target_in_all_regions,regions,sa_ratio,score,skew,kurtosis
+
+
 def run_auto_sharpen(
       params=None,
       map_data=None,
@@ -3949,114 +4746,55 @@ def run_auto_sharpen(
       tracking_data=None,
       out=sys.stdout):
 
-    map_data=renormalize_map_data(
-       map_data=map_data,solvent_fraction=tracking_data.solvent_fraction)
-
-    f_array,phases=get_f_phases_from_map(map_data=map_data.deep_copy(),
-         d_min_ratio=params.crystal_info.d_min_ratio,
-         d_min=params.crystal_info.resolution,
-         crystal_symmetry=tracking_data.crystal_symmetry,out=out)
-
-    # If we use very high-res data the b_iso will be way off, so use to d_min
-
-    res_cut_array=f_array.resolution_filter(d_max=None,
-      d_min=tracking_data.params.crystal_info.resolution)
-    original_b_iso=get_b_iso(res_cut_array)
-    print >>out,"\nOriginal b_iso: %7.2f " %(original_b_iso)
-
-    # Now determine regions vs sharpening...
-
-    search_b_min=params.crystal_info.search_b_min
-    if search_b_min is None:
-      search_b_min=min(-20,-0.25*abs(original_b_iso))
-
-    search_b_max=params.crystal_info.search_b_max
-    if search_b_max is None:
-      search_b_max=max(abs(original_b_iso)+40,1.5*abs(original_b_iso))
-
-    search_b_n=params.crystal_info.search_b_n
-    if search_b_n is None:
-      search_b_n=15
-
-    delta_b=(search_b_max-search_b_min)/max(1,search_b_n-1)
-    fixed_threshold=None
-    b_vs_region=b_vs_region_info()
-    for i_b in xrange(search_b_n):
-      b_iso=i_b*delta_b+search_b_min
-      delta_b_iso=b_iso-original_b_iso
-      print >>out,"Testing segmentation with B_iso = %7.2f " %(b_iso)
-
-      sharpened_map_data=apply_sharpening(n_real=map_data.all(),
-        b_sharpen=-delta_b_iso,
-        crystal_symmetry=tracking_data.crystal_symmetry,
-        f_array=f_array,phases=phases,
-        d_min=tracking_data.params.crystal_info.resolution,
-        k_sharpen=tracking_data.params.crystal_info.k_sharpen,
-        out=out)
-
-      b_vs_region.b_iso=b_iso
-      if fixed_threshold is not None:
-        local_params=deepcopy(params)
-        local_params.segmentation.density_select_threshold=fixed_threshold
-      else:
-        local_params=params # usual
-      co,sorted_by_volume,min_b,max_b,unique_expected_regions,best_score,\
-        new_threshold=\
-       get_connectivity(
-         local_params,
-         b_vs_region=b_vs_region,
-         map_data=sharpened_map_data,
-         ncs_object=ncs_obj,
-       n_residues=tracking_data.n_residues,
-       ncs_copies=tracking_data.input_ncs_info.number_of_operators,
-       solvent_fraction=tracking_data.solvent_fraction,
+  map_coeffs=get_f_phases_from_map(map_data=map_data,
+       crystal_symmetry=tracking_data.crystal_symmetry,
+       d_min=tracking_data.params.crystal_info.resolution,
+       d_min_ratio=tracking_data.params.crystal_info.d_min_ratio,
+       return_as_map_coeffs=True,
        out=out)
 
-      nn=b_vs_region.b_vs_region_dict.get(b_iso)
-      if nn is not None:
-        print >>out,"Segmentation with B_iso = %7.2f gives %s regions" %(
-          b_iso,nn)
-      if new_threshold:
-        print >>out,"\nNew threshold is %7.2f" %(new_threshold)
-        if 0 and fixed_threshold is None: fixed_threshold=new_threshold # XXX
+  f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+  res_cut_array=f_array.resolution_filter(d_max=None, 
+     d_min=tracking_data.params.crystal_info.resolution)
+  original_b_iso=get_b_iso(res_cut_array)
+  print >>out,"\nEffecive B-iso before sharpening %7.2f" %(original_b_iso)
 
-    from scitbx.math.breakpoint import find_breakpoint
-    target_b_iso=find_breakpoint(value_dict=b_vs_region.b_vs_region_dict,
-       out=out)
 
-    if target_b_iso is not None:
-      print >>out,"Original B-iso: %7.2f Target B-iso: %7.2f  D-min: %7.2f" %(
-         original_b_iso,target_b_iso,
-         tracking_data.params.crystal_info.resolution)
-      b_sharpen=original_b_iso-target_b_iso
-      print >>out,"\nApplying sharpening with b_sharpen=%7.2f" %(b_sharpen)
-      map_data=apply_sharpening(n_real=map_data.all(),
-        b_sharpen=b_sharpen,
-        crystal_symmetry=tracking_data.crystal_symmetry,
-        f_array=f_array,phases=phases,
-        d_min=tracking_data.params.crystal_info.resolution,
-        k_sharpen=tracking_data.params.crystal_info.k_sharpen,
-        out=out)
-      # And set shifted_map_info if map_data is new
-      shifted_sharpened_map_file=os.path.join(
+  from cctbx.maptbx.refine_sharpening import run as refine_sharpening
+
+  new_map_coeffs=refine_sharpening(map_coeffs,
+      d_cut=tracking_data.params.crystal_info.resolution,out=out)
+  if new_map_coeffs:  # we improved them..
+
+    f_array,phases=map_coeffs_as_fp_phi(new_map_coeffs)
+    res_cut_array=f_array.resolution_filter(d_max=None, 
+       d_min=tracking_data.params.crystal_info.resolution)
+    final_b_iso=get_b_iso(res_cut_array)
+    print >>out,"\nEffective B-iso after sharpening %7.2f" %(final_b_iso)
+
+    new_map_data=get_map_from_map_coeffs(map_coeffs=new_map_coeffs,
+      crystal_symmetry=tracking_data.crystal_symmetry,n_real=map_data.all())
+
+    # And set shifted_map_info if map_data is new
+    shifted_sharpened_map_file=os.path.join(
           tracking_data.params.output_files.output_directory,
           params.output_files.shifted_sharpened_map_file)
-      if shifted_sharpened_map_file:
-        write_ccp4_map(tracking_data.crystal_symmetry,
-          shifted_sharpened_map_file,map_data)
-        print >>out,"Wrote shifted, sharpened map to %s" %(
+    if shifted_sharpened_map_file:
+      write_ccp4_map(tracking_data.crystal_symmetry,
+          shifted_sharpened_map_file,new_map_data)
+      print >>out,"Wrote shifted, sharpened map to %s" %(
           shifted_sharpened_map_file)
-        tracking_data.set_shifted_map_info(file_name=
+      tracking_data.set_shifted_map_info(file_name=
           shifted_sharpened_map_file,
           crystal_symmetry=tracking_data.crystal_symmetry,
-          origin=map_data.origin(),
-          all=map_data.all(),
-          b_sharpen=b_sharpen)
+          origin=new_map_data.origin(),
+          all=new_map_data.all(),
+          b_sharpen=None)
+  else:
+    print >>out,"No sharpening identified...leaving map as is"
+    new_map_data=map_data
 
-    else:
-      print >>out,"No B-iso identified...leaving map as is"
-
-    return map_data,tracking_data
+  return new_map_data,tracking_data
 
 def get_one_au(tracking_data=None,
     sites_cart=None,
@@ -4156,7 +4894,7 @@ def run(args,
     print >>out,"\nIteration tracking data:"
     tracking_data.show_summary(out=out)
   else:
-    # get the parameters
+    # get the parameters and map_data (magnified, shifted...)
     params,map_data,pdb_hierarchy,tracking_data=get_params(args,out=out)
 
     if params.input_files.pdb_to_restore:
@@ -4205,7 +4943,6 @@ def run(args,
     tracking_data=get_solvent_fraction(params,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
 
-    """ No longer doing it here
     if params.crystal_info.auto_sharpen and params.crystal_info.b_iso is None:
       print >>out,"\nCarrying out auto_sharpening"
       map_data,tracking_data=run_auto_sharpen(
@@ -4215,7 +4952,6 @@ def run(args,
         tracking_data=tracking_data,
         out=out)
       params.crystal_info.auto_sharpen=None # so we don't do it again later
-    """
 
     tracking_data.show_summary(out=out)
 

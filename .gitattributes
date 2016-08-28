@@ -203,6 +203,7 @@ cctbx/maptbx/real_space_gradients_simple.h svneol=native#text/plain
 cctbx/maptbx/real_space_refinement_simple.py svneol=native#text/x-python
 cctbx/maptbx/real_space_target_and_gradients.h -text
 cctbx/maptbx/real_space_target_and_gradients.py -text
+cctbx/maptbx/refine_sharpening.py -text
 cctbx/maptbx/segment_and_split_map.py -text
 cctbx/maptbx/skeletons.cpp svneol=native#text/plain
 cctbx/maptbx/skeletons.h svneol=native#text/plain
