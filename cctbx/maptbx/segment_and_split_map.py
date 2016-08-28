@@ -303,12 +303,12 @@ master_phil = iotbx.phil.parse("""
      search_b_min = -100
        .type = float
        .short_caption = Low bound for b_iso search
-       .help = Low bound for b_iso search. 
+       .help = Low bound for b_iso search.
 
      search_b_max = 300
        .type = float
        .short_caption = High bound for b_iso search
-       .help = High bound for b_iso search. 
+       .help = High bound for b_iso search.
 
      search_b_n = 21
        .type = int
@@ -327,7 +327,7 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Residual target
        .help = Target for maximization steps in sharpening.  \
           Can be kurtosis or adjusted_sa (adjusted surface area)
-       
+
      sharpening_target = 'adjusted_sa'
        .type = str
        .short_caption = Overall sharpening target
@@ -335,7 +335,7 @@ master_phil = iotbx.phil.parse("""
           (adjusted surface area).  Used to decide which sharpening approach \
           is used. Note that during optimization, residual_type is used \
           (they can be the same.)
-       
+
      region_weight = 20
        .type = float
        .short_caption = Region weighting
@@ -345,7 +345,7 @@ master_phil = iotbx.phil.parse("""
 
      sa_percent = 30.
        .type = float
-       .short_caption = Percent of target regions in adjusted_sa 
+       .short_caption = Percent of target regions in adjusted_sa
        .help = Percent of target regions used in calulation of adjusted \
          surface area.  Default is 30.
 
@@ -4845,8 +4845,8 @@ def run_auto_sharpen(
   best_map_data=None
 
   print >>out,"\nTesting sharpening methods with target of %s" %(
-      tracking_data.params.crystal_info.sharpening_target) 
-  
+      tracking_data.params.crystal_info.sharpening_target)
+
   for m in tracking_data.params.crystal_info.auto_sharpen_methods:
     if m in ['no_sharpening','resolution_dependent']:
       b_min=original_b_iso
@@ -4887,7 +4887,7 @@ def run_auto_sharpen(
           tracking_data=tracking_data,out=out)
         b_sharpen=0.
         b_iso=original_b_iso-b_sharpen
-      else: 
+      else:
         b_iso=b_min+i*delta_b
         b_sharpen=original_b_iso-b_iso
         local_f_array=f_array
@@ -4911,7 +4911,7 @@ def run_auto_sharpen(
       if tracking_data.params.crystal_info.sharpening_target=='kurtosis':
         score=kurtosis
       else:
-        score=adjusted_sa 
+        score=adjusted_sa
       if local_best_score is None or score>local_best_score:
         local_best_kurtosis=kurtosis
         local_best_adjusted_sa=adjusted_sa
@@ -4923,7 +4923,7 @@ def run_auto_sharpen(
     print >>out,"\nBest scores for sharpening with "+\
        "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
        original_b_iso-local_best_b_sharpen,local_best_b_sharpen,
-      local_best_k_sharpen) 
+      local_best_k_sharpen)
 
     print >>out,\
       "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
