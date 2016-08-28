@@ -2457,7 +2457,7 @@ def get_solvent_fraction(params,
   volume_of_molecules=volume_of_chains*ncs_copies
   n_residues_times_ncs=n_residues*ncs_copies
   solvent_fraction=1.-(volume_of_molecules/map_volume)
-  solvent_fraction=max(0.001,solvent_fraction)
+  solvent_fraction=max(0.001,min(0.999,solvent_fraction))
   print >>out, \
     "Cell volume: %.1f  NCS copies: %d   Volume of unique chains: %.1f" %(
      map_volume,ncs_copies,volume_of_chains)
@@ -4121,7 +4121,8 @@ def iterate_search(params,
 
   fraction=0.2
   new_n_residues=int(tracking_data.n_residues*fraction)
-  new_solvent_fraction=1- (1-tracking_data.solvent_fraction)*fraction
+  new_solvent_fraction=max(0.001,min(0.999,
+      1- (1-tracking_data.solvent_fraction)*fraction))
 
   new_tracking_data=deepcopy(tracking_data)
   new_tracking_data.set_n_residues(new_n_residues)
@@ -5012,7 +5013,8 @@ def run(args,
       tracking_data.set_ncs_obj(ncs_obj=None)
       tracking_data.update_ncs_info(number_of_operators=1)
       n_residues=n_residues/ncs_copies
-      solvent_fraction=1-((1-solvent_fraction)/ncs_copies)
+      solvent_fraction=max(0.001,min(0.999,
+       1-((1-solvent_fraction)/ncs_copies)))
       ncs_copies=1
       params.segmentation.require_complete=False
       params.segmentation.iterate_with_remainder=False # so we do not iterate
