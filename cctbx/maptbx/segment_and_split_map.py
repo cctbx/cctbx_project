@@ -4838,7 +4838,6 @@ def run_auto_sharpen(
   print >>out,"\nEffecive B-iso before sharpening %7.2f" %(original_b_iso)
 
   # Try various methods for sharpening.
-  from cctbx.maptbx.refine_sharpening import get_sharpened_map as linear_sharpen
 
   best_score=None
   best_method=None
