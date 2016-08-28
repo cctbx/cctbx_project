@@ -142,6 +142,89 @@ def offset_inside_cell(center,unit_cell,orthogonalize=True):
     else:
       return matrix.col(offset_frac)
 
+def get_ncs_from_text(text=None,rotate_about_z=None,out=sys.stdout):
+  from mmtbx.ncs.ncs import ncs
+  import iotbx.pdb
+  ncs_object=ncs()
+  from cctbx.array_family import flex
+  pdb_inp=iotbx.pdb.input(lines=flex.split_lines(text),source_info='string')
+  ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
+  if rotate_about_z:
+    ncs_object.rotate_about_z(rot_deg=rotate_about_z,invert_matrices=True)
+  return ncs_object
+
+
+def get_helical_symmetry(helical_rot_deg=None,
+     helical_trans_z_angstrom=None):
+
+  from scitbx import matrix
+  rot=get_rot_z(rot_deg=helical_rot_deg)
+  rot_inv=rot.inverse()
+  trans_along_z=matrix.col((0,0,helical_trans_z_angstrom))
+
+  n=max(2,int(360/helical_rot_deg))
+  rots=[]
+  trans=[]
+  rots.append(matrix.sqr((1,0,0,0,1,0,0,0,1),))
+  trans.append(matrix.col((0,0,0,)))
+
+  for i in xrange(n):
+    rots=[rot*rots[0]]+rots[:]
+    trans=[trans[0]-trans_along_z]+trans[:]
+
+  for i in xrange(n):
+    rots.append(rot_inv*rots[-1])
+    trans.append(trans[-1]+trans_along_z)
+
+  from mmtbx.ncs.ncs import ncs
+  ncs_object=ncs()
+  ncs_object.ncs_from_import(rot_list=rots,trans_list=trans)
+  return ncs_object
+
+def get_d_symmetry(n=None,two_fold_along_x=True):
+  return get_c_symmetry(n=n,is_d=True,two_fold_along_x=two_fold_along_x)
+
+def get_rot_z(rot_deg=None):
+  import math
+  theta=rot_deg*3.14159/180.
+  cc=math.cos(theta)
+  ss=math.sin(theta)
+  from scitbx import matrix
+  return matrix.sqr((cc,ss,0,-ss,cc,0,0,0,1,))
+  
+def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None):
+  # generate n-fold C symmetry
+  oper=get_rot_z(rot_deg=360./n)
+  oper_inv=oper.inverse()
+  rots=[]
+  trans=[]
+  from scitbx import matrix
+  rots.append(matrix.sqr((1,0,0,0,1,0,0,0,1),))
+  trans.append(matrix.col((0,0,0,)))
+
+  for i in xrange(n-1):
+    rots.append(oper_inv*rots[-1])
+    trans.append(matrix.col((0,0,0,)))
+
+  if is_d:
+    if two_fold_along_x:
+      d_oper=matrix.sqr((1,0,0,0,-1,0,0,0,-1,))
+    else: # along y
+      d_oper=matrix.sqr((-1,0,0,0,1,0,0,0,-1,))
+    new_rots=[]
+    new_trans=[]
+    for r,t in zip(rots,trans):
+      new_rots.append(d_oper*r)
+      new_trans.append(t)
+    rots+=new_rots
+    trans+=new_trans
+
+  from mmtbx.ncs.ncs import ncs
+
+  ncs_object=ncs()
+  ncs_object.ncs_from_import(rot_list=rots,trans_list=trans)
+  return ncs_object
+
 class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
       chain_residue_id=None,source_of_ncs_info=None,rmsd_list=None,
@@ -677,6 +760,28 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._rota_matrices=deepcopy(self._rota_matrices_inv)
     self.get_inverses()
 
+  def rotate_matrices(self,rot=None):
+    from copy import deepcopy
+    translations_orth_rot=deepcopy(self._translations_orth)
+    rota_matrices_rot=deepcopy(self._rota_matrices)
+
+    self._translations_orth=[]
+    self._rota_matrices=[]
+
+    # create r_rot, t_rot such that r_rot x + t_rot is the same as
+    #       rot * ( r [rot_inv x ] + t) : rotate x to orig, apply, r t, rotate back
+    # r_rot(x)+t_rot ==  rot * ( r [rot_inv x ] + t)
+    #  So:  t_rot=rot t  
+    #       r_rot=rot r rot_inv
+
+    rot_inv=rot.inverse()
+    for r,t in zip(rota_matrices_rot,translations_orth_rot):
+      r_rot=rot *(r*rot_inv)
+      t_rot=rot*t
+      self._rota_matrices.append(r_rot)
+      self._translations_orth.append(t_rot)
+    self.get_inverses()
+
   def get_inverses(self):
     self._translations_orth_inv=[]
     self._rota_matrices_inv=[]
@@ -807,7 +912,6 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
     # For helical symmetry sequential application of operators moves up or
     #  down the list by an index depending on the indices of the operators.
-
     if self.is_point_group_symmetry(tol_r=tol_r,
             abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
       return False
@@ -1170,6 +1274,13 @@ class ncs:
     else:
       return None
 
+  def rotate_about_z(self,rot_deg=None,invert_matrices=True):
+    # Rotate all the ops by rot_deg about z
+    if invert_matrices:
+      rot_deg=-rot_deg
+    oper=get_rot_z(rot_deg=rot_deg)
+    self.rotate_matrices(rot=oper)
+
   def ncs_from_pdb_input_BIOMT(self,pdb_inp=None,log=None,quiet=False,
      invert_matrices=True):
     p=pdb_inp.process_BIOMT_records()
@@ -1177,9 +1288,13 @@ class ncs:
       print >>log, "No BIOMT records available"
       return
 
+    self.ncs_from_import(rot_list=p.r,trans_list=p.t,invert_matrices=invert_matrices)
+
+  def ncs_from_import(self,rot_list=None,trans_list=None,invert_matrices=True):
+
     self.init_ncs_group()
 
-    for r,t in zip(p.r,p.t):
+    for r,t in zip(rot_list,trans_list):
       self._rota_matrix=r.as_list_of_lists()
       self._trans=list(t)
       self._center=[0.,0.,0.]
@@ -1630,6 +1745,12 @@ class ncs:
     for ncs_group in self._ncs_groups:
       ncs_group.adjust_magnification(magnification=magnification)
     return self
+
+  def rotate_matrices(self,rot=None):
+    if not self._ncs_groups:
+      return
+    for ncs_group in self._ncs_groups:
+      ncs_group.rotate_matrices(rot=rot)
 
   def invert_matrices(self):
     if not self._ncs_groups:
