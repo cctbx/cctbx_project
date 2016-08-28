@@ -191,7 +191,7 @@ def get_rot_z(rot_deg=None):
   ss=math.sin(theta)
   from scitbx import matrix
   return matrix.sqr((cc,ss,0,-ss,cc,0,0,0,1,))
-  
+
 def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None):
   # generate n-fold C symmetry
   oper=get_rot_z(rot_deg=360./n)
@@ -771,7 +771,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # create r_rot, t_rot such that r_rot x + t_rot is the same as
     #       rot * ( r [rot_inv x ] + t) : rotate x to orig, apply, r t, rotate back
     # r_rot(x)+t_rot ==  rot * ( r [rot_inv x ] + t)
-    #  So:  t_rot=rot t  
+    #  So:  t_rot=rot t
     #       r_rot=rot r rot_inv
 
     rot_inv=rot.inverse()
