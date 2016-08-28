@@ -370,6 +370,7 @@ def run(map_coeffs=None,
     solvent_fraction=solvent_fraction,
     region_weight=region_weight,
     sa_percent=sa_percent,
+    max_regions_to_test=max_regions_to_test,
     fraction_occupied=fraction_occupied,
     use_sg_symmetry=use_sg_symmetry,
     eps=eps)

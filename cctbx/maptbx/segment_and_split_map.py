@@ -4762,7 +4762,7 @@ def score_map(map_data=None,
         wrapping=None,
         sa_percent=None,
         region_weight=None,
-        max_regions_to_test=30, # may be helpful to avoid long times
+        max_regions_to_test=None,
         out=sys.stdout):
 
   if tracking_data:
