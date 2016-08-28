@@ -7,7 +7,6 @@ from copy import deepcopy
 
 from cctbx.array_family import flex
 import scitbx.lbfgs
-import libtbx.utils
 
 def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")
