@@ -332,7 +332,8 @@ def set_xyz_smart(dest_h, source_h):
       dest_h.atoms().set_xyz(source_h.atoms().extract_xyz())
       # print "SHORTCUT DONE"
       return
-  if dest_h.atoms_size() >= source_h.atoms_size():
+  if dest_h.atoms_size() > source_h.atoms_size():
+    print "Atom sizes:", dest_h.atoms_size(), source_h.atoms_size()
     dest_h.write_pdb_file("dest_h.pdb")
     source_h.write_pdb_file("source_h.pdb")
     assert 0
