@@ -173,7 +173,8 @@ class table (slots_getstate_setstate) :
       row = []
       for column in self.columns :
         row.append(column.format_stat(stat_name))
-      if (row == [ None for x in range(len(row)) ]) :
+      if ( (row == [ None for x in range(len(row)) ]) or
+           (row is None) ):
         continue
       row.insert(0, label)
       rows.append(row)
