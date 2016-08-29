@@ -26,6 +26,10 @@ phil_scope = parse("""
     .type = bool
     .help = If true, allow root hierarchy level to refine in Z. Otherwise fix this \
             axis. Regardless, higher hierarchy levels will refine in Z.
+  refine_energy = False
+    .type = bool
+    .help = If true, when refining level 0, also refine beam energy. Subsequent hierarchy \
+            levels will fix the energy in place.
   n_subset = None
     .type = int
     .help = Refine a random subset of the provided files
@@ -55,8 +59,6 @@ phil_scope = parse("""
             refinement.  n_refl chooses the set with the largest numbers of reflections \
             listed in the pickle files, thus giving maximal coverage of the detector tiles \
             with the fewest refineable parameters.
-  doit = False
-    .type = bool
 """, process_includes=True)
 
 refine_defaults_scope = parse("""
@@ -228,6 +230,8 @@ def write_combine_phil(params, all_exp, all_ref):
 def refine(params, merged_scope, combine_phil):
   print "Combining experiments..."
   command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.pickle %s"%(params.tag, params.tag, combine_phil)
+  if params.refine_energy:
+    command += " reference_from_experiment.beam=0"
   print command
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
@@ -260,6 +264,8 @@ def refine(params, merged_scope, combine_phil):
         diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
       else:
         diff_phil = "refinement.parameterisation.detector.fix_list=Dist1,Tau1\n" # fix detector rotz, distance
+      if params.refine_energy:
+        diff_phil += "refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
     else:
       diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
 
