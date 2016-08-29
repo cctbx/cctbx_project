@@ -19,6 +19,8 @@ from mmtbx.command_line.geometry_minimization import get_geometry_restraints_man
 from mmtbx.model_statistics import geometry_no_grm
 from time import time
 import datetime
+from libtbx.utils import multi_out
+from cctbx import maptbx, miller
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -41,6 +43,8 @@ use_starting_model_for_final_gm = False
     use self.
 output_prefix = None
   .type = str
+use_map_for_reference = False
+  .type = bool
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -149,6 +153,18 @@ class model_idealization():
         molprobity_scores=True)
     self.time_for_init = time()-t_0
 
+  def prepare_reference_map(self, xrs):
+    crystal_gridding = maptbx.crystal_gridding(
+        unit_cell        = xrs.unit_cell(),
+        space_group_info = xrs.space_group_info(),
+        symmetry_flags   = maptbx.use_space_group_symmetry,
+        d_min             = 5)
+    fc = xrs.structure_factors(d_min = 5., algorithm = "direct").f_calc()
+    fft_map = miller.fft_map(
+        crystal_gridding=crystal_gridding,
+        fourier_coefficients=fc)
+    self.reference_map = fft_map.real_map_unpadded(in_place=False)
+    # self.reference_map.as_xplor_map(file_name="unit_cell.xplor")
 
   def run(self):
     t_0 = time()
@@ -186,6 +202,8 @@ class model_idealization():
         pdb_hierarchy=self.pdb_h)
 
     xrs = (master_pdb_h if master_pdb_h is not None else self.pdb_h).extract_xray_structure(crystal_symmetry=self.cs)
+    if self.params.use_map_for_reference:
+      self.prepare_reference_map(xrs=xrs)
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
     self.original_ann = None
@@ -446,7 +464,8 @@ class model_idealization():
 
 def run(args):
   # processing command-line stuff, out of the object
-  log = sys.stdout
+  log = multi_out()
+  log.register("stdout", sys.stdout)
   if len(args) == 0:
     format_usage_message(log)
     return
@@ -461,8 +480,11 @@ def run(args):
     raise Sorry("No PDB file specified")
   if work_params.output_prefix is None:
     work_params.output_prefix = os.path.basename(pdb_file_names[0])
+  log_file_name = "%s.log" % work_params.output_prefix
+  logfile = open(log_file_name, "w")
+  log.register("logfile", logfile)
   if work_params.loop_idealization.output_prefix is None:
-    work_params.loop_idealization.output_prefix = "%s_rama_fixed" % os.path.basename(pdb_file_names[0])
+    work_params.loop_idealization.output_prefix = "%s_rama_fixed" % work_params.output_prefix
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
@@ -470,7 +492,7 @@ def run(args):
       pdb_input=pdb_input,
       cif_objects=inputs.cif_objects,
       params=work_params,
-      log=sys.stdout,
+      log=log,
       verbose=True)
   mi_object.run()
   mi_object.print_stat_comparison()
@@ -479,6 +501,7 @@ def run(args):
   mi_object.print_runtime()
   # add hydrogens if needed ?
   print >> log, "All done."
+  log.close()
 
 if __name__ == "__main__":
   run(sys.argv[1:])
