@@ -27,7 +27,7 @@ Examples
 # where only an MTZ file will do, so it requires some extra code to work
 # around the automatic behavior
 
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, to_str
 import cPickle
 import os
 import re
@@ -441,7 +441,7 @@ class any_file_input (object) :
 
   def _try_as_txt (self) :
     file_as_string = open(self.file_name).read()
-    file_as_ascii = file_as_string.decode("ascii")
+    file_as_ascii = to_str(file_as_string)
     self._file_type = "txt"
     self._file_object = file_as_string
 

@@ -12,7 +12,7 @@ import wxtbx.tables
 import wxtbx.plots
 import mmtbx.scaling
 import wx.lib.scrolledpanel
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, to_unicode
 from libtbx import easy_pickle, easy_run
 import wx
 import os.path
@@ -85,7 +85,7 @@ class wx_output_base (mmtbx.scaling.xtriage_output) :
     for block in blocks :
       block = " ".join([ l.strip() for l in block.splitlines() ]).strip()
       wxtxt = wx.StaticText(parent=self._current_panel,
-        label=block)
+                            label=to_unicode(block))
       wxtxt.Wrap(TEXT_WIDTH)
       self._current_sizer.Add(wxtxt, 0, wx.ALL, 5)
 
