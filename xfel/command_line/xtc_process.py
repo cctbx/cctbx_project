@@ -308,10 +308,6 @@ class InMemScript(DialsProcessScript):
     params, options = self.parser.parse_args(
       show_diff_phil=True)
 
-    # Configure the logging
-    from dials.util import log
-    log.config(params.verbosity)
-
     # Check inputs
     if params.input.experiment is None or \
        params.input.run_num is None or \
@@ -370,7 +366,11 @@ class InMemScript(DialsProcessScript):
       rank = 0
       size = 1
 
-    if params.output.logging_dir is not None:
+    # Configure the logging
+    if params.output.logging_dir is None:
+      info_path = ''
+      debug_path = ''
+    else:
       log_path = os.path.join(params.output.logging_dir, "log_rank%04d.out"%rank)
       error_path = os.path.join(params.output.logging_dir, "error_rank%04d.out"%rank)
       print "Redirecting stdout to %s"%log_path
@@ -378,6 +378,12 @@ class InMemScript(DialsProcessScript):
       sys.stdout = open(log_path,'a', buffering=0)
       sys.stderr = open(error_path,'a',buffering=0)
       print "Should be redirected now"
+
+      info_path = os.path.join(params.output.logging_dir, "info_rank%04d.out"%rank)
+      debug_path = os.path.join(params.output.logging_dir, "debug_rank%04d.out"%rank)
+
+    from dials.util import log
+    log.config(params.verbosity, info=info_path, debug=debug_path)
 
     debug_dir = os.path.join(params.output.output_dir, "debug")
     if not os.path.exists(debug_dir):
