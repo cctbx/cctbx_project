@@ -279,6 +279,8 @@ class InMemScript(DialsProcessScript):
     self.debug_str = None
     self.mpi_log_file_path = None
 
+    self.reference_detector = None
+
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
     self.debug_str += ",%s,%s,%s\n"
@@ -327,6 +329,9 @@ class InMemScript(DialsProcessScript):
 
     if not os.path.exists(params.output.output_dir):
       raise Sorry("Output path not found:" + params.output.output_dir)
+
+    self.params = params
+    self.load_reference_geometry()
 
     # The convention is to put %s in the phil parameter to add a time stamp to
     # each output datafile. Save the initial templates here.
@@ -615,6 +620,12 @@ class InMemScript(DialsProcessScript):
     if self.params.format.file_format == 'cbf':
       # stitch together the header, data and metadata into the final dxtbx format object
       cspad_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
+
+      if self.params.input.reference_geometry is not None:
+        from dxtbx.model import Detector
+        # copy.deep_copy(self.reference_detctor) seems unsafe based on tests. Use from_dict(to_dict()) instead.
+        cspad_img._detector_instance = Detector.from_dict(self.reference_detector.to_dict())
+        cspad_img.sync_detector_to_cbf()
 
     elif self.params.format.file_format == 'pickle':
       from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory

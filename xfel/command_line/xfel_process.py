@@ -54,17 +54,19 @@ control_phil_str = '''
   }
 '''
 
-from dials.command_line.stills_process import Processor, dials_phil_str
+from dials.command_line.stills_process import Processor, dials_phil_str, Script as DialsScript
 
 phil_scope = parse(control_phil_str + dials_phil_str, process_includes=True)
 
-class Script(Processor):
+class Script(DialsScript, Processor):
   '''A class for running the script.'''
 
   def __init__(self):
     '''Initialise the script.'''
     from dials.util.options import OptionParser
     import libtbx.load_env
+
+    self.reference_detector = None
 
     # The script usage
     usage = "usage: %s [options] [param.phil] datablock.json" % libtbx.env.dispatcher_name
@@ -107,6 +109,7 @@ class Script(Processor):
     # Save the options
     self.options = options
     self.params = params
+    self.load_reference_geometry()
 
     st = time()
 
@@ -116,6 +119,10 @@ class Script(Processor):
     elif len(datablocks) > 1:
       raise Abort('Only 1 datablock can be processed at a time.')
     datablock = datablocks[0]
+
+    if self.reference_detector is not None:
+      for imageset in datablock.extract_imagesets():
+        imageset.set_detector(self.reference_detector)
 
     # Configure logging
     log.config(
@@ -139,9 +146,6 @@ class Script(Processor):
     experiments, indexed = self.index(datablock, observed)
     experiments = self.refine(experiments, indexed)
     integrated = self.integrate(experiments, indexed)
-
-    if self.params.experiment_tag is not None:
-      self.log_frame(experiments, integrated)
 
     # Total Time
     info("")
