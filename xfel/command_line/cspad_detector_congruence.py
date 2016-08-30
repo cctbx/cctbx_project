@@ -545,7 +545,7 @@ class Script(object):
     table_d = {d:row for d, row in zip(pg_bc_dists, congruence_table_data)}
     table_header = ["PanelG","Dist","Normal","RNormal","TNormal","Z rot","Delta","Delta","Delta","N"]
     table_header2 = ["Id","","Angle","Angle","Angle","Angle","F","S","Z","Refls"]
-    table_header3 = ["", "(mm)","(mm)","(deg)","(deg)","(microns)","(microns)",""]
+    table_header3 = ["", "(mm)","(mm)","(deg)","(deg)","(microns)","(microns)","(microns)","(microns)",""]
     congruence_table_data = [table_header, table_header2, table_header3]
     congruence_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -713,7 +713,7 @@ class Script(object):
         angles.append(crystal.get_unit_cell().parameters()[3:6])
         weights.append(len(refls.select(refls['id'] == crystal_id)))
 
-    print "Unit cell stats, weighted means and standard deviations"
+    print "Unit cell stats (angstroms and degrees), weighted means and standard deviations"
     for subset, tags in zip([lengths, angles], [["Cell a", "Cell b", "Cell c"],["Cell alpha", "Cell beta", "Cell gamma"]]):
       for data, tag in zip(subset.parts(), tags):
         stats = flex.mean_and_variance(data, weights)
