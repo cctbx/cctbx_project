@@ -594,6 +594,7 @@ dxtbx/format/FormatSMVRigakuSaturn.py -text
 dxtbx/format/FormatSMVRigakuSaturnNoTS.py -text
 dxtbx/format/FormatSMVRigakuSaturnSN07400090.py -text
 dxtbx/format/FormatSMVRigakuSaturnSN09040159.py -text
+dxtbx/format/FormatSMVRigakuSaturnSN11480296.py -text
 dxtbx/format/FormatStill.py -text
 dxtbx/format/FormatTIFF.py -text
 dxtbx/format/FormatTIFFHelpers.py -text
