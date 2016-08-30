@@ -13,18 +13,6 @@ def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset.add_miller_array(miller_array=phases,column_types="P", column_root_label="PHWT")
   mtz_dataset.mtz_object().write(file_name=file_name)
 
-def get_means(d_min,d_max,ma,n_bins):
-  ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
-  binner=ma.binner()
-  mean_f=[]
-  bin_d_min=[]
-  for bin in list(binner.range_used()):
-    bin_d_min.append(binner.bin_d_min(bin))
-    sele=ma.binner().selection(bin)
-    mean_f.append(ma.select(sele).data().min_max_mean().mean)
-  return mean_f,bin_d_min
-
-
 # XXX copied these from cctbx.miller; made small change to catch weird case
 #  where normalizations are negative.  Just multiply these *-1 and it seems to
 #  close to what we want. Figure this out later...
@@ -109,9 +97,6 @@ def get_amplitudes(args):
   labels=None
 
   array_list=[]
-  d_min=None
-  d_max=None
-  b_iso=None
 
   array_list.append(get_array(file_name=file_name,labels=labels))
   array=array_list[-1]
@@ -171,13 +156,10 @@ def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
     return map_data
 
 def get_sharpened_map(ma=None,phases=None,b=None,d_cut=None,
-    normalize_amplitudes=None):
-  if normalize_amplitudes:
-    ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
-
+    n_real=None):
   sharpened_ma=adjust_amplitudes_linear(ma,b[0],b[1],b[2],d_cut=d_cut)
   new_map_coeffs=sharpened_ma.phase_transfer(phase_source=phases,deg=True)
-  return calculate_map(map_coeffs=new_map_coeffs)
+  return calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
 
 
 def calculate_adjusted_sa(ma,phases,b,
@@ -187,22 +169,23 @@ def calculate_adjusted_sa(ma,phases,b,
     max_regions_to_test=None,
     sa_percent=None,
     fraction_occupied=None,
-    use_sg_symmetry=None,):
+    wrapping=None,
+    n_real=None):
 
-  map_data=get_sharpened_map(ma,phases,b,d_cut)
+  map_data=get_sharpened_map(ma,phases,b,d_cut,n_real=n_real)
   from cctbx.maptbx.segment_and_split_map import score_map
 
   from libtbx.utils import null_out
-  target_in_all_regions,regions,sa_ratio,score,skew,kurtosis=score_map(
+  si=score_map(
     map_data=map_data,
     solvent_fraction=solvent_fraction,
     fraction_occupied=fraction_occupied,
-    wrapping=use_sg_symmetry,
+    wrapping=wrapping,
     sa_percent=sa_percent,
     region_weight=region_weight,
     max_regions_to_test=max_regions_to_test,
     out=null_out())
-  return score
+  return si.adjusted_sa
 
 def get_kurtosis(data=None):
   mean=data.min_max_mean().mean
@@ -213,19 +196,21 @@ def get_kurtosis(data=None):
 
 class refinery:
   def __init__(self,ma,phases,b,d_cut,
-    residual_type=None,
+    residual_target=None,
     solvent_fraction=None,
     region_weight=None,
     max_regions_to_test=None,
     sa_percent=None,
     fraction_occupied=None,
-    use_sg_symmetry=None,
+    wrapping=None,
     eps=0.01,
     tol=0.01,
     max_iterations=20,
+    n_real=None,
     dummy_run=False):
 
     self.ma=ma
+    self.n_real=n_real
     self.phases=phases
     self.d_cut=d_cut
 
@@ -236,10 +221,10 @@ class refinery:
     self.solvent_fraction=solvent_fraction
     self.region_weight=region_weight
     self.max_regions_to_test=max_regions_to_test
-    self.residual_type=residual_type
+    self.residual_target=residual_target
     self.sa_percent=sa_percent
     self.fraction_occupied=fraction_occupied
-    self.use_sg_symmetry=use_sg_symmetry
+    self.wrapping=wrapping
 
     self.x = flex.double(b)
 
@@ -256,7 +241,7 @@ class refinery:
     b=self.get_b()
     value = -1.*self.residual(b)
     print "Result: b1 %7.2f b2 %7.2f b3 %7.2f d_cut %7.2f %s: %7.3f" %(
-     b[0],b[1],b[2],self.d_cut,self.residual_type,value)
+     b[0],b[1],b[2],self.d_cut,self.residual_target,value)
 
     self.sharpened_ma=adjust_amplitudes_linear(
          self.ma,b[0],b[1],b[2],d_cut=self.d_cut)
@@ -270,10 +255,11 @@ class refinery:
 
   def residual(self,b,restraint_weight=100.):
 
-    if self.residual_type=='kurtosis':
-      resid=-1.*calculate_kurtosis(self.ma,self.phases,b,self.d_cut)
+    if self.residual_target=='kurtosis':
+      resid=-1.*calculate_kurtosis(self.ma,self.phases,b,self.d_cut,
+         n_real=self.n_real)
 
-    elif self.residual_type=='adjusted_sa':
+    elif self.residual_target=='adjusted_sa':
       resid=-1.*calculate_adjusted_sa(self.ma,self.phases,b,
         d_cut=self.d_cut,
         solvent_fraction=self.solvent_fraction,
@@ -281,9 +267,9 @@ class refinery:
         max_regions_to_test=self.max_regions_to_test,
         sa_percent=self.sa_percent,
         fraction_occupied=self.fraction_occupied,
-        use_sg_symmetry=self.use_sg_symmetry,)
+        wrapping=self.wrapping,n_real=self.n_real)
     else:
-      raise Sorry("residual_type must be kurtosis or adjusted_sa")
+      raise Sorry("residual_target must be kurtosis or adjusted_sa")
 
     # put in restraint so b[1] is not bigger than b[0]
     if b[1]>b[0]:  resid+=(b[1]-b[0])*restraint_weight
@@ -309,14 +295,15 @@ class refinery:
   def callback_after_step(self, minimizer):
     pass # can do anything here
 
-def calculate_kurtosis(ma,phases,b,d_cut):
-  map_data=get_sharpened_map(ma,phases,b,d_cut)
+def calculate_kurtosis(ma,phases,b,d_cut,n_real=None):
+  map_data=get_sharpened_map(ma,phases,b,d_cut,n_real=n_real)
   return get_kurtosis(map_data.as_1d())
 
 def run(map_coeffs=None,
-  tracking_data=None,
+  b=[0,0,0],
+  sharpening_info_obj=None,
   d_cut=None,
-  residual_type=None,
+  residual_target=None,
   solvent_fraction=None,
   region_weight=None,
   max_regions_to_test=None,
@@ -324,29 +311,33 @@ def run(map_coeffs=None,
   fraction_occupied=None,
   n_bins=None,
   eps=None,
-  use_sg_symmetry=False,
+  wrapping=False,
+  n_real=False,
   out=sys.stdout):
 
-  if tracking_data:
-    residual_type=tracking_data.params.crystal_info.residual_type
-    d_cut=tracking_data.params.crystal_info.resolution
-    solvent_fraction=tracking_data.solvent_fraction
-    use_sg_symmetry=tracking_data.params.crystal_info.use_sg_symmetry
-    eps=tracking_data.params.crystal_info.eps
-    n_bins=tracking_data.params.crystal_info.n_bins
-    fraction_occupied=tracking_data.params.crystal_info.fraction_occupied
-    sa_percent=tracking_data.params.crystal_info.sa_percent
-    region_weight=tracking_data.params.crystal_info.region_weight
-    max_regions_to_test=tracking_data.params.crystal_info.max_regions_to_test
+  if sharpening_info_obj:
+    solvent_fraction=sharpening_info_obj.solvent_fraction
+    wrapping=sharpening_info_obj.wrapping
+    n_real=sharpening_info_obj.n_real
+    fraction_occupied=sharpening_info_obj.fraction_occupied
+    sa_percent=sharpening_info_obj.sa_percent
+    region_weight=sharpening_info_obj.region_weight
+    max_regions_to_test=sharpening_info_obj.max_regions_to_test
+    residual_target=sharpening_info_obj.residual_target
+    d_cut=sharpening_info_obj.d_cut
+    eps=sharpening_info_obj.eps
+    n_bins=sharpening_info_obj.n_bins
+  else:
+    sharpening_info_obj=sharpening_info()
 
-  (d_max,d_min)=map_coeffs.d_max_min()
+
   phases=map_coeffs.phases(deg=True)
   ma=map_coeffs.as_amplitude_array()
 
   # set some defaults
-  if residual_type is None: residual_type='kurtosis'
+  if residual_target is None: residual_target='kurtosis'
 
-  if eps is None and residual_type=='kurtosis':
+  if eps is None and residual_target=='kurtosis':
     eps=0.01
   elif eps is None:
     eps=0.5
@@ -362,17 +353,18 @@ def run(map_coeffs=None,
 
   # Get initial value
 
-  b=[0,0,0]
+  best_b=b
   improved=False
   print >>out,"Getting starting value ..."
   refined = refinery(ma,phases,b,d_cut,
-    residual_type=residual_type,
+    residual_target=residual_target,
     solvent_fraction=solvent_fraction,
     region_weight=region_weight,
     sa_percent=sa_percent,
     max_regions_to_test=max_regions_to_test,
     fraction_occupied=fraction_occupied,
-    use_sg_symmetry=use_sg_symmetry,
+    wrapping=wrapping,
+    n_real=n_real,
     eps=eps)
 
 
@@ -380,20 +372,22 @@ def run(map_coeffs=None,
   print >>out,"Starting value: %7.2f" %(starting_result)
   best_sharpened_ma=ma
   best_result=starting_result
+  best_b=refined.get_b()
 
 
   print >>out,"Normalizing structure factors..."
-  mean_f,bin_d_min=get_means(d_min,d_max,ma,n_bins)
+  (d_max,d_min)=ma.d_max_min()
+  ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
   ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
 
   refined = refinery(ma,phases,b,d_cut,
-    residual_type=residual_type,
+    residual_target=residual_target,
     solvent_fraction=solvent_fraction,
     region_weight=region_weight,
     max_regions_to_test=max_regions_to_test,
     sa_percent=sa_percent,
     fraction_occupied=fraction_occupied,
-    use_sg_symmetry=use_sg_symmetry,
+    wrapping=wrapping,
     eps=eps)
 
   starting_normalized_result=refined.show_result()
@@ -404,6 +398,7 @@ def run(map_coeffs=None,
     improved=True
     best_sharpened_ma=ma
     best_result=starting_normalized_result
+    best_b=refined.get_b()
 
   refined.run()
 
@@ -415,23 +410,25 @@ def run(map_coeffs=None,
     best_sharpened_ma=refined.sharpened_ma
     best_result=final_result
     improved=True
+    best_b=refined.get_b()
   print >>out,"Best overall result: %7.2f: " %(best_result)
 
+  sharpening_info_obj.b=best_b
   if improved:
     return best_sharpened_ma,phases
 
 
 if (__name__ == "__main__"):
   args=sys.argv[1:]
-  residual_type='kurtosis'
+  residual_target='kurtosis'
   if 'adjusted_sa' in args:
-    residual_type='adjusted_sa'
+    residual_target='adjusted_sa'
   d_cut=2.9 # need to set this as nominal resolution
   # get data
   map_coeffs=get_amplitudes(args)
 
   new_map_coeffs=run(map_coeffs=map_coeffs,
     d_cut=d_cut,
-    residual_type=residual_type)
+    residual_target=residual_target)
   mtz_dataset=new_map_coeffs.as_mtz_dataset(column_root_label="FWT")
   mtz_dataset.mtz_object().write(file_name='sharpened.mtz')
