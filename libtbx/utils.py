@@ -2307,8 +2307,8 @@ def to_unicode(text, codec='utf8'):
   elif (isinstance(text, str)):
     new_text = text
     try:
-      new_text = text.decode(codec)
-    except UnicodeDecodeError:
+      new_text = text.decode(codec, errors='replace')
+    except UnicodeDecodeError: # in case errors='strict'
       raise Sorry('Unable to decode text with %s' % codec)
     finally:
       return new_text
@@ -2330,8 +2330,8 @@ def to_str(text, codec='utf8'):
   elif (isinstance(text, unicode)):
     new_text = text
     try:
-      new_text = text.encode(codec)
-    except UnicodeDecodeError:
+      new_text = text.encode(codec, errors='replace')
+    except UnicodeEncodeError: # in case errors='strict'
       raise Sorry('Unable to encode text with %s' % codec)
     finally:
       return new_text
