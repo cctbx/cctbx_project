@@ -2,7 +2,6 @@ from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.fee_view
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 import sys, os
 import psana
