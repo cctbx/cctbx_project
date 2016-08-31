@@ -2,13 +2,12 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cxi.diff
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 import sys
 
 from libtbx import easy_pickle
 
-from cxi_xdr_xes.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import cspad_tbx
 
 def run(args):
   assert len(args) == 3

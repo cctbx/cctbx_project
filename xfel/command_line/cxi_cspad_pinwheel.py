@@ -2,7 +2,6 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cxi.cspad_pinwheel
 #
 # Removes all but the central sensors from a CSPAD CBF
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 
 import dxtbx, sys, os

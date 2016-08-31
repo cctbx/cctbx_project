@@ -2,7 +2,6 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cxi.index
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 from xfel.cxi.display_spots import run_one_index
 from libtbx.utils import Usage, Sorry

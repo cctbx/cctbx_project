@@ -1,6 +1,5 @@
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.plotcv
-# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 """Main idea:  go through the integration log files and grep out the difference
    vectors between observed and predicted spot positions.  Plot these "correction
