@@ -229,6 +229,10 @@ class block_base(DictMixin):
         keys.extend(self.loops[key].keys())
     return keys
 
+  def item_keys(self):
+    '''Returns names of all entries that are not loops'''
+    return self._items.keys()
+
   def __repr__(self):
     return repr(OrderedDict(self.iteritems()))
 
