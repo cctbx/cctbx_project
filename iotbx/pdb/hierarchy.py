@@ -1383,9 +1383,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
              },
     }
     data["TYR"]=data["PHE"]
+
     sites_cart = self.atoms().extract_xyz()
     t0=time.time()
-    info = []
+    info = ""
     for rg in self.residue_groups():
       for ag in rg.atom_groups():
         flip_data = data.get(ag.resname, None)
@@ -1395,6 +1396,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           atom = ag.get_atom(d)
           if atom is None: break
           dihedral_i_seqs.append(atom.i_seq)
+        if len(dihedral_i_seqs)!=4: continue
         proxy = geometry_restraints.dihedral_proxy(
           i_seqs=dihedral_i_seqs,
           angle_ideal=flip_data["value"][0],
@@ -1406,7 +1408,11 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           proxy=proxy,
         )
         if abs(dihedral.delta)>360./flip_data["value"][1]/4: # does this work
-          info.append("Residue %s %s" % (ag.resname, rg.resseq))
+          info += '    Residue "%s %s %s":' % (
+            rg.parent().id,
+            ag.resname,
+            rg.resseq,
+          )
           atoms = ag.atoms()
           for pair in flip_data["pairs"]:
             atom1 = ag.get_atom(pair[0])
@@ -1416,8 +1422,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
             tmp = atom1.xyz
             atom1.xyz = atom2.xyz
             atom2.xyz = tmp
-            info.append("  Flipped %s and %s" % (atom1.name, atom2.name))
-    print 'time to flip residues',time.time()-t0
+            info += ' "%s" <-> "%s"' % (atom1.name.strip(),
+                                        atom2.name.strip())
+          info += '\n'
+    info += '  Time to flip residues: %0.2fs\n' % (time.time()-t0)
     return info
 
   def distance_based_simple_two_way_bond_sets(self,
