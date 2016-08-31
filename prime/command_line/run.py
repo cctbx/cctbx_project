@@ -8,7 +8,7 @@ Description : Commands for running prime main class.
 from prime.command_line.genref import genref_handler
 from prime.command_line.postrefine import postrefine_handler
 from prime.command_line.merge import merge_handler
-from prime.postrefine.mod_input import process_input
+from prime.command_line.solve_indexing_ambiguity import indexing_ambiguity_handler
 import os, sys, time, logging, shutil
 
 class run_handler(object):
@@ -18,26 +18,34 @@ class run_handler(object):
     """
 
   def run(self, args):
+    #determine indexing ambiguity
+    print "Determine if there is an indexing ambiguity on the dataset"
+    idah = indexing_ambiguity_handler()
+    sol_fname, iparams = idah.run(args)
+    if sol_fname is None:
+      print "No ambiguity."
+    else:
+      print "Ambiguity is solved. Solution file was saved to :"+str(sol_fname)
+      iparams.indexing_ambiguity.index_basis_in = sol_fname
     #generate reference set, prepare scaled pickles
     print "Scaling integration pickles"
     grh = genref_handler()
-    grh.run(args)
+    grh.run_by_params(iparams)
     #merge for the first reference set
     print "Merging for a reference set."
     mh = merge_handler()
-    mh.run(args)
+    mh.run_by_params(iparams)
     #start post-refinement loops
-    iparams, txt_out_input = process_input(argv=args, flag_check_exist=False)
     prh = postrefine_handler()
     for i_cycle in range(iparams.n_postref_cycle):
-      print "Post-refinement cycle ", i_cycle+1
-      prh.run(args)
-      print "Merging cycle ", i_cycle+1
+      print "Post-refinement cycle: ", i_cycle+1, ' basis:', iparams.indexing_ambiguity.index_basis_in
+      prh.run_by_params(iparams)
+      print "Merging cycle ", i_cycle+1, ' basis:', iparams.indexing_ambiguity.index_basis_in
       if i_cycle < iparams.n_postref_cycle - 1:
-        mh.run(args)
+        mh.run_by_params(iparams)
       else:
         #final run
-        mh.run(args, avg_mode='final')
+        mh.run_by_params(iparams, avg_mode='final')
         #copy the max_no.mtz to postref_final.mtz
         DIR = iparams.run_no+'/mtz/'
         file_no_list = [int(fname.split('.')[0]) for fname in os.listdir(DIR)]

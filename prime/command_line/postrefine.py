@@ -19,9 +19,11 @@ class postrefine_handler(object):
 
   def run(self, args):
     #read inputs
-    runh = run_handler()
     from prime.postrefine.mod_input import process_input
     iparams, txt_out_input = process_input(argv=args, flag_check_exist=False)
+    self.run_by_params(iparams)
+
+  def run_by_params(self, iparams):
     iparams.flag_volume_correction = False
     if iparams.partiality_model == "Lognormal":
       iparams.voigt_nu = 0.008 #use voigt_nu as lognpdf zero parameter
@@ -70,6 +72,7 @@ class postrefine_handler(object):
         inp_pickle = {'iparams':iparams, 'frames':frames}
         pickle.dump(inp_pickle, open(iparams.run_no+'/inputs/'+str(i_node)+'.inp',"wb"))
         call(["bsub","-q",iparams.queue.qname,"-o",iparams.run_no+"/qout/qout_pr.txt","prime._postrefine_frame", iparams.run_no+"/inputs/"+str(i_node)+".inp"])
+    runh = run_handler()
     runh.check_done(iparams, n_results)
     print "Post-refinement completed. Run prime.merge for the merged reflection file."
 

@@ -29,11 +29,15 @@ class genref_handler(object):
 
   def run(self, args):
     #read inputs
-    from prime.postrefine.mod_input import process_input, read_pickles
+    from prime.postrefine.mod_input import process_input
     iparams, txt_out_input = process_input(args)
-    runh = run_handler()
     print txt_out_input
+    self.run_by_params(iparams)
+
+  def run_by_params(self, iparams):
+    runh = run_handler()
     #read all integration pickles
+    from prime.postrefine.mod_input import read_pickles
     frame_files = read_pickles(iparams.data)
     n_frames = len(frame_files)
     if n_frames == 0:
@@ -72,9 +76,10 @@ class genref_handler(object):
     #write output to logfile
     txt_out = 'Scaling complete. Run prime.merge your_input_phil.phil to merge for a reference set.\n'
     print txt_out
-    f = open(iparams.run_no+'/log.txt', 'w')
-    f.write(txt_out_input+txt_out)
+    f = open(iparams.run_no+'/log.txt', 'a')
+    f.write(txt_out)
     f.close()
+
 
 if __name__=="__main__":
   grh = genref_handler()

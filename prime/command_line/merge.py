@@ -23,6 +23,9 @@ class merge_handler(object):
     #read inputs
     from prime.postrefine.mod_input import process_input
     iparams, txt_out_input = process_input(argv=args, flag_check_exist=False)
+    self.run_by_params(iparams, avg_mode=avg_mode)
+
+  def run_by_params(self, iparams, avg_mode='average'):
     #read all result pickles
     try:
       DIR = iparams.run_no+'/pickles/'
@@ -85,9 +88,6 @@ class merge_handler(object):
                                                             wavelength_mean,
                                                             file_no,
                                                             avg_mode)
-      #reset index_basis_in
-      if str(iparams.indexing_ambiguity.index_basis_in).endswith('pickle') == False:
-        iparams.indexing_ambiguity.index_basis_in = iparams.run_no+'/mtz/'+str(file_no)+'.mtz'
       txt_merge_mean +=  txt_merge_mean_table + txt_prep_out
       print txt_merge_mean
       f = open(iparams.run_no+'/log.txt', 'a')

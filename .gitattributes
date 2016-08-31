@@ -2619,10 +2619,16 @@ prime/command_line/print_integration_pickle.py -text
 prime/command_line/r_mtz_mtz.py -text
 prime/command_line/ray_trace.py -text
 prime/command_line/run.py -text
+prime/command_line/solve_indexing_ambiguity.py -text
 prime/command_line/spot_param_visualizer.py -text
 prime/command_line/view_fineslices.py -text
 prime/command_line/viewstats.py -text
 prime/ext.cpp -text
+prime/index_ambiguity/__init__.py -text
+prime/index_ambiguity/mod_indexing_ambiguity.py -text
+prime/index_ambiguity/mod_kmeans.py -text
+prime/index_ambiguity/mod_lbfgs.py -text
+prime/index_ambiguity/mod_lbfgs_target.py -text
 prime/libtbx_config -text
 prime/postrefine/__init__.py -text
 prime/postrefine/mod_gui_init.py -text

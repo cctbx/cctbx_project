@@ -198,23 +198,31 @@ n_residues = None
 indexing_ambiguity
   .help = "Parameters used in resolving indexing ambiguity"
 {
-  flag_on = False
-    .type = bool
-    .help = Set to True to allow the program to read in polarity info. \
-      from the pickle file specified in index_basis_in.
+  mode = Auto
+    .type = str
+    .help = Set to Forced to solve pseudo-twinning.
   index_basis_in = None
     .type = path
-    .help = Pickle file storing polarity info. (output from Brehm & \
-      Diederichs clustering algorithm).
-  assigned_basis = h,k,l
+    .help = Pickle file with basis solution or an mtz file of an isomorphous structure.
+  assigned_basis = None
+    .multiple = True
     .type = str
-    .help = In case index_basis_in given is an mtz file, you can specify a basis that each integration can be converted to.
+    .help = Specify list of basis formats for pseudo-twinning.
   d_min = 3.0
     .type = float
     .help = In case index_basis_in given is an mtz file, you can pecify minimum resolution used to calculate correlation with the given mtz file.
   d_max = 10.0
     .type = float
     .help = In case index_basis_in given is an mtz file, you can pecify maximum resolution used to calculate correlation with the given mtz file.
+  sigma_min = 1.5
+    .type = float
+    .help = Minimum I/sigI cutoff.
+  n_sample_frames = 300
+  .type = int
+  .help = No. of frames used in scoring r_matrix. Images (n_selected_frames) with the highest score will be used in the Brehm & Diederichs algorithm.
+  n_selected_frames = 100
+  .type = int
+  .help = No. of frames used in Auto solution mode. The rest of the frame data will be determined against this merged dataset.
 }
 hklisoin = None
   .type = path
@@ -387,14 +395,6 @@ def process_input(argv=None, flag_check_exist=True):
     except Exception:
       raise Sorry("Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd set pixel_size_mm=0.079346).")
 
-  #check indexing ambiguity parameters
-  if params.indexing_ambiguity.flag_on and \
-     params.indexing_ambiguity.index_basis_in is None and \
-     params.indexing_ambiguity.assigned_basis == 'h,k,l':
-     raise Sorry("Oops, you asked to resolve indexing ambiguity but not given any solution file nor assigned basis. \nPlease give the solution file (eg. indexing_ambiguity.index_basis_in=any.pickle/or.mtz) OR \nassigned basis (eg. indexing_ambiguity.assigned_basis=k,h,-l) OR \nturn indexing ambiguity off (eg. indexing_ambiguity.flag_on=False).")
-  if str(params.indexing_ambiguity.index_basis_in).endswith('mtz') and params.indexing_ambiguity.assigned_basis == 'h,k,l':
-    raise Sorry("Oops, you asked to resolve indexing ambiguity and gave the solution file as an mtz file. \nPlease give the assigned basis (eg. indexing_ambiguity.assigned_basis=k,h,-l) to proceed.")
-
   #generate run_no folder
   if flag_check_exist:
     if os.path.exists(params.run_no):
@@ -405,6 +405,7 @@ def process_input(argv=None, flag_check_exist=True):
     os.makedirs(params.run_no+'/mtz')
     os.makedirs(params.run_no+'/hist')
     os.makedirs(params.run_no+'/qout')
+    os.makedirs(params.run_no+'/index_ambiguity')
   #capture input read out by phil
   from cStringIO import StringIO
   class Capturing(list):
