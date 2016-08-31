@@ -111,7 +111,6 @@ cctbx/command_line/find_reticular_twin_laws.py -text
 cctbx/command_line/precession_view.py -text
 cctbx/command_line/samosa_join.py -text
 cctbx/command_line/samosa_scale.py -text
-cctbx/command_line/segment_and_split_map.py -text
 cctbx/command_line/space_group_info.py svneol=native#text/x-python
 cctbx/command_line/subgroups.py -text
 cctbx/command_line/version.py -text
