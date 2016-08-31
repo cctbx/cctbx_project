@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 08/18/2016
+Last Changed: 08/23/2016
 Description : PRIME GUI Initialization module
 '''
 
@@ -14,6 +14,7 @@ from threading import Thread
 from cctbx.uctbx import unit_cell
 from libtbx import easy_run
 from libtbx import easy_pickle as ep
+from libtbx.utils import to_str
 import iotbx.phil as ip
 import numpy as np
 
@@ -880,9 +881,9 @@ class SummaryTab(wx.Panel):
     if save_dlg.ShowModal() == wx.ID_OK:
       with open(save_dlg.GetPath(), 'a') as tb1_file:
        for i in range(len(self.tb1_data)):
-          line = u'{:<25} {:<40}\n'.format(self.tb1_labels[i].decode('utf-8'),
-                                           self.tb1_data[i][0]).encode('utf-8')
-          tb1_file.write(line)
+          line = u'{:<25} {:<40}\n'.format(self.tb1_labels[i],
+                                           self.tb1_data[i][0])
+          tb1_file.write(to_str(line))
 
 class PRIMERunWindow(wx.Frame):
   ''' New frame that will show processing info '''
