@@ -450,7 +450,9 @@ class load_model_and_data (object) :
           raw_records = pdb_raw_records,
           stop_if_duplicate_labels = False,
           allow_missing_symmetry=\
-            (self.crystal_symmetry is None) and (not require_data))
+            (self.crystal_symmetry is None
+             or self.crystal_symmetry.unit_cell() is None
+             or self.crystal_symmetry.space_group_info() is None) and (not require_data))
       error_msg = self.processed_pdb_file.all_chain_proxies.\
         fatal_problems_message(
           ignore_unknown_scattering_types=False,

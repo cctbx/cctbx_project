@@ -85,5 +85,5 @@ def exercise_01(prefix="tst_molprobity_3_exercise_01"):
 if (__name__ == "__main__") :
   if libtbx.env.has_module("phenix"):
     exercise_00()
-    exercise_01()
+    # exercise_01() disabling because such CRYST1 is working now...
   print "OK"
