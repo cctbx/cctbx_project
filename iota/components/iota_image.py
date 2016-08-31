@@ -786,6 +786,7 @@ class SingleImage(object):
       final_int_log = self.int_log.split('.')[0] + ".log"
       os.rename(self.int_log, final_int_log)
 
-    return self
+    self.status = 'final'
+    ep.dump(self.obj_file, self)
 
 # **************************************************************************** #

@@ -1,6 +1,11 @@
-IOTA v1.0.012 - PRIME GUI changes
+IOTA v1.0.013 - Clean-up
 
-1. Added a PHIL box in Advanced Options for the full file of params
-2. GUI-altered Advanced Options override PHIL string
-3. Slight tweak to the PHIL Box generic control (for display w/o buttons)
-4. Cleaned up some of the IOTA GUI code (removed debug messages)
+1. Simplified and cleaned up polling of integration results
+2. Implemented new unicode functions from libtbx.utils
+
+
+Known issue:
+
+1. Error re-running after abort:
+
+    TypeError: in method 'PostEvent', expected argument 1 of type 'wxEvtHandler *'

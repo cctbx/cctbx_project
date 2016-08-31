@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 06/01/2016
+Last Changed: 08/22/2016
 Description : IOTA command-line module.
 '''
 
@@ -21,7 +21,7 @@ help_message = '\n{:-^70}'\
                ''.format('Integration Optimization, Triage and Analysis') + """
 
 Auto mode
-Usage: prime.iota [OPTIONS] path/to/raw/images
+Usage: iota.run [OPTIONS] path/to/raw/images
 Generates two files, parameter file for IOTA (iota.param) and
 target file for cctbx.xfel (target.phil). Integrates a random
 subset of images without target cell. Outputs basic analysis.
@@ -35,7 +35,7 @@ iota.param and target.phil files and integrate the single image provided. Can
 also be used with iota.single_image in the same manner.
 
 Script mode
-Usage: prime.iota [OPTIONS] <script>.param
+Usage: iota.run [OPTIONS] <script>.param
 Run using IOTA parameter file and target PHIL file generated from
 the dry run or auto mode. Make sure that IOTA parameter file has
 the path to the input image folder under "input". Converts raw

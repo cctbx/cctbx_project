@@ -35,8 +35,8 @@ class ProcessImage():
       return img_object
     else:
       img_object.process()
-      result_file = os.path.splitext(img_object.obj_file)[0] + '.fin'
-      ep.dump(result_file, img_object)
+      #result_file = os.path.splitext(img_object.obj_file)[0] + '.fin'
+      #ep.dump(result_file, img_object)
       return img_object
 
 class ProcessAll():

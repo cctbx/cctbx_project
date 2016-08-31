@@ -11,6 +11,7 @@ import os
 import wx
 import wx.richtext
 from wxtbx import metallicbutton as mb
+from libtbx import utils as u
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -156,7 +157,7 @@ class OptionCtrl(CtrlBase):
 
     for key, value in items:
       if sub_labels != []:
-        sub_label = sub_labels[items.index((key, value))].decode('utf-8')
+        sub_label = u.to_str(sub_labels[items.index((key, value))])
       else:
         sub_label = key
 
@@ -239,20 +240,20 @@ class TableCtrl(CtrlBase):
     if len(clabels) > 0:
       self.sizer.Add(wx.StaticText(self, label=''))
       for item in column_labels:
-        clabel = wx.StaticText(self, label=i.decode('utf-8'), size=clabel_size)
+        clabel = wx.StaticText(self, label=item, size=clabel_size)
         clabel.SetFont(self.font)
         self.sizer.Add(clabel)
 
     # add row labels and row contents
     for l in rlabels:
-      row_label = wx.StaticText(self, label=l.decode('utf-8'), size=rlabel_size)
+      row_label = wx.StaticText(self, label=l, size=rlabel_size)
       row_label.SetFont(self.font)
       self.sizer.Add(row_label)
 
       # Add data to table
       c_index = rlabels.index(l)
       for item in contents[c_index]:
-        cell = wx.StaticText(self, label=item.decode('utf-8'))
+        cell = wx.StaticText(self, label=item)
         cell.SetFont(self.cfont)
         self.sizer.Add(cell)
 
