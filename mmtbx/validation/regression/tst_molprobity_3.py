@@ -86,4 +86,6 @@ if (__name__ == "__main__") :
   if libtbx.env.has_module("phenix"):
     exercise_00()
     # exercise_01() disabling because such CRYST1 is working now...
-  print "OK"
+    print "OK"
+  else:
+    print "Skipped: Requires phenix module"
