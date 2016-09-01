@@ -287,8 +287,8 @@ master_phil = iotbx.phil.parse("""
                 auto-sharpening instead of the entire map.
 
      max_box_fraction = 0.5
-       .type = float 
-       .short_caption = Max size of box for auto_sharpening 
+       .type = float
+       .short_caption = Max size of box for auto_sharpening
        .help = If box is greater than this fraction of entire map, use \
                 entire map.
 
@@ -1921,7 +1921,7 @@ def get_params(args,out=sys.stdout):
     params.output_files.output_directory=""
 
   # Test to see if we can use adjusted_sa as target and use box_map with it
-  if (params.crystal_info.residual_target=='adjusted_sa' or  
+  if (params.crystal_info.residual_target=='adjusted_sa' or
      params.crystal_info.sharpening_target=='adjusted_sa') and \
      params.crystal_info.box_in_auto_sharpen:
     print >>out,"Checking to make sure we can use adjusted_sa as target...",
@@ -5039,15 +5039,15 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 
 def put_bounds_in_range(
      lower_bounds=None,upper_bounds=None,
-     minimum_size=None, 
+     minimum_size=None,
      n_real=None):
   # put lower and upper inside (0,n_real) and try to make size at least minimum
- 
-  new_lb=[] 
-  new_ub=[] 
+
+  new_lb=[]
+  new_ub=[]
   for lb,ub,ms,nr in zip(lower_bounds,upper_bounds,minimum_size,n_real):
     boundary=int(ms-(ub-lb+1))//2
-    if boundary>0: 
+    if boundary>0:
        lb=lb-boundary
        ub=ub+boundary
     if lb<0: lb=0
@@ -5055,12 +5055,12 @@ def put_bounds_in_range(
     new_lb.append(lb)
     new_ub.append(ub)
   return tuple(new_lb),tuple(new_ub)
-    
+
 def select_box_map_data(params,
            map_data=None,
            ncs_object=None,
            n_residues=None,
-	   ncs_copies=None,
+           ncs_copies=None,
            solvent_fraction=None,
            crystal_symmetry=None,
            max_box_fraction=0.5,
@@ -5077,7 +5077,7 @@ def select_box_map_data(params,
 
   lower_bounds,upper_bounds=put_bounds_in_range(
      lower_bounds=lower_bounds,upper_bounds=upper_bounds,
-     minimum_size=minimum_size, 
+     minimum_size=minimum_size,
      n_real=map_data.all())
 
   # select map data inside this box
@@ -5089,9 +5089,9 @@ def select_box_map_data(params,
     return map_data,crystal_symmetry,None # no point
 
   else:
-    # figure out solvent fraction in this box... 
+    # figure out solvent fraction in this box...
     try:
-      from cctbx.maptbx.map_to_model import iterated_solvent_fraction 
+      from cctbx.maptbx.map_to_model import iterated_solvent_fraction
       print >>out,"\nIdentifying solvent fraction in boxed map..."
       local_params=deepcopy(params)
       local_params.crystal_info.solvent_content=None
@@ -5111,7 +5111,7 @@ def select_box_map_data(params,
       wrapping=False,
       crystal_symmetry=box_crystal_symmetry,
       solvent_fraction=box_solvent_fraction)
-  
+
     return box_map,box_crystal_symmetry,box_sharpening_info_obj
 
 def box_of_biggest_region(params,
@@ -5192,7 +5192,7 @@ def run_auto_sharpen(
 
       map_data=box_map_data
       crystal_symmetry=box_crystal_symmetry
-      
+
 
   else:
     original_box_sharpening_info_obj=None
@@ -5308,7 +5308,7 @@ def run_auto_sharpen(
 
   if best_si.score>null_si.score:  # we improved them..
     print >>out,"Improved score with sharpening..."
-    if original_box_sharpening_info_obj: 
+    if original_box_sharpening_info_obj:
       # Put back original crystal_symmetry with original_box_sharpening_info_obj
       print >>out,"\nRestoring original symmetry to best sharpening info"
       best_si.update_with_box_sharpening_info(
@@ -5341,7 +5341,7 @@ def get_effective_b_iso(map_data=None,tracking_data=None,
 
     if not d_min_ratio:
        d_min_ratio=tracking_data.params.crystal_info.d_min_ratio
- 
+
     map_coeffs=get_f_phases_from_map(map_data=map_data,
        crystal_symmetry=crystal_symmetry,
        d_min=d_min,
