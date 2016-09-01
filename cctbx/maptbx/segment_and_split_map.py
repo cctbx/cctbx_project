@@ -348,6 +348,11 @@ master_phil = iotbx.phil.parse("""
           is used. Note that during optimization, residual_target is used \
           (they can be the same.)
 
+     require_improvement = True
+       .type = bool
+       .short_caption = Require improvement
+       .help = Require improvement in score for sharpening to be applied
+
      region_weight = 20
        .type = float
        .short_caption = Region weighting
@@ -5028,7 +5033,7 @@ def sharpen_map_with_si(sharpening_info_obj=None,
         f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
       f_array_normalized=quasi_normalize_structure_factors(
           f_array,set_to_minimum=0.01)
-    return get_sharpened_map(f_array,phases,si.b,si.d_cut,si.n_real)
+    return get_sharpened_map(f_array_normalized,phases,si.b,si.d_cut,si.n_real)
 
   else:
     return apply_sharpening(n_real=si.n_real,
@@ -5542,7 +5547,8 @@ def run(args,
         check_si.sharpen_and_score_map(map_data=map_data,
           out=out).show_score(out=out)
         check_si.show_summary(out=out)
-        if check_si.score <= null_si.score:
+        if params.crystal_info.require_improvement and \
+           check_si.score <= null_si.score:
           print >>out,"\nSharpening did not improve map ("+\
            " score of %6.2f vs null score of %6.2f\n ...discarding it\n" %(
            check_si.score,null_si.score)
