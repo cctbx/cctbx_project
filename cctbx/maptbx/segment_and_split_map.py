@@ -5091,7 +5091,7 @@ def select_box_map_data(params,
   else:
     # figure out solvent fraction in this box...
     try:
-      from cctbx.maptbx.map_to_model import iterated_solvent_fraction
+      from phenix.autosol.map_to_model import iterated_solvent_fraction
       print >>out,"\nIdentifying solvent fraction in boxed map..."
       local_params=deepcopy(params)
       local_params.crystal_info.solvent_content=None
