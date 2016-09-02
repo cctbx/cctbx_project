@@ -148,53 +148,56 @@ class manager (object) :
       protein_ss_definition_present = True
 
     t0 = time.time()
-    if (not protein_ss_definition_present and
-        self.sec_str_from_pdb_file is None):
-      if(self.verbose>0):
-        print >> self.log, "No existing protein secondary structure definitions " + \
-        "found in .pdb file or phil parameters."
-      # find_automatically = True
+    if protein_ss_definition_present:
+      self.apply_phil_str(phil_string=None, phil_params=self.params, log=self.log)
     else:
-      # find_automatically = False
-      protein_found = True
-    if not protein_found:
-      ss_params = []
-      if use_segid:
-        # Could get rid of this 'if' clause, but I want to avoid construction of
-        # atom_selection_cache and selections when there is no segids in pdb
-        # which is majority of cases.
-        for segid in segids:
-          isel = self.selection_cache.selection("segid '%s'" % segid).iselection()
-          selected_pdb_h = self.pdb_hierarchy.select(isel)
-          if selected_pdb_h.contains_protein():
-            annot = self.find_sec_str(pdb_hierarchy=selected_pdb_h)
+      if (not protein_ss_definition_present and
+          self.sec_str_from_pdb_file is None):
+        if(self.verbose>0):
+          print >> self.log, "No existing protein secondary structure definitions " + \
+          "found in .pdb file or phil parameters."
+        # find_automatically = True
+      else:
+        # find_automatically = False
+        protein_found = True
+      if not protein_found:
+        ss_params = []
+        if use_segid:
+          # Could get rid of this 'if' clause, but I want to avoid construction of
+          # atom_selection_cache and selections when there is no segids in pdb
+          # which is majority of cases.
+          for segid in segids:
+            isel = self.selection_cache.selection("segid '%s'" % segid).iselection()
+            selected_pdb_h = self.pdb_hierarchy.select(isel)
+            if selected_pdb_h.contains_protein():
+              annot = self.find_sec_str(pdb_hierarchy=selected_pdb_h)
+              if annot is not None:
+                ss_phil = annot.as_restraint_groups(log=self.log,
+                  prefix_scope="secondary_structure",
+                  add_segid=segid)
+                ss_params.append(ss_phil)
+        else:
+          if self.pdb_hierarchy.contains_protein():
+            annot = self.find_sec_str(pdb_hierarchy=self.pdb_hierarchy)
             if annot is not None:
               ss_phil = annot.as_restraint_groups(log=self.log,
-                prefix_scope="secondary_structure",
-                add_segid=segid)
+                prefix_scope="secondary_structure")
               ss_params.append(ss_phil)
-      else:
-        if self.pdb_hierarchy.contains_protein():
-          annot = self.find_sec_str(pdb_hierarchy=self.pdb_hierarchy)
-          if annot is not None:
-            ss_phil = annot.as_restraint_groups(log=self.log,
-              prefix_scope="secondary_structure")
-            ss_params.append(ss_phil)
-            # self.actual_sec_str = annot
-      ss_params_str = "\n".join(ss_params)
-      self.apply_phil_str(ss_params_str, log=self.log)
-    else:
-      if (self.sec_str_from_pdb_file is not None):
-        # self.actual_sec_str = self.sec_str_from_pdb_file
-        ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(
-            log=self.log,
-            prefix_scope="secondary_structure")
+              # self.actual_sec_str = annot
+        ss_params_str = "\n".join(ss_params)
         self.apply_phil_str(ss_params_str, log=self.log)
       else:
-        # got phil SS, need to refactor later, when the class is fully
-        # converted for operation with annotation object
-        # phil_string = sec_str_master_phil.format(python_object=self.params)
-        self.apply_phil_str(phil_string=None, phil_params=self.params, log=self.log)
+        if (self.sec_str_from_pdb_file is not None):
+          # self.actual_sec_str = self.sec_str_from_pdb_file
+          ss_params_str = self.sec_str_from_pdb_file.as_restraint_groups(
+              log=self.log,
+              prefix_scope="secondary_structure")
+          self.apply_phil_str(ss_params_str, log=self.log)
+        # else:
+        #   # got phil SS, need to refactor later, when the class is fully
+        #   # converted for operation with annotation object
+        #   # phil_string = sec_str_master_phil.format(python_object=self.params)
+        #   self.apply_phil_str(phil_string=None, phil_params=self.params, log=self.log)
 
     t1 = time.time()
     # print >> log, "    Time for finding protein SS: %f" % (t1-t0)
