@@ -17,7 +17,7 @@ from wx.lib.agw import floatspin
 import wx
 from libtbx import object_oriented_patterns as oop
 from libtbx.str_utils import format_value
-from libtbx.utils import Sorry, Abort
+from libtbx.utils import Sorry, Abort, to_str
 import libtbx.load_env
 from libtbx import group_args
 from math import sqrt
@@ -526,15 +526,14 @@ class HKLViewFrame (wx.Frame) :
 
   def load_reflections_file (self, file_name, set_array=True,
       data_only=False) :
-    if (isinstance(file_name, unicode)) :
-      file_name = str(file_name)
+    file_name = to_str(file_name)
     if (file_name != "") :
       from iotbx.reflection_file_reader import any_reflection_file
       from iotbx.gui_tools.reflections import get_array_description
       try :
         hkl_file = any_reflection_file(file_name)
       except Exception, e :
-        raise Sorry(str(e))
+        raise Sorry(to_str(e))
       arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
         )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)
       #arrays = f.file_server.miller_arrays
@@ -577,7 +576,7 @@ class HKLViewFrame (wx.Frame) :
       wildcard="Reflection files (*.mtz, *.sca, *.hkl)|*.mtz;*.sca;*.hkl",
       default_path="",
       flags=wx.OPEN)
-    self.load_reflections_file(file_name)
+    self.load_reflections_file(to_str(file_name))
 
   def OnSave (self, evt) :
     output_file = wx.FileSelector("Save image as:",
@@ -585,7 +584,7 @@ class HKLViewFrame (wx.Frame) :
       wildcard="PNG image (*.png)|*.png",
       flags=wx.SAVE)
     if (output_file != "") :
-      self.viewer.save_screen_shot(file_name=output_file,
+      self.viewer.save_screen_shot(file_name=to_str(output_file),
         extensions=["png"])
 
   def OnShow2D (self, evt) :
