@@ -107,7 +107,7 @@ def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
   dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
     result_hierarchy.atoms().extract_xyz()).dot()))
   print dist
-  assert dist > 4., dist
+  assert dist > 3.95, dist
 
 if(__name__ == "__main__"):
   t0 = time.time()
