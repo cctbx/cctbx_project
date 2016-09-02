@@ -297,7 +297,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     return panel_id, beam_pixel_fast, beam_pixel_slow
 
-  def load_image (self, file_name_or_data, get_raw_data=None) :
+  def load_image (self, file_name_or_data, get_raw_data=None, show_untrusted=False) :
     """The load_image() function displays the image from @p
     file_name_or_data.  The chooser is updated appropriately.
     """
@@ -332,6 +332,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     i = self.add_file_name_or_data(file_name_or_data)
     self.image_chooser.SetSelection(i)
 
+    self.pyslip.tiles.show_untrusted = show_untrusted
     self.pyslip.tiles.set_image(
       file_name_or_data=img, metrology_matrices=self.metrology_matrices,
       get_raw_data=get_raw_data)
