@@ -56,7 +56,7 @@ def run():
 
   os.chdir(build_dir)
   f=file("dispatcher_include_divcon.sh", "wb")
-  f.write(dispatcher_include_str
+  f.write(dispatcher_include_str)
   f.close()
 
   print "Configure Phenix with DivCon"
