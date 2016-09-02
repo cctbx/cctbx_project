@@ -8,7 +8,7 @@ from wxtbx import path_dialogs
 from wx.lib.embeddedimage import PyEmbeddedImage
 from wx.lib.agw import customtreectrl
 import wx
-from libtbx.utils import Abort, Sorry
+from libtbx.utils import Abort, Sorry, to_unicode, to_str
 import string
 import os
 
@@ -1586,7 +1586,7 @@ class PDBTree (customtreectrl.CustomTreeCtrl) :
       parent=self,
       message="Select PDB file to insert",
       wildcard=file_reader.get_wildcard_strings(["pdb"]))
-    pdb_in = file_reader.any_file(file_name,
+    pdb_in = file_reader.any_file(to_str(file_name),
       force_type="pdb",
       raise_sorry_if_errors=True)
     hierarchy = pdb_in.file_object.hierarchy
@@ -1967,7 +1967,7 @@ class PDBTreeFrame (wx.Frame) :
     atoms.set_chemical_element_simple_if_necessary()
     self._tree.SetHierarchy(hierarchy)
     self._tree.SetCrystalSymmetry(self._crystal_symmetry)
-    self._path_field.SetValue(os.path.abspath(f.file_name))
+    self._path_field.SetValue(os.path.abspath(to_unicode(f.file_name)))
     self._tree.SetFocus()
     self.Refresh()
 
@@ -1977,7 +1977,7 @@ class PDBTreeFrame (wx.Frame) :
       parent=self,
       message="Select PDB file",
       wildcard=file_reader.get_wildcard_strings(["pdb"]))
-    self.LoadPDB(file_name)
+    self.LoadPDB(to_str(file_name))
 
   def OnSave (self, event) :
     if (self._pdb_in is None) :
@@ -2024,9 +2024,10 @@ class PDBTreeFrame (wx.Frame) :
     self._tree.SaveChanges()
     if (self._callback is not None) :
       confirm_action(("Modified structure saved to %s.  Do you want "+
-        "to update the file path in %s?") % (file_name,self._callback_program))
+        "to update the file path in %s?") % (to_str(file_name),
+                                             self._callback_program))
       self._callback(old_file_name=self._pdb_in.file_name,
-                     new_file_name=file_name)
+                     new_file_name=to_str(file_name))
     else :
       wx.MessageBox("Modified structure saved to %s." % file_name)
 
