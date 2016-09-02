@@ -146,7 +146,9 @@ class clashscore(validation):
     self.show_summary(out=out)
 
   def show_summary (self, out=sys.stdout, prefix="") :
-    if (len(self.clash_dict) == 1) :
+    if self.clashscore is None:
+      raise Sorry("PROBE output is empty. Model is not compatible with PROBE.")
+    elif (len(self.clash_dict) == 1) :
       print >> out, prefix + "clashscore = %.2f" % self.clash_dict['']
       if self.clash_dict_b_cutoff[''] is not None:
         print >> out, "clashscore (B factor cutoff = %d) = %f" % \
@@ -318,11 +320,16 @@ class probe_clashscore_manager(object):
         used.append(test_key)
         self.bad_clashes.append(clash_obj)
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
-      stdin_lines=pdb_string).raise_if_errors().stdout_lines
-    if (len(probe_info) == 0) :
-      raise RuntimeError("Empty PROBE output.")
+      stdin_lines=pdb_string) #.raise_if_errors().stdout_lines
+    err = probe_info.format_errors_if_any()
+    if err is not None and err.find("No atom data in input.")>-1:
+      self.clashscore = None
+      self.clashscore_b_cutoff = None
+      return
+    #if (len(probe_info) == 0) :
+    #  raise RuntimeError("Empty PROBE output.")
     self.n_atoms = 0
-    for line in probe_info:
+    for line in probe_info.stdout_lines:
       processed=False
       try:
         dump, n_atoms = line.split(":")

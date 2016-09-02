@@ -59,6 +59,7 @@ class geometry_no_grm(object):
       self.n_twisted_general = self.omglz.n_twisted_general()
 
   def format_molprobity_scores(self, prefix=""):
+    clashscore_explanation = '"Clashscore and/or Probe failed to process model"'
     result="%s" % prefix
     if(self.ramachandran_outliers is not None):
       result = """%sMOLPROBITY STATISTICS.
@@ -75,7 +76,9 @@ class geometry_no_grm(object):
 %s   TWISTED PROLINE : %s
 %s   TWISTED GENERAL : %s"""%(
         prefix,
-        prefix, format_value("%-6.2f", self.clashscore, replace_none_with="NONE").strip(),
+        prefix, format_value("%-6.2f",
+                             self.clashscore,
+                             replace_none_with=clashscore_explanation).strip(),
         prefix,
         prefix, self.ramachandran_outliers, "%",
         prefix, self.ramachandran_allowed, "%",
