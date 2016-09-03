@@ -1462,7 +1462,6 @@ def apply_sharpening(map_coeffs=None,
       k_sharpen=sharpening_info_obj.k_sharpen
       d_min=sharpening_info_obj.d_cut
       n_real=sharpening_info_obj.n_real
-
     if b_sharpen in [0,None] and k_sharpen in [0,None]:
       if not map_coeffs:
         map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
@@ -4955,7 +4954,6 @@ def score_map(map_data=None,
     max_regions_to_test=sharpening_info_obj.max_regions_to_test
   else:
     sharpening_info_obj=sharpening_info()
-
   if solvent_fraction is None:  # skip SA score
     sharpening_info_obj.adjusted_sa=0.
     assert sharpening_info_obj.sharpening_target=='kurtosis'
@@ -5002,7 +5000,6 @@ def score_map(map_data=None,
     sharpening_info_obj.adjusted_sa=sa_ratio - region_weight*normalized_regions
 
   sharpening_info_obj.kurtosis=get_kurtosis(map_data.as_1d())
-
   if sharpening_info_obj.sharpening_target=='kurtosis':
     sharpening_info_obj.score=sharpening_info_obj.kurtosis
   else:
@@ -5281,9 +5278,15 @@ def run_auto_sharpen(
           out=null_out())
       si=score_map(map_data=local_map_data,sharpening_info_obj=si,
         out=null_out())
-      print >>out,"B-sharpen: "+\
-        "%6.1f B-iso: %6.1f k_sharpen: %5s  SA: %7.3f  Kurtosis: %7.3f" %(
-         si.b_sharpen,si.b_iso,si.k_sharpen,si.adjusted_sa,si.kurtosis)
+      if m=='resolution_dependent':
+        print >>out,"b[0]: %6.2f b[1]: %6.2f b[2]: %6.2f  " %(
+            si.b[0],si.b[1],si.b[2]) +\
+          " SA: %7.3f  Kurtosis: %7.3f" %(si.adjusted_sa,si.kurtosis)
+      else:
+        print >>out,"B-sharpen: "+\
+         "%6.1f B-iso: %6.1f k_sharpen: %5s  SA: %7.3f  Kurtosis: %7.3f" %(
+          si.b_sharpen,si.b_iso,si.k_sharpen,si.adjusted_sa,si.kurtosis)
+
 
       if m=='no_sharpening':
         null_si=si
@@ -5291,10 +5294,17 @@ def run_auto_sharpen(
         local_best_si=si
         local_best_map_data=local_map_data
 
-    print >>out,"\nBest scores for sharpening with "+\
-       "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
-       local_best_si.b_iso,local_best_si.b_sharpen,
-      local_best_si.k_sharpen)
+    
+    if local_best_si.sharpening_method=='resolution_dependent':
+      print >>out,"\nBest scores for sharpening with "+\
+        "b[0]=%6.2f b[1]=%6.2f b[2]=%6.2f: " %(
+        local_best_si.b[0],local_best_si.b[1],local_best_si.b[2])
+    else:
+      print >>out,"\nBest scores for sharpening with "+\
+        "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
+        local_best_si.b_iso,local_best_si.b_sharpen,
+         local_best_si.k_sharpen)
+
     local_best_si.show_summary(out=out)
 
     print >>out,\

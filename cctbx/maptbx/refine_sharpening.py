@@ -137,26 +137,14 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,d_cut=None):
   return f_array.customized_copy(data=data_array)
 
 def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
+
     if crystal_symmetry is None: crystal_symmetry=map_coeffs.crystal_symmetry()
-    # And get new map
-    from cctbx import maptbx
-    from cctbx.maptbx import crystal_gridding
-    if n_real:
-      cg=crystal_gridding(
-        unit_cell=crystal_symmetry.unit_cell(),
-        space_group_info=crystal_symmetry.space_group_info(),
-        pre_determined_n_real=n_real)
-    else:
-      cg=None
-    fft_map = map_coeffs.fft_map( resolution_factor = 0.25,
-       crystal_gridding=cg,
-       symmetry_flags=maptbx.use_space_group_symmetry)
-    fft_map.apply_sigma_scaling()
-    map_data=fft_map.real_map_unpadded()
-    return map_data
+    from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
+    return get_map_from_map_coeffs(map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry, n_real=n_real)
 
 def get_sharpened_map(ma=None,phases=None,b=None,d_cut=None,
     n_real=None):
+  if not n_real:aaa=bbb
   sharpened_ma=adjust_amplitudes_linear(ma,b[0],b[1],b[2],d_cut=d_cut)
   new_map_coeffs=sharpened_ma.phase_transfer(phase_source=phases,deg=True)
   return calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
@@ -357,7 +345,6 @@ def run(map_coeffs=None,
   # Get initial value
 
   best_b=b
-  improved=False
   print >>out,"Getting starting value ..."
   refined = refinery(ma,phases,b,d_cut,
     residual_target=residual_target,
@@ -373,9 +360,6 @@ def run(map_coeffs=None,
 
   starting_result=refined.show_result(out=out)
   print >>out,"Starting value: %7.2f" %(starting_result)
-  best_sharpened_ma=ma
-  best_result=starting_result
-  best_b=refined.get_b()
 
 
   print >>out,"Normalizing structure factors..."
@@ -391,17 +375,15 @@ def run(map_coeffs=None,
     sa_percent=sa_percent,
     fraction_occupied=fraction_occupied,
     wrapping=wrapping,
+    n_real=n_real,
     eps=eps)
 
   starting_normalized_result=refined.show_result(out=out)
   print >>out,"Starting value after normalization: %7.2f" %(
      starting_normalized_result)
-
-  if starting_normalized_result>best_result:
-    improved=True
-    best_sharpened_ma=ma
-    best_result=starting_normalized_result
-    best_b=refined.get_b()
+  best_sharpened_ma=ma
+  best_result=starting_normalized_result
+  best_b=refined.get_b()
 
   refined.run()
 
@@ -412,13 +394,11 @@ def run(map_coeffs=None,
   if final_result>best_result:
     best_sharpened_ma=refined.sharpened_ma
     best_result=final_result
-    improved=True
     best_b=refined.get_b()
   print >>out,"Best overall result: %7.2f: " %(best_result)
 
   sharpening_info_obj.b=best_b
-  if improved:
-    return best_sharpened_ma,phases
+  return best_sharpened_ma,phases
 
 
 if (__name__ == "__main__"):
