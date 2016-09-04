@@ -231,16 +231,19 @@ def helper_3(
     r_free_flags   = r_free_flags,
     mask_params    = mask_params,
     xray_structure = xrs)
-  fmodel.update_all_scales(remove_outliers=False, update_f_part1=False)
+  fmodel.update_all_scales(remove_outliers=True, update_f_part1=False)
   k_anisotropic = fmodel.k_isotropic()*fmodel.k_anisotropic()*fmodel.scale_k1()
-  #fmodel.show()
-
+  #
+  f_obs        = fmodel.f_obs()
+  r_free_flags = fmodel.r_free_flags()
+  f_calc       = fmodel.f_calc()
+  ss           = fmodel.ss
+  for i in xrange(len(f_masks)):
+    f_masks[i] = f_masks[i].common_set(f_obs)
+  #
   f_masks = fmodel.f_masks() + f_masks[0:]
-
   f_bulk_data = flex.complex_double(f_obs.data().size(), 0)
-
   f_obs_ = f_obs.array(data = f_obs.data()/(k_anisotropic))
-
   for sel in fmodel.bin_selections:
     k_masks = []
     for i, f in enumerate(f_masks):
