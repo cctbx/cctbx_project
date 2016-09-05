@@ -1186,13 +1186,20 @@ class box_sharpening_info:
       self.solvent_fraction=tracking_data.solvent_fraction
       self.wrapping=tracking_data.params.crystal_info.use_sg_symmetry
 
-
 class sharpening_info:
   def __init__(self,
       tracking_data=None,
       crystal_symmetry=None,
+      sharpening_method=None,
       solvent_fraction=None,
+      n_residues=None,
+      ncs_copies=None,
       n_real=None,
+      region_weight=None,
+      n_bins=None,
+      eps=None,
+      d_min=None,
+      d_min_ratio=None,
       wrapping=None,
       sharpening_target=None,
       residual_target=None,
@@ -1202,46 +1209,74 @@ class sharpening_info:
       b_sharpen=None,
       b_iso=None,  # expected B_iso after applying b_sharpen
       k_sharpen=None,
-      sharpening_method=None,
       kurtosis=None,
       adjusted_sa=None,
       score=None,
-      region_weight=None,
-      n_bins=None,
-      eps=None,
-      d_min=None,
-      d_min_ratio=None,
+      box_in_auto_sharpen=None,
+      max_box_fraction=None,
+      search_b_min=None,
+      search_b_max=None,
+      search_b_n=None,
       box_sharpening_info_obj=None,
         ):
 
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
     del self.tracking_data  # don't need it as part of the object
-    if tracking_data:
-      self.crystal_symmetry=tracking_data.crystal_symmetry
-      self.solvent_fraction=tracking_data.solvent_fraction
-      self.wrapping=tracking_data.params.crystal_info.use_sg_symmetry
+    del self.box_sharpening_info_obj# don't need it as part of the object
 
-      self.fraction_occupied=tracking_data.params.crystal_info.fraction_occupied
-      self.sa_percent=tracking_data.params.crystal_info.sa_percent
-      self.region_weight=tracking_data.params.crystal_info.region_weight
-      self.max_regions_to_test=\
-          tracking_data.params.crystal_info.max_regions_to_test
-      self.d_min_ratio=tracking_data.params.crystal_info.d_min_ratio
-      self.d_cut=tracking_data.params.crystal_info.resolution
-      self.d_min=tracking_data.params.crystal_info.resolution
-      self.sharpening_target=tracking_data.params.crystal_info.sharpening_target
-      self.residual_target=tracking_data.params.crystal_info.residual_target
-      self.eps=tracking_data.params.crystal_info.eps
-      self.n_bins=tracking_data.params.crystal_info.n_bins
+    if tracking_data:  # use tracking data information
+      self.update_with_tracking_data(tracking_data=tracking_data)
 
-    if self.box_sharpening_info_obj: # overwrite information from tracking_data
+    if box_sharpening_info_obj: # update information
       self.update_with_box_sharpening_info(
-         box_sharpening_info_obj=self.box_sharpening_info_obj)
+         box_sharpening_info_obj=box_sharpening_info_obj)
 
     if self.b is None:
       self.b=[0,0,0]
 
+  def update_with_box_sharpening_info(self,box_sharpening_info_obj=None):
+      if not box_sharpening_info_obj: 
+        return self
+      self.crystal_symmetry=box_sharpening_info_obj.crystal_symmetry
+      self.solvent_fraction=box_sharpening_info_obj.solvent_fraction
+      self.wrapping=box_sharpening_info_obj.wrapping
+      self.n_real=box_sharpening_info_obj.n_real
+      return self
+
+  def update_with_tracking_data(self,tracking_data=None):
+      params=tracking_data.params
+      self.crystal_symmetry=tracking_data.crystal_symmetry
+      self.solvent_fraction=tracking_data.solvent_fraction
+      self.n_residues=tracking_data.n_residues
+      self.ncs_copies=tracking_data.input_ncs_info.number_of_operators
+      self.wrapping=params.crystal_info.use_sg_symmetry
+      self.fraction_occupied=params.crystal_info.fraction_occupied
+      self.sa_percent=params.crystal_info.sa_percent
+      self.region_weight=params.crystal_info.region_weight
+      self.max_regions_to_test=params.crystal_info.max_regions_to_test
+      self.d_min_ratio=params.crystal_info.d_min_ratio
+      self.d_cut=params.crystal_info.resolution
+      self.d_min=params.crystal_info.resolution
+      self.sharpening_target=params.crystal_info.sharpening_target
+      self.residual_target=params.crystal_info.residual_target
+      self.eps=params.crystal_info.eps
+      self.n_bins=params.crystal_info.n_bins
+      self.box_in_auto_sharpen=params.crystal_info.box_in_auto_sharpen
+      self.max_box_fraction=params.crystal_info.max_box_fraction
+      self.min_ratio_of_ncs_copy_to_first=params.segmentation.min_ratio_of_ncs_copy_to_first
+      self.max_ratio_to_target=params.segmentation.max_ratio_to_target
+      self.min_ratio_to_target=params.segmentation.min_ratio_to_target
+      self.residues_per_region=params.segmentation.residues_per_region
+      self.starting_density_threshold=params.segmentation.starting_density_threshold
+      self.density_threshold=params.segmentation.density_threshold
+      self.min_ratio=params.segmentation.min_ratio
+      self.min_volume=params.segmentation.min_volume
+      self.search_b_min=params.crystal_info.search_b_min
+      self.search_b_max=params.crystal_info.search_b_max
+      self.search_b_n=params.crystal_info.search_b_n
+      self.verbose=params.control.verbose
+      return self
   def show_summary(self,out=sys.stdout):
     print >>out,"Summary of sharpening info:"
     for x in dir(self):
@@ -1266,13 +1301,6 @@ class sharpening_info:
         print >>out,\
           "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
           self.adjusted_sa,self.kurtosis,self.score)
-
-  def update_with_box_sharpening_info(self,box_sharpening_info_obj=None):
-      if not box_sharpening_info_obj: return
-      self.crystal_symmetry=box_sharpening_info_obj.crystal_symmetry
-      self.solvent_fraction=box_sharpening_info_obj.solvent_fraction
-      self.wrapping=box_sharpening_info_obj.wrapping
-      self.n_real=box_sharpening_info_obj.n_real
 
   def is_resolution_dependent_sharpening(self):
     if self.sharpening_method=='resolution_dependent':
@@ -2268,10 +2296,7 @@ def score_threshold(b_vs_region=None,threshold=None,
      weight_near_one=0.1,
      min_ratio_of_ncs_copy_to_first=None,
      target_in_all_regions=None,
-     calculate_sa=False, # calculate surface area of top sa_percent of target
-     sa_percent=None, # calculate surface area of top sa_percent of target
      out=sys.stdout):
-
    # We want about 1 region per 50-100 residues for the biggest region.
    # One possibility is to try to maximize the median size of the N top
    # regions, where N=number of expected regions= n_residues/residues_per_region
@@ -2291,26 +2316,11 @@ def score_threshold(b_vs_region=None,threshold=None,
    nn=len(sorted_by_volume)-1 # first one is total
    ok=True
 
-   # Number of regions required to make up sa_fraction of target_in_top_regions
-   target_sum= sa_percent* target_in_all_regions*0.01
-   print >>out,"Points for %.1f percent of target in all regions: %.1f" %(
-       sa_percent,target_sum)
-   sum=0.
-   sum_n=0.
-   for v,i in sorted_by_volume[1:]:
-     sum+=v
-     sum_n+=1.
-     if sum >=target_sum:
-       break
-   sa_percent_n=sum_n*(target_sum/sum)  # number of regions to get to sa_percent
-   print >>out,"SA_n: %.1f  %s  %s   %s %s %s" %(sa_percent_n,sum_n,sum,target_sum,b_vs_region.b_iso,threshold)
-
    too_low=None  # marker for way too low
    too_high=None
 
    if nn < ncs_copies:
      ok=False #return  # not enough
-
 
    v1,i1=sorted_by_volume[1]
    if v1 < min_volume:
@@ -2400,7 +2410,7 @@ def score_threshold(b_vs_region=None,threshold=None,
       too_low,too_high,expected_regions,ok
 
 
-def choose_threshold(params,b_vs_region=None,map_data=None,
+def choose_threshold(b_vs_region=None,map_data=None,
      fraction_occupied=None,
      solvent_fraction=None,
      n_residues=None,
@@ -2408,6 +2418,16 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
      scale=0.95,
      calculate_sa=None, # calculate surface area of top sa_percent of target
      sa_percent=None, # calculate surface area of top sa_fraction of target
+     density_threshold=None,
+     starting_density_threshold=None,
+     wrapping=None,
+     residues_per_region=None,
+     min_volume=None,
+     min_ratio=None,
+     max_ratio_to_target=None,
+     min_ratio_to_target=None,
+     min_ratio_of_ncs_copy_to_first=None,
+     verbose=None,
      out=sys.stdout):
 
   best_threshold=None
@@ -2425,19 +2445,19 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
   lower_bound=0.0001
   best_nn=None
 
-  if params.segmentation.density_threshold is not None: # use it
+  if density_threshold is not None: # use it
      print >>out,"\nUsing input threshold of %5.2f " %(
-      params.segmentation.density_threshold)
+      density_threshold)
      n_range_low_high_list=[[0,0]] # use as is
   else:
     n_range_low_high_list=[[-16,4],[-32,16],[-64,80]]
-    if params.segmentation.starting_density_threshold is not None:
-      starting_density_threshold=params.segmentation.starting_density_threshold
+    if starting_density_threshold is not None:
+      starting_density_threshold=starting_density_threshold
       print >>out,"Starting density threshold is: %7.3f" %(
          starting_density_threshold)
     else:
       starting_density_threshold=1.0
-  if params.control.verbose:
+  if verbose:
     local_out=out
   else:
     from libtbx.utils import null_out
@@ -2461,15 +2481,15 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
     for nn in xrange(n_range_low,n_range_high+1):
       if nn in used_ranges: continue
       used_ranges.append(nn)
-      if params.segmentation.density_threshold is not None:
-        threshold=params.segmentation.density_threshold
+      if density_threshold is not None:
+        threshold=density_threshold
       else:
         threshold=starting_density_threshold*(scale**nn)
       if threshold < lower_bound or threshold > upper_bound:
         continue
       co = maptbx.connectivity(map_data=map_data.deep_copy(),
          threshold=threshold,
-         wrapping=params.crystal_info.use_sg_symmetry)
+         wrapping=wrapping)
       z = zip(co.regions(),range(0,co.regions().size()))
       sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
       if len(sorted_by_volume)<2:
@@ -2483,19 +2503,16 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
          sorted_by_volume=sorted_by_volume,
          fraction_occupied=fraction_occupied,
          solvent_fraction=solvent_fraction,
-         residues_per_region=params.segmentation.residues_per_region,
-         min_volume=params.segmentation.min_volume,
-         min_ratio=params.segmentation.min_ratio,
-         max_ratio_to_target=params.segmentation.max_ratio_to_target,
-         min_ratio_to_target=params.segmentation.min_ratio_to_target,
-         min_ratio_of_ncs_copy_to_first=\
-             params.segmentation.min_ratio_of_ncs_copy_to_first,
+         residues_per_region=residues_per_region,
+         min_volume=min_volume,
+         min_ratio=min_ratio,
+         max_ratio_to_target=max_ratio_to_target,
+         min_ratio_to_target=min_ratio_to_target,
+         min_ratio_of_ncs_copy_to_first=min_ratio_of_ncs_copy_to_first,
          ncs_copies=ncs_copies,
          n_residues=n_residues,
          map_data=map_data,
          target_in_all_regions=target_in_all_regions,
-         calculate_sa=calculate_sa,
-         sa_percent=sa_percent,
          out=local_out)
       if expected_regions:
         unique_expected_regions=max(1,
@@ -2520,28 +2537,36 @@ def choose_threshold(params,b_vs_region=None,map_data=None,
   if best_threshold is not None:
     print >>out,"\nBest threshold: %5.2f\n" %(best_threshold)
     return best_threshold,unique_expected_regions,best_score,best_ok
-  elif params.segmentation.density_threshold is not None: # use it anyhow
-    return params.segmentation.density_threshold,\
-      unique_expected_regions,None,None
+  elif density_threshold is not None: # use it anyhow
+    return density_threshold,unique_expected_regions,None,None
   else:
     return None,unique_expected_regions,None,None
 
-def get_co(map_data=None,threshold=None,params=None):
+def get_co(map_data=None,threshold=None,wrapping=None):
   co=maptbx.connectivity(map_data=map_data,threshold=threshold,
-         wrapping=params.crystal_info.use_sg_symmetry)
+         wrapping=wrapping)
   z = zip(co.regions(),range(0,co.regions().size()))
   sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
   min_b, max_b = co.get_blobs_boundaries_tuples() # As grid points, not A
   return co,sorted_by_volume,min_b,max_b
 
-def get_connectivity(params,b_vs_region=None,
+def get_connectivity(b_vs_region=None,
      map_data=None,
-     ncs_object=None,
      solvent_fraction=None,
      n_residues=None,
      ncs_copies=None,
-     calculate_sa=False, # calculate surface area of top sa_percent of target
-     sa_percent=30., # calculate surface area of top sa_fraction of target
+     fraction_occupied=None,
+     iterate_with_remainder=None,
+     min_volume=None,
+     min_ratio=None,
+     wrapping=None,
+     residues_per_region=None,
+     max_ratio_to_target=None,
+     min_ratio_to_target=None,
+     min_ratio_of_ncs_copy_to_first=None,
+     starting_density_threshold=None,
+     density_threshold=None,
+     verbose=None,
      out=sys.stdout):
   print >>out,"\nGetting connectivity"
   # Normalize map data now to SD of the part that is not solvent
@@ -2557,16 +2582,24 @@ def get_connectivity(params,b_vs_region=None,
   best_ok=None
   best_unique_expected_regions=None
   for ii in xrange(3):
-    threshold,unique_expected_regions,score,ok=choose_threshold(params,
+    threshold,unique_expected_regions,score,ok=choose_threshold(
+     density_threshold=density_threshold,
+     starting_density_threshold=starting_density_threshold,
      b_vs_region=b_vs_region,
      map_data=map_data,
      n_residues=n_residues,
      ncs_copies=ncs_copies,
-     fraction_occupied=params.segmentation.fraction_occupied,
+     fraction_occupied=fraction_occupied,
      solvent_fraction=solvent_fraction,
      scale=scale,
-     calculate_sa=calculate_sa,
-     sa_percent=sa_percent,
+     wrapping=wrapping,
+     residues_per_region=residues_per_region,
+     min_volume=min_volume,
+     min_ratio=min_ratio,
+     max_ratio_to_target=max_ratio_to_target,
+     min_ratio_to_target=min_ratio_to_target,
+     min_ratio_of_ncs_copy_to_first=min_ratio_of_ncs_copy_to_first,
+     verbose=verbose,
      out=out)
     # Take it if it improves (score, ok)
     if threshold is not None:
@@ -2577,81 +2610,27 @@ def get_connectivity(params,b_vs_region=None,
       best_ok=ok
       best_threshold=threshold
       best_scale=scale
-    if best_ok or params.segmentation.density_threshold is not None:
+    if best_ok or density_threshold is not None:
       break
     else:
       scale=scale**0.333 # keep trying
 
   if best_threshold is None or (
-      params.segmentation.density_threshold is not None and best_score is None):
-    if params.segmentation.iterate_with_remainder: # on first try failed
+      density_threshold is not None and best_score is None):
+    if iterate_with_remainder: # on first try failed
       raise Sorry("No threshold found...try with density_threshold=xxx")
     else: # on iteration...ok
       print >>out,"Note: No threshold found"
       return None,None,None,None,None,None
   else:
-    params.segmentation.starting_density_threshold=best_threshold
+    starting_density_threshold=best_threshold
     # try it next time
 
-  co,sorted_by_volume,min_b,max_b=get_co(params=params,
-    map_data=map_data,threshold=best_threshold)
-
-
-  cntr=0
-  v1=sorted_by_volume[1][0]
-  n_use=0
-  for p in sorted_by_volume[1:]:
-    cntr+=1
-    v,i=p
-    if(v<params.segmentation.min_volume): break
-    if(v/v1 <params.segmentation.min_ratio): break
-    """
-    print >>out,\
-    "Region %3d (%3d)  volume:%5d  X:%6d - %6d   Y:%6d - %6d  Z:%6d - %6d "%(
-     cntr,i,v,
-     min_b[i][0],max_b[i][0],
-     min_b[i][1],max_b[i][1],
-     min_b[i][2],max_b[i][2])
-    """
-    n_use=cntr
-
-  if calculate_sa:
-    print >>out,"\nCalculating surface area..."
-
-    # Number of regions required to make up sa_fraction of target_in_top_regions
-    target_in_all_regions=\
-     map_data.size()*params.segmentation.fraction_occupied*(1-solvent_fraction)
-
-    target_sum= sa_percent* target_in_all_regions*0.01
-    print >>out,"Points for %.1f percent of target in all regions: %.1f" %(
-        sa_percent,target_sum)
-
-    cntr=0
-    sum_v=0.
-    sum_new_v=0.
-    for p in sorted_by_volume[1:]:
-      cntr+=1
-      v,i=p
-      sum_v+=v
-      bool_expanded=co.expand_mask(id_to_expand=i,expand_size=1)
-      new_v=bool_expanded.count(True)-v
-      sum_new_v+=new_v
-      sa_ratio=new_v/v
-
-      if sum_v>=target_sum: break
-    sa_ratio=sum_new_v/max(1.,sum_v)
-    nn=cntr*(target_sum/sum_v)
-
-    b_vs_region.sa_sum_v_vs_region_dict[b_vs_region.b_iso][best_threshold]=sum_v
-    b_vs_region.sa_nn_vs_region_dict[b_vs_region.b_iso][best_threshold]=nn
-    b_vs_region.sa_ratio_b_vs_region_dict[b_vs_region.b_iso][best_threshold]=sa_ratio
-
-    # get the co over again to make it clean
-    co,sorted_by_volume,min_b,max_b=get_co(params=params,
-      map_data=map_data,threshold=best_threshold)
+  co,sorted_by_volume,min_b,max_b=get_co(
+    map_data=map_data,threshold=best_threshold,wrapping=wrapping)
 
   return co,sorted_by_volume,min_b,max_b,best_unique_expected_regions,\
-      best_score,threshold
+      best_score,threshold,starting_density_threshold
 
 def get_volume_of_seq(text,vol=None,chain_type=None,out=sys.stdout):
   from iotbx.bioinformatics import chain_type_and_residues
@@ -4356,7 +4335,6 @@ def iterate_search(params,
       ncs_group_obj=ncs_group_obj,
       tracking_data=tracking_data,
       out=out)
-
   new_params=deepcopy(params)
   new_params.segmentation.iterate_with_remainder=False
   new_params.segmentation.density_threshold=None
@@ -4377,7 +4355,7 @@ def iterate_search(params,
   new_tracking_data.set_n_residues(new_n_residues)
   new_tracking_data.set_solvent_fraction(new_solvent_fraction)
   new_tracking_data.set_origin_shift() # sets it to zero
-
+  new_tracking_data.params.segmentation.starting_density_threshold=new_params.segmentation.starting_density_threshold # this is new
   print >>out,"\nIterating with remainder density"
   # NOTE: do not include pdb_hierarchy here unless you deep_copy it
   remainder_ncs_group_obj,dummy_remainder,remainder_tracking_data=run(
@@ -5058,23 +5036,19 @@ def put_bounds_in_range(
     new_ub.append(ub)
   return tuple(new_lb),tuple(new_ub)
 
-def select_box_map_data(params,
+def select_box_map_data(si=None,
            map_data=None,
-           ncs_object=None,
-           n_residues=None,
-           ncs_copies=None,
-           solvent_fraction=None,
-           crystal_symmetry=None,
-           max_box_fraction=0.5,
            minimum_size=(40,40,40),
            out=sys.stdout):
 
-  lower_bounds,upper_bounds=box_of_biggest_region(params,
+  n_residues=si.n_residues,
+  ncs_copies=si.ncs_copies,
+  solvent_fraction=si.solvent_fraction
+  crystal_symmetry=si.crystal_symmetry
+  max_box_fraction=si.max_box_fraction
+
+  lower_bounds,upper_bounds=box_of_biggest_region(si=si,
            map_data=map_data,
-           ncs_object=ncs_object,
-           n_residues=n_residues,
-           ncs_copies=ncs_copies,
-           solvent_fraction=solvent_fraction,
            out=out)
 
   lower_bounds,upper_bounds=put_bounds_in_range(
@@ -5093,9 +5067,10 @@ def select_box_map_data(params,
   else:
     # figure out solvent fraction in this box...
     try:
-      from phenix.autosol.map_to_model import iterated_solvent_fraction
+      from phenix.autosol.map_to_model import iterated_solvent_fraction,\
+         get_params
+      local_params=get_params([],out=null_out())
       print >>out,"\nIdentifying solvent fraction in boxed map..."
-      local_params=deepcopy(params)
       local_params.crystal_info.solvent_content=None
       local_params.crystal_info.unit_cell=crystal_symmetry.unit_cell()
       local_params.crystal_info.space_group=crystal_symmetry.space_group()
@@ -5116,24 +5091,35 @@ def select_box_map_data(params,
 
     return box_map,box_crystal_symmetry,box_sharpening_info_obj
 
-def box_of_biggest_region(params,
+def box_of_biggest_region(si=None,
            map_data=None,
-           ncs_object=None,
-           n_residues=None,
-           ncs_copies=None,
-           solvent_fraction=None,
            out=sys.stdout):
+    n_residues=si.n_residues
+    ncs_copies=si.ncs_copies
+    solvent_fraction=si.solvent_fraction
 
     b_vs_region=b_vs_region_info()
     co,sorted_by_volume,min_b,max_b,unique_expected_regions,best_score,\
-       new_threshold=get_connectivity(
-           params,
+       new_threshold,starting_density_threshold=\
+        get_connectivity(
            b_vs_region=b_vs_region,
            map_data=map_data,
-           ncs_object=ncs_object,
            n_residues=n_residues,
            ncs_copies=ncs_copies,
            solvent_fraction=solvent_fraction,
+           min_volume=si.min_volume,
+           min_ratio=si.min_ratio,
+           fraction_occupied=si.fraction_occupied,
+           wrapping=si.wrapping,
+           residues_per_region=si.residues_per_region,
+           max_ratio_to_target=si.max_ratio_to_target,
+           min_ratio_to_target=si.min_ratio_to_target,
+           min_ratio_of_ncs_copy_to_first=si.min_ratio_of_ncs_copy_to_first,
+           starting_density_threshold=si.starting_density_threshold,
+           density_threshold=si.density_threshold,
+           verbose=si.verbose,
+
+
            out=out)
     if len(sorted_by_volume)<2:
       return # nothing to do
@@ -5150,39 +5136,27 @@ def box_of_biggest_region(params,
 
 
 def run_auto_sharpen(
-      sharpening_info_obj=None,
-      params=None,
+      si=None,
       map_data=None,
-      ncs_obj=None,
-      tracking_data=None,
-      box_in_auto_sharpen=None,
-      max_box_fraction=None,
+      auto_sharpen_methods=None,
       out=sys.stdout):
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
 
-  if box_in_auto_sharpen:
+  if si.box_in_auto_sharpen:
     print >>out,"\nAuto-sharpening using representative box of density"
-    original_box_sharpening_info_obj=box_sharpening_info(
-       n_real=map_data.all(),
-       tracking_data=tracking_data)
+    original_box_sharpening_info_obj=deepcopy(si)
 
     box_map_data,box_crystal_symmetry,box_sharpening_info_obj=\
-       select_box_map_data(params,
+       select_box_map_data(si=si,
            map_data=map_data,
-           ncs_object=ncs_obj,
-           n_residues=tracking_data.n_residues,
-           ncs_copies=tracking_data.input_ncs_info.number_of_operators,
-           solvent_fraction=tracking_data.solvent_fraction,
-           crystal_symmetry=tracking_data.crystal_symmetry,
-           max_box_fraction=max_box_fraction,
            out=out)
     if box_sharpening_info_obj is None: # did not do it
       print >>out,"Box map is similar in size to entire map..."+\
          "skipping representative box of density"
-      box_in_auto_sharpen=False
       original_box_sharpening_info_obj=None
+      crystal_symmetry=si.crystal_symmetry
     else:
       print >>out,"Using box map to identify optimal sharpening"
       print >>out,"Box map grid: %d  %d  %d" %(
@@ -5190,7 +5164,7 @@ def run_auto_sharpen(
       print >>out,"Box map cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f  "%(
         box_crystal_symmetry.unit_cell().parameters())
       original_map_data=map_data
-      original_crystal_symmetry=tracking_data.crystal_symmetry
+      original_crystal_symmetry=si.crystal_symmetry
 
       map_data=box_map_data
       crystal_symmetry=box_crystal_symmetry
@@ -5199,17 +5173,20 @@ def run_auto_sharpen(
   else:
     original_box_sharpening_info_obj=None
     box_sharpening_info_obj=None
+    crystal_symmetry=si.crystal_symmetry
 
   original_b_iso,map_coeffs,f_array,phases=get_effective_b_iso(
-     map_data=map_data,tracking_data=tracking_data,
-     box_sharpening_info_obj=box_sharpening_info_obj,
+     map_data=map_data,
+      resolution=si.d_min,
+      d_min_ratio=si.d_min_ratio,
+      crystal_symmetry=crystal_symmetry,
      out=out)
 
   # Try various methods for sharpening.
 
-  null_si=sharpening_info(tracking_data=tracking_data,
+  null_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
-  best_si=sharpening_info(tracking_data=tracking_data,
+  best_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
   best_map_data=None
 
@@ -5218,7 +5195,7 @@ def run_auto_sharpen(
   print >>out,"\nTesting sharpening methods with target of %s" %(
       best_si.sharpening_target)
 
-  for m in tracking_data.params.crystal_info.auto_sharpen_methods:
+  for m in auto_sharpen_methods:
     if m in ['no_sharpening','resolution_dependent']:
       b_min=original_b_iso
       b_max=original_b_iso
@@ -5227,10 +5204,10 @@ def run_auto_sharpen(
       delta_b=0
     elif m in ['b_iso','b_iso_to_d_cut']:
       b_min=min(original_b_iso,
-        tracking_data.params.crystal_info.search_b_min)
+        si.search_b_min)
       b_max=max(original_b_iso,
-        tracking_data.params.crystal_info.search_b_max)
-      b_n=tracking_data.params.crystal_info.search_b_n
+        si.search_b_max)
+      b_n=si.search_b_n
       delta_b=(b_max-b_min)/max(1,b_n-1)
       print >>out,\
         "\nTesting %s with b_iso from %7.1f to %7.1f in %d steps of %7.1f" %(
@@ -5240,61 +5217,61 @@ def run_auto_sharpen(
       if m=='b_iso':
         k_sharpen=0.
       else:
-        k_sharpen=tracking_data.params.crystal_info.k_sharpen
+        k_sharpen=si.k_sharpen
 
     local_best_map_data=None
-    local_best_si=sharpening_info(tracking_data=tracking_data,
+    local_best_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
     for i in xrange(b_n):
-      si=sharpening_info(
-           tracking_data=tracking_data,
-           sharpening_method=m,
-           n_real=map_data.all(),
-           k_sharpen=k_sharpen,
-           box_sharpening_info_obj=box_sharpening_info_obj,
-           )
+      local_si=deepcopy(si).update_with_box_sharpening_info(
+        box_sharpening_info_obj=box_sharpening_info_obj)
+      local_si.sharpening_method=m
+      local_si.n_real=map_data.all()
+      local_si.k_sharpen=k_sharpen
 
       if m=='resolution_dependent':
         print >>out,"\nRefining resolution-dependent sharpening based on %s" %(
-          si.residual_target)
-        si.b_sharpen=0
-        si.b_iso=original_b_iso
+          local_si.residual_target)
+        local_si.b_sharpen=0
+        local_si.b_iso=original_b_iso
         from cctbx.maptbx.refine_sharpening import run as refine_sharpening
         local_f_array,local_phases=refine_sharpening(
            map_coeffs=map_coeffs,
-           sharpening_info_obj=si,
+           sharpening_info_obj=local_si,
            out=out)
       else:
         local_f_array=f_array
         local_phases=phases
         b_iso=b_min+i*delta_b
-        si.b_sharpen=original_b_iso-b_iso
-        si.b_iso=b_iso
+        local_si.b_sharpen=original_b_iso-b_iso
+        local_si.b_iso=b_iso
 
       local_map_data=apply_sharpening(
           f_array=local_f_array,phases=local_phases,
-          sharpening_info_obj=si,
-          crystal_symmetry=si.crystal_symmetry,
+          sharpening_info_obj=local_si,
+          crystal_symmetry=local_si.crystal_symmetry,
           out=null_out())
-      si=score_map(map_data=local_map_data,sharpening_info_obj=si,
+      local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
         out=null_out())
       if m=='resolution_dependent':
         print >>out,"b[0]: %6.2f b[1]: %6.2f b[2]: %6.2f  " %(
-            si.b[0],si.b[1],si.b[2]) +\
-          " SA: %7.3f  Kurtosis: %7.3f" %(si.adjusted_sa,si.kurtosis)
+            local_si.b[0],local_si.b[1],local_si.b[2]) +\
+          " SA: %7.3f  Kurtosis: %7.3f" %(
+           local_si.adjusted_sa,local_si.kurtosis)
       else:
         print >>out,"B-sharpen: "+\
          "%6.1f B-iso: %6.1f k_sharpen: %5s  SA: %7.3f  Kurtosis: %7.3f" %(
-          si.b_sharpen,si.b_iso,si.k_sharpen,si.adjusted_sa,si.kurtosis)
+          local_si.b_sharpen,local_si.b_iso,
+           local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis)
 
 
       if m=='no_sharpening':
-        null_si=si
-      if local_best_si.score is None or si.score>local_best_si.score:
-        local_best_si=si
+        null_si=local_si
+      if local_best_si.score is None or local_si.score>local_best_si.score:
+        local_best_si=local_si
         local_best_map_data=local_map_data
 
-    
+
     if local_best_si.sharpening_method=='resolution_dependent':
       print >>out,"\nBest scores for sharpening with "+\
         "b[0]=%6.2f b[1]=%6.2f b[2]=%6.2f: " %(
@@ -5331,8 +5308,7 @@ def run_auto_sharpen(
       print >>out,"(%7.3f, %7.3f, %7.3f, %7.3f, %7.3f, %7.3f) "%(tuple(
         best_si.crystal_symmetry.unit_cell().parameters()))
     # and set tracking data with result
-    tracking_data.set_sharpening_info(sharpening_info_obj=best_si)
-    return True
+    return best_si
   else:
     print >>out,"Did not improve score with sharpening..."
     return False
@@ -5541,19 +5517,24 @@ def run(args,
       print >>out,"\nCarrying out auto_sharpening"
       params.crystal_info.auto_sharpen=None # so we don't do it again later
       print>>out,"Starting sharpening info:"
+      auto_sharpen_methods=\
+       tracking_data.params.crystal_info.auto_sharpen_methods
       null_si=sharpening_info(tracking_data=tracking_data,
         n_real=map_data.all())
       null_si.sharpen_and_score_map(map_data=map_data,
         out=out).show_score(out=out)
       null_si.show_summary(out=out)
 
-      if run_auto_sharpen( params=params, map_data=map_data, ncs_obj=ncs_obj,
-           tracking_data=tracking_data,
-           box_in_auto_sharpen=params.crystal_info.box_in_auto_sharpen,
-           max_box_fraction=params.crystal_info.max_box_fraction,
-           out=out):
+      si=sharpening_info(tracking_data=tracking_data,
+        n_real=map_data.all())  # new si
+
+      check_si=run_auto_sharpen(
+           si=si,
+           map_data=map_data,
+           auto_sharpen_methods=auto_sharpen_methods,
+           out=out)
+      if check_si:
         print >>out,"\nFinal sharpening info:"
-        check_si=deepcopy(tracking_data.sharpening_info_obj)
         check_si.sharpen_and_score_map(map_data=map_data,
           out=out).show_score(out=out)
         check_si.show_summary(out=out)
@@ -5574,7 +5555,6 @@ def run(args,
 
     tracking_data.show_summary(out=out)
 
-
   original_ncs_obj=ncs_obj # in case we need it later...
   original_input_ncs_info=tracking_data.input_ncs_info
   removed_ncs=False
@@ -5588,16 +5568,30 @@ def run(args,
   for itry in xrange(2):
     # get connectivity  (conn=connectivity_object.result)
     b_vs_region=b_vs_region_info()
+    si=sharpening_info(tracking_data=tracking_data)
     co,sorted_by_volume,min_b,max_b,unique_expected_regions,best_score,\
-       new_threshold=get_connectivity(
-           params,
+       new_threshold,starting_density_threshold=\
+         get_connectivity(
            b_vs_region=b_vs_region,
            map_data=map_data,
-           ncs_object=ncs_obj,
+           iterate_with_remainder=params.segmentation.iterate_with_remainder,
            n_residues=n_residues,
            ncs_copies=ncs_copies,
            solvent_fraction=solvent_fraction,
+           fraction_occupied=si.fraction_occupied,
+           min_volume=si.min_volume,
+           min_ratio=si.min_ratio,
+           wrapping=si.wrapping,
+           residues_per_region=si.residues_per_region,
+           max_ratio_to_target=si.max_ratio_to_target,
+           min_ratio_to_target=si.min_ratio_to_target,
+           min_ratio_of_ncs_copy_to_first=si.min_ratio_of_ncs_copy_to_first,
+           starting_density_threshold=si.starting_density_threshold,
+           density_threshold=si.density_threshold,
+           verbose=si.verbose,
            out=out)
+    params.segmentation.starting_density_threshold=starting_density_threshold # have to set tracking data as we are passing that above
+    tracking_data.params.segmentation.starting_density_threshold=starting_density_threshold # have to set tracking data as we are passing that above
     if new_threshold:
       print >>out,"\nNew threshold is %7.2f" %(new_threshold)
     if co is None: # no luck
