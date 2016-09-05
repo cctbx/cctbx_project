@@ -15,6 +15,7 @@ import mmtbx.utils
 import iotbx
 import iotbx.pdb.remark_3_interpretation
 
+
 def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
   assert len(tls_selections) == len(tls_groups)
   for sel in tls_selections:
@@ -1033,118 +1034,114 @@ def get_u_cart(o_tfm, origin, sites_cart):
     sites_cart    = sites_cart,
     zeroize_trace = False)
 
-def u_tls_vs_u_ens(
-        pdb_str,
-        dx=0,dy=0,dz=0,
-        sx=0,sy=0,sz=0,
-        lx=[1,0,0],ly=[0,1,0],lz=[0,0,1],
-        tx=0,ty=0,tz=0,
-        vx=[1,0,0],vy=[0,1,0],vz=[0,0,1],
-        w_M_lx=[0,0,0], w_M_ly=[0,0,0], w_M_lz=[0,0,0],
-        origin=None,
-        n_models=10000,
-        assert_similarity=True,
-        show=False,
-        log = sys.stdout):
-  from mmtbx.tls import analysis, tls_as_xyz
-  from scitbx import matrix
-  from libtbx.utils import null_out
-  #
-  if(show):
-    print >> log, "INPUTS:","-"*73
-    print >> log, "dx    :", dx
-    print >> log, "dy    :", dy
-    print >> log, "dz    :", dz
-    print >> log, "sx    :", sx
-    print >> log, "sy    :", sy
-    print >> log, "sz    :", sz
-    print >> log, "lx    :", [i for i in lx]
-    print >> log, "ly    :", [i for i in ly]
-    print >> log, "lz    :", [i for i in lz]
-    print >> log, "tx    :", tx
-    print >> log, "ty    :", ty
-    print >> log, "tz    :", tz
-    print >> log, "vx    :", [i for i in vx]
-    print >> log, "vy    :", [i for i in vy]
-    print >> log, "vz    :", [i for i in vz]
-    print >> log, "w_M_lx:", [i for i in w_M_lx]
-    print >> log, "w_M_ly:", [i for i in w_M_ly]
-    print >> log, "w_M_lz:", [i for i in w_M_lz]
-    print >> log, "origin:", origin
-    print >> log, "-"*79
-  #
-  #p1 = "dx"+str(dx)+"_"+"dy"+str(dy)+"_"+"dz"+str(dz)
-  #p2 = "sx"+str(sx)+"_"+"sy"+str(sy)+"_"+"sz"+str(sz)
-  #p3 = "lx"+"".join([str(i) for i in lx])+"_"+\
-  #     "ly"+"".join([str(i) for i in ly])+"_"+\
-  #     "lz"+"".join([str(i) for i in lz])
-  #prefix = "_".join([p1,p2,p3])
-  prefix="u_tls_vs_u_ens"
-  #
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  xrs = pdb_inp.xray_structure_simple()
-  sites_cart = xrs.sites_cart()
-  xrs.set_sites_cart(sites_cart)
-  ph = pdb_inp.construct_hierarchy()
-  ph.atoms().set_xyz(sites_cart)
-  if(origin is None):
-    origin = sites_cart.mean()
-  #
-  o_tfm = analysis.tls_from_motions(
-    dx=dx,dy=dy,dz=dz,
-    l_x=matrix.col(lx),l_y=matrix.col(ly),l_z=matrix.col(lz),
-    sx=sx,sy=sy,sz=sz,
-    tx=tx,ty=ty,tz=tz,
-    v_x=matrix.col(vx),v_y=matrix.col(vy),v_z=matrix.col(vz),
-    w_M_lx=matrix.col(w_M_lx),
-    w_M_ly=matrix.col(w_M_ly),
-    w_M_lz=matrix.col(w_M_lz))
-  #
-  u_cart_from_tls = get_u_cart(o_tfm=o_tfm, origin=origin, sites_cart=sites_cart)
-  tlso_ = tlso(
-    t      = o_tfm.T_M.as_sym_mat3(),
-    l      = o_tfm.L_M.as_sym_mat3(),
-    s      = o_tfm.S_M.as_mat3(),
-    origin = origin)
-  if(assert_similarity):
-    T = matrix.sym(sym_mat3=tlso_.t)
-    L = matrix.sym(sym_mat3=tlso_.l)
-    S = matrix.sqr(tlso_.s)
-    o_tfm = analysis.run(T=T, L=L, S=S, log=null_out()).self_check()
-  #
-  r = tls_as_xyz.ensemble_generator(
-    tls_from_motions_object = o_tfm,
-    pdb_hierarchy        = ph,
-    xray_structure       = xrs,
-    n_models             = n_models,
-    origin               = origin,
-    use_states           = False,
-    log                  = null_out())
-  if 0: r.write_pdb_file(file_name="%s_ensemble.pdb"%prefix)
-  #
-  xyz_all = r.sites_cart_ens
-  n_atoms = xyz_all[0].size()
-  ###
-  xyz_atoms_all = all_vs_all(xyz_all = xyz_all)
-  ###
-  u1 = u_cart_from_tls.as_double()
-  u2 = flex.double()
-  for i in xrange(n_atoms):
-    ui=flex.double(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
-    u2.extend(ui)
-  r = flex.sum(flex.abs(u1-u2))/\
-        flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
-  if 0: print "R(U_tls,U_ens)=%6.4f"%(r)
-  if 0: print "-"*79
-  ###
-  for i in xrange(n_atoms):
-    if 0: print "atom %d:"%i
-    ut=["%8.5f"%u for u in u_cart_from_tls[i]]
-    ue=["%8.5f"%u for u in u_cart_from_xyz(sites_cart=xyz_atoms_all[i])]
-    if 0: print "  Ucart(from TLS):", ut
-    if 0: print "  Ucart(from ens):", ue
+class u_tls_vs_u_ens(object):
+  def __init__(self,
+               pdb_str,
+               dx=0,dy=0,dz=0,
+               sx=0,sy=0,sz=0,
+               lx=[1,0,0],ly=[0,1,0],lz=[0,0,1],
+               tx=0,ty=0,tz=0,
+               vx=[1,0,0],vy=[0,1,0],vz=[0,0,1],
+               w_M_lx=[0,0,0], w_M_ly=[0,0,0], w_M_lz=[0,0,0],
+               origin=None,
+               n_models=10000,
+               assert_similarity=True,
+               show=False,
+               log = sys.stdout,
+               write_pdb_files=False):
+    from mmtbx.tls import analysis, tls_as_xyz
+    from scitbx import matrix
+    from libtbx.utils import null_out
+    if(show):
+      print >> log, "INPUTS:","-"*73
+      print >> log, "dx    :", dx
+      print >> log, "dy    :", dy
+      print >> log, "dz    :", dz
+      print >> log, "sx    :", sx
+      print >> log, "sy    :", sy
+      print >> log, "sz    :", sz
+      print >> log, "lx    :", [i for i in lx]
+      print >> log, "ly    :", [i for i in ly]
+      print >> log, "lz    :", [i for i in lz]
+      print >> log, "tx    :", tx
+      print >> log, "ty    :", ty
+      print >> log, "tz    :", tz
+      print >> log, "vx    :", [i for i in vx]
+      print >> log, "vy    :", [i for i in vy]
+      print >> log, "vz    :", [i for i in vz]
+      print >> log, "w_M_lx:", [i for i in w_M_lx]
+      print >> log, "w_M_ly:", [i for i in w_M_ly]
+      print >> log, "w_M_lz:", [i for i in w_M_lz]
+      print >> log, "origin:", origin
+      print >> log, "-"*79
+    #
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+    ph = pdb_inp.construct_hierarchy()
+    xrs = ph.extract_xray_structure(
+      crystal_symmetry = pdb_inp.crystal_symmetry())
+    sites_cart = xrs.sites_cart()
+    ph.atoms().set_xyz(sites_cart)
+    if(origin is None):
+      origin = sites_cart.mean()
+    #
+    o_tfm = analysis.tls_from_motions(
+      dx=dx,dy=dy,dz=dz,
+      l_x=matrix.col(lx),l_y=matrix.col(ly),l_z=matrix.col(lz),
+      sx=sx,sy=sy,sz=sz,
+      tx=tx,ty=ty,tz=tz,
+      v_x=matrix.col(vx),v_y=matrix.col(vy),v_z=matrix.col(vz),
+      w_M_lx=matrix.col(w_M_lx),
+      w_M_ly=matrix.col(w_M_ly),
+      w_M_lz=matrix.col(w_M_lz))
+    #
+    self.u_cart_tls = get_u_cart(
+      o_tfm=o_tfm, origin=origin, sites_cart=sites_cart)
+    tlso_ = tlso(
+      t      = o_tfm.T_M.as_sym_mat3(),
+      l      = o_tfm.L_M.as_sym_mat3(),
+      s      = o_tfm.S_M.as_mat3(),
+      origin = origin)
     if(assert_similarity):
-      for j in xrange(6):
-        assert approx_equal(abs(float(ut[j])), abs(float(ue[j])), 1.e-3)
-  #
-  return r
+      T = matrix.sym(sym_mat3=tlso_.t)
+      L = matrix.sym(sym_mat3=tlso_.l)
+      S = matrix.sqr(tlso_.s)
+      o_tfm = analysis.run(T=T, L=L, S=S, log=null_out()).self_check()
+    #
+    r = tls_as_xyz.ensemble_generator(
+      tls_from_motions_object = o_tfm,
+      pdb_hierarchy        = ph,
+      xray_structure       = xrs,
+      n_models             = n_models,
+      origin               = origin,
+      use_states           = False,
+      log                  = null_out())
+    #
+    xyz_all = r.sites_cart_ens
+    n_atoms = xyz_all[0].size()
+    ###
+    xyz_atoms_all = all_vs_all(xyz_all = xyz_all)
+    ###
+    self.u_cart_ens = flex.sym_mat3_double()
+    for i in xrange(n_atoms):
+      self.u_cart_ens.append(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
+    u1 = self.u_cart_tls.as_double()
+    u2 = self.u_cart_ens.as_double()
+    self.r = flex.sum(flex.abs(u1-u2))/\
+             flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
+    ###
+    for i in xrange(n_atoms):
+      ut=["%8.5f"%u for u in self.u_cart_tls[i]]
+      ue=["%8.5f"%u for u in self.u_cart_ens[i]]
+      if(assert_similarity):
+        for j in xrange(6):
+          assert approx_equal(abs(float(ut[j])), abs(float(ue[j])), 1.e-3)
+    #
+    if(write_pdb_files):
+      ph.atoms().set_uij(self.u_cart_tls)
+      ph.write_pdb_file(
+        file_name = "u_from_tls.pdb",
+        crystal_symmetry = xrs.crystal_symmetry())
+      ph.atoms().set_uij(self.u_cart_ens)
+      ph.write_pdb_file(
+        file_name = "u_from_ens.pdb",
+        crystal_symmetry = xrs.crystal_symmetry())

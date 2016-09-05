@@ -112,29 +112,6 @@ private:
   mat3<sym_mat3<double> > gS_;
 };
 
-/*
-
-def u_cart_from_xyz(sites_cart):
-  cm = sites_cart.mean()
-  x = flex.double()
-  y = flex.double()
-  z = flex.double()
-  sites_cart_cm = sites_cart - cm
-  for site_cart in sites_cart_cm:
-    x.append(site_cart[0])
-    y.append(site_cart[1])
-    z.append(site_cart[2])
-  u11 = flex.sum(x*x)/x.size()
-  u22 = flex.sum(y*y)/y.size()
-  u33 = flex.sum(z*z)/z.size()
-  u12 = flex.sum(x*y)/x.size()
-  u13 = flex.sum(x*z)/x.size()
-  u23 = flex.sum(y*z)/x.size()
-  return u11, u22, u33, u12, u13, u23
-
-
-*/
-
 sym_mat3<double> u_cart_from_xyz(af::shared<vec3<double> > const& sites_cart)
 {
   int size = sites_cart.size();
@@ -172,7 +149,6 @@ sym_mat3<double> u_cart_from_xyz(af::shared<vec3<double> > const& sites_cart)
   }
   return sym_mat3<double>(u11/size,u22/size,u33/size,u12/size,u13/size,u23/size);;
 }
-
 
 boost::python::list all_vs_all(
   boost::python::list const& xyz_all_
