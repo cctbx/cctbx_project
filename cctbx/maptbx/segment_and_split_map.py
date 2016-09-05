@@ -1236,7 +1236,7 @@ class sharpening_info:
       self.b=[0,0,0]
 
   def update_with_box_sharpening_info(self,box_sharpening_info_obj=None):
-      if not box_sharpening_info_obj: 
+      if not box_sharpening_info_obj:
         return self
       self.crystal_symmetry=box_sharpening_info_obj.crystal_symmetry
       self.solvent_fraction=box_sharpening_info_obj.solvent_fraction
