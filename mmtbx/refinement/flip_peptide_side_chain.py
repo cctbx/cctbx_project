@@ -62,9 +62,9 @@ def flip_residue(residue, mon_lib_srv=None):
 
 def should_be_flipped(residue_1, residue_2):
   """ are these residues in similar flip orientation?"""
-  assert residue_1.resname == residue_2.resname
+  assert residue_1.resname == residue_2.resname, "%s %s" % (
+      residue_1.id_str(), residue_2.id_str())
   if residue_1.resname in flippable_sidechains:
-
     tor_1_sites = []
     for aname in flippable_sidechains[residue_1.resname][:4]:
       a = residue_1.find_atom_by(name=aname)
@@ -72,7 +72,6 @@ def should_be_flipped(residue_1, residue_2):
         return False
       else:
         tor_1_sites.append(a.xyz)
-
     tor_23_sites = []
     for aname in flippable_sidechains[residue_1.resname][:5]:
       a = residue_2.find_atom_by(name=aname)
@@ -80,7 +79,6 @@ def should_be_flipped(residue_1, residue_2):
         return False
       else:
         tor_23_sites.append(a.xyz)
-
     tor1 = dihedral_angle(
       sites=tor_1_sites,
       deg=True)
@@ -90,6 +88,5 @@ def should_be_flipped(residue_1, residue_2):
     tor3 = dihedral_angle(
       sites=tor_23_sites[:3]+[tor_23_sites[4]],
       deg=True)
-
     return abs(tor1-tor2) > abs(tor1-tor3)+5
   return False
