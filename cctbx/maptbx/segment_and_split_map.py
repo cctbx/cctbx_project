@@ -5195,6 +5195,8 @@ def run_auto_sharpen(
   print >>out,"\nTesting sharpening methods with target of %s" %(
       best_si.sharpening_target)
 
+  if not auto_sharpen_methods:
+    auto_sharpen_methods=['no_sharpening'] 
   for m in auto_sharpen_methods:
     if m in ['no_sharpening','resolution_dependent']:
       b_min=original_b_iso
