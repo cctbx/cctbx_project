@@ -5,7 +5,7 @@ import wxtbx.plots
 from wxtbx import bitmaps
 from wxtbx import icons
 import wx.lib.colourselect
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, to_unicode
 from libtbx import easy_pickle
 import wx
 import os
@@ -171,7 +171,7 @@ class XrayFrame (wx.Frame) :
     self.viewer.set_image(self._img)
     if (self.settings_frame is not None) :
       self.settings_frame.set_image(self._img)
-    self.SetTitle(key)
+    self.SetTitle(to_unicode(key))
     self.update_statusbar()
     self.Layout()
 
