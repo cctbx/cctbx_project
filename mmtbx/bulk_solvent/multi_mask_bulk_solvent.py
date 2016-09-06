@@ -287,7 +287,6 @@ def score_masks(f_obs, f_calc, f_masks, k_anisotropic, bin_selections, ss, k_mas
     if(R>fmodel.r_work()):
       R =  fmodel.r_work()
       result.append(i)
-      print R
     else:
       f_bulk_data_all = f_bulk_data_all-f_bulk_data
     ###
