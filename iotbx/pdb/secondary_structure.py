@@ -1518,6 +1518,8 @@ class pdb_helix (structure_base) :
   @classmethod
   def from_pdb_record(cls, line):
     "Raises ValueError in case of corrupted HELIX record!!!"
+    if len(line) < 76:
+      line += " "*(80-len(line))
     return cls(
       serial=int(line[7:10]),
       helix_id=line[11:14].strip(),
@@ -1772,7 +1774,8 @@ class pdb_strand(structure_base):
       sense) :
     adopt_init_args(self, locals())
     assert (sheet_id > 0) and (strand_id > 0)
-    assert (sense in [-1, 0, 1]), "Bad sense: '%s'" % sense
+    if sense not in [-1, 0, 1]:
+      raise Sorry("Bad sense in SHEET record: '%s'" % sense)
     self.start_chain_id = self.parse_chain_id(start_chain_id)
     self.end_chain_id = self.parse_chain_id(end_chain_id)
     self.set_start_resseq(self.start_resseq)
