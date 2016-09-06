@@ -945,6 +945,15 @@ Wait for the command to finish, then try again.""" % vars())
 
   def write_bin_sh_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
+
+    # determine LC_ALL from environment (Python UTF-8 compatibility in Linux)
+    LC_ALL = os.environ.get('LC_ALL')     # user setting
+    if (LC_ALL is not None):
+      if ( ('UTF-8' not in LC_ALL) and ('utf8' not in LC_ALL) ):
+        LC_ALL = None
+    if (LC_ALL is None):
+      LC_ALL = 'en_US.UTF-8'              # default
+
     f = target_file.open("w")
     if (source_file is not None):
       print >> f, '#! /bin/sh'
@@ -975,7 +984,7 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, '#'
     print >> f, _SHELLREALPATH_CODE
     print >> f, 'unset PYTHONHOME'
-    print >> f, 'LC_ALL=C'
+    print >> f, 'LC_ALL=' + LC_ALL
     print >> f, 'export LC_ALL'
     print >> f, 'LIBTBX_BUILD="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"'
     print >> f, 'export LIBTBX_BUILD'
