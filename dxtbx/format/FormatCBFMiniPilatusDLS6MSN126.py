@@ -20,38 +20,6 @@ if 'P6M_60_PANEL' in os.environ:
 else:
   single_panel = True
 
-def read_cbf_image(cbf_image):
-  from cbflib_adaptbx import uncompress
-  import binascii
-  #from scitbx.array_family import flex
-
-  start_tag = binascii.unhexlify('0c1a04d5')
-
-  data = open(cbf_image, 'rb').read()
-  data_offset = data.find(start_tag) + 4
-  cbf_header = data[:data_offset - 4]
-
-  fast = 0
-  slow = 0
-  length = 0
-
-  for record in cbf_header.split('\n'):
-    if 'X-Binary-Size-Fastest-Dimension' in record:
-      fast = int(record.split()[-1])
-    elif 'X-Binary-Size-Second-Dimension' in record:
-      slow = int(record.split()[-1])
-    elif 'X-Binary-Number-of-Elements' in record:
-      length = int(record.split()[-1])
-    elif 'X-Binary-Size:' in record:
-      size = int(record.split()[-1])
-
-  assert(length == fast * slow)
-
-  pixel_values = uncompress(packed = data[data_offset:data_offset + size],
-                            fast = fast, slow = slow)
-
-  return pixel_values
-
 class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
   '''A class for reading mini CBF format Pilatus images for 6M SN 126 @ DLS.'''
 
@@ -285,11 +253,42 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
 
     return d
 
+  def read_cbf_image(self, cbf_image):
+    from cbflib_adaptbx import uncompress
+    import binascii
+
+    start_tag = binascii.unhexlify('0c1a04d5')
+
+    data = self.open_file(cbf_image, 'rb').read()
+    data_offset = data.find(start_tag) + 4
+    cbf_header = data[:data_offset - 4]
+
+    fast = 0
+    slow = 0
+    length = 0
+
+    for record in cbf_header.split('\n'):
+      if 'X-Binary-Size-Fastest-Dimension' in record:
+        fast = int(record.split()[-1])
+      elif 'X-Binary-Size-Second-Dimension' in record:
+        slow = int(record.split()[-1])
+      elif 'X-Binary-Number-of-Elements' in record:
+        length = int(record.split()[-1])
+      elif 'X-Binary-Size:' in record:
+        size = int(record.split()[-1])
+
+    assert(length == fast * slow)
+
+    pixel_values = uncompress(packed = data[data_offset:data_offset + size],
+                              fast = fast, slow = slow)
+
+    return pixel_values
+
   if not single_panel:
 
     def get_raw_data(self):
       if self._raw_data is None:
-        raw_data = read_cbf_image(self._image_file)
+        raw_data = self.read_cbf_image(self._image_file)
 
         self._raw_data = []
 
