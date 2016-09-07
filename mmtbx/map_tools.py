@@ -351,7 +351,7 @@ add_mask
   cmn=density_modify_in_memory.run(
     fp_sigfp            = f_obs.deep_copy(),
     hendrickson_lattman = hl_model,
-    rad_mask            = max(2., f_obs.d_min()),
+    rad_mask            = max(2.5, f_obs.d_min()),
     map_coeffs_start    = map_coeffs,
     solvent_content     = solvent_content,
     mask_cycles         = mask_cycles,
