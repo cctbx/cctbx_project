@@ -315,6 +315,7 @@ def resolve_dm_map(
   """
   input_text="""
 keep_missing
+add_mask
 """
   from solve_resolve.resolve_python import density_modify_in_memory
   if(solvent_content is None):
@@ -350,6 +351,7 @@ keep_missing
   cmn=density_modify_in_memory.run(
     fp_sigfp            = f_obs.deep_copy(),
     hendrickson_lattman = hl_model,
+    rad_mask            = max(2., f_obs.d_min()),
     map_coeffs_start    = map_coeffs,
     solvent_content     = solvent_content,
     mask_cycles         = mask_cycles,

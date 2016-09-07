@@ -28,6 +28,7 @@ class run(object):
         sharp,
         use_unsharp_masking,
         resolution_factor,
+        pdb_inp, # XXX BAD: REMOVE LATER
         n_inner_loop = 10,
         n_outer_loop = 10,
         log          = None):
@@ -134,7 +135,8 @@ class run(object):
        (self.fmodel.r_work()>0.2 or self.b_overall>30.) or cmpl<0.7) or
        self.use_resolve is True):
       print >> self.log, "Running Resolve density modificaiton"
-      mc_resolve = self.fmodel.resolve_dm_map_coefficients()
+      mc_resolve = self.fmodel.resolve_dm_map_coefficients(
+        pdb_inp=self.pdb_inp) # XXX BAD: REMOVE LATER
       m_resolve = get_map(mc=mc_resolve, cg=self.crystal_gridding)
       m_resolve = low_volume_density_elimination(m=m_resolve, fmodel=self.fmodel,
         selection=self.selection)
