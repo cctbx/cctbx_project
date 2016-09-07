@@ -1371,7 +1371,7 @@ class manager(manager_mixin):
       as_gui_program   = False)
     return dm.map_coeffs_in_original_setting
 
-  def resolve_dm_map_coefficients(self):
+  def resolve_dm_map_coefficients(self, pdb_inp):
     if(not libtbx.env.has_module("solve_resolve")):
       raise Sorry("solve_resolve not available.")
     fmodel_truncated = self.remove_unreliable_atoms_and_update()
@@ -1386,7 +1386,7 @@ class manager(manager_mixin):
     return mmtbx.map_tools.resolve_dm_map(
         fmodel       = fmodel_truncated,
         map_coeffs   = coeffs,
-        pdb_inp      = None,
+        pdb_inp      = pdb_inp,
         mask_cycles  = 2,
         minor_cycles = 2,
         use_model_hl = True,

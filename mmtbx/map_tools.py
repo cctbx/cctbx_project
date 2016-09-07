@@ -344,10 +344,10 @@ add_mask
       data = flex.double(complete_set.indices().size(), 0.01), # must be > 0.0
       sigmas = flex.double(complete_set.indices().size(), -1.0))  # must be -1.0
     f_obs = f_obs.complete_with(other=complete_set)
-  if pdb_inp:
-    denmod_with_model=True
+  if(pdb_inp is not None):
+    model_sites_cart = None
   else:
-    denmod_with_model=False
+    model_sites_cart = fmodel.xray_structure.sites_cart()
   cmn=density_modify_in_memory.run(
     fp_sigfp            = f_obs.deep_copy(),
     hendrickson_lattman = hl_model,
@@ -357,7 +357,8 @@ add_mask
     mask_cycles         = mask_cycles,
     minor_cycles        = minor_cycles,
     pdb_inp             = pdb_inp,
-    denmod_with_model   = denmod_with_model,
+    model_sites_cart    = model_sites_cart,
+    denmod_with_model   = True,
     verbose             = False,
     input_text          = input_text,
     out                 = null_out())
