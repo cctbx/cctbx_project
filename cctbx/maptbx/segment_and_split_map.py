@@ -1258,6 +1258,7 @@ class sharpening_info:
       self.d_min_ratio=params.crystal_info.d_min_ratio
       self.d_cut=params.crystal_info.resolution
       self.d_min=params.crystal_info.resolution
+      self.k_sharpen=params.crystal_info.k_sharpen
       self.sharpening_target=params.crystal_info.sharpening_target
       self.residual_target=params.crystal_info.residual_target
       self.eps=params.crystal_info.eps
@@ -1490,7 +1491,8 @@ def apply_sharpening(map_coeffs=None,
       k_sharpen=sharpening_info_obj.k_sharpen
       d_min=sharpening_info_obj.d_cut
       n_real=sharpening_info_obj.n_real
-    if b_sharpen in [0,None] and k_sharpen in [0,None]:
+    if b_sharpen is None or (
+        b_sharpen in [0,None] and k_sharpen in [0,None]):
       if not map_coeffs:
         map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
       return get_map_from_map_coeffs(map_coeffs=map_coeffs,
@@ -5152,6 +5154,7 @@ def run_auto_sharpen(
        select_box_map_data(si=si,
            map_data=map_data,
            out=out)
+    # write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
     if box_sharpening_info_obj is None: # did not do it
       print >>out,"Box map is similar in size to entire map..."+\
          "skipping representative box of density"
@@ -5526,7 +5529,6 @@ def run(args,
       null_si.sharpen_and_score_map(map_data=map_data,
         out=out).show_score(out=out)
       null_si.show_summary(out=out)
-
       si=sharpening_info(tracking_data=tracking_data,
         n_real=map_data.all())  # new si
 
