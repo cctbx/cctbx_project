@@ -894,9 +894,6 @@ Residue classes
             except Exception: print atom
 
     pair_sym_table = pair_asu_table.extract_pair_sym_table()
-    #for sym_pair in pair_sym_table.iterator():
-    #  print sym_pair.i_seq, sym_pair.j_seq,
-    #  print atoms[sym_pair.i_seq].quote(), atoms[sym_pair.j_seq].quote()
     n_simple, n_symmetry = 0, 0
     self.pdb_link_records.setdefault("LINK", [])
     for ijk, sym_pair in enumerate(pair_sym_table.iterator()):
@@ -939,10 +936,18 @@ Residue classes
           slack=slack,
           origin_id=origin_id,
         ))
-      bond_asu_table.add_pair(
-        i_seq=i_seq,
-        j_seq=j_seq,
-        rt_mx_ji=sym_pair.rt_mx_ji)
+      try:
+        bond_asu_table.add_pair(
+          i_seq=i_seq,
+          j_seq=j_seq,
+          rt_mx_ji=sym_pair.rt_mx_ji)
+      except RuntimeError, e:
+        raise Sorry("""
+    Difficulties linking atoms
+      %s
+      %s
+    Suggestions include providing restraints for any unknown residues.
+        """ % (atom1.quote(), atom2.quote()))
     # output
     if link_data:
       print >> log, "  Number of additional links: simple=%d, symmetry=%d" % (
