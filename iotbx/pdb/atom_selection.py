@@ -1058,7 +1058,11 @@ def update_res_sel(
     return res_sel
   res_seq = ""
   if last_resid != first_resid:
-    res_seq = 'resid {}:{}'.format(first_resid.strip(),last_resid.strip())
+    if last_resid.strip()[-1].isalpha() or first_resid.strip()[-1].isalpha():
+      # through works better with insertion codes!!!
+      res_seq = 'resid {} through {}'.format(first_resid.strip(),last_resid.strip())
+    else:
+      res_seq = 'resid {}:{}'.format(first_resid.strip(),last_resid.strip())
   else:
     res_seq = 'resid {}'.format(first_resid.strip())
   if len(atoms_selection) > 0:

@@ -570,7 +570,7 @@ def test_insertions():
 
   isel = flex.size_t(range(16))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain 'H' and resid 48:49A)", tsel
+  assert tsel == "(chain 'H' and resid 48 through 49A)", tsel
 
 def test_2():
   """
