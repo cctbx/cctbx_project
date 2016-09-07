@@ -27,6 +27,28 @@ def set_tiny_bold_font (control) :
   font.SetWeight(wx.FONTWEIGHT_BOLD)
   control.SetFont(font)
 
+
+class EllipsizePaths(object):
+  def __init__(self, parent, pathlst):
+    self.csize = (300, -1)
+    self.__ellipsispaths__ = [ (p, wx.Control.Ellipsize(p, wx.ClientDC(parent),
+                                 wx.ELLIPSIZE_START,
+                                  self.csize[0]-60)
+                                )
+                          for p in pathlst
+                          ]
+  def length(self):
+    return len(self.__ellipsispaths__)
+  def getpaths(self):
+    return [ep[0] for ep in self.__ellipsispaths__]
+  def getpath(self, i):
+    return self.__ellipsispaths__[i][0]
+  def getellipspaths(self):
+    return [ep[1] for ep in self.__ellipsispaths__]
+  def getellipspath(self, i):
+    return self.__ellipsispaths__[i][1]
+
+
 class ModelControlPanel (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
     super(ModelControlPanel, self).__init__(*args, **kwds)
@@ -45,28 +67,33 @@ class ModelControlPanel (wx.MiniFrame) :
     self.panel1.SetSizer(szr1)
     txt1 = wx.StaticText(self.panel1, -1, "Model:")
     set_tiny_bold_font(txt1)
+    self.ep = EllipsizePaths(self, self.parent.model_ids)
     chooser = wx.Choice(self.panel1, -1,
-      choices=self.parent.model_ids,
-      size=(300,-1))
+      choices = self.ep.getellipspaths() ,
+      size=self.ep.csize)
     set_tiny_font(chooser)
     self.Bind(wx.EVT_CHOICE, self.OnChooseModel, chooser)
     self.model_chooser = chooser
     szr1.Add(txt1, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
     szr1.Add(chooser, 0, wx.RIGHT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL, 5)
     self.panel2 = wx.Panel(self.inner_panel, -1)
-    if (len(self.parent.model_ids) > 0) :
+    if (self.ep.length() > 0) :
       chooser.SetSelection(0)
-      self.set_model(self.parent.model_ids[0])
+      self.set_model(self.ep.getpath(0))
     else :
       self.sizer.Fit(self.inner_panel)
       self.Fit()
+    self.panel_sizer.Layout()
+
 
   def refresh_model_list (self) :
-    models = self.parent.model_ids
-    current_model = self.model_chooser.GetStringSelection()
-    self.model_chooser.SetItems(models)
+    self.ep = EllipsizePaths(self, self.parent.model_ids)
+    models = self.ep.getpaths()
+    nsel = min( self.model_chooser.GetSelection(), self.ep.length() -1 )
+    current_model = self.ep.getpath(nsel) if nsel >= 0 else None
+    self.model_chooser.SetItems( self.ep.getellipspaths() )
     if (current_model in models) :
-      self.model_chooser.SetStringSelection(current_model)
+      self.model_chooser.SetSelection( nsel)
     else :
       self.set_model(None)
 
@@ -144,8 +171,8 @@ class ModelControlPanel (wx.MiniFrame) :
     self.Fit()
 
   def OnChooseModel (self, event) :
-    model_id = event.GetEventObject().GetStringSelection()
-    self.set_model(model_id)
+    model_id = event.GetEventObject().GetSelection()
+    self.set_model(self.ep.getpath(model_id))
 
   def OnSetVisibility (self, event) :
     visible = event.GetEventObject().GetValue()
@@ -198,6 +225,7 @@ class ModelControlPanel (wx.MiniFrame) :
     self.parent.delete_model(self.model_id)
     self.refresh_model_list()
     self.parent.Refresh()
+    self.Refresh()
 
 class MapControlPanel (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
@@ -217,9 +245,10 @@ class MapControlPanel (wx.MiniFrame) :
     self.panel1.SetSizer(szr1)
     txt1 = wx.StaticText(self.panel1, -1, "Map:")
     set_tiny_bold_font(txt1)
+    self.ep = EllipsizePaths(self, self.parent.map_ids)
     chooser = wx.Choice(self.panel1, -1,
-      choices=self.parent.map_ids,
-      size=(300,-1))
+      choices = self.ep.getellipspaths() ,
+      size=self.ep.csize)
     set_tiny_font(chooser)
     self.Bind(wx.EVT_CHOICE, self.OnChooseMap, chooser)
     self.map_chooser = chooser
@@ -232,13 +261,20 @@ class MapControlPanel (wx.MiniFrame) :
     else :
       self.sizer.Fit(self.inner_panel)
       self.Fit()
+    self.panel_sizer.Layout()
 
   def refresh_map_list (self) :
-    maps = self.parent.map_ids
-    current_map = self.map_chooser.GetStringSelection()
-    self.map_chooser.SetItems(maps)
+    self.ep = EllipsizePaths(self, self.parent.map_ids)
+    maps = self.ep.getpaths()
+    nsel = min( self.map_chooser.GetSelection(), self.ep.length() -1 )
+    current_map = self.ep.getpath(nsel) if nsel >= 0 else None
+    self.map_chooser.SetItems( self.ep.getellipspaths() )
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     if (current_map in maps) :
-      self.map_chooser.SetStringSelection(current_map)
+      self.map_chooser.SetSelection( nsel)
+      self.set_map(current_map)
+    else :
+      self.set_map(None)
 
   def set_map (self, map_id) :
     self.panel_sizer.Detach(self.panel2)
@@ -291,8 +327,8 @@ class MapControlPanel (wx.MiniFrame) :
       delete_btn = wx.Button(p, -1, label="Delete map")
       set_tiny_font(delete_btn)
       self.Bind(wx.EVT_BUTTON, self.OnDeleteMap, delete_btn)
-    szr2.Fit(panel)
-    szr2.Add(delete_btn, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5)
+      szr2.Fit(panel)
+      szr2.Add(delete_btn, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, 5)
     self.panel_sizer.Layout()
     self.sizer.Fit(self.inner_panel)
     self.Fit()
@@ -331,8 +367,9 @@ class MapControlPanel (wx.MiniFrame) :
       self.parent.set_selected_map(None)
 
   def OnChooseMap (self, event) :
-    map_id = event.GetEventObject().GetStringSelection()
-    self.set_map(map_id)
+    map_id = event.GetEventObject().GetSelection()
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    self.set_map(self.ep.getpath(map_id))
 
   def OnSetVisibility (self, event) :
     visible = event.GetEventObject().GetValue()
