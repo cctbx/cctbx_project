@@ -421,11 +421,9 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
         continue
       new_copy_sel = copy_sel
       new_master_sel = min_master_selection
-
       if copy_sel.size() > min_master_selection.size():
         # clean copy sel
         # print "copy is bigger", copy_sel.size(), min_master_selection.size()
-        # print "sizes:", master_sel.size(), m_sel.size()
         filter_sel = get_bool_selection_to_keep(
             big_selection=m_sel,
             small_selection=min_master_selection)
@@ -448,25 +446,25 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
         #   new_ncs_group.iselections[i] = [new_ncs_group.iselections[i][0].select(filter_sel)]
         # master_sel = new_master_sel
         # master_size = master_sel.size()
-
-      r,t,copy_rmsd = my_get_rot_trans(
-          ph=hierarchy,
-          master_selection=new_master_sel,
-          copy_selection=new_copy_sel)
-      tr = Transform(
-          rotation=r,
-          translation=t,
-          serial_num=tr_sn,
-          coordinates_present=True,
-          ncs_group_id=group_id,
-          rmsd=copy_rmsd)
-      assert master_size == new_copy_sel.size(), "%d %d" % (master_size, new_copy_sel.size())
-      new_ncs_group.iselections.append([new_copy_sel])
-      new_ncs_group.residue_index_list.append([copy_res])
-      new_ncs_group.copies.append([ch_copy])
-      new_ncs_group.transforms.append(tr)
-      # print "  appended new copy:", ch_copy
-      tr_sn += 1
+      if new_master_sel.size() > 0 and new_copy_sel.size() > 0:
+        r,t,copy_rmsd = my_get_rot_trans(
+            ph=hierarchy,
+            master_selection=new_master_sel,
+            copy_selection=new_copy_sel)
+        tr = Transform(
+            rotation=r,
+            translation=t,
+            serial_num=tr_sn,
+            coordinates_present=True,
+            ncs_group_id=group_id,
+            rmsd=copy_rmsd)
+        assert master_size == new_copy_sel.size(), "%d %d" % (master_size, new_copy_sel.size())
+        new_ncs_group.iselections.append([new_copy_sel])
+        new_ncs_group.residue_index_list.append([copy_res])
+        new_ncs_group.copies.append([ch_copy])
+        new_ncs_group.transforms.append(tr)
+        # print "  appended new copy:", ch_copy
+        tr_sn += 1
     group_dict[tuple(master)] = new_ncs_group
     master_size = new_ncs_group.iselections[0][0].size()
     for isel_arr in new_ncs_group.iselections[1:]:
@@ -1185,7 +1183,7 @@ def my_get_rot_trans(
     rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
     return r,t,rmsd
   else:
-    assert 0, "strange thing..."
+    return None, None, None
 
 
 def get_rot_trans(ph,
