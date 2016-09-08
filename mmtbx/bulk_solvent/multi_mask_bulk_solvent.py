@@ -217,18 +217,23 @@ def ccp4_map(cg, file_name, mc=None, map_data=None):
 #
 ################################################################################
 
-def loop_work(f_obs, f_calc, f_masks, k_anisotropic, bin_selections, ss):
+def loop_work(f_obs, f_calc, f_masks, k_anisotropic, bin_selections, ss,
+              f_obs_f, f_calc_f, f_masks_f, k_anisotropic_f, bin_selections_f, ss_f):
   f_bulk_data = flex.complex_double(f_obs.data().size(), 0)
+  f_bulk_data_f = flex.complex_double(f_obs_f.data().size(), 0)
   f_obs_ = f_obs.array(data = f_obs.data()/(k_anisotropic))
   k_masks_all = []
-  for sel in bin_selections:
+  for sel, sel_f in zip(bin_selections, bin_selections_f):
     k_masks = []
     for i, f in enumerate(f_masks):
+      f_f = f_masks_f[i]
       if(i==0):
         F = f_calc.deep_copy().data()
         FB = 0
+        FB_f = 0
       else:
         FB = FB + FB_
+        FB_f = FB_f + FB_f_
         F = f_calc.data() + FB
       obj = mmtbx.bulk_solvent.bulk_solvent_scale_coefficients_analytical(
         f_obs     = f_obs_.data(),
@@ -256,74 +261,90 @@ def loop_work(f_obs, f_calc, f_masks, k_anisotropic, bin_selections, ss):
           r)
         k_mask, b_sol, r = res
       FB_ = k_mask * f.data()
+      FB_f_ = k_mask * f_f.data()
       k_masks.append(k_mask)
     k_masks_all.append(k_masks)
     FB = FB + k_mask * f.data()
+    FB_f = FB_f + k_mask * f_f.data()
     f_bulk_data = f_bulk_data.set_selected(sel.iselection(), FB.select(sel))
-  return f_bulk_data, k_masks_all
+    f_bulk_data_f = f_bulk_data_f.set_selected(sel_f.iselection(), FB_f.select(sel_f))
+  return f_bulk_data,f_bulk_data_f, k_masks_all
 
-def score_masks(f_obs, f_calc, f_masks, k_anisotropic, bin_selections, ss, k_masks_all):
-  for i in xrange(len(f_masks)):
-    f_masks[i] = f_masks[i].common_set(f_obs)
-  f_bulk_data = flex.complex_double(f_obs.data().size(), 0)
-  f_bulk_data_all = 0
-  f_obs_ = f_obs.array(data = f_obs.data()/(k_anisotropic))
-  R = 999.
-  result = []
-  for i, f in enumerate(f_masks):
-    for j, sel in enumerate(bin_selections):
-      k_mask = k_masks_all[j][i]
-      f_bulk_data = f_bulk_data.set_selected(sel.iselection(), k_mask * f.data().select(sel))
-    ###
-    f_bulk_data_all = f_bulk_data_all + f_bulk_data
-    f_bulk = f_obs.array(data = f_bulk_data_all)
-    one = flex.double(ss.size(),1.)
-    fmodel = mmtbx.f_model.manager(
-      f_obs         = f_obs,
-      f_calc        = f_calc,
-      k_mask        = one,
-      f_mask        = f_bulk,
-      bin_selections=bin_selections)
-    if(R>fmodel.r_work()):
-      R =  fmodel.r_work()
-      result.append(i)
-    else:
-      f_bulk_data_all = f_bulk_data_all-f_bulk_data
-    ###
-  return result
-
-def loop_free(f_obs, f_calc, f_masks, k_anisotropic, bin_selections, ss, k_masks_all,i_masks):
-  for i in xrange(len(f_masks)):
-    f_masks[i] = f_masks[i].common_set(f_obs)
-  f_bulk_data = flex.complex_double(f_obs.data().size(), 0)
-  f_obs_ = f_obs.array(data = f_obs.data()/(k_anisotropic))
-  for j, sel in enumerate(bin_selections):
-    for i, f in enumerate(f_masks):
-      if not i in i_masks: continue
-      if(i==0):
-        F = f_calc.deep_copy().data()
-        FB = 0
-      else:
-        FB = FB + FB_
-        F = f_calc.data() + FB
-      k_mask = k_masks_all[j][i]
-      FB_ = k_mask * f.data()
-    FB = FB + k_mask * f.data()
-    f_bulk_data = f_bulk_data.set_selected(sel.iselection(), FB.select(sel))
-  ###
-  f_bulk = f_obs.array(data = f_bulk_data)
-
-  one = flex.double(ss.size(),1.)
-  fmodel = mmtbx.f_model.manager(
-    f_obs         = f_obs,
-    f_calc        = f_calc,
-    k_mask        = one,
-    f_mask        = f_bulk,
-    bin_selections=bin_selections)
-  fmodel.update_all_scales(remove_outliers=False, update_f_part1=False, fast=False)
-  f_bulk_data = fmodel.f_bulk().data()
-  ###
-  return f_bulk_data
+#def score_masks(f_obs, f_calc, f_masks, k_anisotropic, bin_selections, ss, k_masks_all):
+#  for i in xrange(len(f_masks)):
+#    f_masks[i] = f_masks[i].common_set(f_obs)
+#  f_bulk_data_all = 0
+#  f_obs_ = f_obs.array(data = f_obs.data()/(k_anisotropic))
+#  R = 999.
+#  result = []
+#  for i, f in enumerate(f_masks):
+#    f_bulk_data = flex.complex_double(f_obs.data().size(), 0)
+#    for j, sel in enumerate(bin_selections):
+#      k_mask = k_masks_all[j][i]
+#      f_bulk_data = f_bulk_data.set_selected(sel.iselection(), k_mask * f.data().select(sel))
+#    ###
+#    f_bulk_data_all = f_bulk_data_all + f_bulk_data
+#    f_bulk = f_obs.array(data = f_bulk_data_all)
+#    one = flex.double(ss.size(),1.)
+#    fmodel = mmtbx.f_model.manager(
+#      f_obs         = f_obs,
+#      f_calc        = f_calc,
+#      k_mask        = one,
+#      f_mask        = f_bulk,
+#      bin_selections=bin_selections)
+#    fmodel.update_all_scales(remove_outliers=False, update_f_part1=False, fast=False)
+#    print fmodel.r_work()
+#    if(R>fmodel.r_work()):
+#      R =  fmodel.r_work()
+#      print "  taken"
+#      result.append(i)
+#    else:
+#      f_bulk_data_all = f_bulk_data_all-f_bulk_data
+#    ###
+#  ####
+#  fmodel = mmtbx.f_model.manager(
+#      f_obs         = f_obs,
+#      f_calc        = f_calc,
+#      k_mask        = one,
+#      f_mask        = f_bulk,
+#      bin_selections=bin_selections)
+#  print "      LOOK", fmodel.r_work()
+#
+#  ####
+#  return result, f_bulk
+#
+#def loop_free(f_obs, f_calc, f_masks, k_anisotropic, bin_selections, ss, k_masks_all,tmp,i_masks):
+#  for i in xrange(len(f_masks)):
+#    f_masks[i] = f_masks[i].common_set(f_obs)
+#  f_bulk_data = flex.complex_double(f_obs.data().size(), 0)
+#  f_obs_ = f_obs.array(data = f_obs.data()/(k_anisotropic))
+#  for j, sel in enumerate(bin_selections):
+#    for i, f in enumerate(f_masks):
+#      if not i in i_masks: continue
+#      if(i==0):
+#        FB = 0
+#      else:
+#        FB = FB + FB_
+#      k_mask = k_masks_all[j][i]
+#      FB_ = k_mask * f.data()
+#    FB = FB + k_mask * f.data()
+#    f_bulk_data = f_bulk_data.set_selected(sel.iselection(), FB.select(sel))
+#  ###
+#  f_bulk = f_obs.array(data = f_bulk_data)
+#
+#  one = flex.double(ss.size(),1.)
+#  fmodel = mmtbx.f_model.manager(
+#    f_obs         = f_obs,
+#    f_calc        = f_calc,
+#    k_mask        = one,
+#    f_mask=tmp,
+#    #f_mask        = f_bulk,
+#    bin_selections=bin_selections)
+#  #fmodel.update_all_scales(remove_outliers=False, update_f_part1=False, fast=False)
+#  print fmodel.r_work(), "LOOK"
+#  f_bulk_data = fmodel.f_bulk().data()
+#  ###
+#  return f_bulk_data
 
 
 def helper_3(
@@ -359,34 +380,45 @@ def helper_3(
 
   f_bulk_data_all = flex.complex_double(f_obs.data().size(), 0)
 
-  f_bulk_data_work, k_masks_all = loop_work(
+  f_bulk_data_work,f_bulk_data_free, k_masks_all = loop_work(
     f_obs          = f_obs.select(sel_work),
     f_calc         = f_calc.select(sel_work),
     f_masks        = [f.select(sel_work) for f in f_masks],
     k_anisotropic  = k_anisotropic.select(sel_work),
     bin_selections = [b.select(sel_work) for b in bin_selections],
-    ss             = ss.select(sel_work))
+    ss             = ss.select(sel_work),
+
+    f_obs_f         = f_obs.select(sel_free),
+    f_calc_f         = f_calc.select(sel_free),
+    f_masks_f        = [f.select(sel_free) for f in f_masks],
+    k_anisotropic_f  = k_anisotropic.select(sel_free),
+    bin_selections_f = [b.select(sel_free) for b in bin_selections],
+    ss_f             = ss.select(sel_free)
+
+  )
   f_bulk_data_all = f_bulk_data_all.set_selected(sel_work, f_bulk_data_work)
-
-  i_masks = score_masks(
-    f_obs          = f_obs.select(sel_free),
-    f_calc         = f_calc.select(sel_free),
-    f_masks        = [f.select(sel_free) for f in f_masks],
-    k_anisotropic  = k_anisotropic.select(sel_free),
-    bin_selections = [b.select(sel_free) for b in bin_selections],
-    ss             = ss.select(sel_free),
-    k_masks_all    = k_masks_all)
-
-  f_bulk_data_free = loop_free(
-    f_obs          = f_obs.select(sel_free),
-    f_calc         = f_calc.select(sel_free),
-    f_masks        = [f.select(sel_free) for f in f_masks],
-    k_anisotropic  = k_anisotropic.select(sel_free),
-    bin_selections = [b.select(sel_free) for b in bin_selections],
-    ss             = ss.select(sel_free),
-    k_masks_all    = k_masks_all,
-    i_masks = i_masks)
   f_bulk_data_all = f_bulk_data_all.set_selected(sel_free, f_bulk_data_free)
+
+  #i_masks, tmp = score_masks(
+  #  f_obs          = f_obs.select(sel_free),
+  #  f_calc         = f_calc.select(sel_free),
+  #  f_masks        = [f.select(sel_free) for f in f_masks],
+  #  k_anisotropic  = k_anisotropic.select(sel_free),
+  #  bin_selections = [b.select(sel_free) for b in bin_selections],
+  #  ss             = ss.select(sel_free),
+  #  k_masks_all    = k_masks_all)
+  #
+  #f_bulk_data_free = loop_free(
+  #  f_obs          = f_obs.select(sel_free),
+  #  f_calc         = f_calc.select(sel_free),
+  #  f_masks        = [f.select(sel_free) for f in f_masks],
+  #  k_anisotropic  = k_anisotropic.select(sel_free),
+  #  bin_selections = [b.select(sel_free) for b in bin_selections],
+  #  ss             = ss.select(sel_free),
+  #  k_masks_all    = k_masks_all,
+  #  tmp=tmp,
+  #  i_masks = i_masks)
+  #f_bulk_data_all = f_bulk_data_all.set_selected(sel_free, f_bulk_data_free)
 
   f_bulk = f_obs.array(data = f_bulk_data_all)
 
