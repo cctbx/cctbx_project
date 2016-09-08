@@ -1440,11 +1440,12 @@ class pdb_helix (structure_base) :
         top_out=False,
         ):
     adopt_init_args(self, locals())
-    assert (length > 0), "Bad helix length"
+    if (length <= 0):
+      raise Sorry("Bad helix length. Check HELIX records.")
     if isinstance(self.helix_class, int):
       self.helix_class = self._helix_class_array[helix_class]
-    assert (self.helix_class in self._helix_class_array), \
-        "Bad helix class: %s" % helix_class
+    if self.helix_class not in self._helix_class_array:
+      raise Sorry("Bad helix class: %s. Check HELIX records." % helix_class)
 
     self.start_chain_id = self.parse_chain_id(start_chain_id)
     self.end_chain_id = self.parse_chain_id(end_chain_id)
