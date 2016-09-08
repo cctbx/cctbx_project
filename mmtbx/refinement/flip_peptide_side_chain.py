@@ -62,8 +62,11 @@ def flip_residue(residue, mon_lib_srv=None):
 
 def should_be_flipped(residue_1, residue_2):
   """ are these residues in similar flip orientation?"""
-  assert residue_1.resname == residue_2.resname, "%s %s" % (
-      residue_1.id_str(), residue_2.id_str())
+  # assert residue_1.resname == residue_2.resname, "%s %s" % (
+  #     residue_1.id_str(), residue_2.id_str())
+  if residue_1.resname != residue_2.resname:
+    # e.g. 1u54, 3srv: PTR mutation of TYR residues
+    return False
   if residue_1.resname in flippable_sidechains:
     tor_1_sites = []
     for aname in flippable_sidechains[residue_1.resname][:4]:

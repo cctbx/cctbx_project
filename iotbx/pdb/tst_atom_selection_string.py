@@ -423,6 +423,52 @@ ATOM     44  O   SER A 285     158.898 132.157  13.204  1.00380.17           O
 ATOM     45  CB  SER A 285     157.651 131.363  15.841  1.00264.20           C
 """
 
+test_pdb_13 = """\
+ATOM      1  N   GLU A 260      74.225  41.166  25.753  1.00 58.41           N
+ATOM      2  CA  GLU A 260      75.147  41.741  24.757  1.00 58.93           C
+ATOM      3  C   GLU A 260      75.096  41.010  23.404  1.00 59.55           C
+ATOM      4  O   GLU A 260      75.896  41.322  22.519  1.00 59.69           O
+ATOM      5  CB  GLU A 260      76.587  41.677  25.279  1.00 59.13           C
+ATOM      6  CG  GLU A 260      76.899  42.547  26.490  1.00 59.98           C
+ATOM      7  CD  GLU A 260      78.326  42.347  27.001  1.00 61.43           C
+ATOM      8  OE1 GLU A 260      78.859  41.213  26.938  1.00 61.60           O
+ATOM      9  OE2 GLU A 260      78.934  43.331  27.468  1.00 64.79           O
+ATOM     10  N   CYS A 261      74.177  40.043  23.246  1.00 60.12           N
+ATOM     11  CA  CYS A 261      74.105  39.192  22.050  1.00 60.18           C
+ATOM     12  C   CYS A 261      72.733  39.239  21.359  1.00 61.64           C
+ATOM     13  O   CYS A 261      72.355  38.276  20.698  1.00 61.42           O
+ATOM     14  CB  CYS A 261      74.439  37.718  22.407  1.00 59.87           C
+ATOM     15  SG  CYS A 261      76.011  37.403  23.356  1.00 57.71           S
+ATOM     16  N   GLY A 262      72.018  40.364  21.494  1.00 63.62           N
+ATOM     17  CA  GLY A 262      70.666  40.587  20.921  1.00 65.14           C
+ATOM     18  C   GLY A 262      69.546  40.080  21.841  1.00 66.01           C
+ATOM     19  O   GLY A 262      68.528  39.491  21.408  1.00 66.75           O
+ATOM     20  OXT GLY A 262      69.622  40.268  23.068  1.00 66.78           O
+TER
+ATOM     21  N   CYS B 261      74.710  74.423  33.026  1.00 51.47           N
+ATOM     22  CA  CYS B 261      74.050  74.094  31.771  1.00 51.64           C
+ATOM     23  C   CYS B 261      73.663  75.409  31.099  1.00 53.38           C
+ATOM     24  O   CYS B 261      72.609  75.498  30.502  1.00 53.30           O
+ATOM     25  CB  CYS B 261      72.820  73.215  32.017  1.00 50.99           C
+ATOM     26  SG  CYS B 261      73.155  71.752  33.046  1.00 46.82           S
+ATOM     27  N   GLY B 262      74.546  76.413  31.226  1.00 55.76           N
+ATOM     28  CA  GLY B 262      74.424  77.787  30.642  1.00 57.82           C
+ATOM     29  C   GLY B 262      73.715  78.804  31.551  1.00 58.64           C
+ATOM     30  O   GLY B 262      73.579  78.604  32.783  1.00 58.58           O
+ATOM     31  OXT GLY B 262      73.311  79.889  31.060  1.00 59.70           O
+TER
+HETATM   32  N   GLU A 301      75.002  26.783  43.217  1.00 28.86           N
+HETATM   33  CA  GLU A 301      76.076  25.770  43.503  1.00 29.91           C
+HETATM   34  C   GLU A 301      76.194  25.508  45.002  1.00 30.65           C
+HETATM   35  O   GLU A 301      77.025  24.681  45.464  1.00 30.01           O
+HETATM   36  CB  GLU A 301      77.422  26.205  42.939  1.00 30.22           C
+HETATM   37  CG  GLU A 301      77.563  26.074  41.392  1.00 29.97           C
+HETATM   38  CD  GLU A 301      77.627  24.641  40.897  1.00 30.03           C
+HETATM   39  OE1 GLU A 301      77.884  23.761  41.746  1.00 26.02           O
+HETATM   40  OE2 GLU A 301      77.475  24.404  39.651  1.00 30.03           O
+HETATM   41  OXT GLU A 301      75.416  26.080  45.793  1.00 30.21           O
+"""
+
 def test_get_clean_selection_string():
   """ Check get_clean_selection_string  """
   # print sys._getframe().f_code.co_name
@@ -455,8 +501,8 @@ def test_selection_string_from_selection():
   sel_str2 = selection_string_from_selection(pdb_h,isel2)
   sel_str3 = selection_string_from_selection(pdb_h,isel3)
   assert sel_str1 == "chain 'D'", sel_str1
-  assert sel_str2 == "(chain 'D' and (resid 1:3 or resid 5:7))", sel_str2
-  assert sel_str3 == "(chain 'D' and resid 1:6)", sel_str3
+  assert sel_str2 == "(chain 'D' and (resid 1 through 3 or resid 5 through 7))", sel_str2
+  assert sel_str3 == "(chain 'D' and resid 1 through 6)", sel_str3
   #
   asc = pdb_h.atom_selection_cache()
   sel1 = list(asc.iselection(sel_str1))
@@ -480,7 +526,7 @@ def test_selection_string_from_selection2():
   #
   sel_str1 = selection_string_from_selection(pdb_h,isel1)
   sel_str2 = selection_string_from_selection(pdb_h,isel2)
-  assert sel_str1 == "chain 'A' or (chain 'B' and resid 153:154)", sel_str1
+  assert sel_str1 == "chain 'A' or (chain 'B' and resid 153 through 154)", sel_str1
   s = "(chain 'A' and (resid 151 or (resid 152 and (name N or name CA or "
   s += "name C or name O or name CB or name CG or name CD or name NE or "
   s += "name CZ )))) or chain 'B'"
@@ -508,14 +554,14 @@ def test_avoid_chain_selection2():
   sel_str1 = selection_string_from_selection(pdb_h,isel1)
   # s = '(chain H and (resid 48 or resid 49 or resid 49A or resid 50:52))'
   # better way:
-  s = "(chain 'H' and resid 48:52)"
+  s = "(chain 'H' and resid 48 through 52)"
   assert sel_str1 == s, sel_str1
   #
   l1 = range(6,25) + range(29,46)
   isel1 = flex.size_t(l1)
   # s = '(chain H and (resid 48 or resid 49 or resid 50:52))'
   # better way:
-  s = "(chain 'H' and (resid 48:49 or resid 50:52))"
+  s = "(chain 'H' and (resid 48 through 49 or resid 50 through 52))"
   sel_str1 = selection_string_from_selection(pdb_h,isel1)
   assert sel_str1 == s, sel_str1
 
@@ -524,7 +570,7 @@ def test_avoid_hoh():
       source_info=None, lines=test_pdb_4).construct_hierarchy()
   isel1 = flex.size_t(range(7))
   sel_str1 = selection_string_from_selection(pdb_h,isel1)
-  s = "(chain 'A' and resid 151:157)"
+  s = "(chain 'A' and resid 151 through 157)"
   assert sel_str1 == s, sel_str1
   #
   asc = pdb_h.atom_selection_cache()
@@ -537,7 +583,7 @@ def test_include_hoh():
   isel1 = flex.size_t(range(7))
   sel_str1 = selection_string_from_selection(
     pdb_h,isel1)
-  s = "(chain 'A' and resid 151:157)"
+  s = "(chain 'A' and resid 151 through 157)"
   assert sel_str1 == s, sel_str1
   #
   asc = pdb_h.atom_selection_cache()
@@ -566,7 +612,7 @@ def test_insertions():
       source_info=None, lines=test_pdb_6).construct_hierarchy()
   isel = flex.size_t(range(15))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain 'H' and (resid 48:49 or (resid 49A and (name N or name CA or name C ))))"
+  assert tsel == "(chain 'H' and (resid 48 through 49 or (resid 49A and (name N or name CA or name C ))))", tsel
 
   isel = flex.size_t(range(16))
   tsel = selection_string_from_selection(pdb_h, isel)
@@ -669,7 +715,7 @@ def test_5():
   assert tsel == "(chain 'A' and (name N or name CA ))", tsel
   isel = flex.size_t([0,1,2,8,9,13,14,17,18])
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain 'A' and ((resid 14 and (name N or name CA or name C )) or (resid 15:17 and (name N or name CA ))))", tsel
+  assert tsel == "(chain 'A' and ((resid 14 and (name N or name CA or name C )) or (resid 15 through 17 and (name N or name CA ))))", tsel
 
 def test_6():
   """
@@ -682,7 +728,7 @@ def test_6():
   isel = flex.size_t(range(21))
   tsel = selection_string_from_selection(pdb_h, isel)
   # print "tsel", tsel
-  assert tsel == "(chain 'A' and (resid 125:127 or (resid 128 and (name N or name CA or name C or name O or name CB ))))" , tsel
+  assert tsel == "(chain 'A' and (resid 125 through 127 or (resid 128 and (name N or name CA or name C or name O or name CB ))))" , tsel
 
 def test_7():
   """
@@ -691,7 +737,7 @@ def test_7():
       source_info=None, lines=test_pdb_9).construct_hierarchy()
   isel = flex.size_t([0,1,2,3,4]+range(11,27))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain 'A' and ((resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
+  assert tsel == "(chain 'A' and ((resid 124 through 125 and (name N or name CA or name C or name O or name CB )) or resid 126 through 127))", tsel
   # print "tsel", tsel
 
 def test_8():
@@ -699,7 +745,7 @@ def test_8():
       source_info=None, lines=test_pdb_10).construct_hierarchy()
   isel = flex.size_t(range(8)+[8,9,10,11,12]+range(19,35))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain 'A' and (resid 117 or (resid 124:125 and (name N or name CA or name C or name O or name CB )) or resid 126:127))", tsel
+  assert tsel == "(chain 'A' and (resid 117 or (resid 124 through 125 and (name N or name CA or name C or name O or name CB )) or resid 126 through 127))", tsel
 
 
 def test_11():
@@ -710,7 +756,7 @@ def test_11():
       source_info=None, lines=test_pdb_11).construct_hierarchy()
   isel = flex.size_t(range(5)+[6])
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain 'A' and (resid 480:482 or (resid 483:484 and (name CA ))))", tsel
+  assert tsel == "(chain 'A' and (resid 480 through 482 or (resid 483 through 484 and (name CA ))))", tsel
 
 def test_12():
   """
@@ -723,8 +769,22 @@ def test_12():
       source_info=None, lines=test_pdb_12).construct_hierarchy()
   isel = flex.size_t(range(26)+range(30,45))
   tsel = selection_string_from_selection(pdb_h, isel)
-  assert tsel == "(chain 'A' and (resid 279:281 or (resid 282:285 and (name N or name CA or name C or name O or name CB ))))"
+  assert tsel == "(chain 'A' and (resid 279 through 281 or (resid 282 through 285 and (name N or name CA or name C or name O or name CB ))))", tsel
+
+def test_13():
+  """
+  Test correct handling of portion of a chain at the end of the pdb file.
+  """
+  pdb_h = iotbx.pdb.input(
+      source_info=None, lines=test_pdb_13).construct_hierarchy()
+  isel = flex.size_t(range(20)+range(31,41))
+  tsel = selection_string_from_selection(pdb_h, isel)
   # print tsel
+  assert tsel == "chain 'A'"
+  isel = flex.size_t(range(19)+range(31,41))
+  tsel = selection_string_from_selection(pdb_h, isel)
+  # print tsel
+  assert tsel == "(chain 'A' and (resid 260 through 261 or (resid 262 and (name N or name CA or name C or name O )) or resid 301))"
 
 if __name__=='__main__':
   test_get_clean_selection_string()
@@ -745,5 +805,6 @@ if __name__=='__main__':
   test_8()
   test_11()
   test_12()
+  test_13()
 
   print "OK"

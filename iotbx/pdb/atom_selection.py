@@ -887,7 +887,7 @@ def selection_string_from_selection(pdb_h,
       cur_res_selected_atom_names = get_atom_names_from_test_set(
           a_sel.intersection(selection_set), a_sel, chains_info[ch_id].atom_names[0])
       atoms_in_current_range = cur_res_selected_atom_names
-      seqence_was_broken = False
+      sequence_was_broken = False
 
       first_resid = chains_info[ch_id].resid[0]
       last_resid = None
@@ -901,11 +901,11 @@ def selection_string_from_selection(pdb_h,
         if len(test_set) == 0:
           # None of residue's atoms are selected
           # print "Breaking 1"
-          seqence_was_broken = True
+          sequence_was_broken = True
           continue
         if no_altloc_present and not no_altloc[i]:
           # print "Breaking 2"
-          seqence_was_broken = True
+          sequence_was_broken = True
           continue
         all_atoms_present = (test_set == a_sel)
         if prev_all_atoms_present is None:
@@ -932,14 +932,15 @@ def selection_string_from_selection(pdb_h,
         continue_range = False
         continue_range = ((cur_all_atoms_present and prev_all_atoms_present)
           or (len(set(cur_res_selected_atom_names) ^ set(atoms_in_current_range))==0))
+        continue_range &= not chains_info[ch_id].gap_residue[i]
         # print "continue range 1", continue_range
         # residues are consequtive
-        continue_range = continue_range and not seqence_was_broken
+        continue_range = continue_range and not sequence_was_broken
         # print "continue range 2", continue_range
         if len(atoms_for_dumping) > 0:
           continue_range = continue_range and (
               len(set(atoms_for_dumping)^set(cur_res_selected_atom_names))==0)
-        seqence_was_broken = False
+        sequence_was_broken = False
         # print "continue range 3", continue_range
 
         if continue_range:
@@ -1058,7 +1059,8 @@ def update_res_sel(
     return res_sel
   res_seq = ""
   if last_resid != first_resid:
-    if last_resid.strip()[-1].isalpha() or first_resid.strip()[-1].isalpha():
+    # if last_resid.strip()[-1].isalpha() or first_resid.strip()[-1].isalpha():
+    if True:
       # through works better with insertion codes!!!
       res_seq = 'resid {} through {}'.format(first_resid.strip(),last_resid.strip())
     else:

@@ -71,6 +71,9 @@ class Score_record(object):
       origin (tuple): (row,col) of the matrix cell we from the previous
         alignment step. Used to trace back optimal alignment
       no_altloc (list of bool): False when residue has alternate location
+      gap_residue (list of bool): True for the
+          residues of the same chain coming after TER or after another
+          chain
     """
     self.score = score
     self.consecutive_matches = 0
@@ -87,6 +90,7 @@ class Chains_info(object):
     self.atom_selection = []
     self.chains_atom_number = 0
     self.no_altloc = []
+    self.gap_residue = []
     self.center_of_coordinates = None
 
   def __str__(self):
@@ -514,38 +518,52 @@ def get_copy_master_selections_from_match_dict(
 
 def make_flips_if_necessary_torsion(const_h, flip_h):
   """ 3 times faster than other procedure."""
-
-  const_h.reset_atom_i_seqs()
-  flip_h.reset_atom_i_seqs()
+  assert len(flip_h.models()) == 1, len(flip_h.models())
+  assert len(const_h.models()) == 1, len(const_h.models())
+  # const_h.write_pdb_file(file_name="const.pdb")
+  # flip_h.write_pdb_file(file_name="flip.pdb")
   assert const_h.atoms_size() == flip_h.atoms_size()
+  original_atoms_size = const_h.atoms_size()
   flipped_other_selection = flex.size_t([])
   ch_const = const_h.only_model().chains()
   ch_flip = flip_h.only_model().chains()
-
-  for ch_c, ch_f in zip(ch_const, ch_flip):
-    for residue, res_flip in zip(ch_c.residues(), ch_f.residues()):
-      if (residue.resname in flippable_sidechains
-          and should_be_flipped(residue, res_flip)):
-        fl_atom_list = flippable_sidechains[residue.resname]
-        iseqs = [0]*residue.atoms_size()
-        for i, a in enumerate(residue.atoms()):
-          try:
-            ind = fl_atom_list.index(a.name)
-            if ind == 3 or ind == 5:
-              iseqs[i+1] = a.i_seq
-            elif ind == 4 or ind == 6:
-              iseqs[i-1] = a.i_seq
-            else:
-              iseqs[i] = a.i_seq
-          except ValueError:
+  for another_ch in ch_const[1:]:
+    if another_ch.id == ch_const[0].id:
+      for rg in another_ch.residue_groups():
+        ch_const[0].append_residue_group(rg.detached_copy())
+  for another_ch in ch_flip[1:]:
+    if another_ch.id == ch_flip[0].id:
+      for rg in another_ch.residue_groups():
+        ch_flip[0].append_residue_group(rg.detached_copy())
+  ch_c = ch_const[0]
+  ch_f = ch_flip[0]
+  const_h.reset_atom_i_seqs()
+  flip_h.reset_atom_i_seqs()
+  # for ch_c, ch_f in zip(ch_const, ch_flip):
+  for residue, res_flip in zip(ch_c.residues(), ch_f.residues()):
+    if (residue.resname in flippable_sidechains
+        and should_be_flipped(residue, res_flip)):
+      fl_atom_list = flippable_sidechains[residue.resname]
+      iseqs = [0]*residue.atoms_size()
+      for i, a in enumerate(residue.atoms()):
+        try:
+          ind = fl_atom_list.index(a.name)
+          if ind == 3 or ind == 5:
+            iseqs[i+1] = a.i_seq
+          elif ind == 4 or ind == 6:
+            iseqs[i-1] = a.i_seq
+          else:
             iseqs[i] = a.i_seq
-        for i in iseqs:
-          flipped_other_selection.append(i)
-      else:
-        for a in residue.atoms():
-          flipped_other_selection.append(a.i_seq)
-  # print "flipped_other_selection", list(flipped_other_selection)
-  assert flipped_other_selection.size() == const_h.atoms_size()
+        except ValueError:
+          iseqs[i] = a.i_seq
+      for i in iseqs:
+        flipped_other_selection.append(i)
+    else:
+      for a in residue.atoms():
+        flipped_other_selection.append(a.i_seq)
+  assert flipped_other_selection.size() == original_atoms_size, "%d %d" % (
+      flipped_other_selection.size(), original_atoms_size)
+  # assert flipped_other_selection.size() == const_h.atoms_size()
   return flipped_other_selection
 
 # def make_flips_if_necessary(const_h, flip_h):
@@ -620,13 +638,15 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
 
 
 def get_match_rmsd(ph, match):
+  assert len(ph.models()) == 1
   [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
   # print "Cleaning chains", ch_a_id, ch_b_id, similarity,
   t0 = time()
   sel_a = make_selection_from_lists(list_a)
   sel_b = make_selection_from_lists(list_b)
-  if sel_a.size == 0:
-    # is it possible at all?
+  # print "debug: lista, listb", list_a, list_b
+  if sel_a.size() == 0 or sel_b.size() == 0:
+    # e.g. 3liy (whole chain in AC)
     return None, None, None, None, None
 
   other_h = ph.select(sel_a)
@@ -790,6 +810,7 @@ def search_ncs_relations(ph=None,
                            res_list_a,res_list_b,rot,trans,rmsd]
 
   """
+  assert len(ph.models()) == 1
   # print "searching ncs relations..."
   if not log: log = StringIO.StringIO()
   if not chains_info:
@@ -831,22 +852,23 @@ def search_ncs_relations(ph=None,
           min_percent=chain_similarity_threshold)
       sel_m, sel_c,res_sel_m,res_sel_c,new_msg = get_matching_atoms(
         chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c)
-      msg += new_msg
-      rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
-      if similarity > chain_similarity_threshold:
-        rmsd, ref_sites, other_sites_best, r,t = get_match_rmsd(ph, rec)
-        if rmsd is not None and rmsd <= chain_max_rmsd:
-          # get the chains atoms and convert selection to flex bool
-          sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
-            remove_far_atoms(
-              sel_m, sel_c,
-              res_sel_m,res_sel_c,
-              ref_sites,other_sites_best,
-              residue_match_radius=residue_match_radius)
-          match_dict[m_ch_id,c_ch_id]=[sel_aa,sel_bb,res_list_a,res_list_b,r,t,rmsd]
-        if rmsd < chain_max_rmsd:
-          chains_in_copies.add(c_ch_id)
-        # print "  good"
+      if len(res_sel_m) > 0 and len(res_sel_c) > 0:
+        msg += new_msg
+        rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
+        if similarity > chain_similarity_threshold:
+          rmsd, ref_sites, other_sites_best, r,t = get_match_rmsd(ph, rec)
+          if rmsd is not None and rmsd <= chain_max_rmsd:
+            # get the chains atoms and convert selection to flex bool
+            sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
+              remove_far_atoms(
+                sel_m, sel_c,
+                res_sel_m,res_sel_c,
+                ref_sites,other_sites_best,
+                residue_match_radius=residue_match_radius)
+            match_dict[m_ch_id,c_ch_id]=[sel_aa,sel_bb,res_list_a,res_list_b,r,t,rmsd]
+          if rmsd < chain_max_rmsd:
+            chains_in_copies.add(c_ch_id)
+          # print "  good"
   # loop over all chains
   if msg:
     print >> log,msg
@@ -939,26 +961,26 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
   if b_altloc:
     b_altloc = chains_info[b_id].no_altloc.count(False) > 0
   test_altloc = a_altloc or b_altloc
-  #
   res_num_a_updated = []
   res_num_b_updated = []
   residues_with_different_n_atoms = []
   for (i,j) in zip(res_num_a,res_num_b):
     # iterate over atoms in residues
+    # print "working with", i,j, chains_info[a_id].res_names[i], chains_info[a_id].resid[i], #chains_info[b_id].res_names[j]
     sa = flex.size_t(chains_info[a_id].atom_selection[i])
     sb = flex.size_t(chains_info[b_id].atom_selection[j])
     dif_res_size = sa.size() != sb.size()
+    # print "sizes:", sa.size(), sb.size(),
     atoms_names_a = chains_info[a_id].atom_names[i]
     atoms_names_b = chains_info[b_id].atom_names[j]
     resid_a = chains_info[a_id].resid[i]
-    force_check_atom_order = dif_res_size
     altloc = False
     if test_altloc:
       if a_altloc:
         altloc |= (not chains_info[a_id].no_altloc[i])
       if b_altloc:
         altloc |= (not chains_info[b_id].no_altloc[j])
-    if force_check_atom_order:
+    if dif_res_size:
       # select only atoms that exist in both residues
       atoms_a,atoms_b,similarity = mmtbx_res_alignment(
         seq_a=atoms_names_a, seq_b=atoms_names_b,
@@ -972,14 +994,14 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
         sa = flex.size_t([])
         sb = flex.size_t([])
     # keep only residues with continuous matching atoms
-    if sa.size() != 0:
+    if sa.size() != 0 and sb.size() != 0:
       res_num_a_updated.append(i)
       res_num_b_updated.append(j)
       sel_a.append(sa)
       sel_b.append(sb)
   if residues_with_different_n_atoms:
-    problem_res_nums = {x.strip() for x in residues_with_different_n_atoms}
-    msg = "NCS related residues with different number of atoms, selection"
+    problem_res_nums = [x.strip() for x in residues_with_different_n_atoms]
+    msg = "NCS related residues with different number of atoms, selection "
     msg += a_id + ':' + b_id + '\n['
     msg += ','.join(problem_res_nums) + ']\n'
   else:
@@ -1019,35 +1041,47 @@ def get_chains_info(ph, selection_list=None):
   # asc = ph.atom_selection_cache()
   model  = ph.models()[0]
   # build chains_info from hierarchy
+  # print "in get_chains_info"
   for ch in model.chains():
+    # print "ch_id", ch.id
+    gr = True
     if not chains_info.has_key(ch.id):
       chains_info[ch.id] = Chains_info()
+      gr = False
       # This is very time-consuming
       # ph_sel = ph.select(asc.selection("chain '%s'" % ch.id))
       # coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
       # chains_info[ch.id].center_of_coordinates = coc
       chains_info[ch.id].center_of_coordinates = None
     chains_info[ch.id].chains_atom_number += ch.atoms_size()
-    resids = chains_info[ch.id].resid
-    res_names = chains_info[ch.id].res_names
-    atom_names = chains_info[ch.id].atom_names
-    atom_selection = chains_info[ch.id].atom_selection
-    no_altloc = chains_info[ch.id].no_altloc
     conf = ch.conformers()[0]
     len_conf = len(ch.conformers())
-    for res in conf.residues():
-      x = res.resname
-      resids.append(res.resid())
-      res_names.append(x)
-      atoms = res.atoms()
-      atom_names.append(list(atoms.extract_name()))
-      atom_selection.append(list(atoms.extract_i_seq()))
-      no_altloc.append(res.is_pure_main_conf or len_conf==1)
-    chains_info[ch.id].resid = resids
-    chains_info[ch.id].res_names = res_names
-    chains_info[ch.id].atom_names = atom_names
-    chains_info[ch.id].atom_selection = atom_selection
-    chains_info[ch.id].no_altloc = no_altloc
+    # Warning devs: the following assert fails when there is no main conf
+    # in a residue
+    # assert len(ch.residue_groups()) == len(conf.residues())
+    for rg, res in zip(ch.residue_groups(), conf.residues()):
+      chains_info[ch.id].resid.append(rg.resid())
+      chains_info[ch.id].res_names.append(rg.atom_groups()[0].resname)
+      # atoms = res.atoms()
+      ag0 = rg.atom_groups()[0]
+      atoms = ag0.atoms()
+      present_anames = [a.name for a in atoms]
+      # print "rg.atom_groups_size()", rg.atom_groups_size()
+      if rg.atom_groups_size() > 1:
+        for add_rgs in rg.atom_groups()[1:]:
+          for a in add_rgs.atoms():
+            # print "       getting atom '%s'" % a.name, a.name not in present_anames
+            if a.name not in present_anames:
+              atoms.append(a)
+              present_anames.append(a.name)
+      chains_info[ch.id].atom_names.append(list(atoms.extract_name()))
+      chains_info[ch.id].atom_selection.append(list(atoms.extract_i_seq()))
+      chains_info[ch.id].no_altloc.append(not rg.have_conformers() or len_conf==1)
+      chains_info[ch.id].gap_residue.append(gr)
+      # print "  ", rg.id_str(), rg.have_conformers(), not res.is_pure_main_conf, "|noaltloc:", (not rg.have_conformers() or len_conf==1), "size:", atoms.size(), "gr:", gr
+      # for a in atoms:
+      #   print "    ", a.id_str()
+      gr = False
   return chains_info
 
 
