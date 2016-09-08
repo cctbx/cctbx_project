@@ -1787,6 +1787,8 @@ class pdb_strand(structure_base):
 
   @classmethod
   def from_pdb_record(cls, line):
+    if len(line) < 76:
+      line += " "*(80-len(line))
     return cls(sheet_id=line[11:14],
         strand_id=int(line[7:10]),
         start_resname=line[17:20],
