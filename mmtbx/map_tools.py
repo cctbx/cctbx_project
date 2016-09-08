@@ -302,21 +302,22 @@ class electron_density_map(object):
 def resolve_dm_map(
       fmodel,
       map_coeffs,
-      pdb_inp,
+      xrs,
       use_model_hl,
       fill,
-      use_sites_cart=None, # XXX just for testing
       solvent_content=None,
       solvent_content_attenuator=0.1,
       mask_cycles  = 2,
       minor_cycles = 2,
+      mask_from_model = None,  # use xrs as model_mask in density modification
+      add_mask=None,  # alternative to mask_from_model: use xrs as added mask
+      denmod_with_model = True, # use xrs in density modification
       input_text   = None):
   """
   Compute Resolve DM map
   """
   input_text="""
 keep_missing
-!add_mask XXX do not put it here, instead use parameter
 """
   from solve_resolve.resolve_python import density_modify_in_memory
   if(solvent_content is None):
@@ -345,12 +346,12 @@ keep_missing
       data = flex.double(complete_set.indices().size(), 0.01), # must be > 0.0
       sigmas = flex.double(complete_set.indices().size(), -1.0))  # must be -1.0
     f_obs = f_obs.complete_with(other=complete_set)
-  if(not use_sites_cart):
-    model_sites_cart = None
-    model_pdb_inp=pdb_inp
+  if(add_mask or mask_from_model):
+    assert not (add_mask and mask_from_model)
+    model_xrs = xrs # add_mask using xrs to define it. Could instead supply 
+                    #  a different xrs to define add_mask or model_mask
   else:
-    model_sites_cart = fmodel.xray_structure.sites_cart()
-    model_pdb_inp=None
+    model_xrs = None
   cmn=density_modify_in_memory.run(
     fp_sigfp            = f_obs.deep_copy(),
     hendrickson_lattman = hl_model,
@@ -359,11 +360,11 @@ keep_missing
     solvent_content     = solvent_content,
     mask_cycles         = mask_cycles,
     minor_cycles        = minor_cycles,
-    pdb_inp             = pdb_inp,
-    model_pdb_inp       = model_pdb_inp,
-    model_sites_cart    = model_sites_cart,
-    denmod_with_model   = True,
-    add_mask            = True,
+    xrs                 = xrs,
+    model_xrs           = model_xrs,
+    denmod_with_model   = denmod_with_model,
+    add_mask            = add_mask,
+    mask_from_model     = mask_from_model,
     verbose             = False,
     input_text          = input_text,
     out                 = null_out())
