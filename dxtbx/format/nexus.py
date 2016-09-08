@@ -14,8 +14,7 @@ from __future__ import division
 try:
   from dxtbx_format_nexus_ext import *
 except ImportError:
-  print "Warning, HDF5 libraries not found" # stop gap for LCLS until linking is worked out
-
+  pass
 
 class check_dtype(object):
   '''
