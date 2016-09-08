@@ -348,7 +348,7 @@ keep_missing
     f_obs = f_obs.complete_with(other=complete_set)
   if(add_mask or mask_from_model):
     assert not (add_mask and mask_from_model)
-    model_xrs = xrs # add_mask using xrs to define it. Could instead supply 
+    model_xrs = xrs # add_mask using xrs to define it. Could instead supply
                     #  a different xrs to define add_mask or model_mask
   else:
     model_xrs = None
