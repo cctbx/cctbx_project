@@ -6540,6 +6540,62 @@ ATOM  27954  ZN  ZN  A1508    9999.9999999.9999999.999  1.00166.17      A
       "IOTBX_ASSERT(! (xyz[0]>9999 && xyz[1]>9999 && xyz[2]>9999)) failure.") >0
   else: raise Exception_expected
 
+def exercise_is_pure_main_conf():
+  """
+  This test is to illustrate what is 'is_pure_main_conf' parameter.
+  It is turned off.
+  """
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM   1904  N   GLU M   7      22.484  46.518   1.826  1.00 38.08           N
+ATOM   1905  CA AGLU M   7      22.261  45.290   1.052  0.50 37.74           C
+ATOM   1906  CA BGLU M   7      22.222  45.269   1.113  0.50 37.74           C
+ATOM   1907  C   GLU M   7      23.326  44.233   1.331  1.00 37.38           C
+ATOM   1908  O   GLU M   7      23.020  43.060   1.550  1.00 37.42           O
+ATOM   1909  CB AGLU M   7      22.249  45.622  -0.449  0.50 37.75           C
+ATOM   1910  CB BGLU M   7      21.980  45.510  -0.378  0.50 37.76           C
+ATOM   1911  CG AGLU M   7      22.567  44.444  -1.378  0.50 37.91           C
+ATOM   1912  CG BGLU M   7      21.408  44.296  -1.097  0.50 37.93           C
+ATOM   1913  CD AGLU M   7      23.700  44.738  -2.358  0.50 38.10           C
+ATOM   1914  CD BGLU M   7      21.008  44.592  -2.523  0.50 38.25           C
+ATOM   1915  OE1AGLU M   7      24.714  45.352  -1.953  0.50 38.05           O
+ATOM   1916  OE1BGLU M   7      20.006  45.310  -2.724  0.50 38.27           O
+ATOM   1917  OE2AGLU M   7      23.582  44.336  -3.534  0.50 37.92           O
+ATOM   1918  OE2BGLU M   7      21.690  44.096  -3.443  0.50 38.22           O
+ATOM   1919  N   THR M   8      24.587  44.665   1.271  1.00 36.83           N
+ATOM   1920  CA BTHR M   8      25.711  43.853   1.726  0.50 36.29           C
+ATOM   1921  CA CTHR M   8      25.700  43.848   1.745  0.50 36.39           C
+ATOM   1922  C   THR M   8      26.210  44.451   3.041  1.00 35.92           C
+ATOM   1923  O   THR M   8      26.572  45.630   3.097  1.00 35.88           O
+ATOM   1924  CB BTHR M   8      26.847  43.800   0.679  0.50 36.40           C
+ATOM   1925  CB CTHR M   8      26.854  43.708   0.703  0.50 36.51           C
+ATOM   1926  OG1BTHR M   8      26.323  43.348  -0.576  0.50 36.54           O
+ATOM   1927  OG1CTHR M   8      27.904  44.642   0.990  0.50 36.90           O
+ATOM   1928  CG2BTHR M   8      27.956  42.852   1.124  0.50 36.27           C
+ATOM   1929  CG2CTHR M   8      26.350  43.915  -0.725  0.50 36.69           C
+"""))
+
+  h = pdb_inp.construct_hierarchy()
+  print "*"*50
+  for conf in h.only_chain().conformers():
+    print "conf altloc '%s'" % conf.altloc
+    for res in conf.residues():
+      print "residue:", res.id_str(), "is_pure_main_conf:", res.is_pure_main_conf
+      for atom in res.atoms():
+        print "  ", atom.id_str()
+  print "*"*50
+  print "*"*50
+  for rg in h.only_chain().residue_groups():
+    print "rg ", rg.resseq, rg.have_conformers()
+    for ag in rg.atom_groups():
+      print "ag:", ag.resname, ag.altloc
+      for atom in ag.atoms():
+        print "  ", atom.id_str()
+  # assert not h.only_chain().conformers()[2].residues()[0].is_pure_main_conf
+  # assert not h.only_chain().conformers()[2].residues()[1].is_pure_main_conf
+  r0_pmc = h.only_chain().conformers()[2].residues()[0].is_pure_main_conf
+  r1_pmc = h.only_chain().conformers()[2].residues()[1].is_pure_main_conf
+  print "Residue 0 is", r0_pmc
+  print "Residue 1 is", r1_pmc
 
 def exercise(args):
   comprehensive = "--comprehensive" in args
@@ -6598,6 +6654,7 @@ def exercise(args):
     exercise_atom_is_in_same_conformer_as()
     exercise_substitute_atom_group()
     exercise_atom_xyz_9999()
+    # exercise_is_pure_main_conf()
     if (not forever): break
   print format_cpu_times()
 
