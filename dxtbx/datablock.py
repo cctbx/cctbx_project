@@ -190,22 +190,32 @@ class DataBlock(object):
     # Loop through all the imagesets
     for iset in self._imagesets:
       if isinstance(iset, ImageSweep):
-        if (iset.reader().get_format_class() is not None and
-            issubclass(iset.reader().get_format_class(), FormatMultiImage)):
+        if iset.reader().is_single_file_reader():
           template = abspath(iset.reader().get_path())
+          result['imageset'].append(OrderedDict([
+              ('__id__', 'ImageSweep'),
+              ('master',   abspath(iset.reader().get_path())),
+              ("mask", abspath_or_none(iset.external_lookup.mask.filename)),
+              ("gain", abspath_or_none(iset.external_lookup.gain.filename)),
+              ("pedestal", abspath_or_none(iset.external_lookup.pedestal.filename)),
+              ('beam',       b.index(iset.get_beam())),
+              ('detector',   d[iset.get_detector()]),
+              ('goniometer', g.index(iset.get_goniometer())),
+              ('scan',       s.index(iset.get_scan())),
+              ('images',     iset.indices())
+            ]))
         else:
-          template = abspath(iset.get_template())
-        result['imageset'].append(OrderedDict([
-            ('__id__', 'ImageSweep'),
-            ('template',   template),
-            ("mask", abspath_or_none(iset.external_lookup.mask.filename)),
-            ("gain", abspath_or_none(iset.external_lookup.gain.filename)),
-            ("pedestal", abspath_or_none(iset.external_lookup.pedestal.filename)),
-            ('beam',       b.index(iset.get_beam())),
-            ('detector',   d[iset.get_detector()]),
-            ('goniometer', g.index(iset.get_goniometer())),
-            ('scan',       s.index(iset.get_scan()))
-          ]))
+          result['imageset'].append(OrderedDict([
+              ('__id__', 'ImageSweep'),
+              ('template',   abspath(iset.get_template())),
+              ("mask", abspath_or_none(iset.external_lookup.mask.filename)),
+              ("gain", abspath_or_none(iset.external_lookup.gain.filename)),
+              ("pedestal", abspath_or_none(iset.external_lookup.pedestal.filename)),
+              ('beam',       b.index(iset.get_beam())),
+              ('detector',   d[iset.get_detector()]),
+              ('goniometer', g.index(iset.get_goniometer())),
+              ('scan',       s.index(iset.get_scan()))
+            ]))
       else:
         imageset = OrderedDict()
         if isinstance(iset, ImageGrid):
@@ -221,6 +231,8 @@ class DataBlock(object):
           image_dict["mask"] = abspath_or_none(iset.external_lookup.mask.filename)
           image_dict["gain"] = abspath_or_none(iset.external_lookup.gain.filename)
           image_dict["pedestal"] = abspath_or_none(iset.external_lookup.pedestal.filename)
+          if iset.reader().is_single_file_reader():
+            image_dict['image'] = iset.indices()[i]
           try:
             image_dict['beam'] = b.index(iset.get_beam(i))
           except Exception:
@@ -672,34 +684,61 @@ class DataBlockDictImporter(object):
       ident = imageset['__id__']
       if ident == 'ImageSweep':
         beam, detector, gonio, scan = load_models(imageset)
-        template = load_path(imageset['template'])
-        i0, i1 = scan.get_image_range()
-        iset = ImageSetFactory.make_sweep(
-          template, range(i0, i1+1), None,
-          beam, detector, gonio, scan, check_format)
-        if 'mask' in imageset and imageset['mask'] is not None:
-          imageset['mask'] = load_path(imageset['mask'])
-          iset.external_lookup.mask.filename = imageset['mask']
-          if check_format:
-            with open(imageset['mask']) as infile:
-              iset.external_lookup.mask.data = pickle.load(infile)
-        if 'gain' in imageset and imageset['gain'] is not None:
-          imageset['gain'] = load_path(imageset['gain'])
-          iset.external_lookup.gain.filename = imageset['gain']
-          if check_format:
-            with open(imageset['gain']) as infile:
-              iset.external_lookup.gain.data = pickle.load(infile)
-        if 'pedestal' in imageset and imageset['pedestal'] is not None:
-          imageset['pedestal'] = load_path(imageset['pedestal'])
-          iset.external_lookup.pedestal.filename = imageset['pedestal']
-          if check_format:
-            with open(imageset['pedestal']) as infile:
-              iset.external_lookup.pedestal.data = pickle.load(infile)
+        if "template" in imageset:
+          template = load_path(imageset['template'])
+          i0, i1 = scan.get_image_range()
+          iset = ImageSetFactory.make_sweep(
+            template, range(i0, i1+1), None,
+            beam, detector, gonio, scan, check_format)
+          if 'mask' in imageset and imageset['mask'] is not None:
+            imageset['mask'] = load_path(imageset['mask'])
+            iset.external_lookup.mask.filename = imageset['mask']
+            if check_format:
+              with open(imageset['mask']) as infile:
+                iset.external_lookup.mask.data = pickle.load(infile)
+          if 'gain' in imageset and imageset['gain'] is not None:
+            imageset['gain'] = load_path(imageset['gain'])
+            iset.external_lookup.gain.filename = imageset['gain']
+            if check_format:
+              with open(imageset['gain']) as infile:
+                iset.external_lookup.gain.data = pickle.load(infile)
+          if 'pedestal' in imageset and imageset['pedestal'] is not None:
+            imageset['pedestal'] = load_path(imageset['pedestal'])
+            iset.external_lookup.pedestal.filename = imageset['pedestal']
+            if check_format:
+              with open(imageset['pedestal']) as infile:
+                iset.external_lookup.pedestal.data = pickle.load(infile)
+        elif "master" in imageset:
+          template = load_path(imageset['master'])
+          i0, i1 = scan.get_image_range()
+          iset = ImageSetFactory.make_sweep(
+            template, range(i0, i1+1), None,
+            beam, detector, gonio, scan, check_format)
+          if 'mask' in imageset and imageset['mask'] is not None:
+            imageset['mask'] = load_path(imageset['mask'])
+            iset.external_lookup.mask.filename = imageset['mask']
+            if check_format:
+              with open(imageset['mask']) as infile:
+                iset.external_lookup.mask.data = pickle.load(infile)
+          if 'gain' in imageset and imageset['gain'] is not None:
+            imageset['gain'] = load_path(imageset['gain'])
+            iset.external_lookup.gain.filename = imageset['gain']
+            if check_format:
+              with open(imageset['gain']) as infile:
+                iset.external_lookup.gain.data = pickle.load(infile)
+          if 'pedestal' in imageset and imageset['pedestal'] is not None:
+            imageset['pedestal'] = load_path(imageset['pedestal'])
+            iset.external_lookup.pedestal.filename = imageset['pedestal']
+            if check_format:
+              with open(imageset['pedestal']) as infile:
+                iset.external_lookup.pedestal.data = pickle.load(infile)
         imagesets.append(iset)
       elif ident == 'ImageSet' or ident == "ImageGrid":
         filenames = [image['filename'] for image in imageset['images']]
+        indices = [image['image'] for image in imageset['images'] if 'image' in image]
+        assert len(indices) == 0 or len(indices) == len(filenames)
         iset = ImageSetFactory.make_imageset(
-          filenames, None, check_format)
+          filenames, None, check_format, indices)
         if ident == "ImageGrid":
           grid_size = imageset['grid_size']
           iset = ImageGrid.from_imageset(iset, grid_size)

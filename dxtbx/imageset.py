@@ -60,9 +60,14 @@ class ReaderBase(object):
 class NullReader(ReaderBase):
   ''' A placeholder reader. '''
 
-  def __init__(self, filenames):
+  def __init__(self, filenames, single_file=False):
     ReaderBase.__init__(self)
     self._filenames = filenames
+    self._single_file = single_file
+
+  def is_single_file_reader(self):
+    ''' Return if single file reader '''
+    return self._single_file
 
   def __eq__(self, other):
     ''' Compare with another reader. '''
@@ -191,6 +196,10 @@ class SingleFileReader(ReaderBase):
   def get_scan(self, index=None):
     '''Get the scan instance.'''
     return self.get_format().get_scan(index)
+
+  def is_single_file_reader(self):
+    ''' Return if single file reader '''
+    return True
 
 
 class MultiFileState(object):
@@ -369,6 +378,10 @@ class MultiFileReader(ReaderBase):
 
     # All images valid
     return True
+
+  def is_single_file_reader(self):
+    ''' Return if single file reader '''
+    return False
 
 class MemReader(ReaderBase):
   '''A reader for data already loaded in memory'''
@@ -1535,7 +1548,8 @@ class ImageSetFactory(object):
 
 
   @staticmethod
-  def make_imageset(filenames, format_class=None, check_format=True):
+  def make_imageset(filenames, format_class=None, check_format=True,
+                    single_file_indices=None):
     '''Create an image set'''
     from dxtbx.format.Registry import Registry
     from format.FormatMultiImage import FormatMultiImage
@@ -1554,7 +1568,7 @@ class ImageSetFactory(object):
         reader = MultiFileReader(format_class, filenames)
 
     # Return the imageset
-    return ImageSet(reader)
+    return ImageSet(reader, indices=single_file_indices)
 
   @staticmethod
   def make_sweep(template, indices, format_class=None, beam=None,
