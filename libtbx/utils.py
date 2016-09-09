@@ -2295,13 +2295,26 @@ def try_send_to_trash (path_name, delete_if_not_available=False,
     else :
       send2trash.send2trash(path_name)
 
-def to_unicode(text, codec='utf8'):
+def to_unicode(text, codec=None):
   '''
   Function for handling text when it is first encountered
   Changes str type to unicode type
   The input is returned unmodified if it is already unicode
   Will convert other types (e.g. int, float) to str
+  None is returned as None, not as u'None'
+
+  For Linux/OS X, the default filesystem encoding is utf8.
+  For Windows, the default filesystem encoding is mbcs.
+  This is important for handling files with basic Python functions
+  With the wrong encoding, the filesystem will not recognize the file path
+  import sys; sys.getfilesystemencoding()
   '''
+
+  if (codec is None):
+    codec = 'utf8'
+    if (sys.platform == 'win32'):
+      codec = 'mbcs'
+
   if (isinstance(text, unicode)):
     return text
   elif (isinstance(text, str)):
@@ -2317,14 +2330,27 @@ def to_unicode(text, codec='utf8'):
   else:
     return None
 
-def to_str(text, codec='utf8'):
+def to_str(text, codec=None):
   '''
   Function for handling text when it is passed to cctbx functions that expect
   the str type
   Changes unicode type to str type
   The input is returned unmodified if it is already str
   Will convert other types (e.g. int, float) to str
+  None is returned as None, not as 'None'
+
+  For Linux/OS X, the default filesystem encoding is utf8.
+  For Windows, the default filesystem encoding is mbcs
+  This is important for handling files with basic Python functions.
+  With the wrong encoding, the filesystem will not recognize the file path
+  import sys; sys.getfilesystemencoding()
   '''
+
+  if (codec is None):
+    codec = 'utf8'
+    if (sys.platform == 'win32'):
+      codec = 'mbcs'
+
   if (isinstance(text, str)):
     return text
   elif (isinstance(text, unicode)):
