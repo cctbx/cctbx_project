@@ -318,7 +318,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       if goniometer is None:
         goniometer = self.get_goniometer()
       return GoniometerShadowMaskGenerator(
-        goniometer, coords, flex.size_t(len(coords), 0))
+        goniometer, coords, flex.size_t(len(coords), 1))
 
     def get_mask(self, goniometer=None):
       gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
