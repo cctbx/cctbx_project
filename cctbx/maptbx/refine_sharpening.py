@@ -144,7 +144,7 @@ def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
 
 def get_sharpened_map(ma=None,phases=None,b=None,d_cut=None,
     n_real=None):
-  if not n_real:aaa=bbb
+  assert n_real is not None
   sharpened_ma=adjust_amplitudes_linear(ma,b[0],b[1],b[2],d_cut=d_cut)
   new_map_coeffs=sharpened_ma.phase_transfer(phase_source=phases,deg=True)
   return calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
@@ -397,7 +397,7 @@ def run(map_coeffs=None,
     best_b=refined.get_b()
   print >>out,"Best overall result: %7.2f: " %(best_result)
 
-  sharpening_info_obj.b=best_b
+  sharpening_info_obj.resolution_dependent_b=best_b
   return best_sharpened_ma,phases
 
 
