@@ -5112,8 +5112,8 @@ def select_box_map_data(si=None,
       local_params=get_params([],out=null_out())
       print >>out,"\nIdentifying solvent fraction in boxed map..."
       local_params.crystal_info.solvent_content=None
-      local_params.crystal_info.unit_cell=crystal_symmetry.unit_cell()
-      local_params.crystal_info.space_group=crystal_symmetry.space_group()
+      local_params.crystal_info.unit_cell=box_crystal_symmetry.unit_cell()
+      local_params.crystal_info.space_group=box_crystal_symmetry.space_group()
       box_solvent_fraction,dummy_mask=iterated_solvent_fraction(
         params=local_params,
         map=box_map.as_float(),out=out)
