@@ -283,7 +283,8 @@ master_phil = iotbx.phil.parse("""
      auto_sharpen = True
        .type = bool
        .short_caption = Automatically determine sharpening
-       .help = Automatically determine sharpening using kurtosis maximization.
+       .help = Automatically determine sharpening using kurtosis maximization\
+                 or adjusted surface area
 
      auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
                             *resolution_dependent
@@ -349,7 +350,7 @@ master_phil = iotbx.phil.parse("""
        .help = Magnification to apply to input map.  Input map grid will be \
                 scaled by magnification factor before anything else is done.
 
-     residual_target= 'kurtosis'
+     residual_target = 'adjusted_sa'
        .type = str
        .short_caption = Residual target
        .help = Target for maximization steps in sharpening.  \
@@ -1300,7 +1301,7 @@ class sharpening_info:
       self.search_b_n=params.crystal_info.search_b_n
       self.verbose=params.control.verbose
       if params.crystal_info.b_iso is not None or \
-          params.crystal_info.b_sharpen is not None: 
+          params.crystal_info.b_sharpen is not None:
         if params.crystal_info.k_sharpen is not None:
            self.sharpening_method='b_iso_to_d_cut'
         else:
@@ -1310,7 +1311,7 @@ class sharpening_info:
           self.b_iso=params.crystal_info.b_iso # but we need b_sharpen
         elif params.crystal_info.b_sharpen is not None:
           self.b_sharpen=params.crystal_info.b_sharpen
-      elif params.crystal_info.resolution_dependent_b_sharpen is not None: 
+      elif params.crystal_info.resolution_dependent_b_sharpen is not None:
         self.sharpening_method='resolution_dependent'
         self.resolution_dependent_b_sharpen=\
             params.crystal_info.resolution_dependent_b_sharpen
@@ -1332,7 +1333,7 @@ class sharpening_info:
       crystal_symmetry=self.crystal_symmetry,
        out=out)
     return b_iso
-    
+
   def sharpen_and_score_map(self,map_data=None,out=sys.stdout):
     if self.n_real is None: # need to get it
       self.n_real=map_data.all()
@@ -1992,13 +1993,13 @@ def get_params(args,out=sys.stdout):
 
   if not params.crystal_info.resolution and (
      params.crystal_info.b_iso is not None or params.crystal_info.auto_sharpen
-      or params.crystal_info.resolution_dependent_b_sharpen or 
+      or params.crystal_info.resolution_dependent_b_sharpen or
       params.crystal_info.b_sharpen):
     raise Sorry("Need resolution for segment_and_split_map with sharpening")
 
   if params.crystal_info.auto_sharpen and (
-      params.crystal_info.b_iso is not None or 
-      params.crystal_info.b_sharpen is not None or 
+      params.crystal_info.b_iso is not None or
+      params.crystal_info.b_sharpen is not None or
       params.crystal_info.resolution_dependent_b_sharpen is not None):
     print >>out,"Turning off auto_sharpen as it is not compatible with "+\
         "b_iso, \nb_sharpen, or resolution_dependent_b_sharpen"
@@ -5267,7 +5268,7 @@ def run_auto_sharpen(
       else:
         print >>out,\
           "\nB-sharpen   B-iso   k_sharpen   SA   "+\
-           "Kurtosis  sa_ratio  Normalized regions" 
+           "Kurtosis  sa_ratio  Normalized regions"
     local_best_map_data=None
     local_best_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
@@ -5572,7 +5573,7 @@ def run(args,
     if params.crystal_info.auto_sharpen or \
         params.crystal_info.b_iso is not None or \
         params.crystal_info.b_sharpen is not None or \
-        params.crystal_info.resolution_dependent_b_sharpen is not None: 
+        params.crystal_info.resolution_dependent_b_sharpen is not None:
 
       # Sharpen the map
 
