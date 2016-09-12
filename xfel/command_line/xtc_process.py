@@ -253,12 +253,6 @@ db_logging_phil_str = '''
 '''
 phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_logging_phil_str, process_includes=True)
 
-# work around for copying dxtbx FormatCBFCspad objects
-from xfel.cftbx.detector.cspad_cbf_tbx import cbf_wrapper
-def __stupid_but_swig_safe__deepcopy__(self, memo):
-  pass
-cbf_wrapper.__deepcopy__ = __stupid_but_swig_safe__deepcopy__
-
 from xfel.command_line.xfel_process import Script as DialsProcessScript
 class InMemScript(DialsProcessScript):
   """ Script to process XFEL data at LCLS """
@@ -444,7 +438,10 @@ class InMemScript(DialsProcessScript):
     for run in ds.runs():
       if params.format.file_format == "cbf":
         # load a header only cspad cbf from the slac metrology
-        self.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
+        try:
+          self.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
+        except Exception, e:
+          raise Sorry("Couldn't load calibration file for run %d, %s"%(run.run(), str(e)))
         if self.base_dxtbx is None:
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 

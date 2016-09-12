@@ -304,8 +304,12 @@ def env_dxtbx_from_slac_metrology(run, address):
 
   if geometry is None:
     metro_path = get_calib_file_path(run.env(), address, run)
-  else:
+  elif geometry.valid:
     metro_path = None
+  else:
+    from libtbx.utils import Sorry
+    import socket, os
+    raise Sorry("Could not read geometry, hostname: %s"%socket.gethostname())
 
   if metro_path is None and geometry is None:
     return None
@@ -327,14 +331,11 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
   @param timestamp Human readable timestamp
   @param address Detector address, put in CBF header
   """
+  from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
   import copy
   import numpy as np
-  base_cbf = base_dxtbx._cbf_handle
-  base_dxtbx._cbf_handle = None # have to do this because copy.deep_copy fails on
-                                # swig objects, which _cbf_handle is based on
-  cspad_img = copy.deepcopy(base_dxtbx)
-  cspad_img._cbf_handle = cbf = copy_cbf_header(base_cbf)
-  base_dxtbx._cbf_handle = base_cbf # put it back
+  cbf = copy_cbf_header(base_dxtbx._cbf_handle)
+  cspad_img = FormatCBFCspadInMemory(cbf)
   cbf.set_datablockname(address + "_" + timestamp)
 
   if round_to_int:

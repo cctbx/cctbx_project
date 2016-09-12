@@ -228,3 +228,18 @@ class FormatCBFCspadInMemory(FormatCBFCspad):
       self._end()
 
     return
+
+  def __getstate__(self):
+    # For pickling and copying, don't carry the cbf_handle
+    return self._detector_instance, self._beam_instance, self.get_raw_data()
+
+  def __setstate__(self, state):
+    # For pickling and copying, don't carry the cbf_handle
+    self._detector_instance = state[0]
+    self._beam_instance = state[1]
+    self._raw_data = state[2]
+
+  def __del__(self):
+    # If copied or pickled, may not have _cbf_handle any more
+    if hasattr(self, '_cbf_handle') and self._cbf_handle is not None:
+      self._cbf_handle.__swig_destroy__(self._cbf_handle)
