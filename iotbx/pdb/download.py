@@ -1,6 +1,57 @@
 from __future__ import division
 
-# Encodings; these are singletons
+# Storage methods
+def memory_storage(stream):
+
+  import cStringIO
+  return cStringIO.StringIO( stream.read() )
+
+
+class named_storage(object):
+  """
+  Stores data in a given file
+  """
+
+  def __init__(self, filename, binary = True):
+
+    self.filename = filename
+    self.mode_suffix = "b" if binary else ""
+
+
+  def __call__(self, stream):
+
+    import shutil
+
+    with open( self.filename, "w" + self.mode_suffix ) as fp:
+      shutil.copyfileobj( stream, fp )
+
+    return open( self.filename, "r" + self.mode_suffix )
+
+
+class temporary_storage(object):
+  """
+  Stores data in a temporary file
+  """
+
+  def __init__(self, binary):
+
+    self.mode = "w+b" if binary else "w+"
+
+
+  def __call__(self, stream):
+
+    import tempfile
+    mytemp = tempfile.TemporaryFile( self.mode )
+
+    import shutil
+    shutil.copyfileobj( stream, mytemp )
+
+    mytemp.seek(0)
+
+    return mytemp
+
+
+# Encodings; some of these are singletons
 class encoding(object):
 
   @classmethod
@@ -28,11 +79,15 @@ class gzip_encoding(encoding):
 
   keyword = "gzip"
 
-  @staticmethod
-  def process(stream):
+  def __init__(self, storage = memory_storage):
+
+    self.storage = storage
+
+
+  def process(self, stream):
 
     import gzip
-    return gzip.GzipFile( fileobj = stream )
+    return gzip.GzipFile( fileobj = self.storage( stream = stream ) )
 
 
 class deflate_encoding_small(encoding):
@@ -47,62 +102,6 @@ class deflate_encoding_small(encoding):
 
     import cStringIO
     return cStringIO.StringIO( data )
-
-
-# Storages
-def no_storage(stream):
-
-  return stream
-
-
-def memory_storage(stream):
-
-  import cStringIO
-  return cStringIO.StringIO( stream.read() )
-
-
-class named_storage(object):
-  """
-  Stores data in a given file
-  """
-
-  def __init__(self, filename, binary = True):
-
-    self.filename = filename
-    self.binary = binary
-
-
-  def __call__(self, stream):
-
-    import shutil
-
-    with open( self.filename, 'wb' if self.binary else 'w' ) as fp:
-      shutil.copyfileobj( stream, fp )
-
-    return open( self.filename, 'rb' if self.binary else 'r' )
-
-
-class temporary_storage(object):
-  """
-  Stores data in a temporary file
-  """
-
-  def __init__(self, binary):
-
-    self.mode = "w+b" if binary else "w+"
-
-
-  def __call__(self, stream):
-
-    import tempfile
-    mytemp = tempfile.TemporaryFile( self.mode )
-
-    import shutil
-    shutil.copyfileobj( stream, mytemp )
-
-    mytemp.seek(0)
-
-    return mytemp
 
 
 #Exceptions
@@ -154,8 +153,7 @@ def http_error_to_exception(error):
 def openurl(
   url,
   data = None,
-  encodings = [ gzip_encoding, deflate_encoding_small ],
-  storage = no_storage,
+  encodings = [ gzip_encoding(), deflate_encoding_small ],
   ):
 
   import urllib2
@@ -169,12 +167,12 @@ def openurl(
     )
 
   try:
-    urlstream = urllib2.urlopen( request )
+    stream = urllib2.urlopen( request )
 
   except urllib2.HTTPError, e:
     raise http_error_to_exception( error = e )
 
-  used = urlstream.info().get( "Content-Encoding" )
+  used = stream.info().get( "Content-Encoding" )
 
   for ec in encodings:
     if ec.accept( header = used ):
@@ -189,5 +187,4 @@ def openurl(
     else:
       raise UnexpectedResponse, "Unknown encoding: %s" % used
 
-  filestream = storage( stream = urlstream )
-  return selected.process( stream = filestream )
+  return selected.process( stream = stream )
