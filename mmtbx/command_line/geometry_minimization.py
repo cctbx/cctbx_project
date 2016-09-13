@@ -319,7 +319,7 @@ def run_minimization_amber (
       log,
       prmtop,
       ambcrd,
-      md_engine):
+      ):
   import amber_adaptbx.amber_geometry_minimization
   o = amber_adaptbx.amber_geometry_minimization.run(
     restraints_manager             = restraints_manager,
@@ -339,7 +339,7 @@ def run_minimization_amber (
     log                            = log,
     prmtop                         = prmtop,
     ambcrd                         = ambcrd,
-    md_engine                      = md_engine)
+    )
 
 class run(object):
   _pdb_suffix = "minimized"
@@ -487,7 +487,7 @@ class run(object):
         log = self.log,
         prmtop = self.params.amber.topology_file_name,
         ambcrd = self.params.amber.coordinate_file_name,
-        md_engine = self.params.amber.md_engine)
+      )
     else:
       ncs_restraints_group_list = []
       if self.ncs_obj is not None:
