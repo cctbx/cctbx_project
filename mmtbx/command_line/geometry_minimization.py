@@ -422,14 +422,14 @@ class run(object):
     ##########################
     # adjust some parameters #
     ##########################
-    if hasattr(self.params, "amber"):
-      if self.params.amber.use_amber:
-        self.params.pdb_interpretation.sort_atoms=False
-        print >> self.log, "%s\n  %s\n%s" % (
-          '-'*40,
-          'Automatic sorting of atoms turned off.',
-          '-'*40,
-        )
+    #if hasattr(self.params, "amber"):
+    #  if self.params.amber.use_amber:
+    #    self.params.pdb_interpretation.sort_atoms=False
+    #    print >> self.log, "%s\n  %s\n%s" % (
+    #      '-'*40,
+    #      'Automatic sorting of atoms turned off.',
+    #      '-'*40,
+    #    )
 
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
