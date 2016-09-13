@@ -133,6 +133,7 @@ def helper_3(
       fmodel,
       f_masks,
       log):
+  f_masks = fmodel.f_masks() + f_masks[0:]
   for i in xrange(len(f_masks)):
     f_masks[i] = f_masks[i].common_set(fmodel.f_obs())
   one = flex.double(fmodel.ss.size(), 1.)
