@@ -917,7 +917,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       return False
 
     n=len(self.rota_matrices_inv())
-    if n < 2:
+    if n < 3:
       return False
 
     is_helical=True
