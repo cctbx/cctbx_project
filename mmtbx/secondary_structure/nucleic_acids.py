@@ -408,6 +408,11 @@ def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
     if len(rn)>1 and rn[0] == 'D':
       result = rn[1]+rn[0]
     return result
+  def print_warning_msg(rn):
+    # print resname
+    # print r.resname
+    # print new_res.resname.strip()
+    print "Warning, Cannot make NA restraints for %s residue" % resname
   i_seqs = []
   result = []
   r1_i_seqs = {}
@@ -428,10 +433,7 @@ def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
       if resname not in plane_cache:
         libdef = mon_lib_srv.get_comp_comp_id_direct(resname)
         if libdef is None:
-          print resname
-          print r.resname
-          print new_res.resname.strip()
-          print "Warning, Cannot make NA restraints for %s residue" % resname
+          print_warning_msg(resname)
           continue
           # raise Sorry('Cannot make NA restraints for %s residue' % resname)
         planes = libdef.get_planes()
@@ -443,8 +445,11 @@ def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
               best_len = len(planes[i].plane_atoms)
               best_index = i
           plane_cache[resname] = planes[best_index].plane_atoms
+        else:
+          print_warning_msg(resname)
+          continue
       # now this residue is in cache even if it wasn't before
-      for plane_atom in plane_cache[resname]:
+      for plane_atom in plane_cache.get(resname,[]):
         good_atom_id = plane_atom.atom_id.replace("*","'")
         if good_atom_id == "C5M":
           good_atom_id = "C7"

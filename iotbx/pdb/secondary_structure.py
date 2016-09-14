@@ -1452,7 +1452,7 @@ class pdb_helix (structure_base) :
     if isinstance(self.helix_id, int):
       self.helix_id = "%s" % self.helix_id
       self.helix_id = self.helix_id[:3]
-    elif self.helix_id is None:
+    elif self.helix_id is None or self.helix_id.strip()=="":
       self.adopt_serial_as_id()
     else:
       assert isinstance(self.helix_id, str)
@@ -1782,7 +1782,7 @@ class pdb_strand(structure_base):
     self.set_start_resseq(self.start_resseq)
     self.set_end_resseq(self.end_resseq)
     if self.start_chain_id != self.end_chain_id:
-      raise RuntimeError("Don't know how to deal with strands with multiple "+
+      raise Sorry("Don't know how to deal with strands with different "+
         "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
     self.approx_length = self.get_end_resseq_as_int() - self.get_start_resseq_as_int()
 
