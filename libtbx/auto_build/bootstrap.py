@@ -1848,7 +1848,7 @@ class PhenixExternalRegression(PhenixBuilder):
     # amber
     if self.subcategory in [None, "amber"]:
       self.add_test_command('amber.run_tests',
-                            env = self.get_environment()
+                            env = self.get_environment(),
                             haltOnFailure=False,
                            )
     # rosetta refine
