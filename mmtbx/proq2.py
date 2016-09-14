@@ -75,17 +75,16 @@ class Job(object):
       "pdb": pdbstr,
       "bfactorPDB": "Yes",
       "name": name,
-      "email": "noreply@example.com",
+      "nomail": "Yes",
       "do": "Submit",
       }
 
     stream = download.openurl(
       url = self.SERVERURL,
       data = urllib.urlencode( data_for.items() ),
-      encodings = [],
-      storage = download.no_storage,
       )
     self.job_folder = parse_submission_page( stream = stream )
+    stream.close()
 
 
   def __call__(self):
@@ -93,7 +92,6 @@ class Job(object):
     from iotbx.pdb import download
     return download.openurl(
       url = "%s/%s" % ( self.job_folder, self.OUTPUTFILE ),
-      storage = download.no_storage,
       )
 
 
