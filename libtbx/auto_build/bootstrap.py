@@ -1812,7 +1812,7 @@ class PhenixExternalRegression(PhenixBuilder):
         ]:
       if self.subcategory:
         if name.lower().find(self.subcategory)==-1: continue
-    #  haltOnFailure=True
+      haltOnFailure=True
     #  if name.lower().find('amber')>-1:
     #    haltOnFailure=False
       self.add_step(self.shell(
