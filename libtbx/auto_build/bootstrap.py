@@ -1813,7 +1813,7 @@ class PhenixExternalRegression(PhenixBuilder):
       if self.subcategory:
         if name.lower().find(self.subcategory)==-1: continue
       haltOnFailure=True
-      if name.lower() in ['amber compile']:
+      if name.lower().find('amber')>-1:
         haltOnFailure=False
       self.add_step(self.shell(
         name       = name,
@@ -1832,6 +1832,7 @@ class PhenixExternalRegression(PhenixBuilder):
         name='phenix.build_amber_interface',
         workdir=['.'],
         env=env,
+        haltOnFailure=False,
       )
     # Rosetta
     if self.subcategory in [None, "rosetta"]:
@@ -1848,6 +1849,7 @@ class PhenixExternalRegression(PhenixBuilder):
     if self.subcategory in [None, "amber"]:
       self.add_test_command('amber.run_tests',
                             env = self.get_environment()
+                            haltOnFailure=False,
                            )
     # rosetta refine
     if self.subcategory in [None, "rosetta"]:
