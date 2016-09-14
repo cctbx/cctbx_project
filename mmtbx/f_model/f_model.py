@@ -894,8 +894,7 @@ class manager(manager_mixin):
     r_shrink_ = self.mask_params.shrink_truncation_radius
     self.show_mask_optimization_statistics(prefix="Mask optimization: start",
       out = out)
-    #trial_range = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
-    trial_range = [0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5]
+    trial_range = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
     r_shrinks = []
     r_solvs = []
     for tr1 in trial_range:
