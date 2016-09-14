@@ -48,7 +48,8 @@ class run(mmtbx.f_model.manager):
     self.reset_all_scales()
     self.show(prefix = "re-set all scales", log = log)
     if(remove_outliers and not self.twinned()):
-      self.remove_outliers(use_model = False, log = None) # XXX
+      for iii in xrange(5):
+        self.remove_outliers(use_model = False, log = None) # XXX
       self.show(prefix = "remove outliers", log = log)
     result = None
     if(self.twinned()):
@@ -68,7 +69,8 @@ class run(mmtbx.f_model.manager):
     #XXX if(remove_outliers and not self.twinned()):
     #XXX   self.remove_outliers(use_model = True, log = None) # XXX
     if(remove_outliers and not self.twinned()):
-      self.remove_outliers(use_model = True, log = None) # XXX
+      for iii in xrange(5):
+        self.remove_outliers(use_model = True, log = None) # XXX
       self.show(prefix = "remove outliers", log = log)
     return result
 
@@ -259,7 +261,7 @@ class run(mmtbx.f_model.manager):
       # It must match at least up to 1.e-6.
       self.show(prefix = "add H (%4.2f, %6.2f)"%(kh, bh), log = log)
       if(fast):
-        assert approx_equal(result.r_factor(), self.r_work())
+        assert approx_equal(result.r_factor(), self.r_work(), 1.e-4)
       else:
         assert approx_equal(self.r_all(), o.r()), [self.r_all(), o.r()]
     return group_args(

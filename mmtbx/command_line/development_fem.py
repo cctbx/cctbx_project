@@ -96,7 +96,6 @@ Calculate a "feature-enhanced" 2mFo-DFc map.
     sharp               = params.sharp,
     use_unsharp_masking = params.use_unsharp_masking,
     resolution_factor   = params.resolution_factor,
-    pdb_inp             = cmdline.pdb_inp, # XXX BAD: REMOVE LATER
     log                 = log)
   mtz_file_name = "%s.mtz"%params.output.file_name_prefix
   ccp4_map_file_name = "%s.ccp4"%params.output.file_name_prefix

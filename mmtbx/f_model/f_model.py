@@ -889,11 +889,13 @@ class manager(manager_mixin):
     if (nproc is None) : nproc = 1
     rw_ = self.r_work()
     rf_ = self.r_free()
+    rwl_= self.r_work_low()
     r_solv_   = self.mask_params.solvent_radius
     r_shrink_ = self.mask_params.shrink_truncation_radius
     self.show_mask_optimization_statistics(prefix="Mask optimization: start",
       out = out)
-    trial_range = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
+    #trial_range = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4]
+    trial_range = [0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5]
     r_shrinks = []
     r_solvs = []
     for tr1 in trial_range:
@@ -1371,7 +1373,7 @@ class manager(manager_mixin):
       as_gui_program   = False)
     return dm.map_coeffs_in_original_setting
 
-  def resolve_dm_map_coefficients(self, pdb_inp):
+  def resolve_dm_map_coefficients(self):
     if(not libtbx.env.has_module("solve_resolve")):
       raise Sorry("solve_resolve not available.")
     fmodel_truncated = self.remove_unreliable_atoms_and_update()
@@ -1386,7 +1388,8 @@ class manager(manager_mixin):
     return mmtbx.map_tools.resolve_dm_map(
         fmodel       = fmodel_truncated,
         map_coeffs   = coeffs,
-        pdb_inp      = pdb_inp,
+        xrs          = self.xray_structure,
+        add_mask     = True,  # use add_mask instead of model_mask
         mask_cycles  = 2,
         minor_cycles = 2,
         use_model_hl = True,

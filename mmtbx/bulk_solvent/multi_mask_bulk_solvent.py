@@ -34,6 +34,8 @@ def get_k_mask(method, f_obs, f_calc, f_mask, ss, sel):
   if(abs(k_mask) < 1.e-6):
     one = flex.double(ss.select(sel).size(),1.)
     ks = flex.double([k/100 for k in range(-105,105,1)])
+    #ks = flex.double(
+    #  [k_mask]+[k/100. for k in range(int((k_mask-k_mask)*100.), int((k_mask+k_mask)*100.))])
     bs = flex.double([0,])
     res = mmtbx.bulk_solvent.ksol_bsol_grid_search(
       f_obs.select(sel),
@@ -111,7 +113,7 @@ def loop_work(fmodel, f_masks, method):
       F_f = F_f - f_bulk_data_f
     rw2 = mmtbx.bulk_solvent.r_factor(f_obs_w.data(),   F)
     rf2 = mmtbx.bulk_solvent.r_factor(f_obs_f.data(), F_f)
-    print "%7.5f %7.5f <> %7.5f %7.5f %7.5f"%(rw1, rf1, rw2, rf2,  rf2-rw2)
+    #print "%7.5f %7.5f <> %7.5f %7.5f %7.5f"%(rw1, rf1, rw2, rf2,  rf2-rw2)
   #
   f_bulk_data_all = f_bulk_data_all.set_selected(sel_work, FB)
   f_bulk_data_all = f_bulk_data_all.set_selected(sel_free, FB_f)
@@ -191,6 +193,7 @@ class multi_mask_bulk_solvent(object):
       f_obs        = fmodel.f_obs(),
       r_free_flags = fmodel.r_free_flags(),
       xrs          = xrs)
+    #fmodel.show()
     # Crystal_gridding
     resolution_factor = 1./self.grid_step_factor
     grid_step = fmodel.f_obs().d_min()*resolution_factor
@@ -243,7 +246,7 @@ class multi_mask_bulk_solvent(object):
       mask_data_asu_i = mask_data_asu.deep_copy()
       mask_data_asu_i = mask_data_asu_i.set_selected(s, 1).set_selected(~s, 0)
 
-      print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes)
+      #print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes)
 
       if(log is not None):
         print >> log, "region: %5d fraction: %8.4f"%(ii, region_volumes[ii])
@@ -256,6 +259,7 @@ class multi_mask_bulk_solvent(object):
         fmodel  = fmodel,
         f_masks = f_masks,
         log     = log)
+    #self.fmodel_result.show()
     #
     self.n_regions = len(region_volumes[1:])
     self.region_volumes = " ".join(["%8.4f"%(v) for v in region_volumes[1:][:10]]) # top 10
