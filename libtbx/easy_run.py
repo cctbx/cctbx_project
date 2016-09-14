@@ -140,6 +140,9 @@ class fully_buffered_subprocess(fully_buffered_base):
     self.join_stdout_stderr = join_stdout_stderr
     if (not isinstance(command, str)):
       command = subprocess.list2cmdline(command)
+    if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
+      command = ("DYLD_LIBRARY_PATH=%s exec "%os.environ["DYLD_LIBRARY_PATH"]) +\
+                command
     if (stdin_lines is not None):
       if (not isinstance(stdin_lines, str)):
         stdin_lines = os.linesep.join(stdin_lines)
@@ -203,6 +206,9 @@ def call(command):
   for s in [sys.stdout, sys.stderr]:
     flush = getattr(s, "flush", None)
     if (flush is not None): flush()
+  if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
+    command = ("DYLD_LIBRARY_PATH=%s exec "%os.environ["DYLD_LIBRARY_PATH"]) +\
+              command
   return subprocess.call(args=command, shell=True)
 
 def exercise(args=None):
