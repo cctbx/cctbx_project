@@ -158,6 +158,11 @@ xtc_phil_str = '''
         .help = Path to invalid pixel mask, in the dials.generate_mask format. If not set, use the \
                 psana computed invalid pixel mask. Regardless, pixels outside of the trusted range \
                 for each image will also be masked out. See cxi.make_dials_mask.
+      mask_nonbonded_pixels = False
+        .type = bool
+        .help = If true, try to get non-bonded pixels from psana calibrations and apply them. Includes \
+                the 4 pixels on each side of each pixel. Only used if a custom invalid_pixel_mask is \
+                provided (otherwise the psana calibration will mask these out automatically).
       gain_mask_value = None
         .type = float
         .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
@@ -294,6 +299,20 @@ class InMemScript(DialsProcessScript):
     mpi_log_file_handle = open(self.mpi_log_file_path, 'a')
     mpi_log_file_handle.write(string)
     mpi_log_file_handle.close()
+
+  def psana_mask_to_dials_mask(self, psana_mask):
+    if psana_mask.dtype == np.bool:
+      psana_mask = flex.bool(psana_mask)
+    else:
+      psana_mask = flex.bool(psana_mask == 1)
+    assert psana_mask.focus() == (32, 185, 388)
+    dials_mask = []
+    for i in xrange(32):
+      dials_mask.append(psana_mask[i:i+1,:,:194])
+      dials_mask[-1].reshape(flex.grid(185,194))
+      dials_mask.append(psana_mask[i:i+1,:,194:])
+      dials_mask[-1].reshape(flex.grid(185,194))
+    return dials_mask
 
   def run(self):
     """ Process all images assigned to this thread """
@@ -454,21 +473,15 @@ class InMemScript(DialsProcessScript):
 
         if params.format.cbf.invalid_pixel_mask is not None:
           from libtbx import easy_pickle
-          self.psana_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
-          assert len(self.psana_mask) == 64
+          self.dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
+          assert len(self.dials_mask) == 64
+          if self.params.format.cbf.mask_nonbonded_pixels:
+            psana_mask = self.psana_det.mask(run,calib=False,status=False,edges=False,central=False,unbond=True,unbondnbrs=True)
+            dials_mask = self.psana_mask_to_dials_mask(psana_mask)
+            self.dials_mask = [self.dials_mask[i] & dials_mask[i] for i in xrange(len(dials_mask))]
         else:
           psana_mask = self.psana_det.mask(run,calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
-          if psana_mask.dtype == np.bool:
-            psana_mask = flex.bool(psana_mask)
-          else:
-            psana_mask = flex.bool(psana_mask == 1)
-          assert psana_mask.focus() == (32, 185, 388)
-          self.psana_mask = []
-          for i in xrange(32):
-            self.psana_mask.append(psana_mask[i:i+1,:,:194])
-            self.psana_mask[-1].reshape(flex.grid(185,194))
-            self.psana_mask.append(psana_mask[i:i+1,:,194:])
-            self.psana_mask[-1].reshape(flex.grid(185,194))
+          self.dials_mask = self.psana_mask_to_dials_mask(psana_mask)
 
       # list of all events
       times = run.times()
@@ -667,7 +680,7 @@ class InMemScript(DialsProcessScript):
     generator = MaskGenerator(self.params.border_mask)
     mask = generator.generate(imgset)
     if self.params.format.file_format == "cbf":
-      mask = tuple([a&b for a, b in zip(mask,self.psana_mask)])
+      mask = tuple([a&b for a, b in zip(mask,self.dials_mask)])
 
     self.params.spotfinder.lookup.mask = mask
     self.params.integration.lookup.mask = mask
