@@ -282,7 +282,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
         panel_idx += 1
 
         p = d.add_panel()
-        p.set_type('PAD')
+        p.set_type('SENSOR_PAD')
         p.set_name(panel_name)
         p.set_raw_image_offset((xmin, ymin))
         p.set_image_size((xmax-xmin, ymax-ymin))
