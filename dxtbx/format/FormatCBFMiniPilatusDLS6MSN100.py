@@ -239,10 +239,10 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     # got to here means 60-panel version
 
-    from dxtbx.model.detector import HierarchicalDetector
+    from dxtbx.model.detector import Detector
     from scitbx import matrix
 
-    d = HierarchicalDetector()
+    d = Detector()
 
     beam_centre = matrix.col((beam_x * pixel_x,
                               beam_y * pixel_y, 0))
