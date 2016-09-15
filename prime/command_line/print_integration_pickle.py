@@ -17,6 +17,7 @@ import matplotlib.mlab as mlab
 from cctbx.uctbx import unit_cell
 from prime.postrefine.mod_leastsqr import good_unit_cell
 from cctbx import statistics
+from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler
 
 def calc_wilson(observations_full, n_residues):
   """
@@ -96,7 +97,7 @@ def read_input(args):
   target_space_group = None
   target_unit_cell = None
   target_anomalous_flag = False
-  flag_plot = True
+  flag_plot = False
   d_min = 0
   d_max = 99
   n_residues = 0
@@ -123,8 +124,8 @@ def read_input(args):
     if pair[0]=='target_anomalous_flag':
       target_anomalous_flag = bool(pair[1])
     if pair[0]=='flag_plot':
-      if pair[1] == 'False':
-        flag_plot = False
+      if pair[1] == 'True':
+        flag_plot = True
     if pair[0]=='d_min':
       d_min = float(pair[1])
     if pair[0]=='d_max':
@@ -407,14 +408,18 @@ if (__name__ == "__main__"):
         txt_out_uc += pickle_filename + '\n'
     else:
       txt_out_report_beam_filter += txt_out_report_tmp
-  print
-  print 'CC mean=%6.2f median=%6.2f std=%6.2f'%(flex.mean(cc_bin_low_set), np.median(cc_bin_low_set), np.std(cc_bin_low_set))
-  print 'Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std)
-  print 'Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std)
-  print 'UC mean a=%8.4f (%8.4f) b=%8.4f (%8.4f) c=%9.4f (%8.4f)'%(flex.mean(uc_a), np.std(uc_a), flex.mean(uc_b), np.std(uc_b), flex.mean(uc_c), np.std(uc_c))
-  print 'Detector distance mean=%8.4f (%8.4f)'%(flex.mean(dd_mm), np.std(dd_mm))
-  print 'Wavelength mean=%8.4f (%8.4f)'%(flex.mean(wavelength_set), np.std(wavelength_set))
-  print 'No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f'%(len(frame_files), len(frame_files) - (len(txt_out.split('\n'))-1), len(frame_files) - (len(txt_out_mix.split('\n'))-1))
+  try:
+    print
+    print 'CC mean=%6.2f median=%6.2f std=%6.2f'%(flex.mean(cc_bin_low_set), np.median(cc_bin_low_set), np.std(cc_bin_low_set))
+    print 'Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std)
+    print 'Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std)
+    print 'UC mean a=%8.4f (%8.4f) b=%8.4f (%8.4f) c=%9.4f (%8.4f)'%(flex.mean(uc_a), \
+      np.std(uc_a), flex.mean(uc_b), np.std(uc_b), flex.mean(uc_c), np.std(uc_c))
+    print 'Detector distance mean=%8.4f (%8.4f)'%(flex.mean(dd_mm), np.std(dd_mm))
+    print 'Wavelength mean=%8.4f (%8.4f)'%(flex.mean(wavelength_set), np.std(wavelength_set))
+    print 'No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f'%(len(frame_files), len(frame_files) - (len(txt_out.split('\n'))-1), len(frame_files) - (len(txt_out_mix.split('\n'))-1))
+  except Exception:
+    pass
   print
   print 'Reporting outliers (image name, xbeam, ybeam, cciso, delta_xy)'
   print txt_out_report_beam_filter
@@ -500,3 +505,13 @@ if (__name__ == "__main__"):
         plt.grid(True)
         cn_i += 1
     plt.show()
+  #print twin operators
+  idah = indamb_handler()
+  for pickle_filename in frame_files:
+    pickle_filename_arr = pickle_filename.split('/')
+    pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
+    observations_pickle = pickle.load(open(pickle_filename,"rb"))
+    observations = observations_pickle["observations"][0]
+    operators = idah.generate_twin_operators(observations, flag_all=True)
+    ops_hkl = [op.operator.r().as_hkl() for op in operators]
+    print pickle_filename_only, ops_hkl

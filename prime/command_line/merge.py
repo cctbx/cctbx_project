@@ -9,6 +9,8 @@ reflections and write out mtz file.
 import os, sys, math
 from cctbx.array_family import flex
 import cPickle as pickle
+from prime.postrefine import postref_handler
+from prime.postrefine.mod_partiality import partiality_handler
 
 class merge_handler(object):
   """
@@ -31,6 +33,30 @@ class merge_handler(object):
       DIR = iparams.run_no+'/pickles/'
       pickle_results = [pickle.load(open(DIR+fname, "rb")) for fname in os.listdir(DIR)]
       n_results = len(pickle_results)
+      #for the last cycle merging with weak anomalous flag on
+      #fetch the original observations from the integration pickles
+      if iparams.flag_weak_anomalous and iparams.target_anomalous_flag and avg_mode=='final':
+        prh = postref_handler()
+        for pres in pickle_results:
+          if pres is not None:
+            observations_pickle = pickle.load(open(pres.pickle_filename,'rb'))
+            inputs, _ = prh.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pres.pickle_filename)
+            observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, identified_isoform, mapped_predictions, xbeam, ybeam = inputs
+            two_theta = observations_original.two_theta(wavelength=pres.wavelength).data()
+            ph = partiality_handler()
+            partiality_set, delta_xy_set, rs_set, rh_set = ph.calc_partiality_anisotropy_set(
+              pres.unit_cell, pres.rotx, pres.roty, observations_original.indices(),
+              pres.ry, pres.rz, pres.r0, pres.re, pres.voigt_nu,
+              two_theta, alpha_angle_obs, pres.wavelength, pres.crystal_orientation,
+              spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm,
+              iparams.partiality_model, iparams.flag_beam_divergence)
+            observations, alt_hkl = prh.get_observations_non_polar(observations_original, pres.pickle_filename, iparams)
+            pres.observations = observations
+            pres.observations_original = observations_original
+            pres.partiality = partiality_set
+            pres.rs_set = rs_set
+            pres.rh_set = rh_set
+            pres.mapped_predictions = mapped_predictions
     except Exception:
       print "Error reading input pickles."
       print "Check if prime.run, prime.genref, or prime.postrefine was called prior to merge."

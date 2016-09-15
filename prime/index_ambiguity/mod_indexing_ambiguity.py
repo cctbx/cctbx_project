@@ -16,13 +16,16 @@ class indamb_handler(object):
     Constructor
     """
 
-  def generate_twin_operators(self, obs_in):
+  def generate_twin_operators(self, obs_in, flag_all=False):
     #generate only true merohedral twin operators
     from mmtbx.scaling.twin_analyses import twin_laws
     TL = twin_laws(miller_array=obs_in)
     operators = []
-    if TL.m > 0:
+    if flag_all:
       operators = TL.operators
+    else:
+      if TL.m > 0:
+        operators = TL.operators
     return operators
 
   def generate_reindex_sets(self, obs_in):
