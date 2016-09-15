@@ -91,5 +91,7 @@ def should_be_flipped(residue_1, residue_2):
     tor3 = dihedral_angle(
       sites=tor_23_sites[:3]+[tor_23_sites[4]],
       deg=True)
+    if tor1 is None or tor2 is None or tor3 is None:
+      return False
     return abs(tor1-tor2) > abs(tor1-tor3)+5
   return False
