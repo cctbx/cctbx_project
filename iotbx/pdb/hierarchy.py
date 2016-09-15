@@ -1413,12 +1413,18 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
             ag.resname,
             rg.resseq,
           )
+          flips_stored = []
           atoms = ag.atoms()
           for pair in flip_data["pairs"]:
             atom1 = ag.get_atom(pair[0])
-            if atom1 is None: continue
             atom2 = ag.get_atom(pair[1])
-            if atom2 is None: continue
+            if atom1 is None and atom2 is None: continue
+            if len(filter(None, [atom1, atom2])) == 1:
+              flips_stored=[]
+              info += ' not complete - not flipped'
+              break
+            flips_stored.append([atom1,atom2])
+          for atom1, atom2 in flips_stored:
             tmp = atom1.xyz
             atom1.xyz = atom2.xyz
             atom2.xyz = tmp
