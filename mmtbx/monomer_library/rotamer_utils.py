@@ -5,6 +5,7 @@ import scitbx.math
 from scitbx.array_family import flex
 from libtbx.str_utils import show_string
 from libtbx.utils import sequence_index_dict
+from libtbx.utils import Sorry
 import math
 
 rotamer_info_master_phil_str = """\
@@ -52,7 +53,7 @@ def extract_bonds_to_omit(rotamer_info):
       assert len(bond) == 2
       bond = tuple(bond)
       if (bond in result):
-        raise RuntimeError(
+        raise Sorry(
           "Duplicate tree_generation_without_bond definition: %s" % str(bond))
       result.add(bond)
   return result
@@ -117,7 +118,7 @@ def tardy_model(
       edge_list.append(tuple(sorted(eed)))
   unused = bonds_to_omit.difference(bonds_omitted)
   if (len(unused) != 0):
-    raise RuntimeError(
+    raise Sorry(
       "tree_generation_without_bond does not match any bonds: %s"
         % str(unused))
   if (constrain_dihedrals_with_sigma_less_than_or_equal_to is not None):
@@ -157,7 +158,7 @@ def tardy_model(
     msg = ["Unexpected degrees of freedom:"]
     for dof,cluster in zip(joint_dofs,tardy_tree.cluster_manager.clusters):
       msg.append("  %s: %s" % (dof, [input_atom_names[i] for i in cluster]))
-    raise RuntimeError("\n".join(msg))
+    raise Sorry("\n".join(msg))
   return tardy_model
 
 def build_rotamer_tor_atom_ids_by_tor_id(comp_comp_id, rotamer_info):
@@ -183,7 +184,7 @@ def build_rotamer_tor_atom_ids_by_tor_id(comp_comp_id, rotamer_info):
       if (comp_tor is not None):
         result[tor_id] = comp_tor.atom_ids()
       else:
-        raise RuntimeError(
+        raise Sorry(
           "rotamer_info.tor_id %s is unknown." % show_string(tor_id))
   return result
 
@@ -204,7 +205,7 @@ def build_i_q_packed_by_tor_id(rotamer_tor_atom_ids_by_tor_id, tardy_model):
     atom_names = tuple(sorted(hinge_atom_names))
     tor_id = tor_id_by_rotatable_bond_atom_names.get(atom_names)
     if (tor_id is None):
-      raise RuntimeError(
+      raise Sorry(
         "rotatable bond atoms %s - %s (as defined by tardy_tree):"
         " no match in rotamer_info.tor_ids" % tuple(hinge_atom_names))
     result[tor_id] = i_body - 1
@@ -229,7 +230,7 @@ def build_angle_start_by_tor_id(
       atom_ids.append(str(atom_id))
     dihe = scitbx.math.dihedral_angle(sites=d_sites, deg=True)
     if (dihe is None) :
-      raise RuntimeError(("scitbx.math.dihedral_angle returned None!\n"+
+      raise Sorry(("scitbx.math.dihedral_angle returned None!\n"+
         "Atom IDs: %s\nSites: %s\n") % (", ".join(atom_ids),
         ", ".join([ str(xyz) for xyz in d_sites ])))
     assert dihe is not None
