@@ -1456,6 +1456,38 @@ class manager(manager_mixin):
       remove_outliers = remove_outliers, fast = fast,
       params = params, log = log, refine_hd_scattering=refine_hd_scattering)
     if(optimize_mask): self.optimize_mask()
+    if(self.r_work_low()>0.7):
+      ds_low = flex.min(
+        self.f_obs().d_spacings().data().select(self.bin_selections[0]))
+      f_obs = self.f_obs().resolution_filter(d_max=ds_low)
+      abcd = self.hl_coeffs()
+      if(abcd is not None):
+        abcd = self.hl_coeffs().common_set(f_obs)
+      self.__init__(
+         f_obs                        = f_obs,
+         r_free_flags                 = self.r_free_flags().common_set(f_obs),
+         f_part1                      = self.f_part1()     .common_set(f_obs),
+         f_part2                      = self.f_part2()     .common_set(f_obs),
+         f_calc                       = self.f_calc()      .common_set(f_obs),
+         f_mask = [f.common_set(f_obs) for f in self.f_masks()],
+         abcd                         = abcd,
+         epsilons                     = None,
+         sf_and_grads_accuracy_params = self.sfg_params,
+         target_name                  = "ml",
+         alpha_beta_params            = self.alpha_beta_params ,
+         xray_structure               = self.xray_structure    ,
+         mask_params                  = self.mask_params       ,
+         use_f_model_scaled           = self.use_f_model_scaled,
+         twin_law                     = self.twin_law          ,
+         twin_fraction                = self.twin_fraction     ,
+         max_number_of_bins           = self.max_number_of_bins,
+         bin_selections               = None    ,
+         n_resolution_bins_output     = self.n_resolution_bins_output,
+         scale_method                 = self.scale_method)
+      o = f_model_all_scales.run(
+        fmodel=self, apply_back_trace = apply_back_trace,
+        remove_outliers = remove_outliers, fast = fast,
+        params = params, log = log, refine_hd_scattering=refine_hd_scattering)
     return o.russ
 
   def apply_scale_k1_to_f_obs(self, threshold=10):
@@ -2065,6 +2097,13 @@ class manager(manager_mixin):
       num_num=True)
     if (result is None): return None
     return result**0.5
+
+  def k_mask_low(self):
+    k_masks = self.k_masks()
+    assert len(k_masks) == 1
+    k_mask_l = k_masks[0].select(self.bin_selections[0])
+    assert approx_equal(flex.min(k_mask_l), flex.max(k_mask_l), 1.e-3)
+    return k_mask_l[0]
 
   def r_work_low(self):
     return self.select(self.bin_selections[0]).r_work()

@@ -145,10 +145,24 @@ def helper_3(
   # Run methods
   fmodel_1 = run_method(fmodel=fmodel, f_masks=f_masks, one=one, method=method_1)
   fmodel_2 = run_method(fmodel=fmodel, f_masks=f_masks, one=one, method=method_2)
+  #
+  #print "="*79
+  #fmodel_1.show()
+  #print fmodel_1.r_work(), fmodel_1.r_free(), fmodel_1.r_work_low()#, fmodel_1.k_mask_low()
+  #print "="*79
+  #fmodel_2.show()
+  #print fmodel_2.r_work(), fmodel_2.r_free(), fmodel_2.r_work_low()#, fmodel_2.k_mask_low()
+  #
   if(fmodel_1.r_free()<fmodel_2.r_free()):
-    return fmodel_1, 1
+    if(fmodel_1.r_work_low()<fmodel_2.r_work_low()):
+      return fmodel_1, 1
+    else:
+      return fmodel_2, 2
   else:
-    return fmodel_2, 2
+    if(fmodel_2.r_work_low()<fmodel_1.r_work_low()):
+      return fmodel_2, 2
+    else:
+      return fmodel_1, 1
 ################################################################################
 
 def compute_map(fmodel, crystal_gridding, map_type):
