@@ -1456,7 +1456,7 @@ class manager(manager_mixin):
       remove_outliers = remove_outliers, fast = fast,
       params = params, log = log, refine_hd_scattering=refine_hd_scattering)
     if(optimize_mask): self.optimize_mask()
-    if(self.r_work_low()>0.7):
+    if(self.r_work_low()>0.7 and len(self.bin_selections)>1):
       ds_low = flex.min(
         self.f_obs().d_spacings().data().select(self.bin_selections[0]))
       f_obs = self.f_obs().resolution_filter(d_max=ds_low)
