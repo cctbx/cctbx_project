@@ -85,7 +85,6 @@ class builder_base(object):
     '_cell_angle_alpha': ('_cell.angle_alpha',),
     '_cell_angle_beta': ('_cell.angle_beta',),
     '_cell_angle_gamma': ('_cell.angle_gamma',),
-    '_cell_angle_gamma': ('_cell.angle_gamma',),
     '_cell_volume': ('_cell.volume',),
     '_refln_index_h': ('_refln.index_h',),
     '_refln_index_k': ('_refln.index_k',),
