@@ -60,9 +60,7 @@ namespace dxtbx { namespace model {
     {
       DXTBX_ASSERT(axes.size() >= 1);
       DXTBX_ASSERT(scan_axis < axes.size());
-      setting_rotation_ = calculate_setting_rotation();
-      fixed_rotation_ = calculate_fixed_rotation();
-      rotation_axis_ = calculate_rotation_axis();
+      init();
     }
 
     /* Virtual destructor */
@@ -71,6 +69,15 @@ namespace dxtbx { namespace model {
     /* Get the goniometer axes */
     scitbx::af::shared<vec3<double> > get_axes() const {
       return scitbx::af::shared<vec3<double> >(axes_.begin(), axes_.end());
+    }
+
+    /* Set the goniometer axes */
+    void set_axes(scitbx::af::const_ref<vec3<double> > axes) {
+      DXTBX_ASSERT(axes.size() == axes_.size());
+      for (std::size_t i = 0; i < axes.size(); i++) {
+        axes_[i] = axes[i];
+      }
+      init();
     }
 
     /* Get the goniometer angles */
@@ -84,6 +91,7 @@ namespace dxtbx { namespace model {
       for (std::size_t i = 0; i < angles.size(); i++) {
         angles_[i] = angles[i];
       }
+      init();
     }
 
     /* Get the axis names */
@@ -100,11 +108,12 @@ namespace dxtbx { namespace model {
 
   protected:
 
-    /* Calculate the rotation axis */
-    vec3 <double> calculate_rotation_axis() {
+    void init() {
+      setting_rotation_ = calculate_setting_rotation();
+      fixed_rotation_ = calculate_fixed_rotation();
       // if we are using the setting rotation then this should be
       // applied before this axis => do not include the setting here...
-      return axes_[scan_axis_];
+      rotation_axis_ = axes_[scan_axis_];
     }
 
     /* Calculate the fixed rotation */

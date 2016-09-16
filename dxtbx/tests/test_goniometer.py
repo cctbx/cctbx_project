@@ -163,6 +163,12 @@ def test_multi_axis_goniometer():
   assert recycle.get_scan_axis() == multi_axis_phi_scan.get_scan_axis()
   recycle.set_angles((0,90,180))
   assert approx_equal(recycle.get_angles(), (0, 90, 180))
+  new_axes = (0.9, 0.1, 0.0), (0.6427876096865394, -0.766044443118978, 0.0), (1.0, 0.0, 0.0)
+  new_axes = flex.vec3_double(
+    ((0.99996, -0.00647, -0.00659), (0.91314, 0.27949, -0.29674),
+     (1.00000, -0.00013, -0.00064)))
+  recycle.set_axes(new_axes)
+  assert approx_equal(recycle.get_axes(), new_axes)
 
   # Check exception is raised if scan axis is out range
   try: goniometer_factory.multi_axis(axes, angles, names, 3)
