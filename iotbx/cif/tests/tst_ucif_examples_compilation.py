@@ -23,7 +23,7 @@ def exercise_compilation():
     cmd = '"%s/examples/build_cif_parser.bat"' %ucif_dist
     ext = ".exe"
   else:
-    cmd = '. "%s/examples/build_cif_parser.sh"' %ucif_dist
+    cmd = '"%s/examples/build_cif_parser.sh"' %ucif_dist
     ext = ""
   result = easy_run.fully_buffered(cmd)
   if result.return_code:
