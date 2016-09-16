@@ -1268,11 +1268,21 @@ class sharpening_info:
       return self
 
   def update_with_tracking_data(self,tracking_data=None):
-      params=tracking_data.params
-      self.crystal_symmetry=tracking_data.crystal_symmetry
-      self.solvent_fraction=tracking_data.solvent_fraction
-      self.n_residues=tracking_data.n_residues
-      self.ncs_copies=tracking_data.input_ncs_info.number_of_operators
+      self.update_with_params(params=tracking_data.params,
+         crystal_symmetry=tracking_data.crystal_symmetry,
+         solvent_fraction=tracking_data.solvent_fraction,
+         n_residues=tracking_data.n_residues,
+         ncs_copies=tracking_data.input_ncs_info.number_of_operators)
+      return self
+
+  def update_with_params(self,params=None,
+     crystal_symmetry=None,solvent_fraction=None,
+     n_residues=None,ncs_copies=None):
+
+      self.crystal_symmetry=crystal_symmetry
+      self.solvent_fraction=solvent_fraction
+      self.n_residues=n_residues
+      self.ncs_copies=ncs_copies
       self.wrapping=params.crystal_info.use_sg_symmetry
       self.fraction_occupied=params.crystal_info.fraction_occupied
       self.sa_percent=params.crystal_info.sa_percent
@@ -1288,7 +1298,8 @@ class sharpening_info:
       self.n_bins=params.crystal_info.n_bins
       self.box_in_auto_sharpen=params.crystal_info.box_in_auto_sharpen
       self.max_box_fraction=params.crystal_info.max_box_fraction
-      self.min_ratio_of_ncs_copy_to_first=params.segmentation.min_ratio_of_ncs_copy_to_first
+      self.min_ratio_of_ncs_copy_to_first=\
+         params.segmentation.min_ratio_of_ncs_copy_to_first
       self.max_ratio_to_target=params.segmentation.max_ratio_to_target
       self.min_ratio_to_target=params.segmentation.min_ratio_to_target
       self.residues_per_region=params.segmentation.residues_per_region
@@ -1596,31 +1607,6 @@ def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
        symmetry_flags=maptbx.use_space_group_symmetry)
     fft_map.apply_sigma_scaling()
     map_data=fft_map.real_map_unpadded()
-    return map_data
-
-def sharpen_map(map_data=None,crystal_symmetry=None,
-       d_min_ratio=None,d_cut=None,b_iso=None,
-       k_sharpen=None,out=sys.stdout):
-
-    f_array,phases=get_f_phases_from_map(map_data=map_data,
-       crystal_symmetry=crystal_symmetry,d_min=d_cut,
-       d_min_ratio=d_min_ratio,out=out)
-
-    # If we use very high-res data the b_iso will be way off, so use to d_min
-    res_cut_array=f_array.resolution_filter(d_max=None, d_min=d_cut)
-    original_b_iso=get_b_iso(res_cut_array)
-
-    print >>out,"\nB-iso before sharpening %7.2f" %(original_b_iso)
-
-    b_sharpen=original_b_iso-b_iso
-    print >>out,"Sharpening with b_sharpen=%7.2f (negative is blurring)" %(b_sharpen)
-
-    map_data=apply_sharpening(n_real=map_data.all(),b_sharpen=b_sharpen,
-      crystal_symmetry=crystal_symmetry,
-      f_array=f_array,phases=phases,
-      k_sharpen=k_sharpen,
-      d_min=d_cut,out=out)
-
     return map_data
 
 def find_ncs_center(map_data,crystal_symmetry=None):
@@ -1974,8 +1960,8 @@ def get_ncs_list(ncs_type,
     assert ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
   return ncs_list,ncs_type_list
 
-def get_params(args,out=sys.stdout):
 
+def get_params_from_args(args):
   command_line = iotbx.phil.process_command_line_with_files(
     reflection_file_def="input_files.map_coeffs_file",
     map_file_def="input_files.map_file",
@@ -1985,7 +1971,12 @@ def get_params(args,out=sys.stdout):
     args=args,
     master_phil=master_phil)
 
-  params = command_line.work.extract()
+  return command_line.work.extract()
+
+def get_params(args,out=sys.stdout):
+
+  params=get_params_from_args(args)
+
   print >>out,"\nSegment_and_split_map\n"
   print >>out,"Command used: %s\n" %(
    " ".join(['segment_and_split_map']+args))
@@ -4959,7 +4950,6 @@ def score_map(map_data=None,
         region_weight=None,
         max_regions_to_test=None,
         out=sys.stdout):
-
   if sharpening_info_obj:
     solvent_fraction=sharpening_info_obj.solvent_fraction
     wrapping=sharpening_info_obj.wrapping
@@ -5076,6 +5066,19 @@ def put_bounds_in_range(
     new_ub.append(ub)
   return tuple(new_lb),tuple(new_ub)
 
+def get_iterated_solvent_fraction(map=None,
+    crystal_symmetry=None,out=sys.stdout):
+  try:
+    from phenix.autosol.map_to_model import iterated_solvent_fraction
+    return iterated_solvent_fraction(
+      crystal_symmetry=crystal_symmetry,
+      map_as_double=map,
+      return_solvent_fraction=True,
+      out=out)
+  except Exception,e:
+    return None  # was not available
+
+
 def select_box_map_data(si=None,
            map_data=None,
            minimum_size=(40,40,40),
@@ -5106,22 +5109,12 @@ def select_box_map_data(si=None,
 
   else:
     # figure out solvent fraction in this box...
-    try:
-      from phenix.autosol.map_to_model import iterated_solvent_fraction,\
-         get_params
-      local_params=get_params([],out=null_out())
-      print >>out,"\nIdentifying solvent fraction in boxed map..."
-      local_params.crystal_info.solvent_content=None
-      local_params.crystal_info.unit_cell=box_crystal_symmetry.unit_cell()
-      local_params.crystal_info.space_group=box_crystal_symmetry.space_group()
-      box_solvent_fraction,dummy_mask=iterated_solvent_fraction(
-        params=local_params,
-        map=box_map.as_float(),out=out)
-      del dummy_mask
-      print >>out,"Local solvent fraction: %7.2f" %(box_solvent_fraction)
-    except Exception,e:
-      print >>out,"\nNote: solvent fraction estimation not available...\n"
-      box_solvent_fraction=None
+    
+    box_solvent_fraction=get_iterated_solvent_fraction(
+        crystal_symmetry=box_crystal_symmetry,
+        map=box_map,
+        out=out)
+    print >>out,"Local solvent fraction: %7.2f" %(box_solvent_fraction)
 
     box_sharpening_info_obj=box_sharpening_info(
       n_real=box_map.all(),
@@ -5158,8 +5151,6 @@ def box_of_biggest_region(si=None,
            starting_density_threshold=si.starting_density_threshold,
            density_threshold=si.density_threshold,
            verbose=si.verbose,
-
-
            out=out)
     if len(sorted_by_volume)<2:
       return # nothing to do
@@ -5174,6 +5165,97 @@ def box_of_biggest_region(si=None,
      min_b[i][2],max_b[i][2])
     return min_b[i],max_b[i]
 
+def get_fft_map(n_real=None,map_coeffs=None):
+    from cctbx import maptbx
+    from cctbx.maptbx import crystal_gridding
+    if n_real:
+      cg=crystal_gridding(
+        unit_cell=map_coeffs.crystal_symmetry().unit_cell(),
+        space_group_info=map_coeffs.crystal_symmetry().space_group_info(),
+        pre_determined_n_real=n_real)
+    else:
+      cg=None
+    ccs=map_coeffs.crystal_symmetry()
+    fft_map = map_coeffs.fft_map( resolution_factor = 0.25,
+       crystal_gridding=cg,
+       symmetry_flags=maptbx.use_space_group_symmetry)
+    fft_map.apply_sigma_scaling()
+    return fft_map
+
+def auto_sharpen_map_or_map_coeffs(
+        crystal_symmetry=None,  # supply crystal_symmetry and map or 
+        map=None,
+        map_coeffs=None,        #  map_coeffs and n_real
+        n_real=None, 
+        box_in_auto_sharpen=None, # NOTE: n_residues ncs_copies required if not False
+        n_residues=None, #required if box_in_auto_sharpen
+        ncs_copies=None, #required if box_in_auto_sharpen
+        auto_sharpen_methods=None,
+        resolution=None,
+        residual_target=None,
+        sharpening_target=None,
+        d_min_ratio=None,
+        max_box_fraction=None,
+        k_sharpen=None,
+        search_b_min=None,
+        search_b_max=None,
+        search_b_n=None,
+        out=sys.stdout):
+
+    if box_in_auto_sharpen in [None,True]:
+       assert n_residues and ncs_copies # required in this case
+    assert resolution is not None
+
+    if map:
+      return_as_map=True
+    else:  # convert from structure factors to create map if necessary
+      map=get_fft_map(n_real=n_real, map_coeffs=map_coeffs)
+      return_as_map=False
+
+    # run auto_sharpening
+    si=sharpening_info(n_real=map.all())
+    args=[]
+    for x,param in zip(
+      [box_in_auto_sharpen,auto_sharpen_methods,resolution,d_min_ratio,
+        max_box_fraction,k_sharpen,
+        residual_target,sharpening_target,
+        search_b_min,search_b_max,search_b_n],
+      ['box_in_auto_sharpen','auto_sharpen_methods','resolution','d_min_ratio',
+       'max_box_fraction','k_sharpen',
+        'residual_target','sharpening_target',
+       'search_b_min','search_b_max','search_b_n'],):
+     if x is not None:
+       args.append("%s=%s" %(param,x))
+
+    local_params=get_params_from_args(args)
+
+    #XXX set just the si parameters needed for this:
+
+    si.update_with_params(params=local_params,
+      crystal_symmetry=crystal_symmetry,
+      )
+    si.solvent_fraction=get_iterated_solvent_fraction(
+      crystal_symmetry=crystal_symmetry,
+      map=map,
+      out=out)
+    print "Estimated solvent fraction: %s" %(si.solvent_fraction)
+    si=run_auto_sharpen(
+      si=si,
+      map_data=map,
+      auto_sharpen_methods=local_params.crystal_info.auto_sharpen_methods,
+      out=out)
+    si.sharpen_and_score_map(map_data=map,
+          out=out).show_score(out=out)
+    si.show_summary(out=out)
+    if return_as_map:
+      return si.map_data
+    else:  # return as map_coeffs
+      return get_f_phases_from_map(map_data=simap_data,
+       crystal_symmetry=si.crystal_symmetry,
+       d_min=si.d_min,
+       d_min_ratio=si.d_min_ratio,
+       return_as_map_coeffs=True,
+       out=out) 
 
 def run_auto_sharpen(
       si=None,
@@ -5183,7 +5265,6 @@ def run_auto_sharpen(
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
-
   if si.box_in_auto_sharpen:
     print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
@@ -5368,7 +5449,7 @@ def run_auto_sharpen(
     return best_si
   else:
     print >>out,"Did not improve score with sharpening..."
-    return False
+    return null_si 
 
 def get_effective_b_iso(map_data=None,tracking_data=None,
       box_sharpening_info_obj=None,
