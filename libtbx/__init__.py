@@ -96,10 +96,18 @@ class slots_getstate_setstate(object):
     which does the right name mangling.
     """
     import warnings
-    with warnings.catch_warnings():
+    warning_filters = warnings.filters[:]
+    show_warning = warnings.showwarning
+
+    try:
       # avoid printing deprecation warning to stderr when loading mangle
       warnings.simplefilter("ignore")
       from compiler.misc import mangle
+
+    finally:
+      warnings.showwarning = show_warning
+      warnings.filters = warning_filters
+
     mnames = [ mangle(name, self.__class__.__name__) for name in self.__slots__ ]
 
     return dict([(name, getattr(self, name)) for name in mnames])
