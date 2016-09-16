@@ -148,10 +148,10 @@ def helper_3(
   #
   #print "="*79
   #fmodel_1.show()
-  #print fmodel_1.r_work(), fmodel_1.r_free(), fmodel_1.r_work_low()#, fmodel_1.k_mask_low()
+  #print fmodel_1.r_work(), fmodel_1.r_free(), fmodel_1.r_work_low()
   #print "="*79
   #fmodel_2.show()
-  #print fmodel_2.r_work(), fmodel_2.r_free(), fmodel_2.r_work_low()#, fmodel_2.k_mask_low()
+  #print fmodel_2.r_work(), fmodel_2.r_free(), fmodel_2.r_work_low()
   #
   if(fmodel_1.r_free()<fmodel_2.r_free()):
     if(fmodel_1.r_work_low()<fmodel_2.r_work_low()):
@@ -186,16 +186,16 @@ def get_fmodel_and_grid_step(f_obs, r_free_flags, xrs):
     mask_params    = mask_params,
     xray_structure = xrs)
   fmodel_1.update_all_scales(remove_outliers=True, update_f_part1=False)
-  rw1, rf1 = fmodel_1.r_work(), fmodel_1.r_free()
+  rw1, rf1, rwl1 = fmodel_1.r_work(), fmodel_1.r_free(), fmodel_1.r_work_low()
   #
   fmodel_2 = mmtbx.f_model.manager(
     f_obs          = f_obs,
     r_free_flags   = r_free_flags,
     xray_structure = xrs)
   fmodel_2.update_all_scales(remove_outliers=True, update_f_part1=False)
-  rw2, rf2 = fmodel_2.r_work(), fmodel_2.r_free()
-  if(rf1<rf2): return fmodel_1, 5.
-  else:        return fmodel_2, 4.
+  rw2, rf2, rwl2 = fmodel_2.r_work(), fmodel_2.r_free(), fmodel_2.r_work_low()
+  if(rf1<rf2 and rwl1<rwl2): return fmodel_1, 5.
+  else:                      return fmodel_2, 4.
 
 class multi_mask_bulk_solvent(object):
   def __init__(self, fmodel, log=None):
