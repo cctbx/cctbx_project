@@ -58,6 +58,10 @@ phil_scope = parse("""
             refinement.  n_refl chooses the set with the largest numbers of reflections \
             listed in the pickle files, thus giving maximal coverage of the detector tiles \
             with the fewest refineable parameters.
+  panel_filter = None
+    .type = ints
+    .help = Specify a list of panels to include during refinement. Default (None) is to use \
+            all panels.
 """, process_includes=True)
 
 refine_defaults_scope = parse("""
@@ -181,7 +185,9 @@ def find_files(path, reflections):
   for filename in os.listdir(path):
     if reflections in filename:
       exp_path = os.path.join(path, filename.rstrip("_%s.pickle"%reflections) + "_refined_experiments.json")
-      if not os.path.exists(exp_path): continue
+      if not os.path.exists(exp_path):
+        exp_path = os.path.join(path, filename.rstrip("_%s.pickle"%reflections) + "_experiments.json")
+        if not os.path.exists(exp_path): continue
       all_exp.append(exp_path)
       all_ref.append(os.path.join(path, filename))
   return all_exp, all_ref
@@ -234,6 +240,21 @@ def refine(params, merged_scope, combine_phil):
   print command
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
+
+  if params.panel_filter is not None:
+    from libtbx import easy_pickle
+    print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
+    combined_path = "%s_combined_reflections.pickle"%params.tag
+    data = easy_pickle.load(combined_path)
+    sel = None
+    for panel_id in params.panel_filter:
+      if sel is None:
+        sel = data['panel'] == panel_id
+      else:
+        sel |= data['panel'] == panel_id
+    print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
+    easy_pickle.dump(combined_path, data.select(sel))
+
   for i in xrange(params.start_at_hierarchy_level, params.refine_to_hierarchy_level+1):
     if params.rmsd_filter.enable:
       input_name = "filtered"
