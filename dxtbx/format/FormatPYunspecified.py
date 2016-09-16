@@ -143,7 +143,7 @@ class FormatPYunspecified(FormatPY):
         epochs = {1:self._timesec}
         )
 
-  def get_mask(self):
+  def get_mask(self, goniometer_shadow_mask=False, goniometer=None):
     '''Creates a mask merging untrusted pixels with active areas.'''
     from scitbx.array_family import flex
     detector_base = self.detectorbase

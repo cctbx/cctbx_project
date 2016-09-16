@@ -267,9 +267,15 @@ class Format(object):
     return None
     raise RuntimeError, 'overload me'
 
-  def get_mask(self):
+  def get_mask(self, goniometer_shadow_mask=False, goniometer=None):
     '''Overload this method to provide dynamic masks to be used during
     spotfinding or integration.'''
+
+    return None
+
+  def get_goniometer_shadow_masker(self, goniometer=None):
+    '''Overload this method to allow generation of dynamic goniometer shadow
+    masks to be used during spotfinding or integration.'''
 
     return None
 

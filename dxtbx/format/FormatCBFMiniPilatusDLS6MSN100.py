@@ -20,11 +20,6 @@ if 'P6M_60_PANEL' in os.environ:
 else:
   single_panel = True
 
-if 'DXTBX_ENABLE_SHADOWING' in os.environ:
-  enable_shadowing = True
-else:
-  enable_shadowing = False
-
 if 'DXTBX_ENABLE_SMARGON' in os.environ:
   enable_smargon = True
 else:
@@ -269,6 +264,43 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     return d
 
+  def get_goniometer_shadow_masker(self, goniometer=None):
+    from dials.util.masking import GoniometerShadowMaskGenerator
+    from scitbx.array_family import flex
+    import math
+
+    # Simple model of cone around goniometer phi axis
+    # Exact values don't matter, only the ratio of height/radius
+    height = 50 # mm
+    radius = 20 # mm
+
+    steps_per_degree = 1
+    theta = flex.double([range(360*steps_per_degree)]) * math.pi/180 * 1/steps_per_degree
+    y = radius * flex.cos(theta) # x
+    z = radius * flex.sin(theta) # y
+    x = flex.double(theta.size(), height) # z
+
+    coords = flex.vec3_double(zip(x, y, z))
+    coords.insert(0, (0,0,0))
+
+    if goniometer is None:
+      goniometer = self.get_goniometer()
+    return GoniometerShadowMaskGenerator(
+      goniometer, coords, flex.size_t(len(coords), 0))
+
+  def get_mask(self, goniometer_shadow_mask=False, goniometer=None):
+    mask = super(FormatCBFMiniPilatusDLS6MSN100, self).get_mask()
+    if goniometer_shadow_mask:
+      gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
+      scan = self.get_scan()
+      detector = self.get_detector()
+      shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
+      assert len(mask) == len(shadow_mask)
+      for m, sm in zip(mask, shadow_mask):
+        m &= sm
+
+    return mask
+
   if enable_smargon:
 
     def _goniometer(self):
@@ -297,56 +329,6 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
       if goniometer is None:
         goniometer = self.get_goniometer()
       return SmarGonShadowMaskGenerator(goniometer)
-
-    def get_mask(self, goniometer=None):
-      gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
-      scan = self.get_scan()
-      detector = self.get_detector()
-      mask = super(FormatCBFMiniPilatusDLS6MSN100, self).get_mask()
-      shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
-      assert len(mask) == len(shadow_mask)
-      for m, sm in zip(mask, shadow_mask):
-        m &= sm
-
-      return mask
-
-  elif enable_shadowing:
-
-    def get_goniometer_shadow_masker(self, goniometer=None):
-      from dials.util.masking import GoniometerShadowMaskGenerator
-      from scitbx.array_family import flex
-      import math
-
-      # Simple model of cone around goniometer phi axis
-      # Exact values don't matter, only the ratio of height/radius
-      height = 50 # mm
-      radius = 20 # mm
-
-      steps_per_degree = 1
-      theta = flex.double([range(360*steps_per_degree)]) * math.pi/180 * 1/steps_per_degree
-      y = radius * flex.cos(theta) # x
-      z = radius * flex.sin(theta) # y
-      x = flex.double(theta.size(), height) # z
-
-      coords = flex.vec3_double(zip(x, y, z))
-      coords.insert(0, (0,0,0))
-
-      if goniometer is None:
-        goniometer = self.get_goniometer()
-      return GoniometerShadowMaskGenerator(
-        goniometer, coords, flex.size_t(len(coords), 0))
-
-    def get_mask(self, goniometer=None):
-      gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
-      scan = self.get_scan()
-      detector = self.get_detector()
-      mask = super(FormatCBFMiniPilatusDLS6MSN100, self).get_mask()
-      shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
-      assert len(mask) == len(shadow_mask)
-      for m, sm in zip(mask, shadow_mask):
-        m &= sm
-
-      return mask
 
   def read_cbf_image(self, cbf_image):
     from cbflib_adaptbx import uncompress
