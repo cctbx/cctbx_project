@@ -5109,7 +5109,7 @@ def select_box_map_data(si=None,
 
   else:
     # figure out solvent fraction in this box...
-    
+
     box_solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=box_crystal_symmetry,
         map=box_map,
@@ -5183,10 +5183,10 @@ def get_fft_map(n_real=None,map_coeffs=None):
     return fft_map
 
 def auto_sharpen_map_or_map_coeffs(
-        crystal_symmetry=None,  # supply crystal_symmetry and map or 
+        crystal_symmetry=None,  # supply crystal_symmetry and map or
         map=None,
         map_coeffs=None,        #  map_coeffs and n_real
-        n_real=None, 
+        n_real=None,
         box_in_auto_sharpen=None, # NOTE: n_residues ncs_copies required if not False
         n_residues=None, #required if box_in_auto_sharpen
         ncs_copies=None, #required if box_in_auto_sharpen
@@ -5255,7 +5255,7 @@ def auto_sharpen_map_or_map_coeffs(
        d_min=si.d_min,
        d_min_ratio=si.d_min_ratio,
        return_as_map_coeffs=True,
-       out=out) 
+       out=out)
 
 def run_auto_sharpen(
       si=None,
@@ -5449,7 +5449,7 @@ def run_auto_sharpen(
     return best_si
   else:
     print >>out,"Did not improve score with sharpening..."
-    return null_si 
+    return null_si
 
 def get_effective_b_iso(map_data=None,tracking_data=None,
       box_sharpening_info_obj=None,
