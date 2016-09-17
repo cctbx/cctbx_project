@@ -49,6 +49,7 @@ def get_k_mask(method, f_obs, f_calc, f_mask, ss, sel):
       one,
       r)
     k_mask, b_sol, r = res
+    #print k_mask
   return k_mask, r
 
 def loop_work(fmodel, f_masks, method):
@@ -86,6 +87,7 @@ def loop_work(fmodel, f_masks, method):
     f_f = f_masks_f[i]
     f_bulk_data_w = flex.complex_double(f_obs_w.data().size(), 0)
     f_bulk_data_f = flex.complex_double(f_obs_f.data().size(), 0)
+    k_masks = flex.double()
     for sel_w, sel_f in zip(bin_selections_w, bin_selections_f):
       k_mask, r = get_k_mask(
         method = method,
@@ -94,6 +96,11 @@ def loop_work(fmodel, f_masks, method):
         f_mask = f.data(),
         ss     = ss_w,
         sel    = sel_w)
+      k_masks.append(k_mask)
+    #if(k_masks[0]<0 or abs(k_masks[0])<1.e-3): k_masks *= 0.
+    for i, k_mask in enumerate(k_masks):
+      #if k_mask<0: k_mask=0.
+      sel_w, sel_f = bin_selections_w[i], bin_selections_f[i]
       f_bulk_data_w = f_bulk_data_w.set_selected(sel_w, k_mask*f.data().select(sel_w))
       f_bulk_data_f = f_bulk_data_f.set_selected(sel_f, k_mask*f_f.data().select(sel_f))
     #
@@ -208,6 +215,7 @@ class multi_mask_bulk_solvent(object):
       r_free_flags = fmodel.r_free_flags(),
       xrs          = xrs)
     #fmodel.show()
+    #print fmodel.r_work(), fmodel.r_free()
     # Crystal_gridding
     resolution_factor = 1./self.grid_step_factor
     grid_step = fmodel.f_obs().d_min()*resolution_factor
@@ -227,6 +235,9 @@ class multi_mask_bulk_solvent(object):
       n_real                = n_real,
       in_asu                = False).mask_data
     maptbx.unpad_in_place(map=mask_data_p1)
+    #####
+    #DEBUG ccp4_map(cg=crystal_gridding, file_name="m.ccp4", map_data=mask_data_p1)
+    #####
     # Mask connectivity analysis
     co = maptbx.connectivity(map_data=mask_data_p1, threshold=0.01)
     conn = co.result().as_double()
