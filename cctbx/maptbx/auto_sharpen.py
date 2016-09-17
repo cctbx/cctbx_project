@@ -74,7 +74,7 @@ master_phil = iotbx.phil.parse("""
 
      solvent_content = None
        .type = float
-       .help = Optional solvent fraction of the cell. 
+       .help = Optional solvent fraction of the cell.
        .short_caption = Solvent content
 
      solvent_content_iterations = 3
@@ -248,12 +248,12 @@ def get_params(args,out=sys.stdout):
     args=args,
     master_phil=master_phil)
 
- 
+
   print >>out,"\nAuto-sharpen a map\n"
   params=command_line.work.extract()
   print >>out,"Command used: %s\n" %(
    " ".join(['phenix.auto_sharpen']+args))
-  master_params.format(python_object=params).show(out=out) 
+  master_params.format(python_object=params).show(out=out)
 
   if params.output_files.output_directory is None:
     params.output_files.output_directory=os.getcwd()
@@ -271,7 +271,7 @@ def get_map_coeffs_from_file(
       if not ma.is_complex_array(): continue
       labels=",".join(ma.info().labels)
       if not map_coeffs_labels or labels==map_coeffs_labels:  # take it
-         return ma 
+         return ma
 
 def get_map(params=None,out=sys.stdout):
   if params.input_files.map_file:
@@ -313,7 +313,7 @@ def run(args,out=sys.stdout):
   params=get_params(args,out=out)
 
   # get map_data and crystal_symmetry
-  map_data,crystal_symmetry=get_map(params=params,out=out) 
+  map_data,crystal_symmetry=get_map(params=params,out=out)
 
 
   # auto-sharpen the map
@@ -321,7 +321,7 @@ def run(args,out=sys.stdout):
   new_map_data=auto_sharpen_map_or_map_coeffs(
         resolution=params.crystal_info.resolution, # required
         crystal_symmetry=crystal_symmetry,
-        map=map_data, 
+        map=map_data,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
         auto_sharpen_methods=params.map_modification.auto_sharpen_methods,
         residual_target=params.map_modification.residual_target,
@@ -333,7 +333,7 @@ def run(args,out=sys.stdout):
         search_b_max=params.map_modification.search_b_max,
         search_b_n=params.map_modification.search_b_n,
         out=out)
-  
+
   # convert to map_coeffs also
 
   from cctbx.maptbx.segment_and_split_map import get_f_phases_from_map
