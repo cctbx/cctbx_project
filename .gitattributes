@@ -103,6 +103,7 @@ cctbx/adp_restraints/aniso_restraints_bpl.cpp svneol=native#text/plain
 cctbx/adp_restraints/gradients.tex -text
 cctbx/boost_python/french_wilson_ext.cpp -text
 cctbx/boost_python/orientation_ext.cpp -text
+cctbx/command_line/auto_sharpen.py -text
 cctbx/command_line/brehm_diederichs.py -text
 cctbx/command_line/cctbx_test_nightly.py -text
 cctbx/command_line/cod_select_and_pickle.py svneol=native#text/x-python
