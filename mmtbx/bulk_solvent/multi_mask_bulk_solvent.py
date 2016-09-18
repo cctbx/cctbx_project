@@ -142,7 +142,7 @@ def helper_3(
       fmodel,
       f_masks,
       log):
-  f_masks = fmodel.f_masks() + f_masks[0:]
+  #f_masks = fmodel.f_masks() + f_masks[0:]
   for i in xrange(len(f_masks)):
     f_masks[i] = f_masks[i].common_set(fmodel.f_obs())
   one = flex.double(fmodel.ss.size(), 1.)
@@ -236,7 +236,7 @@ class multi_mask_bulk_solvent(object):
       in_asu                = False).mask_data
     maptbx.unpad_in_place(map=mask_data_p1)
     #####
-    #DEBUG ccp4_map(cg=crystal_gridding, file_name="m.ccp4", map_data=mask_data_p1)
+    #ccp4_map(cg=crystal_gridding, file_name="m.ccp4", map_data=mask_data_p1)
     #####
     # Mask connectivity analysis
     co = maptbx.connectivity(map_data=mask_data_p1, threshold=0.01)
@@ -261,17 +261,41 @@ class multi_mask_bulk_solvent(object):
     all_zero_found = False
     if(log is not None): print >> log, "Number of regions:", len(region_indices)
     s_exclude = None
+    mi,ma,me,diff_map_asu = None,None,None,None
     for ii, i in enumerate(region_indices):
       s = conn==i
       si = s.iselection()
       if(not all_zero_found and mask_data_asu.select(si).count(0.)>0):
         all_zero_found = True
         continue
+      # DIFF MAP START
+      if(ii == 2):
+        fmodel_tmp = mmtbx.f_model.manager(
+          f_obs          = fmodel.f_obs(),
+          r_free_flags   = fmodel.r_free_flags(),
+          f_calc         = fmodel.f_calc(),
+          f_mask         = f_mask_i)
+        fmodel_tmp.update_all_scales(remove_outliers=False, update_f_part1=False)
+        #fmodel_tmp.show(show_header=False, show_approx=False)
+        diff_map_p1 = compute_map(
+          fmodel           = fmodel_tmp,
+          crystal_gridding = crystal_gridding,
+          map_type         = "mFo-DFc")
+        diff_map_asu = asu_map_ext.asymmetric_map(sgt, diff_map_p1).data()
+      if(diff_map_asu is not None):
+        mi,ma,me = diff_map_asu.select(si).min_max_mean().as_tuple()
+        if(ma<0. or me<0.):
+          continue
+      # DIFF MAP END
+
       #XXX this is 4 loops, may be slow. move to C++ if slow.
       mask_data_asu_i = mask_data_asu.deep_copy()
       mask_data_asu_i = mask_data_asu_i.set_selected(s, 1).set_selected(~s, 0)
 
-      #print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes)
+      #if(mi is None):
+      #  print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes)
+      #else:
+      #  print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes), "%7.3f %7.3f %7.3f"%(mi,ma,me)
 
       if(log is not None):
         print >> log, "region: %5d fraction: %8.4f"%(ii, region_volumes[ii])
