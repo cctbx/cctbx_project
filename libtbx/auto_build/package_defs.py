@@ -14,7 +14,7 @@ import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
-BASE_HDF5_PKG_URL = "http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15-patch1/src"
+BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15-patch1/src"
 BASE_PIPY_PKG_URL = "https://pypi.python.org/packages/source"
 
 def pypi_pkg_url(package):
