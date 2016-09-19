@@ -78,8 +78,8 @@ def exercise_box_rebuild () :
   box_builder.geometry_minimization()
   box_builder.real_space_refine()
   sites_new = box_builder.update_original_coordinates()
-  assert (sites_orig.rms_difference(sites_new) < 0.3)
-  assert (box_builder.mean_density_at_sites() > 3)
+  assert (sites_orig.rms_difference(sites_new) < 0.3), sites_orig.rms_difference(sites_new)
+  assert (box_builder.mean_density_at_sites() > 3), box_builder.mean_density_at_sites()
 
 def exercise_map_utils () :
   #
