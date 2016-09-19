@@ -253,7 +253,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     work_pars.reference_model.secondary_structure_only = True
     work_pars.reference_model.enabled = True
     rm.params = work_pars.reference_model
-    rm.get_reference_dihedral_proxies()
+    rm.get_reference_dihedral_proxies(processed_pdb_file=processed_pdb_file)
     reference_dihedral_proxies = rm.reference_dihedral_proxies
     ss_weight = 0
     for dp in reference_dihedral_proxies:

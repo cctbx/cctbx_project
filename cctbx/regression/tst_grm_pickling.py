@@ -403,7 +403,14 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
       model_raw_records, reference_raw_records
   from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     reference_model, reference_model_params
-  mstream = StringIO.StringIO()
+  # mstream = StringIO.StringIO()
+  from libtbx.utils import multi_out
+  mstream = multi_out()
+  mstream.register("stdout", sys.stdout)
+  mstream_file_name = "polder.log"
+  mstreamfile = open(mstream_file_name, "w")
+  mstream.register("logfile", mstreamfile)
+
   work_params = reference_model_params.extract()
   work_params.reference_model.enabled = True
   work_params.reference_model.fix_outliers = False

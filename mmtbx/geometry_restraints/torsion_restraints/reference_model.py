@@ -166,14 +166,11 @@ class reference_model(object):
     assert [reference_hierarchy_list,
             reference_file_list].count(None) == 1
     if(log is None):
-      self.log = sys.stdout
-    else:
-      self.log = log
+      log = sys.stdout
     self.params = params
     self.selection = selection
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
-    self.processed_pdb_file = processed_pdb_file
     self.pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
     self.pdb_hierarchy.reset_i_seq_if_necessary()
     sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
@@ -183,7 +180,7 @@ class reference_model(object):
       reference_hierarchy_list = \
         utils.process_reference_files(
           reference_file_list=reference_file_list,
-          log=self.log)
+          log=log)
     if reference_file_list is None:
       reference_file_list = \
           ["ref%d" % x for x in range(len(reference_hierarchy_list))]
@@ -194,7 +191,7 @@ class reference_model(object):
         reference_file_list=reference_file_list,
         mon_lib_srv=self.mon_lib_srv,
         ener_lib=self.ener_lib,
-        log=self.log)
+        log=log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)
     #reference model components
@@ -230,13 +227,14 @@ class reference_model(object):
     if params.use_starting_model_as_reference:
       self.get_matching_from_self()
     else:
-      self.get_matching_from_ncs()
+      self.get_matching_from_ncs(log=log)
     if self.match_map == {}:
       # making empty container
       new_ref_dih_proxies = self.reference_dihedral_proxies = \
           cctbx.geometry_restraints.shared_dihedral_proxy()
     else:
-      new_ref_dih_proxies = self.get_reference_dihedral_proxies()
+      new_ref_dih_proxies = self.get_reference_dihedral_proxies(
+          processed_pdb_file=processed_pdb_file)
 
   def get_matching_from_self(self):
     """ Shortcut for the case when restraining on starting model """
@@ -381,14 +379,14 @@ class reference_model(object):
     else:
       return False
 
-  def get_matching_from_ncs(self):
+  def get_matching_from_ncs(self, log):
     import iotbx.ncs
     m_cache = self.pdb_hierarchy.atom_selection_cache()
     if not self.is_reference_groups_provided():
       # only files are specified
       for fn in self.reference_file_list:
-        print >> self.log, "\nreference file: %s" % fn
-        print >> self.log, "Model:              Reference:"
+        print >> log, "\nreference file: %s" % fn
+        print >> log, "Model:              Reference:"
         self._make_matching_and_fill_dictionaries(
             model_h=self.pdb_hierarchy,
             ref_h=self.pdb_hierarchy_ref[fn],
@@ -398,8 +396,8 @@ class reference_model(object):
       # We got reference_group section
       for rg in self.params.reference_group:
         file_name = rg.file_name
-        print >> self.log, "\nreference file: %s" % file_name
-        print >> self.log, "Model:              Reference:"
+        print >> log, "\nreference file: %s" % file_name
+        print >> log, "Model:              Reference:"
         self._make_matching_and_fill_dictionaries(
             model_h=self.pdb_hierarchy,
             ref_h=self.pdb_hierarchy_ref[file_name],
@@ -530,9 +528,9 @@ class reference_model(object):
         return True
     return False
 
-  def get_reference_dihedral_proxies(self):
+  def get_reference_dihedral_proxies(self, processed_pdb_file):
     complete_dihedral_proxies = utils.get_dihedrals_and_phi_psi(
-        processed_pdb_file=self.processed_pdb_file)
+        processed_pdb_file=processed_pdb_file)
     generated_reference_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
     sigma = self.params.sigma
@@ -634,10 +632,7 @@ class reference_model(object):
 
   def show_reference_summary(self, log=None):
     if log is None:
-      if self.log is None:
-        log = sys.stdout
-      else:
-        log = self.log
+      log = sys.stdout
     print >> log, "--------------------------------------------------------"
     print >> log, "Reference Model Matching Summary:"
     keys = self.residue_match_hash.keys()
@@ -664,7 +659,7 @@ class reference_model(object):
     if self.mon_lib_srv is None:
       self.mon_lib_srv = mon_lib_srv
     assert isinstance(self.mon_lib_srv, mmtbx.monomer_library.server.server)
-    if(log is None): log = self.log
+    if(log is None): log = sys.stdout
     make_sub_header(
       "Correcting rotamer outliers to match reference model",
       out=log)
@@ -846,7 +841,10 @@ class reference_model(object):
 
   def remove_restraints_with_ncs_matches(self,
                                          ncs_dihedral_proxies,
-                                         ncs_match_hash):
+                                         ncs_match_hash,
+                                         log=None):
+    if log is None:
+      log = sys.stdout
     proxy_list = []
     remaining_proxies = cctbx.geometry_restraints.shared_dihedral_proxy()
     remaining_match_hash = {}
@@ -868,7 +866,7 @@ class reference_model(object):
         remaining_match_hash[key] = self.residue_match_hash[key]
     self.reference_dihedral_proxies = remaining_proxies
     self.residue_match_hash = remaining_match_hash
-    print >> self.log, "\n**Removed reference restraints that overlap "+ \
+    print >> log, "\n**Removed reference restraints that overlap "+ \
                        "with torsion NCS restraints**\n"
-    print >> self.log, "Updated Reference Model Restraints:"
-    self.show_reference_summary()
+    print >> log, "Updated Reference Model Restraints:"
+    self.show_reference_summary(log=log)
