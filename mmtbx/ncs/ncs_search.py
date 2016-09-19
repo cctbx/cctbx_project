@@ -554,6 +554,10 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
             iseqs[i] = a.i_seq
         except ValueError:
           iseqs[i] = a.i_seq
+        except IndexError:
+          if i == len(iseqs)-1:
+            # this is for case where the last atom is not present
+            iseqs[i] = a.i_seq
       for i in iseqs:
         flipped_other_selection.append(i)
     else:
