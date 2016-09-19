@@ -121,9 +121,7 @@ class FTPService(object):
 
     for ident in identifiers:
       try:
-        stream = self.opener(
-          url = ( self.url + self.namer( identifier = ident ) ).encode(),
-          )
+        stream = self.single( identifier = ident )
 
       except NotFound:
         yield None
