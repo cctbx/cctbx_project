@@ -11,7 +11,6 @@ from cctbx.array_family import flex
 import math
 from libtbx.test_utils import approx_equal
 import sys
-from stdlib import math
 from cctbx import xray
 from cctbx import adptbx
 import mmtbx.restraints

@@ -17,7 +17,6 @@ from iotbx.pdb import xray_structure
 import mmtbx.scaling
 from mmtbx.scaling import relative_scaling
 from mmtbx.scaling import sigmaa_estimation
-from mmtbx import masks
 from mmtbx import max_lik
 import mmtbx.f_model
 from libtbx import table_utils
