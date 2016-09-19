@@ -150,41 +150,41 @@ def http_error_to_exception(error):
     return UnexpectedResponse( str( error ) )
 
 
-def openurl(
-  url,
-  data = None,
-  encodings = [ gzip_encoding(), deflate_encoding_small ],
-  ):
+class urlopener(object):
+  """
+  Configurable version of openurl function
+  """
 
-  import urllib2
+  def __init__(self, encodings = [ gzip_encoding(), deflate_encoding_small ]):
 
-  request = urllib2.Request(
-    url = url,
-    data = data,
-    headers = {
-      "Accept-encoding": ", ".join( ec.keyword for ec in encodings ),
-      },
-    )
+    self.encoding_for = dict( ( ec.keyword, ec ) for ec in encodings )
 
-  try:
-    stream = urllib2.urlopen( request )
 
-  except urllib2.HTTPError, e:
-    raise http_error_to_exception( error = e )
+  def __call__(self, url, data = None):
 
-  used = stream.info().get( "Content-Encoding" )
+    import urllib2
 
-  for ec in encodings:
-    if ec.accept( header = used ):
-      selected = ec
-      break
+    request = urllib2.Request(
+      url = url,
+      data = data,
+      headers = {
+        "Accept-encoding": ", ".join( self.encoding_for ),
+        },
+      )
 
-  else:
-    # identity encoding is always acceptable
-    if identity_encoding.accept( header = used ):
-      selected = identity_encoding
+    try:
+      stream = urllib2.urlopen( request )
 
-    else:
+    except urllib2.HTTPError, e:
+      raise http_error_to_exception( error = e )
+
+    used = stream.info().get( "Content-Encoding" )
+    encoding = self.encoding_for.get( used, identity_encoding )
+
+    if not encoding.accept( header = used ):
       raise UnexpectedResponse, "Unknown encoding: %s" % used
 
-  return selected.process( stream = stream )
+    return encoding.process( stream = stream )
+
+
+openurl = urlopener()

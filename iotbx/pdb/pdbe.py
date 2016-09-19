@@ -8,43 +8,71 @@ from iotbx.pdb.download import openurl, NotFound
 
 import json
 
-def get_request(url, identifier):
 
-  lcase = identifier.lower()
+class configurable_get_request(object):
 
-  stream = openurl( url = ( url + lcase ).encode() )
-  result_for = json.load( stream )
-  assert lcase in result_for
-  return result_for[ lcase ]
+  def __init__(self, opener):
+
+    self.opener = opener
 
 
-def multiple_get_requests(url, identifiers):
+  def __call__(self, url, identifier):
 
-  for ident in identifiers:
+    lcase = identifier.lower()
+
+    stream = self.opener( url = ( url + lcase ).encode() )
+    result_for = json.load( stream )
+    assert lcase in result_for
+    return result_for[ lcase ]
+
+
+class configurable_multiple_get_requests(object):
+
+  def __init__(self, opener):
+
+    self.get_request = configurable_get_request( opener = opener )
+
+
+  def __call__(self, url, identifiers):
+
+    for ident in identifiers:
+      try:
+        result = get_request( url = url, identifier = ident )
+
+      except NotFound:
+        yield None
+
+      else:
+        yield result
+
+
+class configurable_post_request(object):
+
+  def __init__(self, opener):
+
+    self.opener = opener
+
+
+  def __call__(self, url, identifiers):
+
+    if len( identifiers ) == 0:
+      return ( i for i in () )
+
     try:
-      result = get_request( url = url, identifier = ident )
+      stream = self.opener( url = url, data = ( ",".join( identifiers ) ).encode() )
 
     except NotFound:
-      yield None
+      return ( None for i in identifiers )
 
-    else:
-      yield result
+    result_for = json.load( stream )
+
+    return ( result_for.get( ident.lower() ) for ident in identifiers )
 
 
-def post_request(url, identifiers):
-
-  if len( identifiers ) == 0:
-    return ( i for i in () )
-
-  try:
-    stream = openurl( url = url, data = ( ",".join( identifiers ) ).encode() )
-
-  except NotFound:
-    return ( None for i in identifiers )
-
-  result_for = json.load( stream )
-
-  return ( result_for.get( ident.lower() ) for ident in identifiers )
+# Define instances for default use
+get_request = configurable_get_request( opener = openurl )
+multiple_get_requests = configurable_multiple_get_requests( opener = openurl )
+post_request = configurable_post_request( opener = openurl )
 
 
 class RESTService(object):
@@ -74,15 +102,16 @@ class FTPService(object):
   Interface to access PDB files
   """
 
-  def __init__(self, url, namer):
+  def __init__(self, url, namer, opener = openurl):
 
     self.url = url
     self.namer = namer
+    self.opener = opener
 
 
   def single(self, identifier):
 
-    stream = openurl(
+    stream = self.opener(
       url = ( self.url + self.namer( identifier = identifier ) ).encode(),
       )
     return stream
@@ -92,7 +121,7 @@ class FTPService(object):
 
     for ident in identifiers:
       try:
-        stream = openurl(
+        stream = self.opener(
           url = ( self.url + self.namer( identifier = ident ) ).encode(),
           )
 
@@ -127,6 +156,12 @@ PDBE_API_BASE = "http://www.ebi.ac.uk/pdbe/api/"
 
 PDB_ENTRY_STATUS = RESTService(
   url = PDBE_API_BASE + "pdb/entry/status/",
+  get = get_request,
+  post = post_request,
+  )
+
+PDB_ENTRY_EXPERIMENT = RESTService(
+  url = PDBE_API_BASE + "pdb/entry/experiment/",
   get = get_request,
   post = post_request,
   )
