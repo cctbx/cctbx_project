@@ -148,6 +148,7 @@ if __name__ == "__main__":
 
   assert hasattr( waiter, "result" )
   result = waiter.result.read()
+  waiter.result.close()
 
   sys.stdout.write( "done\n" )
 
