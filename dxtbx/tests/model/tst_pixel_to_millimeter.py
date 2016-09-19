@@ -151,7 +151,45 @@ class Test(object):
     return convert.to_millimeter(self.detector[0], xy)
 
 
+class TestOffsetPxMmStrategy(object):
+
+  def __init__(self):
+    pass
+
+  def run(self):
+    from dxtbx.model import Panel
+    from dxtbx.model import OffsetParallaxCorrectedPxMmStrategy
+    from scitbx.array_family import flex
+    import cPickle as pickle
+
+    dx = flex.double(flex.grid(10, 10), 1)
+    dy = flex.double(flex.grid(10, 10), 1)
+
+    strategy = OffsetParallaxCorrectedPxMmStrategy(1, 1, dx, dy)
+
+    p = Panel()
+    p.set_image_size((10,10))
+    p.set_mu(1)
+    p.set_thickness(1)
+    p.set_px_mm_strategy(strategy)
+
+    d = p.to_dict()
+
+    pnew = Panel.from_dict(d)
+
+    assert pnew == p
+
+    pnew = pickle.loads(pickle.dumps(pnew))
+
+    assert pnew == p
+
+    print 'OK'
+
+
 if __name__ == '__main__':
 
   test = Test()
+  test.run()
+
+  test = TestOffsetPxMmStrategy()
   test.run()

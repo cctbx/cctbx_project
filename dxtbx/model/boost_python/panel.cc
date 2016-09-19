@@ -122,6 +122,13 @@ namespace dxtbx { namespace model { namespace boost_python {
         boost::dynamic_pointer_cast<ParallaxCorrectedPxMmStrategy>(obj);
       result["mu"] = d->mu();
       result["t0"] = d->t0();
+    } else if (name == "OffsetParallaxCorrectedPxMmStrategy") {
+      boost::shared_ptr<OffsetParallaxCorrectedPxMmStrategy> d =
+        boost::dynamic_pointer_cast<OffsetParallaxCorrectedPxMmStrategy>(obj);
+      result["mu"] = d->mu();
+      result["t0"] = d->t0();
+      result["dx"] = boost::python::list(d->dx());
+      result["dy"] = boost::python::list(d->dy());
     } else {
       DXTBX_ERROR("Unknown PxMmStrategy");
     }
@@ -184,6 +191,22 @@ namespace dxtbx { namespace model { namespace boost_python {
     if (obj.has_key("gain")) {
       result->set_gain(boost::python::extract<double>(obj["gain"]));
     }
+    if (obj.has_key("raw_image_offset")) {
+      result->set_raw_image_offset(
+        boost::python::extract<int2>(obj["raw_image_offset"]));
+    }
+    if (obj.has_key("image_size")) {
+      result->set_image_size(
+        boost::python::extract< tiny<std::size_t,2> >(obj["image_size"]));
+    }
+    if (obj.has_key("pixel_size")) {
+      result->set_pixel_size(
+        boost::python::extract< tiny<double,2> >(obj["pixel_size"]));
+    }
+    if (obj.has_key("trusted_range")) {
+      result->set_trusted_range(
+        boost::python::extract< tiny<double,2> >(obj["trusted_range"]));
+    }
     if (obj.has_key("px_mm_strategy")) {
       boost::python::dict st = boost::python::extract<boost::python::dict>(obj["px_mm_strategy"]);
       std::string name = boost::python::extract<std::string>(st["type"]);
@@ -200,25 +223,30 @@ namespace dxtbx { namespace model { namespace boost_python {
         } else {
           DXTBX_ERROR("JSON file specifies ParallaxCorrectedPxMmStrategy, by contains no mu or t0. Try regenerating the file");
         }
+      } else if (name == "OffsetParallaxCorrectedPxMmStrategy") {
+        if (st.has_key("mu") && st.has_key("t0") && st.has_key("dx") && st.has_key("dy")) {
+          double mu = boost::python::extract<double>(st["mu"]);
+          double t0 = boost::python::extract<double>(st["t0"]);
+          scitbx::af::shared<double> dxtemp = boost::python::extract<
+            scitbx::af::shared<double> >(st["dx"]);
+          scitbx::af::shared<double> dytemp = boost::python::extract<
+            scitbx::af::shared<double> >(st["dy"]);
+          scitbx::af::c_grid<2> grid(result->get_image_size()[1], result->get_image_size()[0]);
+          scitbx::af::versa<double, scitbx::af::c_grid<2> > dx(grid);
+          scitbx::af::versa<double, scitbx::af::c_grid<2> > dy(grid);
+          DXTBX_ASSERT(dxtemp.size() == dx.size());
+          DXTBX_ASSERT(dytemp.size() == dy.size());
+          std::copy(dxtemp.begin(), dxtemp.end(), dx.begin());
+          std::copy(dytemp.begin(), dytemp.end(), dy.begin());
+          shared_ptr<PxMmStrategy> strategy(
+              new OffsetParallaxCorrectedPxMmStrategy(mu, t0, dx.const_ref(), dy.const_ref()));
+          result->set_px_mm_strategy(strategy);
+        } else {
+          DXTBX_ERROR("JSON file specifies OffsetParallaxCorrectedPxMmStrategy, by contains no mu, t0, dx or dy. Try regenerating the file");
+        }
       } else {
         DXTBX_ASSERT(false);
       }
-    }
-    if (obj.has_key("raw_image_offset")) {
-      result->set_raw_image_offset(
-        boost::python::extract<int2>(obj["raw_image_offset"]));
-    }
-    if (obj.has_key("image_size")) {
-      result->set_image_size(
-        boost::python::extract< tiny<std::size_t,2> >(obj["image_size"]));
-    }
-    if (obj.has_key("pixel_size")) {
-      result->set_pixel_size(
-        boost::python::extract< tiny<double,2> >(obj["pixel_size"]));
-    }
-    if (obj.has_key("trusted_range")) {
-      result->set_trusted_range(
-        boost::python::extract< tiny<double,2> >(obj["trusted_range"]));
     }
 
     return result;
