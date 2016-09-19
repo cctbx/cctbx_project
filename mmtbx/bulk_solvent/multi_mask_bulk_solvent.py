@@ -142,7 +142,7 @@ def helper_3(
       fmodel,
       f_masks,
       log):
-  #f_masks = fmodel.f_masks() + f_masks[0:]
+  #f_masks = fmodel.f_masks() #+ f_masks[0:]
   for i in xrange(len(f_masks)):
     f_masks[i] = f_masks[i].common_set(fmodel.f_obs())
   one = flex.double(fmodel.ss.size(), 1.)
@@ -217,10 +217,7 @@ class multi_mask_bulk_solvent(object):
     #fmodel.show()
     #print fmodel.r_work(), fmodel.r_free()
     # Crystal_gridding
-    resolution_factor = 1./self.grid_step_factor
-    grid_step = fmodel.f_obs().d_min()*resolution_factor
-    if(grid_step < 0.15): grid_step = 0.15
-    grid_step = min(0.8, grid_step)
+    grid_step = fmodel.f_obs().d_min()*(1./self.grid_step_factor)
     crystal_gridding = maptbx.crystal_gridding(
       unit_cell = xrs.unit_cell(),
       space_group_info = xrs.space_group_info(),
@@ -228,15 +225,27 @@ class multi_mask_bulk_solvent(object):
       step             = grid_step)
     n_real = crystal_gridding.n_real()
     # Compute mask in P1
-    mask_data_p1 = mmtbx.masks.mask_from_xray_structure(
-      xray_structure        = fmodel.xray_structure,
-      p1                    = True,
-      for_structure_factors = True,
-      n_real                = n_real,
-      in_asu                = False).mask_data
+    #mask_data_p1_ = mmtbx.masks.mask_from_xray_structure(
+    #  xray_structure        = fmodel.xray_structure,
+    #  p1                    = True,
+    #  for_structure_factors = True,
+    #  n_real                = n_real,
+    #  in_asu                = False).mask_data
+    #maptbx.unpad_in_place(map=mask_data_p1_)
+    #ccp4_map(cg=crystal_gridding, file_name="m1.ccp4", map_data=mask_data_p1_)
+
+    mask_params = mmtbx.masks.mask_master_params.extract()
+    mask_params.grid_step_factor = self.grid_step_factor
+    asu_mask_obj = mmtbx.masks.asu_mask(
+      xray_structure = fmodel.xray_structure,
+      d_min          = fmodel.f_obs().d_min(),
+      mask_params    = mask_params).asu_mask
+    mask_data_p1 = asu_mask_obj.mask_data_whole_uc()
     maptbx.unpad_in_place(map=mask_data_p1)
-    #####
-    #ccp4_map(cg=crystal_gridding, file_name="m.ccp4", map_data=mask_data_p1)
+    assert mask_data_p1.all() == n_real
+    mask_data_p1 = asu_map_ext.asymmetric_map(sgt,
+      mask_data_p1, n_real).symmetry_expanded_map()
+    maptbx.unpad_in_place(map=mask_data_p1)
     #####
     # Mask connectivity analysis
     co = maptbx.connectivity(map_data=mask_data_p1, threshold=0.01)
@@ -260,7 +269,6 @@ class multi_mask_bulk_solvent(object):
     f_masks = []
     all_zero_found = False
     if(log is not None): print >> log, "Number of regions:", len(region_indices)
-    s_exclude = None
     mi,ma,me,diff_map_asu = None,None,None,None
     for ii, i in enumerate(region_indices):
       s = conn==i
@@ -276,7 +284,6 @@ class multi_mask_bulk_solvent(object):
           f_calc         = fmodel.f_calc(),
           f_mask         = f_mask_i)
         fmodel_tmp.update_all_scales(remove_outliers=False, update_f_part1=False)
-        #fmodel_tmp.show(show_header=False, show_approx=False)
         diff_map_p1 = compute_map(
           fmodel           = fmodel_tmp,
           crystal_gridding = crystal_gridding,
@@ -290,16 +297,17 @@ class multi_mask_bulk_solvent(object):
 
       #XXX this is 4 loops, may be slow. move to C++ if slow.
       mask_data_asu_i = mask_data_asu.deep_copy()
-      mask_data_asu_i = mask_data_asu_i.set_selected(s, 1).set_selected(~s, 0)
+      #mask_data_asu_i = mask_data_asu_i.set_selected(s, 1).set_selected(~s, 0)
+      mask_data_asu_i = mask_data_asu_i.set_selected(~s, 0)
 
       #if(mi is None):
       #  print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes)
       #else:
       #  print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes), "%7.3f %7.3f %7.3f"%(mi,ma,me)
-
-      if(log is not None):
-        print >> log, "region: %5d fraction: %8.4f"%(ii, region_volumes[ii])
-        log.flush()
+      #
+      #if(log is not None):
+      #  print >> log, "region: %5d fraction: %8.4f"%(ii, region_volumes[ii])
+      #  log.flush()
       f_mask_i = fmodel.f_obs().structure_factors_from_asu_map(
         asu_map_data = mask_data_asu_i, n_real = n_real)
       f_masks.append(f_mask_i)
