@@ -106,7 +106,7 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Output NCS info file
 
 
-    output_directory =  None
+    output_directory = segmented_maps
       .type = path
       .help = Directory where output files are to be written \
                 applied.
@@ -2258,6 +2258,12 @@ def get_params(args,out=sys.stdout):
   else:
     center_try_list=[]
 
+  found_ncs=False
+  if center_try_list:
+    looking_for_ncs=True
+  else:
+    looking_for_ncs=False
+
   for use_center_of_map in center_try_list: # only if ncs_file missing
     new_ncs_obj=get_ncs_from_map(map_data=map_data,
       map_ncs_center=map_ncs_center,
@@ -2285,7 +2291,15 @@ def get_params(args,out=sys.stdout):
       f.close()
       print >>out,"Wrote NCS operators (for original map) to %s" %(file_name)
       params.input_files.ncs_file=file_name
+      found_ncs=True
       break # found it, no need to continue
+
+  if looking_for_ncs and (not found_ncs) and \
+         params.reconstruction_symmetry.ncs_type != 'ANY':
+      raise Sorry(
+        "Unable to identify %s symmetry automatically in this map." %(
+        params.reconstruction_symmetry.ncs_type)+
+        "\nPlease supply an ncs_file with symmetry matrices.")
 
   if params.segmentation.expand_size is None:
 
