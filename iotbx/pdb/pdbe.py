@@ -22,6 +22,7 @@ class configurable_get_request(object):
 
     stream = self.opener( url = ( url + lcase ).encode() )
     result_for = json.load( stream )
+    stream.close()
     assert lcase in result_for
     return result_for[ lcase ]
 
@@ -65,6 +66,7 @@ class configurable_post_request(object):
       return ( None for i in identifiers )
 
     result_for = json.load( stream )
+    stream.close()
 
     return ( result_for.get( ident.lower() ) for ident in identifiers )
 

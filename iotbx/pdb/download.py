@@ -28,6 +28,29 @@ class named_storage(object):
     return open( self.filename, "r" + self.mode_suffix )
 
 
+class persistent_storage(object):
+  """
+  Stores data in a file that is named as a function of the url
+  """
+
+  def __init__(self, namer, binary = True):
+
+    self.namer = namer
+    self.mode_suffix = "b" if binary else ""
+
+
+  def __call__(self, stream):
+
+    filename = self.namer( stream.url )
+
+    import shutil
+
+    with open( filename, "w" + self.mode_suffix ) as fp:
+      shutil.copyfileobj( stream, fp )
+
+    return open( filename, "r" + self.mode_suffix )
+
+
 class temporary_storage(object):
   """
   Stores data in a temporary file
@@ -49,6 +72,55 @@ class temporary_storage(object):
     mytemp.seek(0)
 
     return mytemp
+
+# Utility
+class coupled_stream(object):
+  """
+  Couples associated streams so that they could be closed explicitly
+  """
+
+  def __init__(self, primary, auxiliaries):
+
+    self.primary = primary
+    self.auxiliaries = auxiliaries
+
+
+  def close(self):
+
+    self.primary.close()
+
+    for stream in self.auxiliaries:
+      stream.close()
+
+
+  def read(self):
+
+    return self.primary.read()
+
+
+  def readline(self):
+
+    return self.primary.readline()
+
+
+  def readlines(self):
+
+    return self.primary.readlines()
+
+
+  def next(self):
+
+    return self.primary.next()
+
+
+  def __iter__(self):
+
+    return self
+
+
+  def __repr__(self):
+
+    return "<coupled primary:%r>" % self.primary
 
 
 # Encodings; some of these are singletons
@@ -87,7 +159,12 @@ class gzip_encoding(encoding):
   def process(self, stream):
 
     import gzip
-    return gzip.GzipFile( fileobj = self.storage( stream = stream ) )
+    storage = self.storage( stream = stream )
+
+    return coupled_stream(
+      primary = gzip.GzipFile( fileobj = storage ),
+      auxiliaries = [ storage ],
+      )
 
 
 class deflate_encoding_small(encoding):
