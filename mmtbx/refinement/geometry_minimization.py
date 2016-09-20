@@ -415,6 +415,8 @@ def minimize_wrapper_for_ramachandran(
   from scitbx.array_family import flex
   if log is None:
     log = null_out()
+  assert hierarchy.atoms_size()==xrs.scatterers().size(), "%d %d" % (
+      hierarchy.atoms_size(), xrs.scatterers().size())
   params_line = grand_master_phil_str
   params = iotbx.phil.parse(
       input_string=params_line, process_includes=True).extract()
