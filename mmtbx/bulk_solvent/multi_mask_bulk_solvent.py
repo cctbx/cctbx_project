@@ -8,6 +8,7 @@ import boost.python
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx import map_tools
 import cctbx.miller
+#import sys
 
 def ccp4_map(cg, file_name, mc=None, map_data=None):
   assert [mc, map_data].count(None)==1
@@ -216,22 +217,23 @@ class multi_mask_bulk_solvent(object):
       xrs          = xrs)
     #fmodel.show()
     #print fmodel.r_work(), fmodel.r_free()
+    #sys.stdout.flush()
     # Crystal_gridding
-    grid_step = fmodel.f_obs().d_min()*(1./self.grid_step_factor)
-    crystal_gridding = maptbx.crystal_gridding(
-      unit_cell = xrs.unit_cell(),
-      space_group_info = xrs.space_group_info(),
-      symmetry_flags   = maptbx.use_space_group_symmetry,
-      step             = grid_step)
-    n_real = crystal_gridding.n_real()
+    #grid_step = fmodel.f_obs().d_min()*(1./self.grid_step_factor)
+    #crystal_gridding = maptbx.crystal_gridding(
+    #  unit_cell = xrs.unit_cell(),
+    #  space_group_info = xrs.space_group_info(),
+    #  symmetry_flags   = maptbx.use_space_group_symmetry,
+    #  step             = grid_step)
+    #n_real = crystal_gridding.n_real()
     # Compute mask in P1
-    #mask_data_p1_ = mmtbx.masks.mask_from_xray_structure(
+    #mask_data_p1 = mmtbx.masks.mask_from_xray_structure(
     #  xray_structure        = fmodel.xray_structure,
     #  p1                    = True,
     #  for_structure_factors = True,
     #  n_real                = n_real,
     #  in_asu                = False).mask_data
-    #maptbx.unpad_in_place(map=mask_data_p1_)
+    #maptbx.unpad_in_place(map=mask_data_p1)
     #ccp4_map(cg=crystal_gridding, file_name="m1.ccp4", map_data=mask_data_p1_)
 
     mask_params = mmtbx.masks.mask_master_params.extract()
@@ -242,10 +244,13 @@ class multi_mask_bulk_solvent(object):
       mask_params    = mask_params).asu_mask
     mask_data_p1 = asu_mask_obj.mask_data_whole_uc()
     maptbx.unpad_in_place(map=mask_data_p1)
-    assert mask_data_p1.all() == n_real
-    mask_data_p1 = asu_map_ext.asymmetric_map(sgt,
-      mask_data_p1, n_real).symmetry_expanded_map()
-    maptbx.unpad_in_place(map=mask_data_p1)
+
+    n_real = mask_data_p1.all()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = xrs.unit_cell(),
+      space_group_info      = xrs.space_group_info(),
+      symmetry_flags        = maptbx.use_space_group_symmetry,
+      pre_determined_n_real = n_real)
     #####
     # Mask connectivity analysis
     co = maptbx.connectivity(map_data=mask_data_p1, threshold=0.01)
@@ -304,10 +309,10 @@ class multi_mask_bulk_solvent(object):
       #  print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes)
       #else:
       #  print "region: %5d fraction: %8.4f"%(ii, region_volumes[ii]), len(region_volumes), "%7.3f %7.3f %7.3f"%(mi,ma,me)
-      #
-      #if(log is not None):
-      #  print >> log, "region: %5d fraction: %8.4f"%(ii, region_volumes[ii])
-      #  log.flush()
+
+      if(log is not None):
+        print >> log, "region: %5d fraction: %8.4f"%(ii, region_volumes[ii])
+        log.flush()
       f_mask_i = fmodel.f_obs().structure_factors_from_asu_map(
         asu_map_data = mask_data_asu_i, n_real = n_real)
       f_masks.append(f_mask_i)
