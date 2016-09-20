@@ -8,7 +8,7 @@ import boost.python
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 from mmtbx import map_tools
 import cctbx.miller
-#import sys
+from libtbx.test_utils import approx_equal
 
 def ccp4_map(cg, file_name, mc=None, map_data=None):
   assert [mc, map_data].count(None)==1
@@ -205,6 +205,47 @@ def get_fmodel_and_grid_step(f_obs, r_free_flags, xrs):
   if(rf1<rf2 and rwl1<rwl2): return fmodel_1, 5.
   else:                      return fmodel_2, 4.
 
+def get_mask_1(fmodel, grid_step_factor):
+  grid_step = fmodel.f_obs().d_min()*(1./grid_step_factor)
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell = fmodel.xray_structure.unit_cell(),
+    space_group_info = fmodel.xray_structure.space_group_info(),
+    symmetry_flags   = maptbx.use_space_group_symmetry,
+    step             = grid_step)
+  n_real = crystal_gridding.n_real()
+  # Compute mask in P1
+  mask_data_p1 = mmtbx.masks.mask_from_xray_structure(
+    xray_structure        = fmodel.xray_structure,
+    p1                    = True,
+    for_structure_factors = True,
+    n_real                = n_real,
+    in_asu                = False).mask_data
+  maptbx.unpad_in_place(map=mask_data_p1)
+  return mask_data_p1, n_real, crystal_gridding
+
+def get_mask_2(fmodel, grid_step_factor):
+  sgt = fmodel.xray_structure.space_group().type()
+  mask_params = mmtbx.masks.mask_master_params.extract()
+  mask_params.grid_step_factor = grid_step_factor
+  asu_mask_obj = mmtbx.masks.asu_mask(
+    xray_structure = fmodel.xray_structure,
+    d_min          = fmodel.f_obs().d_min(),
+    mask_params    = mask_params).asu_mask
+  mask_data_p1 = asu_mask_obj.mask_data_whole_uc()
+  maptbx.unpad_in_place(map=mask_data_p1)
+  n_real = mask_data_p1.all()
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell             = fmodel.xray_structure.unit_cell(),
+    space_group_info      = fmodel.xray_structure.space_group_info(),
+    symmetry_flags        = maptbx.use_space_group_symmetry,
+    pre_determined_n_real = n_real)
+
+  #n_real = mask_data_p1.all()
+  #mask_data_p1 = asu_map_ext.asymmetric_map(sgt, mask_data_p1, n_real).symmetry_expanded_map()
+  #maptbx.unpad_in_place(map=mask_data_p1)
+
+  return mask_data_p1, n_real, crystal_gridding
+
 class multi_mask_bulk_solvent(object):
   def __init__(self, fmodel, log=None):
     # Commonly used objects
@@ -217,40 +258,25 @@ class multi_mask_bulk_solvent(object):
       xrs          = xrs)
     #fmodel.show()
     #print fmodel.r_work(), fmodel.r_free()
-    #sys.stdout.flush()
-    # Crystal_gridding
-    #grid_step = fmodel.f_obs().d_min()*(1./self.grid_step_factor)
-    #crystal_gridding = maptbx.crystal_gridding(
-    #  unit_cell = xrs.unit_cell(),
-    #  space_group_info = xrs.space_group_info(),
-    #  symmetry_flags   = maptbx.use_space_group_symmetry,
-    #  step             = grid_step)
-    #n_real = crystal_gridding.n_real()
-    # Compute mask in P1
-    #mask_data_p1 = mmtbx.masks.mask_from_xray_structure(
-    #  xray_structure        = fmodel.xray_structure,
-    #  p1                    = True,
-    #  for_structure_factors = True,
-    #  n_real                = n_real,
-    #  in_asu                = False).mask_data
-    #maptbx.unpad_in_place(map=mask_data_p1)
+    ###
+    mask_data_p1, n_real, crystal_gridding = get_mask_1(fmodel=fmodel,
+      grid_step_factor=self.grid_step_factor)
     #ccp4_map(cg=crystal_gridding, file_name="m1.ccp4", map_data=mask_data_p1_)
+    #xxx1 = fmodel.f_obs().structure_factors_from_map(map=mask_data_p1,
+    #   use_scale = True, anomalous_flag = False, use_sg = False)
 
-    mask_params = mmtbx.masks.mask_master_params.extract()
-    mask_params.grid_step_factor = self.grid_step_factor
-    asu_mask_obj = mmtbx.masks.asu_mask(
-      xray_structure = fmodel.xray_structure,
-      d_min          = fmodel.f_obs().d_min(),
-      mask_params    = mask_params).asu_mask
-    mask_data_p1 = asu_mask_obj.mask_data_whole_uc()
-    maptbx.unpad_in_place(map=mask_data_p1)
+    #mask_data_p1, n_real, crystal_gridding = get_mask_2(fmodel=fmodel,
+    #  grid_step_factor=self.grid_step_factor)
+    #xxx2 = fmodel.f_obs().structure_factors_from_map(map=mask_data_p1,
+    #   use_scale = True, anomalous_flag = False, use_sg = False)
+    #
+    #assert approx_equal(xxx1.data(), xxx2.data())
 
-    n_real = mask_data_p1.all()
-    crystal_gridding = maptbx.crystal_gridding(
-      unit_cell             = xrs.unit_cell(),
-      space_group_info      = xrs.space_group_info(),
-      symmetry_flags        = maptbx.use_space_group_symmetry,
-      pre_determined_n_real = n_real)
+    #print mask_data_p1.all(), mask_data_p1.focus(), mask_data_p1.origin()
+    #print mask_data_p1_2.all(), mask_data_p1_2.focus(), mask_data_p1_2.origin()
+    #print mask_data_p1_1.count(0), mask_data_p1_2.count(0)
+    #assert approx_equal(mask_data_p1_1, mask_data_p1_2)
+    #STOP()
     #####
     # Mask connectivity analysis
     co = maptbx.connectivity(map_data=mask_data_p1, threshold=0.01)
@@ -282,12 +308,12 @@ class multi_mask_bulk_solvent(object):
         all_zero_found = True
         continue
       # DIFF MAP START
-      if(ii == 2):
+      if(region_volumes[ii]<1):#(ii == 2):
         fmodel_tmp = mmtbx.f_model.manager(
           f_obs          = fmodel.f_obs(),
           r_free_flags   = fmodel.r_free_flags(),
           f_calc         = fmodel.f_calc(),
-          f_mask         = f_mask_i)
+          f_mask         = f_masks[len(f_masks)-1])
         fmodel_tmp.update_all_scales(remove_outliers=False, update_f_part1=False)
         diff_map_p1 = compute_map(
           fmodel           = fmodel_tmp,
@@ -315,7 +341,11 @@ class multi_mask_bulk_solvent(object):
         log.flush()
       f_mask_i = fmodel.f_obs().structure_factors_from_asu_map(
         asu_map_data = mask_data_asu_i, n_real = n_real)
-      f_masks.append(f_mask_i)
+      if(len(f_masks)>0 and region_volumes[ii]>1):
+        f_masks[len(f_masks)-1] = f_masks[len(f_masks)-1].array(data = f_masks[len(f_masks)-1].data()+
+          f_mask_i.data())
+      else:
+        f_masks.append(f_mask_i)
     #
     self.fmodel_result, self.method = helper_3(
         fmodel  = fmodel,

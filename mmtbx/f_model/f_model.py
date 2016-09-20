@@ -2107,10 +2107,14 @@ class manager(manager_mixin):
     return k_mask_l[0]
 
   def r_work_low(self):
-    return self.select(self.bin_selections[0]).r_work()
+    f = self.select(self.bin_selections[0])
+    return mmtbx.bulk_solvent.r_factor(
+      f.f_obs_work().data(), f.f_model_work().data(),1.)
 
   def r_work_high(self):
-    return self.select(self.bin_selections[len(self.bin_selections)-1]).r_work()
+    f = self.select(self.bin_selections[len(self.bin_selections)-1])
+    return mmtbx.bulk_solvent.r_factor(
+      f.f_obs_work().data(), f.f_model_work().data(),1.)
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()
