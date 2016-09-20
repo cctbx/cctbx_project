@@ -8,8 +8,9 @@ import pickle
 import StringIO
 from libtbx.test_utils import show_diff
 import iotbx.pdb
-from libtbx.utils import null_out
+from libtbx.utils import null_out # import dependency
 from time import time
+from libtbx.test_utils import approx_equal
 
 
 raw_records1 = """\
@@ -156,13 +157,16 @@ def make_geo_pickle_unpickle(geometry, xrs, prefix):
       sites_cart=xrs.sites_cart(),
       site_labels=xrs.scatterers().extract_labels(),
       f=init_out)
-
+  energy_original = geometry.energies_sites(sites_cart=xrs.sites_cart())
   t0 = time()
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   pklstr = pickle.dumps(geometry)
   t1 = time()
   grm_from_file = pickle.loads(pklstr)
   t2 = time()
+  # Fails here:
+  energy_from_pickle = grm_from_file.energies_sites(sites_cart=xrs.sites_cart())
+  assert approx_equal(energy_original.target, energy_from_pickle.target)
   print "Time pickling/unpickling: %.4f, %.4f" % (t1-t0, t2-t1)
   grm_from_file.show_sorted(
       sites_cart=xrs.sites_cart(),
@@ -177,6 +181,7 @@ def make_geo_pickle_unpickle(geometry, xrs, prefix):
   # print from_file_v
   # STOP()
   assert not show_diff(init_v, from_file_v)
+  return grm_from_file
 
 def test_simple_protein(
     mon_lib_srv, ener_lib, prefix="tst_grm_pickling_simple_protein"):
@@ -193,7 +198,7 @@ def test_nucleic_acid(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_na"):
     args=["%s.pdb" % prefix],
     params=params,
     strict_conflict_handling=False,
-    log=null_out())
+    log=sys.stdout)
   geo = processed_pdb_file.geometry_restraints_manager()
   assert geo.get_n_hbond_proxies() == 6
   assert geo.get_n_hangle_proxies() == 12
@@ -211,7 +216,7 @@ def test_ramachandran(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_rama"):
     args=["%s.pdb" % prefix],
     params=params,
     strict_conflict_handling=False,
-    log=null_out())
+    log=sys.stdout)
   geo = processed_pdb_file.geometry_restraints_manager()
   assert geo.get_n_ramachandran_proxies() == 1
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
@@ -226,7 +231,7 @@ def test_cbeta(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_cbeta"):
     args=["%s.pdb" % prefix],
     params=params,
     strict_conflict_handling=False,
-    log=null_out())
+    log=sys.stdout)
   geo = processed_pdb_file.geometry_restraints_manager()
   assert geo.get_n_c_beta_torsion_proxies() == 6
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
@@ -245,7 +250,7 @@ def test_reference_coordinate(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_re
     params=params,
     strict_conflict_handling=False,
     pdb_inp=pdb_inp,
-    log=null_out())
+    log=sys.stdout)
   geo = processed_pdb_file.geometry_restraints_manager()
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -353,7 +358,7 @@ ATOM    349  O   GLY A  48      18.512  52.912  22.607  1.00 34.93           O
     params=params,
     strict_conflict_handling=False,
     pdb_inp=pdb_inp,
-    log=null_out())
+    log=sys.stdout)
   geo = processed_pdb_file.geometry_restraints_manager()
   assert geo.get_n_hbond_proxies() == 8
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
@@ -369,7 +374,7 @@ def test_secondary_structure_2(mon_lib_srv, ener_lib, prefix="tst_grm_pickling_s
     params=params,
     strict_conflict_handling=False,
     pdb_inp=pdb_inp,
-    log=null_out())
+    log=sys.stdout)
   geo = processed_pdb_file.geometry_restraints_manager()
   assert geo.get_n_hbond_proxies() == 103, geo.get_n_hbond_proxies()
   make_geo_pickle_unpickle(geo, processed_pdb_file.xray_structure(), prefix)
@@ -451,12 +456,12 @@ def exercise_all(args):
 
   test_simple_protein(mon_lib_srv, ener_lib)
   test_nucleic_acid(mon_lib_srv, ener_lib)
-  test_ramachandran(mon_lib_srv, ener_lib)
-  test_cbeta(mon_lib_srv, ener_lib)
-  test_reference_coordinate(mon_lib_srv, ener_lib)
-  test_secondary_structure(mon_lib_srv, ener_lib)
-  test_secondary_structure_2(mon_lib_srv, ener_lib)
-  test_across_symmetry(mon_lib_srv, ener_lib)
+  # test_ramachandran(mon_lib_srv, ener_lib)
+  # test_cbeta(mon_lib_srv, ener_lib)
+  # test_reference_coordinate(mon_lib_srv, ener_lib)
+  # test_secondary_structure(mon_lib_srv, ener_lib)
+  # test_secondary_structure_2(mon_lib_srv, ener_lib)
+  # test_across_symmetry(mon_lib_srv, ener_lib)
   test_reference_model(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
