@@ -1,9 +1,10 @@
 """
-PDBe RESTful web services API
+PDBe web services
 """
 
 from __future__ import division
 
+from iotbx.pdb.web_service_api import FTPService, RESTService
 from iotbx.pdb.download import openurl, NotFound
 
 import json
@@ -27,7 +28,7 @@ class configurable_get_request(object):
     return result_for[ lcase ]
 
 
-class configurable_multiple_get_requests(object):
+class configurable_multiget_request(object):
 
   def __init__(self, opener):
 
@@ -73,63 +74,8 @@ class configurable_post_request(object):
 
 # Define instances for default use
 get_request = configurable_get_request( opener = openurl )
-multiple_get_requests = configurable_multiple_get_requests( opener = openurl )
+multiget_request = configurable_multiget_request( opener = openurl )
 post_request = configurable_post_request( opener = openurl )
-
-
-class RESTService(object):
-  """
-  Unified interface for services offering GET and POST requests
-  """
-
-  def __init__(self, url, get, post):
-
-    self.url = url
-    self.get = get
-    self.post = post
-
-
-  def single(self, identifier):
-
-    return self.get( url = self.url, identifier = identifier )
-
-
-  def multiple(self, identifiers):
-
-    return self.post( url = self.url, identifiers = identifiers )
-
-
-class FTPService(object):
-  """
-  Interface to access PDB files
-  """
-
-  def __init__(self, url, namer, opener = openurl):
-
-    self.url = url
-    self.namer = namer
-    self.opener = opener
-
-
-  def single(self, identifier):
-
-    stream = self.opener(
-      url = ( self.url + self.namer( identifier = identifier ) ).encode(),
-      )
-    return stream
-
-
-  def multiple(self, identifiers):
-
-    for ident in identifiers:
-      try:
-        stream = self.single( identifier = ident )
-
-      except NotFound:
-        yield None
-
-      else:
-        yield stream
 
 
 def identifier_to_pdb_entry_name(identifier):
@@ -169,13 +115,13 @@ PDB_ENTRY_EXPERIMENT = RESTService(
 PDB_SIFTS_MAPPING_CATH = RESTService(
   url = PDBE_API_BASE + "mappings/cath/",
   get = get_request,
-  post = multiple_get_requests,
+  post = multiget_request,
   )
 
 PDB_SIFTS_MAPPING_SCOP = RESTService(
   url = PDBE_API_BASE + "mappings/scop/",
   get = get_request,
-  post = multiple_get_requests,
+  post = multiget_request,
   )
 
 

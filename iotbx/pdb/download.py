@@ -1,6 +1,11 @@
 from __future__ import division
 
 # Storage methods
+def no_storage(stream):
+
+  return stream
+
+
 def memory_storage(stream):
 
   import cStringIO
@@ -123,7 +128,7 @@ class coupled_stream(object):
     return "<coupled primary:%r>" % self.primary
 
 
-# Encodings; some of these are singletons
+# Encodings
 class encoding(object):
 
   @classmethod
@@ -136,15 +141,20 @@ class identity_encoding(encoding):
 
   keyword = "identity"
 
+  def __init__(self, storage = no_storage):
+
+    self.storage = storage
+
+
+  def process(self, stream):
+
+    return self.storage( stream = stream )
+
+
   @classmethod
   def accept(cls, header):
 
     return not header or super( identity_encoding, cls ).accept( header = header )
-
-  @staticmethod
-  def process(stream):
-
-    return stream
 
 
 class gzip_encoding(encoding):
@@ -171,11 +181,18 @@ class deflate_encoding_small(encoding):
 
   keyword = "deflate"
 
-  @staticmethod
-  def process(stream):
+  def __init__(self, storage = no_storage):
+
+    self.storage = storage
+
+
+  def process(self, stream):
+
+    storage = self.storage( stream = stream )
 
     import zlib
-    data = zlib.decompress( stream.read() )
+    data = zlib.decompress( storage.read() )
+    storage.close()
 
     import cStringIO
     return cStringIO.StringIO( data )
@@ -232,9 +249,10 @@ class urlopener(object):
   Configurable version of openurl function
   """
 
-  def __init__(self, encodings = [ gzip_encoding(), deflate_encoding_small ]):
+  def __init__(self, identity = identity_encoding(), extras = [ gzip_encoding() ]):
 
-    self.encoding_for = dict( ( ec.keyword, ec ) for ec in encodings )
+    self.identity = identity
+    self.encoding_for = dict( ( ec.keyword, ec ) for ec in extras )
 
 
   def __call__(self, url, data = None):
@@ -256,7 +274,7 @@ class urlopener(object):
       raise http_error_to_exception( error = e )
 
     used = stream.info().get( "Content-Encoding" )
-    encoding = self.encoding_for.get( used, identity_encoding )
+    encoding = self.encoding_for.get( used, self.identity )
 
     if not encoding.accept( header = used ):
       raise UnexpectedResponse, "Unknown encoding: %s" % used

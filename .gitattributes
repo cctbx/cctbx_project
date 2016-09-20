@@ -1497,6 +1497,7 @@ iotbx/pdb/tst_secondary_structure_2.py -text
 iotbx/pdb/tst_tls.py -text
 iotbx/pdb/utils.cpp svneol=native#text/plain
 iotbx/pdb/utils.h svneol=native#text/plain
+iotbx/pdb/web_service_api.py -text
 iotbx/pdb/write_utils.cpp svneol=native#text/plain
 iotbx/pdb/write_utils.h svneol=native#text/plain
 iotbx/pdb/write_utils_bpl.h svneol=native#text/plain

@@ -1,9 +1,10 @@
 from __future__ import division
 
-from iotbx.pdb.download import openurl, NotFound, gzip_encoding
+from iotbx.pdb.web_service_api import FTPService
+from iotbx.pdb.download import openurl, urlopener, gzip_encoding
 
 
-def parse_pdb_redirections(data):
+def parse_pdb_redirections(lineiter):
 
   import re
   regex = re.compile(
@@ -11,7 +12,7 @@ def parse_pdb_redirections(data):
     ^ OBSLTE \s+
     [\w-]+ [ ]+
     ( \w{4} )
-    (?: [ ]+ ( \w{4} ) )?
+    (?: [ ]+ ( \w{4} ) )*
     \s* $
     """,
     re.VERBOSE | re.MULTILINE
@@ -19,9 +20,21 @@ def parse_pdb_redirections(data):
 
   replacement_for = {}
 
-  for hit in regex.finditer( data ):
-    ( old, new ) = hit.groups()
-    replacement_for[ old.upper() ] = new.upper() if new else None
+  for line in lineiter:
+    hit = regex.match( line )
+
+    if hit is not None:
+      groups = hit.groups()
+      obsoleted = groups[0].upper()
+      assert 2 <= len( groups )
+
+      if groups[1] is None:
+        replacement = None
+
+      else:
+        replacement = groups[1].upper()
+
+      replacement_for[ obsoleted ] = replacement
 
   return replacement_for
 
@@ -46,10 +59,10 @@ class Redirections(object):
   def __init__(self):
 
     stream = openurl(
-      url = "ftp://ftp.wwpdb.org/pub/pdb/data/status/obsolete.dat"
+      url = "ftp://ftp.wwpdb.org/pub/pdb/data/status/obsolete.dat",
       )
 
-    chain_redirection_for = parse_pdb_redirections( data = stream.read() )
+    chain_redirection_for = parse_pdb_redirections( lineiter = stream )
 
     self.redirection_for = {}
 
@@ -86,40 +99,9 @@ class Redirections(object):
 from libtbx.object_oriented_patterns import lazy_initialization
 redirection = lazy_initialization( func = Redirections )
 
-
-class FTPService(object):
-  """
-  Interface to access PDB files
-  """
-
-  def __init__(self, url, namer, postprocessing, opener = openurl):
-
-    self.url = url
-    self.namer = namer
-    self.opener = opener
-    self.postprocessing = postprocessing
-
-
-  def single(self, identifier):
-
-    stream = self.opener(
-      url = ( self.url + self.namer( identifier = identifier ) ).encode(),
-      )
-    return self.postprocessing.process( stream = stream )
-
-
-  def multiple(self, identifiers):
-
-    for ident in identifiers:
-      try:
-        stream = self.single( identifier = ident )
-
-      except NotFound:
-        yield None
-
-      else:
-        yield stream
-
+# Special opener that disables gzip encoding (to fetch files already compressed)
+gz_openurl = urlopener( extras = [] )
+gz_encoding = gzip_encoding()
 
 def identifier_to_pdb_entry_name(identifier):
 
@@ -134,11 +116,13 @@ def identifier_to_cif_entry_name(identifier):
 PDB_ENTRYFILE_PDB = FTPService(
   url = "http://files.rcsb.org/download/",
   namer = identifier_to_pdb_entry_name,
-  postprocessing = gzip_encoding(),
+  opener = gz_openurl,
+  postprocessing = gz_encoding,
   )
 
 PDB_ENTRYFILE_CIF = FTPService(
   url = "http://www.ebi.ac.uk/pdbe/entry-files/",
   namer = identifier_to_cif_entry_name,
-  postprocessing = gzip_encoding(),
+  opener = gz_openurl,
+  postprocessing = gz_encoding,
   )
