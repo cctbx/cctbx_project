@@ -308,7 +308,7 @@ class multi_mask_bulk_solvent(object):
         all_zero_found = True
         continue
       # DIFF MAP START
-      if(region_volumes[ii]<1):#(ii == 2):
+      if(region_volumes[ii]<1 and diff_map_asu is None):#(ii == 2):
         fmodel_tmp = mmtbx.f_model.manager(
           f_obs          = fmodel.f_obs(),
           r_free_flags   = fmodel.r_free_flags(),
