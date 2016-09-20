@@ -83,21 +83,21 @@ class manager(object):
       assert nonbonded_types.size() == site_symmetry_table.indices().size()
     if (nonbonded_types is not None) and (nonbonded_charges is not None) :
       assert (nonbonded_charges.size() == nonbonded_types.size())
-    adopt_init_args(self, locals())
+    adopt_init_args(self, locals(), exclude=["log"])
     self.reset_internals()
 
 # implement explicit pickling for the log object since StringIO doesn't support pickling
-  def __getstate__(self):
-    state = self.__dict__.copy()
-    if hasattr(self.log, "getvalue"):
-      state[ "log" ] = self.log.getvalue()
-    else:
-      state[ "log" ] = ""
-    return state
+  # def __getstate__(self):
+  #   state = self.__dict__.copy()
+  #   if hasattr(self.log, "getvalue"):
+  #     state[ "log" ] = self.log.getvalue()
+  #   else:
+  #     state[ "log" ] = ""
+  #   return state
 
-  def __setstate__(self, state):
-    state[ "log" ] = StringIO.StringIO( state[ "log" ] )
-    self.__dict__.update( state )
+  # def __setstate__(self, state):
+  #   state[ "log" ] = StringIO.StringIO( state[ "log" ] )
+  #   self.__dict__.update( state )
 
   def reset_internals(self):
     self._sites_cart_used_for_pair_proxies = None

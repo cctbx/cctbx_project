@@ -68,7 +68,7 @@ class ramachandran_manager(object):
     assert pdb_hierarchy is not None
     assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0), ""+\
         "Probably all atoms have i_seq = 0 which is wrong"
-    adopt_init_args(self, locals())
+    adopt_init_args(self, locals(), exclude=["log"])
     self.bool_atom_selection = None
     if self.atom_selection is None:
       self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
@@ -85,25 +85,25 @@ class ramachandran_manager(object):
       else :
         self.tables = load_tables(params)
       # get proxies
-      self.extract_proxies()
+      self.extract_proxies(log=log)
     else:
       assert proxies is not None
     if(self.params.rama_potential == "oldfield"):
       self.target_phi_psi = self.update_phi_psi_targets(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 
-  def proxy_select(self, n_seq, iselection):
+  def proxy_select(self, n_seq, iselection, log=sys.stdout):
     result_proxies = self.proxies.proxy_select(n_seq, iselection)
     return ramachandran_manager(
         pdb_hierarchy=self.pdb_hierarchy,
         atom_selection=self.atom_selection,
         params=self.params,
-        log=self.log,
+        log=log,
         proxies=result_proxies,
         tables=self.tables,
         initialize=False)
 
-  def extract_proxies(self):
+  def extract_proxies(self, log):
     self.proxies = ext.shared_phi_psi_proxy()
     from mmtbx.conformation_dependent_library import generate_protein_threes
     selected_h = self.pdb_hierarchy.select(self.bool_atom_selection)
@@ -128,8 +128,8 @@ class ramachandran_manager(object):
           i_seqs=i_seqs)
       if not is_proxy_present(self.proxies, n_seq, proxy):
         self.proxies.append(proxy)
-    print >> self.log, ""
-    print >> self.log, "  %d Ramachandran restraints generated." % (
+    print >> log, ""
+    print >> log, "  %d Ramachandran restraints generated." % (
         self.get_n_proxies())
 
   def update_phi_psi_targets(self, sites_cart):
