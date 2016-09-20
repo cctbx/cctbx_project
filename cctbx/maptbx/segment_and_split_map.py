@@ -1251,7 +1251,6 @@ class sharpening_info:
       self.resolution_dependent_b=[0,0,0]
 
   def sharpening_is_defined(self):
-    print "ZZChecking",self.sharpening_method,self.b_iso
     if self.sharpening_method is None:
       return False
 
@@ -1262,7 +1261,7 @@ class sharpening_info:
       return True
 
     return False
-     
+
   def update_with_box_sharpening_info(self,box_sharpening_info_obj=None):
       if not box_sharpening_info_obj:
         return self
@@ -1317,7 +1316,6 @@ class sharpening_info:
       self.search_b_max=params.map_modification.search_b_max
       self.search_b_n=params.map_modification.search_b_n
       self.verbose=params.control.verbose
-      print "ZZ updating with params",params.map_modification.resolution_dependent_b,params.map_modification.b_iso
       if params.map_modification.b_iso is not None or \
           params.map_modification.b_sharpen is not None:
         if params.map_modification.k_sharpen is not None:
@@ -1327,13 +1325,10 @@ class sharpening_info:
         # if sharpening values are specified, set them
         if params.map_modification.b_iso is not None:
           self.b_iso=params.map_modification.b_iso # but we need b_sharpen
-          print "ZZ SETbiso",self.b_iso
         elif params.map_modification.b_sharpen is not None:
           self.b_sharpen=params.map_modification.b_sharpen
-          print "ZZ SET bsharp",self.b_sharpen
       elif (params.map_modification.resolution_dependent_b is not None
         and params.map_modification.resolution_dependent_b!=[0,0,0]):
-        print "ZZ SET"
         self.sharpening_method='resolution_dependent'
         self.resolution_dependent_b=\
             params.map_modification.resolution_dependent_b

@@ -331,12 +331,12 @@ def run(args,out=sys.stdout):
         k_sharpen=params.map_modification.max_box_fraction,
         search_b_min=params.map_modification.search_b_min,
         search_b_max=params.map_modification.search_b_max,
-	search_b_n=params.map_modification.search_b_n,
-	b_iso=params.map_modification.b_iso,
-	b_sharpen=params.map_modification.b_sharpen,
-	resolution_dependent_b=\
+        search_b_n=params.map_modification.search_b_n,
+        b_iso=params.map_modification.b_iso,
+        b_sharpen=params.map_modification.b_sharpen,
+        resolution_dependent_b=\
            params.map_modification.resolution_dependent_b,
-	out=out)
+        out=out)
 
   # convert to map_coeffs also
 
