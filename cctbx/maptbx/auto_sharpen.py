@@ -99,10 +99,10 @@ master_phil = iotbx.phil.parse("""
        .help = Sharpen with this b-value. Contrast with b_iso that yield a \
            targeted value of b_iso
 
-     resolution_dependent_b_sharpen = None
+     resolution_dependent_b = None
        .type = floats
        .short_caption = resolution_dependent b
-       .help = If set, apply resolution_dependent_b_sharpen (b0 b1 b2). \
+       .help = If set, apply resolution_dependent_b (b0 b1 b2). \
              Log10(amplitudes) will start at 1, change to b0 at half \
              of resolution specified, changing linearly, \
              change to b1 at resolution specified, \
@@ -331,8 +331,12 @@ def run(args,out=sys.stdout):
         k_sharpen=params.map_modification.max_box_fraction,
         search_b_min=params.map_modification.search_b_min,
         search_b_max=params.map_modification.search_b_max,
-        search_b_n=params.map_modification.search_b_n,
-        out=out)
+	search_b_n=params.map_modification.search_b_n,
+	b_iso=params.map_modification.b_iso,
+	b_sharpen=params.map_modification.b_sharpen,
+	resolution_dependent_b=\
+           params.map_modification.resolution_dependent_b,
+	out=out)
 
   # convert to map_coeffs also
 

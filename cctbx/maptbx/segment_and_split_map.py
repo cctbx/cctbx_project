@@ -295,10 +295,10 @@ master_phil = iotbx.phil.parse("""
        .help = Sharpen with this b-value. Contrast with b_iso that yield a \
            targeted value of b_iso
 
-     resolution_dependent_b_sharpen = None
+     resolution_dependent_b = None
        .type = floats
        .short_caption = resolution_dependent b
-       .help = If set, apply resolution_dependent_b_sharpen (b0 b1 b2). \
+       .help = If set, apply resolution_dependent_b (b0 b1 b2). \
              Log10(amplitudes) will start at 1, change to b0 at half \
              of resolution specified, changing linearly, \
              change to b1 at resolution specified, \
@@ -1250,6 +1250,19 @@ class sharpening_info:
     if self.resolution_dependent_b is None:
       self.resolution_dependent_b=[0,0,0]
 
+  def sharpening_is_defined(self):
+    print "ZZChecking",self.sharpening_method,self.b_iso
+    if self.sharpening_method is None:
+      return False
+
+    if self.b_iso is not None or \
+       self.b_sharpen is not None or \
+       (self.resolution_dependent_b is not None and
+        self.resolution_dependent_b!=[0,0,0]):
+      return True
+
+    return False
+     
   def update_with_box_sharpening_info(self,box_sharpening_info_obj=None):
       if not box_sharpening_info_obj:
         return self
@@ -1270,7 +1283,6 @@ class sharpening_info:
   def update_with_params(self,params=None,
      crystal_symmetry=None,solvent_fraction=None,
      n_residues=None,ncs_copies=None):
-
       self.crystal_symmetry=crystal_symmetry
       self.solvent_fraction=solvent_fraction
       self.n_residues=n_residues
@@ -1305,6 +1317,7 @@ class sharpening_info:
       self.search_b_max=params.map_modification.search_b_max
       self.search_b_n=params.map_modification.search_b_n
       self.verbose=params.control.verbose
+      print "ZZ updating with params",params.map_modification.resolution_dependent_b,params.map_modification.b_iso
       if params.map_modification.b_iso is not None or \
           params.map_modification.b_sharpen is not None:
         if params.map_modification.k_sharpen is not None:
@@ -1314,12 +1327,16 @@ class sharpening_info:
         # if sharpening values are specified, set them
         if params.map_modification.b_iso is not None:
           self.b_iso=params.map_modification.b_iso # but we need b_sharpen
+          print "ZZ SETbiso",self.b_iso
         elif params.map_modification.b_sharpen is not None:
           self.b_sharpen=params.map_modification.b_sharpen
-      elif params.map_modification.resolution_dependent_b_sharpen is not None:
+          print "ZZ SET bsharp",self.b_sharpen
+      elif (params.map_modification.resolution_dependent_b is not None
+        and params.map_modification.resolution_dependent_b!=[0,0,0]):
+        print "ZZ SET"
         self.sharpening_method='resolution_dependent'
-        self.resolution_dependent_b_sharpen=\
-            params.map_modification.resolution_dependent_b_sharpen
+        self.resolution_dependent_b=\
+            params.map_modification.resolution_dependent_b
 
       return self
   def show_summary(self,out=sys.stdout):
@@ -2049,16 +2066,16 @@ def get_params(args,out=sys.stdout):
 
   if not params.crystal_info.resolution and (
      params.map_modification.b_iso is not None or params.map_modification.auto_sharpen
-      or params.map_modification.resolution_dependent_b_sharpen or
+      or params.map_modification.resolution_dependent_b or
       params.map_modification.b_sharpen):
     raise Sorry("Need resolution for segment_and_split_map with sharpening")
 
   if params.map_modification.auto_sharpen and (
       params.map_modification.b_iso is not None or
       params.map_modification.b_sharpen is not None or
-      params.map_modification.resolution_dependent_b_sharpen is not None):
+      params.map_modification.resolution_dependent_b is not None):
     print >>out,"Turning off auto_sharpen as it is not compatible with "+\
-        "b_iso, \nb_sharpen, or resolution_dependent_b_sharpen"
+        "b_iso, \nb_sharpen, or resolution_dependent_b"
     params.map_modification.auto_sharpen=False
 
 
@@ -5296,6 +5313,9 @@ def auto_sharpen_map_or_map_coeffs(
         search_b_min=None,
         search_b_max=None,
         search_b_n=None,
+        b_iso=None, # if set, use it
+        b_sharpen=None, # if set, use it
+        resolution_dependent_b=None, # if set, use it
         out=sys.stdout):
 
     if map_coeffs and not resolution:
@@ -5318,11 +5338,15 @@ def auto_sharpen_map_or_map_coeffs(
       [box_in_auto_sharpen,auto_sharpen_methods,resolution,d_min_ratio,
         max_box_fraction,k_sharpen,
         residual_target,sharpening_target,
-        search_b_min,search_b_max,search_b_n],
+        search_b_min,search_b_max,search_b_n,
+        b_iso,b_sharpen,resolution_dependent_b],
       ['box_in_auto_sharpen','auto_sharpen_methods','resolution','d_min_ratio',
        'max_box_fraction','k_sharpen',
         'residual_target','sharpening_target',
-       'search_b_min','search_b_max','search_b_n'],):
+       'search_b_min','search_b_max','search_b_n',
+       'b_iso','b_sharpen',
+       'resolution_dependent_b',
+         ],):
      if x is not None:
        args.append("%s=%s" %(param,x))
 
@@ -5408,124 +5432,130 @@ def run_auto_sharpen(
       box_sharpening_info_obj=box_sharpening_info_obj)
   best_map_data=None
 
+  if si.sharpening_is_defined():  # just do it
+    print >>out,"\nUsing specified sharpening"
+    best_si=set_up_sharpening(si=si,map_data=map_data,out=out)
+    best_si.sharpen_and_score_map(map_data=map_data,
+          out=out).show_score(out=out)
+    best_si.show_summary(out=out)
 
+  else:
 
-  print >>out,"\nTesting sharpening methods with target of %s" %(
-      best_si.sharpening_target)
-
-  if not auto_sharpen_methods:
-    auto_sharpen_methods=['no_sharpening']
-  for m in auto_sharpen_methods:
-    if m in ['no_sharpening','resolution_dependent']:
-      b_min=original_b_iso
-      b_max=original_b_iso
-      b_n=1
-      k_sharpen=0.
-      delta_b=0
-    elif m in ['b_iso','b_iso_to_d_cut']:
-      b_min=min(original_b_iso,
-        si.search_b_min)
-      b_max=max(original_b_iso,
-        si.search_b_max)
-      b_n=si.search_b_n
-      delta_b=(b_max-b_min)/max(1,b_n-1)
-      print >>out,\
-        "\nTesting %s with b_iso from %7.1f to %7.1f in %d steps of %7.1f" %(
-        m,b_min,b_max,b_n,delta_b)
-      print >>out,"(b_sharpen from %7.1f to %7.1f ) " %(
-         original_b_iso-b_min,original_b_iso-b_max)
-      if m=='b_iso':
+    if not auto_sharpen_methods:
+      auto_sharpen_methods=['no_sharpening']
+    for m in auto_sharpen_methods:
+      if m in ['no_sharpening','resolution_dependent']:
+        b_min=original_b_iso
+        b_max=original_b_iso
+        b_n=1
         k_sharpen=0.
-      else:
-        k_sharpen=si.k_sharpen
+        delta_b=0
+      elif m in ['b_iso','b_iso_to_d_cut']:
+        if si.search_b_n>1:
+          b_min=min(original_b_iso,si.search_b_min)
+          b_max=max(original_b_iso,si.search_b_max)
+        else: # for just one, take it
+          b_min=si.search_b_min
+          b_max=si.search_b_max
+        b_n=si.search_b_n
+        delta_b=(b_max-b_min)/max(1,b_n-1)
+        print >>out,\
+          "\nTesting %s with b_iso from %7.1f to %7.1f in %d steps of %7.1f" %(
+          m,b_min,b_max,b_n,delta_b)
+        print >>out,"(b_sharpen from %7.1f to %7.1f ) " %(
+           original_b_iso-b_min,original_b_iso-b_max)
+        if m=='b_iso':
+          k_sharpen=0.
+        else:
+          k_sharpen=si.k_sharpen
 
-      if m=='resolution_dependent':
-        print >>out,\
-          "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
-      else:
-        print >>out,\
-          "\nB-sharpen   B-iso   k_sharpen   SA   "+\
-           "Kurtosis  sa_ratio  Normalized regions"
-    local_best_map_data=None
-    local_best_si=deepcopy(si).update_with_box_sharpening_info(
-      box_sharpening_info_obj=box_sharpening_info_obj)
-    for i in xrange(b_n):
-      local_si=deepcopy(si).update_with_box_sharpening_info(
+        if m=='resolution_dependent':
+          print >>out,\
+            "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
+        else:
+          print >>out,\
+            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
+             "Kurtosis  sa_ratio  Normalized regions"
+      local_best_map_data=None
+      local_best_si=deepcopy(si).update_with_box_sharpening_info(
         box_sharpening_info_obj=box_sharpening_info_obj)
-      local_si.sharpening_method=m
-      local_si.n_real=map_data.all()
-      local_si.k_sharpen=k_sharpen
+      for i in xrange(b_n):
+        local_si=deepcopy(si).update_with_box_sharpening_info(
+          box_sharpening_info_obj=box_sharpening_info_obj)
+        local_si.sharpening_method=m
+        local_si.n_real=map_data.all()
+        local_si.k_sharpen=k_sharpen
 
-      if m=='resolution_dependent':
-        print >>out,"\nRefining resolution-dependent sharpening based on %s" %(
-          local_si.residual_target)
-        local_si.b_sharpen=0
-        local_si.b_iso=original_b_iso
-        from cctbx.maptbx.refine_sharpening import run as refine_sharpening
-        local_f_array,local_phases=refine_sharpening(
-           map_coeffs=map_coeffs,
-           sharpening_info_obj=local_si,
-           out=out)
-      else:
-        local_f_array=f_array
-        local_phases=phases
-        b_iso=b_min+i*delta_b
-        local_si.b_sharpen=original_b_iso-b_iso
-        local_si.b_iso=b_iso
+        if m=='resolution_dependent':
+          print >>out,"\nRefining resolution-dependent sharpening based on %s" %(
+            local_si.residual_target)
+          local_si.b_sharpen=0
+          local_si.b_iso=original_b_iso
+          from cctbx.maptbx.refine_sharpening import run as refine_sharpening
+          local_f_array,local_phases=refine_sharpening(
+             map_coeffs=map_coeffs,
+             sharpening_info_obj=local_si,
+             out=out)
+        else:
+          local_f_array=f_array
+          local_phases=phases
+          b_iso=b_min+i*delta_b
+          local_si.b_sharpen=original_b_iso-b_iso
+          local_si.b_iso=b_iso
 
-      local_map_data=apply_sharpening(
-          f_array=local_f_array,phases=local_phases,
-          sharpening_info_obj=local_si,
-          crystal_symmetry=local_si.crystal_symmetry,
+        local_map_data=apply_sharpening(
+            f_array=local_f_array,phases=local_phases,
+            sharpening_info_obj=local_si,
+            crystal_symmetry=local_si.crystal_symmetry,
+            out=null_out())
+        local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
           out=null_out())
-      local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
-        out=null_out())
-      if m=='resolution_dependent':
-        print >>out," %6.2f  %6.2f  %6.2f  " %(
-            local_si.resolution_dependent_b[0],
-            local_si.resolution_dependent_b[1],
-            local_si.resolution_dependent_b[2]) +\
-          "  %7.3f  %7.3f  " %(
-              local_si.adjusted_sa,local_si.kurtosis)+\
-          " %7.3f  %7.3f" %(
-           local_si.sa_ratio,local_si.normalized_regions)
+        if m=='resolution_dependent':
+          print >>out," %6.2f  %6.2f  %6.2f  " %(
+              local_si.resolution_dependent_b[0],
+              local_si.resolution_dependent_b[1],
+              local_si.resolution_dependent_b[2]) +\
+            "  %7.3f  %7.3f  " %(
+                local_si.adjusted_sa,local_si.kurtosis)+\
+            " %7.3f  %7.3f" %(
+             local_si.sa_ratio,local_si.normalized_regions)
+        else:
+          print >>out,\
+           " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
+            local_si.b_sharpen,local_si.b_iso,
+             local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
+            "  %7.3f         %7.3f" %(
+             local_si.sa_ratio,local_si.normalized_regions)
+
+        if m=='no_sharpening':
+          null_si=local_si
+        if local_best_si.score is None or local_si.score>local_best_si.score:
+          local_best_si=local_si
+          local_best_map_data=local_map_data
+
+
+      if local_best_si.sharpening_method=='resolution_dependent':
+        print >>out,"\nBest scores for sharpening with "+\
+          "b[0]=%6.2f b[1]=%6.2f b[2]=%6.2f: " %(
+          local_best_si.resolution_dependent_b[0],
+          local_best_si.resolution_dependent_b[1],
+          local_best_si.resolution_dependent_b[2])
       else:
-        print >>out,\
-         " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
-          local_si.b_sharpen,local_si.b_iso,
-           local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
-          "  %7.3f         %7.3f" %(
-           local_si.sa_ratio,local_si.normalized_regions)
+        print >>out,"\nBest scores for sharpening with "+\
+          "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
+          local_best_si.b_iso,local_best_si.b_sharpen,
+           local_best_si.k_sharpen)
 
-      if m=='no_sharpening':
-        null_si=local_si
-      if local_best_si.score is None or local_si.score>local_best_si.score:
-        local_best_si=local_si
-        local_best_map_data=local_map_data
+      local_best_si.show_summary(out=out)
 
+      print >>out,\
+        "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
+        local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
 
-    if local_best_si.sharpening_method=='resolution_dependent':
-      print >>out,"\nBest scores for sharpening with "+\
-        "b[0]=%6.2f b[1]=%6.2f b[2]=%6.2f: " %(
-        local_best_si.resolution_dependent_b[0],
-        local_best_si.resolution_dependent_b[1],
-        local_best_si.resolution_dependent_b[2])
-    else:
-      print >>out,"\nBest scores for sharpening with "+\
-        "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
-        local_best_si.b_iso,local_best_si.b_sharpen,
-         local_best_si.k_sharpen)
-
-    local_best_si.show_summary(out=out)
-
-    print >>out,\
-      "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
-      local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
-
-    if best_si.score is None or local_best_si.score > best_si.score:
-      best_si=local_best_si
-      best_map_data=local_best_map_data
-      print >>out,"This is the current best score\n"
+      if best_si.score is None or local_best_si.score > best_si.score:
+        best_si=local_best_si
+        best_map_data=local_best_map_data
+        print >>out,"This is the current best score\n"
 
 
   print >>out,"\nOverall best sharpening method: %s Score: %7.3f\n" %(
@@ -5683,6 +5713,24 @@ def get_one_au(tracking_data=None,
 
   return au_mask
 
+def set_up_sharpening(si=None,map_data=None,out=sys.stdout):
+         print >>out,"\nCarrying out specified sharpening/blurring of map"
+         check_si=si  # just use input information
+         check_si.show_summary(out=out)
+         if check_si.b_sharpen is None and check_si.b_iso is not None:
+           # need to figure out b_sharpen
+           b_iso=check_si.get_effective_b_iso(map_data=map_data,out=out)
+           check_si.b_sharpen=b_iso-check_si.b_iso # sharpen is what to
+           print >>out,"Value of b_sharpen to obtain b_iso of %s is %5.2f" %(
+             check_si.b_iso,check_si.b_sharpen)
+         elif check_si.b_sharpen is not None:
+           print >>out,"Sharpening b_sharpen will be %s" %(check_si.b_sharpen)
+         elif check_si.resolution_dependent_b:
+           print >>out,"Resolution-dependent b_sharpening values:" +\
+              "b0: %7.2f  b1: %7.2f  b2: %7.2f " %(
+             tuple(check_si.resolution_dependent_b))
+         return check_si
+
 def run(args,
      params=None,
      map_data=None,
@@ -5750,7 +5798,7 @@ def run(args,
     if params.map_modification.auto_sharpen or \
         params.map_modification.b_iso is not None or \
         params.map_modification.b_sharpen is not None or \
-        params.map_modification.resolution_dependent_b_sharpen is not None:
+        params.map_modification.resolution_dependent_b is not None:
 
       # Sharpen the map
 
@@ -5774,21 +5822,7 @@ def run(args,
            auto_sharpen_methods=auto_sharpen_methods,
            out=out)
       else:
-         print >>out,"\nCarrying out specified sharpening/blurring of map"
-         check_si=si  # just use input information
-         check_si.show_summary(out=out)
-         if check_si.b_sharpen is None and check_si.b_iso is not None:
-           # need to figure out b_sharpen
-           b_iso=check_si.get_effective_b_iso(map_data=map_data,out=out)
-           check_si.b_sharpen=b_iso-check_si.b_iso # sharpen is what to
-           print >>out,"Value of b_sharpen to obtain b_iso of %s is %5.2f" %(
-             check_si.b_iso,check_si.b_sharpen)
-         elif check_si.b_sharpen is not None:
-           print >>out,"Sharpening b_sharpen will be %s" %(check_si.b_sharpen)
-         elif check_si.resolution_dependent_b_sharpen:
-           print >>out,"Resolution-dependent b_sharpening values:" +\
-              "b0: %7.2f  b1: %7.2f  b2: %7.2f " %(
-             tuple(check_si.resolution_dependent_b_sharpen))
+         check_si=set_up_sharpening(si=si,map_data=map_data,out=out)
 
       if check_si:
         print >>out,"\nFinal sharpening info:"
@@ -5819,7 +5853,7 @@ def run(args,
       params.map_modification.auto_sharpen=None # so we don't do it again later
       params.map_modification.b_iso=None
       params.map_modification.b_sharpen=None
-      params.map_modification.resolution_dependent_b_sharpen=None
+      params.map_modification.resolution_dependent_b=None
       if params.control.sharpen_only:
         print >>out,"Stopping after sharpening"
         return
