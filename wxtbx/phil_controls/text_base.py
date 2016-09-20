@@ -5,6 +5,7 @@ import wxtbx
 from libtbx.utils import Abort, to_unicode, to_str
 from libtbx import Auto
 import wx
+import sys
 
 class ValidatedTextCtrl (wx.TextCtrl, phil_controls.PhilCtrl) :
   def __init__ (self, *args, **kwds) :
@@ -122,7 +123,10 @@ class TextCtrlValidator (wx.PyValidator) :
           "allowed.") % ctrl_name
       wx.MessageBox(caption="Format error", message=msg)
       ctrl.SetBackgroundColour("red")
-      ctrl.SetFocus()
+      # Don't set focus on Windows since messagebox is modal and thus
+      # would automatically recapture focus leading to an endless UI loop
+      if (sys.platform != 'win32'):
+        ctrl.SetFocus()
       ctrl.Refresh()
       return False
 
