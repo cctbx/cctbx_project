@@ -368,7 +368,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
           if indexed:
             known_setting = info.horizons_phil.known_setting
             indexed_setting = info.organizer.info['best_integration']['counter']
-            if known_setting is not None and known_setting == indexed_setting:
+            if known_setting is None or known_setting == indexed_setting:
               from xfel.command_line.frame_unpickler import construct_reflection_table_and_experiment_list
               c = construct_reflection_table_and_experiment_list(info.last_saved_best, None, pixel_size, proceed_without_image=True)
               c.assemble_experiments()
