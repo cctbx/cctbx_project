@@ -245,6 +245,14 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
     params_edits                 = params.geometry_restraints.edits,
     plain_pairs_radius           = 5,
     assume_hydrogens_all_missing = not has_hd)
+
+  # For test GRM pickling
+  # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
+  # geometry = make_geo_pickle_unpickle(
+  #     geometry=geometry,
+  #     xrs=xray_structure,
+  #     prefix=None)
+
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry,
     normalization = True)
