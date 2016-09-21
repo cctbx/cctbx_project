@@ -207,6 +207,8 @@ def get_fmodel_and_grid_step(f_obs, r_free_flags, xrs):
 
 def get_mask_1(fmodel, grid_step_factor):
   grid_step = fmodel.f_obs().d_min()*(1./grid_step_factor)
+  if(grid_step < 0.15): grid_step = 0.15
+  grid_step = min(0.8, grid_step)
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell = fmodel.xray_structure.unit_cell(),
     space_group_info = fmodel.xray_structure.space_group_info(),
@@ -267,6 +269,8 @@ class multi_mask_bulk_solvent(object):
 
     #mask_data_p1, n_real, crystal_gridding = get_mask_2(fmodel=fmodel,
     #  grid_step_factor=self.grid_step_factor)
+    #print n_real
+    #STOP()
     #xxx2 = fmodel.f_obs().structure_factors_from_map(map=mask_data_p1,
     #   use_scale = True, anomalous_flag = False, use_sg = False)
     #
