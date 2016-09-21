@@ -275,7 +275,9 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
       print >> log, "  removing %d R-free flagged reflections" % \
         flags.data().count(True)
       map_coeffs = map_coeffs.select(~(flags.data()))
-    map = map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor)
+    from cctbx import maptbx
+    map = map_coeffs.fft_map(resolution_factor=params.grid_resolution_factor,
+      symmetry_flags=maptbx.use_space_group_symmetry)
     if params.scale == "sigma" :
       print >> log, "  applying sigma-scaling"
       map.apply_sigma_scaling()
