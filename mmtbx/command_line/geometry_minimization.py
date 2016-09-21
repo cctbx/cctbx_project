@@ -96,7 +96,7 @@ minimization
   move
     .help = Define what to include into refinement target
     .short_caption = Geometry terms
-    .style = box auto_align columns:3 noauto
+    .style = box auto_align columns:4 noauto
   {
   bond = True
     .type = bool
