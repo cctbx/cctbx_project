@@ -108,7 +108,7 @@ master_phil = iotbx.phil.parse("""
              change to b1 at resolution specified, \
              and change to b2 at high-resolution limit of map
 
-     d_min_ratio = None
+     d_min_ratio = 0.833
        .type = float
        .short_caption = Sharpen d_min ratio
        .help = Sharpening will be applied using d_min equal to \
@@ -349,7 +349,7 @@ def run(args,out=sys.stdout):
   # convert to map_coeffs also
 
   from cctbx.maptbx.segment_and_split_map import get_f_phases_from_map
-  new_map_coeffs=get_f_phases_from_map(map_data=map_data,
+  new_map_coeffs=get_f_phases_from_map(map_data=new_map_data,
        crystal_symmetry=crystal_symmetry,
        d_min=params.crystal_info.resolution,
        d_min_ratio=params.map_modification.d_min_ratio,
