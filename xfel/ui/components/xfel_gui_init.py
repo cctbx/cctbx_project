@@ -371,7 +371,6 @@ class RunStatsSentinel(Thread):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
     sizex, sizey = self.parent.run_window.runstats_tab.runstats_panel.GetSize()
-    print "calculating stats with n_strong of", self.parent.run_window.runstats_tab.n_strong
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       self.stats, self.run_numbers, 2.5, interactive=False,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
@@ -380,7 +379,6 @@ class RunStatsSentinel(Thread):
 
   def plot_stats_interactive(self):
     self.refresh_stats()
-    print "calculating stats with n_strong of", self.parent.run_window.runstats_tab.n_strong
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       stats, run_numbers, 2.5, interactive=True,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong)
@@ -1463,7 +1461,7 @@ class RunStatsTab(BaseTab):
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_BUTTON, self.onLastThreeRuns, self.last_three_runs)
     self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
 
@@ -1554,15 +1552,13 @@ class RunStatsTab(BaseTab):
   def onLastFiveRuns(self, e):
     self.tag_last_three = False
     self.tag_last_five = True
-    self.select_last_five_runs(5)
+    self.select_last_n_runs(5)
     self.main.run_window.runstats_light.change_status('idle')
 
   def onHitCutoff(self, e):
     n_strong = self.n_strong_cutoff.n_strong.GetValue()
-    print n_strong, "inputted for n_strong"
     if n_strong.isdigit() and n_strong != '':
       self.n_strong = int(n_strong)
-      print n_strong, "accepted as n_strong"
 
 class MergeTab(BaseTab):
   def __init__(self, parent, main, prefix='prime'):
