@@ -108,42 +108,41 @@ master_phil = iotbx.phil.parse("""
              change to b1 at resolution specified, \
              and change to b2 at high-resolution limit of map
 
-     d_min_ratio = 0.833
+     d_min_ratio = None
        .type = float
        .short_caption = Sharpen d_min ratio
        .help = Sharpening will be applied using d_min equal to \
-             d_min_ratio times resolution. If None, box of reflections \
-             with the same grid as the map used.
+             d_min_ratio times resolution. Default is 0.833
 
-     auto_sharpen = True
+     auto_sharpen = None
        .type = bool
        .short_caption = Automatically determine sharpening
        .help = Automatically determine sharpening using kurtosis maximization\
-                 or adjusted surface area
+                 or adjusted surface area. Default is True
 
-     auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
-                            *resolution_dependent
+     auto_sharpen_methods = no_sharpening b_iso b_iso_to_d_cut \
+                            resolution_dependent *None
        .type = choice(multi=True)
        .short_caption = Sharpening methods
        .help = Methods to use in sharpening. b_iso searches for b_iso to \
           maximize sharpening target (kurtosis or adjusted_sa). \
           b_iso_to_d_cut applies b_iso only up to resolution specified, with \
           fall-over of k_sharpen.  Resolution dependent adjusts 3 parameters \
-          to sharpen variably over resolution range.
+          to sharpen variably over resolution range. Default is all.
 
-     box_in_auto_sharpen = True
+     box_in_auto_sharpen = None
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
-                auto-sharpening instead of the entire map.
+                auto-sharpening instead of the entire map. Default is True.
 
-     max_box_fraction = 0.5
+     max_box_fraction = None
        .type = float
        .short_caption = Max size of box for auto_sharpening
        .help = If box is greater than this fraction of entire map, use \
-                entire map.
+                entire map. Default is 0.5.
 
-     k_sharpen = 10
+     k_sharpen = None
        .type = float
        .short_caption = sharpening transition
        .help = Steepness of transition between sharpening (up to resolution \
@@ -153,71 +152,73 @@ master_phil = iotbx.phil.parse("""
            sharpened. This prevents making very high-resolution data too \
            strong.  Note 2: if k_sharpen is zero or None, then no \
            transition is applied and all data is sharpened or blurred. \
-           Note 3: only used if b_iso is set.
+           Default is 10.
 
-     search_b_min = -100
+     search_b_min = None
        .type = float
        .short_caption = Low bound for b_iso search
-       .help = Low bound for b_iso search.
+       .help = Low bound for b_iso search. Default is -100.
 
-     search_b_max = 300
+     search_b_max = None
        .type = float
        .short_caption = High bound for b_iso search
-       .help = High bound for b_iso search.
+       .help = High bound for b_iso search. Default is 300.
 
-     search_b_n = 21
+     search_b_n = None
        .type = int
        .short_caption = Number of b_iso values to search
-       .help = Number of b_iso values to search.
+       .help = Number of b_iso values to search. Default is 21.
 
-     residual_target = 'adjusted_sa'
+     residual_target = None
        .type = str
        .short_caption = Residual target
        .help = Target for maximization steps in sharpening.  \
-          Can be kurtosis or adjusted_sa (adjusted surface area)
+          Can be kurtosis or adjusted_sa (adjusted surface area).\
+          Default is adjusted_sa.
 
-     sharpening_target = 'adjusted_sa'
+     sharpening_target = None
        .type = str
        .short_caption = Overall sharpening target
        .help = Overall target for sharpening.  Can be kurtosis or adjusted_sa \
           (adjusted surface area).  Used to decide which sharpening approach \
           is used. Note that during optimization, residual_target is used \
-          (they can be the same.)
+          (they can be the same.) Default is adjusted_sa.
 
-     require_improvement = True
+     require_improvement = None
        .type = bool
        .short_caption = Require improvement
-       .help = Require improvement in score for sharpening to be applied
+       .help = Require improvement in score for sharpening to be applied.\
+                Default is True.
 
-     region_weight = 20
+     region_weight = None
        .type = float
        .short_caption = Region weighting
        .help = Region weighting in adjusted surface area calculation.\
             Score is surface area minus region_weight times number of regions.\
-            Default is 20.
+            Default is 40. A smaller value will give more sharpening.
 
-     sa_percent = 30.
+     sa_percent = None
        .type = float
        .short_caption = Percent of target regions in adjusted_sa
        .help = Percent of target regions used in calulation of adjusted \
          surface area.  Default is 30.
 
-     fraction_occupied = 0.20
+     fraction_occupied = None
        .type = float
        .short_caption = Fraction of molecular volume inside contours
        .help = Fraction of molecular volume targeted to be inside contours. \
            Used to set contour level. Default is 0.20
 
-      n_bins = 20
+      n_bins = None
         .type = int
         .short_caption = Resolution bins
         .help = Number of resolution bins for sharpening. Default is 20.
 
-      max_regions_to_test = 30
+      max_regions_to_test = None
         .type = int
         .short_caption = Max regions to test
         .help = Number of regions to test for surface area in adjusted_sa \
-                scoring of sharpening
+                scoring of sharpening. Default is 30
 
       eps = None
         .type = float
@@ -322,9 +323,16 @@ def run(args,out=sys.stdout):
         resolution=params.crystal_info.resolution, # required
         crystal_symmetry=crystal_symmetry,
         map=map_data,
+        solvent_content=params.crystal_info.solvent_content,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
         auto_sharpen_methods=params.map_modification.auto_sharpen_methods,
         residual_target=params.map_modification.residual_target,
+        region_weight=params.map_modification.region_weight,
+        sa_percent=params.map_modification.sa_percent,
+        eps=params.map_modification.eps,
+        n_bins=params.map_modification.n_bins,
+        max_regions_to_test=params.map_modification.max_regions_to_test,
+        fraction_occupied=params.map_modification.fraction_occupied,
         sharpening_target=params.map_modification.sharpening_target,
         d_min_ratio=params.map_modification.d_min_ratio,
         max_box_fraction=params.map_modification.max_box_fraction,

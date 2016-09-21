@@ -318,7 +318,7 @@ master_phil = iotbx.phil.parse("""
                  or adjusted surface area
 
      auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
-                            *resolution_dependent
+                            *resolution_dependent None
        .type = choice(multi=True)
        .short_caption = Sharpening methods
        .help = Methods to use in sharpening. b_iso searches for b_iso to \
@@ -385,12 +385,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Require improvement
        .help = Require improvement in score for sharpening to be applied
 
-     region_weight = 20
+     region_weight = 40
        .type = float
        .short_caption = Region weighting
        .help = Region weighting in adjusted surface area calculation.\
             Score is surface area minus region_weight times number of regions.\
-            Default is 20.
+            Default is 40. A smaller value will give more sharpening.
 
      sa_percent = 30.
        .type = float
@@ -5182,6 +5182,18 @@ def get_iterated_solvent_fraction(map=None,
       return_solvent_fraction=True,
       out=out)
   except Exception,e:
+    # catch case where map was not on proper grid
+    if str(e).find("sym equiv of a grid point must be a grid point")>-1:
+      print >>out,\
+      "\nSpace group:%s \n Unit cell: %s \n Gridding: %s \nError message: %s" %(
+        crystal_symmetry.space_group().info(),
+        str(crystal_symmetry.unit_cell().parameters()),
+        str(map.all()),str(e))
+      raise Sorry(
+      "The input map seems to be on a grid incompatible with crystal symmetry"+
+         "\n(symmetry equivalents of a grid point must be on "+
+          "an integer grid point)")
+
     return None  # was not available
 
 
@@ -5296,6 +5308,13 @@ def auto_sharpen_map_or_map_coeffs(
         map=None,               #  map_coeffs and n_real
         map_coeffs=None,
         n_real=None,
+        solvent_content=None,
+        region_weight=None,
+        sa_percent=None,
+        n_bins=None,
+        eps=None,
+        max_regions_to_test=None,
+        fraction_occupied=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
         n_residues=None,
         ncs_copies=None,
@@ -5328,31 +5347,46 @@ def auto_sharpen_map_or_map_coeffs(
     # run auto_sharpening
     si=sharpening_info(n_real=map.all())
     args=[]
-    if auto_sharpen_methods:
+    if auto_sharpen_methods and auto_sharpen_methods != ['None']:
       args.append("auto_sharpen_methods=*%s" %(" *".join(auto_sharpen_methods)))
     for x,param in zip(
       [box_in_auto_sharpen,resolution,d_min_ratio,
         max_box_fraction,k_sharpen,
         residual_target,sharpening_target,
         search_b_min,search_b_max,search_b_n,
-        b_iso,b_sharpen,resolution_dependent_b],
+        b_iso,b_sharpen,resolution_dependent_b,
+        region_weight,
+        sa_percent,
+        n_bins,
+        eps,
+        max_regions_to_test,
+        fraction_occupied,
+          ],
       ['box_in_auto_sharpen','resolution','d_min_ratio',
        'max_box_fraction','k_sharpen',
         'residual_target','sharpening_target',
        'search_b_min','search_b_max','search_b_n',
        'b_iso','b_sharpen',
        'resolution_dependent_b',
+       'region_weight',
+       'sa_percent',
+       'n_bins',
+       'eps',
+       'max_regions_to_test',
+       'fraction_occupied',
          ],):
      if x is not None:
        args.append("%s=%s" %(param,x))
     local_params=get_params_from_args(args)
     si.update_with_params(params=local_params,
       crystal_symmetry=crystal_symmetry,
+      solvent_fraction=solvent_content,
       )
-    si.solvent_fraction=get_iterated_solvent_fraction(
-      crystal_symmetry=crystal_symmetry,
-      map=map,
-      out=out)
+    if si.solvent_fraction is None:
+      si.solvent_fraction=get_iterated_solvent_fraction(
+        crystal_symmetry=crystal_symmetry,
+        map=map,
+        out=out)
     print "Estimated solvent fraction: %s" %(si.solvent_fraction)
     si=run_auto_sharpen(
       si=si,
@@ -5421,8 +5455,7 @@ def run_auto_sharpen(
 
   # Try various methods for sharpening.
 
-  null_si=deepcopy(si).update_with_box_sharpening_info(
-      box_sharpening_info_obj=box_sharpening_info_obj)
+  null_si=None
   best_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
   best_map_data=None
@@ -5437,8 +5470,7 @@ def run_auto_sharpen(
   else:
     print >>out,"\nTesting sharpening methods with target of %s" %(
        best_si.sharpening_target)
-
-    if not auto_sharpen_methods:
+    if not auto_sharpen_methods or auto_sharpen_methods==['None']:
       auto_sharpen_methods=['no_sharpening']
     for m in auto_sharpen_methods:
       # ------------------------
@@ -5449,10 +5481,14 @@ def run_auto_sharpen(
         k_sharpen=0.
         delta_b=0
         if m=='resolution_dependent':
+          pass # print out later
+        else:
           print >>out,\
-           "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
+            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
+             "Kurtosis  sa_ratio  Normalized regions"
       # ------------------------
-      elif m in ['b_iso','b_iso_to_d_cut']:
+      # ------------------------
+      else:  #  ['b_iso','b_iso_to_d_cut']:
         if si.search_b_n>1:
           b_min=min(original_b_iso,si.search_b_min)
           b_max=max(original_b_iso,si.search_b_max)
@@ -5514,6 +5550,11 @@ def run_auto_sharpen(
         local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
           out=null_out())
         if m=='resolution_dependent':
+          print >>out,\
+           "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
+          print >>out,\
+            "\nB-sharpen   B-iso   k_sharpen   SA   "+\
+             "Kurtosis  sa_ratio  Normalized regions"
           print >>out," %6.2f  %6.2f  %6.2f  " %(
               local_si.resolution_dependent_b[0],
               local_si.resolution_dependent_b[1],
@@ -5566,20 +5607,20 @@ def run_auto_sharpen(
        best_si.sharpening_method,best_si.score)
   best_si.show_summary(out=out)
 
-  if best_si.score>null_si.score:  # we improved them..
-    print >>out,"Improved score with sharpening..."
-    if original_box_sharpening_info_obj:
+  if null_si:
+    if best_si.score>null_si.score:  # we improved them..
+      print >>out,"Improved score with sharpening..."
+    else:
+      print >>out,"Did not improve score with sharpening..."
+  if original_box_sharpening_info_obj:
       # Put back original crystal_symmetry with original_box_sharpening_info_obj
       print >>out,"\nRestoring original symmetry to best sharpening info"
       best_si.update_with_box_sharpening_info(
         box_sharpening_info_obj=original_box_sharpening_info_obj)
       print >>out,"(%7.3f, %7.3f, %7.3f, %7.3f, %7.3f, %7.3f) "%(tuple(
         best_si.crystal_symmetry.unit_cell().parameters()))
-    # and set tracking data with result
-    return best_si
-  else:
-    print >>out,"Did not improve score with sharpening..."
-    return null_si
+      # and set tracking data with result
+  return best_si
 
 def get_effective_b_iso(map_data=None,tracking_data=None,
       box_sharpening_info_obj=None,
