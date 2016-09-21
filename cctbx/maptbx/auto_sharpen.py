@@ -260,7 +260,7 @@ def get_params(args,out=sys.stdout):
     params.output_files.output_directory=os.getcwd()
   elif not os.path.isdir(params.output_files.output_directory):
     os.mkdir(params.output_files.output_directory)
-   
+
 
   return params
 
