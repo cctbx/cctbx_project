@@ -365,14 +365,17 @@ class RunStatsSentinel(Thread):
         for run in rg.runs:
           if run.run not in self.run_numbers and run.run in selected_runs:
             self.run_numbers.append(run.run)
-            self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id, d_min=2.5)())
+            self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
+              d_min=self.parent.run_window.runstats_tab.d_min)())
 
   def plot_stats_static(self):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
     sizex, sizey = self.parent.run_window.runstats_tab.runstats_panel.GetSize()
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
-      self.stats, self.run_numbers, 2.5, interactive=False,
+      self.stats, self.run_numbers,
+      d_min=self.parent.run_window.runstats_tab.d_min,
+      interactive=False,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
       xsize=sizex/100, ysize=sizey/100) # convert px to inches
     self.parent.run_window.runstats_tab.redraw_windows = True
@@ -380,7 +383,9 @@ class RunStatsSentinel(Thread):
   def plot_stats_interactive(self):
     self.refresh_stats()
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
-      stats, run_numbers, 2.5, interactive=True,
+      stats, run_numbers,
+      d_min=self.parent.run_window.runstats_tab.d_min,
+      interactive=True,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong)
 
 
@@ -1387,6 +1392,7 @@ class RunStatsTab(BaseTab):
     self.png = None
     self.static_bitmap = None
     self.redraw_windows = True
+    self.d_min = 2.5
     self.n_strong = 40
 
     # self.runstats_panel = FlexGridSizer(self, size=(900, 300))
@@ -1419,6 +1425,11 @@ class RunStatsTab(BaseTab):
     self.last_five_runs =  wx.Button(self,
                                      label='Auto plot last five runs',
                                      size=(200, -1))
+    self.d_min_select = gctr.OptionCtrl(self,
+                                 label='high resolution limit:',
+                                 label_size=(160, -1),
+                                 ctrl_size=(30, -1),
+                                 items=[('d_min', 2.5)])
     self.n_strong_cutoff = gctr.OptionCtrl(self,
                                            label='# strong spots cutoff:',
                                            label_size=(160, -1),
@@ -1444,7 +1455,9 @@ class RunStatsTab(BaseTab):
                                flag=wx.ALL, border=10)
     self.options_opt_sizer.Add(self.last_five_runs, pos=(2, 0),
                                flag=wx.ALL, border=10)
-    self.options_opt_sizer.Add(self.n_strong_cutoff, pos=(3, 0),
+    self.options_opt_sizer.Add(self.d_min_select, pos=(3, 0),
+                               flag=wx.ALL, border=10)
+    self.options_opt_sizer.Add(self.n_strong_cutoff, pos=(4, 0),
                                flag=wx.ALL, border=10)
     self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(6, 1),
                                flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
@@ -1461,6 +1474,7 @@ class RunStatsTab(BaseTab):
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_BUTTON, self.onLastThreeRuns, self.last_three_runs)
     self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onDMin, self.d_min_select.d_min)
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
@@ -1555,9 +1569,16 @@ class RunStatsTab(BaseTab):
     self.select_last_n_runs(5)
     self.main.run_window.runstats_light.change_status('idle')
 
+  def onDMin(self, e):
+    try:
+      d_min = float(self.d_min_select.d_min.GetValue())
+      self.d_min = d_min
+    except ValueError:
+      pass
+
   def onHitCutoff(self, e):
     n_strong = self.n_strong_cutoff.n_strong.GetValue()
-    if n_strong.isdigit() and n_strong != '':
+    if n_strong.isdigit():
       self.n_strong = int(n_strong)
 
 class MergeTab(BaseTab):
