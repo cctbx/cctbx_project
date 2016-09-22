@@ -22,7 +22,7 @@ class get_definition(dxtbx.data.beamline_defs.template):
     return self._at_I19
 
   def _base(self, mmcif=False):
-    '''Generates 
+    '''Generates
        1. a CIF/mmCIF block that contains information that
        is always true about the detector.
        2. a lookup function for CIF/mmCIF strings.'''

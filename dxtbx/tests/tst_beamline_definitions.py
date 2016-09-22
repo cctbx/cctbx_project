@@ -30,7 +30,7 @@ def test_lookup_known_detector():
   assert cif.__module__ == 'iotbx.cif.model'
   assert '_diffrn_radiation.type' in str(cif), cif
   print 'OK'
- 
+
 if __name__ == '__main__':
   test_lookup_unknown_detector()
   test_lookup_known_detector()
