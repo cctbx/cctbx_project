@@ -765,12 +765,12 @@ class ImageGrid(ImageSet):
     return self._grid_size
 
   @classmethod
-  def from_imageset(Class, imageset, grid_size):
+  def from_imageset(cls, imageset, grid_size):
     '''
     Convert an imageset into an image grid
 
     '''
-    return Class(
+    return cls(
       imageset.reader(),
       imageset._indices,
       imageset._models,

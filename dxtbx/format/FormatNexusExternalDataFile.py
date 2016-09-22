@@ -63,7 +63,7 @@ class FormatNexusExternalDataFile(FormatHDF5):
     return is_nexus
 
   @classmethod
-  def ignore(Class):
+  def ignore(cls):
     return True
 
 
