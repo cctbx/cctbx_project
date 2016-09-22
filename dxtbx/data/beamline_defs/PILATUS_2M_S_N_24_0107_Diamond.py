@@ -2,8 +2,6 @@ from __future__ import division
 import dxtbx.data.beamline_defs
 
 class get_definition(dxtbx.data.beamline_defs.template):
-  _str_override = 'CIF generator for PILATUS 2M, S/N 24-0107 Diamond'
-
   def __init__(self, timestamp=None, **kwargs):
     self._timestamp = timestamp
 
@@ -17,9 +15,13 @@ class get_definition(dxtbx.data.beamline_defs.template):
 
   def _identify_time(self):
     '''Determine detector environment based on timestamp.'''
-    if self._timestamp < self._date_to_epoch(2015, 11, 01):
-      return self._at_I04_1
-    return self._at_I19
+    if not self._timestamp: # default to I19
+      return self._at_I19
+
+    if self._timestamp >= self._date_to_epoch(2015, 11, 01):
+      return self._at_I19 # moved to I19 on 01.11.2015
+
+    return self._at_I04_1 # before was on I04-1
 
   def _base(self, mmcif=False):
     '''Generates

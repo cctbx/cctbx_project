@@ -1,14 +1,14 @@
 from __future__ import division
 
-def get_beamline_definition(detector_sn_or_key, **kwargs):
+def get_beamline_definition(detector_id, **kwargs):
   import unicodedata
   import string
   import types
-  if not isinstance(detector_sn_or_key, types.UnicodeType):
-    detector_sn_or_key = unicode(detector_sn_or_key, 'utf-8', 'ignore')
+  if not isinstance(detector_id, types.UnicodeType):
+    detector_id = unicode(detector_id, 'utf-8', 'ignore')
 
   valid_chars = frozenset("_.%s%s" % (string.ascii_letters, string.digits))
-  filename = unicodedata.normalize('NFKD', detector_sn_or_key).encode('ASCII', 'ignore')
+  filename = unicodedata.normalize('NFKD', detector_id).encode('ASCII', 'ignore')
   filename = ''.join(c if c in valid_chars else '_' for c in filename)
   while '__' in filename:
     filename = filename.replace('__', '_')
@@ -17,9 +17,12 @@ def get_beamline_definition(detector_sn_or_key, **kwargs):
   try:
     import importlib
     beamline = importlib.import_module('dxtbx.data.beamline_defs.%s' % filename)
-    return beamline.get_definition(**kwargs)
+    generator_object = beamline.get_definition(**kwargs)
   except ImportError:
-    return Dummy("Dummy CIF generator. No information for detector %s (%s.py)" % (detector_sn_or_key, filename))
+    generator_object = Dummy()
+  generator_object.set_detector_name(detector_id)
+  generator_object.set_block_name(filename)
+  return generator_object
 
 class template(object):
   def CIF_block(self):
@@ -62,10 +65,22 @@ class template(object):
         return entry[column]
     return __lookup
 
+  def get_block_name(self):
+    return self._block_name
+
+  def set_block_name(self, block_name):
+    self._block_name = block_name
+
+  def get_detector_name(self):
+    return self._detector_name
+
+  def set_detector_name(self, detector_name):
+    self._detector_name = detector_name
+
   def write_block_to_file(self, block, filename):
     import iotbx.cif.model
     c = iotbx.cif.model.cif()
-    c['cif'] = block
+    c[self.get_block_name()] = block
     with open(filename, 'w') as fh:
       c.show(out=fh)
 
@@ -74,20 +89,19 @@ class template(object):
     return (datetime.datetime(year,month,day,0,0)
             - datetime.datetime(1970,1,1)).total_seconds()
 
+  def _generate_block(self):
+    import iotbx.cif.model
+    return iotbx.cif.model.block()
+
   def __str__(self):
-    if hasattr(self, '_str_override'):
-      return self._str_override
-    else:
-      return "CIF block generator"
+    return "CIF block generator for %s (%s.py)" % (self._detector_name, self._block_name)
 
 
 class Dummy(template):
-  def __init__(self, str_override):
-    self._str_override = str_override
+  def __init__(self):
+    self.CIF_block = self._generate_block
+    self.mmCIF_block = self._generate_block
 
-  def _dummy_CIF(self):
-    import iotbx.cif.model
-    return iotbx.cif.model.block()
-  CIF_block = _dummy_CIF
-  mmCIF_block = _dummy_CIF
-
+  def __str__(self):
+    return "Dummy CIF generator. No information for detector %s (%s.py)" % \
+      (self._detector_name, self._block_name)
