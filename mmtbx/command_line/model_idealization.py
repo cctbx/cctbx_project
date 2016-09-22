@@ -21,6 +21,8 @@ from time import time
 import datetime
 from libtbx.utils import multi_out
 from cctbx import maptbx, miller
+from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
+from mmtbx.pdbtools import truncate_to_poly_gly
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -43,8 +45,12 @@ use_starting_model_for_final_gm = False
     use self.
 output_prefix = None
   .type = str
-use_map_for_reference = False
+use_map_for_reference = True
   .type = bool
+reference_map_resolution = 5.
+  .type = float
+data_for_map = None
+  .type = path
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -86,6 +92,8 @@ class model_idealization():
     self.after_loop_idealization = None
     self.after_rotamer_fixing = None
     self.final_model_statistics = None
+    self.reference_map = None
+
     # various checks, shifts, trims
     self.cs = self.pdb_input.crystal_symmetry()
     # check self.cs (copy-paste from secondary_sturcure_restraints)
@@ -153,18 +161,23 @@ class model_idealization():
         molprobity_scores=True)
     self.time_for_init = time()-t_0
 
-  def prepare_reference_map(self, xrs):
+  def prepare_reference_map(self, xrs, pdb_h):
+    print >> self.log, "Preparing reference map"
+    # new_h = pdb_h.deep_copy()
+    # truncate_to_poly_gly(new_h)
+    # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
+    xrs=xrs.set_b_iso(value=500)
     crystal_gridding = maptbx.crystal_gridding(
         unit_cell        = xrs.unit_cell(),
         space_group_info = xrs.space_group_info(),
         symmetry_flags   = maptbx.use_space_group_symmetry,
-        d_min             = 5)
-    fc = xrs.structure_factors(d_min = 5., algorithm = "direct").f_calc()
+        d_min             = self.params.reference_map_resolution)
+    fc = xrs.structure_factors(d_min = self.params.reference_map_resolution, algorithm = "fft").f_calc()
     fft_map = miller.fft_map(
         crystal_gridding=crystal_gridding,
         fourier_coefficients=fc)
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
-    # self.reference_map.as_xplor_map(file_name="unit_cell.xplor")
+    fft_map.as_xplor_map(file_name="%s.map" % self.params.output_prefix)
 
   def run(self):
     t_0 = time()
@@ -172,7 +185,7 @@ class model_idealization():
     master_pdb_h = None
     ncs_obj = iotbx.ncs.input(
         hierarchy=self.pdb_h,
-        chain_max_rmsd=2.0,
+        chain_max_rmsd=4.0,
         chain_similarity_threshold=0.99,
         residue_match_radius=999.0)
     print >> self.log, "Found NCS groups:"
@@ -202,8 +215,9 @@ class model_idealization():
         pdb_hierarchy=self.pdb_h)
 
     xrs = (master_pdb_h if master_pdb_h is not None else self.pdb_h).extract_xray_structure(crystal_symmetry=self.cs)
+    full_xrs = self.pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
     if self.params.use_map_for_reference:
-      self.prepare_reference_map(xrs=xrs)
+      self.prepare_reference_map(xrs=xrs, pdb_h=master_pdb_h if master_pdb_h is not None else self.pdb_h)
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
     self.original_ann = None
@@ -237,13 +251,23 @@ class model_idealization():
       negate_selection = "all"
       if outlier_selection_txt != "" and outlier_selection_txt is not None:
         negate_selection = "not (%s)" % outlier_selection_txt
-      minimize_wrapper_for_ramachandran(
-          hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
-          xrs=xrs,
-          original_pdb_h=master_pdb_h if master_pdb_h is not None else self.pdb_h,
-          excl_string_selection=negate_selection,
-          log=None,
-          ss_annotation=self.ann)
+      if self.reference_map is None:
+        minimize_wrapper_for_ramachandran(
+            hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
+            xrs=xrs,
+            original_pdb_h=master_pdb_h if master_pdb_h is not None else self.pdb_h,
+            excl_string_selection=negate_selection,
+            log=None,
+            ss_annotation=self.ann)
+      else:
+        print >> self.log, "Using map as reference"
+        self.log.flush()
+        mwwm = minimize_wrapper_with_map(
+            pdb_h=master_pdb_h if master_pdb_h is not None else self.pdb_h,
+            xrs=xrs,
+            target_map = self.reference_map,
+            ss_annotation=self.ann,
+            log=self.log)
     else:
       self.params.ss_idealization.file_name_before_regularization = \
           "%s_ss_before_reg.pdb" % self.params.output_prefix
@@ -255,6 +279,7 @@ class model_idealization():
           fix_rotamer_outliers=True,
           cif_objects=self.cif_objects,
           verbose=True,
+          reference_map=self.reference_map,
           log=self.log)
       self.log.flush()
 
@@ -269,7 +294,7 @@ class model_idealization():
     self.shift_and_write_result(
         hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
         fname_suffix="ss_ideal",)
-
+    # STOP()
     self.params.loop_idealization.minimize_whole = not using_ncs
     # self.params.loop_idealization.enabled = False
     # self.params.loop_idealization.variant_search_level = 0
@@ -277,6 +302,7 @@ class model_idealization():
         pdb_hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
         params=self.params.loop_idealization,
         secondary_structure_annotation=self.ann,
+        reference_map=self.reference_map,
         log=self.log,
         verbose=False)
     self.log.flush()
@@ -322,6 +348,7 @@ class model_idealization():
           pdb_hierarchy=fixed_rot_pdb_h,
           grm=grm.geometry,
           xrs=xrs,
+          map_data=self.reference_map,
           mon_lib_srv=None,
           rotamer_manager=None,
           verbose=True)
@@ -358,13 +385,23 @@ class model_idealization():
 
     print >> self.log, "loop_ideal.ref_exclusion_selection", loop_ideal.ref_exclusion_selection
     print >> self.log, "Minimizing whole model"
-    minimize_wrapper_for_ramachandran(
-        hierarchy=self.pdb_h,
-        xrs=xrs,
-        original_pdb_h=ref_hierarchy_for_final_gm,
-        excl_string_selection=loop_ideal.ref_exclusion_selection,
-        log=self.log,
-        ss_annotation=self.ann)
+    if self.reference_map is None:
+      minimize_wrapper_for_ramachandran(
+          hierarchy=self.pdb_h,
+          xrs=full_xrs,
+          original_pdb_h=ref_hierarchy_for_final_gm,
+          excl_string_selection=loop_ideal.ref_exclusion_selection,
+          log=self.log,
+          ss_annotation=self.ann)
+    else:
+      print >> self.log, "Using map as reference"
+      self.log.flush()
+      mwwm = minimize_wrapper_with_map(
+          pdb_h=self.pdb_h,
+          xrs=full_xrs,
+          target_map = self.reference_map,
+          ss_annotation=self.ann,
+          log=self.log)
     self.shift_and_write_result(
         hierarchy=self.pdb_h,
         fname_suffix="all_idealized")
@@ -460,7 +497,6 @@ class model_idealization():
     for i in reversed(n_gr_to_remove):
       del result[i]
     return result
-
 
 def run(args):
   # processing command-line stuff, out of the object

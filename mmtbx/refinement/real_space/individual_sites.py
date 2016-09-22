@@ -389,3 +389,127 @@ class box_refinement_manager(object):
 #      # XXX undefined
 #      self.xray_structure = None #XXX undefined
 #      self.sites_cart = None     #XXX undefined
+
+
+class minimize_wrapper_with_map():
+  def __init__(self,
+      pdb_h,
+      xrs,
+      target_map,
+      ss_annotation=None,
+      log=None):
+    self.pdb_h = pdb_h
+    self.xrs = xrs
+    self.log = log
+    self.cs = self.xrs.crystal_symmetry()
+    print >> self.log, "Minimizing using reference map..."
+    self.log.flush()
+    # create a new one
+    # copy-paste from cctbx_project/mmtbx/refinement/geometry_minimization.py:
+    # minimize_wrapper_for_ramachandran
+    from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+    from mmtbx.geometry_restraints import reference
+    from mmtbx.command_line.geometry_minimization import \
+        get_geometry_restraints_manager
+    from libtbx.utils import null_out
+    from scitbx.array_family import flex
+    import mmtbx.utils
+    from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
+    if self.log is None:
+      self.log = null_out()
+    params_line = grand_master_phil_str
+    import iotbx.phil
+    params = iotbx.phil.parse(
+        input_string=params_line, process_includes=True).extract()
+    params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+    params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
+    params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
+    params.pdb_interpretation.nonbonded_weight = 500
+    params.pdb_interpretation.c_beta_restraints=True
+    params.pdb_interpretation.max_reasonable_bond_distance = None
+    params.pdb_interpretation.peptide_link.apply_peptide_plane = True
+    params.pdb_interpretation.ncs_search.enabled = True
+    params.pdb_interpretation.restraints_library.rdl = True
+    processed_pdb_files_srv = mmtbx.utils.\
+        process_pdb_file_srv(
+            crystal_symmetry= self.cs,
+            pdb_interpretation_params = params.pdb_interpretation,
+            stop_for_unknowns         = False,
+            log=self.log,
+            cif_objects=None)
+    processed_pdb_file, junk = processed_pdb_files_srv.\
+        process_pdb_files(raw_records=flex.split_lines(self.pdb_h.as_pdb_string()))
+    mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
+    ener_lib = processed_pdb_files_srv.ener_lib
+    ncs_restraints_group_list = []
+    if processed_pdb_file.ncs_obj is not None:
+      ncs_restraints_group_list = processed_pdb_file.ncs_obj.get_ncs_restraints_group_list()
+    grm = get_geometry_restraints_manager(
+        processed_pdb_file, xrs, params=params)
+    # dealing with SS
+    if ss_annotation is not None:
+      from mmtbx.secondary_structure import manager
+      ss_manager = manager(
+          pdb_hierarchy=self.pdb_h,
+          geometry_restraints_manager=grm.geometry,
+          sec_str_from_pdb_file=ss_annotation,
+          params=None,
+          mon_lib_srv=mon_lib_srv,
+          verbose=-1,
+          log=self.log)
+      grm.geometry.set_secondary_structure_restraints(
+          ss_manager=ss_manager,
+          hierarchy=self.pdb_h,
+          log=self.log)
+    ncs_groups=None
+    if len(ncs_restraints_group_list) > 0:
+      ncs_groups=ncs_restraints_group_list
+
+    from mmtbx.rotamer.rotamer_eval import RotamerEval
+    rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
+
+    self.pdb_h.write_pdb_file(file_name="rsr_before_rot_fix.pdb")
+    print >> self.log, "Making rotamer restraints..."
+    self.pdb_h, grm = add_rotamer_restraints(
+      pdb_hierarchy      = self.pdb_h,
+      restraints_manager = grm,
+      selection          = None,
+      sigma              = 10,
+      mode               = "fix_outliers",
+      accept_allowed     = False,
+      mon_lib_srv        = mon_lib_srv,
+      rotamer_manager    = rotamer_manager)
+    self.xrs = self.pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
+    self.pdb_h.write_pdb_file(file_name="rsr_after_rot_fix.pdb")
+
+    import mmtbx.refinement.real_space.weight
+    print >> self.log, "  Determining weight..."
+    self.log.flush()
+    self.weight = mmtbx.refinement.real_space.weight.run(
+      map_data                    = target_map,
+      xray_structure              = self.xrs,
+      pdb_hierarchy               = self.pdb_h,
+      geometry_restraints_manager = grm,
+      rms_bonds_limit             = 0.02,
+      rms_angles_limit            = 2.0)
+    self.w = self.weight.weight
+    print >> self.log, "  Minimizing..."
+    self.log.flush()
+    refine_object = simple(
+      target_map                  = target_map,
+      selection                   = None,
+      max_iterations              = 150,
+      geometry_restraints_manager = grm.geometry,
+      states_accumulator          = None,
+      ncs_groups                  = ncs_groups)
+    refine_object.refine(weight = self.w, xray_structure = self.xrs)
+    self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
+    print >> log, "RMSDS:", self.rmsd_bonds_final, self.rmsd_angles_final
+    # print >> log, "sizes:", len(refine_object.sites_cart()), len(self.xrs.scatterers())
+    self.xrs=self.xrs.replace_sites_cart(
+      new_sites=refine_object.sites_cart(), selection=None)
+    # print >> log, "sizes", self.xrs.scatterers()
+    self.pdb_h.adopt_xray_structure(self.xrs)
+    # print >> log, "pdb_h", self.pdb_h.atoms_size()
+    self.pdb_h.write_pdb_file("after_map_min.pdb")

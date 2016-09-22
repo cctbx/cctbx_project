@@ -13,6 +13,7 @@ def exercise_01(prefix="tst_mi_test_01"):
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
+      "use_map_for_reference=False",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
@@ -35,6 +36,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   pdb_file.close()
   cmd = " ".join([
       "phenix.model_idealization",
+      "use_map_for_reference=False",
       "%s_start.pdb" % prefix,
       ">%s.log" % prefix])
   print cmd
@@ -286,6 +288,7 @@ def exercise_03(prefix="tst_mi_test_03"):
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
+      "use_map_for_reference=False",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
@@ -306,6 +309,7 @@ def exercise_04(prefix="tst_mi_test_04"):
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
+      "use_map_for_reference=False",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)

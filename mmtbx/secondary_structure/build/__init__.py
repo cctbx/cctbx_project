@@ -441,6 +441,7 @@ def substitute_ss(real_h,
                     cif_objects=None,
                     log=null_out(),
                     rotamer_manager=None,
+                    reference_map=None,
                     verbose=False):
   """
   Substitute secondary structure elements in real_h hierarchy with ideal
@@ -656,21 +657,22 @@ def substitute_ss(real_h,
   if verbose:
     print >> log, "Adding reference coordinate restraints..."
   from mmtbx.geometry_restraints import reference
-  grm.geometry.append_reference_coordinate_restraints_in_place(
-      reference.add_coordinate_restraints(
-          sites_cart = real_h.atoms().extract_xyz().select(helix_selection),
-          selection  = helix_selection,
-          sigma      = processed_params.sigma_on_reference_helix))
-  grm.geometry.append_reference_coordinate_restraints_in_place(
-      reference.add_coordinate_restraints(
-          sites_cart = real_h.atoms().extract_xyz().select(sheet_selection),
-          selection  = sheet_selection,
-          sigma      = processed_params.sigma_on_reference_sheet))
-  grm.geometry.append_reference_coordinate_restraints_in_place(
-      reference.add_coordinate_restraints(
-          sites_cart = real_h.atoms().extract_xyz().select(other_selection),
-          selection  = other_selection,
-          sigma      = processed_params.sigma_on_reference_non_ss))
+  if reference_map is None:
+    grm.geometry.append_reference_coordinate_restraints_in_place(
+        reference.add_coordinate_restraints(
+            sites_cart = real_h.atoms().extract_xyz().select(helix_selection),
+            selection  = helix_selection,
+            sigma      = processed_params.sigma_on_reference_helix))
+    grm.geometry.append_reference_coordinate_restraints_in_place(
+        reference.add_coordinate_restraints(
+            sites_cart = real_h.atoms().extract_xyz().select(sheet_selection),
+            selection  = sheet_selection,
+            sigma      = processed_params.sigma_on_reference_sheet))
+    grm.geometry.append_reference_coordinate_restraints_in_place(
+        reference.add_coordinate_restraints(
+            sites_cart = real_h.atoms().extract_xyz().select(other_selection),
+            selection  = other_selection,
+            sigma      = processed_params.sigma_on_reference_non_ss))
   if verbose:
     print >> log, "Adding chi torsion restraints..."
   grm.geometry.add_chi_torsion_restraints_in_place(
@@ -702,8 +704,8 @@ def substitute_ss(real_h,
 
   #testing number of restraints
   assert grm.geometry.get_n_den_proxies() == 0
-  assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms
-  # STOP()
+  if reference_map is None:
+    assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms
   refinement_log = null_out()
   log.write(
       "Refining geometry of substituted secondary structure elements...")
@@ -712,20 +714,51 @@ def substitute_ss(real_h,
     refinement_log = log
   from mmtbx.refinement.geometry_minimization import run2
   t10 = time()
-  obj = run2(
-      restraints_manager       = grm,
-      pdb_hierarchy            = real_h,
-      correct_special_position_tolerance = 1.0,
-      max_number_of_iterations = processed_params.n_iter,
-      number_of_macro_cycles   = processed_params.n_macro,
-      bond                     = True,
-      nonbonded                = True,
-      angle                    = True,
-      dihedral                 = True,
-      chirality                = True,
-      planarity                = True,
-      fix_rotamer_outliers     = fix_rotamer_outliers,
-      log                      = refinement_log)
+  if reference_map is None:
+    obj = run2(
+        restraints_manager       = grm,
+        pdb_hierarchy            = real_h,
+        correct_special_position_tolerance = 1.0,
+        max_number_of_iterations = processed_params.n_iter,
+        number_of_macro_cycles   = processed_params.n_macro,
+        bond                     = True,
+        nonbonded                = True,
+        angle                    = True,
+        dihedral                 = True,
+        chirality                = True,
+        planarity                = True,
+        fix_rotamer_outliers     = fix_rotamer_outliers,
+        log                      = refinement_log)
+  else:
+    from mmtbx.refinement.real_space.individual_sites import simple
+    import mmtbx.refinement.real_space.weight
+    print >> log, "  Determining weight..."
+    log.flush()
+    ref_xrs = real_h.extract_xray_structure(
+        crystal_symmetry=xray_structure.crystal_symmetry())
+    weight = mmtbx.refinement.real_space.weight.run(
+      map_data                    = reference_map,
+      xray_structure              = ref_xrs,
+      pdb_hierarchy               = real_h,
+      geometry_restraints_manager = grm,
+      rms_bonds_limit             = 0.02,
+      rms_angles_limit            = 2.0)
+    w = weight.weight
+    print >> log, "  Minimizing..."
+    log.flush()
+    refine_object = simple(
+      target_map                  = reference_map,
+      selection                   = None,
+      max_iterations              = 150,
+      geometry_restraints_manager = grm.geometry,
+      states_accumulator          = None,
+      ncs_groups                  = None)
+    refine_object.refine(weight = w, xray_structure = ref_xrs)
+    ref_xrs=ref_xrs.replace_sites_cart(
+      new_sites=refine_object.sites_cart(), selection=None)
+    real_h.adopt_xray_structure(ref_xrs)
+    real_h.write_pdb_file("after_ss_map_min.pdb")
+
   log.write(" Done\n")
   log.flush()
   t11 = time()

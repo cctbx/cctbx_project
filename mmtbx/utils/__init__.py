@@ -39,7 +39,6 @@ import random, sys, os
 from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
 from mmtbx.twinning import twin_f_model
-from cctbx import sgtbx
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import mmtbx.f_model
 import mmtbx.restraints
@@ -56,6 +55,7 @@ from cctbx import xray
 from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 from iotbx.file_reader import any_file
 from mmtbx.rotamer.rotamer_eval import RotamerEval
+from cctbx import maptbx
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -2307,15 +2307,19 @@ def _get_selections_around_residue(
 def _get_rotamers_evaluated(
     pdb_hierarchy,
     sel,
+    xrs,
+    crystal_gridding,
     bsel_around_no_mc,
     hd_sel,
     res,
     grm,
     reind_dict,
     mon_lib_srv,
+    map_data=None,
     prefix="a"):
   from mmtbx.command_line import lockit
   from cctbx.geometry_restraints import nonbonded_overlaps as nbo
+  assert xrs.scatterers().size() == pdb_hierarchy.atoms_size()
   rotamer_iterator = lockit.get_rotamer_iterator(
       mon_lib_srv         = mon_lib_srv,
       residue             = res,
@@ -2342,12 +2346,39 @@ def _get_rotamers_evaluated(
     for p in overlap_proxies:
       d = list(p)
       summ += d[3]-d[4]
+    map_cc = 0
+    # print "Map_data", map_data
+    rsr_target = 0
+    if map_data is not None:
+      # STOP()
+      # getting map score for rotamer
+      rsr_target = maptbx.real_space_target_simple(
+          unit_cell   = xrs.crystal_symmetry().unit_cell(),
+          density_map = map_data,
+          sites_cart  = sites_for_nb_overlaps)
+      map_cc = 0
+
+      # new_xrs = xrs.deep_copy_scatterers()
+      # new_xrs.set_sites_cart(sites_for_nb_overlaps)
+      # f_model = new_xrs.structure_factors(d_min=3).f_calc()
+      # fft_map2 = miller.fft_map(
+      #   crystal_gridding     = crystal_gridding,
+      #   fourier_coefficients = f_model)
+      # fft_map2.apply_sigma_scaling()
+      # map_data2 = fft_map2.real_map_unpadded(in_place=False)
+      # map_cc = flex.linear_correlation(
+      #   x=map_data.as_1d(),
+      #   y=map_data2.as_1d()).coefficient()
+      print "rsr target, cc:", rsr_target, map_cc
+
     inf.append((i,
         rotamer.id,
         rotamer.frequency,
         nb_overlaps.result.nb_overlaps_macro_molecule,
         nb_overlaps.result.normalized_nbo_macro_molecule,
         summ,
+        map_cc,
+        rsr_target,
         rotamer_sites_cart))
     i += 1
   return sorted(inf, key=lambda x: (x[5], x[2])  )
@@ -2483,6 +2514,7 @@ def fix_rotamer_outliers(
     pdb_hierarchy,
     grm,
     xrs,
+    map_data=None,
     radius=5,
     mon_lib_srv=None,
     rotamer_manager=None,
@@ -2510,6 +2542,14 @@ def fix_rotamer_outliers(
       crystal_symmetry = xrs.crystal_symmetry())
   n_atoms = pdb_hierarchy.atoms_size()
   hd_sel = xrs.hd_selection()
+
+  crystal_gridding = None
+  if map_data is not None:
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = xrs.unit_cell(),
+      space_group_info      = xrs.space_group_info(),
+      pre_determined_n_real = map_data.accessor().all())
+
   for model in pdb_hierarchy.models():
     for chain in model.chains():
       for conf in chain.conformers():
@@ -2570,12 +2610,15 @@ def fix_rotamer_outliers(
             s_inf = _get_rotamers_evaluated(
                 pdb_hierarchy=pdb_selected,
                 sel=sel,
+                xrs=xrs.select(selection_around_residue),
+                crystal_gridding=crystal_gridding,
                 bsel_around_no_mc=bsel_around_no_mc_selected,
                 hd_sel=hd_sel_selected,
                 res=res,
                 grm=grm_selected,
                 reind_dict=reindexing_dict,
                 mon_lib_srv=mon_lib_srv,
+                map_data=map_data,
                 prefix="%d" % backrub_angle)
             if s_inf is None:
               continue

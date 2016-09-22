@@ -16,6 +16,8 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
+from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
+
 loop_idealization_master_phil_str = """
 loop_idealization
 {
@@ -37,7 +39,7 @@ loop_idealization
   save_states = False
     .type = bool
     .help = Save states of CCD. Generates a states file for every model.
-  number_of_ccd_trials = 5
+  number_of_ccd_trials = 3
     .type = int
     .help = How many times we are trying to fix outliers in the same chain
   variant_search_level = 2
@@ -56,6 +58,7 @@ class loop_idealization():
                pdb_hierarchy,
                params=None,
                secondary_structure_annotation=None,
+               reference_map=None,
                log=null_out(),
                verbose=False):
     if len(pdb_hierarchy.models()) > 1:
@@ -64,6 +67,7 @@ class loop_idealization():
     self.secondary_structure_annotation=secondary_structure_annotation
     xrs = pdb_hierarchy.extract_xray_structure()
     asc = pdb_hierarchy.atom_selection_cache()
+    self.reference_map = reference_map
     self.resulting_pdb_h = pdb_hierarchy.deep_copy()
     self.resulting_pdb_h.reset_atom_i_seqs()
     self.params = self.process_params(params)
@@ -149,13 +153,21 @@ class loop_idealization():
         print >> self.log, "minimizing whole thing..."
         print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
         # print >> sel
-        minimize_wrapper_for_ramachandran(
-            hierarchy=self.resulting_pdb_h,
-            xrs=xrs,
-            original_pdb_h=self.original_pdb_h,
-            excl_string_selection=self.ref_exclusion_selection,
-            log=None,
-            ss_annotation=self.secondary_structure_annotation)
+        if self.reference_map is None:
+          minimize_wrapper_for_ramachandran(
+              hierarchy=self.resulting_pdb_h,
+              xrs=xrs,
+              original_pdb_h=self.original_pdb_h,
+              excl_string_selection=self.ref_exclusion_selection,
+              log=None,
+              ss_annotation=self.secondary_structure_annotation)
+        else:
+          mwwm = minimize_wrapper_with_map(
+              pdb_h=self.resulting_pdb_h,
+              xrs=xrs,
+              target_map=self.reference_map,
+              ss_annotation=self.secondary_structure_annotation,
+              log=self.log)
         # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
         ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
         self.p_after_minimiaztion_rama_outliers = ram.out_percent
@@ -351,12 +363,20 @@ class loop_idealization():
             print >> self.log, "minimizing..."
             # moved_with_side_chains_h.write_pdb_file(
             #     file_name="%s_result_before_min_%d.pdb" % (prefix, i))
-            minimize_wrapper_for_ramachandran(
-                hierarchy=moved_with_side_chains_h,
-                xrs=xrs,
-                original_pdb_h=original_pdb_h,
-                log=self.log,
-                ss_annotation=self.secondary_structure_annotation)
+            if self.reference_map is None:
+              minimize_wrapper_for_ramachandran(
+                  hierarchy=moved_with_side_chains_h,
+                  xrs=xrs,
+                  original_pdb_h=original_pdb_h,
+                  log=self.log,
+                  ss_annotation=self.secondary_structure_annotation)
+            else:
+              mwwm = minimize_wrapper_with_map(
+                  pdb_h=moved_with_side_chains_h,
+                  xrs=xrs,
+                  target_map=self.reference_map,
+                  ss_annotation=self.secondary_structure_annotation,
+                  log=self.log)
           # moved_with_side_chains_h.write_pdb_file(
           #     file_name="%s_result_minimized_%d.pdb" % (prefix, i))
           final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
