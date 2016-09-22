@@ -516,6 +516,9 @@ dxtbx/command_line/saturation.py -text
 dxtbx/command_line/serialize.py -text
 dxtbx/command_line/to_ewald_sphere.py -text
 dxtbx/command_line/to_xds.py -text
+dxtbx/data/__init__.py -text
+dxtbx/data/beamline_defs/PILATUS_2M_S_N_24_0107_Diamond.py -text
+dxtbx/data/beamline_defs/__init__.py -text
 dxtbx/data/detectors.lib -text
 dxtbx/datablock.py -text
 dxtbx/error.h -text
@@ -726,6 +729,7 @@ dxtbx/tests/test_detector.py -text
 dxtbx/tests/test_goniometer.py -text
 dxtbx/tests/test_scan.py -text
 dxtbx/tests/tstFormatCBFFull.py -text
+dxtbx/tests/tst_beamline_definitions.py -text
 dxtbx/tests/tst_datablock.py -text
 dxtbx/tests/tst_dxtbx.py -text
 dxtbx/tests/tst_filecache.py -text
