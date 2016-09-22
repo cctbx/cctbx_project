@@ -234,7 +234,7 @@ class installer (object) :
     else:
       packages += ['python']
 
-    if (self.flag_is_mac and get_os_version() == "10.11") or options.download_only:
+    if (self.flag_is_mac and get_os_version() in ("10.11", "10.12")) or options.download_only:
       # Apple no longer ships openssl headers, therefore need to provide our own
       # https://forums.developer.apple.com/thread/3897
       # http://lists.apple.com/archives/macnetworkprog/2015/Jun/msg00025.html
