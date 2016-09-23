@@ -1252,7 +1252,7 @@ _replace_sysconfig_paths(build_time_vars)
                                  " /usr/lib/i386-linux-gnu" +
                                  " /usr/lib/x86_64-linux-gnu", ))
 
-    if (self.flag_is_mac and get_os_version() in ("10.10", "10.11")) :
+    if (self.flag_is_mac and get_os_version() in ("10.10", "10.11", "10.12")) :
       # Workaround wxwidgets 3.0.2 compilation error on Yosemite
       # This will be fixed in 3.0.3.
       # See:
@@ -1262,6 +1262,19 @@ _replace_sysconfig_paths(build_time_vars)
       self.patch_src(src_file="src/osx/webview_webkit.mm",
                      target=("#include <WebKit/WebKit.h>",),
                      replace_with=("#include <WebKit/WebKitLegacy.h>",))
+
+    if (self.flag_is_mac and get_os_version() in ("10.12",)) :
+      # Workaround wxwidgets 3.0.2 compilation error on Sierra
+      # QuickTime Framework deprecated in OS X v10.9
+      # See:
+      #   http://trac.wxwidgets.org/ticket/17639
+      #   http://trac.wxwidgets.org/changeset/f6a2d1caef5c6d412c84aa900cb0d3990b350938/git-wxWidgets
+      #   https://developer.apple.com/library/content/documentation/MacOSX/Conceptual/OSX_Technology_Overview/SystemFrameworks/SystemFrameworks.html
+      for src_file in ("src/osx/core/bitmap.cpp", "src/osx/carbon/dataobj.cpp"):
+        print >> self.log, "  patching %s" %src_file
+        self.patch_src(src_file=src_file,
+                       target=("#include <QuickTime/QuickTime.h>",),
+                       replace_with=("",))
 
     # Stage 1: build wxWidgets libraries
     config_opts = [
