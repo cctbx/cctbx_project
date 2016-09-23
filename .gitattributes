@@ -2417,6 +2417,7 @@ mmtbx/regression/tst_minimize_chain.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_model_2.py -text
 mmtbx/regression/tst_model_idealization.py -text
+mmtbx/regression/tst_model_idealization_map.py -text
 mmtbx/regression/tst_model_map.py -text
 mmtbx/regression/tst_models_to_from_chains.py -text
 mmtbx/regression/tst_msa.py -text

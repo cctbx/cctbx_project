@@ -5,7 +5,7 @@ import libtbx.load_env
 import os.path
 import time
 
-def exercise_01(prefix="tst_mi_test_01"):
+def exercise_01(prefix="tst_mi_map_test_01"):
   # no SS annotations
   pdb_file = open("%s_start.pdb" % prefix, "w")
   pdb_file.write(tst_01_start_lines)
@@ -13,18 +13,21 @@ def exercise_01(prefix="tst_mi_test_01"):
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
-      "use_map_for_reference=False",
+      "use_map_for_reference=True",
+      "loop_idealization.number_of_ccd_trials=1",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
-  for l in ["Secondary structure substitution step will be skipped\n"]:
+  for l in ["Secondary structure substitution step will be skipped\n",
+      "  Minimizing...\n",
+      "Using map as reference\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()
   # assert os.path.isfile("%s_start.pdb_idealized.pdb" % prefix)
 
-def exercise_02(prefix="tst_mi_test_02"):
+def exercise_02(prefix="tst_mi_map_test_02"):
   # Same as 01, but with SS annotations in PDB file
   h_records = """\
 HELIX    1   1 PRO A    3  ALA A   21  1                                  19
@@ -36,14 +39,17 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   pdb_file.close()
   cmd = " ".join([
       "phenix.model_idealization",
+      "use_map_for_reference=True",
+      "loop_idealization.number_of_ccd_trials=1",
       "%s_start.pdb" % prefix,
-      "use_map_for_reference=False",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
-  for l in ["Replacing ss-elements with ideal ones:\n"]:
+  for l in ["Replacing ss-elements with ideal ones:\n",
+      "  Minimizing...\n",
+      "Using map as reference\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()
   assert os.path.isfile("%s_start.pdb_all_idealized.pdb" % prefix)
@@ -278,7 +284,7 @@ ATOM      5  CB  ALA B  21      10.799  11.332  12.178  1.00 50.00           C
 TER
 """
 
-def exercise_03(prefix="tst_mi_test_03"):
+def exercise_03(prefix="tst_mi_map_test_03"):
   """ Check if working with NCS in the model"""
   # with cryst
   pdb_file = open("%s_start.pdb" % prefix, "w")
@@ -288,19 +294,23 @@ def exercise_03(prefix="tst_mi_test_03"):
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
-      "use_map_for_reference=False",
+      "use_map_for_reference=True",
+      "loop_idealization.number_of_ccd_trials=1",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
-  for l in ["Using NCS constraints.\n",
+  # NCS constraints with map are not implemented yet
+  for l in ["Using ncs\n",
+      "  Minimizing... (NCS)\n",
+      "Using map as reference\n",
       "All done.\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()
 
 
-def exercise_04(prefix="tst_mi_test_04"):
+def exercise_04(prefix="tst_mi_map_test_04"):
   """ Check if working with NCS in the model"""
   # without cryst
   pdb_file = open("%s_start.pdb" % prefix, "w")
@@ -309,13 +319,17 @@ def exercise_04(prefix="tst_mi_test_04"):
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
-      "use_map_for_reference=False",
+      "use_map_for_reference=True",
+      "loop_idealization.number_of_ccd_trials=1",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
-  for l in ["Using NCS constraints.\n",
+  # NCS constraints with map are not implemented yet
+  for l in ["Using ncs\n",
+      "Using map as reference\n",
+      "  Minimizing... (NCS)\n",
       "All done.\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()

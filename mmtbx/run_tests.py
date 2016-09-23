@@ -238,6 +238,7 @@ tst_list = (
   "$D/secondary_structure/build/tst_io.py",
   "$D/regression/tst_loop_closure.py",
   "$D/regression/tst_model_idealization.py",
+  "$D/regression/tst_model_idealization_map.py",
   "$D/utils/tst_switch_rotamers.py",
   "$D/refinement/tst_occupancy_selections.py",
   "$D/regression/ncs/tst_minimization_ncs_constraints.py",

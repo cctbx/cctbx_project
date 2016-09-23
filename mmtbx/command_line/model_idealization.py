@@ -94,6 +94,12 @@ class model_idealization():
     self.final_model_statistics = None
     self.reference_map = None
 
+    self.original_hierarchy = None # original pdb_h, without any processing
+    self.original_boxed_hierarchy = None # original and boxed (if needed)
+    self.whole_pdb_h = None # boxed with processing (AC trimming, H trimming,...)
+    self.master_pdb_h = None # master copy in case of NCS
+    self.working_pdb_h = None # one to use for fixing (master_pdb_h or working_pdb_h)
+
     # various checks, shifts, trims
     self.cs = self.pdb_input.crystal_symmetry()
     # check self.cs (copy-paste from secondary_sturcure_restraints)
@@ -105,12 +111,11 @@ class model_idealization():
       elif self.cs.unit_cell().volume() < 10:
         corrupted_cs = True
         self.cs = None
+
     self.original_hierarchy = self.pdb_input.construct_hierarchy()
-    h_sel = self.original_hierarchy.atom_selection_cache().selection("not (element H or element D)")
-    self.original_hierarchy = self.original_hierarchy.select(h_sel)
-    self.original_hierarchy.reset_atom_i_seqs()
-    pdb_h_raw = self.original_hierarchy.deep_copy()
-    pdb_h_raw.reset_atom_i_seqs()
+
+    self.original_boxed_hierarchy = self.original_hierarchy.deep_copy()
+    self.original_boxed_hierarchy.reset_atom_i_seqs()
     self.shift_vector = None
     if self.cs is None:
       if corrupted_cs:
@@ -120,36 +125,36 @@ class model_idealization():
       print >> self.log, "putting molecule in P1 box."
       self.log.flush()
       from cctbx import uctbx
-      atoms = pdb_h_raw.atoms()
+      atoms = self.original_boxed_hierarchy.atoms()
       box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
         sites_cart=atoms.extract_xyz(),
         buffer_layer=3)
       atoms.set_xyz(new_xyz=box.sites_cart)
       self.cs = box.crystal_symmetry()
       self.shift_vector = box.shift_vector
-    self.original_boxed_hierarchy = pdb_h_raw.deep_copy()
-    self.original_boxed_hierarchy.reset_atom_i_seqs()
 
     if self.shift_vector is not None:
       write_whole_pdb_file(
           file_name="%s_boxed.pdb" % self.params.output_prefix,
-          pdb_hierarchy=pdb_h_raw,
+          pdb_hierarchy=self.original_boxed_hierarchy,
           crystal_symmetry=self.cs,
           ss_annotation=self.pdb_input.extract_secondary_structure())
-    self.pdb_h = None
+
     if self.params.trim_alternative_conformations:
-      asc = pdb_h_raw.atom_selection_cache()
+      asc = self.original_boxed_hierarchy.atom_selection_cache()
       sel = asc.selection("altloc ' '")
-      self.pdb_h = pdb_h_raw.select(sel)
+      self.whole_pdb_h = pdb_h_raw.select(sel)
       print >> self.log, "Atoms in original/working model: %d/%d" % (
-          pdb_h_raw.atoms_size(), self.pdb_h.atoms_size())
+          self.original_boxed_hierarchy.atoms_size(), self.whole_pdb_h.atoms_size())
     else:
-      self.pdb_h = pdb_h_raw
+      self.whole_pdb_h = self.original_boxed_hierarchy
+    # Trimming hydrogens
+    h_sel = self.whole_pdb_h.atom_selection_cache().selection("not (element H or element D)")
+    self.whole_pdb_h = self.whole_pdb_h.select(h_sel)
+    self.whole_pdb_h.reset_atom_i_seqs()
 
-    self.pdb_h.reset_atom_i_seqs()
-
-    # couple checks if combined pdb_h is ok
-    o_c = self.pdb_h.overall_counts()
+    # couple checks if pdb_h is ok
+    o_c = self.whole_pdb_h.overall_counts()
     o_c.raise_duplicate_atom_labels_if_necessary()
     o_c.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
     o_c.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
@@ -157,7 +162,7 @@ class model_idealization():
     self.init_model_statistics = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
-          lines=pdb_h_raw.as_pdb_string()).construct_hierarchy(),
+          lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
         molprobity_scores=True)
     self.time_for_init = time()-t_0
 
@@ -166,7 +171,7 @@ class model_idealization():
     # new_h = pdb_h.deep_copy()
     # truncate_to_poly_gly(new_h)
     # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
-    xrs=xrs.set_b_iso(value=500)
+    xrs=xrs.set_b_iso(value=50)
     crystal_gridding = maptbx.crystal_gridding(
         unit_cell        = xrs.unit_cell(),
         space_group_info = xrs.space_group_info(),
@@ -176,15 +181,15 @@ class model_idealization():
     fft_map = miller.fft_map(
         crystal_gridding=crystal_gridding,
         fourier_coefficients=fc)
+    fft_map.apply_sigma_scaling()
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
     fft_map.as_xplor_map(file_name="%s.map" % self.params.output_prefix)
 
   def run(self):
     t_0 = time()
 
-    master_pdb_h = None
     ncs_obj = iotbx.ncs.input(
-        hierarchy=self.pdb_h,
+        hierarchy=self.whole_pdb_h,
         chain_max_rmsd=4.0,
         chain_similarity_threshold=0.99,
         residue_match_radius=999.0)
@@ -196,28 +201,32 @@ class model_idealization():
     total_ncs_selected_atoms = 0
     master_sel = flex.size_t([])
     filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
-        self.pdb_h, ncs_restr_group_list)
+        self.whole_pdb_h, ncs_restr_group_list)
     if len(filtered_ncs_restr_group_list) > 0:
       using_ncs = True
-      master_sel = flex.bool(self.pdb_h.atoms_size(), True)
+      master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
       for ncs_gr in filtered_ncs_restr_group_list:
         for copy in ncs_gr.copies:
           master_sel.set_selected(copy.iselection, False)
-      master_pdb_h = self.pdb_h.select(master_sel)
-      master_pdb_h.reset_atom_i_seqs()
+      self.master_pdb_h = self.whole_pdb_h.select(master_sel)
+      self.master_pdb_h.reset_atom_i_seqs()
 
     if using_ncs:
-      master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
+      self.master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
+      self.working_pdb_h = self.master_pdb_h
+    self.working_pdb_h = self.whole_pdb_h
 
     self.ann = ioss.annotation.from_phil(
         phil_helices=self.params.secondary_structure.protein.helix,
         phil_sheets=self.params.secondary_structure.protein.sheet,
-        pdb_hierarchy=self.pdb_h)
+        pdb_hierarchy=self.whole_pdb_h)
 
-    xrs = (master_pdb_h if master_pdb_h is not None else self.pdb_h).extract_xray_structure(crystal_symmetry=self.cs)
-    full_xrs = self.pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
+    self.working_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
+    self.whole_xrs = self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
+
     if self.params.use_map_for_reference:
-      self.prepare_reference_map(xrs=xrs, pdb_h=master_pdb_h if master_pdb_h is not None else self.pdb_h)
+      self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
     self.original_ann = None
@@ -228,10 +237,10 @@ class model_idealization():
     if self.ann is not None:
       self.ann.remove_short_annotations()
       self.ann.remove_empty_annotations(
-          hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h)
+          hierarchy=self.working_pdb_h)
       # self.ann.concatenate_consecutive_helices()
       self.ann.split_helices_with_prolines(
-          hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
+          hierarchy=self.working_pdb_h,
           asc=None)
       # print >> self.log, "Splitted SS annotation"
       # print >> self.log, ann.as_pdb_str()
@@ -244,36 +253,31 @@ class model_idealization():
       print >> self.log, "No secondary structure annotations found or SS idealization is disabled."
       print >> self.log, "Secondary structure substitution step will be skipped"
       self.log.flush()
+
       # here we want to do geometry minimization anyway!
-      outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-        rama_outliers_selection(self.pdb_h, None, 1)
-      print >> self.log, "outlier_selection_txt", outlier_selection_txt
-      negate_selection = "all"
-      if outlier_selection_txt != "" and outlier_selection_txt is not None:
-        negate_selection = "not (%s)" % outlier_selection_txt
+      negate_selection = None
       if self.reference_map is None:
-        minimize_wrapper_for_ramachandran(
-            hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
-            xrs=xrs,
-            original_pdb_h=master_pdb_h if master_pdb_h is not None else self.pdb_h,
-            excl_string_selection=negate_selection,
-            log=None,
-            ss_annotation=self.ann)
-      else:
-        print >> self.log, "Using map as reference"
-        self.log.flush()
-        mwwm = minimize_wrapper_with_map(
-            pdb_h=master_pdb_h if master_pdb_h is not None else self.pdb_h,
-            xrs=xrs,
-            target_map = self.reference_map,
-            ss_annotation=self.ann,
-            log=self.log)
+        outlier_selection_txt = mmtbx.building.loop_closure.utils. \
+          rama_outliers_selection(self.working_pdb_h, None, 1)
+        print >> self.log, "outlier_selection_txt", outlier_selection_txt
+        negate_selection = "all"
+        if outlier_selection_txt != "" and outlier_selection_txt is not None:
+          negate_selection = "not (%s)" % outlier_selection_txt
+      self.minimize(
+          hierarchy=self.working_pdb_h,
+          xrs=self.working_xrs,
+          original_pdb_h=self.working_pdb_h,
+          excl_string_selection=negate_selection,
+          ss_annotation=self.ann,
+          reference_map=self.reference_map)
+
+
     else:
       self.params.ss_idealization.file_name_before_regularization = \
           "%s_ss_before_reg.pdb" % self.params.output_prefix
       ssb.substitute_ss(
-          real_h=master_pdb_h if master_pdb_h is not None else self.pdb_h,
-          xray_structure=xrs,
+          real_h=self.working_pdb_h,
+          xray_structure=self.working_xrs,
           ss_annotation=self.ann,
           params=self.params.ss_idealization,
           fix_rotamer_outliers=True,
@@ -286,20 +290,19 @@ class model_idealization():
     self.after_ss_idealization = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
-          lines=(master_pdb_h if master_pdb_h is not None else self.pdb_h).\
-              as_pdb_string()).construct_hierarchy(),
+          lines=self.working_pdb_h.as_pdb_string()).construct_hierarchy(),
         molprobity_scores=True)
 
     # Write resulting pdb file.
     self.shift_and_write_result(
-        hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
-        fname_suffix="ss_ideal",)
+        hierarchy=self.working_pdb_h,
+        fname_suffix="ss_ideal")
     # STOP()
     self.params.loop_idealization.minimize_whole = not using_ncs
     # self.params.loop_idealization.enabled = False
     # self.params.loop_idealization.variant_search_level = 0
     loop_ideal = loop_idealization(
-        pdb_hierarchy=master_pdb_h if master_pdb_h is not None else self.pdb_h,
+        pdb_hierarchy=self.working_pdb_h,
         params=self.params.loop_idealization,
         secondary_structure_annotation=self.ann,
         reference_map=self.reference_map,
@@ -335,7 +338,7 @@ class model_idealization():
           process_pdb_files(raw_records=flex.split_lines(fixed_rot_pdb_h.as_pdb_string()))
 
       grm = get_geometry_restraints_manager(
-          processed_pdb_file, xrs, params=None)
+          processed_pdb_file, self.working_xrs, params=None)
 
       # mon_lib_srv and rotamer_manager already was created multiple times
       # to this moment in different procedures :(
@@ -347,7 +350,7 @@ class model_idealization():
       fixed_rot_pdb_h = fix_rotamer_outliers(
           pdb_hierarchy=fixed_rot_pdb_h,
           grm=grm.geometry,
-          xrs=xrs,
+          xrs=self.working_xrs,
           map_data=self.reference_map,
           mon_lib_srv=None,
           rotamer_manager=None,
@@ -365,19 +368,19 @@ class model_idealization():
 
     ref_hierarchy_for_final_gm = self.original_boxed_hierarchy
     if not self.params.use_starting_model_for_final_gm:
-      ref_hierarchy_for_final_gm = self.pdb_h
+      ref_hierarchy_for_final_gm = self.whole_pdb_h
     ref_hierarchy_for_final_gm.reset_atom_i_seqs()
     if self.params.additionally_fix_rotamer_outliers:
-      ssb.set_xyz_smart((master_pdb_h if master_pdb_h is not None else self.pdb_h), fixed_rot_pdb_h)
+      ssb.set_xyz_smart(self.working_pdb_h, fixed_rot_pdb_h)
     if using_ncs:
       print >> self.log, "Using ncs"
       # multiply back and do geometry_minimization for the whole molecule
       for ncs_gr in ncs_restr_group_list:
-        master_h = self.pdb_h.select(ncs_gr.master_iselection)
+        master_h = self.whole_pdb_h.select(ncs_gr.master_iselection)
         for c in ncs_gr.copies:
           new_sites = master_h.atoms().extract_xyz()
           new_c_sites = c.r.elems * new_sites + c.t
-          self.pdb_h.select(c.iselection).atoms().set_xyz(new_c_sites)
+          self.whole_pdb_h.select(c.iselection).atoms().set_xyz(new_c_sites)
       self.log.flush()
     else:
       # still need to run gm if rotamers were fixed
@@ -385,32 +388,47 @@ class model_idealization():
 
     print >> self.log, "loop_ideal.ref_exclusion_selection", loop_ideal.ref_exclusion_selection
     print >> self.log, "Minimizing whole model"
-    if self.reference_map is None:
-      minimize_wrapper_for_ramachandran(
-          hierarchy=self.pdb_h,
-          xrs=full_xrs,
-          original_pdb_h=ref_hierarchy_for_final_gm,
-          excl_string_selection=loop_ideal.ref_exclusion_selection,
-          log=self.log,
-          ss_annotation=self.ann)
-    else:
-      print >> self.log, "Using map as reference"
-      self.log.flush()
-      mwwm = minimize_wrapper_with_map(
-          pdb_h=self.pdb_h,
-          xrs=full_xrs,
-          target_map = self.reference_map,
-          ss_annotation=self.ann,
-          log=self.log)
+    self.minimize(
+        hierarchy=self.whole_pdb_h,
+        xrs=self.whole_xrs,
+        original_pdb_h=ref_hierarchy_for_final_gm,
+        excl_string_selection=loop_ideal.ref_exclusion_selection,
+        ss_annotation=self.ann,
+        reference_map = self.reference_map)
     self.shift_and_write_result(
-        hierarchy=self.pdb_h,
+        hierarchy=self.whole_pdb_h,
         fname_suffix="all_idealized")
     self.final_model_statistics = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
-          lines=self.pdb_h.as_pdb_string()).construct_hierarchy(),
+          lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
         molprobity_scores=True)
     self.time_for_run = time() - t_0
+
+  def minimize(self,
+      hierarchy,
+      xrs,
+      original_pdb_h,
+      excl_string_selection,
+      ss_annotation,
+      reference_map):
+    if self.reference_map is None:
+      minimize_wrapper_for_ramachandran(
+          hierarchy=hierarchy,
+          xrs=xrs,
+          original_pdb_h=original_pdb_h,
+          excl_string_selection=excl_string_selection,
+          log=self.log,
+          ss_annotation=ss_annotation)
+    else:
+      print >> self.log, "Using map as reference"
+      self.log.flush()
+      mwwm = minimize_wrapper_with_map(
+          pdb_h=hierarchy,
+          xrs=xrs,
+          target_map = reference_map,
+          ss_annotation=ss_annotation,
+          log=self.log)
 
   def shift_and_write_result(self, hierarchy, fname_suffix):
     cs_to_write = self.cs if self.shift_vector is None else None
@@ -437,14 +455,14 @@ class model_idealization():
     # calculate rmsd
     self.rmsd_from_start = ssb.calculate_rmsd_smart(
         self.original_boxed_hierarchy,
-        self.pdb_h,
+        self.whole_pdb_h,
         backbone_only=True)
     return self.rmsd_from_start
 
   def get_rmsd_from_start2(self):
     return ssb.calculate_rmsd_smart(
         self.original_boxed_hierarchy,
-        self.pdb_h,
+        self.whole_pdb_h,
         backbone_only=False)
 
   def print_stat_comparison(self):
