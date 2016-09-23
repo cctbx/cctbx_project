@@ -5,17 +5,16 @@ from dxtbx.model import Panel, Detector, Scan
 
 def pickle_then_unpickle(obj):
   '''Pickle to a temp file then un-pickle.'''
-  import pickle
-  import tempfile
+  import cPickle as pickle
+  import cStringIO
 
-  # Create a tmp file
-  temp = tempfile.TemporaryFile()
+  # Create a temporary "file"
+  temp = cStringIO.StringIO()
 
   # Pickle the object
   pickle.dump(obj, temp)
 
   # Read the object
-  temp.flush()
   temp.seek(0)
   return pickle.load(temp)
 
