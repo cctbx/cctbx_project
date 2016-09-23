@@ -167,25 +167,30 @@ public:
         detector_location = ptr_area(new ActiveAreaPilatus300K());
         has_pilatus_inactive_flag = true;
       }
-      for (std::size_t i = 0; i < raw.size(); i++) {
-        int fast = binning*(i%raw.accessor()[1]);
-        int slow = binning*(i/raw.accessor()[1]);
-        int idx = slow*rawdata.accessor().focus()[1]+ fast;
-        if (detector_location->is_active_area_by_linear_index(idx)) {
-          //fractional input value:
-          double corrected = raw[i]*correction;
-          double outvalue  = outscale * ( 1.0 - corrected );
-          if (has_pilatus_inactive_flag && raw[i]==-2){
-            //an ad hoc flag to aimed at coloring red the inactive pixels (-2) on Pilatus
-            z[i]=1000;  //flag value used is out of range of the 256-pt grey scale but in range int datatype.
-            continue;
-          } else if (raw[i]>saturation){
-            z[i]=2000;  //an ad hoc flag to aimed at coloring yellow the saturated pixels
-            continue;
+      for (std::size_t i=0; i<raw.accessor()[0]; i++) {
+        int slow = binning * i;
+        int idx_slow = slow * rawdata.accessor().focus()[1];
+        int idx_i = i * raw.accessor()[1];
+        for (std::size_t j=0; j< raw.accessor()[1]; j++) {
+          int fast = binning * j;
+          int idx = idx_slow + fast;
+          int idx_ij = idx_i + j;
+          if (detector_location->is_active_area(slow, fast)) {
+            //fractional input value:
+            double corrected = raw[idx_ij]*correction;
+            double outvalue  = outscale * ( 1.0 - corrected );
+            if (has_pilatus_inactive_flag && raw[idx_ij]==-2){
+              //an ad hoc flag to aimed at coloring red the inactive pixels (-2) on Pilatus
+              z[idx_ij]=1000;  //flag value used is out of range of the 256-pt grey scale but in range int datatype.
+              continue;
+            } else if (raw[idx_ij]>saturation){
+              z[idx_ij]=2000;  //an ad hoc flag to aimed at coloring yellow the saturated pixels
+              continue;
+            }
+            if (outvalue<0.0)            { z[idx_ij]=0; }
+            else if (outvalue>=outscale) { z[idx_ij]=int(outscale)-1; }
+            else                         { z[idx_ij] = int(outvalue); }
           }
-          if (outvalue<0.0)            { z[i]=0; }
-          else if (outvalue>=outscale) { z[i]=int(outscale)-1; }
-          else                         { z[i] = int(outvalue); }
         }
       }
       return z;
@@ -206,9 +211,11 @@ public:
       af::shared<data_t> raw_active;
 
       //first pass through data calculate average
-      for (std::size_t i = 0; i < rawdata.size(); i++) {
-        if (detector_location->is_active_area_by_linear_index(i)) {
-          raw_active.push_back(rawdata[i]);
+      for (std::size_t i = 0; i < rawdata.accessor().focus()[0]; i++) {
+        for (std::size_t j = 0; j < rawdata.accessor().focus()[1]; j++) {
+          if (detector_location->is_active_area(i, j)) {
+            raw_active.push_back(rawdata(i,j));
+          }
         }
       }
 
@@ -386,46 +393,52 @@ public:
     af::versa<int, af::c_grid<2> > data = bright_contrast(
                                              raw_to_sampled(sam));
     for (int i=0; i< nchannels; ++i) {
+      int idx_i = i * export_size_uncut1;
       for (int j=0; j< export_size_uncut1; ++j) {
+        int idx_ij = (idx_i + j) * export_size_uncut2;
+        int idx_j = j * export_size_uncut2;
         for (int k=0; k<export_size_uncut2; ++k) {
-          if (data(j,k) == 1000){
+          int idx_jk = idx_j + k;
+          int idx_ijk = idx_ij + k;
+
+          if (data[idx_jk] == 1000){
             //ad hoc method to color inactive pixels red
             if (color_scheme == COLOR_GRAY || color_scheme == COLOR_INVERT) {
-              if (i==0) {channels(i,j,k) = 254;}
-              else {channels(i,j,k) = 1;}
+              if (i==0) {channels[idx_ijk] = 254;}
+              else {channels[idx_ijk] = 1;}
             } else { // or black, if displaying a rainbow or heatmap
-              channels(i,j,k) = 0;
+              channels[idx_ijk] = 0;
             }
             continue;
-          } else if (data(j,k) == 2000){
+          } else if (data[idx_jk] == 2000){
             //ad hoc method to color saturated pixels yellow
             if (color_scheme == COLOR_GRAY || color_scheme == COLOR_INVERT) {
-              if (i==0 || i==1) {channels(i,j,k) = 254;}
-              else {channels(i,j,k) = 1;}
+              if (i==0 || i==1) {channels[idx_ijk] = 254;}
+              else {channels[idx_ijk] = 1;}
             } else if (color_scheme == COLOR_RAINBOW) {
               // or white, if displaying a rainbow
-              channels(i,j,k) = 255;
+              channels[idx_ijk] = 255;
             } else { // heatmap
               if (i == 1) {
-                channels(i,j,k) = 255;
+                channels[idx_ijk] = 255;
               } else {
-                channels(i,j,k) = 0;
+                channels[idx_ijk] = 0;
               }
             }
             continue;
           }
           if (color_scheme == COLOR_GRAY) {
-            channels(i,j,k) = data(j,k);
+            channels[idx_ijk] = data[idx_jk];
           } else if (color_scheme == COLOR_INVERT) {
-            channels(i,j,k) = 255. - data(j,k);
+            channels[idx_ijk] = 255. - data[idx_jk];
           } else if (color_scheme == COLOR_RAINBOW) { // rainbow
-            double h = 255 * std::pow(((double) data(j,k)) / 255., 0.5);
+            double h = 255 * std::pow(((double) data[idx_jk]) / 255., 0.5);
             scitbx::vec3<double> rgb = hsv2rgb(h, 1.0, 1.0);
-            channels(i,j,k) = (int) (rgb[i] * 255.);
+            channels[idx_ijk] = (int) (rgb[i] * 255.);
           } else { // heatmap
-            double ratio = std::pow((double) (255. - data(j,k)) / 255., 2);
+            double ratio = std::pow((double) (255. - data[idx_jk]) / 255., 2);
             scitbx::vec3<double> rgb = get_heatmap_color(ratio);
-            channels(i,j,k) = (int) (rgb[i] * 255.);
+            channels[idx_ijk] = (int) (rgb[i] * 255.);
           }
         }
       }
