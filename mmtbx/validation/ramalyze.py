@@ -11,7 +11,6 @@ from scitbx.array_family import flex
 from mmtbx.validation import utils
 import mmtbx.rotamer
 from mmtbx.rotamer import ramachandran_eval
-#import wxtbx.plots.molprobity
 
 # XXX Use these constants internally, never strings!
 RAMA_GENERAL = 0
@@ -270,6 +269,7 @@ class ramalyze (validation) :
 
   def display_wx_plots (self, parent=None,
       title="MolProbity - Ramachandran plots") :
+    import wxtbx.plots.molprobity     # causes GUI error when moved to top?
     frame = wxtbx.plots.molprobity.ramalyze_frame(
       parent=parent, title=title, validation=self)
     frame.Show()

@@ -20,6 +20,7 @@ from mmtbx.validation import omegalyze
 from mmtbx.validation import rotalyze
 from mmtbx.validation import cbetadev
 from mmtbx.validation import waters
+from mmtbx.validation import sequence
 from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
