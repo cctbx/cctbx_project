@@ -10,6 +10,48 @@ from matplotlib import pyplot as plt
 # I_sig_I_low -- flex.double, the average I/sig(I) in the low res bin of each shot, if it indexed
 # I_sig_I_high -- flex.double, the average I/sig(I) in the high res bin of each shot, if it indexed
 
+def get_should_have_indexed_timestamps(timestamps,
+                                       n_strong,
+                                       isigi_low,
+                                       n_strong_cutoff):
+  should_have_indexed_sel = (isigi_low == 0) & (n_strong >= n_strong_cutoff) # isigi = 0 if not indexed?
+  should_have_indexed = timestamps.select(should_have_indexed_sel)
+  return should_have_indexed
+
+def get_multirun_should_have_indexed_timestamps(stats_by_run,
+                                                run_numbers,
+                                                d_min,
+                                                n_strong_cutoff=40):
+  timestamps = []
+  for idx in xrange(len(stats_by_run)):
+    r = stats_by_run[idx]
+    if len(r[0]) > 0:
+      timestamps.append(
+        get_should_have_indexed_timestamps(r[0], r[1], r[2], n_strong_cutoff))
+  return (run_numbers, timestamps)
+
+def get_paths_from_timestamps(timestamps,
+                              prepend="",
+                              tag="idx"):
+  import time, os, math
+  def convert(s):
+    time_seconds = int(math.floor(s))
+    time_milliseconds = int(round((s - time_seconds)*1000))
+    time_obj = time.gmtime(time_seconds)
+    name = "%s-%04d%02d%02d%02d%02d%02d%03d.pickle" % (
+      tag,
+      time_obj.tm_year,
+      time_obj.tm_mon,
+      time_obj.tm_mday,
+      time_obj.tm_hour,
+      time_obj.tm_min,
+      time_obj.tm_sec,
+      time_milliseconds)
+    return name
+  names = map(convert, timestamps)
+  paths = [os.path.join(prepend, name) for name in names]
+  return paths
+
 def get_run_stats(timestamps,
                    n_strong,
                    isigi_low,
@@ -116,7 +158,6 @@ def plot_multirun_stats(runs,
                         compress_runs=True,
                         xsize=30,
                         ysize=10):
-  print xsize, ysize
   tset = flex.double()
   nset = flex.int()
   I_sig_I_low_set = flex.double()

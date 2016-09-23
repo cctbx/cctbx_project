@@ -344,6 +344,7 @@ class RunStatsSentinel(Thread):
     while self.active:
       self.parent.run_window.runstats_light.change_status('idle')
       self.plot_stats_static()
+      self.fetch_should_have_indexed_timestamps()
       self.post_refresh()
       self.info = {}
       self.parent.run_window.runstats_light.change_status('on')
@@ -361,12 +362,35 @@ class RunStatsSentinel(Thread):
       selected_runs = copy.deepcopy(self.parent.run_window.runstats_tab.selected_runs)
       self.run_numbers = []
       self.stats = []
+      self.trgr = {}
       for rg in trial.rungroups:
         for run in rg.runs:
           if run.run not in self.run_numbers and run.run in selected_runs:
             self.run_numbers.append(run.run)
+            self.trgr[run.run] = (trial, rg, run)
             self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
               d_min=self.parent.run_window.runstats_tab.d_min)())
+
+  def fetch_should_have_indexed_timestamps(self):
+    from xfel.ui.components.run_stats_plotter import \
+      get_multirun_should_have_indexed_timestamps, get_paths_from_timestamps
+    self.refresh_stats()
+    should_have_indexed_runs, should_have_indexed_timestamps = \
+      get_multirun_should_have_indexed_timestamps(self.stats,
+                                                  self.run_numbers,
+                                                  self.parent.run_window.runstats_tab.d_min,
+                                                  self.parent.run_window.runstats_tab.n_strong)
+
+    pickle_paths_by_run = []
+    for i in xrange(len(should_have_indexed_runs)):
+      run = should_have_indexed_runs[i]
+      ts = should_have_indexed_timestamps[i]
+      prepend = os.path.join(get_run_path(self.output, *self.trgr[run]), "all")
+      pickle_paths = get_paths_from_timestamps(ts, prepend=prepend, tag="shot")
+      pickle_paths_by_run.extend(pickle_paths)
+    self.parent.run_window.runstats_tab.should_have_indexed_image_paths = \
+      pickle_paths_by_run
+    self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_static(self):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
@@ -381,6 +405,7 @@ class RunStatsSentinel(Thread):
     self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_interactive(self):
+    from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       stats, run_numbers,
@@ -1394,6 +1419,7 @@ class RunStatsTab(BaseTab):
     self.redraw_windows = True
     self.d_min = 2.5
     self.n_strong = 40
+    self.should_have_indexed_image_paths = None
 
     # self.runstats_panel = FlexGridSizer(self, size=(900, 300))
     # self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
@@ -1442,8 +1468,10 @@ class RunStatsTab(BaseTab):
                                            ctrl_size=(150, -1),
                                            direction='vertical',
                                            choices=[])
+    self.should_have_indexed_list = wx.TextCtrl(self,
+                                                style=wx.TE_MULTILINE | wx.TE_READONLY)
 
-    self.options_sizer = wx.FlexGridSizer(1, 1, 0, 10)
+    self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 10)
 
     options_box = wx.StaticBox(self, label='Statistics Options')
     self.options_box_sizer = wx.StaticBoxSizer(options_box, wx.VERTICAL)
@@ -1463,12 +1491,24 @@ class RunStatsTab(BaseTab):
                                flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
                                border=10)
     self.options_box_sizer.Add(self.options_opt_sizer)
-    self.options_sizer.Add(self.options_box_sizer)
+    self.bottom_sizer.Add(self.options_box_sizer)
+
+    should_have_indexed_box = wx.StaticBox(self, label='Strong Images that Didn\'t Index')
+    self.should_have_indexed_box_sizer = wx.StaticBoxSizer(should_have_indexed_box, wx.VERTICAL)
+    self.should_have_indexed_results_sizer = wx.GridBagSizer(1, 1)
+
+    self.should_have_indexed_results_sizer.Add(self.should_have_indexed_list, pos=(0, 0),
+                                               span=(12, 60),
+                                               flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
+                                               border=10)
+
+    self.should_have_indexed_box_sizer.Add(self.should_have_indexed_results_sizer)
+    self.bottom_sizer.Add(self.should_have_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
 
     self.main_sizer.Add(self.runstats_panel, 2,
                         flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.options_sizer, 1,
-                        flag=wx.ALL, border=10)
+    self.main_sizer.Add(self.bottom_sizer, 1,
+                        flag=wx.EXPAND | wx.ALL, border=10)
 
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
@@ -1516,6 +1556,7 @@ class RunStatsTab(BaseTab):
       self.select_last_n_runs(5)
     if self.redraw_windows:
       self.plot_static_runstats()
+      self.print_should_have_indexed_paths()
       self.redraw_windows = False
     if self.trial is not None:
       self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
@@ -1552,6 +1593,13 @@ class RunStatsTab(BaseTab):
       self.runstats_panel.SetSizer(self.runstats_sizer)
       self.runstats_panel.Layout()
       # self.figure_panel.SetupScrolling()
+
+  def print_should_have_indexed_paths(self):
+    try:
+      image_paths = '\n'.join(self.should_have_indexed_image_paths)
+      self.should_have_indexed_list.SetValue(image_paths)
+    except TypeError:
+      pass
 
   def select_last_n_runs(self, n):
     if self.trial is not None:
