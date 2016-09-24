@@ -29,6 +29,8 @@ def get_multirun_should_have_indexed_timestamps(stats_by_run,
     if len(r[0]) > 0:
       timestamps.append(
         get_should_have_indexed_timestamps(r[0], r[1], r[2], n_strong_cutoff))
+    else:
+      timestamps.append(flex.double())
   return (run_numbers, timestamps)
 
 def get_paths_from_timestamps(timestamps,
