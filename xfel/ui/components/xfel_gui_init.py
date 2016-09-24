@@ -1610,6 +1610,7 @@ class RunStatsTab(BaseTab):
       image_paths = '\n'.join(self.should_have_indexed_image_paths)
       self.should_have_indexed_list.SetValue(image_paths)
     except TypeError:
+      print "Error getting list of pickles that should have indexed"
       pass
 
   def select_last_n_runs(self, n):
