@@ -359,6 +359,13 @@ class AdvancedSettingsDialog(BaseDialog):
     self.chk_use_ffb.SetValue(params.use_ffb)
 
     self.mp_sizer.Add(self.chk_use_ffb, flag=wx.ALL, border=10)
+
+    self.chk_dump_shots = wx.CheckBox(self,
+                                      label='Dump all images to disk. Useful for tuning spotfinding and indexing parameters')
+    self.chk_dump_shots.SetValue(params.dump_shots)
+
+    self.mp_sizer.Add(self.chk_dump_shots, flag=wx.ALL, border=10)
+
     self.main_sizer.Add(self.mp_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Data analysis settings
@@ -434,6 +441,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.params.mp.queue = self.queue.ctr.GetStringSelection()
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
     self.params.use_ffb = bool(self.chk_use_ffb.GetValue())
+    self.params.dump_shots = bool(self.chk_dump_shots.GetValue())
     self.params.average_raw_data = self.avg_img_type.ctr.GetStringSelection() == 'raw'
     self.params.web.enforce80 = bool(self.chk_enforce80.GetValue())
     self.params.web.enforce81 = bool(self.chk_enforce81.GetValue())

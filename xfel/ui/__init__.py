@@ -38,6 +38,11 @@ average_raw_data = False
 use_ffb = False
   .type = bool
   .help = Run on the ffb if possible. Only for active users!
+dump_shots = False
+  .type = bool
+  .help = Write images to disk whether they index or not.
+  .help = Helpful for tuning spotfinding and indexing parameters, and necessary
+  .help = for the "Should have indexed" feature of the Run Stats tab.
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """
 db_phil_str = """

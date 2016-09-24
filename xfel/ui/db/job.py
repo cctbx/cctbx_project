@@ -164,6 +164,8 @@ def submit_job(app, job):
       modules.extend(['my_ana_pkg.mod_hitfind:index','my_ana_pkg.mod_dump:index'])
     elif image_format == 'pickle':
       modules.extend(['my_ana_pkg.mod_image_dict'])
+    if app.params.dump_shots:
+      modules.insert(0, 'my_ana_pkg.mod_dump:shot')
 
     if len(modules) > 0:
       config_str += "modules = %s\n"%(" ".join(modules))
