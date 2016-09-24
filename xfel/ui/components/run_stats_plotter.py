@@ -114,15 +114,18 @@ def plot_run_stats(stats, d_min, interactive=True, xsize=30, ysize=10):
   window, lengths, boundaries, run_numbers = stats
   if len(t) == 0:
     return None
+  max_idx_rate = max(idx_rate)
+  max_drop_rate = max(drop_hit_rate)
+  drop_rate_scaled = drop_hit_rate * max_idx_rate/max_drop_rate
   f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
   ax1.scatter(t.select(~idx_low_sel), n_strong.select(~idx_low_sel), edgecolors="none", color ='grey', s=plot_ratio)
   ax1.scatter(t.select(idx_low_sel), n_strong.select(idx_low_sel), edgecolors="none", color='blue', s=plot_ratio)
   ax1.axis('tight')
   ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index").set_fontsize(3*plot_ratio)
   ax2.plot(t, idx_rate*100)
-  ax2.plot(t, drop_hit_rate*100, color='green') # see if this can be co-plotted
+  ax2.plot(t, drop_rate_scaled*100, color='green')
   ax2.axis('tight')
-  ax2.set_ylabel("green: droplet\nblue:indexed\nrate (%%) /%df" % window).set_fontsize(3*plot_ratio)
+  ax2.set_ylabel("green: droplet\nblue:indexed\n(arbitrary/%)").set_fontsize(3*plot_ratio)
   ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=plot_ratio)
   ax3.scatter(t, isigi_high, edgecolors="none", color='orange', s=plot_ratio)
   ax3.axis('tight')
