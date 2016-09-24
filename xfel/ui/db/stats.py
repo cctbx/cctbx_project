@@ -114,7 +114,7 @@ class HitrateStats(object):
     tag = self.app.params.experiment_tag
 
     # Get the high and low res avg_i_sigi in one query. Means there will be 2x timestamps retrieved, where each is found twice
-    query = """SELECT bin.id, event.timestamp, event.n_strong, cb.avg_i_sigi
+    query = """SELECT bin.id, event.timestamp, event.n_strong, cb.avg_i_sigi, event.two_theta_low, event.two_theta_high
                FROM `%s_event` event
                JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
                JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
@@ -131,14 +131,18 @@ class HitrateStats(object):
     n_strong = flex.int()
     average_i_sigi_low = flex.double()
     average_i_sigi_high = flex.double()
+    two_theta_low = flex.double()
+    two_theta_high = flex.double()
     for row in cursor.fetchall():
-      b_id, ts, n_s, avg_i_sigi = row
+      b_id, ts, n_s, avg_i_sigi, tt_low, tt_high = row
       rts = reverse_timestamp(ts)
       rts = rts[0] + (rts[1]/1000)
       if rts not in timestamps:
         # First time through, figure out which bin is reported (high or low), add avg_i_sigi to that set of results
         timestamps.append(rts)
         n_strong.append(n_s)
+        two_theta_low.append(tt_low)
+        two_theta_low.append(tt_high)
         if str(b_id) in low_res_bin_ids:
           if avg_i_sigi is None:
             average_i_sigi_low.append(1e-6)
@@ -167,7 +171,7 @@ class HitrateStats(object):
           assert False
 
     # This left join query finds the events with no imageset, meaning they failed to index
-    query = """SELECT event.timestamp, event.n_strong
+    query = """SELECT event.timestamp, event.n_strong, event.two_theta_low, event.two_theta_high
                FROM `%s_event` event
                LEFT JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
                WHERE is_e.event_id IS NULL AND
@@ -176,17 +180,21 @@ class HitrateStats(object):
 
     cursor = self.app.execute_query(query)
     for row in cursor.fetchall():
-      ts, n_s, = row
+      ts, n_s, tt_low, tt_high = row
       rts = reverse_timestamp(ts)
       timestamps.append(rts[0] + (rts[1]/1000))
       n_strong.append(n_s)
       average_i_sigi_low.append(0)
       average_i_sigi_high.append(0)
+      two_theta_low.append(tt_low)
+      two_theta_high.append(tt_high)
 
     order = flex.sort_permutation(timestamps)
     timestamps = timestamps.select(order)
     n_strong = n_strong.select(order)
     average_i_sigi_low = average_i_sigi_low.select(order)
     average_i_sigi_high = average_i_sigi_high.select(order)
+    two_theta_low = two_theta_low.select(order)
+    two_theta_high = two_theta_high.select(order)
 
-    return timestamps, n_strong, average_i_sigi_low, average_i_sigi_high
+    return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high
