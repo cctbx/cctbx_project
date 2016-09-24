@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 # get_hitrate_stats takes a tuple (run, trial, rungroup, d_min)
 # and returns a tuple of flex arrays as follows:
 # time (s) -- flex.double, timestamp of the shot,
+# ratio -- flex.double, ratio of intensities at two angles in the radial average
 # n_strong -- flex.int, number of strong spots identified by hitfinder,
 # I_sig_I_low -- flex.double, the average I/sig(I) in the low res bin of each shot, if it indexed
 # I_sig_I_high -- flex.double, the average I/sig(I) in the high res bin of each shot, if it indexed
@@ -53,19 +54,33 @@ def get_paths_from_timestamps(timestamps,
   return paths
 
 def get_run_stats(timestamps,
+                   two_theta_low,
+                   two_theta_high,
                    n_strong,
                    isigi_low,
                    isigi_high,
                    tuple_of_timestamp_boundaries,
                    lengths,
                    run_numbers,
-                   n_strong_cutoff):
+                   ratio_cutoff=2,
+                   n_strong_cutoff=40,
+                   ):
   iterator = xrange(len(isigi_low))
-  # indexing rate in a sliding window
+  # hit rate of drops (observe solvent) or crystals (observe strong spots)
+  # since -1 is used as a flag for "did not store this value", and we want a quotient,
+  # set the numerator value to 0 whenever either the numerator or denominator is -1
+  invalid = (two_theta_low <= 0) or (two_theta_high < 0) # <= to prevent /0
+  numerator = two_theta_high.set_selected(invalid, 0)
+  denominator = two_theta_low.set_selected(two_theta_low == 0, 1) # prevent /0
+  drop_ratios = numerator/denominator
+  drop_hits = drop_ratios >= ratio_cutoff
+  xtal_hits = n_strong >= n_strong_cutoff
+  # indexing and droplet hit rate in a sliding window
   half_idx_rate_window = min(50, int(len(isigi_low)//20))
   idx_low_sel = (isigi_low > 0) & (n_strong >= n_strong_cutoff)
   idx_high_sel = (isigi_high > 0) & (n_strong >= n_strong_cutoff)
   idx_rate = flex.double()
+  drop_hit_rate = flex.double()
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)
     idx_max = min(i + half_idx_rate_window, len(isigi_low))
@@ -73,11 +88,15 @@ def get_run_stats(timestamps,
     idx_sel = idx_low_sel[idx_min:idx_max]
     idx_local_rate = idx_sel.count(True)/idx_span
     idx_rate.append(idx_local_rate)
-  # hit rate as dependent on n_strong_cutoff
-  hits = n_strong >= n_strong_cutoff
+    drop_sel = drop_hits[idx_min:idx_max]
+    drop_local_rate = drop_sel.count(True)/idx_span
+    drop_hit_rate.append(drop_local_rate)
   return (timestamps,
+          drop_ratios,
+          drop_hits,
+          drop_hit_rate,
           n_strong,
-          hits,
+          xtal_hits,
           idx_rate,
           idx_low_sel,
           idx_high_sel,
@@ -89,28 +108,30 @@ def get_run_stats(timestamps,
           run_numbers)
 
 def plot_run_stats(stats, d_min, interactive=True, xsize=30, ysize=10):
-  ratio = max(min(xsize, ysize)/2.5, 3)
-  t, n_strong, hits, idx_rate, idx_low_sel, idx_high_sel, isigi_low, isigi_high, \
+  plot_ratio = max(min(xsize, ysize)/2.5, 3)
+  t, drop_ratios, drop_hits, drop_hit_rate, n_strong, xtal_hits, \
+  idx_rate, idx_low_sel, idx_high_sel, isigi_low, isigi_high, \
   window, lengths, boundaries, run_numbers = stats
   if len(t) == 0:
     return None
   f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
-  ax1.scatter(t.select(~idx_low_sel), n_strong.select(~idx_low_sel), edgecolors="none", color ='grey', s=ratio)
-  ax1.scatter(t.select(idx_low_sel), n_strong.select(idx_low_sel), edgecolors="none", color='blue', s=ratio)
+  ax1.scatter(t.select(~idx_low_sel), n_strong.select(~idx_low_sel), edgecolors="none", color ='grey', s=plot_ratio)
+  ax1.scatter(t.select(idx_low_sel), n_strong.select(idx_low_sel), edgecolors="none", color='blue', s=plot_ratio)
   ax1.axis('tight')
-  ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index").set_fontsize(3*ratio)
+  ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index").set_fontsize(3*plot_ratio)
   ax2.plot(t, idx_rate*100)
+  ax2.plot(t, drop_hit_rate*100, color='green') # see if this can be co-plotted
   ax2.axis('tight')
-  ax2.set_ylabel("indexing rate (%%)\nper %d frames" % window).set_fontsize(3*ratio)
-  ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=ratio)
-  ax3.scatter(t, isigi_high, edgecolors="none", color='orange', s=ratio)
+  ax2.set_ylabel("green: droplet\nblue:indexed\nrate (%%) /%df" % window).set_fontsize(3*plot_ratio)
+  ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=plot_ratio)
+  ax3.scatter(t, isigi_high, edgecolors="none", color='orange', s=plot_ratio)
   ax3.axis('tight')
-  ax3.set_ylabel("signal-to-noise\nred: low res\nyellow: %3.1f Angstroms" % d_min).set_fontsize(3*ratio)
+  ax3.set_ylabel("signal-to-noise\nred: low res\nyellow: %3.1f Ang" % d_min).set_fontsize(3*plot_ratio)
   for a in [ax1, ax2, ax3, ax4]:
     xlab = a.get_xticklabels()
     ylab = a.get_yticklabels()
     for l in xlab + ylab:
-      l.set_fontsize(3*ratio)
+      l.set_fontsize(3*plot_ratio)
   f.subplots_adjust(hspace=0)
   # add lines and text summaries at the timestamp boundaries
   for boundary in boundaries:
@@ -125,22 +146,24 @@ def plot_run_stats(stats, d_min, interactive=True, xsize=30, ysize=10):
     end_t = run_ends[idx]
     end += lengths[idx]
     slice_t = t[start:end+1]
-    slice_hits = hits[start:end+1]
+    slice_hits = xtal_hits[start:end+1]
     n_hits = slice_hits.count(True)
+    slice_drops = drop_hits[start:end+1]
+    n_drops = slice_drops.count(True)
     slice_idx_low_sel = idx_low_sel[start:end+1]
     slice_idx_high_sel = idx_high_sel[start:end+1]
     n_idx_low = slice_idx_low_sel.count(True)
     n_idx_high = slice_idx_high_sel.count(True)
-    ax4.text(start_t, .9, "run %d" % run_numbers[idx]).set_fontsize(3*ratio)
-    ax4.text(start_t, .7, "%d f/%d h" % (lengths[idx], n_hits)).set_fontsize(3*ratio)
-    ax4.text(start_t, .5, "%d (%d) idx" % (n_idx_low, n_idx_high)).set_fontsize(3*ratio)
-    ax4.text(start_t, .3, "%-3.1f%% hit" % (100*n_hits/lengths[idx],)).set_fontsize(3*ratio)
+    ax4.text(start_t, .9, "run %d" % run_numbers[idx]).set_fontsize(3*plot_ratio)
+    ax4.text(start_t, .7, "%d f/%d h" % (lengths[idx], n_hits)).set_fontsize(3*plot_ratio)
+    ax4.text(start_t, .5, "%d (%d) idx" % (n_idx_low, n_idx_high)).set_fontsize(3*plot_ratio)
+    ax4.text(start_t, .3, "%-3.1f%% drop/%-3.1f%% hit" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx]))).set_fontsize(3*plot_ratio)
     ax4.text(start_t, .1, "%-3.1f (%-3.1f)%% idx" % \
-      (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx])).set_fontsize(3*ratio)
-    ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min).set_fontsize(3*ratio)
+      (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx])).set_fontsize(3*plot_ratio)
+    ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min).set_fontsize(3*plot_ratio)
     ax4.set_yticks([])
     for item in [ax1, ax2, ax3, ax4]:
-      item.tick_params(labelsize=3*ratio)
+      item.tick_params(labelsize=3*plot_ratio)
     start += lengths[idx]
   if interactive:
     plt.show()
@@ -153,12 +176,15 @@ def plot_run_stats(stats, d_min, interactive=True, xsize=30, ysize=10):
 def plot_multirun_stats(runs,
                         run_numbers,
                         d_min,
+                        ratio_cutoff=2,
                         n_strong_cutoff=40,
                         interactive=False,
                         compress_runs=True,
                         xsize=30,
                         ysize=10):
   tset = flex.double()
+  two_theta_low_set = flex.double()
+  two_theta_high_set = flex.double()
   nset = flex.int()
   I_sig_I_low_set = flex.double()
   I_sig_I_high_set = flex.double()
@@ -176,20 +202,25 @@ def plot_multirun_stats(runs,
         tslice = r[0]
       last_end = r[0][-1]
       tset.extend(tslice)
-      nset.extend(r[1])
-      I_sig_I_low_set.extend(r[2])
-      I_sig_I_high_set.extend(r[3])
+      two_theta_low_set.extend(r[1])
+      two_theta_high_set.extend(r[2])
+      nset.extend(r[3])
+      I_sig_I_low_set.extend(r[4])
+      I_sig_I_high_set.extend(r[5])
       boundaries.append(tslice[0])
       boundaries.append(tslice[-1])
       lengths.append(len(tslice))
       runs_with_data.append(run_numbers[idx])
   stats_tuple = get_run_stats(tset,
+                              two_theta_low_set,
+                              two_theta_high_set,
                               nset,
                               I_sig_I_low_set,
                               I_sig_I_high_set,
                               tuple(boundaries),
                               tuple(lengths),
                               runs_with_data,
+                              ratio_cutoff=ratio_cutoff,
                               n_strong_cutoff=n_strong_cutoff)
   png = plot_run_stats(stats_tuple, d_min, interactive=interactive, xsize=xsize, ysize=ysize)
   return png

@@ -141,20 +141,14 @@ class HitrateStats(object):
         # First time through, figure out which bin is reported (high or low), add avg_i_sigi to that set of results
         timestamps.append(rts)
         n_strong.append(n_s)
-        two_theta_low.append(tt_low)
-        two_theta_low.append(tt_high)
+        two_theta_low.append(tt_low or -1)
+        two_theta_high.append(tt_high or -1)
         if str(b_id) in low_res_bin_ids:
-          if avg_i_sigi is None:
-            average_i_sigi_low.append(1e-6)
-          else:
-            average_i_sigi_low.append(avg_i_sigi)
+          average_i_sigi_low.append(avg_i_sigi or 1e-6)
           average_i_sigi_high.append(0)
         elif str(b_id) in high_res_bin_ids:
           average_i_sigi_low.append(0)
-          if avg_i_sigi is None:
-            average_i_sigi_high.append(0)
-          else:
-            average_i_sigi_high.append(avg_i_sigi)
+          average_i_sigi_high.append(avg_i_sigi or 0)
         else:
           assert False
       else:
@@ -163,10 +157,7 @@ class HitrateStats(object):
         if str(b_id) in low_res_bin_ids:
           average_i_sigi_low[index] = avg_i_sigi
         elif str(b_id) in high_res_bin_ids:
-          if avg_i_sigi is None:
-            average_i_sigi_high[index] = 0
-          else:
-            average_i_sigi_high[index] = avg_i_sigi
+            average_i_sigi_high[index] = avg_i_sigi or 0
         else:
           assert False
 
@@ -186,8 +177,8 @@ class HitrateStats(object):
       n_strong.append(n_s)
       average_i_sigi_low.append(0)
       average_i_sigi_high.append(0)
-      two_theta_low.append(tt_low)
-      two_theta_high.append(tt_high)
+      two_theta_low.append(tt_low or -1)
+      two_theta_high.append(tt_high or -1)
 
     order = flex.sort_permutation(timestamps)
     timestamps = timestamps.select(order)

@@ -106,6 +106,8 @@ def submit_job(app, job):
     beamy                     = job.rungroup.beamy,
     energy                    = job.rungroup.energy,
     binning                   = job.rungroup.binning,
+    two_theta_low             = 12.5, # FIXME
+    two_theta_high            = 22.8, # FIXME
     # Generally for job submission
     dry_run                   = app.params.dry_run,
     dispatcher                = app.params.dispatcher,
@@ -161,6 +163,7 @@ def submit_job(app, job):
         if line.startswith('['):
           modules.append(line.lstrip('[').rstrip(']'))
     if backend == 'labelit':
+      modules.insert(0, 'my_ana_pkg.mod_radial_average')
       modules.extend(['my_ana_pkg.mod_hitfind:index','my_ana_pkg.mod_dump:index'])
     elif image_format == 'pickle':
       modules.extend(['my_ana_pkg.mod_image_dict'])
