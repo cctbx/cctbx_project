@@ -112,6 +112,8 @@ CREATE TABLE IF NOT EXISTS `mydb`.`event` (
   `trial_id` INT NOT NULL,
   `rungroup_id` INT NOT NULL,
   `n_strong` INT NOT NULL,
+  `two_theta_low` DOUBLE NULL,
+  `two_theta_high` DOUBLE NULL,
   PRIMARY KEY (`id`, `run_id`, `trial_id`, `rungroup_id`),
   INDEX `fk_event_run1_idx` (`run_id` ASC),
   INDEX `fk_event_trial1_idx` (`trial_id` ASC),
@@ -401,4 +403,3 @@ ENGINE = InnoDB;
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
-

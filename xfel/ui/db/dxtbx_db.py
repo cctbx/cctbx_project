@@ -3,7 +3,7 @@ from xfel.ui.db.xfel_db import xfel_db_application
 from xfel.ui.db.experiment import Experiment, Event, Cell_Bin
 from scitbx.array_family import flex
 
-def log_frame(experiments, reflections, params, run, n_strong, timestamp = None):
+def log_frame(experiments, reflections, params, run, n_strong, timestamp = None, two_theta_low = None, two_theta_high = None):
   app = dxtbx_xfel_db_application(params)
   db_run = app.get_run(run_number=run)
   if params.input.trial is None:
@@ -13,9 +13,11 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None)
     db_trial = app.get_trial(trial_number = params.input.trial)
 
   if params.input.rungroup is None:
-    db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id, n_strong = n_strong)
+    db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id, n_strong = n_strong,
+      two_theta_low = two_theta_low, two_theta_high = two_theta_high)
   else:
-    db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id, rungroup_id = params.input.rungroup, n_strong = n_strong)
+    db_event = app.create_event(timestamp = timestamp, run_id = db_run.id, trial_id = db_trial.id, rungroup_id = params.input.rungroup, n_strong = n_strong,
+      two_theta_low = two_theta_low, two_theta_high = two_theta_high)
 
   if experiments is not None:
     assert len(experiments) == 1

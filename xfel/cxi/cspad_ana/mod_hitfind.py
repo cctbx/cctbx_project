@@ -352,6 +352,11 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                 cursor.close()
                 dbobj.close()
         elif self.m_db_version == 'v2':
+          key_low = 'cctbx.xfel.radial_average.two_theta_low'
+          key_high = 'cctbx.xfel.radial_average.two_theta_high'
+          tt_low = evt.get(key_low)
+          tt_high = evt.get(key_high)
+
           from xfel.ui.db.dxtbx_db import log_frame
           if indexed:
             n_spots = len(info.spotfinder_results.images[info.frames[0]]['spots_total'])
@@ -373,12 +378,12 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
               c = construct_reflection_table_and_experiment_list(info.last_saved_best, None, pixel_size, proceed_without_image=True)
               c.assemble_experiments()
               c.assemble_reflections()
-              log_frame(c.experiment_list, c.reflections, self.db_params, evt.run(), n_spots, self.timestamp)
+              log_frame(c.experiment_list, c.reflections, self.db_params, evt.run(), n_spots, self.timestamp, tt_low, tt_high)
             else:
               print "Not logging %s, wrong bravais setting (expecting %d, got %d)" % (
                 self.timestamp, known_setting, indexed_setting)
           else:
-            log_frame(None, None, self.db_params, evt.run(), n_spots, self.timestamp)
+            log_frame(None, None, self.db_params, evt.run(), n_spots, self.timestamp, tt_low, tt_high)
 
       if self.m_db_logging:
         sec,ms = cspad_tbx.evt_time(evt)

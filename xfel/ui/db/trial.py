@@ -18,8 +18,7 @@ class Trial(db_proxy):
       return super(Trial, self).__getattr__(name)
 
   def __setattr__(self, name, value):
-    assert name != "rungroups"
-    assert name != "runs"
+    assert name not in ["rungroups", "runs", "isoforms"]
     super(Trial, self).__setattr__(name, value)
 
   def add_rungroup(self, rungroup):

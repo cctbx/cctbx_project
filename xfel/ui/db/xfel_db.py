@@ -35,6 +35,27 @@ class initialize(initialize_base):
 
     return initialize_base.create_tables(self, sql_path)
 
+  def verify_tables(self):
+    # Maintain backwards compatibility with SQL tables v2: 09/24/16
+    query = "SHOW columns FROM %s_event"%self.params.experiment_tag
+    cursor = self.dbobj.cursor()
+    cursor.execute(query)
+    columns = cursor.fetchall()
+    column_names = zip(*columns)[0]
+    if 'two_theta_low' not in column_names and 'two_theta_high' not in column_names:
+      query = """
+        ALTER TABLE %s_event
+        ADD COLUMN two_theta_low DOUBLE NULL,
+        ADD COLUMN two_theta_high DOUBLE NULL
+      """%self.params.experiment_tag
+      cursor.execute(query)
+    elif 'two_theta_low' in column_names and 'two_theta_high' in column_names:
+      pass
+    else:
+      assert False
+
+    return super(initialize, self).verify_tables()
+
   def set_up_columns_dict(self, app):
     columns_dict = {}
     for table in self.expected_tables:

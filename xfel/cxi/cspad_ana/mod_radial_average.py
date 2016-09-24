@@ -11,6 +11,7 @@ __version__ = "$Revision$"
 from xfel.cxi.cspad_ana import common_mode
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
+from xfel.cxi.cspad_ana import rayonix_tbx
 import os
 
 class mod_radial_average(common_mode.common_mode_correction):
@@ -22,6 +23,8 @@ class mod_radial_average(common_mode.common_mode_correction):
                out_dirname  = None,
                out_basename = None,
                xtal_target  = None,
+               two_theta_low = None,
+               two_theta_high = None,
                **kwds):
     """The mod_radial_average class constructor stores the parameters passed
     from the pyana configuration file in instance variables.  All
@@ -32,6 +35,8 @@ class mod_radial_average(common_mode.common_mode_correction):
     @param out_dirname  Optional directory portion of output average pathname
     @param out_basename Optional filename prefix of output average pathname
     @param xtal_target  Phil file with target paramters, including metrology corrections
+    @param two_theta_low Optional two theta value of interest
+    @param two_theta_high Optional two theta value of interest
     """
 
     super(mod_radial_average, self).__init__(address=address, **kwds)
@@ -39,6 +44,8 @@ class mod_radial_average(common_mode.common_mode_correction):
 
     self._basename = cspad_tbx.getOptString(out_basename)
     self._dirname = cspad_tbx.getOptString(out_dirname)
+    self._two_theta_low = cspad_tbx.getOptFloat(two_theta_low)
+    self._two_theta_high = cspad_tbx.getOptFloat(two_theta_high)
 
     if self._dirname is not None or self._basename is not None:
       assert self._dirname is not None and self._basename is not None
@@ -81,6 +88,9 @@ class mod_radial_average(common_mode.common_mode_correction):
     elif device == 'marccd':
       pixel_size = 0.079346
       saturated_value = 2**16 - 1
+    elif device == 'Rayonix':
+      pixel_size = rayonix_tbx.get_rayonix_pixel_size(self.bin_size)
+      saturated_value = rayonix_tbx.rayonix_saturated_value
 
     d = cspad_tbx.dpack(
       active_areas=self.active_areas,
@@ -114,6 +124,19 @@ class mod_radial_average(common_mode.common_mode_correction):
 
     evt.put(xvals, "cctbx.xfel.radial_average.xvals")
     evt.put(results, "cctbx.xfel.radial_average.results")
+
+    def get_closest_idx(data, val):
+      from scitbx.array_family import flex
+      deltas = flex.abs(data - val)
+      return flex.first_index(deltas, flex.min(deltas))
+
+    if self._two_theta_low is not None:
+      i_low = results[get_closest_idx(xvals, self._two_theta_low)]
+      evt.put(i_low, "cctbx.xfel.radial_average.two_theta_low")
+
+    if self._two_theta_high is not None:
+      i_high = results[get_closest_idx(xvals, self._two_theta_high)]
+      evt.put(i_high, "cctbx.xfel.radial_average.two_theta_high")
 
   #signature for pyana:
   #def endjob(self, env):
