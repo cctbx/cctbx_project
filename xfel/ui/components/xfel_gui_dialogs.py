@@ -320,7 +320,7 @@ class AdvancedSettingsDialog(BaseDialog):
     choices = ['python', 'lsf', 'mpi', 'sge', 'pbi', 'custom']
     self.mp_option = gctr.ChoiceCtrl(self,
                                      label='Multiprocessing:',
-                                     label_size=(120, -1),
+                                     label_size=(180, -1),
                                      label_style='bold',
                                      choices=choices)
     self.mp_sizer.Add(self.mp_option, flag=wx.EXPAND | wx.ALL, border=10)
@@ -334,7 +334,7 @@ class AdvancedSettingsDialog(BaseDialog):
               'psnehprioq', 'psnehq', 'psfehhiprioq', 'psfehprioq', 'psfehq']
     self.queue = gctr.ChoiceCtrl(self,
                                  label='Queue:',
-                                 label_size=(120, -1),
+                                 label_size=(180, -1),
                                  label_style='bold',
                                  choices=queues)
     self.Bind(wx.EVT_CHOICE, self.onQueueChoice, self.queue.ctr)
@@ -346,7 +346,7 @@ class AdvancedSettingsDialog(BaseDialog):
 
     self.nproc = gctr.SpinCtrl(self,
                                label='Number of processors:',
-                               label_size=(120, -1),
+                               label_size=(180, -1),
                                label_style='normal',
                                ctrl_size=(100, -1),
                                ctrl_value='%d'%params.mp.nproc,
@@ -370,7 +370,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.dispatchers = ['cctbx.xfel.xtc_process', 'cxi.xtc_process']
     self.back_end = gctr.ChoiceCtrl(self,
                                     label='Processing back end:',
-                                    label_size=(120, -1),
+                                    label_size=(180, -1),
                                     label_style='bold',
                                     choices=self.back_ends)
     self.analysis_sizer.Add(self.back_end, flag=wx.EXPAND | wx.ALL, border=10)
@@ -382,7 +382,7 @@ class AdvancedSettingsDialog(BaseDialog):
     img_types = ['corrected', 'raw']
     self.avg_img_type = gctr.ChoiceCtrl(self,
                                         label='Avg. Image Type:',
-                                        label_size=(120, -1),
+                                        label_size=(180, -1),
                                         label_style='bold',
                                         choices=img_types)
     if params.average_raw_data:
@@ -1440,7 +1440,7 @@ class TrialDialog(BaseDialog):
                                           label='Copy runblocks from',
                                           label_style='normal',
                                           label_size=(180, -1),
-                                          ctrl_size=(100, -1),
+                                          ctrl_size=(80, -1),
                                           choices=choices)
     self.throttle = gctr.SpinCtrl(self,
                                   label='Percent events processed:',
@@ -1462,7 +1462,7 @@ class TrialDialog(BaseDialog):
     self.d_min = gctr.SpinCtrl(self,
                                label='High res. limit ({}):'
                                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
-                               label_size=(120, -1),
+                               label_size=(180, -1),
                                label_style='bold',
                                ctrl_size=(80, -1),
                                ctrl_value='1.5',
