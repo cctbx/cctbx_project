@@ -64,7 +64,7 @@ def get_run_stats(timestamps,
                    tuple_of_timestamp_boundaries,
                    lengths,
                    run_numbers,
-                   ratio_cutoff=2,
+                   ratio_cutoff=1,
                    n_strong_cutoff=40,
                    ):
   iterator = xrange(len(isigi_low))
@@ -181,7 +181,7 @@ def plot_run_stats(stats, d_min, interactive=True, xsize=30, ysize=10):
 def plot_multirun_stats(runs,
                         run_numbers,
                         d_min,
-                        ratio_cutoff=2,
+                        ratio_cutoff=1,
                         n_strong_cutoff=40,
                         interactive=False,
                         compress_runs=True,
