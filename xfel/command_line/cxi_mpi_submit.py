@@ -477,7 +477,6 @@ class Script(object):
       logging_str, extra_str
     )
 
-    print command
     command = get_submit_command(command, submit_path, stdoutdir, params.mp)
     print command
 

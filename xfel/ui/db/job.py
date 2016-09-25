@@ -154,6 +154,10 @@ def submit_job(app, job):
   phil.close()
 
   if config_path is not None:
+    if backend == 'dials':
+      d['untrusted_pixel_mask_path'] = None # Don't pass a pixel mask to mod_image_dict as it will
+                                            # will be used during dials processing directly
+
     config_str = "[psana]\n"
     if job.rungroup.calib_dir is not None:
       config_str += "calib-dir=%s\n"%job.rungroup.calib_dir
@@ -190,6 +194,9 @@ def submit_job(app, job):
     cfg = open(config_path, 'w')
     cfg.write(config_str)
     cfg.close()
+
+    if backend == 'dials':
+      d['untrusted_pixel_mask_path'] = job.rungroup.untrusted_pixel_mask_path
 
   submit_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%
     (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
