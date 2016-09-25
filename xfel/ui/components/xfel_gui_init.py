@@ -1822,19 +1822,27 @@ class MergeTab(BaseTab):
     run_numbers = []
     run_ids = []
     self.run_paths = []
+    if self.main.params.dispatcher == "cxi.xtc_process":
+      backend = "LABELIT"
+      integration_dir = "integration"
+    elif self.main.params.dispatcher == "cxi.xfel.xtc_process":
+      backend = "DIALS"
+      integration_dir = "out"
+    else:
+      assert False
     for rb in self.trial.rungroups:
       for run in rb.runs:
         if run.run not in run_numbers:
           if len(self.selected_tags) == 0:
             self.run_paths.append(os.path.join(
-              get_run_path(self.output, self.trial, rb, run), 'out'))
+              get_run_path(self.output, self.trial, rb, run), integration_dir))
             run_numbers.append(run.run)
           else:
             for tag_id in [int(t.id) for t in self.selected_tags]:
               if tag_id in [int(t.id) for t in run.tags]:
                 run_ids.append(int(run.id))
                 self.run_paths.append(os.path.join(
-                  get_run_path(self.output, self.trial, rb, run), 'out'))
+                  get_run_path(self.output, self.trial, rb, run), integration_dir))
                 break
 
     # Display paths in input list text control
