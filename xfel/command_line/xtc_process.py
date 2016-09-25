@@ -18,6 +18,7 @@ from dxtbx.imageset import MemImageSet
 from dxtbx.datablock import DataBlockFactory
 from scitbx.array_family import flex
 import numpy as np
+from libtbx import easy_pickle
 
 xtc_phil_str = '''
   dispatch {
@@ -472,7 +473,6 @@ class InMemScript(DialsProcessScript):
             self.common_mode = params.format.cbf.common_mode.algorithm # could be None or default
 
         if params.format.cbf.invalid_pixel_mask is not None:
-          from libtbx import easy_pickle
           self.dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
           assert len(self.dials_mask) == 64
           if self.params.format.cbf.mask_nonbonded_pixels:
@@ -482,6 +482,15 @@ class InMemScript(DialsProcessScript):
         else:
           psana_mask = self.psana_det.mask(run,calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
           self.dials_mask = self.psana_mask_to_dials_mask(psana_mask)
+
+      if self.params.spotfinder.lookup.mask is not None:
+        self.spotfinder_mask = easy_pickle.load(self.params.spotfinder.lookup.mask)
+      else:
+        self.spotfinder_mask = None
+      if self.params.integration.lookup.mask is not None:
+        self.integration_mask = easy_pickle.load(self.params.integration.lookup.mask)
+      else:
+        self.integration_mask = None
 
       # list of all events
       times = run.times()
@@ -681,9 +690,14 @@ class InMemScript(DialsProcessScript):
     mask = generator.generate(imgset)
     if self.params.format.file_format == "cbf":
       mask = tuple([a&b for a, b in zip(mask,self.dials_mask)])
-
-    self.params.spotfinder.lookup.mask = mask
-    self.params.integration.lookup.mask = mask
+    if self.spotfinder_mask is None:
+      self.params.spotfinder.lookup.mask = mask
+    else:
+      self.params.spotfinder.lookup.mask = tuple([a&b for a, b in zip(mask,self.spotfinder_mask)])
+    if self.integration_mask is None:
+      self.params.integration.lookup.mask = mask
+    else:
+      self.params.integration.lookup.mask = tuple([a&b for a, b in zip(mask,self.integration_mask)])
 
     self.debug_write("spotfind_start")
     try:
@@ -811,7 +825,6 @@ class InMemScript(DialsProcessScript):
         image._cbf_handle.write_widefile(dest_path, pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
       elif params.format.file_format == 'pickle':
-        from libtbx import easy_pickle
         easy_pickle.dump(dest_path, image._image_file)
     except Exception:
       print "Warning, couldn't save image:", dest_path
