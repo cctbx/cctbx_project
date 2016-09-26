@@ -942,13 +942,17 @@ class multi_criterion_view (slots_getstate_setstate) :
     for outlier in self.data() :
       values.append(outlier.get_real_space_plot_values())
     values = numpy.array(values).transpose()
-    rho_min = min(min(values[2]), min(values[3]))
-    rho_max = max(max(values[2]), max(values[3]))
-    return {
-      "rho" : (rho_min, rho_max),
-      "b" : (min(values[0]), max(values[0])),
-      "cc" : (min(values[1]), max(values[1])),
-    }
+    if (len(values) > 0):
+      rho_min = min(min(values[2]), min(values[3]))
+      rho_max = max(max(values[2]), max(values[3]))
+      print rho_min, rho_max
+      return {
+        "rho" : (rho_min, rho_max),
+        "b" : (min(values[0]), max(values[0])),
+        "cc" : (min(values[1]), max(values[1])),
+      }
+    else:
+      raise Sorry('No residues (usually protein or nucleic acid) are available for generating plots.')
 
   def display_wx_plots (self) :
     import wxtbx.plots.molprobity
