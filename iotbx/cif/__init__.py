@@ -443,7 +443,7 @@ def write_whole_cif_file(
     crystal_symmetry=None,
     ss_annotation=None,
     model_statistics=None,
-    append_end=True,
+    additional_blocks=[],
     atoms_reset_serial_first_value=None,
     cif_block_name='default'):
   # massive copy-paste from iotbx/pdb/__init__.py: write_whole_pdb_file
@@ -479,6 +479,9 @@ def write_whole_cif_file(
     cif_block.add_loop(loop)
   if model_statistics is not None:
     cif_block.update(model_statistics.as_cif_block())
+  if additional_blocks is not None:
+    for ab in additional_blocks:
+      cif_block.update(ab)
   cif_block.sort(key=category_sort_function)
   cif[cif_block_name] = cif_block
   print >> out, cif
