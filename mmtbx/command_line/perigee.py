@@ -183,8 +183,6 @@ def get_interacting_atoms(hierarchy,
 
   atom_pairs = []
   if chain1:
-    print 'chain1,chain2',chain1,chain2
-    assert chain2
     for i, residue_1 in enumerate(loop_over_residues_chain(
         hierarchy,
         only_chain=chain1,
@@ -218,6 +216,10 @@ def get_interacting_atoms(hierarchy,
                                 )
         atom_pairs += tmp
   return atom_pairs
+
+def run_probe_on_pdb_string(pdb_filename):
+  cmd = 'phenix.probe -u -condense -self -mc -NOVDWOUT -NOCLASHOUT ALL -'
+  assert 0
 
 def run(rargs):
   print """
