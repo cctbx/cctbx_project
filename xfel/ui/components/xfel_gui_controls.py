@@ -528,6 +528,33 @@ class TableCtrl(CtrlBase):
 
     self.SetSizer(self.sizer)
 
+class RadioCtrl(CtrlBase):
+  '''Generic panel with multiple radio buttons.'''
+
+  def __init__(self, parent,
+               label='',
+               label_size=(200, -1),
+               label_style='normal',
+               ctrl_size=(100, -1),
+               direction='horizontal',
+               items={}):
+    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+
+    if direction == 'horizontal':
+      radio_group = wx.FlexGridSizer(1, len(items) + 1, 0, 10)
+    else:
+      radio_group = wx.FlexGridSizer(len(items) + 1, 1, 0, 10)
+    if label != '':
+      self.txt = wx.StaticText(self, label=label, size=label_size)
+      self.txt.SetFont(self.font)
+      radio_group.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+
+    for key, value in items.iteritems():
+      button = wx.RadioButton(self, id=wx.ID_ANY, label=value)
+      radio_group.Add(button)
+      self.__setattr__(key, button)
+
+    self.SetSizer(radio_group)
 
 # ------------------------------- UI Elements -------------------------------- #
 

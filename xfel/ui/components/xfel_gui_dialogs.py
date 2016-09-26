@@ -978,6 +978,7 @@ class RunBlockDialog(BaseDialog):
         assert False # Close and destroy dialog properly here
 
       min_run = runs[run_numbers.index(min(run_numbers))]
+      max_run = runs[run_numbers.index(max(run_numbers))]
       self.first_run = min_run.run
       self.last_run = None
 
@@ -1007,10 +1008,9 @@ class RunBlockDialog(BaseDialog):
 
     # Run block start / end points (choice widgets)
 
-    start = [str(i.run) for i in db.get_all_runs()]
-    stop = start + ['None']
-    firstidx = start.index(str(self.first_run))
-    lastidx = stop.index(str(self.last_run))
+    runs_available = sorted([i.run for i in db.get_all_runs()])
+    self.first_avail = min(runs_available)
+    self.last_avail = max(runs_available)
 
     self.config_panel = wx.Panel(self)
     config_box = wx.StaticBox(self.config_panel, label='Configuration')
@@ -1058,16 +1058,33 @@ class RunBlockDialog(BaseDialog):
                                       choices=['CBF', 'pickle'])
     self.runlbock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
-    # Runblock runs choice
-    self.runblocks = gctr.MultiChoiceCtrl(self.runblock_panel,
-                                          label='Run block:',
-                                          label_style='bold',
-                                          label_size=(100, -1),
-                                          ctrl_size=(150, -1),
-                                          items={'start':start, 'end':stop})
-    self.runblocks.start.SetSelection(firstidx)
-    self.runblocks.end.SetSelection(lastidx)
-    self.runlbock_sizer.Add(self.runblocks, flag=wx.EXPAND | wx.ALL, border=10)
+    self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
+
+    self.runblocks_start = gctr.SpinCtrl(self.runblock_panel,
+                                   label='Start run:',
+                                   label_style='bold',
+                                   label_size=(100, -1),
+                                   ctrl_value=self.first_run,
+                                   ctrl_min=self.first_avail,
+                                   ctrl_max=self.last_avail)
+    self.runblocks_end = gctr.SpinCtrl(self.runblock_panel,
+                                   label='End run:',
+                                   label_style='bold',
+                                   label_size=(100, -1),
+                                   ctrl_value=(self.last_run or self.last_avail),
+                                   ctrl_min=self.first_avail,
+                                   ctrl_max=self.last_avail)
+    self.end_type = gctr.RadioCtrl(self.runblock_panel,
+                                   label='',
+                                   label_style='normal',
+                                   label_size=(100, -1),
+                                   direction='vertical',
+                                   items={'auto':'Auto add runs',
+                                          'specify':'Specify end run'})
+    self.start_stop_sizer.AddMany([(self.runblocks_start),
+                                   (self.runblocks_end),
+                                   (self.end_type)])
+    self.runlbock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Detector address
     self.address = gctr.TextButtonCtrl(self.runblock_panel,
@@ -1167,6 +1184,8 @@ class RunBlockDialog(BaseDialog):
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
 
+    self.Bind(wx.EVT_RADIOBUTTON, self.onAutoEnd, self.end_type.auto)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onSpecifyEnd, self.end_type.specify)
     self.Bind(wx.EVT_BUTTON, self.onDarkAvgBrowse,
               id=self.dark_avg_path.btn_big.GetId())
     self.Bind(wx.EVT_BUTTON, self.onImportConfig, self.config.btn_import)
@@ -1188,6 +1207,13 @@ class RunBlockDialog(BaseDialog):
     self.configure_controls()
     self.Layout()
     self.SetTitle('Run Block Settings')
+
+  def onAutoEnd(self, e):
+    self.last_run = None
+    self.runblocks_end.Disable()
+
+  def onSpecifyEnd(self, e):
+    self.runblocks_end.Enable()
 
   def onImportConfig(self, e):
     cfg_dlg = wx.FileDialog(self,
@@ -1224,15 +1250,27 @@ class RunBlockDialog(BaseDialog):
     pass
 
   def onOK(self, e):
-
-    startrun_number = int(self.runblocks.start.GetString(self.runblocks.start.GetSelection()))
-    startrun = self.db.get_run(run_number=startrun_number).id
-
-    endrun_number = self.runblocks.end.GetString(self.runblocks.end.GetSelection())
-    if endrun_number == "None":
+    try:
+      first = int(self.runblocks_start.ctr.GetValue())
+      assert first > 0 and first >= self.first_avail
+      self.first_run = first
+      startrun = self.db.get_run(run_number=first).id
+    except (ValueError, AssertionError) as e:
+      print "Please select a run between %d and %d." % (self.first_avail, self.last_avail)
+      raise e
+    if self.end_type.specify.GetValue() == 1:
+      try:
+        last = int(self.runblocks_end.ctr.GetValue())
+        assert last > 0 and last <= self.last_avail and last > first
+        self.last_run = last
+        endrun = self.db.get_run(run_number=int(last)).id
+      except (ValueError, AssertionError) as e:
+        print "Please select a run between %d and %d." % (self.first_run, self.last_avail)
+        raise e
+    elif self.end_type.specify.GetValue() == 0:
       endrun = None
     else:
-      endrun = self.db.get_run(run_number=int(endrun_number)).id
+      assert False
 
     rg_dict = dict(startrun=startrun,
                    endrun=endrun,
@@ -1332,6 +1370,12 @@ class RunBlockDialog(BaseDialog):
       self.gain_map_path.Show()
       self.runblock_panel.Layout()
       self.runblock_panel.SetupScrolling()
+    if self.last_run is None:
+      self.runblocks_end.Disable()
+      self.end_type.auto.SetValue(1)
+    else:
+      self.runblocks_end.Enable()
+      self.end_type.specify.SetValue(1)
 
   def onDarkAvgBrowse(self, e):
     dark_dlg = wx.FileDialog(self,
