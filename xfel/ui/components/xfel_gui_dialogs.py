@@ -1051,11 +1051,15 @@ class RunBlockDialog(BaseDialog):
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Image format choice
+    if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
+      image_choices = ['pickle']
+    else:
+      image_choices = ['CBF', 'pickle']
     self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
                                       label='Image Format:',
                                       label_size=(100, -1),
                                       ctrl_size=(150, -1),
-                                      choices=['CBF', 'pickle'])
+                                      choices=image_choices)
     self.runlbock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
