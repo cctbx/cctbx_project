@@ -23,6 +23,7 @@ from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
 from libtbx import smart_open
 import iotbx
+from iotbx.pdb.secondary_structure import annotation
 
 import sys
 
@@ -441,6 +442,7 @@ def write_whole_cif_file(
     pdb_hierarchy=None,
     crystal_symmetry=None,
     ss_annotation=None,
+    model_statistics=None,
     append_end=True,
     atoms_reset_serial_first_value=None,
     cif_block_name='default'):
@@ -469,14 +471,14 @@ def write_whole_cif_file(
           'secondary_structure_section'):
         ss_section = processed_pdb_file.all_chain_proxies.\
             pdb_inp.secondary_structure_section()
-        ss_ann = annotation.from_pdb_records(ss_section)
+        ss_ann = annotation.from_records(ss_section)
         ss_cif_loops = ss_ann.as_cif_loops()
   if ss_annotation is not None:
     ss_cif_loops = ss_annotation.as_cif_loops()
-
   for loop in ss_cif_loops:
     cif_block.add_loop(loop)
-
+  if model_statistics is not None:
+    cif_block.update(model_statistics.as_cif_block())
   cif_block.sort(key=category_sort_function)
   cif[cif_block_name] = cif_block
   print >> out, cif
