@@ -1378,7 +1378,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
                "pairs"    : [["CD1", "CD2"],
                              ["CE1", "CE2"],
                              ["HD1", "HD2"],
-                             ["HE1", "HD2"],
+                             ["HE1", "HE2"],
                             ],
              },
     }

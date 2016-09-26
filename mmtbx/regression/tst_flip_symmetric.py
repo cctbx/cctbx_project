@@ -131,6 +131,29 @@ ANISOU  817  CD2 PHE A 105     4166   3691   3798     34    497     25       C
 ATOM    818  CE1 PHE A 105      24.849 -33.596  64.733  1.00 32.03           C
 ANISOU  818  CE1 PHE A 105     4339   3863   3968     36    500     24       C
 """,
+  "PHE_2" : """
+ATOM   3264  N   PHE A 217      30.776 -28.100 -17.162  1.00 15.42           N
+ATOM   3265  CA  PHE A 217      31.363 -27.624 -18.384  1.00 14.70           C
+ATOM   3266  C   PHE A 217      32.212 -28.677 -19.046  1.00 15.01           C
+ATOM   3267  O   PHE A 217      33.021 -29.350 -18.413  1.00 16.31           O
+ATOM   3268  CB  PHE A 217      32.177 -26.335 -18.136  1.00 16.76           C
+ATOM   3269  CG  PHE A 217      31.302 -25.242 -17.626  1.00 16.55           C
+ATOM   3270  CD1 PHE A 217      31.215 -24.983 -16.284  1.00 16.83           C
+ATOM   3271  CD2 PHE A 217      30.503 -24.516 -18.502  1.00 18.31           C
+ATOM   3272  CE1 PHE A 217      30.337 -24.029 -15.786  1.00 16.65           C
+ATOM   3273  CE2 PHE A 217      29.624 -23.532 -18.011  1.00 15.24           C
+ATOM   3274  CZ  PHE A 217      29.561 -23.283 -16.645  1.00 17.98           C
+ATOM   3275  H   PHE A 217      31.327 -28.470 -16.616  1.00 18.51           H
+ATOM   3276  HA  PHE A 217      30.648 -27.401 -18.999  1.00 17.64           H
+ATOM   3277  HB2 PHE A 217      32.864 -26.510 -17.475  1.00 20.11           H
+ATOM   3278  HB3 PHE A 217      32.577 -26.042 -18.970  1.00 20.11           H
+ATOM   3279  HD1 PHE A 217      31.726 -25.485 -15.690  1.00 20.20           H
+ATOM   3280  HD2 PHE A 217      30.540 -24.690 -19.415  1.00 21.98           H
+ATOM   3281  HE1 PHE A 217      30.310 -23.859 -14.872  1.00 19.99           H
+ATOM   3282  HE2 PHE A 217      29.101 -23.038 -18.600  1.00 18.29           H
+ATOM   3283  HZ  PHE A 217      28.992 -22.626 -16.313  1.00 21.58           H
+ATOM   4166  CD1 TYR A 277      41.891 -14.126 -14.217  1.00 26.09           C
+""",
 }
 
 geo_strs = {
@@ -160,14 +183,20 @@ geo_strs = {
            pdb=" NH1 ARG A 465 "
 """,
   "PHE_missing_CE2" : 'Residue "A PHE  105": not complete - not flipped',
+  "PHE_2" : """dihedral pdb=" CA  PHE A 217 "
+           pdb=" CB  PHE A 217 "
+           pdb=" CG  PHE A 217 "
+           pdb=" CD1 PHE A 217 "
+""",
 }
 values = {
   "ASP" : [ 152,  -82, -999, -999],
   "GLU" : [ 162, -162,  -18,   18],
-  "PHE" : [-105,   15, -999, -999],
-  "TYR" : [ -96,    6, -999, -999],
+  "PHE" : [-105,   15,   74,   16],
+  "TYR" : [ -96,    6,   85,    5],
   "ARG" : [-179,  179, -999, -999],
   "PHE_missing_CE2" : [-999,-999,-999,-999],
+  "PHE_2" : [97,   -7,  -79,  -11],
 }
 
 def largest_torsion(s, f, i):
@@ -222,7 +251,7 @@ def run():
     d = largest_torsion(out.getvalue(),
                         geo_strs[code],
                         i-1)
-    print 'torsion',d
+    print 'torsion',d,values[code],i
     assert abs(d-values[code][i])<1
     i+=1
     d = largest_torsion(out.getvalue(),
