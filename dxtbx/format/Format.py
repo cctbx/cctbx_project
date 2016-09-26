@@ -247,25 +247,21 @@ class Format(object):
     '''Overload this method to read the image file however you like so
     long as the result is an goniometer.'''
     return None
-    raise RuntimeError, 'overload me'
 
   def _detector(self):
     '''Overload this method to read the image file however you like so
     long as the result is an detector.'''
     return None
-    raise RuntimeError, 'overload me'
 
   def _beam(self):
     '''Overload this method to read the image file however you like so
     long as the result is an beam.'''
     return None
-    raise RuntimeError, 'overload me'
 
   def _scan(self):
     '''Overload this method to read the image file however you like so
     long as the result is an scan.'''
     return None
-    raise RuntimeError, 'overload me'
 
   def get_mask(self, goniometer_shadow_mask=False, goniometer=None):
     '''Overload this method to provide dynamic masks to be used during

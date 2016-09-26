@@ -218,7 +218,7 @@ class ExperimentList(object):
 
   def is_consistent(self):
     ''' Check all the models are consistent. '''
-    return all([e.is_consistent() for e in self])
+    return all(e.is_consistent() for e in self)
 
   def all_stills(self):
     ''' Check if all the experiments are stills '''
@@ -466,7 +466,7 @@ class ExperimentListDict(object):
     # and insert it into the list. Replace the path reference
     # with an index
     for eobj in self._obj['experiment']:
-      value = eobj.get(name, None)
+      value = eobj.get(name)
       if value is None:
         continue
       elif isinstance(value, str):
@@ -494,7 +494,7 @@ class ExperimentListDict(object):
     # and insert it into the list. Replace the path reference
     # with an index
     for eobj in self._obj['experiment']:
-      value = eobj.get('imageset', None)
+      value = eobj.get('imageset')
       if value is None:
         continue
       elif isinstance(value, str):
@@ -529,7 +529,7 @@ class ExperimentListDict(object):
       scan = ExperimentListDict.model_or_none(self._slist, eobj, 'scan')
       crystal = ExperimentListDict.model_or_none(self._clist, eobj, 'crystal')
       profile = ExperimentListDict.model_or_none(self._plist, eobj, 'profile')
-      key = (eobj.get('imageset', None), eobj.get('scan',None))
+      key = (eobj.get('imageset'), eobj.get('scan'))
       try:
         imageset = imagesets[key]
       except Exception:
@@ -679,7 +679,7 @@ class ExperimentListDict(object):
   @staticmethod
   def model_or_none(mlist, eobj, name):
     ''' Get a model or None. '''
-    index = eobj.get(name, None)
+    index = eobj.get(name)
     if index is not None:
       return mlist[index]
     return None
@@ -899,7 +899,7 @@ class ExperimentListFactory(object):
 
     # Get a list of models for each image
     beam, detector, gonio, scan = ([], [], [], [])
-    for i in range(len(imageset)):
+    for i in xrange(len(imageset)):
       try:
         beam.append(imageset.get_beam(i))
       except Exception:
@@ -920,7 +920,7 @@ class ExperimentListFactory(object):
 
     # Find subsets where all the models are the same
     experiments = ExperimentList()
-    for m, indices in groupby(range(len(models)), lambda i: models[i]):
+    for m, indices in groupby(xrange(len(models)), lambda i: models[i]):
       indices = list(indices)
       experiments.append(Experiment(
         imageset=imageset[indices[0]: indices[-1]+1],

@@ -975,7 +975,7 @@ class SweepFileList(object):
 
   def __iter__(self):
     '''Iterate through the filenames.'''
-    for i in range(len(self)):
+    for i in xrange(len(self)):
       yield self.__getitem__(i)
 
   def __str__(self):

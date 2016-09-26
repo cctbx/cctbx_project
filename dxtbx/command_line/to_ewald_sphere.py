@@ -12,11 +12,10 @@ def to_ewald_sphere(list_of_images):
   start, end = sweep.get_array_range()
   image_to_ewald_sphere = ImageToEwaldSphere(beam, detector, gonio, scan)
 
-  for frame in range(start, end):
+  for frame in xrange(start, end):
     intensity = sweep[frame]
     x_list = image_to_ewald_sphere(frame)
-    for k in range(len(x_list)):
-      x = x_list[k]
+    for k, x in enumerate(x_list):
       i = intensity[k]
       print '%f %f %f %d' % (x[0], x[1], x[2], i)
 

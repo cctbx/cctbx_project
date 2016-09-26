@@ -7,7 +7,7 @@ except Exception:
 else:
   ext = boost.python.import_ext("dxtbx_ext", optional = True)
 
-if not ext is None:
+if ext is not None:
   from dxtbx_ext import *
 
 def load(filename):

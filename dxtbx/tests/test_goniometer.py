@@ -19,7 +19,7 @@ def compare_tuples(a, b, tol = 1.0e-6):
 
   assert(len(a) == len(b))
 
-  for j in range(len(a)):
+  for j in xrange(len(a)):
     if math.fabs(b[j] - a[j]) > tol:
       return False
 

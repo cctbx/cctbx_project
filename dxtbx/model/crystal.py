@@ -686,8 +686,7 @@ class crystal_model(object):
 
     # Update A at scan points
     if self._A_at_scan_points is not None:
-      for i in range(len(self._A_at_scan_points)):
-        At = self._A_at_scan_points[i]
+      for i, At in enumerate(self._A_at_scan_points):
         uc = unit_cell(orthogonalization_matrix=At.transpose().inverse())
         Bt = matrix.sqr(uc.fractionalization_matrix()).transpose()
         Ut = At * Bt.inverse()

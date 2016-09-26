@@ -98,13 +98,13 @@ class FormatTIFFRayonix(FormatTIFF):
   def _goniometer(self):
     '''Return a model for goniometer corresponding to the values stored
     in the image header. In the first instance assume this is a single
-    axis annd raise exception otherwise.'''
+    axis and raise exception otherwise.'''
 
     starts, ends, offset, width = self._get_rayonix_scan_angles()
 
-    for j in range(len(starts)):
+    for j, starts_j in enumerate(starts):
       if j != offset:
-        assert(starts[j] == ends[j])
+        assert(starts_j == ends[j])
 
     return self._goniometer_factory.single_axis()
 

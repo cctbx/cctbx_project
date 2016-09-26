@@ -102,7 +102,7 @@ class DataBlock(object):
       if isinstance(iset, ImageSweep):
         obj[iset.get_beam()] = None
       else:
-        for i in range(len(iset)):
+        for i in xrange(len(iset)):
           obj[iset.get_beam(i)] = None
     return obj.keys()
 
@@ -119,7 +119,7 @@ class DataBlock(object):
       if isinstance(iset, ImageSweep):
         obj[iset.get_detector()] = None
       else:
-        for i in range(len(iset)):
+        for i in xrange(len(iset)):
           obj[iset.get_detector(i)] = None
     detector_id = 0
     for detector in obj.keys():
@@ -136,7 +136,7 @@ class DataBlock(object):
       if isinstance(iset, ImageSweep):
         obj[iset.get_goniometer()] = None
       else:
-        for i in range(len(iset)):
+        for i in xrange(len(iset)):
           try:
             model = iset.get_goniometer(i)
             if model is not None:
@@ -154,7 +154,7 @@ class DataBlock(object):
       if isinstance(iset, ImageSweep):
         obj[iset.get_scan()] = None
       else:
-        for i in range(len(iset)):
+        for i in xrange(len(iset)):
           try:
             model = iset.get_scan(i)
             if model is not None:
@@ -225,7 +225,7 @@ class DataBlock(object):
         else:
           imageset['__id__'] = "ImageSet"
         image_list = []
-        for i in range(len(iset)):
+        for i in xrange(len(iset)):
           image_dict = OrderedDict()
           image_dict['filename'] = abspath(iset.get_path(i))
           image_dict["mask"] = abspath_or_none(iset.external_lookup.mask.filename)
@@ -400,7 +400,7 @@ class DataBlockTemplateImporter(object):
 
     # Check all images in range are present
     numbers = [int(f[index]) for f in filenames]
-    assert(all([x+1==y for x, y in zip(numbers, numbers[1:])]))
+    assert(all(x+1==y for x, y in zip(numbers, numbers[1:])))
 
     # Read the image
     fmt = format_class(filenames[0])

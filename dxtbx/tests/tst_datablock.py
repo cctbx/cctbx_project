@@ -195,7 +195,7 @@ class Test(object):
           assert(im1.get_scan() == im2.get_scan())
         else:
           assert(not isinstance(im2, ImageSweep))
-          for i in range(len(im1)):
+          for i in xrange(len(im1)):
             assert(im1.get_beam(i) == im2.get_beam(i))
             assert(im1.get_detector(i) == im2.get_detector(i))
 

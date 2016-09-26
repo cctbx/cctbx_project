@@ -271,8 +271,8 @@ class TestMultiFileReader(object):
       assert(image_size == reader.get_image_size())
 
   def tst_get_path(self, reader, filenames):
-    for index in range(len(filenames)):
-      assert(reader.get_path(index) == filenames[index])
+    for index, filename in enumerate(filenames):
+      assert(reader.get_path(index) == filename)
     print 'OK'
 
   def tst_get_detectorbase(self, reader):

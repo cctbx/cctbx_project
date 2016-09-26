@@ -30,11 +30,11 @@ def LoadFormatClasses():
 
   home = os.curdir
   if os.name == 'nt' and \
-     os.environ.has_key('HOMEDRIVE') and \
-     os.environ.has_key('HOMEPATH'):
+     'HOMEDRIVE' in os.environ and \
+     'HOMEPATH' in os.environ:
     home = os.path.join(os.environ['HOMEDRIVE'],
                         os.environ['HOMEPATH'])
-  elif os.environ.has_key('HOME'):
+  elif 'HOME' in os.environ:
     home = os.environ['HOME']
 
   for f in os.listdir(format_dir):
