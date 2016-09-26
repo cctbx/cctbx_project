@@ -508,10 +508,13 @@ class nqh_flips (validation) :
     #USER  MOD Set 1.1: B  49 GLN     :FLIP  amide:sc=    -2.7! C(o=-5.8!,f=-1.3!)
       if re_flip.search(line) :
         resid = line.split(":")[1]
+        chain_id = resid[0:2].strip()
+        if (len(chain_id) == 0):
+          chain_id = ' '
         resname = resid[7:10]
         assert (resname in ["ASN", "GLN", "HIS"])
         flip = nqh_flip(
-          chain_id=resid[0:2].strip(),
+          chain_id=chain_id,
           resseq=resid[2:6].strip(),
           icode=resid[6:7],
           altloc=resid[14:15],
