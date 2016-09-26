@@ -1,3 +1,4 @@
+from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.perigee
 import os, sys
 from math import sqrt
@@ -109,10 +110,10 @@ def loop_over_residues_chain(hierarchy,
   for model in hierarchy.models():
     if verbose: print 'model: "%s"' % model.id
     for chain in model.chains():
-      if(only_chain is not None and 
+      if(only_chain is not None and
          only_chain.strip()!=chain.id.strip()
          ): continue
-      if(exclude_chain is not None and 
+      if(exclude_chain is not None and
          exclude_chain.strip()==chain.id.strip()
          ): continue
       if verbose: print 'chain: "%s"' % chain.id
@@ -137,10 +138,10 @@ def loop_over_residues_residue(hierarchy,
         for atom_group in residue_group.atom_groups():
           if verbose: print '    atom_group: altloc="%s" resname="%s"' % (
             atom_group.altloc, atom_group.resname)
-          if(only_residue is not None and 
+          if(only_residue is not None and
              only_residue.strip()!=atom_group.resname.strip()
              ): continue
-          if(exclude_residue is not None and 
+          if(exclude_residue is not None and
              exclude_residue.strip()==atom_group.resname.strip()
              ): continue
           yield residue_group
@@ -225,7 +226,7 @@ def run(rargs):
   print """
 
     Running interaction finder
- 
+
   """
   rargs = list(rargs)
   parser = setup_parser()
