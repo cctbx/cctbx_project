@@ -128,7 +128,11 @@ def axes_and_atoms_aa_specific(
       axes_and_atoms_to_rotate.append([axis, atoms_to_rotate])
       ic += 1
     else:
-      assert n_branches <= 2, n_branches
+      if(not n_branches <= 2):
+        print >> log, residue.id_str()
+        print >> log, "  Cannot extract axes_and_atoms_to_rotate:"
+        print >> log, "    n_branches <= 2, n_branches:", n_branches
+        return []
       # branch 1
       icb = ic+1
       atoms_to_rotate = cluster
