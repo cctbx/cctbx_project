@@ -484,6 +484,10 @@ def write_whole_cif_file(
       cif_block.update(ab)
   cif_block.sort(key=category_sort_function)
   cif[cif_block_name] = cif_block
+  # here we are outputting a huge number of restraints
+  if (processed_pdb_file is not None and
+      processed_pdb_file.all_chain_proxies.cif is not None):
+    cif.update(processed_pdb_file.all_chain_proxies.cif)
   print >> out, cif
 
   if file_name is not None:
