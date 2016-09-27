@@ -152,6 +152,7 @@ master_params_str = """\
   flip_symmetric_amino_acids = False
     .type = bool
     .short_caption = Flip
+    .style = hidden
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
