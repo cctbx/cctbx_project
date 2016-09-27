@@ -27,6 +27,8 @@ master_phil = libtbx.phil.parse("""
     .type = str
   plot_y_max = None
     .type = int
+  low_max_two_theta_limit = None
+    .type = float
 """)
 
 def distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
@@ -137,9 +139,10 @@ def run (args):
        #logger.write("%9.3f %9.3f\n"%     (twotheta,results[i]))        #.xy  format for Rex.cell.
         logger.write("%9.3f %9.3f %9.3f\n"%(twotheta,results[i],std_devs[i])) #.xye format for GSASII
        #logger.write("%.3f %.3f %.3f\n"%(twotheta,results[i],ds[i]))  # include calculated d spacings
-      if results[i] > max_result:
-        max_twotheta = twotheta
-        max_result = results[i]
+      if params.low_max_two_theta_limit is None or twotheta >= params.low_max_two_theta_limit:
+        if results[i] > max_result:
+          max_twotheta = twotheta
+          max_result = results[i]
 
     logger.write("Maximum 2theta for %s: %f, value: %f\n"%(file_path, max_twotheta, max_result))
 

@@ -76,6 +76,37 @@ for path in args:
       print "I/sigma > 1 count:", (obs.data()/obs.sigmas() > 1).count(True)
       print "I <= 0:", len(obs.data().select(obs.data() <= 0))
 
+      from cctbx.crystal import symmetry
+      sym = symmetry(unit_cell = uc, space_group = obs.space_group())
+      mset = sym.miller_set(indices = obs.indices(), anomalous_flag=False)
+      binner = mset.setup_binner(n_bins=20)
+      acceptable_resolution_bins = []
+      binned_avg_i_sigi = []
+      for i in binner.range_used():
+        d_max, d_min = binner.bin_d_range(i)
+        sel = (d <= d_max) & (d > d_min)
+        sel &= obs.data() > 0
+        intensities = obs.data().select(sel)
+        sigmas = obs.sigmas().select(sel)
+        n_refls = len(intensities)
+        avg_i = flex.mean(intensities) if n_refls > 0 else 0
+        avg_i_sigi = flex.mean(intensities / sigmas) if n_refls > 0 else 0
+        acceptable_resolution_bins.append(avg_i_sigi >= 1.0)
+
+      acceptable_resolution_bins = [acceptable_resolution_bins[i] if False not in acceptable_resolution_bins[:i+1] else False
+                                    for i in xrange(len(acceptable_resolution_bins))]
+      best_res = None
+      for i, ok in zip(binner.range_used(), acceptable_resolution_bins):
+        d_max, d_min = binner.bin_d_range(i)
+        if ok:
+          best_res = d_min
+        else:
+          break
+      if best_res is None:
+        print "Highest resolution with I/sigI >= 1.0: None"
+      else:
+        print "Highest resolution with I/sigI >= 1.0: %f"%d_min
+
     elif key == 'mapped_predictions':
       print key, data[key][0][0], "(only first shown of %d)"%len(data[key][0])
     elif key == 'correction_vectors' and data[key] is not None and data[key][0] is not None:
