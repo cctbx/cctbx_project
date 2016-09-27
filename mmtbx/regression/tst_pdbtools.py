@@ -724,6 +724,57 @@ loop_
   xs = pdb_inp.xray_structure_simple()
   assert xs.use_u_aniso().all_eq(True)
 
+def exercise_mmcif_support_2(prefix="tst_pdbtools_mmcif2"):
+  f = open("%s.pdb" % prefix, 'w')
+  f.write("""\
+HELIX    1   1 TRP A   10  VAL A   14  5                                   5
+HELIX    2   2 ARG A   17  ASN A   29  1                                  13
+SHEET    1   A 2 ARG A  33  PRO A  38  0
+SHEET    2   A 2 ARG A  51  VAL A  56  1  O  VAL A  54   N  ILE A  35
+SSBOND   1 CYS A    4    CYS A   49
+CRYST1   62.654   62.654   45.906  90.00  90.00  90.00 P 43 21 2
+SCALE1      0.015961  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.015961  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.021784        0.00000
+ATOM      1  N   GLN A   3      23.762  12.429   1.265  1.00 45.30           N
+ATOM      2  CA  GLN A   3      22.670  12.004   2.148  1.00 39.46           C
+ATOM      3  C   GLN A   3      21.818  10.942   1.458  1.00 42.86           C
+ATOM      4  O   GLN A   3      21.337  11.133   0.339  1.00 44.81           O
+ATOM      5  CB  GLN A   3      21.794  13.195   2.571  1.00 42.53           C
+ATOM      6  N   CYS A   4      21.620   9.817   2.129  1.00 36.33           N
+ATOM      7  CA  CYS A   4      20.902   8.709   1.518  1.00 31.46           C
+ATOM      8  C   CYS A   4      19.419   8.891   1.670  1.00 34.16           C
+ATOM      9  O   CYS A   4      18.979   9.537   2.607  1.00 38.12           O
+ATOM     10  CB  CYS A   4      21.307   7.409   2.205  1.00 31.53           C
+ATOM     11  SG  CYS A   4      23.070   7.194   2.148  1.00 29.88           S
+ATOM     12  N   SER A   5      18.657   8.290   0.760  1.00 33.83           N
+ATOM     13  CA  SER A   5      17.211   8.293   0.854  1.00 38.94           C
+ATOM     14  C   SER A   5      16.676   6.917   1.254  1.00 32.88           C
+ATOM     15  O   SER A   5      17.295   5.879   0.981  1.00 32.57           O
+ATOM     16  CB  SER A   5      16.603   8.683  -0.488  1.00 39.48           C
+ATOM     17  OG  SER A   5      16.893   7.668  -1.432  1.00 47.16           O
+ATOM     18  N   GLY A   6      15.520   6.924   1.901  1.00 31.69           N
+ATOM     19  CA  GLY A   6      14.811   5.694   2.191  1.00 32.41           C
+ATOM     20  C   GLY A   6      15.257   5.112   3.511  1.00 29.00           C
+""")
+  f.close()
+  cmd = " ".join([
+      "phenix.pdbtools",
+      "%s.pdb" % prefix,
+      "output.format=mmcif",
+      "output.file_name=%s.cif" % prefix])
+  print cmd
+  assert not easy_run.call(cmd)
+  cif_f = open("%s.cif" % prefix, 'r')
+  cif_l = cif_f.readlines()
+  cif_f.close()
+  for l in ["_cell_angle_alpha                 90.000\n",
+      "  _struct_conf.pdbx_PDB_helix_id\n",
+      "  _struct_sheet.id\n",
+      "  _struct_sheet_range.id\n",
+      "  _atom_site.label_atom_id\n"]:
+    assert l in cif_l, "%s not in cif file!" % l
+
 def exercise_move_waters () :
   pdb_in = """\
 ATOM     16  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
@@ -918,6 +969,7 @@ def exercise(args):
   eargs = {"pdb_dir": pdb_dir, "verbose": verbose}
   exercise_stop_for_unknowns()
   exercise_mmcif_support()
+  exercise_mmcif_support_2()
   exercise_basic(**eargs)
   exercise_multiple(**eargs)
   exercise_no_cryst1(**eargs)

@@ -25,6 +25,7 @@ from mmtbx import model_statistics
 import random
 from libtbx import easy_run
 from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
+from iotbx.cif import write_whole_cif_file
 from libtbx import runtime_utils
 import scitbx.matrix
 import cStringIO
@@ -866,10 +867,6 @@ def renumber_residues(pdb_hierarchy, renumber_from=None,
           resseq += renumber_from
           rg.resseq = "%4d" % resseq
 
-def write_cif_file(pdb_hierarchy, crystal_symmetry, file_name):
-  pdb_hierarchy.write_mmcif_file(
-    file_name=file_name, crystal_symmetry=crystal_symmetry)
-
 # XXX only works for one MODEL at present
 def move_waters (pdb_hierarchy, xray_structure, out) :
   """
@@ -1093,8 +1090,11 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
         append_end=True,
         atoms_reset_serial_first_value=1)
   elif output_format =="mmcif":
-    write_cif_file(pdb_hierarchy, crystal_symmetry, file_name=ofn)
-  output_files.append(ofn)
+    write_whole_cif_file(
+        file_name=ofn,
+        processed_pdb_file=command_line_interpreter.processed_pdb_file,
+        pdb_hierarchy=pdb_hierarchy,
+        crystal_symmetry=crystal_symmetry)
   utils.print_header("Done", out = log)
   return output_files
 
