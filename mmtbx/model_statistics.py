@@ -104,6 +104,7 @@ class geometry(geometry_no_grm):
         n_histogram_slots=10,
         cdl_restraints=False,
         ignore_hydrogens=False,  #only used by amber
+        automatically_use_amber=True,
         ):
     super(geometry, self).__init__(
         pdb_hierarchy=pdb_hierarchy,
@@ -122,7 +123,8 @@ class geometry(geometry_no_grm):
     self.angle_deltas = None
     self.bond_deltas = None
     if not hasattr(esg, "angle_deviations"): return
-    if hasattr(esg, "amber"):
+    if automatically_use_amber and hasattr(esg, "amber"):
+      self.used_amber=True
       amber_parm = restraints_manager.amber_structs.parm
       self.a, angle_deltas = esg.angle_deviations(sites_cart, amber_parm,
                                         ignore_hd=ignore_hydrogens,
@@ -227,10 +229,14 @@ class geometry(geometry_no_grm):
       if f1 is None: return '  -   '
       return "%-6.3f"%(f1[0])
     result = "%s" % prefix
-    rl = "GEOSTD + MON.LIB."
-    if self.cdl_restraints:
-      rl += " + CDL v1.2"
-    result = """%sRESTRAINTS LIBRARY
+    if getattr(self, 'used_amber', False):
+      result = """%(prefix)sAMBER FORCE FIELD
+%(prefix)s""" % locals()
+    else:
+      rl = "GEOSTD + MON.LIB."
+      if self.cdl_restraints:
+        rl += " + CDL v1.2"
+      result = """%sRESTRAINTS LIBRARY
 %s  %s
 %s""" % (prefix, prefix, rl, prefix)
 

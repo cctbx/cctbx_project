@@ -302,8 +302,9 @@ def get_any_linking_carbon(atom_group1, atom_group2, bonds, verbose=False):
           linking=True
         oxygens.append(ba)
         residues.append(ba.parent())
-    if len(oxygens)==2:
+    if len(oxygens)==2: # anomeric carbon not linkable
       assert 0
+      return None
     if linking:
       return atom, True
 
@@ -364,7 +365,11 @@ def get_C1_carbon(atom_group1,
 def get_ring_oxygen(anomeric_carbon, bonds):
   for ba in bonds.get(anomeric_carbon.i_seq, []):
     if ba.element.strip() not in ["O"]: continue
+    # check in same atom group
     if ba.parent().id_str() == anomeric_carbon.parent().id_str():
+      return ba
+    # check in same residue group
+    if ba.parent().parent().id_str() == anomeric_carbon.parent().parent().id_str():
       return ba
 
 def get_ring_carbon(anomeric_carbon, bonds):
@@ -372,11 +377,15 @@ def get_ring_carbon(anomeric_carbon, bonds):
     if ba.element.strip() not in ["C"]: continue
     if ba.parent().id_str() == anomeric_carbon.parent().id_str():
       return ba
+    if ba.parent().parent().id_str() == anomeric_carbon.parent().parent().id_str():
+      return ba
 
 def get_anomeric_hydrogen(anomeric_carbon, bonds):
   for ba in bonds.get(anomeric_carbon.i_seq, []):
     if ba.element.strip() not in ["H"]: continue
     if ba.parent().id_str() == anomeric_carbon.parent().id_str():
+      return ba
+    if ba.parent().parent().id_str() == anomeric_carbon.parent().parent().id_str():
       return ba
 
 def get_link_oxygen(anomeric_carbon, bonds, verbose=False):
@@ -387,6 +396,8 @@ def get_link_oxygen(anomeric_carbon, bonds, verbose=False):
     if verbose: print ba.quote()
     if ba.element.strip() not in ["O"]: continue
     if ba.parent().id_str() != anomeric_carbon.parent().id_str():
+      return ba
+    if ba.parent().parent().id_str() != anomeric_carbon.parent().parent().id_str():
       return ba
 
 def get_link_oxygen_on_distance(anomeric_carbon, atom_group1, atom_group2):

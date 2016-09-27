@@ -395,7 +395,7 @@ class ThreeProteinResidues(list):
         if esd: angle_proxy.weight = esd_factor * 1/restraint_values[i+1]**2
       elif len(names)==2:
         bond=self.bond_params_table.lookup(*names)
-        assert bond
+        assert bond, "No bond between %s" % names
         if verbose:
           print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
             names,

@@ -421,14 +421,19 @@ def get_bonded_from_atom_groups(atom_group1,
   rc = {}
   if bond_cutoff:
     bond_cutoff *= bond_cutoff
-  for i, atom1 in enumerate(generate_atoms_from_atom_groups(atom_group1,
-                                                            atom_group2)
+  for i, atom1 in enumerate(generate_atoms_from_atom_groups(atom_group1.parent(),
+                                                            atom_group2.parent())
                                                             ):
-    for j, atom2 in enumerate(generate_atoms_from_atom_groups(atom_group1,
-                                                              atom_group2)
+    for j, atom2 in enumerate(generate_atoms_from_atom_groups(atom_group1.parent(),
+                                                              atom_group2.parent())
                                                               ):
       if i>=j: continue
       if bond_cutoff:
+        altloc1 = atom1.parent().altloc
+        altloc2 = atom2.parent().altloc
+        if altloc1==altloc2: pass
+        elif altloc1=='' or altloc2=='': pass
+        else: continue
         d2 = get_distance2(atom1, atom2)
         if d2<=bond_cutoff:
           rc.setdefault(atom1.i_seq, [])
