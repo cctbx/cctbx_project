@@ -1477,7 +1477,11 @@ class multi_out(object):
         new_file_object,
         new_atexit_send_to=None):
     """
-    Replaces a registered stream with a new file.
+    Replaces a registered stream with a new file. Dumps everything accumulated
+    in stream to the file.
+    Useful when at the time of init of this object file name is not known.
+    Allows to use StringIO buffer to accumulate output and then dump it to
+    file and continue with it.
 
     Parameters
     ----------
