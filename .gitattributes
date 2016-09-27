@@ -2308,6 +2308,14 @@ mmtbx/refinement/weights_params.py -text
 mmtbx/refinement/wx_tardy_pdb.py svneol=native#text/x-python
 mmtbx/regression/__init__.py -text
 mmtbx/regression/make_fake_anomalous_data.py -text
+mmtbx/regression/model_idealization/tst_nomap_01.py -text
+mmtbx/regression/model_idealization/tst_nomap_02.py -text
+mmtbx/regression/model_idealization/tst_nomap_03.py -text
+mmtbx/regression/model_idealization/tst_nomap_04.py -text
+mmtbx/regression/model_idealization/tst_withmap_01.py -text
+mmtbx/regression/model_idealization/tst_withmap_02.py -text
+mmtbx/regression/model_idealization/tst_withmap_03.py -text
+mmtbx/regression/model_idealization/tst_withmap_04.py -text
 mmtbx/regression/ncs/__init__.py -text
 mmtbx/regression/ncs/tst_asu_as_one_ncs_copy.py -text
 mmtbx/regression/ncs/tst_geometry_minimization_ncs_constraints.py -text
@@ -2416,8 +2424,6 @@ mmtbx/regression/tst_maps_misc.py -text
 mmtbx/regression/tst_minimize_chain.py -text
 mmtbx/regression/tst_ml_estimate.py -text
 mmtbx/regression/tst_model_2.py -text
-mmtbx/regression/tst_model_idealization.py -text
-mmtbx/regression/tst_model_idealization_map.py -text
 mmtbx/regression/tst_model_map.py -text
 mmtbx/regression/tst_models_to_from_chains.py -text
 mmtbx/regression/tst_msa.py -text
