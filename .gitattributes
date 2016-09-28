@@ -4017,6 +4017,7 @@ xfel/ui/components/icons/32x32/txt.png -text
 xfel/ui/components/icons/32x32/undo.png -text
 xfel/ui/components/icons/32x32/write.png -text
 xfel/ui/components/run_stats_plotter.py -text
+xfel/ui/components/submission_tracker.py -text
 xfel/ui/components/xfel_gui_controls.py -text
 xfel/ui/components/xfel_gui_dialogs.py -text
 xfel/ui/components/xfel_gui_init.py -text
