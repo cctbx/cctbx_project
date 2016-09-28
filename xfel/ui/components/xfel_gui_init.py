@@ -1212,6 +1212,8 @@ class StatusTab(BaseTab):
     else:
       plotter = pltr.PopUpCharts()
       plotter.plot_uc_histogram(info=info)
+      plotter.plot_uc_3Dplot(info=info)
+      plotter.plt.show()
 
 
   def onClustering(self, e):

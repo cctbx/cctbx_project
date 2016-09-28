@@ -117,7 +117,8 @@ class PopUpCharts(object):
   windows when user requests them, e.g. unit cell histogram chart '''
 
   def __init__(self):
-    pass
+    import matplotlib.pyplot as plt
+    self.plt=plt
 
   def reject_outliers(self, data):
     from scitbx.math import five_number_summary
@@ -133,7 +134,7 @@ class PopUpCharts(object):
   def plot_uc_histogram(self, info):
 
     # Initialize figure
-    fig = plt.figure(figsize=(12, 10))
+    fig = self.plt.figure(figsize=(12, 10))
     gsp = GridSpec(2, 3)
 
     # Extract uc dimensions from info list
@@ -175,7 +176,7 @@ class PopUpCharts(object):
     sub_b.set_xlabel(
       "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
                                         flex.mean_and_variance(b).unweighted_sample_standard_deviation()))
-    plt.setp(sub_b.get_yticklabels(), visible=False)
+    self.plt.setp(sub_b.get_yticklabels(), visible=False)
     sub_b.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
@@ -185,7 +186,7 @@ class PopUpCharts(object):
     sub_c.set_xlabel(
       "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
                                         flex.mean_and_variance(c).unweighted_sample_standard_deviation()))
-    plt.setp(sub_c.get_yticklabels(), visible=False)
+    self.plt.setp(sub_c.get_yticklabels(), visible=False)
     sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
@@ -203,7 +204,7 @@ class PopUpCharts(object):
     sub_beta.set_xlabel(
       r'$\beta (%.2f +/- %.2f\circ)$' % (flex.mean(beta),
                                          flex.mean_and_variance(beta).unweighted_sample_standard_deviation()))
-    plt.setp(sub_beta.get_yticklabels(), visible=False)
+    self.plt.setp(sub_beta.get_yticklabels(), visible=False)
     sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
@@ -213,9 +214,61 @@ class PopUpCharts(object):
     sub_gamma.set_xlabel(
       r'$\gamma (%.2f +/- %.2f\circ)$' % (flex.mean(gamma),
                                           flex.mean_and_variance(gamma).unweighted_sample_standard_deviation()))
-    plt.setp(sub_gamma.get_yticklabels(), visible=False)
+    self.plt.setp(sub_gamma.get_yticklabels(), visible=False)
     sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
     gsp.update(wspace=0)
-    plt.show()
+
+  def plot_uc_3Dplot(self, info):
+    import numpy as np
+    from mpl_toolkits.mplot3d import Axes3D # import dependency
+
+    fig = self.plt.figure(figsize=(12, 10))
+    # Extract uc dimensions from info list
+    a = flex.double([i['a'] for i in info])
+    b = flex.double([i['b'] for i in info])
+    c = flex.double([i['c'] for i in info])
+    alpha = flex.double([i['alpha'] for i in info])
+    beta = flex.double([i['beta'] for i in info])
+    gamma = flex.double([i['gamma'] for i in info])
+    n_total = len(a)
+
+    accepted = flex.bool(n_total, True)
+    for d in [a, b, c, alpha, beta, gamma]:
+      outliers = self.reject_outliers(d)
+      accepted &= ~outliers
+
+    a = a.select(accepted)
+    b = b.select(accepted)
+    c = c.select(accepted)
+
+    AA = "a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
+                                        flex.mean_and_variance(a).unweighted_sample_standard_deviation())
+    BB = "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
+                                        flex.mean_and_variance(b).unweighted_sample_standard_deviation())
+    CC = "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
+                                        flex.mean_and_variance(c).unweighted_sample_standard_deviation())
+
+
+    subset = min(len(a),1000)
+
+    flex.set_random_seed(123)
+    rnd_sel = flex.random_double(len(a))<(subset/n_total)
+
+    a = a.select(rnd_sel)
+    b = b.select(rnd_sel)
+    c = c.select(rnd_sel)
+
+    fig.suptitle('{} randomly selected cells out of total {} images'
+                 ''.format(len(a),n_total), fontsize=18)
+
+    ax = fig.add_subplot(111, projection='3d')
+
+    for ia in xrange(len(a)):
+      ax.scatter(a[ia],b[ia],c[ia],c='r',marker='+')
+
+    ax.set_xlabel(AA)
+    ax.set_ylabel(BB)
+    ax.set_zlabel(CC)
+
