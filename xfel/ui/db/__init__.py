@@ -61,6 +61,10 @@ class db_proxy(object):
       query += "(%s) VALUES (%s)"%(", ".join(keys), ", ".join(vals))
       cursor = self.app.execute_query(query, commit=True)
       self.id = cursor.lastrowid
+
+      for key in self.app.columns_dict[table_name]:
+        if key not in self._db_dict:
+          self._db_dict[key] = None
     else:
       keys = []
       for key in app.columns_dict[table_name]:

@@ -58,9 +58,7 @@ def submit_all_jobs(app):
                        run_id = job.run.id,
                        status = "Submitted")
     all_jobs.append(j)
-    submit_job(app, job)
-
-  # TODO: use all_jobs array and get_log_path method to parse log files to get job status
+    j.submission_id = submit_job(app, job)
 
 def submit_job(app, job):
   import os, libtbx.load_env
@@ -216,4 +214,4 @@ def submit_job(app, job):
   phil.close()
 
   from xfel.command_line.cxi_mpi_submit import Script as submit_script
-  submit_script().run([submit_phil_path])
+  return submit_script().run([submit_phil_path])

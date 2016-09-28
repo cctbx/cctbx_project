@@ -486,12 +486,28 @@ class Script(object):
       print command
     else:
       try:
-        result = easy_run.fully_buffered(command=command).raise_if_errors()
+        result = easy_run.fully_buffered(command=command)
+        result.raise_if_errors()
       except Exception, e:
         if not "Warning: job being submitted without an AFS token." in str(e):
           raise e
 
       print "Job submitted.  Output in", trialdir
+
+      if params.mp.method == "mpi" or params.mp.method == "lsf":
+        submission_id = None
+        for line in result.stdout_lines:
+          # example for lsf: 'Job <XXXXXX> is submitted to queue <YYYYYYY>.'
+          if len(line.split()) < 2: continue
+          s = line.split()[1].lstrip('<').rstrip('>')
+          try:
+            s = int(s)
+          except ValueError:
+            pass
+          else:
+            submission_id = str(s)
+        return submission_id
+    return None
 
 if __name__ == "__main__":
   script = Script()

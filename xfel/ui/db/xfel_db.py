@@ -57,6 +57,19 @@ class initialize(initialize_base):
       else:
         assert False
 
+      # Maintain backwards compatibility with SQL tables v2: 09/28/16
+      query = "SHOW columns FROM %s_job"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = zip(*columns)[0]
+      if 'submission_id' not in column_names:
+        query = """
+          ALTER TABLE %s_job
+          ADD COLUMN submission_id VARCHAR(45) NULL
+        """%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
