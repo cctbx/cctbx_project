@@ -56,9 +56,13 @@ def submit_all_jobs(app):
     j = app.create_job(trial_id = job.trial.id,
                        rungroup_id = job.rungroup.id,
                        run_id = job.run.id,
-                       status = "Submitted")
+                       status = "SUBMITTED")
     all_jobs.append(j)
-    j.submission_id = submit_job(app, job)
+    try:
+      j.submission_id = submit_job(app, job)
+    except Exception, e:
+      print "Couldn't submit job:", str(e)
+      j.status = "SUBMIT_FAIL"
 
 def submit_job(app, job):
   import os, libtbx.load_env
