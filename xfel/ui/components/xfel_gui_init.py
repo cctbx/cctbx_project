@@ -16,7 +16,7 @@ from wx.lib.scrolledpanel import ScrolledPanel
 from libtbx import easy_run
 
 try:
-  from MySQLdb import OperationalError
+  from MySQLdb import OperationalError # test import
 except ImportError:
   from libtbx.utils import Sorry
   raise Sorry('Mysql not available')
@@ -119,17 +119,28 @@ class JobMonitor(Thread):
     wx.PostEvent(self.parent.run_window.jobs_tab, evt)
 
   def run(self):
+    from xfel.ui.components.submission_tracker import SubmissionTracker
+
     # one time post for an initial update
     self.post_refresh()
 
-    #from xfel.ui.db.job import submit_all_jobs
-    #try:
-    #  db = xfel_db_application(self.parent.params)
-    #  self.parent.run_window.job_light.change_status('on')
-    #except OperationalError:
-    #  self.parent.run_window.job_light.change_status('alert')
+    db = xfel_db_application(self.parent.params)
+    tracker = SubmissionTracker(self.parent.params)
 
     while self.active:
+      self.parent.run_window.job_light.change_status('on')
+
+      jobs = db.get_all_jobs()
+      for job in jobs:
+        if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL']:
+          continue
+        new_status = tracker.track(job.submission_id, job.get_log_path())
+        # Handle the case where the job was submitted but no status is available yet
+        if job.status == "SUBMITTED" and new_status == "ERR":
+          pass
+        elif job.status != new_status:
+          job.status = new_status
+
       self.post_refresh()
       time.sleep(5)
 

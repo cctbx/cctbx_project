@@ -51,6 +51,8 @@ class SubmissionTracker(object):
     self.interrogator = QueueInterrogator(self.queueing_system)
     self.reader = LogReader(self.queueing_system)
   def track(self, submission_id, log_path):
+    if submission_id is None:
+      return "UNKWN"
     status = self.interrogator.query(submission_id)
     if status in ["PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT"]:
       return status
@@ -62,4 +64,5 @@ class SubmissionTracker(object):
         return "EXIT"
       else:
         return "ERR" # error querying the queueing system
-
+    else:
+      print "Found an unknown status", status
