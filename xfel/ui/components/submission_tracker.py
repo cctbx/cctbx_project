@@ -19,7 +19,10 @@ class QueueInterrogator(object):
     status = "\n".join(result.stdout_lines)
     error = "\n".join(result.stderr_lines)
     if error != "" and not "Warning: job being submitted without an AFS token." in error:
-      return error
+      if "job not found" in error:
+        return "ERR"
+      else:
+        return error
     else:
       return status
 
