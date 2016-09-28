@@ -13,10 +13,13 @@ automatically.  This is superficially similar to the setup for phenix.refine
 """
 
 from __future__ import division
+from cctbx import uctbx
 from iotbx import file_reader
+import iotbx.pdb
 from libtbx.str_utils import make_header, make_sub_header
 from libtbx.utils import Sorry, Usage, multi_out, null_out
 from libtbx import Auto
+from scitbx.array_family import flex
 from cStringIO import StringIO
 import sys
 
@@ -382,6 +385,47 @@ class load_model_and_data (object) :
     # SYMMETRY HANDLING - COMBINED
     if (hkl_symm is not None) :
       use_symmetry = hkl_symm
+
+    # check for weird crystal symmetry
+    # modified from mmtbx.command_line.secondary_structure_restraints
+    # plan to centralize functionality in another location
+    # -------------------------------------------------------------------------
+    cs = pdb_symm
+
+    corrupted_cs = False
+    if cs is not None:
+      if [cs.unit_cell(), cs.space_group()].count(None) > 0:
+        corrupted_cs = True
+        cs = None
+      elif cs.unit_cell().volume() < 10:
+        corrupted_cs = True
+        cs = None
+
+    if cs is None:
+      if corrupted_cs:
+        print >> out, "Symmetry information is corrupted,",
+      else:
+        print >> out, "Symmetry information was not found,",
+
+      if (hkl_symm is not None):
+        print >> out, "using symmetry from data."
+        cs = hkl_symm
+      else:
+        print >> out, "putting molecule in P1 box."
+        pdb_combined = iotbx.pdb.combine_unique_pdb_files(
+          file_names=self.pdb_file_names)
+        pdb_structure = iotbx.pdb.input(
+          source_info=None, lines=flex.std_string(pdb_combined.raw_records))
+        atoms = pdb_structure.atoms()
+        box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
+          sites_cart=atoms.extract_xyz(),
+          buffer_layer=3)
+        atoms.set_xyz(new_xyz=box.sites_cart)
+        cs = box.crystal_symmetry()
+
+    pdb_symm = cs
+    # -------------------------------------------------------------------------
+
     from iotbx.symmetry import combine_model_and_data_symmetry
     self.crystal_symmetry = combine_model_and_data_symmetry(
       model_symmetry=pdb_symm,

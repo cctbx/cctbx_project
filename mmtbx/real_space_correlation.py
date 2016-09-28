@@ -426,6 +426,19 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
       unit_cell, space_group_info=sg_info, pre_determined_n_real=n_real)
     map_2 = map_handle.file_object.map_data()
 
+    # check for origin shift
+    # modified from phenix.command_line.real_space_refine
+    # plan to centralize functionality in another location
+    # -------------------------------------------------------------------------
+    shift_manager = mmtbx.utils.shift_origin(
+      map_data=map_2, pdb_hierarchy=pdb_hierarchy,
+      crystal_symmetry=map_handle.crystal_symmetry())
+    if (shift_manager.shift is not None):
+      print >>log, "Map origin is not at (0,0,0): shifting the map and model."
+    pdb_hierarchy = shift_manager.pdb_hierarchy
+    map_2 = shift_manager.map_data
+    # -------------------------------------------------------------------------
+
   # compute map_1 (Fc) if given a map (fmodel does not exist)
   if (map_1 is None):
     xray_structure = pdb_hierarchy.extract_xray_structure(

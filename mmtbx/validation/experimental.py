@@ -190,7 +190,7 @@ class real_space (validation) :
         params=rsc_params,
         log=null_out())
     except Exception, e :
-      raise e
+      raise
     else :
       for i, result_ in enumerate(rsc) :
         result = residue_real_space(
