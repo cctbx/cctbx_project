@@ -230,6 +230,7 @@ def exercise_04(prefix="tst_mi_test_04"):
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
       "use_map_for_reference=False",
+      "number_of_refinement_cycles=1",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)

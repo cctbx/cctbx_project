@@ -236,6 +236,7 @@ def exercise_03(prefix="tst_mi_test_03"):
   cmd = " ".join([
       "phenix.model_idealization",
       "%s_start.pdb" % prefix,
+      "number_of_refinement_cycles=1",
       "use_map_for_reference=False",
       ">%s.log" % prefix])
   print cmd

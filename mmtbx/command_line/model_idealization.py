@@ -51,6 +51,8 @@ reference_map_resolution = 5.
   .type = float
 data_for_map = None
   .type = path
+number_of_refinement_cycles = 3
+  .type = int
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -418,6 +420,7 @@ class model_idealization():
           xrs=xrs,
           original_pdb_h=original_pdb_h,
           excl_string_selection=excl_string_selection,
+          number_of_cycles=self.params.number_of_refinement_cycles,
           log=self.log,
           ss_annotation=ss_annotation)
     else:
@@ -428,6 +431,7 @@ class model_idealization():
           xrs=xrs,
           target_map = reference_map,
           ss_annotation=ss_annotation,
+          number_of_cycles=self.params.number_of_refinement_cycles,
           log=self.log)
 
   def shift_and_write_result(self, hierarchy, fname_suffix):

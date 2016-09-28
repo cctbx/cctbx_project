@@ -400,6 +400,7 @@ class minimize_wrapper_with_map():
       ncs_restraints_group_list=None,
       ss_annotation=None,
       refine_ncs_operators=False,
+      number_of_cycles=1,
       log=None):
     self.pdb_h = pdb_h
     self.xrs = xrs
@@ -492,7 +493,7 @@ class minimize_wrapper_with_map():
     # STOP()
 
     import mmtbx.refinement.real_space.weight
-    for x in xrange(1):
+    for x in xrange(number_of_cycles):
       # if True:
       if ncs_restraints_group_list is None or len(ncs_restraints_group_list)==0:
         #No NCS
