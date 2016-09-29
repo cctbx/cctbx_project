@@ -3,6 +3,7 @@ from mmtbx.validation import residue, validation, atom
 import iotbx.phil
 import os.path
 from libtbx import slots_getstate_setstate
+import numpy
 import sys
 
 ################################################################################
@@ -100,6 +101,13 @@ class kin_atom(slots_getstate_setstate):
     self.id_str = id_str
     self.xyz = xyz
 
+def dist(p1,p2):
+  return ((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2)**0.5
+
+def single_offset(p1,p2,offset):
+  d = dist(p1,p2)
+  return (p1[0]-(p1[0]-p2[0])/d*offset, p1[1]-(p1[1]-p2[1])/d*offset, p1[2]-(p1[2]-p2[2])/d*offset)
+
 class omega_result(residue):
   """
   Result class for protein backbone omega angle analysis (phenix.omegalyze).
@@ -150,47 +158,102 @@ class omega_result(residue):
       ('%.2f'%self.omega).rjust(7), self.omegalyze_type().ljust(8),self.highest_mc_b)
 
   def as_kinemage(self, triangles=False, vectors=False):
+    ca1,c,n,ca2  = self.markup_atoms[0].xyz, self.markup_atoms[1].xyz, self.markup_atoms[2].xyz, self.markup_atoms[3].xyz
+    o = 0.1
+
+    d1 = dist(ca1,ca2)
+    d2 = dist(n,c)
+    d3 = dist(ca1,c)
+    d4 = dist(n,ca2)
+    d_diag = dist(ca1,n)
+    c_n_vec = (n[0]-c[0], n[1]-c[1], n[2]-c[2])
+    c_ca1_vec = (ca1[0]-c[0], ca1[1]-c[1], ca1[2]-c[2])
+    ca2_ca1_vec =  (ca1[0]-ca2[0], ca1[1]-ca2[1], ca1[2]-ca2[2])
+    ca2_n_vec = (n[0]-ca2[0], n[1]-ca2[1], n[2]-ca2[2])
+    diag_vec = (n[0]-ca1[0], n[1]-ca1[1], n[2]-ca1[2])
+
+    theta = numpy.arccos(numpy.dot(c_ca1_vec,diag_vec)/d_diag/d3)
+    ca1_offset_len = o/numpy.sin(theta)
+    ca1_offset = single_offset(ca1,n,ca1_offset_len)
+
+    theta = numpy.arccos(numpy.dot(ca2_n_vec,diag_vec)/d_diag/d4)
+    n_offset_len = o/numpy.sin(theta)
+    n_offset = single_offset(n,ca1,n_offset_len)
+
+    theta_ca2 = numpy.arccos(numpy.dot(ca2_n_vec,ca2_ca1_vec)/d4/d1)
+    ca2_to_ca1_offset_len = o/numpy.sin(theta_ca2)
+    ca2_to_ca1_offset = single_offset(ca2,ca1,ca2_to_ca1_offset_len)
+    vec_from_offset = (ca2_to_ca1_offset[0]+n[0]-ca2[0], ca2_to_ca1_offset[1]+n[1]-ca2[1], ca2_to_ca1_offset[2]+n[2]-ca2[2])
+    theta = -numpy.arccos(numpy.dot(diag_vec,ca2_ca1_vec)/d_diag/d1)
+    v1 = -dist(ca1,ca1_offset)*numpy.sin(theta)
+    x = v1/numpy.sin(theta_ca2)
+    ca2_offset = single_offset(ca2_to_ca1_offset,vec_from_offset, x)
+
+    theta_n = numpy.arccos(numpy.dot(diag_vec,c_n_vec)/d_diag/d2)
+    n_to_c_offset_len = o/numpy.sin(theta_n)
+    n_to_c_offset = single_offset(c,n,n_to_c_offset_len)
+
+    v2 = dist(n,n_offset)*numpy.sin(theta_n)
+    theta_c = numpy.arccos(numpy.dot(c_ca1_vec,c_n_vec)/d2/d3)
+    c_to_n_offset_len = o/numpy.sin(theta_c)
+    c_to_n_offset = single_offset(c,n,c_to_n_offset_len)
+    x2 = v2/numpy.sin(theta_c)
+    vec_from_offset = (c_to_n_offset[0]+ca1[0]-c[0], c_to_n_offset[1]+ca1[1]-c[1], c_to_n_offset[2]+ca1[2]-c[2])
+
+    c_offset = single_offset(c_to_n_offset,vec_from_offset,x2)
+
+    #This commented block was the first pass at offseting the triangles
+    #  it was abandoned due to moving the drawn ca1-n diagonal off of the actual diagonal
+    #o = 0.1 #this is the offset from the backbone in angstrom
+    #d1 = ((ca1[0]-ca2[0])**2 + (ca1[1]-ca2[1])**2 + (ca1[2]-ca2[2])**2)**0.5
+    #d2 = ((n[0]-c[0])**2 + (n[1]-c[1])**2 + (n[2]-c[2])**2)**0.5
+    #d3 = ((ca1[0]-c[0])**2 + (ca1[1]-c[1])**2 + (ca1[2]-c[2])**2)**0.5
+    #d4 = ((n[0]-ca2[0])**2 + (n[1]-ca2[1])**2 + (n[2]-ca2[2])**2)**0.5
+    #ca1_offset = (ca1[0]+(ca2[0]-ca1[0])/d1*o - (ca1[0]-c[0])/d3*o, ca1[1]+(ca2[1]-ca1[1])/d1*o - (ca1[1]-c[1])/d3*o, ca1[2]+(ca2[2]-ca1[2])/d1*o - (ca1[2]-c[2])/d3*o)
+    #ca2_offset = (ca2[0]-(ca2[0]-ca1[0])/d1*o - (ca2[0]-n[0])/d4*o, ca2[1]-(ca2[1]-ca1[1])/d1*o - (ca2[1]-n[1])/d4*o, ca2[2]-(ca2[2]-ca1[2])/d1*o - (ca2[2]-n[2])/d4*o)
+    #c_offset = (c[0]+(n[0]-c[0])/d2*o+(ca1[0]-c[0])/d3*o, c[1]+(n[1]-c[1])/d2*o+(ca1[1]-c[1])/d3*o, c[2]+(n[2]-c[2])/d2*o+(ca1[2]-c[2])/d3*o)
+    #n_offset = (n[0]-(n[0]-c[0])/d2*o+(ca2[0]-n[0])/d4*o, n[1]-(n[1]-c[1])/d2*o+(ca2[1]-n[1])/d4*o, n[2]-(n[2]-c[2])/d2*o+(ca2[2]-n[2])/d4*o)
     if triangles:
       triangle1_line1 = "{%s CA  (%s %s, omega= %.2f)} P X %s\n" % (
         self.markup_atoms[0].id_str, self.omegalyze_type(),
         self.residue_type_kin(), self.omega,
-        "%.3f %.3f %.3f" % self.markup_atoms[0].xyz)
+        "%.3f %.3f %.3f" % ca1_offset)
       triangle1_line2 =      "{%s C  (%s %s, omega= %.2f)} %s\n" % (
         self.markup_atoms[1].id_str, self.omegalyze_type(),
         self.residue_type_kin(), self.omega,
-        "%.3f %.3f %.3f" % self.markup_atoms[1].xyz)
+        "%.3f %.3f %.3f" % c_offset)
       triangle1_line3 =      "{%s N  (%s %s, omega= %.2f)} %s\n" % (
         self.markup_atoms[2].id_str, self.omegalyze_type(),
         self.residue_type_kin(), self.omega,
-        "%.3f %.3f %.3f" % self.markup_atoms[2].xyz)
+        "%.3f %.3f %.3f" % n_offset)
       triangle2_line1 = "{%s CA  (%s %s, omega= %.2f)} P X %s\n" % (
         self.markup_atoms[0].id_str, self.omegalyze_type(),
         self.residue_type_kin(), self.omega,
-        "%.3f %.3f %.3f" % self.markup_atoms[0].xyz)
+        "%.3f %.3f %.3f" % ca1_offset)
       triangle2_line2 =      "{%s N  (%s %s, omega= %.2f)} %s\n" % (
         self.markup_atoms[2].id_str, self.omegalyze_type(),
         self.residue_type_kin(), self.omega,
-        "%.3f %.3f %.3f" % self.markup_atoms[2].xyz)
+        "%.3f %.3f %.3f" % n_offset)
       triangle2_line3 =     "{%s CA  (%s %s, omega= %.2f)} %s\n" % (
         self.markup_atoms[3].id_str, self.omegalyze_type(),
         self.residue_type_kin(), self.omega,
-        "%.3f %.3f %.3f" % self.markup_atoms[3].xyz)
+        "%.3f %.3f %.3f" % ca2_offset)
       out_this = triangle1_line1 + triangle1_line2 + triangle1_line3 + triangle2_line1 + triangle2_line2 + triangle2_line3
     elif vectors:
       vector_line1 = "{%s CA  (%s %s, omega= %.2f)} P %s\n" % (
         self.markup_atoms[0].id_str, self.omegalyze_type(),
         self.residue_type_kin(), self.omega,
-        "%.3f %.3f %.3f" % self.markup_atoms[0].xyz)
+        "%.3f %.3f %.3f" % ca1_offset)
       if self.omega_type == OMEGALYZE_CIS:
         vector_line2 = "{%s CA  (%s %s, omega= %.2f)} %s\n" % (
           self.markup_atoms[3].id_str, self.omegalyze_type(),
           self.residue_type_kin(), self.omega,
-          "%.3f %.3f %.3f" % self.markup_atoms[3].xyz)
+          "%.3f %.3f %.3f" % ca2_offset)
       elif self.omega_type == OMEGALYZE_TWISTED:
         vector_line2 = "{%s N  (%s %s, omega= %.2f)} %s\n" % (
           self.markup_atoms[2].id_str, self.omegalyze_type(),
           self.residue_type_kin(), self.omega,
-          "%.3f %.3f %.3f" % self.markup_atoms[2].xyz)
+          "%.3f %.3f %.3f" % n_offset)
       else:
         return ""
       out_this = vector_line1 + vector_line2
