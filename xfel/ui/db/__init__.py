@@ -48,7 +48,7 @@ class db_proxy(object):
       keys = []
       vals = []
       for key, value in kwargs.iteritems():
-        assert key in self.app.columns_dict[table_name]
+        assert key in app.columns_dict[table_name]
         keys.append(key)
         self._db_dict[key] = value
         if isinstance(value, bool):
@@ -59,10 +59,10 @@ class db_proxy(object):
           value = "'%s'"%str(value)
         vals.append(value)
       query += "(%s) VALUES (%s)"%(", ".join(keys), ", ".join(vals))
-      cursor = self.app.execute_query(query, commit=True)
+      cursor = app.execute_query(query, commit=True)
       self.id = cursor.lastrowid
 
-      for key in self.app.columns_dict[table_name]:
+      for key in app.columns_dict[table_name]:
         if key not in self._db_dict:
           self._db_dict[key] = None
     else:
@@ -106,6 +106,5 @@ class db_proxy(object):
 
     query = "UPDATE `%s` SET %s = %s WHERE id = %d"% (
       self.table_name, key, value, self.id)
-    print query
     self.app.execute_query(query, commit=True)
     self._db_dict[key] = value

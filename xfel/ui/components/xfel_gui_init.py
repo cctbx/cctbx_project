@@ -100,8 +100,10 @@ EVT_JOB_MONITOR = wx.PyEventBinder(tp_EVT_JOB_MONITOR, 1)
 class MonitorJobs(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
 
-  def __init__(self, etype, eid):
+  def __init__(self, etype, eid, trials = None, jobs = None):
     wx.PyCommandEvent.__init__(self, etype, eid)
+    self.trials = trials
+    self.jobs = jobs
 
 class JobMonitor(Thread):
   ''' Monitor thread for jobs; generated so that the GUI does not lock up when
@@ -114,8 +116,8 @@ class JobMonitor(Thread):
     self.parent = parent
     self.active = active
 
-  def post_refresh(self):
-    evt = MonitorJobs(tp_EVT_JOB_MONITOR, -1)
+  def post_refresh(self, trials = None, jobs = None):
+    evt = MonitorJobs(tp_EVT_JOB_MONITOR, -1, trials, jobs)
     wx.PostEvent(self.parent.run_window.jobs_tab, evt)
 
   def run(self):
@@ -141,7 +143,8 @@ class JobMonitor(Thread):
         elif job.status != new_status:
           job.status = new_status
 
-      self.post_refresh()
+      trials = db.get_all_trials()
+      self.post_refresh(trials, jobs)
       time.sleep(5)
 
 
@@ -1052,14 +1055,21 @@ class JobsTab(BaseTab):
 
   def onMonitorJobs(self, e):
     # Find new trials
-    if self.main.db is not None:
-      all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    if e.trials is not None:
+      all_db_trials = [str(i.trial) for i in e.trials]
       new_trials = [i for i in all_db_trials if i not in self.all_trials]
       if len(new_trials) > 0:
         self.find_trials()
         self.all_trials = all_db_trials
 
-    self.monitor_jobs()
+    if e.jobs is not None:
+      if str(self.filter).lower() != 'all jobs':
+        jobs = [i for i in jobs if i.trial_id == int(self.filter[-1])]
+
+      self.job_sizer.DeleteWindows()
+      for job in e.jobs:
+        self.add_job_row(job)
+
     self.job_panel.SetupScrolling()
     self.job_sizer.Layout()
 
@@ -1075,16 +1085,6 @@ class JobsTab(BaseTab):
         self.trial_choice.ctr.SetSelection(0)
       else:
         self.trial_choice.ctr.SetSelection(int(self.filter[-1]))
-
-  def monitor_jobs(self):
-    if self.main.db is not None:
-      jobs = self.main.db.get_all_jobs()
-      if str(self.filter).lower() != 'all jobs':
-        jobs = [i for i in jobs if i.trial_id == int(self.filter[-1])]
-
-      self.job_sizer.DeleteWindows()
-      for job in jobs:
-        self.add_job_row(job)
 
   def add_job_row(self, job):
     job_row_sizer = wx.FlexGridSizer(1, 4, 0, 10)
