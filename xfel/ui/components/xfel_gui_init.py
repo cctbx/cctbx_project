@@ -1011,15 +1011,17 @@ class JobsTab(BaseTab):
     self.job_sizer = wx.BoxSizer(wx.VERTICAL)
     self.job_panel.SetSizer(self.job_sizer)
 
-    self.colname_sizer = wx.FlexGridSizer(1, 3, 0, 10)
+    self.colname_sizer = wx.FlexGridSizer(1, 4, 0, 10)
     trial_label = wx.StaticText(self, label='Trial', size=(60, -1))
     run_label = wx.StaticText(self, label='Run', size=(60, -1))
-    tag_label = wx.StaticText(self, label='Status', size=(560, -1))
+    status_label = wx.StaticText(self, label='Status', size=(150, -1))
+    submission_id_label = wx.StaticText(self, label='Submission ID', size=(150, -1))
     self.colname_sizer.Add(trial_label, flag=wx.ALIGN_RIGHT)
     self.colname_sizer.Add(run_label, flag=wx.ALIGN_RIGHT)
-    self.colname_sizer.Add(tag_label, flag=wx.ALIGN_RIGHT | wx.EXPAND)
+    self.colname_sizer.Add(status_label, flag=wx.ALIGN_LEFT)
+    self.colname_sizer.Add(submission_id_label, flag=wx.ALIGN_LEFT)
     self.colname_sizer.AddGrowableCol(2, 1)
-    self.main_sizer.Add(self.colname_sizer, flag=wx.ALL | wx.EXPAND, border=10)
+    self.main_sizer.Add(self.colname_sizer, flag=wx.ALL, border=10)
 
     self.trial_choice = gctr.ChoiceCtrl(self,
                                         label='Filter by:',
@@ -1085,15 +1087,17 @@ class JobsTab(BaseTab):
         self.add_job_row(job)
 
   def add_job_row(self, job):
-    job_row_sizer = wx.FlexGridSizer(1, 3, 0, 10)
+    job_row_sizer = wx.FlexGridSizer(1, 4, 0, 10)
     job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.trial.trial),
                                     size=(60, -1)))
     job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.run.run),
                                     size=(60, -1)))
     job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.status),
-                                    size=(560, -1)))
+                                    size=(150, -1)))
+    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.submission_id),
+                                    size=(150, -1)))
     job_row_sizer.AddGrowableCol(2, 1)
-    self.job_sizer.Add(job_row_sizer, flag=wx.EXPAND)
+    self.job_sizer.Add(job_row_sizer)
 
 
 class StatusTab(BaseTab):
