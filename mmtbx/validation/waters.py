@@ -87,7 +87,7 @@ class waters (validation) :
     sites_cart = xray_structure.sites_cart()
     sites_frac = xray_structure.sites_frac()
     sel_cache = pdb_hierarchy.atom_selection_cache()
-    water_sel = sel_cache.selection("resname HOH and name O")
+    water_sel = sel_cache.selection("water")
 
     if (molprobity_map_params is not None):
       # assume parameters have been validated (symmetry of pdb and map matches)
@@ -130,7 +130,7 @@ class waters (validation) :
         sites_cart = xray_structure.sites_cart()
         sites_frac = xray_structure.sites_frac()
         sel_cache = pdb_hierarchy.atom_selection_cache()
-        water_sel = sel_cache.selection("resname HOH and name O")
+        water_sel = sel_cache.selection("water")
 
         # ---------------------------------------------------------------------
 
