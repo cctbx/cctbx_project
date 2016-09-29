@@ -130,7 +130,7 @@ class JobMonitor(Thread):
     tracker = SubmissionTracker(self.parent.params)
 
     while self.active:
-      self.parent.run_window.job_light.change_status('on')
+      self.parent.run_window.jmn_light.change_status('idle')
 
       jobs = db.get_all_jobs()
       for job in jobs:
@@ -145,6 +145,7 @@ class JobMonitor(Thread):
 
       trials = db.get_all_trials()
       self.post_refresh(trials, jobs)
+      self.parent.run_window.jmn_light.change_status('on')
       time.sleep(5)
 
 
@@ -924,7 +925,7 @@ class RunTab(BaseTab):
       button.all_tags = self.all_tags
       button.update_label()
 
-    self.run_panel.SetupScrolling()
+    self.run_panel.SetupScrolling(scrollToTop=False)
     self.run_panel.Refresh()
 
   def add_row(self, run):
@@ -979,7 +980,7 @@ class TrialsTab(BaseTab):
     self.trial_panel.SetSizer(self.trial_sizer)
     #self.trial_panel.Layout()
     self.trial_sizer.Layout()
-    self.trial_panel.SetupScrolling()
+    self.trial_panel.SetupScrolling(scrollToTop=False)
 
   def add_trial(self, trial):
     new_trial = TrialPanel(self.trial_panel,
@@ -1063,14 +1064,16 @@ class JobsTab(BaseTab):
         self.all_trials = all_db_trials
 
     if e.jobs is not None:
-      if str(self.filter).lower() != 'all jobs':
-        jobs = [i for i in jobs if i.trial_id == int(self.filter[-1])]
+      if str(self.filter).lower() == 'all jobs':
+        jobs = e.jobs
+      else:
+        jobs = [i for i in e.jobs if i.trial.trial == int(self.filter.split()[-1])]
 
       self.job_sizer.DeleteWindows()
-      for job in e.jobs:
+      for job in jobs:
         self.add_job_row(job)
 
-    self.job_panel.SetupScrolling()
+    self.job_panel.SetupScrolling(scrollToTop=False)
     self.job_sizer.Layout()
 
   def find_trials(self):
@@ -1278,7 +1281,7 @@ class StatusTab(BaseTab):
 
     self.iso_panel.SetSizer(self.iso_box_sizer)
     self.iso_panel.Layout()
-    self.iso_panel.SetupScrolling()
+    self.iso_panel.SetupScrolling(scrollToTop=False)
 
   def onTagCheck(self, e):
     checked_items = self.tag_list.ctr.GetCheckedStrings()
@@ -1337,7 +1340,7 @@ class StatusTab(BaseTab):
     self.status_panel.SetSizer(self.status_sizer)
     #self.status_panel.Layout()
     self.status_sizer.Layout()
-    self.status_panel.SetupScrolling()
+    self.status_panel.SetupScrolling(scrollToTop=False)
     self.status_box.SetLabel('Data Statistics - Trial {}'.format(self.trial_no))
 
   def refresh_rows(self):
@@ -1620,7 +1623,7 @@ class RunStatsTab(BaseTab):
       self.runstats_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
       self.runstats_panel.SetSizer(self.runstats_sizer)
       self.runstats_panel.Layout()
-      # self.figure_panel.SetupScrolling()
+      # self.figure_panel.SetupScrolling(scrollToTop=False)
 
   def print_should_have_indexed_paths(self):
     try:
@@ -2128,7 +2131,7 @@ class TrialPanel(wx.Panel):
     for block in self.active_blocks:
       self.draw_block_button(block)
     self.block_panel.Layout()
-    self.block_panel.SetupScrolling()
+    self.block_panel.SetupScrolling(scrollToTop=False)
 
   def draw_block_button(self, block):
     ''' Add new run block button '''
