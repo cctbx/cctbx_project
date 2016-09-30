@@ -1457,6 +1457,8 @@ class manager(manager_mixin):
       params = params, log = log, refine_hd_scattering=refine_hd_scattering)
     if(optimize_mask): self.optimize_mask()
     for i in [1,2,3,4,5]:
+      #print self.r_work_low(), "-"*40
+      #self.show()
       if(self.r_work_low()>0.7 and len(self.bin_selections)>1):
         ds_low = flex.min(
           self.f_obs().d_spacings().data().select(self.bin_selections[0]))
@@ -2109,12 +2111,12 @@ class manager(manager_mixin):
   def r_work_low(self):
     f = self.select(self.bin_selections[0])
     return mmtbx.bulk_solvent.r_factor(
-      f.f_obs_work().data(), f.f_model_work().data(),1.)
+      f.f_obs_work().data(), f.f_model_work().data())
 
   def r_work_high(self):
     f = self.select(self.bin_selections[len(self.bin_selections)-1])
     return mmtbx.bulk_solvent.r_factor(
-      f.f_obs_work().data(), f.f_model_work().data(),1.)
+      f.f_obs_work().data(), f.f_model_work().data())
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()
