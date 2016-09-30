@@ -1019,8 +1019,9 @@ class JobsTab(BaseTab):
     self.job_list.SetSizer(self.job_sizer)
     self.job_list.InsertColumn(0, "Trial")
     self.job_list.InsertColumn(1, "Run")
-    self.job_list.InsertColumn(2, "Submission ID")
-    self.job_list.InsertColumn(3, "Status")
+    self.job_list.InsertColumn(2, "Block")
+    self.job_list.InsertColumn(3, "Submission ID")
+    self.job_list.InsertColumn(4, "Status")
 
     self.colname_sizer = wx.FlexGridSizer(1, 4, 0, 10)
     trial_label = wx.StaticText(self, label='Trial', size=(60, -1))
@@ -1084,7 +1085,7 @@ class JobsTab(BaseTab):
 
       self.job_list.DeleteAllItems()
       for job in jobs:
-        self.job_list.Append([str(job.trial.trial), str(job.run.run), str(job.submission_id), str(job.status)])
+        self.job_list.Append([str(job.trial.trial), str(job.run.run), str(job.rungroup.id), str(job.submission_id), str(job.status)])
 
     self.job_sizer.Layout()
 
