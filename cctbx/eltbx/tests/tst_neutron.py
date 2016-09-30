@@ -2,7 +2,7 @@ from __future__ import division
 from cctbx.eltbx import neutron
 from libtbx.test_utils import approx_equal, Exception_expected
 
-def exercise():
+def exercise_00():
   t = neutron.neutron_news_1992_table("eu")
   assert t.label() == "Eu"
   l = t.bound_coh_scatt_length()
@@ -14,20 +14,35 @@ def exercise():
     n += 1
     if (n == 1):
       assert t.label() == "H"
-    elif (n == 86):
-      assert t.label() == "U"
+    elif (n == 189):
+      assert t.label() == "U6+"
     u = neutron.neutron_news_1992_table(t.label())
     assert u.label() == t.label()
-  assert n == 86
-  try :
+  assert n == 189, n
+  try:
     t = neutron.neutron_news_1992_table("XX")
-  except ValueError, e :
+  except ValueError, e:
     pass
-  else :
+  else:
     raise Exception_expected
 
+def exercise_01():
+  def strip_num_and_sign(x):
+    r = ""
+    for i in x:
+      if(i.isalpha()): r+=i
+    return r
+  for t1 in neutron.neutron_news_1992_table_iterator():
+    l1 = t1.label()
+    l2 = strip_num_and_sign(x=l1)
+    t1 = neutron.neutron_news_1992_table(l1)
+    t2 = neutron.neutron_news_1992_table(l1)
+    assert approx_equal(t1.abs_cross_sect(), t2.abs_cross_sect())
+    assert approx_equal(t1.bound_coh_scatt_length(),t2.bound_coh_scatt_length())
+
 def run():
-  exercise()
+  exercise_00()
+  exercise_01()
   print "OK"
 
 if (__name__ == "__main__"):
