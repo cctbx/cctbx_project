@@ -768,7 +768,7 @@ ATOM     20  C   GLY A   6      15.257   5.112   3.511  1.00 29.00           C
   cif_f = open("%s.cif" % prefix, 'r')
   cif_l = cif_f.readlines()
   cif_f.close()
-  for l in ["_cell_angle_alpha                 90.000\n",
+  for l in ["_cell.angle_alpha                 90.000\n",
       "  _struct_conf.pdbx_PDB_helix_id\n",
       "  _struct_sheet.id\n",
       "  _struct_sheet_range.id\n",

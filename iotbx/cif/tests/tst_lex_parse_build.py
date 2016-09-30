@@ -19,7 +19,7 @@ def exercise_miller_arrays_as_cif_block():
   ma_builder = cif.builders.miller_array_builder(cif_model['global'])
   ma1 = ma_builder.arrays()['_refln_F_squared_meas']
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
-    ma1, array_type='meas')
+    ma1, array_type='meas', format="corecif")
   mas_as_cif_block.add_miller_array(
     ma1.array(data=flex.complex_double([1-1j]*ma1.size())), array_type='calc')
   mas_as_cif_block.add_miller_array(
@@ -28,7 +28,7 @@ def exercise_miller_arrays_as_cif_block():
   for key in ('_refln_F_squared_meas', '_refln_F_squared_sigma',
               '_refln_F_calc', '_refln_phase_calc',
               '_refln_A_calc', '_refln_A_calc'):
-    assert key in mas_as_cif_block.cif_block.keys()
+    assert key in mas_as_cif_block.cif_block.keys(), key
   #
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
     ma1, array_type='meas', format="mmcif")
@@ -101,7 +101,9 @@ _d                                4
   miller_arrays = ma_builder.arrays().values()
   assert len(miller_arrays) == 4
   mas_as_cif_block = cif.miller_arrays_as_cif_block(
-    miller_arrays[0].map_to_asu(), column_names=miller_arrays[0].info().labels)
+      miller_arrays[0].map_to_asu(),
+      column_names=miller_arrays[0].info().labels,
+      format="corecif")
   for array in miller_arrays[1:]:
     labels = array.info().labels
     if len(labels) > 1 :
@@ -283,7 +285,7 @@ def exercise_parser(reader, builder):
             flex.std_string(['o'] * ma1.size()))
   # also test construction of cif model from miller array
   ma2 = cif.builders.miller_array_builder(
-    ma1.as_cif_block(array_type='meas')).arrays()['_refln_F_squared_meas']
+    ma1.as_cif_block(array_type='meas')).arrays()['_refln.F_squared_meas']
   for ma in (ma1, ma2):
     sio = StringIO()
     ma.show_array(sio)
@@ -300,9 +302,10 @@ def exercise_parser(reader, builder):
 (10, 0, 0) 564.68 35.61
 (-10, 1, 0) 170.23 22.26
 """)
-    sio = StringIO()
-    ma.show_summary(sio)
-    assert not show_diff(sio.getvalue(), """\
+  sio = StringIO()
+  ma1.show_summary(sio)
+  # Miller array info: cif:_refln.F_squared_meas,_refln.F_squared_sigma
+  assert not show_diff(sio.getvalue(), """\
 Miller array info: cif:_refln_F_squared_meas,_refln_F_squared_sigma
 Observation type: xray.intensity
 Type of data: double, size=11
@@ -312,7 +315,19 @@ Anomalous flag: False
 Unit cell: (7.999, 9.372, 14.736, 82.625, 81.527, 81.726)
 Space group: P -1 (No. 2)
 """)
-
+  sio = StringIO()
+  ma2.show_summary(sio)
+  # Miller array info: cif:_refln.F_squared_meas,_refln.F_squared_sigma
+  assert not show_diff(sio.getvalue(), """\
+Miller array info: cif:_refln.F_squared_meas,_refln.F_squared_sigma
+Observation type: xray.intensity
+Type of data: double, size=11
+Type of sigmas: double, size=11
+Number of Miller indices: 11
+Anomalous flag: False
+Unit cell: (7.999, 9.372, 14.736, 82.625, 81.527, 81.726)
+Space group: P -1 (No. 2)
+""")
 
 cif_xray_structure = """\
 data_global

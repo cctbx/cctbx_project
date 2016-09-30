@@ -367,7 +367,7 @@ class symmetry(object):
 
   def as_cif_block(self,
       cell_covariance_matrix=None,
-      format="coreCIF",
+      format="mmcif",
       numeric_format="%.3f"):
     from iotbx.cif import model
     wformat = format.lower()

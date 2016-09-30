@@ -136,7 +136,7 @@ class reader(object):
 
 fast_reader = reader # XXX backward compatibility 2010-08-25
 
-def atom_type_cif_loop(xray_structure, format="coreCIF"):
+def atom_type_cif_loop(xray_structure, format="mmcif"):
   format = format.lower()
   assert format in ("corecif", "mmcif")
   if format == "mmcif": separator = '.'
@@ -220,7 +220,7 @@ class miller_arrays_as_cif_block():
   def __init__(self, array, array_type=None,
                column_name=None, column_names=None,
                miller_index_prefix='_refln',
-               format="coreCIF"):
+               format="mmcif"):
     wformat = format.lower()
     assert wformat in ("corecif", "mmcif")
     if wformat == "mmcif":
