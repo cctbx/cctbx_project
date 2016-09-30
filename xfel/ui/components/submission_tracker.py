@@ -57,14 +57,12 @@ class SubmissionTracker(object):
     if submission_id is None:
       return "UNKWN"
     status = self.interrogator.query(submission_id)
-    if status in ["PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT"]:
+    if status in ["PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE"]:
       return status
-    elif status in ["DONE", "ERR"]:
+    elif status == "ERR":
       log_status = self.reader.read_result(log_path)
       if log_status == "Successfully completed.":
         return "DONE"
-      elif status == "DONE": # but log does not terminate correctly
-        return "EXIT"
       else:
         return "ERR" # error querying the queueing system
     else:
