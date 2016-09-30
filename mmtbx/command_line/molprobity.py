@@ -34,6 +34,9 @@ molprobity {
     .short_caption = "Use nuclear hydrogen positions"
   min_cc_two_fofc = 0.8
     .type = float
+    .short_caption = "CC threshold"
+    .help = Values for real-space correlations below the CC threshold are \
+      considered outliers
   n_bins = 10
     .type = int
     .short_caption = Number of resolution bins
