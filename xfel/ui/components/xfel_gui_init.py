@@ -1023,18 +1023,6 @@ class JobsTab(BaseTab):
     self.job_list.InsertColumn(3, "Submission ID")
     self.job_list.InsertColumn(4, "Status")
 
-    self.colname_sizer = wx.FlexGridSizer(1, 4, 0, 10)
-    trial_label = wx.StaticText(self, label='Trial', size=(60, -1))
-    run_label = wx.StaticText(self, label='Run', size=(60, -1))
-    status_label = wx.StaticText(self, label='Status', size=(150, -1))
-    submission_id_label = wx.StaticText(self, label='Submission ID', size=(150, -1))
-    self.colname_sizer.Add(trial_label, flag=wx.ALIGN_RIGHT)
-    self.colname_sizer.Add(run_label, flag=wx.ALIGN_RIGHT)
-    self.colname_sizer.Add(status_label, flag=wx.ALIGN_LEFT)
-    self.colname_sizer.Add(submission_id_label, flag=wx.ALIGN_LEFT)
-    self.colname_sizer.AddGrowableCol(2, 1)
-    self.main_sizer.Add(self.colname_sizer, flag=wx.ALL, border=10)
-
     self.trial_choice = gctr.ChoiceCtrl(self,
                                         label='Filter by:',
                                         label_size=(80, -1),
