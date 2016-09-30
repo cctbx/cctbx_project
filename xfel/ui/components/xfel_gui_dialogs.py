@@ -1265,7 +1265,7 @@ class RunBlockDialog(BaseDialog):
     if self.end_type.specify.GetValue() == 1:
       try:
         last = int(self.runblocks_end.ctr.GetValue())
-        assert last > 0 and last <= self.last_avail and last > first
+        assert last > 0 and last <= self.last_avail and last >= first
         self.last_run = last
         endrun = self.db.get_run(run_number=int(last)).id
       except (ValueError, AssertionError) as e:

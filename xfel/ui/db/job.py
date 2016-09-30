@@ -9,7 +9,7 @@ class Job(db_proxy):
   def get_log_path(self):
     from xfel.ui.db import get_run_path
     import os
-    run_path = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run)
+    run_path = str(get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run))
     return os.path.join(run_path, "stdout", "log.out")
 
 # Support classes and functions for job submission
