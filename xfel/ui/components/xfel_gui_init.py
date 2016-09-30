@@ -1020,7 +1020,7 @@ class JobsTab(BaseTab):
     self.job_list.InsertColumn(0, "Trial")
     self.job_list.InsertColumn(1, "Run")
     self.job_list.InsertColumn(2, "Block")
-    self.job_list.InsertColumn(3, "Submission ID")
+    self.job_list.InsertColumn(3, "Subm ID")
     self.job_list.InsertColumn(4, "Status")
 
     self.trial_choice = gctr.ChoiceCtrl(self,
@@ -1073,7 +1073,18 @@ class JobsTab(BaseTab):
 
       self.job_list.DeleteAllItems()
       for job in jobs:
-        self.job_list.Append([str(job.trial.trial), str(job.run.run), str(job.rungroup.id), str(job.submission_id), str(job.status)])
+        short_status = str(job.status).strip("'")
+        if short_status == "SUBMIT_FAIL":
+          short_status = "S_FAIL"
+        elif short_status == "SUBMITTED":
+          short_status = "SUBMIT"
+        self.job_list.Append([
+          str(job.trial.trial),
+          str(job.run.run),
+          str(job.rungroup.id),
+          str(job.submission_id),
+          short_status,
+          ])
 
     self.job_sizer.Layout()
 
