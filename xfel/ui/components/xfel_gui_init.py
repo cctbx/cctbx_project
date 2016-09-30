@@ -115,6 +115,7 @@ class JobMonitor(Thread):
     Thread.__init__(self)
     self.parent = parent
     self.active = active
+    self.only_active_jobs = True
 
   def post_refresh(self, trials = None, jobs = None):
     evt = MonitorJobs(tp_EVT_JOB_MONITOR, -1, trials, jobs)
@@ -134,6 +135,8 @@ class JobMonitor(Thread):
 
       jobs = db.get_all_jobs()
       for job in jobs:
+        if self.only_active_jobs and (not job.trial.active or not job.rungroup.active):
+          continue
         if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL']:
           continue
         new_status = tracker.track(job.submission_id, job.get_log_path())
@@ -1011,9 +1014,13 @@ class JobsTab(BaseTab):
     self.all_trials = []
     self.filter = 'All jobs'
 
-    self.job_panel = ScrolledPanel(self)
+    self.job_list = wx.ListCtrl(self, style=wx.LC_REPORT|wx.BORDER_SUNKEN)
     self.job_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.job_panel.SetSizer(self.job_sizer)
+    self.job_list.SetSizer(self.job_sizer)
+    self.job_list.InsertColumn(0, "Trial")
+    self.job_list.InsertColumn(1, "Run")
+    self.job_list.InsertColumn(2, "Submission ID")
+    self.job_list.InsertColumn(3, "Status")
 
     self.colname_sizer = wx.FlexGridSizer(1, 4, 0, 10)
     trial_label = wx.StaticText(self, label='Trial', size=(60, -1))
@@ -1034,17 +1041,23 @@ class JobsTab(BaseTab):
                                         ctrl_size=(100, -1),
                                         choices=[])
     self.btn_kill_all = wx.Button(self, label='Kill All', size=(120, -1))
+    self.chk_active = wx.CheckBox(self, label='Only display jobs from active trials/blocks')
+    self.chk_active.SetValue(True)
     self.option_sizer = wx.FlexGridSizer(1, 2, 0, 20)
-    self.option_sizer.AddMany([(self.trial_choice), (self.btn_kill_all)])
+    self.option_sizer.AddMany([(self.trial_choice), (self.btn_kill_all), (self.chk_active)])
 
-    self.main_sizer.Add(self.job_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.job_list, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
     self.Bind(wx.EVT_BUTTON, self.onKillAll, self.btn_kill_all)
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_choice.ctr)
+    self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActive)
     self.Bind(EVT_JOB_MONITOR, self.onMonitorJobs)
+
+  def onToggleActive(self, e):
+    self.main.job_monitor.only_active_jobs = self.chk_active.GetValue()
 
   def onTrialChoice(self, e):
     self.filter = self.trial_choice.ctr.GetString(
@@ -1069,11 +1082,10 @@ class JobsTab(BaseTab):
       else:
         jobs = [i for i in e.jobs if i.trial.trial == int(self.filter.split()[-1])]
 
-      self.job_sizer.DeleteWindows()
+      self.job_list.DeleteAllItems()
       for job in jobs:
-        self.add_job_row(job)
+        self.job_list.Append([str(job.trial.trial), str(job.run.run), str(job.submission_id), str(job.status)])
 
-    self.job_panel.SetupScrolling(scrollToTop=False)
     self.job_sizer.Layout()
 
   def find_trials(self):
@@ -1088,20 +1100,6 @@ class JobsTab(BaseTab):
         self.trial_choice.ctr.SetSelection(0)
       else:
         self.trial_choice.ctr.SetSelection(int(self.filter[-1]))
-
-  def add_job_row(self, job):
-    job_row_sizer = wx.FlexGridSizer(1, 4, 0, 10)
-    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.trial.trial),
-                                    size=(60, -1)))
-    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.run.run),
-                                    size=(60, -1)))
-    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.status),
-                                    size=(150, -1)))
-    job_row_sizer.Add(wx.StaticText(self.job_panel, label=str(job.submission_id),
-                                    size=(150, -1)))
-    job_row_sizer.AddGrowableCol(2, 1)
-    self.job_sizer.Add(job_row_sizer)
-
 
 class StatusTab(BaseTab):
   def __init__(self, parent, main):
