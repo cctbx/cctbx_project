@@ -191,7 +191,7 @@ class read_experiments(object):
         real_space_a = matrix.row(direct[0:3]),
         real_space_b = matrix.row(direct[3:6]),
         real_space_c = matrix.row(direct[6:9]),
-        space_group_symbol = "P63",  # XXX obviously another gap in the database paradigm
+        space_group_symbol = self.params.target_space_group.type().lookup_symbol(),
         mosaicity = float(tokens[order_dict["half_mosaicity_deg"]]),
       )
       crystal.domain_size = float(tokens[order_dict["domain_size_ang"]])
