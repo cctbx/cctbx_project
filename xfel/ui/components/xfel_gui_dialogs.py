@@ -824,6 +824,7 @@ class MultiRunTagDialog(BaseDialog):
     self.db = db
     self.db_tags = self.db.get_all_tags()
     self.db_tag_names = [t.name for t in self.db_tags]
+    self.db_tags_selected_sort = self.db_tag_names
     self.db_runs = self.db.get_all_runs()
     self.db_run_numbers = [str(r.run) for r in self.db_runs]
     self.runs_selected = []
@@ -845,6 +846,20 @@ class MultiRunTagDialog(BaseDialog):
                                border=10)
     self.select_runs_panel.SetSizer(self.select_runs_sizer)
 
+    self.sort_type_panel = wx.Panel(self)
+    self.sort_type_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.radio_sort = gctr.RadioCtrl(self.sort_type_panel,
+                                     label='Sort tags by',
+                                     label_style='normal',
+                                     label_size=(80, -1),
+                                     direction='horizontal',
+                                     items={'id':'DB ID',
+                                            'alpha':'name'})
+    self.sort_type_sizer.Add(self.radio_sort,
+                             flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP,
+                             border=5)
+    self.sort_type_panel.SetSizer(self.sort_type_sizer)
+
     self.button_panel = wx.Panel(self)
     self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.btn_add_tags    = wx.Button(self.button_panel, size=(115, -1),
@@ -862,6 +877,8 @@ class MultiRunTagDialog(BaseDialog):
     # Add panels to main sizer
     self.multiruntag_sizer.Add(self.select_runs_panel,
                                flag=wx.EXPAND | wx.LEFT | wx.RIGHT)
+    self.multiruntag_sizer.Add(self.sort_type_panel,
+                               flag=wx.EXPAND | wx.BOTTOM | wx.TOP)
     self.multiruntag_sizer.Add(self.button_panel,
                                flag=wx.EXPAND | wx.BOTTOM | wx.TOP)
     self.main_sizer.Add(self.multiruntag_sizer,
@@ -877,6 +894,8 @@ class MultiRunTagDialog(BaseDialog):
     self.SetTitle('Manage multiple runs')
 
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.select_runs.ctr)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onSortDefault, self.radio_sort.id)
+    self.Bind(wx.EVT_RADIOBUTTON, self.onSortAlphanum, self.radio_sort.alpha)
     self.Bind(wx.EVT_BUTTON, self.onAddTags, self.btn_add_tags)
     self.Bind(wx.EVT_BUTTON, self.onRemoveTags, self.btn_remove_tags)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
@@ -891,11 +910,17 @@ class MultiRunTagDialog(BaseDialog):
       if b.run.run_id in self.selected.keys():
         self.selected[b.run.run_id].append(b)
 
+  def onSortDefault(self, e):
+    self.db_tags_selected_sort = self.db_tag_names
+
+  def onSortAlphanum(self, e):
+    self.db_tags_selected_sort = sorted(self.db_tag_names)
+
   def onAddTags(self, e):
     tag_dlg = wx.MultiChoiceDialog(self,
                                    message='Add these tags to selected runs',
                                    caption='Add tags to multiple runs',
-                                   choices=self.db_tag_names)
+                                   choices=self.db_tags_selected_sort)
     tag_dlg.Fit()
 
     if (tag_dlg.ShowModal() == wx.ID_OK):
@@ -919,7 +944,7 @@ class MultiRunTagDialog(BaseDialog):
     tag_dlg = wx.MultiChoiceDialog(self,
                                    message='Remove these tags from selected runs',
                                    caption='Remove tags from multiple runs',
-                                   choices=self.db_tag_names)
+                                   choices=self.db_tags_selected_sort)
     tag_dlg.Fit()
 
     if (tag_dlg.ShowModal() == wx.ID_OK):
