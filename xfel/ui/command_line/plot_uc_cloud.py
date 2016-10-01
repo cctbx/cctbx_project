@@ -42,7 +42,7 @@ def run(args):
   trial = app.get_trial(trial_number=params.trial)
   info = []
   print "Reading data..."
-  cells = app.get_stats(trial=trial, tags=tags, isigi_cutoff = 1.0, tag_union = params.tag_selection_mode)()
+  cells = app.get_stats(trial=trial, tags=tags, isigi_cutoff = 1.0, tag_selection_mode = params.tag_selection_mode)()
   for cell in cells:
     info.append({'a':cell.cell_a,
                  'b':cell.cell_b,
