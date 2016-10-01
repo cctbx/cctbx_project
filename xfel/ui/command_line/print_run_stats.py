@@ -50,7 +50,6 @@ def run(args):
     rungroups = [params.rungroup] * len(runs)
 
   for run_no, rungroup_id in zip(runs, rungroups):
-    if run_no < 140: continue
     try:
       timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
     except Exception, e:
