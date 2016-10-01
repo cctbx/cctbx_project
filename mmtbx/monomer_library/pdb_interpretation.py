@@ -2077,12 +2077,20 @@ class add_dihedral_proxies(object):
             if cis_trans_specifications:
               for ca_i_seq in cis_trans_specifications:
                 if ca_i_seq[0] == i_seqs[3]: # specify the trailing CA
+                  if self.chem_link_id in ["PTRANS", "PCIS"]:
+                    cis_trans_specifications[ca_i_seq] = "P%s" % (
+                      cis_trans_specifications[ca_i_seq],
+                      )
+                  elif self.chem_link_id in ["NMTRANS", "NMCIS"]:
+                    cis_trans_specifications[ca_i_seq] = "NM%s" % (
+                      cis_trans_specifications[ca_i_seq],
+                      )
                   if self.chem_link_id!=cis_trans_specifications[ca_i_seq].upper():
-                    if self.chem_link_id=="TRANS":
-                      self.chem_link_id="CIS"
+                    if self.chem_link_id.find("TRANS")>-1:
+                      self.chem_link_id=self.chem_link_id.replace('TRANS', 'CIS')
                       proxy.angle_ideal=0
                     else:
-                      self.chem_link_id="TRANS"
+                      self.chem_link_id=self.chem_link_id.replace('CIS','TRANS')
                       proxy.angle_ideal=180
 
           registry_process_result = dihedral_proxy_registry.process(

@@ -1979,6 +1979,7 @@ mmtbx/conformation_dependent_library/bond_angle_registry.py -text
 mmtbx/conformation_dependent_library/cdl_database.py -text
 mmtbx/conformation_dependent_library/cdl_setup.py -text
 mmtbx/conformation_dependent_library/cdl_utils.py -text
+mmtbx/conformation_dependent_library/check_cdl_database.py -text
 mmtbx/conformation_dependent_library/histidines.py -text
 mmtbx/conformation_dependent_library/hpdl_database.py -text
 mmtbx/conformation_dependent_library/hydrogen_bonding.py -text

@@ -408,7 +408,10 @@ class ThreeProteinResidues(list):
         self.registry[tuple(names)] = restraint_values[i]
         #print "BOND", 1/restraint_values[i+1]**2/bond.weight,1/restraint_values[i+1]**2, bond.weight
         if ideal: bond.distance_ideal = restraint_values[i]
-        if esd: bond.weight = esd_factor * 1/restraint_values[i+1]**2
+        if esd:
+          if restraint_values[i+1]>.1:
+            restraint_values[i+1]/=10
+          bond.weight = esd_factor * 1/restraint_values[i+1]**2
       else:
         assert 0
 

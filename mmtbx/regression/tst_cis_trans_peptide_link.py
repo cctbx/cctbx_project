@@ -1,7 +1,7 @@
 from __future__ import division
 import StringIO
 from libtbx import easy_run
-pdb = """
+pdbs = ["""
 ATOM   3239  N   ASN A 411       8.430  37.928 107.306  1.00 14.13           N
 ATOM   3240  CA  ASN A 411       9.390  38.201 106.233  1.00 15.21           C
 ATOM   3241  C   ASN A 411      10.787  38.396 106.824  1.00 16.78           C
@@ -21,7 +21,29 @@ ATOM   3254  CA  ALA A 413      14.295  33.427 107.221  1.00 20.12           C
 ATOM   3255  C   ALA A 413      15.125  32.912 106.082  1.00 20.71           C
 ATOM   3256  O   ALA A 413      14.595  32.411 105.098  1.00 20.46           O
 ATOM   3257  CB  ALA A 413      13.795  32.257 108.046  1.00 19.57           C
-"""
+""",
+  """
+ATOM     71  N   SER A 411      39.662  65.271  37.503  1.00 61.40           N
+ATOM     72  CA  SER A 411      38.219  65.068  37.450  1.00 59.89           C
+ATOM     73  C   SER A 411      37.919  63.580  37.301  1.00 57.15           C
+ATOM     74  O   SER A 411      38.565  62.895  36.507  1.00 53.39           O
+ATOM     75  CB  SER A 411      37.599  65.840  36.289  1.00 55.80           C
+ATOM     76  N   PRO A 412      37.102  63.122  37.964  1.00 59.58           N
+ATOM     77  CA  PRO A 412      36.829  61.665  37.929  1.00 63.69           C
+ATOM     78  C   PRO A 412      35.870  61.273  36.808  1.00 63.21           C
+ATOM     79  O   PRO A 412      34.706  60.913  37.019  1.00 68.01           O
+ATOM     80  CB  PRO A 412      36.236  61.415  39.313  1.00 64.16           C
+ATOM     81  CG  PRO A 412      35.516  62.685  39.620  1.00 68.82           C
+ATOM     82  CD  PRO A 412      36.321  63.804  39.007  1.00 64.77           C
+ATOM     83  N   THR A 413      36.378  61.338  35.577  1.00 65.04           N
+ATOM     84  CA  THR A 413      35.605  61.101  34.371  1.00 72.28           C
+ATOM     85  C   THR A 413      36.415  60.173  33.463  1.00 76.81           C
+ATOM     86  O   THR A 413      37.017  60.604  32.483  1.00 75.12           O
+ATOM     87  CB  THR A 413      35.271  62.418  33.666  1.00 75.72           C
+ATOM     88  OG1 THR A 413      36.491  63.024  33.216  1.00 83.26           O
+ATOM     89  CG2 THR A 413      34.574  63.397  34.618  1.00 68.25           C
+""",
+]
 
 params = {"" : [-180],
           """
@@ -48,49 +70,60 @@ cmd_args = {
   "peptide_link.apply_all_trans=True" : [-180],
   }
 
-geo_spec = """dihedral pdb=" CA  ASN A 411 "
+geo_specs = ["""dihedral pdb=" CA  ASN A 411 "
          pdb=" C   ASN A 411 "
          pdb=" N   SER A 412 "
          pdb=" CA  SER A 412 "
     ideal   model   delta  harmonic     sigma   weight residual
+  %4s.00""",
+  """dihedral pdb=" CA  SER A 411 "
+         pdb=" C   SER A 411 "
+         pdb=" N   PRO A 412 "
+         pdb=" CA  PRO A 412 "
+    ideal   model   delta  harmonic     sigma   weight residual
   %4s.00"""
+  ]
 
 def cis_trans_specification():
-  preamble = "bad_cis_peptide"
-  f=file("%s.pdb" % preamble, "wb")
-  f.write(pdb)
-  f.close()
-  for param, results in params.items():
-    f=file("%s.params" % preamble, "wb")
-    f.write(param)
+  for i, pdb in enumerate(pdbs):
+    preamble = "bad_cis_peptide_%02d" % i
+    f=file("%s.pdb" % preamble, "wb")
+    f.write(pdb)
     f.close()
-    cmd = "phenix.geometry_minimization %(preamble)s.pdb %(preamble)s.params" % locals()
-    print cmd
-    ero = easy_run.fully_buffered(command=cmd)
-    out = StringIO.StringIO()
-    ero.show_stdout(out=out)
+    for param, results in params.items():
+      f=file("%s.params" % preamble, "wb")
+      f.write(param)
+      f.close()
+      cmd = "phenix.geometry_minimization %(preamble)s.pdb %(preamble)s.params" % locals()
+      print cmd
+      ero = easy_run.fully_buffered(command=cmd)
+      out = StringIO.StringIO()
+      ero.show_stdout(out=out)
 
-    lines = file("%(preamble)s_minimized.geo" % locals(), "rb").read()
-    print geo_spec % results[0]
-    if lines.find(geo_spec % results[0])==1:
-      if lines.find(geo_spec % abs(results[0]))==1:
-        assert 0, ".geo specification not found"
+      lines = file("%(preamble)s_minimized.geo" % locals(), "rb").read()
+      geo_spec=geo_specs[i]
+      print geo_spec % results[0]
+      if lines.find(geo_spec % results[0])==1:
+        if lines.find(geo_spec % abs(results[0]))==1:
+          assert 0, ".geo specification not found"
 
 def trans_only_specification():
   # must be run after cis_trans_specification
-  preamble = "bad_cis_peptide"
-  for arg, results in cmd_args.items():
-    cmd = "phenix.geometry_minimization %(preamble)s_minimized.pdb %(arg)s" % locals()
-    print cmd
-    ero = easy_run.fully_buffered(command=cmd)
-    out = StringIO.StringIO()
-    ero.show_stdout(out=out)
+  for i in range(len(pdbs)):
+    preamble = "bad_cis_peptide_%02d" % i
+    for arg, results in cmd_args.items():
+      cmd = "phenix.geometry_minimization %(preamble)s_minimized.pdb %(arg)s" % locals()
+      print cmd
+      ero = easy_run.fully_buffered(command=cmd)
+      out = StringIO.StringIO()
+      ero.show_stdout(out=out)
 
-    lines = file("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
-    print geo_spec % results[0]
-    if lines.find(geo_spec % results[0])==1:
-      if lines.find(geo_spec % abs(results[0]))==1:
-        assert 0, ".geo specification not found"
+      lines = file("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
+      geo_spec=geo_specs[i]
+      print geo_spec % results[0]
+      if lines.find(geo_spec % results[0])==1:
+        if lines.find(geo_spec % abs(results[0]))==1:
+          assert 0, ".geo specification not found"
 
 def run():
   cis_trans_specification()
