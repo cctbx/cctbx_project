@@ -32,9 +32,27 @@ def run(args):
   overall_total = 0
 
   app = xfel_db_application(params)
-  for run_no in params.run:
+
+  if params.run is None or len(params.run) == 0:
+    trial = app.get_trial(trial_number=params.trial)
+    runs = []
+    run_ids = []
+    rungroups = []
+    for rg in trial.rungroups:
+      for run in rg.runs:
+        if run.id in run_ids: continue
+        runs.append(run.run)
+        run_ids.append(run.id)
+        rungroups.append(rg.id)
+  else:
+    runs = params.run
+    assert params.rungroup is not None
+    rungroups = [params.rungroup] * len(runs)
+
+  for run_no, rungroup_id in zip(runs, rungroups):
+    if run_no < 140: continue
     try:
-      timestamps, n_strong, average_i_sigi_low, average_i_sigi_high = HitrateStats(app, run_no, params.trial, params.rungroup, params.d_min)()
+      timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
     except Exception, e:
       print "Coulnd't get run", run_no
       continue
