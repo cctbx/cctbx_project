@@ -131,11 +131,11 @@ class PopUpCharts(object):
     outliers.set_selected(data < q1_x - cut_x, True)
     return outliers
 
-  def plot_uc_histogram(self, info):
+  def plot_uc_histogram(self, info, extra_title = None):
 
     # Initialize figure
     fig = self.plt.figure(figsize=(12, 10))
-    gsp = GridSpec(2, 3)
+    gsp = GridSpec(3, 3)
 
     # Extract uc dimensions from info list
     a = flex.double([i['a'] for i in info])
@@ -159,8 +159,10 @@ class PopUpCharts(object):
 
     nbins = int(np.sqrt(len(info))) * 2
 
-    fig.suptitle('Histogram of Unit Cell Dimensions ({} images)'
-                 ''.format(len(a)), fontsize=18)
+    title = 'Histogram of Unit Cell Dimensions ({} images)'.format(len(a))
+    if extra_title is not None:
+      title += " (%s)"%extra_title
+    fig.suptitle(title, fontsize=18)
 
     sub_a = fig.add_subplot(gsp[0])
     sub_a.hist(a, nbins, normed=False, facecolor='#2c7fb8',
@@ -190,7 +192,31 @@ class PopUpCharts(object):
     sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
-    sub_alpha = fig.add_subplot(gsp[3])
+    sub_ab = fig.add_subplot(gsp[3])
+    sub_ab.hist2d(a, b, bins=100)
+    sub_ab.set_xlabel("a axis")
+    sub_ab.set_ylabel("b axis")
+    plt.setp(sub_ab.get_yticklabels(), visible=False)
+    sub_ab.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_ab.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    sub_bc = fig.add_subplot(gsp[4])
+    sub_bc.hist2d(b, c, bins=100)
+    sub_bc.set_xlabel("b axis")
+    sub_bc.set_ylabel("c axis")
+    plt.setp(sub_bc.get_yticklabels(), visible=False)
+    sub_bc.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_bc.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    sub_ac = fig.add_subplot(gsp[5])
+    sub_ac.hist2d(a, c, bins=100)
+    sub_ac.set_xlabel("a axis")
+    sub_ac.set_ylabel("c axis")
+    plt.setp(sub_bc.get_yticklabels(), visible=False)
+    sub_ac.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_ac.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    sub_alpha = fig.add_subplot(gsp[6])
     sub_alpha.hist(alpha, nbins, normed=False, facecolor='#7fcdbb',
                    alpha=0.75,  histtype='stepfilled')
     sub_alpha.set_xlabel(
@@ -198,7 +224,7 @@ class PopUpCharts(object):
                                            flex.mean_and_variance(alpha).unweighted_sample_standard_deviation()))
     sub_alpha.set_ylabel('Number of images')
 
-    sub_beta = fig.add_subplot(gsp[4], sharey=sub_alpha)
+    sub_beta = fig.add_subplot(gsp[7], sharey=sub_alpha)
     sub_beta.hist(beta, nbins, normed=False, facecolor='#7fcdbb',
                   alpha=0.75, histtype='stepfilled')
     sub_beta.set_xlabel(
@@ -208,7 +234,7 @@ class PopUpCharts(object):
     sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
-    sub_gamma = fig.add_subplot(gsp[5], sharey=sub_alpha)
+    sub_gamma = fig.add_subplot(gsp[8], sharey=sub_alpha)
     sub_gamma.hist(gamma, nbins, normed=False, facecolor='#7fcdbb',
                    alpha=0.75, histtype='stepfilled')
     sub_gamma.set_xlabel(
@@ -271,4 +297,3 @@ class PopUpCharts(object):
     ax.set_xlabel(AA)
     ax.set_ylabel(BB)
     ax.set_zlabel(CC)
-

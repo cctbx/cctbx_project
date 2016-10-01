@@ -69,7 +69,7 @@ def run(args):
     high_quality_total += n_high_quality
     overall_total += n_total
 
-  if len(params.run) > 1:
+  if len(runs) > 1:
     print "-" * 80
     try:
       print "Total % 7d % 5.1f   % 7d % 5.1f     % 7d % 5.1f % 5.1f    % 7d " % (hit_total, 100*hit_total/overall_total, indexed_total, 100*indexed_total/overall_total, high_quality_total, 100*high_quality_total/overall_total, 100*high_quality_total/indexed_total, overall_total)
