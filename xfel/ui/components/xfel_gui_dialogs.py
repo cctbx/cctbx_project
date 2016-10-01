@@ -812,6 +812,134 @@ class TrialTagSelectionDialog(BaseDialog):
                 break
     e.Skip()
 
+class MultiRunTagDialog(BaseDialog):
+  def __init__(self, parent,
+               label_style='bold',
+               content_style='normal',
+               db=None,
+               *args, **kwargs):
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+    self.parent = parent
+    self.db = db
+    self.db_tags = self.db.get_all_tags()
+    self.db_tag_names = [t.name for t in self.db_tags]
+    self.db_runs = self.db.get_all_runs()
+    self.db_run_numbers = [str(r.run) for r in self.db_runs]
+    self.runs_selected = []
+    self.buttons_for_runs_selected = []
+
+    self.multiruntag_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    self.select_runs_panel = wx.Panel(self)
+    self.select_runs_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.select_runs =  gctr.CheckListCtrl(self,
+                                           label='Selected runs:',
+                                           label_size=(200, -1),
+                                           label_style='normal',
+                                           ctrl_size=(240, 300),
+                                           direction='vertical',
+                                           choices=self.db_run_numbers)
+    self.select_runs_sizer.Add(self.select_runs,
+                               flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP,
+                               border=10)
+    self.select_runs_panel.SetSizer(self.select_runs_sizer)
+
+    self.button_panel = wx.Panel(self)
+    self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.btn_add_tags    = wx.Button(self.button_panel, size=(115, -1),
+                                     label='Add tags')
+    self.btn_remove_tags = wx.Button(self.button_panel, size=(115, -1),
+                                     label='Remove tags')
+    self.button_sizer.Add(self.btn_add_tags,
+                          flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP,
+                          border=5)
+    self.button_sizer.Add(self.btn_remove_tags,
+                          flag=wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP,
+                          border=5)
+    self.button_panel.SetSizer(self.button_sizer)
+
+    # Add panels to main sizer
+    self.multiruntag_sizer.Add(self.select_runs_panel,
+                               flag=wx.EXPAND | wx.LEFT | wx.RIGHT)
+    self.multiruntag_sizer.Add(self.button_panel,
+                               flag=wx.EXPAND | wx.BOTTOM | wx.TOP)
+    self.main_sizer.Add(self.multiruntag_sizer,
+                        flag=wx.EXPAND | wx.RIGHT | wx.LEFT)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    self.Layout()
+    self.SetTitle('Manage multiple runs')
+
+    self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.select_runs.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onAddTags, self.btn_add_tags)
+    self.Bind(wx.EVT_BUTTON, self.onRemoveTags, self.btn_remove_tags)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onRunChoice(self, e):
+    run_numbers_selected = map(int, self.select_runs.ctr.GetCheckedStrings())
+    self.selected = {}
+    for r in self.db_runs:
+      if r.run in run_numbers_selected:
+        self.selected[r.run] = [r]
+    for b in self.parent.all_tag_buttons:
+      if b.run.run_id in self.selected.keys():
+        self.selected[b.run.run_id].append(b)
+
+  def onAddTags(self, e):
+    tag_dlg = wx.MultiChoiceDialog(self,
+                                   message='Add these tags to selected runs',
+                                   caption='Add tags to multiple runs',
+                                   choices=self.db_tag_names)
+    tag_dlg.Fit()
+
+    if (tag_dlg.ShowModal() == wx.ID_OK):
+      tag_indices = tag_dlg.GetSelections()
+      add_tags = [t for t in self.db_tags if self.db_tag_names.index(t.name) in tag_indices]
+
+      runs_with_tags_buttons = self.parent.all_tag_buttons
+
+      for tag in add_tags:
+        for run_id in self.selected.keys():
+          run, button = self.selected[run_id]
+          run_tags = run.app.get_run_tags(run.run_id)
+          run_tag_ids = [t.tag_id for t in run_tags]
+          if tag.tag_id not in run_tag_ids:
+            run.add_tag(tag)
+            button.tags.append(tag)
+            button.update_label()
+
+
+  def onRemoveTags(self, e):
+    tag_dlg = wx.MultiChoiceDialog(self,
+                                   message='Remove these tags from selected runs',
+                                   caption='Remove tags from multiple runs',
+                                   choices=self.db_tag_names)
+    tag_dlg.Fit()
+
+    if (tag_dlg.ShowModal() == wx.ID_OK):
+      tag_indices = tag_dlg.GetSelections()
+      remove_tags = [t for t in self.db_tags if self.db_tag_names.index(t.name) in tag_indices]
+
+      for tag in remove_tags:
+        for run_id in self.selected.keys():
+          run, button = self.selected[run_id]
+          run_tags = run.app.get_run_tags(run.run_id)
+          run_tag_ids = [t.tag_id for t in run_tags]
+          if tag.tag_id in run_tag_ids:
+            run.remove_tag(tag)
+            tag_on_button = [t for t in button.tags if t.tag_id == tag.tag_id][0] # proxy tag =/= other proxy tag
+            button.tags.remove(tag_on_button)
+            button.update_label()
+
+  def onOK(self, e):
+    e.Skip()
+
 class TagDialog(BaseDialog):
   def __init__(self, parent,
                label_style='bold',

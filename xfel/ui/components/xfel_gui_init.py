@@ -879,19 +879,34 @@ class RunTab(BaseTab):
     self.colname_sizer.AddGrowableCol(1, 1)
     self.main_sizer.Add(self.colname_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
+    self.btn_multirun_tags = wx.Button(self, label='Change Tags on Multiple Runs', size=(240, -1))
     self.btn_manage_tags = wx.Button(self, label='Manage Tags', size=(120, -1))
     self.main_sizer.Add(self.run_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.btn_manage_tags,
-                        flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
-                        border=10)
+
+    self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.button_sizer.Add(self.btn_multirun_tags,
+                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
+                          border=10)
+    self.button_sizer.Add(self.btn_manage_tags,
+                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
+                          border=10)
+    self.main_sizer.Add(self.button_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Bindings
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
+    self.Bind(wx.EVT_BUTTON, self.onMultiRunTags, self.btn_multirun_tags)
     self.Bind(wx.EVT_BUTTON, self.onManageTags, self.btn_manage_tags)
 
   def onRefresh(self, e):
       self.refresh_rows()
+
+  def onMultiRunTags(self, e):
+    """Add or remove tags applied to multiple runs at a time."""
+    multirun_tag_dialog = dlg.MultiRunTagDialog(self, db=self.main.db)
+    multirun_tag_dialog.Fit()
+    multirun_tag_dialog.ShowModal()
+    multirun_tag_dialog.Destroy()
 
   def onManageTags(self, e):
     ''' User can add / remove / edit sample tags '''
