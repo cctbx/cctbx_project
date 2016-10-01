@@ -12,6 +12,8 @@ phil_str = """
   tag = None
     .type = str
     .multiple = True
+  tag_selection_mode = *union intersection
+    .type = choice
 """
 phil_scope = parse(phil_str + db_phil_str)
 
@@ -40,7 +42,7 @@ def run(args):
   trial = app.get_trial(trial_number=params.trial)
   info = []
   print "Reading data..."
-  cells = app.get_stats(trial=trial, tags=tags, isigi_cutoff = 1.0)()
+  cells = app.get_stats(trial=trial, tags=tags, isigi_cutoff = 1.0, tag_union = params.tag_selection_mode)()
   for cell in cells:
     info.append({'a':cell.cell_a,
                  'b':cell.cell_b,
