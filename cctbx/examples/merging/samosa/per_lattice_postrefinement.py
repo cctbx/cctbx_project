@@ -4,7 +4,7 @@ import math
 from scitbx import matrix
 from cctbx import miller
 from dials.array_family import flex
-
+from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 
 def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_set, result):
     out = sys.stdout
@@ -40,7 +40,6 @@ def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_s
       miller_indices=observations.indices())
 
     if True:
-
       from scitbx import lbfgs
       from libtbx import adopt_init_args
 
@@ -76,53 +75,29 @@ def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_s
       class Empty:
         def __init__(CC): CC.n_obs=0; CC.n_rejected=0
       data = Empty()
+
+      I_reference = flex.double([i_model.data()[pair[0]] for pair in matches.pairs()])
+      I_observed = flex.double([observations.data()[pair[1]] for pair in matches.pairs()])
       use_weights = False # New facility for getting variance-weighted correlation
-      sum_xx = 0
-      sum_xy = 0
-      sum_yy = 0
-      sum_x = 0
-      sum_y = 0
-      sum_w = 0.
 
-      for pair in matches.pairs():
-        if params.scaling.simulation is not None:
-          exit("NOT SURE OF WHAT THIS IS")
-          observations.data()[pair[1]] = self.i_model.data()[pair[0]]     # SIM
-          observations.sigmas()[pair[1]] = self.i_model.sigmas()[pair[0]] # SIM
+      if use_weights:
+         #variance weighting
+        I_weight = flex.double(
+          [1./(observations.sigmas()[pair[1]])**2 for pair in matches.pairs()])
+      else:
+        I_weight = flex.double(len(observations.sigmas()), 1.)
 
-        data.n_obs += 1
-        if not params.include_negatives and observations.data()[pair[1]] <= 0:
-          data.n_rejected += 1
-          continue
-        # Update statistics using reference intensities (I_r), and
-        # observed intensities (I_o).
-        if use_weights: I_w = 1./(observations.sigmas()[pair[1]])**2 #variance weighting
-        else: I_w = 1.
-
-        I_r = i_model.data()[pair[0]]
-        I_o = observations.data()[pair[1]]
-        sum_xx += I_w * I_r**2
-        sum_yy += I_w * I_o**2
-        sum_xy += I_w * I_r * I_o
-        sum_x += I_w * I_r
-        sum_y += I_w * I_o
-        sum_w += I_w
-      # Linearly fit I_r to I_o, i.e. find slope and offset such that
-      # I_o = slope * I_r + offset, optimal in a least-squares sense.
-      # XXX This is backwards, really.
+      data.n_obs = len(matches.pairs())
+      if params.include_negatives:
+        data.n_rejected = 0
+      else:
+        non_positive = flex.bool(
+          [observations.data()[pair[1]] <= 0 for pair in matches.pairs()])
+        data.n_rejected = non_positive.count(True)
+        I_weight.set_selected (non_positive, 0.)
       N = data.n_obs - data.n_rejected
-      DELTA = sum_w * sum_xx - sum_x**2 # see p. 105 in Bevington & Robinson
-      if (DELTA) == 0:
-        exit("SHOULDN'T GET HERE")
-        print >> out, "Skipping frame with",sum_w,sum_xx,sum_x**2
-        return null_data(file_name=file_name,
-                         log_out=out.getvalue(),
-                         low_signal=True)
-      slope = (sum_w * sum_xy - sum_x * sum_y) / DELTA
-      offset = (sum_xx * sum_y - sum_x * sum_xy) / DELTA
-      corr = (sum_w * sum_xy - sum_x * sum_y) / (math.sqrt(sum_w * sum_xx - sum_x**2) *
-                                                 math.sqrt(sum_w * sum_yy - sum_y**2))
-      #finished calculation of correlation here
+
+      SWC = simple_weighted_correlation(I_weight, I_reference, I_observed)
 
       if params.postrefinement.algorithm=="rs":
         print("IN RS METHOD")
@@ -136,7 +111,7 @@ def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_s
 
         RS = 1./10000. # reciprocal effective domain size of 1 micron
         RS = Rs        # try this empirically determined approximate, monochrome, a-mosaic value
-        current = flex.double([slope, BFACTOR, RS, 0., 0.])
+        current = flex.double([SWC.slope, BFACTOR, RS, 0., 0.])
 
         class unpack(object):
          def __init__(YY,values):
@@ -170,7 +145,7 @@ def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_s
         DVEC = ORI.unit_cell().d(MILLER)
         eta_init = 2. * result["ML_half_mosaicity_deg"][0] * math.pi/180.
         D_eff_init = 2.*result["ML_domain_size_ang"][0]
-        current = flex.double([slope, BFACTOR, eta_init, 0., 0.,D_eff_init,])
+        current = flex.double([SWC.slope, BFACTOR, eta_init, 0., 0.,D_eff_init,])
 
         class unpack(object):
          def __init__(YY,values):

@@ -2,6 +2,29 @@ from __future__ import division
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
+class simple_weighted_correlation(object): # used for data merging
+  def __init__(self,w, x, y, derivatives_wrt_y_depth=0):
+    import math
+    assert derivatives_wrt_y_depth==0 # no derivatives implemented presently
+
+    sum_xx = flex.sum(w * x**2)
+    sum_yy = flex.sum(w * y**2)
+    sum_xy = flex.sum(w * x * y)
+    sum_x = flex.sum(w * x)
+    sum_y = flex.sum(w * y)
+    sum_w = flex.sum(w)
+    assert sum_w != 0
+      # Linear fit y to x, i.e. find slope and offset such that
+      # y = slope * x + offset, optimal in a least-squares sense.
+      # see p. 105 in Bevington & Robinson, Data Reduction and Error Analysis for
+      #   the Physical Sciences, 3rd edition.  New York: McGraw Hill (2003)
+    DELTA = sum_w * sum_xx - sum_x**2
+    assert DELTA != 0
+    self.slope = (sum_w * sum_xy - sum_x * sum_y) / DELTA
+    self.offset = (sum_xx * sum_y - sum_x * sum_xy) / DELTA
+    self.corr = (sum_w * sum_xy - sum_x * sum_y) / (math.sqrt(sum_w * sum_xx - sum_x**2) *
+                                                    math.sqrt(sum_w * sum_yy - sum_y**2))
+
 def weighted_correlation(w, x, y, derivatives_wrt_y_depth=0):
   "http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Calculating_a_weighted_correlation"
   assert derivatives_wrt_y_depth in [0,1,2]
@@ -68,6 +91,8 @@ def exercise():
       if (i_w == 0):
         cc_w1 = flex.linear_correlation(x, y).coefficient()
         assert approx_equal(cc, cc_w1)
+      simple_cc = simple_weighted_correlation(w, x, y).corr
+      assert approx_equal(simple_cc, cc)
       d_cc_fd = finite_difference_derivatives(w, x, y, depth=1)
       assert approx_equal(d_cc, d_cc_fd)
       d2_cc_fd = finite_difference_derivatives(w, x, y, depth=2)

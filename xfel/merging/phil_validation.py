@@ -17,14 +17,15 @@ class application:
        a reindexing operator for each image in the data set.""")
 
 class samosa:
-  def __init__(self,param):
+  def __init__(self,param,allow_model=False):
 
     self.param = param
+    self.allow_model = allow_model
     self.application_level_validation()
 
   def application_level_validation(self):
 
-    if self.param.model is not None:
+    if self.allow_model==False and self.param.model is not None:
       raise Sorry("""For samosa, no PDB structural model is used for frame-to-frame
       scaling, therefore the model phil parameter must be set to None.""")
     if not self.param.scaling.algorithm in ['mark1','levmar']:

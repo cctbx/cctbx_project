@@ -18,6 +18,8 @@ def run (params) :
          return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
        if this_label.find("imean")>=0:
          return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
+       if this_label.find(params.scaling.mtz_column_F)>=0:
+         return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
     raise Exception("mtz did not contain expected label Iobs or IMEAN")
 
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
