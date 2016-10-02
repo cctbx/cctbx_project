@@ -133,20 +133,32 @@ class JobMonitor(Thread):
     while self.active:
       self.parent.run_window.jmn_light.change_status('idle')
 
-      jobs = db.get_all_jobs()
-      for job in jobs:
-        if self.only_active_jobs and (not job.trial.active or not job.rungroup.active):
-          continue
-        if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL']:
-          continue
-        new_status = tracker.track(job.submission_id, job.get_log_path())
-        # Handle the case where the job was submitted but no status is available yet
-        if job.status == "SUBMITTED" and new_status == "ERR":
-          pass
-        elif job.status != new_status:
-          job.status = new_status
-
       trials = db.get_all_trials()
+      jobs = db.get_all_jobs()
+      if self.only_active_jobs:
+        active_jobs = {}
+        for trial in trials:
+          active_jobs[trial.trial] = []
+          for rungroup in trial.rungroups:
+            for run in rungroup.runs:
+              for job in jobs:
+                if job.run.id == run.id and job.rungroup.id == rungroup.id and job.trial.id == trial.id:
+                  active_jobs[trial.trial].append(job)
+        jobs = active_jobs
+      else:
+        jobs = {t.trial:[j for j in jobs if j.trial.id == t.id] for t in trials}
+
+      for js in jobs.values():
+        for job in js:
+          if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL']:
+            continue
+          new_status = tracker.track(job.submission_id, job.get_log_path())
+          # Handle the case where the job was submitted but no status is available yet
+          if job.status == "SUBMITTED" and new_status == "ERR":
+            pass
+          elif job.status != new_status:
+            job.status = new_status
+
       self.post_refresh(trials, jobs)
       self.parent.run_window.jmn_light.change_status('on')
       time.sleep(5)
@@ -1087,33 +1099,35 @@ class JobsTab(BaseTab):
 
     if e.jobs is not None:
       if str(self.filter).lower() == 'all jobs':
-        jobs = e.jobs
+        selected_trials = e.jobs.keys()
       else:
-        jobs = [i for i in e.jobs if i.trial.trial == int(self.filter.split()[-1])]
+        selected_trials = [int(self.filter.split()[-1])]
 
       self.job_list.DeleteAllItems() # display
       self.data = {} # reset contents of the table, with unique row ids
       local_job_id = 0 # reset unique row ids for sorting purposes only
-      for job in jobs:
-        short_status = str(job.status).strip("'")
-        if short_status == "SUBMIT_FAIL":
-          short_status = "S_FAIL"
-        elif short_status == "SUBMITTED":
-          short_status = "SUBMIT"
-        t = "t%03d" % job.trial.trial
-        r = "r%04d" % job.run.run
-        rg = "rg%03d" % job.rungroup.id
-        sid = str(job.submission_id)
-        s = short_status
-        self.data[local_job_id] = [t, r, rg, sid, s]
-        # Deposit the row in the table
-        self.job_list.InsertStringItem(local_job_id, t)
-        self.job_list.SetStringItem(local_job_id, 1, r)
-        self.job_list.SetStringItem(local_job_id, 2, rg)
-        self.job_list.SetStringItem(local_job_id, 3, sid)
-        self.job_list.SetStringItem(local_job_id, 4, s)
-        self.job_list.SetItemData(local_job_id, local_job_id)
-        local_job_id += 1
+      for selected_trial in selected_trials:
+        jobs = e.jobs[selected_trial]
+        for job in jobs:
+          short_status = str(job.status).strip("'")
+          if short_status == "SUBMIT_FAIL":
+            short_status = "S_FAIL"
+          elif short_status == "SUBMITTED":
+            short_status = "SUBMIT"
+          t = "t%03d" % job.trial.trial
+          r = "r%04d" % job.run.run
+          rg = "rg%03d" % job.rungroup.id
+          sid = str(job.submission_id)
+          s = short_status
+          self.data[local_job_id] = [t, r, rg, sid, s]
+          # Deposit the row in the table
+          self.job_list.InsertStringItem(local_job_id, t)
+          self.job_list.SetStringItem(local_job_id, 1, r)
+          self.job_list.SetStringItem(local_job_id, 2, rg)
+          self.job_list.SetStringItem(local_job_id, 3, sid)
+          self.job_list.SetStringItem(local_job_id, 4, s)
+          self.job_list.SetItemData(local_job_id, local_job_id)
+          local_job_id += 1
     # Initialize sortable column mixin
     self.job_list.initialize_sortable_columns(n_col=5, itemDataMap=self.data)
     self.job_list.RestoreSortOrder(self.job_list_col, self.job_list_sort_flag)
