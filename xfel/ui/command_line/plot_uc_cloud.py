@@ -52,6 +52,9 @@ def run(args):
     runs = None
     rungroup = None
 
+  if extra_title is None and runs is not None:
+    extra_title = "%s"%(",".join(["%d"%r.run for r in runs]))
+
   trial = app.get_trial(trial_number=params.trial)
   info = []
   print "Reading data..."
