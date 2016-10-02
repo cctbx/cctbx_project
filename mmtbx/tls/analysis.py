@@ -291,7 +291,16 @@ class run(object):
       show_number(x=[t_min_C, t_max_C], title="t_min_C,t_max_C eq.(24):", log=self.log)
       if(t_min_C > t_max_C):
         raise Sorry("Step C (left branch): Empty (tmin_c,tmax_c) interval.")
-      t_0 = self.S_L.trace()/3.
+      ######## HACK START
+      #t_0 = self.S_L.trace()/3.
+      num = self.Sxx*self.Lyy**2*self.Lzz**2 +\
+            self.Syy*self.Lzz**2*self.Lxx**2 +\
+            self.Szz*self.Lxx**2*self.Lyy**2
+      den = self.Lyy**2*self.Lzz**2 + \
+            self.Lzz**2*self.Lxx**2 + \
+            self.Lxx**2*self.Lyy**2
+      t_0 = num/den
+      ######## HACK END
       show_number(x=t_0, title="t_0 eq.(20):", log=self.log)
       # compose T_lambda and find tau_max (30)
       T_lambda = matrix.sqr(
