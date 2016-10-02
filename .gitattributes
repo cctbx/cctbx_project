@@ -3975,6 +3975,7 @@ xfel/small_cell/solve_orientation.py -text
 xfel/small_cell/write_orientation_arrows.py -text
 xfel/ui/__init__.py -text
 xfel/ui/command_line/__init__.py -text
+xfel/ui/command_line/get_hit_timestamps.py -text
 xfel/ui/command_line/plot_run_stats.py -text
 xfel/ui/command_line/plot_uc_cloud.py -text
 xfel/ui/command_line/print_run_stats.py -text
