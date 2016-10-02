@@ -14,6 +14,11 @@ phil_str = """
     .multiple = True
   tag_selection_mode = *union intersection
     .type = choice
+  run = None
+    .type = int
+    .multiple = True
+  rungroup = None
+    .type = int
 """
 phil_scope = parse(phil_str + db_phil_str)
 
@@ -39,10 +44,18 @@ def run(args):
     tags = None
     extra_title = None
 
+  if params.run is not None and len(params.run) > 0:
+    assert params.rungroup is not None
+    runs = [app.get_run(run_number = r) for r in params.run]
+    rungroup = app.get_rungroup(rungroup_id = params.rungroup)
+  else:
+    runs = None
+    rungroup = None
+
   trial = app.get_trial(trial_number=params.trial)
   info = []
   print "Reading data..."
-  cells = app.get_stats(trial=trial, tags=tags, isigi_cutoff = 1.0, tag_selection_mode = params.tag_selection_mode)()
+  cells = app.get_stats(trial=trial, tags=tags, isigi_cutoff = 1.0, tag_selection_mode = params.tag_selection_mode, selected_runs = runs, selected_rungroup = rungroup)()
   for cell in cells:
     info.append({'a':cell.cell_a,
                  'b':cell.cell_b,

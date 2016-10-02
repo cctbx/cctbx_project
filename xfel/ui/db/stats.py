@@ -2,7 +2,7 @@ from __future__ import division
 from scitbx.array_family import flex
 
 class Stats(object):
-  def __init__(self, app, trial, tags = None, isigi_cutoff = None, tag_selection_mode="union"):
+  def __init__(self, app, trial, tags = None, isigi_cutoff = None, tag_selection_mode="union", selected_runs = None, selected_rungroup = None):
     self.app = app
     self.trial = trial
     if tags is None:
@@ -11,12 +11,22 @@ class Stats(object):
     self.tag_ids = [t.id for t in tags]
     self.isigi_cutoff = isigi_cutoff
     self.tag_selection_mode = tag_selection_mode
+    self.selected_runs = selected_runs
+    self.selected_rungroup = selected_rungroup
 
   def __call__(self):
     runs = []
     run_numbers = []
+    if self.selected_runs is not None:
+      assert self.selected_rungroup is not None
+      selected_run_ids = [r.id for r in self.selected_runs]
     for rungroup in self.trial.rungroups:
+      if self.selected_rungroup is not None and self.selected_rungroup.id != rungroup.id:
+        continue
       for run in rungroup.runs:
+        if self.selected_runs is not None:
+          if run.id not in selected_run_ids:
+            continue
         if len(self.tags) > 0:
           tags_found = []
           for tag in run.tags:
