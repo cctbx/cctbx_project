@@ -556,6 +556,39 @@ class RadioCtrl(CtrlBase):
 
     self.SetSizer(radio_group)
 
+# Use a mixin to support sorting by columns
+import wx.lib.mixins.listctrl as listmix
+
+class SortableListCtrl(wx.ListCtrl, listmix.ColumnSorterMixin):
+  def __init__(self, parent, style=wx.LC_ICON):
+    self.parent = parent
+    self.sortable_mixin = listmix
+    wx.ListCtrl.__init__(self, parent, style=style)
+
+  def initialize_sortable_columns(self, n_col=0, itemDataMap={}):
+    self.itemDataMap = itemDataMap
+    self.sortable_mixin.ColumnSorterMixin.__init__(self, n_col)
+    sortable_list = self.GetListCtrl()
+    if sortable_list:
+      sortable_list.Bind(wx.EVT_LIST_COL_CLICK, self.__OnColClick, sortable_list)
+
+  def __OnColClick(self, e):
+    self._col = e.GetColumn()
+    self._colSortFlag[self._col] = int(not self._colSortFlag[self._col])
+    self.GetListCtrl().SortItems(self.GetColumnSorter())
+    self.OnSortOrderChanged()
+    if hasattr(self.parent, 'onColClick'):
+      self.parent.onColClick(e)
+
+  def RestoreSortOrder(self, col, colSortFlag):
+    self._col = col
+    self._colSortFlag = colSortFlag
+    self.GetListCtrl().SortItems(self.GetColumnSorter())
+    self.OnSortOrderChanged()
+
+  def GetListCtrl(self):
+    return self
+
 # ------------------------------- UI Elements -------------------------------- #
 
 class RunBlock(CtrlBase):

@@ -1028,8 +1028,9 @@ class JobsTab(BaseTab):
     self.main = main
     self.all_trials = []
     self.filter = 'All jobs'
+    self.data = {}
 
-    self.job_list = wx.ListCtrl(self, style=wx.LC_REPORT|wx.BORDER_SUNKEN)
+    self.job_list = gctr.SortableListCtrl(self, style=wx.LC_REPORT|wx.BORDER_SUNKEN)
     self.job_sizer = wx.BoxSizer(wx.VERTICAL)
     self.job_list.SetSizer(self.job_sizer)
     self.job_list.InsertColumn(0, "Trial")
@@ -1037,6 +1038,9 @@ class JobsTab(BaseTab):
     self.job_list.InsertColumn(2, "Block")
     self.job_list.InsertColumn(3, "Subm ID")
     self.job_list.InsertColumn(4, "Status")
+
+    self.job_list_sort_flag = [0, 0, 0, 0, 0]
+    self.job_list_col = 0
 
     self.trial_choice = gctr.ChoiceCtrl(self,
                                         label='Filter by:',
@@ -1059,6 +1063,7 @@ class JobsTab(BaseTab):
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_choice.ctr)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActive)
     self.Bind(EVT_JOB_MONITOR, self.onMonitorJobs)
+    self.Bind(wx.EVT_LIST_COL_CLICK, self.onColClick, self.job_list)
 
   def onToggleActive(self, e):
     self.main.job_monitor.only_active_jobs = self.chk_active.GetValue()
@@ -1086,24 +1091,45 @@ class JobsTab(BaseTab):
       else:
         jobs = [i for i in e.jobs if i.trial.trial == int(self.filter.split()[-1])]
 
-      self.job_list.DeleteAllItems()
+      self.job_list.DeleteAllItems() # display
+      self.data = {} # reset contents of the table, with unique row ids
+      local_job_id = 0 # reset unique row ids for sorting purposes only
       for job in jobs:
         short_status = str(job.status).strip("'")
         if short_status == "SUBMIT_FAIL":
           short_status = "S_FAIL"
         elif short_status == "SUBMITTED":
           short_status = "SUBMIT"
-        self.job_list.Append([
-          str(job.trial.trial),
-          str(job.run.run),
-          str(job.rungroup.id),
-          str(job.submission_id),
-          short_status,
-          ])
+        t = "t%03d" % job.trial.trial
+        r = "r%04d" % job.run.run
+        rg = "rg%03d" % job.rungroup.id
+        sid = str(job.submission_id)
+        s = short_status
+        self.data[local_job_id] = [t, r, rg, sid, s]
+        # Deposit the row in the table
+        self.job_list.InsertStringItem(local_job_id, t)
+        self.job_list.SetStringItem(local_job_id, 1, r)
+        self.job_list.SetStringItem(local_job_id, 2, rg)
+        self.job_list.SetStringItem(local_job_id, 3, sid)
+        self.job_list.SetStringItem(local_job_id, 4, s)
+        self.job_list.SetItemData(local_job_id, local_job_id)
+        local_job_id += 1
+    # Initialize sortable column mixin
+    self.job_list.initialize_sortable_columns(n_col=5, itemDataMap=self.data)
+    self.job_list.RestoreSortOrder(self.job_list_col, self.job_list_sort_flag)
+    # print "Regenerated data and reapplied sorting preferences" ## DEBUG
 
     self.job_sizer.Layout()
 
+  def onColClick(self, e):
+    # Note: the sortable list binds the event first and activates this method after.
+    # print "Click recorded in column %s" % str(self.job_list._col) ## DEBUG
+    # print self.job_list.GetSortState() ## DEBUG
+    self.job_list_col = self.job_list._col
+    self.job_list_sort_flag = self.job_list._colSortFlag
+
   def find_trials(self):
+    print "Found trials"
     if self.main.db is not None:
       choices = ['All jobs'] + \
                 ['trial {}'.format(i.trial) for i in self.main.db.get_all_trials()]
