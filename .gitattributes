@@ -152,6 +152,7 @@ cctbx/examples/merging/postrefine_base.h -text
 cctbx/examples/merging/read_me -text
 cctbx/examples/merging/samosa/__init__.py -text
 cctbx/examples/merging/samosa/join.py -text
+cctbx/examples/merging/samosa/per_lattice_postrefinement.py -text
 cctbx/examples/merging/samosa/scale.py -text
 cctbx/examples/merging/show_results.py -text
 cctbx/examples/merging/sigma_correction.py -text
