@@ -358,6 +358,7 @@ class RunStatsSentinel(Thread):
     self.info = {}
     self.run_numbers = []
     self.stats = []
+    self.run_tags = []
 
     # on initialization (and restart), make sure run stats drawn from scratch
     self.parent.run_window.runstats_tab.redraw_windows = True
@@ -393,6 +394,7 @@ class RunStatsSentinel(Thread):
       self.run_numbers = []
       self.stats = []
       self.trgr = {}
+      self.run_tags = []
       for rg in trial.rungroups:
         for run in rg.runs:
           if run.run not in self.run_numbers and run.run in selected_runs:
@@ -400,6 +402,7 @@ class RunStatsSentinel(Thread):
             self.trgr[run.run] = (trial, rg, run)
             self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
               d_min=self.parent.run_window.runstats_tab.d_min)())
+            self.run_tags.append([tag.name for tag in run.tags])
 
   def fetch_should_have_indexed_timestamps(self):
     from xfel.ui.components.run_stats_plotter import \
@@ -432,6 +435,7 @@ class RunStatsSentinel(Thread):
       interactive=False,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
+      run_tags=self.run_tags,
       xsize=sizex/100, ysize=sizey/100) # convert px to inches
     self.parent.run_window.runstats_tab.redraw_windows = True
 
@@ -443,7 +447,8 @@ class RunStatsSentinel(Thread):
       d_min=self.parent.run_window.runstats_tab.d_min,
       interactive=True,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
-      n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong)
+      n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
+      run_tags=self.run_tags)
 
 
 # ------------------------------- Frames Sentinel ------------------------------- #

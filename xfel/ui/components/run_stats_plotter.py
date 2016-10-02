@@ -109,7 +109,7 @@ def get_run_stats(timestamps,
           tuple_of_timestamp_boundaries,
           run_numbers)
 
-def plot_run_stats(stats, d_min, interactive=True, xsize=30, ysize=10):
+def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=10):
   plot_ratio = max(min(xsize, ysize)/2.5, 3)
   t, drop_ratios, drop_hits, drop_hit_rate, n_strong, xtal_hits, \
   idx_rate, idx_low_sel, idx_high_sel, isigi_low, isigi_high, \
@@ -159,6 +159,8 @@ def plot_run_stats(stats, d_min, interactive=True, xsize=30, ysize=10):
     slice_idx_high_sel = idx_high_sel[start:end+1]
     n_idx_low = slice_idx_low_sel.count(True)
     n_idx_high = slice_idx_high_sel.count(True)
+    tags = run_tags[idx]
+    ax4.text(start_t, 3.9, " " + ", ".join(tags)).set_fontsize(3*plot_ratio)
     ax4.text(start_t, .9, "run %d" % run_numbers[idx]).set_fontsize(3*plot_ratio)
     ax4.text(start_t, .7, "%d f/%d h" % (lengths[idx], n_hits)).set_fontsize(3*plot_ratio)
     ax4.text(start_t, .5, "%d (%d) idx" % (n_idx_low, n_idx_high)).set_fontsize(3*plot_ratio)
@@ -183,6 +185,7 @@ def plot_multirun_stats(runs,
                         d_min,
                         ratio_cutoff=1,
                         n_strong_cutoff=40,
+                        run_tags=[],
                         interactive=False,
                         compress_runs=True,
                         xsize=30,
@@ -227,7 +230,7 @@ def plot_multirun_stats(runs,
                               runs_with_data,
                               ratio_cutoff=ratio_cutoff,
                               n_strong_cutoff=n_strong_cutoff)
-  png = plot_run_stats(stats_tuple, d_min, interactive=interactive, xsize=xsize, ysize=ysize)
+  png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, interactive=interactive, xsize=xsize, ysize=ysize)
   return png
 
 if __name__ == "__main__":
