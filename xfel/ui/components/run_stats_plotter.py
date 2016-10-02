@@ -120,6 +120,8 @@ def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=
   max_drop_rate = max(drop_hit_rate)
   drop_rate_scaled = drop_hit_rate * max_idx_rate/max_drop_rate
   f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
+  for a in (ax1, ax2, ax3, ax4):
+    a.tick_params(axis='x', which='both', bottom='off', top='off')
   ax1.scatter(t.select(~idx_low_sel), n_strong.select(~idx_low_sel), edgecolors="none", color ='grey', s=plot_ratio)
   ax1.scatter(t.select(idx_low_sel), n_strong.select(idx_low_sel), edgecolors="none", color='blue', s=plot_ratio)
   ax1.axis('tight')
