@@ -398,10 +398,12 @@ class minimize_wrapper_with_map():
       target_map,
       grm=None,
       ncs_restraints_group_list=None,
+      mon_lib_srv=None,
       ss_annotation=None,
       refine_ncs_operators=False,
       number_of_cycles=1,
       log=None):
+    from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
     self.pdb_h = pdb_h
     self.xrs = xrs
     self.log = log
@@ -420,7 +422,6 @@ class minimize_wrapper_with_map():
       from libtbx.utils import null_out
       from scitbx.array_family import flex
       import mmtbx.utils
-      from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
       if self.log is None:
         self.log = null_out()
       params_line = grand_master_phil_str
@@ -454,20 +455,20 @@ class minimize_wrapper_with_map():
       grm = get_geometry_restraints_manager(
           processed_pdb_file, xrs, params=params)
       # dealing with SS
-      if ss_annotation is not None:
-        from mmtbx.secondary_structure import manager
-        ss_manager = manager(
-            pdb_hierarchy=self.pdb_h,
-            geometry_restraints_manager=grm.geometry,
-            sec_str_from_pdb_file=ss_annotation,
-            params=None,
-            mon_lib_srv=mon_lib_srv,
-            verbose=-1,
-            log=self.log)
-        grm.geometry.set_secondary_structure_restraints(
-            ss_manager=ss_manager,
-            hierarchy=self.pdb_h,
-            log=self.log)
+    if ss_annotation is not None:
+      from mmtbx.secondary_structure import manager
+      ss_manager = manager(
+          pdb_hierarchy=self.pdb_h,
+          geometry_restraints_manager=grm.geometry,
+          sec_str_from_pdb_file=ss_annotation,
+          params=None,
+          mon_lib_srv=mon_lib_srv,
+          verbose=-1,
+          log=self.log)
+      grm.geometry.set_secondary_structure_restraints(
+          ss_manager=ss_manager,
+          hierarchy=self.pdb_h,
+          log=self.log)
     ncs_groups=None
     if len(ncs_restraints_group_list) > 0:
       ncs_groups=ncs_restraints_group_list

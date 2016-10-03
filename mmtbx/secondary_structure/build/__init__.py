@@ -291,7 +291,7 @@ def get_helix(helix_class, rotamer_manager, sequence=None, pdb_hierarchy_templat
     pdb_hierarchy_template=pdb_hierarchy_template)
 
 def calculate_rmsd_smart(h1, h2, backbone_only=False):
-  assert h1.atoms_size() == h2.atoms_size()
+  # assert h1.atoms_size() == h2.atoms_size(), "%d!=%d" % (h1.atoms_size(),h2.atoms_size())
   rmsd = 0
   n = 0
   for atom in h1.atoms():
@@ -436,6 +436,7 @@ def substitute_ss(real_h,
                     xray_structure,
                     ss_annotation,
                     params = None,
+                    grm=None,
                     use_plane_peptide_bond_restr=True,
                     fix_rotamer_outliers=True,
                     cif_objects=None,
@@ -607,51 +608,51 @@ def substitute_ss(real_h,
   # print "="*80
   # print "="*80
   # print "="*80
-  custom_par_text = "\n".join([
-      "pdb_interpretation.secondary_structure {protein.remove_outliers = False\n%s}" \
-          % phil_str,
-      "pdb_interpretation.peptide_link.ramachandran_restraints = True",
-      "c_beta_restraints = True",
-      "pdb_interpretation.secondary_structure.enabled=True",
-      "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None",
-      "pdb_interpretation.max_reasonable_bond_distance=None",
-      # "pdb_interpretation.nonbonded_weight=500",
-      "pdb_interpretation.peptide_link.oldfield.weight_scale=3",
-      "pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03",
-      "pdb_interpretation.peptide_link.omega_esd_override_value=3",
-      "pdb_interpretation.peptide_link.apply_all_trans=True",
-      ])
+  if grm is None:
+    custom_par_text = "\n".join([
+        "pdb_interpretation.secondary_structure {protein.remove_outliers = False\n%s}" \
+            % phil_str,
+        "pdb_interpretation.peptide_link.ramachandran_restraints = True",
+        "c_beta_restraints = True",
+        "pdb_interpretation.secondary_structure.enabled=True",
+        "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None",
+        "pdb_interpretation.max_reasonable_bond_distance=None",
+        # "pdb_interpretation.nonbonded_weight=500",
+        "pdb_interpretation.peptide_link.oldfield.weight_scale=3",
+        "pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03",
+        "pdb_interpretation.peptide_link.omega_esd_override_value=3",
+        "pdb_interpretation.peptide_link.apply_all_trans=True",
+        ])
 
-  if use_plane_peptide_bond_restr:
-    custom_par_text += "\npdb_interpretation.peptide_link.apply_peptide_plane=True"
+    if use_plane_peptide_bond_restr:
+      custom_par_text += "\npdb_interpretation.peptide_link.apply_peptide_plane=True"
 
-  custom_pars = params.fetch(
-      source=iotbx.phil.parse(custom_par_text)).extract()
-  # params.format(python_object=custom_pars)
-  # params.show()
-  # STOP()
-  params = custom_pars
-  # params = w_params
+    custom_pars = params.fetch(
+        source=iotbx.phil.parse(custom_par_text)).extract()
+    # params.format(python_object=custom_pars)
+    # params.show()
+    # STOP()
+    params = custom_pars
+    # params = w_params
 
+    t6 = time()
+    import mmtbx.utils
+    processed_pdb_files_srv = mmtbx.utils.\
+        process_pdb_file_srv(
+            crystal_symmetry= xray_structure.crystal_symmetry(),
+            pdb_interpretation_params = params.pdb_interpretation,
+            log=null_out(),
+            cif_objects=cif_objects)
+    if verbose:
+      print >> log, "Processing file..."
+      log.flush()
+    processed_pdb_file, junk = processed_pdb_files_srv.\
+        process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
+    t7 = time()
 
-  t6 = time()
-  import mmtbx.utils
-  processed_pdb_files_srv = mmtbx.utils.\
-      process_pdb_file_srv(
-          crystal_symmetry= xray_structure.crystal_symmetry(),
-          pdb_interpretation_params = params.pdb_interpretation,
-          log=null_out(),
-          cif_objects=cif_objects)
-  if verbose:
-    print >> log, "Processing file..."
-    log.flush()
-  processed_pdb_file, junk = processed_pdb_files_srv.\
-      process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
-  t7 = time()
-
-  grm = get_geometry_restraints_manager(
-    processed_pdb_file, xray_structure)
-  t8 = time()
+    grm = get_geometry_restraints_manager(
+      processed_pdb_file, xray_structure)
+    t8 = time()
 
   real_h.reset_i_seq_if_necessary()
   if verbose:
