@@ -6597,6 +6597,68 @@ ATOM   1929  CG2CTHR M   8      26.350  43.915  -0.725  0.50 36.69           C
   print "Residue 0 is", r0_pmc
   print "Residue 1 is", r1_pmc
 
+def exercise_selection_and_deep_copy():
+  """
+  This test illustrates strange behavior while executing selections and
+  assigning the result to the same variable. In partucular, the atoms in
+  resulting hierarchy miss their parents. Otherwise, hierarchy seems to be
+  functional.
+  """
+  def show_atoms(h):
+    for a in h.atoms():
+      print a.id_str()
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      0  N   ASP A   1      49.347 -62.804  60.380  1.00 34.60           N
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      2  C   ASP A   1      47.122 -63.665  61.114  1.00 34.02           C
+ATOM      3  O   ASP A   1      47.573 -64.451  61.947  1.00 32.23           O
+ATOM      4  N   VAL A   2      45.889 -63.176  61.175  1.00 31.94           N
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      6  C   VAL A   2      44.472 -64.973  61.900  1.00 28.28           C
+ATOM      7  O   VAL A   2      43.989 -65.221  60.796  1.00 27.24           O
+ATOM      8  N   GLN A   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN A   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN A   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN A   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET A   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET A   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET A   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET A   4      40.633 -70.625  61.911  1.00 23.73           O
+"""))
+  pdb_h = pdb_inp.construct_hierarchy()
+  assert pdb_h.atoms()[0].parent() is not None
+  # example 1, everything is normal
+  h1 = pdb_h.deep_copy()
+  assert h1.atoms()[0].parent() is not None
+  h1 = h1.deep_copy()
+  assert h1.atoms()[0].parent() is not None
+
+  print "example 2"
+  h2 = pdb_h.deep_copy()
+  sel = h2.atom_selection_cache().selection("resid 3")
+  h2 = h2.select(sel)
+  # assert h2.atoms()[0].parent() is not None # FAILURE
+  show_atoms(h2) # in this printout information about residue and chain is missing
+  print "==============="
+
+  # example 3 - same as 2, but using separate variable for asc to make it work
+  print "example 3"
+  h2 = pdb_h.deep_copy()
+  asc = h2.atom_selection_cache()
+  sel = asc.selection("resid 3")
+  h2 = h2.select(sel)
+  assert h2.atoms()[0].parent() is not None # WORKING!!!
+  show_atoms(h2)
+  print "==============="
+
+  # example 4 - same as 2, but using variable for hierarchy to make it work
+  print "example 4"
+  h2 = pdb_h.deep_copy()
+  sel = h2.atom_selection_cache().selection("resid 3")
+  h3 = h2.select(sel)
+  assert h3.atoms()[0].parent() is not None # WORKING!!!
+  show_atoms(h3)
+
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
@@ -6655,6 +6717,7 @@ def exercise(args):
     exercise_substitute_atom_group()
     exercise_atom_xyz_9999()
     # exercise_is_pure_main_conf()
+    exercise_selection_and_deep_copy()
     if (not forever): break
   print format_cpu_times()
 
