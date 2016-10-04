@@ -414,60 +414,7 @@ def load_result (file_name,
   # original unit cell is recorded
   return obj
 
-class intensity_data (object) :
-  """
-  Container for scaled intensity data.
-  """
-  def __init__ (self, n_refl) :
-    self.n_refl = n_refl
-    self.initialize()
-
-  def initialize (self) :
-    self.ISIGI        = {}
-    self.completeness = flex.int(self.n_refl, 0)
-    self.summed_N     = flex.int(self.n_refl, 0)
-    self.summed_weight= flex.double(self.n_refl, 0.)
-    self.summed_wt_I  = flex.double(self.n_refl, 0.)
-
-class frame_data (intensity_data) :
-  """
-  Intensity data for a single frame.
-  """
-  def __init__ (self, n_refl, file_name) :
-    intensity_data.__init__(self, n_refl)
-    self.file_name = file_name
-    self.n_obs = 0
-    self.n_rejected = 0
-    self.corr = 0
-    self.d_min = -1
-    self.accept = False
-    self.indexed_cell = None
-    self.log_out = file_name
-    self.wavelength = None
-
-  def set_indexed_cell (self, unit_cell) :
-    self.indexed_cell = unit_cell
-
-  def set_log_out (self, out_str) :
-    self.log_out = out_str
-
-  def show_log_out (self, out) :
-    print >> out, self.log_out
-
-class null_data (object) :
-  """
-  Stand-in for a frame rejected due to conflicting symmetry.  (No flex arrays
-  included, to save pickling time during multiprocessing.)
-  """
-  def __init__ (self, file_name, log_out,
-                file_error=False,
-                low_signal=False,
-                wrong_bravais=False,
-                wrong_cell=False) :
-    adopt_init_args(self, locals())
-
-  def show_log_out (self, out) :
-    print >> out, self.log_out
+from xfel.cxi.merging_utils import intensity_data, frame_data, null_data
 
 class unit_cell_distribution (object) :
   """
@@ -1452,7 +1399,20 @@ class scaling_manager (intensity_data) :
     data.corr = corr
     data.wavelength = wavelength
 
-    if self.params.postrefinement.enable: #New code prototype postrefinement; assumes mosaicity=0 & monochromatic
+    if False and self.params.postrefinement.enable: # for development: choose to comment in this implementation
+      # Refactorization of the Sauter(2015) code; result should be same
+      from cctbx.examples.merging.samosa.per_lattice_postrefinement \
+           import legacy_cxi_merge_postrefinement
+      postx=legacy_cxi_merge_postrefinement(observations_original_index, self.params,
+           self.i_model, self.miller_set, result, out)
+      try:
+        postx.run_plain()
+        observations_original_index,observations,matches = postx.result_for_cxi_merge(file_name)
+      except (AssertionError,ValueError),e:
+        return null_data(file_name=file_name, log_out=out.getvalue(), low_signal=True)
+
+    elif self.params.postrefinement.enable:
+      # Original prototype postrefinement from Sauter(2015); assumes mosaicity=0 & monochromatic
       from scitbx import lbfgs
       from libtbx import adopt_init_args
 
@@ -1477,7 +1437,6 @@ class scaling_manager (intensity_data) :
       IOBSVEC = observations.data()
       ICALCVEC = flex.double([self.i_model.data()[p] for p in pair0])
       MILLER = observations_original_index.indices()
-      print >> out, "ZZZ",observations.size(), observations_original_index.size(), len(MILLER)
       ORI = result["current_orientation"][0]
       Astar = matrix.sqr(ORI.reciprocal_matrix())
       WAVE = result["wavelength"]
@@ -1673,7 +1632,6 @@ class scaling_manager (intensity_data) :
         return null_data(
                file_name=file_name, log_out=out.getvalue(), low_signal=True)
       print >> out, "On total %5d the fat selection is %5d"%(len(observations.indices()), fat_count)
-      print >> out, "ZZZ",observations.size(), observations_original_index.size(), len(fat_selection), len(scaler)
       observations_original_index = observations_original_index.select(fat_selection)
 
       observations = observations.customized_copy(

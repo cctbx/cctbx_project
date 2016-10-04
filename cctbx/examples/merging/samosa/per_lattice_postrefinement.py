@@ -6,7 +6,8 @@ from dials.array_family import flex
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from libtbx import adopt_init_args, group_args
 
-def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_set, result, out):
+class legacy_cxi_merge_postrefinement(object):
+  def __init__(self,measurements_orig, params, i_model, miller_set, result, out):
     measurements = measurements_orig.deep_copy()
 
     # Now manipulate the data to conform to unit cell, asu, and space group
@@ -38,25 +39,22 @@ def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_s
       miller_indices_unique=miller_set.indices(),
       miller_indices=observations.indices())
 
-
     pair1 = flex.int([pair[1] for pair in matches.pairs()])
     pair0 = flex.int([pair[0] for pair in matches.pairs()])
-    #raw_input("go:")
     # narrow things down to the set that matches, only
-    observations = observations.customized_copy(
+    observations_pair1_selected = observations.customized_copy(
       indices = flex.miller_index([observations.indices()[p] for p in pair1]),
       data = flex.double([observations.data()[p] for p in pair1]),
       sigmas = flex.double([observations.sigmas()[p] for p in pair1]),
     )
-    observations_original_index = observations_original_index.customized_copy(
+    observations_original_index_pair1_selected = observations_original_index.customized_copy(
       indices = flex.miller_index([observations_original_index.indices()[p] for p in pair1]),
       data = flex.double([observations_original_index.data()[p] for p in pair1]),
       sigmas = flex.double([observations_original_index.sigmas()[p] for p in pair1]),
     )
 ###################
-    I_observed = flex.double([observations.data()[pair[1]] for pair in matches.pairs()])
-    MILLER = flex.miller_index([observations_original_index.indices()[pair[1]] for pair in matches.pairs()])
-    print >> out, "ZZZ",observations.size(), observations_original_index.size(), len(MILLER)
+    I_observed = observations_pair1_selected.data()
+    MILLER = observations_original_index_pair1_selected.indices()
     ORI = result["current_orientation"][0]
     Astar = matrix.sqr(ORI.reciprocal_matrix())
     WAVE = result["wavelength"]
@@ -64,32 +62,37 @@ def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_s
     BFACTOR = 0.
 
     #calculation of correlation here
-    class Empty:
-      def __init__(CC): CC.n_obs=0; CC.n_rejected=0
-    data = Empty()
-
     I_reference = flex.double([i_model.data()[pair[0]] for pair in matches.pairs()])
     use_weights = False # New facility for getting variance-weighted correlation
 
     if use_weights:
        #variance weighting
       I_weight = flex.double(
-        [1./(observations.sigmas()[pair[1]])**2 for pair in matches.pairs()])
+        [1./(observations_pair1_selected.sigmas()[pair[1]])**2 for pair in matches.pairs()])
     else:
-      I_weight = flex.double(len(observations.sigmas()), 1.)
+      I_weight = flex.double(len(observations_pair1_selected.sigmas()), 1.)
 
-    data.n_obs = len(matches.pairs())
+    """Explanation of 'include_negatives' semantics as originally implemented in cxi.merge postrefinement:
+       include_negatives = True
+       + and - reflections both used for Rh distribution for initial estimate of RS parameter
+       + and - reflections both used for calc/obs correlation slope for initial estimate of G parameter
+       + and - reflections both passed to the refinery and used in the target function (makes sense if
+                           you look at it from a certain point of view)
+
+       include_negatives = False
+       + and - reflections both used for Rh distribution for initial estimate of RS parameter
+       +       reflections only used for calc/obs correlation slope for initial estimate of G parameter
+       + and - reflections both passed to the refinery and used in the target function (makes sense if
+                           you look at it from a certain point of view)
+    """
     if params.include_negatives:
-      data.n_rejected = 0
+      SWC = simple_weighted_correlation(I_weight, I_reference, I_observed)
     else:
-      non_positive = flex.bool(
-        [observations.data()[pair[1]] <= 0 for pair in matches.pairs()])
-      data.n_rejected = non_positive.count(True)
-      I_weight.set_selected (non_positive, 0.)
-    N = data.n_obs - data.n_rejected
+      non_positive = ( observations_pair1_selected.data() <= 0 )
+      SWC = simple_weighted_correlation(I_weight.select(~non_positive),
+            I_reference.select(~non_positive), I_observed.select(~non_positive))
 
-    SWC = simple_weighted_correlation(I_weight, I_reference, I_observed)
-
+    print >> out, "Old correlation is", SWC.corr
     if params.postrefinement.algorithm=="rs":
       Rhall = flex.double()
       for mill in MILLER:
@@ -119,40 +122,47 @@ def legacy_cxi_merge_postrefinement(measurements_orig, params, i_model, miller_s
     func = refinery.fvec_callable(parameterization_class(current))
     functional = flex.sum(func*func)
     print >> out, "functional",functional
+    self.current = current; self.parameterization_class = parameterization_class
+    self.refinery = refinery; self.out=out; self.params = params;
+    self.miller_set = miller_set
+    self.observations_pair1_selected = observations_pair1_selected;
+    self.observations_original_index_pair1_selected = observations_original_index_pair1_selected
 
-    try:
-      MINI = lbfgs_minimizer_base( current_x = current, parameterization = parameterization_class,
-        refinery = refinery, out = out )
-    except AssertionError: # on exponential overflow
-      return null_data(
-             file_name=file_name, log_out=out.getvalue(), low_signal=True)
-    scaler = refinery.scaler_callable(parameterization_class(MINI.x))
-    if params.postrefinement.algorithm=="rs":
-      fat_selection = (refinery.lorentz_callable(parameterization_class(MINI.x)) > 0.2)
+  def run_plain(self):
+    self.MINI = lbfgs_minimizer_base( current_x = self.current,
+        parameterization = self.parameterization_class, refinery = self.refinery,
+        out = self.out )
+
+  def result_for_cxi_merge(self, file_name):
+    scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
+    if self.params.postrefinement.algorithm=="rs":
+      fat_selection = (self.refinery.lorentz_callable(self.parameterization_class(self.MINI.x)) > 0.2)
     else:
-      fat_selection = (refinery.lorentz_callable(parameterization_class(MINI.x)) < 0.9)
+      fat_selection = (self.refinery.lorentz_callable(self.parameterization_class(self.MINI.x)) < 0.9)
     fat_count = fat_selection.count(True)
 
-    #avoid empty database INSERT, if there are insufficient centrally-located Bragg spots:
+    #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
-    #if fat_count < 3:
-    #  return null_data(
-    #         file_name=file_name, log_out=out.getvalue(), low_signal=True)
-    print >> out, "On total %5d the fat selection is %5d"%(len(observations.indices()), fat_count)
-    print >> out, "ZZZ",observations.size(), observations_original_index.size(), len(fat_selection), len(scaler)
-    observations_original_index = observations_original_index.select(fat_selection)
+    if fat_count < 3:
+      raise ValueError
+    print >> self.out, "On total %5d the fat selection is %5d"%(
+      len(self.observations_pair1_selected.indices()), fat_count)
+    observations_original_index = \
+      self.observations_original_index_pair1_selected.select(fat_selection)
 
-    observations = observations.customized_copy(
-      indices = observations.indices().select(fat_selection),
-      data = (observations.data()/scaler).select(fat_selection),
-      sigmas = (observations.sigmas()/scaler).select(fat_selection)
+    observations = self.observations_pair1_selected.customized_copy(
+      indices = self.observations_pair1_selected.indices().select(fat_selection),
+      data = (self.observations_pair1_selected.data()/scaler).select(fat_selection),
+      sigmas = (self.observations_pair1_selected.sigmas()/scaler).select(fat_selection)
     )
     matches = miller.match_multi_indices(
-      miller_indices_unique=miller_set.indices(),
+      miller_indices_unique=self.miller_set.indices(),
       miller_indices=observations.indices())
+    return observations_original_index,observations,matches
 
-    values = parameterization_class(MINI.x)
-    return refinery.get_eff_Astar(values), values.RS
+  def result_for_samosa(self):
+    values = self.parameterization_class(self.MINI.x)
+    return self.refinery.get_eff_Astar(values), values.RS
 
 class refinery_base(group_args):
     def __init__(self, **kwargs):
