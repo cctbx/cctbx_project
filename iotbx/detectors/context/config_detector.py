@@ -114,6 +114,7 @@ ADSC 315r 928 Australian Synchrotron 3ID microfocus, Tom Caradoc-Davis, reverse 
               Looking from the source towards the detector our goniometer is horizontal
               and on the left-hand side of the beam. Facing the goniometer, a positive
               rotation turns the air-bearing clockwise.
+ADSC 315r 933 AichiSR BL2S1, Nobuhisa Watanabe
 Unsuccessful:
 ADSC s/n 415  Web Regression Submitted virus images have wrong center - off by mm
                   Impossible to determine convention.  Subsequent images indexed
@@ -154,12 +155,13 @@ def other_beamlines(iobj,passthru_convention):
   beam5 = [402,403,406,409,410,411,414,418,441,446,448,471,901,902,903,908]
   beam0 = [413,415,420,428,429,443,444,457,458,904,914,916,917,918,919,924,928]
   KEK = [474,912,449,472]
+  AichiSR = [933]
 
   if iobj.serial_number == 447:
     if not ADSC447_at_ALS(iobj):
       KEK.append(447)
 
-  alld = beam5+beam0+known_als_detectors(iobj)+known_als831_detectors+KEK
+  alld = beam5+beam0+known_als_detectors(iobj)+known_als831_detectors+KEK+AichiSR
   if iobj.serial_number in beam5:
     beam_center_convention = 5
   elif ADSC910_at_BioCARS(iobj):
