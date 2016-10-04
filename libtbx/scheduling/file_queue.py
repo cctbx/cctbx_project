@@ -1,7 +1,10 @@
 from __future__ import division
 
 from Queue import Empty
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import fcntl
 import tempfile
 import os

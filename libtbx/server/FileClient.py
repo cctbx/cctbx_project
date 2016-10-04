@@ -1,5 +1,8 @@
 from __future__ import division
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import socket
 import sys
 import os

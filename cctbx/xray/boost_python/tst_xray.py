@@ -12,7 +12,10 @@ from scitbx.array_family import shared
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 from cStringIO import StringIO
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 def exercise_scatterer_flags():
   f = xray.scatterer_flags()

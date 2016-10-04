@@ -1,7 +1,10 @@
 from __future__ import division
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 from cctbx.examples.merging import intensity_data
 def prepare_simulation_with_noise(sim, transmittance,

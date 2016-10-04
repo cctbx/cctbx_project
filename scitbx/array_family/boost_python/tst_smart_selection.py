@@ -2,7 +2,10 @@ from __future__ import division
 from scitbx.array_family import flex
 from libtbx.test_utils import show_diff
 from cStringIO import StringIO
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import sys
 
 def run(args):

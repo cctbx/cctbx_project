@@ -2,7 +2,10 @@ from __future__ import division
 
 from libtbx.scheduling import result
 
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 
 class Server(object):

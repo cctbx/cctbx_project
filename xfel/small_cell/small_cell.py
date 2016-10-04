@@ -586,7 +586,10 @@ def small_cell_index(path, horiz_phil):
   # load the image
   try:
     # if it's a pickle file, read it directly
-    import pickle
+    try:
+      import cPickle as pickle
+    except ImportError:
+      import pickle
     DATA = pickle.load(open(path, 'rb'))
   except KeyError:
     # otherwise, we have to build the DATA dictionary manually

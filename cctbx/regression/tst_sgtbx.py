@@ -6,7 +6,10 @@ from cctbx.array_family import flex
 import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import random
 import sys
 

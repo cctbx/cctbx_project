@@ -10,7 +10,10 @@ from libtbx.test_utils import Exception_expected, approx_equal, \
 import libtbx.load_env
 import math
 import weakref
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 from cStringIO import StringIO
 import os
 

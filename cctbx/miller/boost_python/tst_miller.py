@@ -6,7 +6,10 @@ from cctbx.array_family import flex
 import scitbx.math
 from libtbx.complex_math import polar
 from libtbx.test_utils import Exception_expected, approx_equal
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import random
 import math
 

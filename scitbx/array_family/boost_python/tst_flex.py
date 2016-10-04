@@ -6,8 +6,10 @@ from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 import libtbx.math_utils
 from cStringIO import StringIO
-import pickle
-import cPickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import math
 import time
 import sys, os
@@ -2035,13 +2037,12 @@ def exercise_histogram():
   assert hy.n_out_of_slot_range() == 17
   centers = [info.center() for info in hy.slot_infos()]
   assert approx_equal(centers, [3,5,7,9])
-  for pickler in [pickle, cPickle]:
-    p = pickler.dumps(hy)
-    l = pickler.loads(p)
-    t = StringIO()
-    l.show(f=t, prefix="&")
-    assert not show_diff(t.getvalue(), s.getvalue())
-    assert l.n_out_of_slot_range() == 17
+  p = pickle.dumps(hy)
+  l = pickle.loads(p)
+  t = StringIO()
+  l.show(f=t, prefix="&")
+  assert not show_diff(t.getvalue(), s.getvalue())
+  assert l.n_out_of_slot_range() == 17
 
 def exercise_weighted_histogram():
   x = flex.double(xrange(20))
@@ -2117,13 +2118,12 @@ def exercise_weighted_histogram():
   assert hy.n_out_of_slot_range() == 17
   centers = [info.center() for info in hy.slot_infos()]
   assert approx_equal(centers, [3,5,7,9])
-  for pickler in [pickle, cPickle]:
-    p = pickler.dumps(hy)
-    l = pickler.loads(p)
-    t = StringIO()
-    l.show(f=t, prefix="&")
-    assert not show_diff(t.getvalue(), s.getvalue())
-    assert l.n_out_of_slot_range() == 17
+  p = pickle.dumps(hy)
+  l = pickle.loads(p)
+  t = StringIO()
+  l.show(f=t, prefix="&")
+  assert not show_diff(t.getvalue(), s.getvalue())
+  assert l.n_out_of_slot_range() == 17
 
 def exercise_show_count_stats():
   def check(counts, prefix="", group_size=10, expected=None):
@@ -3388,7 +3388,7 @@ def pickle_large_arrays(max_exp, verbose):
         else:
           raise AssertionError, "Unexpected array type."
         a = array_type(n, val)
-        for pickler in (0, pickle, cPickle):
+        for pickler in (0, pickle):
           if (pickler == 0):
             pickler_name = "g/setstate"
             t0 = time.time()

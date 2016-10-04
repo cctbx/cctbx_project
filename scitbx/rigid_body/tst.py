@@ -7,7 +7,10 @@ from scitbx import matrix
 from libtbx.test_utils import \
   approx_equal, is_above_limit, is_below_limit, Exception_expected
 from libtbx.utils import format_cpu_times
-import pickle, cPickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import random
 import sys
 
@@ -457,18 +460,17 @@ def exercise_pickle():
     result.unpack_q(etm.pack_q())
     result.unpack_qd(etm.pack_qd())
     return result
-  for pickle_module in [pickle, cPickle]:
-    for protocol in xrange(pickle.HIGHEST_PROTOCOL):
-      ftm1 = etm_as_ftm_with_q_qd()
-      s = pickle_module.dumps(etm_as_ftm_with_q_qd(), protocol)
-      ftm2 = cPickle.loads(s)
+  for protocol in xrange(pickle.HIGHEST_PROTOCOL):
+    ftm1 = etm_as_ftm_with_q_qd()
+    s = pickle.dumps(etm_as_ftm_with_q_qd(), protocol)
+    ftm2 = pickle.loads(s)
+    assert approx_equal(ftm2.pack_q(), ftm1.pack_q())
+    assert approx_equal(ftm2.pack_qd(), ftm1.pack_qd())
+    for delta_t in [0.538, 0.393]:
+      ftm1.dynamics_step(delta_t=delta_t)
+      ftm2.dynamics_step(delta_t=delta_t)
       assert approx_equal(ftm2.pack_q(), ftm1.pack_q())
       assert approx_equal(ftm2.pack_qd(), ftm1.pack_qd())
-      for delta_t in [0.538, 0.393]:
-        ftm1.dynamics_step(delta_t=delta_t)
-        ftm2.dynamics_step(delta_t=delta_t)
-        assert approx_equal(ftm2.pack_q(), ftm1.pack_q())
-        assert approx_equal(ftm2.pack_qd(), ftm1.pack_qd())
 
 def run(args):
   assert len(args) == 0

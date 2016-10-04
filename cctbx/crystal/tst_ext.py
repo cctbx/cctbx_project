@@ -12,6 +12,10 @@ from libtbx import adopt_init_args
 from itertools import count
 from cStringIO import StringIO
 import sys
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 def exercise_symmetry():
   cs = crystal.symmetry(
@@ -1619,7 +1623,6 @@ Estimated memory allocation for cubicles exceeds max_number_of_bytes:
     sites_cart.pop_back()
 
 def exercise_asu_mappings():
-  import pickle
   structure = trial_structure_2()
   original = structure.asu_mappings( buffer_thickness=2)
   restored = pickle.loads( pickle.dumps( original ) )
@@ -1648,7 +1651,6 @@ def exercise_asu_mappings():
 
 def exercise_pair_sym_table_pickling():
   # Test pickling of pair_asu_table in cctbx_project\cctbx\crystal\pair_tables_bpl.cpp
-  import pickle
   from cctbx import geometry_restraints
   bond = geometry_restraints.bond(sites=[(1,2,3),(2,3,4)], distance_ideal=2, weight=10)
   quartz_structure = xray.structure(

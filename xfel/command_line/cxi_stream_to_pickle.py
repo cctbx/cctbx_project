@@ -5,7 +5,10 @@ cctbx.xfel pickle files.
 
 from __future__ import division
 import re
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
 from cctbx.crystal import symmetry

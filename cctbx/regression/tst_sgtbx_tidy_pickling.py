@@ -3,8 +3,10 @@ from __future__ import division
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
-import pickle
-
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 """
 Test that the spacegroup class retains order of symmetry operations when restored

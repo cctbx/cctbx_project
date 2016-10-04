@@ -1,6 +1,9 @@
 from __future__ import division
 from math import pi, sin, cos, asin, sqrt
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 from cctbx.array_family import flex
 from cctbx import uctbx
 from scitbx import matrix

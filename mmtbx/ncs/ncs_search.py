@@ -6,7 +6,7 @@ from libtbx.utils import Sorry
 from scitbx import matrix
 import math
 import sys
-import StringIO
+from cStringIO import StringIO
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
 from time import time
@@ -94,7 +94,6 @@ class Chains_info(object):
     self.center_of_coordinates = None
 
   def __str__(self):
-    from StringIO import StringIO
     assert 0
     res = StringIO()
     print >> res, "res_names:", self.res_names
@@ -814,7 +813,7 @@ def search_ncs_relations(ph=None,
   """
   assert len(ph.models()) == 1
   # print "searching ncs relations..."
-  if not log: log = StringIO.StringIO()
+  if not log: log = StringIO()
   if not chains_info:
     assert bool(ph)
     chains_info = get_chains_info(ph)

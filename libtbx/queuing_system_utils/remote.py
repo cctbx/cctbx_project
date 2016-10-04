@@ -2,6 +2,10 @@ from __future__ import division
 
 from libtbx.queuing_system_utils import communication
 
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import threading
 import Queue
 import time
@@ -355,13 +359,11 @@ class RemoteFactory(object):
 
 def object_to_argument(obj):
 
-  import pickle
   return pickle.dumps( obj, 0 )
 
 
 def argument_to_object(arg):
 
-  import pickle
   return pickle.loads( arg.decode( "string-escape" ) )
 
 

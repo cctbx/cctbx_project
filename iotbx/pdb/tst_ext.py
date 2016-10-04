@@ -8,8 +8,10 @@ from libtbx.utils import Sorry, hashlib_md5, \
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
-import cPickle
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import sys, os
 
 def exercise_hybrid_36():
@@ -761,21 +763,20 @@ CONECT    4    1
 
 def exercise_input_pickling():
   pdb_inp = pdb.pdb_input(source_info="file/name", lines=pdb_string_all_sections)
-  for p in [pickle, cPickle]:
-    s = p.dumps(pdb_inp, 1)
-    l = p.loads(s)
-    assert not show_diff(l.as_pdb_string(), pdb_inp.as_pdb_string())
-    assert l.source_info() == "pickle"
-    for section in pdb.input_sections:
-      assert not show_diff(
-        "\n".join(getattr(l, section)()),
-        "\n".join(getattr(pdb_inp, section)()))
-    s = "\n".join(l.__getinitargs__()[1])
-    d = hashlib_md5(s).hexdigest()
-    if (pdb.hierarchy.atom.has_siguij()):
-      assert d == "bf987c40cc8672e2f2324d91d6de3e2b"
-    else:
-      assert d == "7375e96fd52794a785284580730de20c"
+  s = pickle.dumps(pdb_inp, 1)
+  l = pickle.loads(s)
+  assert not show_diff(l.as_pdb_string(), pdb_inp.as_pdb_string())
+  assert l.source_info() == "pickle"
+  for section in pdb.input_sections:
+    assert not show_diff(
+      "\n".join(getattr(l, section)()),
+      "\n".join(getattr(pdb_inp, section)()))
+  s = "\n".join(l.__getinitargs__()[1])
+  d = hashlib_md5(s).hexdigest()
+  if (pdb.hierarchy.atom.has_siguij()):
+    assert d == "bf987c40cc8672e2f2324d91d6de3e2b"
+  else:
+    assert d == "7375e96fd52794a785284580730de20c"
 
 def exercise_xray_structure_simple():
   pdb_inp = pdb.pdb_input(source_info=None, lines=flex.split_lines("""\

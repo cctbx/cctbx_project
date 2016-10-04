@@ -223,7 +223,11 @@ class average_mixin(common_mode.common_mode_correction):
                                   ( self.cspad_img  < SYMNOISE_THRESHOLD), 0)
 
     if ("output" in self.flags):
-      import pickle,os
+      try:
+        import cPickle as pickle
+      except ImportError:
+        import pickle
+      import os
       if (not os.path.isdir(self.pickle_dirname)):
         os.makedirs(self.pickle_dirname)
       flexdata = flex.int(self.cspad_img.astype(numpy.int32))

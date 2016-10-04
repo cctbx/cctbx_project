@@ -1,7 +1,10 @@
 from __future__ import division
 from boost import rational
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 def exercise_int():
   ri = rational.int

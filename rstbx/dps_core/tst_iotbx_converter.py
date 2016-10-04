@@ -1,5 +1,9 @@
 from __future__ import division
-import pickle, StringIO
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
+from cStringIO import StringIO
 from cctbx import crystal,sgtbx,uctbx
 from cctbx.sgtbx import lattice_symmetry
 from rstbx.dps_core.lepage import iotbx_converter
@@ -38,12 +42,12 @@ class subgroup_comparator:
     return [subgroup['best_subsym'] for subgroup in any_subgroup_list]
 
   def get_list_as_string(self,any_subgroup_list):
-    S = StringIO.StringIO()
+    S = StringIO()
     pickle.dump( [subgroup['best_subsym'] for subgroup in any_subgroup_list], S)
     return S.getvalue()
 
   def get_string_as_list(self,any_subgroup_string):
-    S = StringIO.StringIO(any_subgroup_string)
+    S = StringIO(any_subgroup_string)
     subgroups = pickle.load( S )
     return subgroups
 

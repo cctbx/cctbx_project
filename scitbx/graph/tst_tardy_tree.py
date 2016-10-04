@@ -3,7 +3,10 @@ from scitbx.graph.tardy_tree import cluster_manager, find_paths, construct
 from scitbx.graph.utils import construct_edge_sets
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, show_diff
-import pickle, cPickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 from StringIO import StringIO
 import sys
 
@@ -930,13 +933,12 @@ def exercise_pickle():
   else: raise Exception_expected
   ts = StringIO()
   tt.show_summary(vertex_labels=None, out=ts)
-  for pickle_module in [pickle, cPickle]:
-    for protocol in xrange(pickle.HIGHEST_PROTOCOL):
-      s = pickle_module.dumps(tt, protocol)
-      l = pickle_module.loads(s)
-      ls = StringIO()
-      l.show_summary(vertex_labels=None, out=ls)
-      assert not show_diff(ls.getvalue(), ts.getvalue())
+  for protocol in xrange(pickle.HIGHEST_PROTOCOL):
+    s = pickle.dumps(tt, protocol)
+    l = pickle.loads(s)
+    ls = StringIO()
+    l.show_summary(vertex_labels=None, out=ls)
+    assert not show_diff(ls.getvalue(), ts.getvalue())
 
 def exercise_rmsd_calculation():
   from scitbx.array_family import flex

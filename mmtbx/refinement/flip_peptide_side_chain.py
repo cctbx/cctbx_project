@@ -1,7 +1,7 @@
 from __future__ import division
 from scitbx.matrix import rotate_point_around_axis
 from scitbx.math import dihedral_angle
-import StringIO
+from cStringIO import StringIO
 
 # flippable_sidechains:
 #   key: flippable residue name
@@ -26,7 +26,7 @@ def flip_residue(residue, mon_lib_srv=None):
     from mmtbx.utils import rotatable_bonds
     if mon_lib_srv is None:
       mon_lib_srv = mmtbx.monomer_library.server.server()
-    null_log = StringIO.StringIO()
+    null_log = StringIO()
     tardy_model = rotatable_bonds.tardy_model_one_residue(
         residue=residue,
         mon_lib_srv=mon_lib_srv,

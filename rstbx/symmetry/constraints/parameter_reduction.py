@@ -83,7 +83,11 @@ class symmetrize_reduce_enlarge(object):
 
 
 if __name__=="__main__":
-  import pickle,os
+  try:
+    import cPickle as pickle
+  except ImportError:
+    import pickle
+  import os
   from labelit.symmetry import metricsym
   from cctbx.sgtbx.bravais_types import bravais_lattice
   from rstbx.symmetry.constraints.g_gradients import finite_difference_test

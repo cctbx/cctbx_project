@@ -1,6 +1,11 @@
 from __future__ import division
 from scitbx.array_family import flex
 import math
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
+
 class sb_wrapper:
   def __init__(self,working_phil):
       self.working_phil = working_phil
@@ -41,7 +46,6 @@ class sb_wrapper:
     if wavelength_from_avg_file:
       # go through hoops to get the proper wavelength corresponding to this run
       avepath = self.path.replace("stddev","avg")
-      import pickle
       info = pickle.load(open(avepath,"rb"))
       wavelength = info["WAVELENGTH"]
 
@@ -82,7 +86,6 @@ class pdb_code_wrapper(sb_wrapper):
     if wavelength_from_avg_file:
       # go through hoops to get the proper wavelength corresponding to this run
       avepath = self.path.replace("stddev","avg")
-      import pickle
       info = pickle.load(open(avepath,"rb"))
       wavelength = info["WAVELENGTH"]
 
@@ -129,7 +132,6 @@ class unit_cell_wrapper(sb_wrapper):
     if wavelength_from_avg_file:
       # go through hoops to get the proper wavelength corresponding to this run
       avepath = self.path.replace("stddev","avg")
-      import pickle
       info = pickle.load(open(avepath,"rb"))
       wavelength = info["WAVELENGTH"]
 

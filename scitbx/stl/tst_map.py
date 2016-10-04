@@ -1,6 +1,9 @@
 from __future__ import division
 from scitbx.stl import map
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 def exercise_long_long():
   m = map.long_long()

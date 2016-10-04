@@ -1,8 +1,10 @@
 from __future__ import division
 from scitbx.array_family import shared
 from libtbx.test_utils import approx_equal
-import pickle
-import cPickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 def native(a):
   return [tuple(elem) for elem in a]
@@ -92,12 +94,11 @@ def exercise_stl_set_unsigned():
   assert tuple(a[4]) == (1,2,3,4)
   assert native(a) == [(1, 2), (2, 3, 5), (), (2, 3, 4), (1, 2, 3, 4)]
   #
-  for p in [pickle, cPickle]:
-    s = p.dumps(a, 1)
-    l = p.loads(s)
-    assert len(l) == len(a)
-    for ae,le in zip(a,l):
-      assert list(ae) == list(le)
+  s = pickle.dumps(a, 1)
+  l = pickle.loads(s)
+  assert len(l) == len(a)
+  for ae,le in zip(a,l):
+    assert list(ae) == list(le)
 
 def exercise_mat3_int():
   from scitbx.array_family import flex

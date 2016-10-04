@@ -1,6 +1,10 @@
 """Specialization code for 2011 JCSG pilot experiment; not general use"""
 from __future__ import division
-import pickle,math
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
+import math
 from labelit.preferences import labelit_commands,labelit_phil
 from labelit.command_line.default_param import establish_dict_for_refinement
 from labelit.dptbx.autoindex import index_and_refine

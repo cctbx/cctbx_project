@@ -1,6 +1,9 @@
 from __future__ import division
 from math import pi
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 from cctbx import uctbx, sgtbx
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 from libtbx.test_utils import approx_equal

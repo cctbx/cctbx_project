@@ -12,7 +12,10 @@ from libtbx.test_utils import Exception_expected, approx_equal, \
   is_above_limit, show_diff
 from libtbx.test_utils import not_approx_equal
 import random
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 from cStringIO import StringIO
 import sys, random, math
 from itertools import count

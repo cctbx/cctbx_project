@@ -4,8 +4,11 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 import sys
-import pickle
-import StringIO
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
+from cStringIO import StringIO
 from libtbx.test_utils import show_diff
 import iotbx.pdb
 from libtbx.utils import null_out # import dependency
@@ -151,8 +154,8 @@ def make_initial_grm(mon_lib_srv, ener_lib, records):
   return geometry, xrs
 
 def make_geo_pickle_unpickle(geometry, xrs, prefix):
-  init_out = StringIO.StringIO()
-  from_file_out = StringIO.StringIO()
+  init_out = StringIO()
+  from_file_out = StringIO()
   geometry.show_sorted(
       sites_cart=xrs.sites_cart(),
       site_labels=xrs.scatterers().extract_labels(),
@@ -408,7 +411,7 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
       model_raw_records, reference_raw_records
   from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     reference_model, reference_model_params
-  # mstream = StringIO.StringIO()
+  # mstream = StringIO()
   from libtbx.utils import multi_out
   mstream = multi_out()
   mstream.register("stdout", sys.stdout)

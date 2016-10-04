@@ -7,7 +7,10 @@ from libtbx.utils import detect_binary_file
 from libtbx import adopt_init_args
 import platform
 import shutil
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 from cStringIO import StringIO
 import re
 import sys, os

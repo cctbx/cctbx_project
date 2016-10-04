@@ -164,7 +164,10 @@ class Job(object):
 """\
 source %s
 libtbx.python << EOF
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 ( target, args, kwargs ) = pickle.load( open( "%s.target" ) )
 target( *args, **kwargs )
 EOF

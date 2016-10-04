@@ -487,7 +487,10 @@ show_sizes_double = lambda: __show_sizes(empty_container_sizes_double)
 
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
-  import pickle
+  try:
+    import cPickle as pickle
+  except ImportError:
+    import pickle
   a = flex_triple()
   assert a.size() == 0
   a = flex_triple(132)

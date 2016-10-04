@@ -17,7 +17,10 @@ from libtbx.utils import Sorry, Keep, null_out
 from libtbx import Auto
 from cStringIO import StringIO
 import warnings
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import random
 import math
 import sys

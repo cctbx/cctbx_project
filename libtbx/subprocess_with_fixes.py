@@ -406,7 +406,10 @@ else:
     import select
     import errno
     import fcntl
-    import pickle
+    try:
+      import cPickle as pickle
+    except ImportError:
+      import pickle
 
 __all__ = ["Popen", "PIPE", "STDOUT", "call", "check_call", "CalledProcessError"]
 

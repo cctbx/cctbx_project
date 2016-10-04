@@ -8,8 +8,10 @@ import libtbx.load_env
 from libtbx import Auto
 from cStringIO import StringIO
 import math
-import cPickle
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import random
 import sys, os
 
@@ -5285,8 +5287,8 @@ ENDMDL
   assert awl.model_id == "SKDI"
   assert not awl.is_first_in_chain
   assert not awl.is_first_after_break
-  awl_pkl = cPickle.dumps(awl)
-  awl_unpkl = cPickle.loads(awl_pkl)
+  awl_pkl = pickle.dumps(awl)
+  awl_unpkl = pickle.loads(awl_pkl)
   assert not show_diff(awl.format_atom_record(), awl_unpkl.format_atom_record())
 
 def exercise_transfer_chains_from_other():
@@ -5575,11 +5577,10 @@ ENDMDL
   hierarchy = pdb_inp.construct_hierarchy()
   hierarchy.info.append("a")
   hierarchy.info.append("b")
-  for p in [pickle, cPickle]:
-    s = p.dumps(hierarchy, 1)
-    l = p.loads(s)
-    assert not show_diff("\n".join(l.info), "\n".join(hierarchy.info))
-    assert not show_diff(l.as_pdb_string(), hierarchy.as_pdb_string())
+  s = pickle.dumps(hierarchy, 1)
+  l = pickle.loads(s)
+  assert not show_diff("\n".join(l.info), "\n".join(hierarchy.info))
+  assert not show_diff(l.as_pdb_string(), hierarchy.as_pdb_string())
 
 def exercise_residue_pickling():
   # XXX fp, fdp?
@@ -5606,13 +5607,12 @@ ATOM     12  O   ASN A   3      -1.872   0.119   3.648  1.00 10.42           O
     eps = hierarchy.select(residue.atoms().extract_i_seq()).as_pdb_string()
     rsc = residue.standalone_copy()
     assert not show_diff(rsc.root().as_pdb_string(), eps)
-    for p in [pickle, cPickle]:
-      for rp in [residue, rsc]:
-        for i_pass in xrange(2):
-          s = p.dumps(rp, 1)
-          l = p.loads(s)
-          assert not show_diff(l.root().as_pdb_string(), eps)
-          rp = l
+    for rp in [residue, rsc]:
+      for i_pass in xrange(2):
+        s = pickle.dumps(rp, 1)
+        l = pickle.loads(s)
+        assert not show_diff(l.root().as_pdb_string(), eps)
+        rp = l
 
 def exercise_hierarchy_input():
   pdb_obj = pdb.hierarchy.input(pdb_string=pdb_2izq_220)

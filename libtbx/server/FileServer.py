@@ -1,6 +1,9 @@
 from __future__ import division
 import threading
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 import SocketServer
 import sys
 import traceback

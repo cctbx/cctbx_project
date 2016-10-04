@@ -1,7 +1,10 @@
 from __future__ import division
 from scitbx.stl import vector
 from scitbx.stl import set
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 def exercise_unsigned():
   a = vector.unsigned()

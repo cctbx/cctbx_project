@@ -408,7 +408,10 @@ def minimize_wrapper_for_ramachandran(
   """ Wrapper around geometry minimization specifically tuned for eliminating
   Ramachandran outliers.
   """
-  import pickle
+  try:
+    import cPickle as pickle
+  except ImportError:
+    import pickle
   from time import time
   from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
   from mmtbx.geometry_restraints import reference

@@ -2,7 +2,10 @@ from __future__ import division
 from libtbx.test_utils import approx_equal
 from cctbx import uctbx
 from cctbx.array_family import flex
-import pickle
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 def exercise_flex_miller_index():
   from scitbx.array_family.flex import exercise_triple
