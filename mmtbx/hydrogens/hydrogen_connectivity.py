@@ -2,9 +2,12 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.hydrogen_connectivity
 import sys
 import time
+import math
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
+from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import mmtbx.utils
+import iotbx.phil
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
 from scitbx.array_family import flex
@@ -13,6 +16,7 @@ from libtbx import adopt_init_args
 from libtbx.utils import null_out
 from libtbx.utils import multi_out
 from scitbx import matrix
+from scitbx.math import dihedral_angle
 
 legend = """\
 
@@ -54,6 +58,9 @@ class atom_info(object):
     dist_ideal      = None,
     angle           = None,
     angle_ideal     = None,
+    dihedral_ideal  = None,
+    dihedral        = None,
+    dihe_list       = None,
     reduced_neighbs = None,
     count_H         = None):
     adopt_init_args(self, locals())
@@ -67,15 +74,14 @@ class atom_info(object):
 # [b1]     --> if only one 1-3 neighbor, list also the 1-4 neighbors
 # a0, a1 are objects "atom_info"
 # ----------------------------------------------------------------------------
-def determine_H_neighbors(
-  geometry_restraints, bond_proxies, angle_proxies, hd_selection, sites_cart):
+def determine_H_neighbors(geometry_restraints, bond_proxies, angle_proxies,
+  dihedral_proxies, hd_selection, sites_cart):
   fsc2=geometry_restraints.shell_sym_tables[2].full_simple_connectivity()
   fsc1=geometry_restraints.shell_sym_tables[1].full_simple_connectivity()
   #fsc0=geometry_restraints.shell_sym_tables[0].full_simple_connectivity()
   #hd_selection = xray_structure.hd_selection()
   #sites_cart = xray_structure.sites_cart()
   # Maybe there is better way to get number of atoms?
-  # (needed to select angle proxy)
   n_atoms = len(sites_cart)
   connectivity = {}
   # loop through bond proxies to find H atom and parent atom
@@ -115,14 +121,13 @@ def determine_H_neighbors(
           angle_ideal = angle)
         connectivity[ih][1].append(neighbor)
     reduced_neighbs = []
-    # list of reduced neigbors is needed for finding parameterization
     for atom in connectivity[ih][1]:
       if (not hd_selection[atom.iseq]):
         reduced_neighbs.append(atom)
     (connectivity[ih][0]).reduced_neighbs = reduced_neighbs
     (connectivity[ih][0]).count_H = \
       len(connectivity[ih][1]) - len(reduced_neighbs)
-    # add third neighbors, if necessary
+    # find third neighbors, if necessary
     if (len(reduced_neighbs) == 1):
       connectivity[ih].append([])
       i_second = (reduced_neighbs[0]).iseq
@@ -136,8 +141,24 @@ def determine_H_neighbors(
           if ap:
             neighbor = atom_info(
               iseq = i_third)
+            iselection_dihe = flex.size_t([ih,i_parent,i_second,i_third])
+            dp = dihedral_proxies.proxy_select(
+              n_seq      = n_atoms,
+              iselection = iselection_dihe)
+            if dp:
+              dihedral_id = dp[0].angle_ideal
+              dihedral = dihedral_angle(
+                sites=[sites_cart[i_third], sites_cart[i_second],
+                sites_cart[i_parent],sites_cart[ih]])
+              (connectivity[ih][0]).dihedral = dihedral
+              (connectivity[ih][0]).dihe_list = [ih,i_parent,i_second,i_third]
+              sites_cart_dihe = sites_cart.select(iselection_dihe).deep_copy()
+              delta = dp.deltas(sites_cart=sites_cart_dihe)[0]
+              dihedral_ideal = math.degrees(dihedral) + delta
+              (connectivity[ih][0]).dihedral_ideal = dihedral_ideal
+              #print dihedral_id, delta, math.degrees(dihedral), dihedral_ideal
             connectivity[ih][2].append(neighbor)
-    if (len(reduced_neighbs) == 2 or len(reduced_neighbs) == 3):
+    if (len(reduced_neighbs) == 2):
       ix = i_parent
       iy = (reduced_neighbs[0]).iseq
       iz = (reduced_neighbs[1]).iseq
@@ -145,6 +166,21 @@ def determine_H_neighbors(
       (connectivity[ih][0]).angle_ideal =  angle_proxies.proxy_select(
         n_seq      = n_atoms,
         iselection = iselection)[0].angle_ideal
+    if (len(reduced_neighbs) == 3):
+    # for tetrahedral, all 3 ideal angles are needed
+      angles = []
+      ix = i_parent
+      _list = [(0,1),(1,2),(2,0)]
+      for _i,_j in _list:
+        iy = (reduced_neighbs[_i]).iseq
+        iz = (reduced_neighbs[_j]).iseq
+        iselection = flex.size_t([ix,iy,iz])
+        ap = angle_proxies.proxy_select(
+          n_seq      = n_atoms,
+          iselection = iselection)
+        if ap:
+          angles.append(ap[0].angle_ideal)
+        (connectivity[ih][0]).angle_ideal = angles
   return connectivity
 
 def run(args, out=sys.stdout):
@@ -159,6 +195,14 @@ def run(args, out=sys.stdout):
   print >> log, "phenix.hydrogen_connectivity is running..."
   print >> log, "input parameters:\n", args
 
+# -------------------------------------------------
+#          code to switch off CDL or not
+# -------------------------------------------------
+  params_line = grand_master_phil_str
+  params = iotbx.phil.parse(
+      input_string=params_line, process_includes=True).extract()
+  params.pdb_interpretation.restraints_library.cdl=False
+#
   processed_args = mmtbx.utils.process_command_line_args(
     args=args, log=null_out())
   pdb_filename = processed_args.pdb_file_names[0]
@@ -170,21 +214,20 @@ def run(args, out=sys.stdout):
       ener_lib       = ener_lib,
       file_name      = pdb_filename,
       force_symmetry = True)
-
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xray_structure = processed_pdb_file.xray_structure()
   if pdb_filename is not None:
     pdb_str = pdb_hierarchy.as_pdb_string()
 
-  geometry_restraints = processed_pdb_file.geometry_restraints_manager(
+  grm = processed_pdb_file.geometry_restraints_manager(
     show_energies = False)
   restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry_restraints,
+    geometry      = grm,
     normalization = False)
-
   bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
     sites_cart = xray_structure.sites_cart())
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
+  dihedral_proxies = restraints_manager.geometry.dihedral_proxies
 
   names = list(pdb_hierarchy.atoms().extract_name())
   sites_cart = xray_structure.sites_cart()
@@ -194,10 +237,12 @@ def run(args, out=sys.stdout):
 
   print >>log, '\nNow determining connectivity table for H atoms...'
   connectivity = determine_H_neighbors(
-    geometry_restraints   = geometry_restraints,
+    geometry_restraints   = grm,
     bond_proxies          = bond_proxies_simple,
     angle_proxies         = angle_proxies,
-    xray_structure        = xray_structure)
+    dihedral_proxies      = dihedral_proxies,
+    hd_selection          = hd_selection,
+    sites_cart            = sites_cart)
 
   if(0):
     print >>log, '\nHydrogen atom connectivity list'
