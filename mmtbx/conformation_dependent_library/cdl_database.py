@@ -10402,6 +10402,58 @@ Pro_xpro[(170, 150)]=Pro_xpro[(-180, -180)]
 Pro_xpro[(170, 160)]=Pro_xpro[(-180, -180)]
 Pro_xpro[(170, 170)]=Pro_xpro[(-180, -180)]
 
+#
+# adjustments due to too large esd
+#
+Pro_nonxpro[(-90, 60)][16]=1.333900 # mCN
+Pro_nonxpro[(-90, 60)][17]=0.023400 # sCN
+Pro_nonxpro[(-90, 70)][16]=1.333900 # mCN
+Pro_nonxpro[(-90, 70)][17]=0.023400 # sCN
+Pro_nonxpro[(-90, 80)][16]=1.333900 # mCN
+Pro_nonxpro[(-90, 80)][17]=0.023400 # sCN
+Pro_nonxpro[(-80, 60)][16]=1.333900 # mCN
+Pro_nonxpro[(-80, 60)][17]=0.023400 # sCN
+Pro_nonxpro[(-80, 70)][16]=1.333900 # mCN
+Pro_nonxpro[(-80, 70)][17]=0.023400 # sCN
+Pro_nonxpro[(-80, 80)][16]=1.333900 # mCN
+Pro_nonxpro[(-80, 80)][17]=0.023400 # sCN
+Pro_nonxpro[(-80, 110)][16]=1.333900 # mCN
+Pro_nonxpro[(-80, 110)][17]=0.023400 # sCN
+Gly_nonxpro[(-100, -90)][10]=120.570000 # mACO
+Gly_nonxpro[(-100, -90)][11]=1.740000 # sACO
+Gly_nonxpro[(-100, -90)][12]=116.690000 # mACN
+Gly_nonxpro[(-100, -90)][13]=2.040000 # sACN
+Gly_nonxpro[(150, -140)][10]=120.570000 # mACO
+Gly_nonxpro[(150, -140)][11]=1.740000 # sACO
+NonPGIV_xpro[(-150, 100)][16]=1.331000 # mCN
+NonPGIV_xpro[(-150, 100)][17]=0.020700 # sCN
+NonPGIV_xpro[(-100, 140)][16]=1.331000 # mCN
+NonPGIV_xpro[(-100, 140)][17]=0.020700 # sCN
+NonPGIV_xpro[(-90, 140)][16]=1.331000 # mCN
+NonPGIV_xpro[(-90, 140)][17]=0.020700 # sCN
+NonPGIV_xpro[(50, 50)][14]=121.320000 # mOCN
+NonPGIV_xpro[(50, 50)][15]=1.150000 # sOCN
+NonPGIV_xpro[(50, 60)][14]=121.320000 # mOCN
+NonPGIV_xpro[(50, 60)][15]=1.150000 # sOCN
+NonPGIV_nonxpro[(-160, -150)][24]=1.235300 # mCO
+NonPGIV_nonxpro[(-160, -150)][25]=0.012600 # sCO
+NonPGIV_nonxpro[(-120, -120)][22]=1.523200 # mAC
+NonPGIV_nonxpro[(-120, -120)][23]=0.013400 # sAC
+NonPGIV_nonxpro[(-120, -100)][12]=116.840000 # mACN
+NonPGIV_nonxpro[(-120, -100)][13]=1.710000 # sACN
+NonPGIV_nonxpro[(-110, -130)][4]=110.490000 # mNAB
+NonPGIV_nonxpro[(-110, -130)][5]=1.690000 # sNAB
+NonPGIV_nonxpro[(-110, -130)][24]=1.235300 # mCO
+NonPGIV_nonxpro[(-110, -130)][25]=0.012600 # sCO
+NonPGIV_nonxpro[(-100, -130)][4]=110.490000 # mNAB
+NonPGIV_nonxpro[(-100, -130)][5]=1.690000 # sNAB
+NonPGIV_nonxpro[(-100, -130)][24]=1.235300 # mCO
+NonPGIV_nonxpro[(-100, -130)][25]=0.012600 # sCO
+Gly_xpro[(-60, -40)][2]=121.870000 # mCNA
+Gly_xpro[(-60, -40)][3]=1.570000 # sCNA
+Gly_xpro[(-50, -40)][14]=121.770000 # mOCN
+Gly_xpro[(-50, -40)][15]=1.000000 # sOCN
+
 def run(args):
   assert len(args) == 0
   print cdl_database["Pro_nonxpro"][(-180,-180)]

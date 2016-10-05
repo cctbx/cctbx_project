@@ -134,6 +134,7 @@ tst_list = (
   "$D/geometry_restraints/tst_c_beta_restraints.py",
   "$D/geometry_restraints/torsion_restraints/tst_torsion_ncs.py",
   "$D/conformation_dependent_library/test_cdl.py",
+  "$D/conformation_dependent_library/test_cdl_esd.py",
   "$D/conformation_dependent_library/test_rdl.py",
   "$D/conformation_dependent_library/test_hpdl.py",
   "$D/regression/tst_find_ss_structure.py",
