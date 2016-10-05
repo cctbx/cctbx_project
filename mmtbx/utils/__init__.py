@@ -55,7 +55,6 @@ from cctbx import xray
 from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 from iotbx.file_reader import any_file
 from mmtbx.rotamer.rotamer_eval import RotamerEval
-from cctbx import maptbx
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -2690,6 +2689,7 @@ def switch_rotamers(
             if evaluation == "Allowed" and accept_allowed:
               exclude = True
           if not exclude:
+            # print "  Fixing rotamer outlier", residue.id_str()
             rotamer_iterator = lockit.get_rotamer_iterator(
               mon_lib_srv         = mon_lib_srv,
               residue             = residue,
