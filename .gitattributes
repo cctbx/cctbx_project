@@ -2099,7 +2099,6 @@ mmtbx/hydrogens/tst_h_connectivity.py -text
 mmtbx/hydrogens/tst_h_parametrization_1.py -text
 mmtbx/hydrogens/tst_h_parametrization_2.py -text
 mmtbx/hydrogens/tst_h_parametrization_3.py -text
-mmtbx/hydrogens/tst_hydrogen_connectivity.py -text
 mmtbx/hydrogens/tst_run_fd_1.py -text
 mmtbx/hydrogens/tst_run_fd_2.py -text
 mmtbx/hydrogens/tst_run_fd_3.py -text
