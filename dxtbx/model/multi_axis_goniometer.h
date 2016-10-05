@@ -159,6 +159,16 @@ namespace dxtbx { namespace model {
       os << "    Axis #" << i << " (" << g.get_names()[i] << ")" << ":  "
          << g.get_axes()[i].const_ref() << "\n";
     }
+    os << "    Angles: ";
+    for (std::size_t i=0; i < g.get_axes().size(); i++) {
+      os << g.get_angles()[i];
+      if ((i+1) < g.get_axes().size()) {
+        os << ",";
+      }
+      else {
+        os << "\n";
+      }
+    }
     os << "    scan axis: #" << g.get_scan_axis()
        << " (" << g.get_names()[g.get_scan_axis()] << ")" << "\n";
     return os;
