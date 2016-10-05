@@ -866,22 +866,21 @@ def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
       print >> log, "    ", ma.info().label_string()
       suitable_arrays.append(ma)
       suitable_labels.append(ma.info().label_string())
+  print >> log
   if(  len(suitable_arrays) == 0): raise Sorry("No suitable arrays.")
   elif(len(suitable_arrays) == 1): result = suitable_arrays[0]
   elif(len(suitable_arrays) >  1):
-    m="Multiple choices available."
-    if(label is None): raise Sorry(m)
+    if(label is None):
+      msg='''Multiple choices available. No map coefficients array selected.
+
+  See choices listed above and use "label=" to select one.
+  Example: label="2FOFCWT,PH2FOFCWT"'''
+      raise Sorry(msg)
     else:
       for ma in miller_arrays:
         if(get_flag(ma=ma) and (ma.info().label_string() == label)):
           print >> log, "  Selected:", ma.info().label_string()
           result = ma
-  if(result is None):
-    msg="""
-No map coefficients array selected. See choices listed above and use 'label='
-to select one. Example: label="2FOFCWT,PH2FOFCWT"
-"""
-    raise Sorry(msg)
   return result
 
 class process_raw_data (object) :
