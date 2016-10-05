@@ -710,7 +710,7 @@ def exercise_extract_miller_array_from_file():
     try:
       rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp, log=log)
     except Sorry, e:
-      assert str(e)=="Multiple choices available."
+      assert ("Multiple choices available." in str(e))
       sorry_counts += 1
   #
   for tp in [None, "real"]:
@@ -720,7 +720,7 @@ def exercise_extract_miller_array_from_file():
     mtz_dataset.mtz_object().write("tmp.mtz")
     try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",type=tp,log=log)
     except Sorry, e:
-      assert str(e)=="Multiple choices available."
+      assert ("Multiple choices available." in str(e))
       sorry_counts += 1
   #
   mtz_dataset = a3.as_mtz_dataset(column_root_label="A3")
@@ -729,7 +729,7 @@ def exercise_extract_miller_array_from_file():
   mtz_dataset.mtz_object().write("tmp.mtz")
   try: rfu.extract_miller_array_from_file(file_name="tmp.mtz",log=log)
   except Sorry, e:
-    assert str(e)=="Multiple choices available."
+    assert ("Multiple choices available." in str(e))
     sorry_counts += 1
   #
   mtz_dataset = a4.as_mtz_dataset(column_root_label="A4")
