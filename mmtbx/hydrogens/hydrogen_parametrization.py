@@ -176,9 +176,14 @@ def get_coefficients_alg3(rh, a0, a1, a2, a3, idealize, sites_cart):
 
 
 # for every H atom, determine the type of bond
+# for debugging
+#def get_h_parameterization(connectivity, sites_cart, idealize, atoms_list, names):
 def get_h_parameterization(connectivity, sites_cart, idealize):
   h_parameterization = {}
   for ih in connectivity.keys():
+  # for debugging
+  #  print 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
+  #    atoms_list[ih].resseq, 'chain', atoms_list[ih].chain_id
     # if entry exists already, skip it
     if ih in h_parameterization:
       continue
@@ -371,6 +376,7 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
           alpha  = alpha,
           dist_h = dist_h)
     else:
+      a1 = reduced_neighbs[0]
       h_parameterization[ih] = parameterization_info(
         htype  = 'unk',
         a0     = a0.iseq,
@@ -523,6 +529,13 @@ def run(args, out=sys.stdout):
     connectivity   = connectivity,
     sites_cart     = sites_cart,
     idealize       = idealize)
+  # for debugging
+  #h_parameterization = get_h_parameterization(
+  #  connectivity   = connectivity,
+  #  sites_cart     = sites_cart,
+  #  idealize       = idealize,
+  #  atoms_list     = atoms_list,
+  #  names          = names)
 
   print >>log, '\nNow reconstructing H atoms...'
   long_distance_list = []
