@@ -1,5 +1,5 @@
 from __future__ import division
-import sys
+import sys, os
 import time
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -565,17 +565,18 @@ def run(args, out=sys.stdout):
         sites_cart        = sites_cart,
         ih                = ih,
         para_info         = hp)
-      if(h_obj.distance is not None and h_obj.distance > 0.0014):
+      if(h_obj.distance is not None and h_obj.distance > 0.03):
         print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
           residue, 'chain', atoms_list[ih].chain_id, 'distance:', h_obj.distance
       sites_cart[ih] = h_obj.rH_gen
   xray_structure.set_sites_cart(sites_cart)
   pdb_hierarchy.adopt_xray_structure(xray_structure)
-  print pdb_filename
-  STOP()
-  pdb_hierarchy.write_pdb_file(
-    file_name        = pdb_filename+"newH.pdb",
-    crystal_symmetry = xray_structure.crystal_symmetry())
+
+  if pdb_filename is not None:
+    pdb_basename = os.path.basename(pdb_filename.split(".")[0])
+    pdb_hierarchy.write_pdb_file(
+      file_name        = pdb_basename+"_H.pdb",
+      crystal_symmetry = xray_structure.crystal_symmetry())
   print >>log, '*'*79
 
   #for ih in h_parameterization.keys():
