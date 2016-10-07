@@ -805,10 +805,9 @@ considered.
         "mean_diff_c" : math.fabs(self.mean_diff_c), })
     if (out.gui_output) :
       out.show_plot(self.table)
+      out.show_table(self.table)
     else :
-      pass # XXX is there any point to printing out the table?
-      # FIXME this needs to be narrower - equal_widths=False
-      #out.show_table(self.table)
+      out.show_table(self.table)
 
 class l_test (scaling.xtriage_analysis):
   """
@@ -887,8 +886,9 @@ class l_test (scaling.xtriage_analysis):
 """ % { "ml_alpha" : self.ml_alpha, })
     if (out.gui_output) :
       out.show_plot(self.table)
+      out.show_table(self.table)
     else :
-      pass #out.show_table(self.table)
+      out.show_table(self.table)
 
     out.show("""\
  Reference:
