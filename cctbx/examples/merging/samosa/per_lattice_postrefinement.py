@@ -129,7 +129,7 @@ class legacy_cxi_merge_postrefinement(object):
     self.observations_original_index_pair1_selected = observations_original_index_pair1_selected
 
   def run_plain(self):
-    self.MINI = lbfgs_minimizer_base( current_x = self.current,
+    self.MINI = lbfgs_minimizer_derivatives( current_x = self.current,
         parameterization = self.parameterization_class, refinery = self.refinery,
         out = self.out )
 
@@ -182,6 +182,15 @@ class refinery_base(group_args):
         Rh.append(Svec.length() - (1./self.WAVE))
       return Rh
 
+    def get_s1_array(self, values):
+      miller_vec = self.MILLER.as_vec3_double()
+      ref_ori = matrix.sqr(self.ORI.reciprocal_matrix())
+      Rx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(values.thetax)
+      Ry = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(values.thetay)
+      s_array = flex.mat3_double(len(self.MILLER),Ry * Rx * ref_ori) * miller_vec
+      s1_array = s_array + flex.vec3_double(len(self.MILLER), self.BEAM)
+      return s1_array
+
     def get_eff_Astar(self, values):
       thetax = values.thetax; thetay = values.thetay;
       effective_orientation = self.ORI.rotate_thru((1,0,0),thetax
@@ -213,7 +222,85 @@ class rs_refinery(refinery_base):
       Rh = self.get_Rh_array(values)
       rs_sq = rs*rs
       PB = rs_sq / ((2. * (Rh * Rh)) + rs_sq)
+      """
+      hard_sphere_partial =(rs_sq-(Rh*Rh))/rs_sq
+      immersion = Rh/rs
+      from matplotlib import pyplot as plt
+      plt.plot (immersion, PB, "r.")
+      plt.plot (immersion, hard_sphere_partial,"b.")
+      plt.plot ([-1.0,1.0],[0,0],"k-")
+      plt.show()
+      """
       return PB
+
+    def jacobian_callable(self,values):
+      PB = self.get_partiality_array(values)
+      EXP = flex.exp(-2.*values.BFACTOR*self.DSSQ)
+      G_terms = (EXP * PB * self.ICALCVEC)
+      B_terms = (values.G * EXP * PB * self.ICALCVEC)*(-2.*self.DSSQ)
+      P_terms = (values.G * EXP * self.ICALCVEC)
+
+      thetax = values.thetax; thetay = values.thetay;
+      Rx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(thetax)
+      dRx_dthetax = matrix.col((1,0,0)).axis_and_angle_as_r3_derivative_wrt_angle(thetax)
+      Ry = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(thetay)
+      dRy_dthetay = matrix.col((0,1,0)).axis_and_angle_as_r3_derivative_wrt_angle(thetay)
+      ref_ori = matrix.sqr(self.ORI.reciprocal_matrix())
+      miller_vec = self.MILLER.as_vec3_double()
+      ds1_dthetax = flex.mat3_double(len(self.MILLER),Ry * dRx_dthetax * ref_ori) * miller_vec
+      ds1_dthetay = flex.mat3_double(len(self.MILLER),dRy_dthetay * Rx * ref_ori) * miller_vec
+
+      s1vec = self.get_s1_array(values)
+      s1lenvec = flex.sqrt(s1vec.dot(s1vec))
+      dRh_dthetax = s1vec.dot(ds1_dthetax)/s1lenvec
+      dRh_dthetay = s1vec.dot(ds1_dthetay)/s1lenvec
+      rs = values.RS
+      Rh = self.get_Rh_array(values)
+      rs_sq = rs*rs
+      dPB_dRh = -PB * 4. * Rh / (2. * Rh * Rh + rs_sq)
+      dPB_dthetax = dPB_dRh * dRh_dthetax
+      dPB_dthetay = dPB_dRh * dRh_dthetay
+      Px_terms = P_terms * dPB_dthetax; Py_terms = P_terms * dPB_dthetay
+
+      return [G_terms,B_terms,0,Px_terms,Py_terms]
+
+class nave1_refinery(rs_refinery):
+
+    def jacobian_callable(self,values):
+      PB = self.get_partiality_array(values)
+      EXP = flex.exp(-2.*values.BFACTOR*self.DSSQ)
+      G_terms = (EXP * PB * self.ICALCVEC)
+      B_terms = (values.G * EXP * PB * self.ICALCVEC)*(-2.*self.DSSQ)
+      P_terms = (values.G * EXP * self.ICALCVEC)
+
+      thetax = values.thetax; thetay = values.thetay;
+      Rx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(thetax)
+      dRx_dthetax = matrix.col((1,0,0)).axis_and_angle_as_r3_derivative_wrt_angle(thetax)
+      Ry = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(thetay)
+      dRy_dthetay = matrix.col((0,1,0)).axis_and_angle_as_r3_derivative_wrt_angle(thetay)
+      ref_ori = matrix.sqr(self.ORI.reciprocal_matrix())
+      miller_vec = self.MILLER.as_vec3_double()
+      ds1_dthetax = flex.mat3_double(len(self.MILLER),Ry * dRx_dthetax * ref_ori) * miller_vec
+      ds1_dthetay = flex.mat3_double(len(self.MILLER),dRy_dthetay * Rx * ref_ori) * miller_vec
+
+      s1vec = self.get_s1_array(values)
+      s1lenvec = flex.sqrt(s1vec.dot(s1vec))
+      dRh_dthetax = s1vec.dot(ds1_dthetax)/s1lenvec
+      dRh_dthetay = s1vec.dot(ds1_dthetay)/s1lenvec
+      rs = values.RS
+      Rh = self.get_Rh_array(values)
+      rs_sq = rs*rs
+      denomin = (2. * Rh * Rh + rs_sq)
+      dPB_dRh = -PB * 4. * Rh / denomin
+      dPB_dthetax = dPB_dRh * dRh_dthetax
+      dPB_dthetay = dPB_dRh * dRh_dthetay
+      Px_terms = P_terms * dPB_dthetax; Py_terms = P_terms * dPB_dthetay
+
+      dPB_drs = 4 * rs * Rh * Rh / (denomin * denomin)
+      Prs_terms = P_terms * dPB_drs
+
+      return [G_terms,B_terms,Prs_terms,Px_terms,Py_terms]
+
 
 class eta_deff_refinery(refinery_base):
     def __init__(self, **kwargs):
@@ -332,3 +419,54 @@ class lbfgs_minimizer_base:
     print >> self.out, "FINALMODEL",
     print >> self.out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
     values.show(self.out)
+
+class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
+
+  def compute_functional_and_gradients_test_code(self):
+    values = self.parameterization(self.x)
+    assert -150. < values.BFACTOR < 150. # limits on the exponent, please
+    self.func = self.refinery.fvec_callable(values)
+    functional = flex.sum(self.func*self.func)
+    self.f = functional
+    jacobian = self.refinery.jacobian_callable(values)
+    self.gg_0 = flex.sum(2. * self.func * jacobian[0])
+    self.gg_1 = flex.sum(2. * self.func * jacobian[1])
+    self.gg_3 = flex.sum(2. * self.func * jacobian[3])
+    self.gg_4 = flex.sum(2. * self.func * jacobian[4])
+    DELTA = 1.E-7
+    self.g = flex.double()
+    for x in xrange(self.n):
+      templist = list(self.x)
+      templist[x]+=DELTA
+      dvalues = flex.double(templist)
+
+      dfunc = self.refinery.fvec_callable(self.parameterization(dvalues))
+      dfunctional = flex.sum(dfunc*dfunc)
+      #calculate by finite_difference
+      self.g.append( ( dfunctional-functional )/DELTA )
+    self.g[2]=0.
+
+    print >> self.out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+    values.show(self.out)
+    print >>self.out, "derivatives--> %15.5f    %15.5f    %9.7f   %5.2f   %5.2f"%tuple(self.g)
+    print >>self.out, "  analytical-> %15.5f    %15.5f                %5.2f   %5.2f"%(
+      self.gg_0,self.gg_1, self.gg_3,self.gg_4)
+    self.g[0]=self.gg_0
+    self.g[1]=self.gg_1
+    self.g[3]=self.gg_3
+    self.g[4]=self.gg_4
+    return self.f, self.g
+  def compute_functional_and_gradients(self):
+    values = self.parameterization(self.x)
+    assert -150. < values.BFACTOR < 150. # limits on the exponent, please
+    self.func = self.refinery.fvec_callable(values)
+    functional = flex.sum(self.func*self.func)
+    self.f = functional
+    jacobian = self.refinery.jacobian_callable(values)
+    self.g = flex.double(self.n)
+    for ix in xrange(self.n):
+      self.g[ix] = flex.sum(2. * self.func * jacobian[ix])
+    print >> self.out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+    values.show(self.out)
+    return self.f, self.g
+
