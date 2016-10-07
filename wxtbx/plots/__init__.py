@@ -11,6 +11,7 @@ import sys
 if (sys.version_info[2] >= 6) :
   import warnings
   warnings.simplefilter('ignore', DeprecationWarning)
+  warnings.simplefilter('ignore', UserWarning) # for matplotlib 1.5.1
 
 class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
   def __init__ (self,
