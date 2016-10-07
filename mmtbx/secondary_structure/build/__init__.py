@@ -695,6 +695,10 @@ def substitute_ss(real_h,
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
   t9 = time()
   if processed_params.file_name_before_regularization is not None:
+    grm.geometry.pair_proxies(sites_cart=real_h.atoms().extract_xyz())
+    if grm.geometry.ramachandran_manager is not None:
+      grm.geometry.ramachandran_manager.update_phi_psi_targets(
+          sites_cart=real_h.atoms().extract_xyz())
     print >> log, "Outputting model before regularization %s" % processed_params.file_name_before_regularization
     real_h.write_pdb_file(
         file_name=processed_params.file_name_before_regularization)

@@ -471,6 +471,13 @@ class minimize_wrapper_with_map():
             ss_manager=ss_manager,
             hierarchy=self.pdb_h,
             log=self.log)
+    else:
+      self.grm.geometry.pair_proxies(
+          sites_cart=self.pdb_h.atoms().extract_xyz())
+      if self.grm.geometry.ramachandran_manager is not None:
+        self.grm.geometry.ramachandran_manager.update_phi_psi_targets(
+            sites_cart=self.pdb_h.atoms().extract_xyz())
+
     ncs_groups=None
     if len(ncs_restraints_group_list) > 0:
       ncs_groups=ncs_restraints_group_list
@@ -486,6 +493,7 @@ class minimize_wrapper_with_map():
     selection_real_space = xrs.backbone_selection()
     # selection_real_space = None
     import mmtbx.refinement.real_space.weight
+    self.w = None
     for x in xrange(number_of_cycles):
       print >> self.log, "  Updating rotamer restraints..."
       self.pdb_h, grm = add_rotamer_restraints(
@@ -503,28 +511,29 @@ class minimize_wrapper_with_map():
       # if True:
       if ncs_restraints_group_list is None or len(ncs_restraints_group_list)==0:
         #No NCS
-        print >> self.log, "  Determining weight...",
-        self.log.flush()
-        self.weight = mmtbx.refinement.real_space.weight.run(
-            map_data                    = target_map,
-            xray_structure              = self.xrs,
-            pdb_hierarchy               = self.pdb_h,
-            geometry_restraints_manager = grm,
-            rms_bonds_limit             = 0.015,
-            rms_angles_limit            = 1.0)
-        # division supposed to put more weight onto restraints. Need checking.
-        self.w = self.weight.weight/3.0
-        # self.w = self.weight.weight
-        # self.w =0.001
-        print >> self.log, self.w
-        # for s in self.weight.msg_strings:
-        #   print >> self.log, s
+        if self.w is None:
+          print >> self.log, "  Determining weight..."
+          self.log.flush()
+          self.weight = mmtbx.refinement.real_space.weight.run(
+              map_data                    = target_map,
+              xray_structure              = self.xrs,
+              pdb_hierarchy               = self.pdb_h,
+              geometry_restraints_manager = grm,
+              rms_bonds_limit             = 0.015,
+              rms_angles_limit            = 1.0)
+          # division is to put more weight onto restraints. Checked. Works.
+          self.w = self.weight.weight/3.0
+          # self.w = self.weight.weight
+          # self.w =2
+          # print >> self.log, self.w
+          for s in self.weight.msg_strings:
+            print >> self.log, s
         print >> self.log, "  Minimizing..."
         print >> self.log, "     with weight %f" % self.w
         self.log.flush()
         refine_object = simple(
             target_map                  = target_map,
-              selection                   = None,
+            selection                   = None,
             max_iterations              = 150,
             geometry_restraints_manager = grm.geometry,
             selection_real_space        = selection_real_space,
@@ -546,19 +555,20 @@ class minimize_wrapper_with_map():
             xray_structure = self.xrs,
             map_data       = target_map,
             d_min          = 3)
-        print >> self.log, "  Determining weight... (NCS)",
-        self.weight = mmtbx.refinement.real_space.weight.run(
-            map_data                    = target_map,
-            xray_structure              = self.xrs,#.select(sel_master),
-            pdb_hierarchy               = self.pdb_h,#.select(sel_master),
-            geometry_restraints_manager = grm,
-            rms_bonds_limit             = 0.01,
-            rms_angles_limit            = 1.0,
-            ncs_groups                  = ncs_restraints_group_list)
-        # division supposed to put more weight onto restraints. Need checking.
-        self.w = self.weight.weight/3.0
-        for s in self.weight.msg_strings:
-          print >> self.log, s
+        if self.w is None:
+          print >> self.log, "  Determining weight... (NCS)",
+          self.weight = mmtbx.refinement.real_space.weight.run(
+              map_data                    = target_map,
+              xray_structure              = self.xrs,#.select(sel_master),
+              pdb_hierarchy               = self.pdb_h,#.select(sel_master),
+              geometry_restraints_manager = grm,
+              rms_bonds_limit             = 0.01,
+              rms_angles_limit            = 1.0,
+              ncs_groups                  = ncs_restraints_group_list)
+          # division supposed to put more weight onto restraints. Need checking.
+          self.w = self.weight.weight/3.0
+          for s in self.weight.msg_strings:
+            print >> self.log, s
         print >> self.log, "  Minimizing... (NCS)"
 
         actions = [[True, False], ]

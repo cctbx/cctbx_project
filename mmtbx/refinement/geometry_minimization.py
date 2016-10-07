@@ -460,6 +460,12 @@ def minimize_wrapper_for_ramachandran(
 
     grm = get_geometry_restraints_manager(
         processed_pdb_file, xrs, params=params)
+  else:
+    grm.geometry.pair_proxies(
+        sites_cart=hierarchy.atoms().extract_xyz())
+    if grm.geometry.ramachandran_manager is not None:
+      grm.geometry.ramachandran_manager.update_phi_psi_targets(
+          sites_cart=hierarchy.atoms().extract_xyz())
 
   if reference_rotamers and original_pdb_h is not None:
     # make selection excluding rotamer outliers
