@@ -18,6 +18,7 @@ def exercise_01(prefix="tst_mi_map_test_01"):
       "use_map_for_reference=True",
       "number_of_refinement_cycles=1",
       "loop_idealization.number_of_ccd_trials=1",
+      "n_macro=1",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)

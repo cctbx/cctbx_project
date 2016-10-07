@@ -11,6 +11,7 @@ from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.secondary_structure.build import side_chain_placement, \
     set_xyz_smart
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
+from cctbx import maptbx
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -59,26 +60,41 @@ class loop_idealization():
                params=None,
                secondary_structure_annotation=None,
                reference_map=None,
+               crystal_symmetry=None,
+               grm=None,
+               rama_manager=None,
+               rotamer_manager=None,
                log=null_out(),
                verbose=False):
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry("Multi-model files are not supported")
     self.original_pdb_h = pdb_hierarchy
     self.secondary_structure_annotation=secondary_structure_annotation
-    xrs = pdb_hierarchy.extract_xray_structure()
     asc = pdb_hierarchy.atom_selection_cache()
+    self.xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=crystal_symmetry)
     self.reference_map = reference_map
     self.resulting_pdb_h = pdb_hierarchy.deep_copy()
     self.resulting_pdb_h.reset_atom_i_seqs()
     self.params = self.process_params(params)
     self.log = log
     self.verbose = verbose
-    self.r = rama_eval()
-    self.rotamer_manager = RotamerEval()
+    self.grm = grm
+    self.r = rama_manager
+    if self.r is None:
+      self.r = rama_eval()
+    self.rotamer_manager = rotamer_manager
+    if self.rotamer_manager is None:
+      self.rotamer_manager = RotamerEval()
     ram = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy)
     self.p_initial_rama_outliers = ram.out_percent
     self.p_before_minimization_rama_outliers = None
     self.p_after_minimiaztion_rama_outliers = None
+    n_inputs = [reference_map, crystal_symmetry].count(None)
+    if not (n_inputs == 0 or n_inputs == 2):
+      print >> log, "Need to have both map and symmetry info. Not using map."
+      self.reference_map = None
+
+
 
     berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
     self.berkeley_p_before_minimization_rama_outliers = \
@@ -156,16 +172,18 @@ class loop_idealization():
         if self.reference_map is None:
           minimize_wrapper_for_ramachandran(
               hierarchy=self.resulting_pdb_h,
-              xrs=xrs,
+              xrs=self.xrs,
               original_pdb_h=self.original_pdb_h,
               excl_string_selection=self.ref_exclusion_selection,
+              grm=self.grm,
               log=None,
               ss_annotation=self.secondary_structure_annotation)
         else:
           mwwm = minimize_wrapper_with_map(
               pdb_h=self.resulting_pdb_h,
-              xrs=xrs,
+              xrs=self.xrs,
               target_map=self.reference_map,
+              grm=self.grm,
               ss_annotation=self.secondary_structure_annotation,
               log=self.log)
         # self.resulting_pdb_h.write_pdb_file(file_name="%s_all_minized.pdb" % self.params.output_prefix)
@@ -311,11 +329,17 @@ class loop_idealization():
         # states = ccd_obj.states
         # if self.params.save_states:
         #   states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num, ccd_radius, change_all, change_radius, i))
+        map_target = 0
+        if self.reference_map is not None:
+          map_target = maptbx.real_space_target_simple(
+              unit_cell   = self.xrs.crystal_symmetry().unit_cell(),
+              density_map = self.reference_map,
+              sites_cart  = h.atoms().extract_xyz())
 
         mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
         if self.verbose:
-          print >> self.log, "Resulting anchor and backbone RMSDs, n_iter for model %d:" % i,
-          print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", n_iter
+          print >> self.log, "Resulting anchor and backbone RMSDs, mapcc, n_iter for model %d:" % i,
+          print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", map_target, ",", n_iter
           self.log.flush()
         #
         # setting new coordinates
@@ -350,14 +374,14 @@ class loop_idealization():
         #
         # finalizing with geometry_minimization
         #
-        all_results.append((moved_with_side_chains_h.deep_copy(), mc_rmsd, resulting_rmsd, n_iter))
+        all_results.append((moved_with_side_chains_h.deep_copy(), mc_rmsd, resulting_rmsd, map_target, n_iter))
         if self.ccd_solution_is_ok(
             anchor_rmsd=resulting_rmsd,
             mc_rmsd=mc_rmsd,
             ccd_radius=ccd_radius,
             change_all_angles=change_all,
             change_radius=change_radius):
-          print "Choosen result (mc_rmsd, anchor_rmsd, n_iter):", mc_rmsd, resulting_rmsd, n_iter
+          print "Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter
           self.log.flush()
           if minimize:
             print >> self.log, "minimizing..."
@@ -369,12 +393,14 @@ class loop_idealization():
                   xrs=xrs,
                   original_pdb_h=original_pdb_h,
                   log=self.log,
+                  grm=self.grm,
                   ss_annotation=self.secondary_structure_annotation)
             else:
               mwwm = minimize_wrapper_with_map(
                   pdb_h=moved_with_side_chains_h,
                   xrs=xrs,
                   target_map=self.reference_map,
+                  grm=self.grm,
                   ss_annotation=self.secondary_structure_annotation,
                   log=self.log)
           # moved_with_side_chains_h.write_pdb_file(

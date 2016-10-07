@@ -238,6 +238,7 @@ def exercise_03(prefix="tst_mi_test_03"):
       "%s_start.pdb" % prefix,
       "number_of_refinement_cycles=1",
       "use_map_for_reference=False",
+      "n_macro=1",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)

@@ -24,6 +24,8 @@ from cctbx import maptbx, miller
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+from mmtbx.rotamer.rotamer_eval import RotamerEval
+from mmtbx_validation_ramachandran_ext import rama_eval
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -48,7 +50,7 @@ output_prefix = None
   .type = str
 use_map_for_reference = True
   .type = bool
-reference_map_resolution = 5.
+reference_map_resolution = 5
   .type = float
 data_for_map = None
   .type = path
@@ -103,6 +105,8 @@ class model_idealization():
 
     self.mon_lib_srv = None
     self.ener_lib = None
+    self.rotamer_manager = None
+    self.rama_manager = rama_eval()
 
     self.original_hierarchy = None # original pdb_h, without any processing
     self.original_boxed_hierarchy = None # original and boxed (if needed)
@@ -201,6 +205,60 @@ class model_idealization():
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
     fft_map.as_xplor_map(file_name="%s.map" % self.params.output_prefix)
 
+  def prepare_reference_map_2(self, xrs, pdb_h):
+    print >> self.log, "Preparing reference map, method 2"
+    # new_h = pdb_h.deep_copy()
+    # truncate_to_poly_gly(new_h)
+    # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
+    xrs=xrs.set_b_iso(value=50)
+
+    # side_chain_no_cb_selection = ~ xrs.main_chain_selection()
+    side_chain_no_cb_selection = ~ xrs.backbone_selection()
+    xrs = xrs.set_b_iso(value=200, selection=side_chain_no_cb_selection)
+
+    crystal_gridding = maptbx.crystal_gridding(
+        unit_cell        = xrs.unit_cell(),
+        space_group_info = xrs.space_group_info(),
+        symmetry_flags   = maptbx.use_space_group_symmetry,
+        d_min             = self.params.reference_map_resolution)
+    fc = xrs.structure_factors(d_min = self.params.reference_map_resolution, algorithm = "direct").f_calc()
+    fft_map = miller.fft_map(
+        crystal_gridding=crystal_gridding,
+        fourier_coefficients=fc)
+    fft_map.apply_sigma_scaling()
+    self.reference_map = fft_map.real_map_unpadded(in_place=False)
+    fft_map.as_xplor_map(file_name="%s_2.map" % self.params.output_prefix)
+
+  def prepare_reference_map_3(self, xrs, pdb_h):
+    """ with ramachandran outliers """
+
+    print >> self.log, "Preparing reference map, method 3"
+    outlier_selection_txt = mmtbx.building.loop_closure.utils. \
+          rama_outliers_selection(pdb_h, self.rama_manager, 1)
+    asc = pdb_h.atom_selection_cache()
+    print >> self.log, "rama outlier selection:", outlier_selection_txt
+    rama_out_sel = asc.selection(outlier_selection_txt)
+    xrs=xrs.set_b_iso(value=50)
+
+    # side_chain_no_cb_selection = ~ xrs.main_chain_selection()
+    side_chain_no_cb_selection = ~ xrs.backbone_selection()
+    xrs = xrs.set_b_iso(value=200, selection=side_chain_no_cb_selection)
+    xrs = xrs.set_b_iso(value=150, selection=rama_out_sel)
+    # xrs = xrs.set_occupancies(value=0.3, selection=rama_out_sel)
+
+    crystal_gridding = maptbx.crystal_gridding(
+        unit_cell        = xrs.unit_cell(),
+        space_group_info = xrs.space_group_info(),
+        symmetry_flags   = maptbx.use_space_group_symmetry,
+        d_min             = self.params.reference_map_resolution)
+    fc = xrs.structure_factors(d_min = self.params.reference_map_resolution, algorithm = "direct").f_calc()
+    fft_map = miller.fft_map(
+        crystal_gridding=crystal_gridding,
+        fourier_coefficients=fc)
+    fft_map.apply_sigma_scaling()
+    self.reference_map = fft_map.real_map_unpadded(in_place=False)
+    fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
+
   def get_grm(self):
     # first make whole grm using self.whole_pdb_h
     params_line = grand_master_phil_str
@@ -228,6 +286,7 @@ class model_idealization():
 
     self.mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
     self.ener_lib = processed_pdb_files_srv.ener_lib
+    self.rotamer_manager = RotamerEval(mon_lib_srv=self.mon_lib_srv)
 
     self.whole_grm = get_geometry_restraints_manager(
         processed_pdb_file, self.whole_xrs, params=params)
@@ -284,7 +343,10 @@ class model_idealization():
       self.whole_xrs = self.working_xrs
 
     if self.params.use_map_for_reference:
-      self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+      # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+      # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+      self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+    # STOP()
 
     # getting grm without SS restraints
     self.get_grm()
@@ -319,7 +381,7 @@ class model_idealization():
       negate_selection = None
       if self.reference_map is None:
         outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-          rama_outliers_selection(self.working_pdb_h, None, 1)
+          rama_outliers_selection(self.working_pdb_h, self.rama_manager, 1)
         print >> self.log, "outlier_selection_txt", outlier_selection_txt
         negate_selection = "all"
         if outlier_selection_txt != "" and outlier_selection_txt is not None:
@@ -346,6 +408,7 @@ class model_idealization():
           cif_objects=self.cif_objects,
           verbose=True,
           reference_map=self.reference_map,
+          rotamer_manager=self.rotamer_manager,
           log=self.log)
       self.log.flush()
 
@@ -358,7 +421,8 @@ class model_idealization():
     # Write resulting pdb file.
     self.shift_and_write_result(
         hierarchy=self.working_pdb_h,
-        fname_suffix="ss_ideal")
+        fname_suffix="ss_ideal",
+        grm=self.working_grm)
     # STOP()
     self.params.loop_idealization.minimize_whole = not self.using_ncs
     # self.params.loop_idealization.enabled = False
@@ -368,13 +432,18 @@ class model_idealization():
         params=self.params.loop_idealization,
         secondary_structure_annotation=self.ann,
         reference_map=self.reference_map,
+        crystal_symmetry=self.working_xrs.crystal_symmetry(),
+        grm=self.working_grm,
+        rama_manager=self.rama_manager,
+        rotamer_manager=self.rotamer_manager,
         log=self.log,
-        verbose=False)
+        verbose=True)
     self.log.flush()
     # STOP()
     self.shift_and_write_result(
         hierarchy=loop_ideal.resulting_pdb_h,
-        fname_suffix="rama_ideal")
+        fname_suffix="rama_ideal",
+        grm=self.working_grm)
     self.after_loop_idealization = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
@@ -388,22 +457,6 @@ class model_idealization():
         self.after_loop_idealization.rotamer_outliers > 0.004):
       print >> self.log, "Processing pdb file again for fixing rotamers..."
       self.log.flush()
-      # again get grm... - need to optimize somehow
-      processed_pdb_files_srv = mmtbx.utils.\
-          process_pdb_file_srv(
-              crystal_symmetry= self.cs,
-              pdb_interpretation_params = None,
-              stop_for_unknowns         = False,
-              log=self.log,
-              cif_objects=None)
-      processed_pdb_file, pdb_inp = processed_pdb_files_srv.\
-          process_pdb_files(raw_records=flex.split_lines(fixed_rot_pdb_h.as_pdb_string()))
-
-      grm = get_geometry_restraints_manager(
-          processed_pdb_file, self.working_xrs, params=None)
-
-      # mon_lib_srv and rotamer_manager already was created multiple times
-      # to this moment in different procedures :(
       print >> self.log, "Fixing rotamers..."
       self.log.flush()
       self.shift_and_write_result(
@@ -411,16 +464,17 @@ class model_idealization():
         fname_suffix="just_before_rota")
       fixed_rot_pdb_h = fix_rotamer_outliers(
           pdb_hierarchy=fixed_rot_pdb_h,
-          grm=grm.geometry,
+          grm=self.working_grm.geometry,
           xrs=self.working_xrs,
           map_data=self.reference_map,
           mon_lib_srv=self.mon_lib_srv,
-          rotamer_manager=None,
+          rotamer_manager=self.rotamer_manager,
           verbose=True)
 
     self.shift_and_write_result(
         hierarchy=fixed_rot_pdb_h,
-        fname_suffix="rota_ideal")
+        fname_suffix="rota_ideal",
+        grm=self.working_grm)
     cs_to_write = self.cs if self.shift_vector is None else None
     self.after_rotamer_fixing = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
@@ -461,7 +515,8 @@ class model_idealization():
         reference_map = self.reference_map)
     self.shift_and_write_result(
         hierarchy=self.whole_pdb_h,
-        fname_suffix="all_idealized")
+        fname_suffix="all_idealized",
+        grm=self.whole_grm)
     self.final_model_statistics = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
@@ -491,7 +546,8 @@ class model_idealization():
           ncs_restraints_group_list=ncs_restraints_group_list,
           ss_annotation=ss_annotation,
           mon_lib_srv=self.mon_lib_srv,
-          ener_lib=self.ener_lib)
+          ener_lib=self.ener_lib,
+          rotamer_manager=self.rotamer_manager)
     else:
       print >> self.log, "Using map as reference"
       self.log.flush()
@@ -501,12 +557,13 @@ class model_idealization():
           target_map=reference_map,
           grm=grm,
           mon_lib_srv=self.mon_lib_srv,
+          rotamer_manager=self.rotamer_manager,
           ncs_restraints_group_list=ncs_restraints_group_list,
           ss_annotation=ss_annotation,
           number_of_cycles=self.params.number_of_refinement_cycles,
           log=self.log)
 
-  def shift_and_write_result(self, hierarchy, fname_suffix):
+  def shift_and_write_result(self, hierarchy, fname_suffix, grm=None):
     cs_to_write = self.cs if self.shift_vector is None else None
     pdb_h_shifted = hierarchy.deep_copy()
     pdb_h_shifted.reset_atom_i_seqs()
@@ -524,6 +581,11 @@ class model_idealization():
         pdb_hierarchy=pdb_h_shifted,
         crystal_symmetry=cs_to_write,
         ss_annotation=self.original_ann)
+    # if grm is not None:
+    #   grm.write_geo_file(
+    #       sites_cart=hierarchy.atoms().extract_xyz(),
+    #       site_labels= [atom.id_str() for atom in hierarchy.atoms()],
+    #       file_name="%s_%s.geo" % (self.params.output_prefix, fname_suffix))
 
   def get_rmsd_from_start(self):
     if self.rmsd_from_start is not None:
@@ -550,6 +612,7 @@ class model_idealization():
         ("Clashscore", "clashscore", "{:10.2f}"),
         ("CBeta deviations", "c_beta_dev", "{:10d}"),
         ("Ramachandran outliers", "ramachandran_outliers", "{:10.2f}"),
+        ("Ramachandran allowed", "ramachandran_allowed", "{:10.2f}"),
         ("Rotamer outliers", "rotamer_outliers", "{:10.2f}"),
         ("Cis-prolines", "n_cis_proline", "{:10d}"),
         ("Cis-general", "n_cis_general", "{:10d}"),

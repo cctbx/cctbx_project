@@ -398,6 +398,7 @@ def minimize_wrapper_for_ramachandran(
     ss_annotation = None,
     mon_lib_srv=None,
     ener_lib=None,
+    rotamer_manager=None,
     reference_rotamers = True,
     number_of_cycles=1,
     run_first_minimization_without_reference=False,
@@ -464,7 +465,8 @@ def minimize_wrapper_for_ramachandran(
     # make selection excluding rotamer outliers
     from mmtbx.rotamer.rotamer_eval import RotamerEval
     # print "Excluding rotamer outliers"
-    rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
+    if rotamer_manager is None:
+      rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
     non_rot_outliers_selection = flex.bool(hierarchy.atoms_size(), False)
     for model in original_pdb_h.models():
       for chain in model.chains():

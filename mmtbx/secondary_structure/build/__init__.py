@@ -12,6 +12,7 @@ from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.command_line.geometry_minimization import \
   get_geometry_restraints_manager
 from time import time
+from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -731,33 +732,19 @@ def substitute_ss(real_h,
         fix_rotamer_outliers     = fix_rotamer_outliers,
         log                      = refinement_log)
   else:
-    from mmtbx.refinement.real_space.individual_sites import simple
-    import mmtbx.refinement.real_space.weight
-    print >> log, "  Determining weight..."
-    log.flush()
     ref_xrs = real_h.extract_xray_structure(
         crystal_symmetry=xray_structure.crystal_symmetry())
-    weight = mmtbx.refinement.real_space.weight.run(
-      map_data                    = reference_map,
-      xray_structure              = ref_xrs,
-      pdb_hierarchy               = real_h,
-      geometry_restraints_manager = grm,
-      rms_bonds_limit             = 0.02,
-      rms_angles_limit            = 2.0)
-    w = weight.weight
-    print >> log, "  Minimizing..."
-    log.flush()
-    refine_object = simple(
-      target_map                  = reference_map,
-      selection                   = None,
-      max_iterations              = 150,
-      geometry_restraints_manager = grm.geometry,
-      states_accumulator          = None,
-      ncs_groups                  = None)
-    refine_object.refine(weight = w, xray_structure = ref_xrs)
-    ref_xrs=ref_xrs.replace_sites_cart(
-      new_sites=refine_object.sites_cart(), selection=None)
-    real_h.adopt_xray_structure(ref_xrs)
+    minimize_wrapper_with_map(
+        pdb_h=real_h,
+        xrs=ref_xrs,
+        target_map=reference_map,
+        grm=grm,
+        ncs_restraints_group_list=[],
+        mon_lib_srv=None,
+        ss_annotation=ss_annotation,
+        refine_ncs_operators=False,
+        number_of_cycles=processed_params.n_macro,
+        log=log)
     real_h.write_pdb_file("after_ss_map_min.pdb")
 
   log.write(" Done\n")

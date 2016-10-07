@@ -22,6 +22,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
       "use_map_for_reference=True",
       "loop_idealization.number_of_ccd_trials=1",
       "number_of_refinement_cycles=1",
+      "n_macro=1",
       "%s_start.pdb" % prefix,
       ">%s.log" % prefix])
   print cmd

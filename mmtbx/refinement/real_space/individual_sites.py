@@ -397,13 +397,15 @@ class minimize_wrapper_with_map():
       xrs,
       target_map,
       grm=None,
-      ncs_restraints_group_list=None,
+      ncs_restraints_group_list=[],
       mon_lib_srv=None,
+      rotamer_manager=None,
       ss_annotation=None,
       refine_ncs_operators=False,
       number_of_cycles=1,
       log=None):
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
+    from mmtbx.model_statistics import geometry_no_grm
     self.pdb_h = pdb_h
     self.xrs = xrs
     self.log = log
@@ -455,46 +457,49 @@ class minimize_wrapper_with_map():
       grm = get_geometry_restraints_manager(
           processed_pdb_file, xrs, params=params)
       # dealing with SS
-    if ss_annotation is not None:
-      from mmtbx.secondary_structure import manager
-      ss_manager = manager(
-          pdb_hierarchy=self.pdb_h,
-          geometry_restraints_manager=grm.geometry,
-          sec_str_from_pdb_file=ss_annotation,
-          params=None,
-          mon_lib_srv=mon_lib_srv,
-          verbose=-1,
-          log=self.log)
-      grm.geometry.set_secondary_structure_restraints(
-          ss_manager=ss_manager,
-          hierarchy=self.pdb_h,
-          log=self.log)
+      if ss_annotation is not None:
+        from mmtbx.secondary_structure import manager
+        ss_manager = manager(
+            pdb_hierarchy=self.pdb_h,
+            geometry_restraints_manager=grm.geometry,
+            sec_str_from_pdb_file=ss_annotation,
+            params=None,
+            mon_lib_srv=mon_lib_srv,
+            verbose=-1,
+            log=self.log)
+        grm.geometry.set_secondary_structure_restraints(
+            ss_manager=ss_manager,
+            hierarchy=self.pdb_h,
+            log=self.log)
     ncs_groups=None
     if len(ncs_restraints_group_list) > 0:
       ncs_groups=ncs_restraints_group_list
 
-    from mmtbx.rotamer.rotamer_eval import RotamerEval
-    rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
+    if rotamer_manager is None:
+      from mmtbx.rotamer.rotamer_eval import RotamerEval
+      rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
 
     self.pdb_h.write_pdb_file(file_name="rsr_before_rot_fix.pdb",
         crystal_symmetry=self.xrs.crystal_symmetry())
-    print >> self.log, "Making rotamer restraints..."
-    self.pdb_h, grm = add_rotamer_restraints(
-      pdb_hierarchy      = self.pdb_h,
-      restraints_manager = grm,
-      selection          = None,
-      sigma              = 10,
-      mode               = "fix_outliers",
-      accept_allowed     = False,
-      mon_lib_srv        = mon_lib_srv,
-      rotamer_manager    = rotamer_manager)
-    self.xrs = self.pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
-    self.pdb_h.write_pdb_file(file_name="rsr_after_rot_fix.pdb",
-        crystal_symmetry=self.xrs.crystal_symmetry())
     # STOP()
 
+    selection_real_space = xrs.backbone_selection()
+    # selection_real_space = None
     import mmtbx.refinement.real_space.weight
     for x in xrange(number_of_cycles):
+      print >> self.log, "  Updating rotamer restraints..."
+      self.pdb_h, grm = add_rotamer_restraints(
+        pdb_hierarchy      = self.pdb_h,
+        restraints_manager = grm,
+        selection          = None,
+        sigma              = 5,
+        mode               = "fix_outliers",
+        accept_allowed     = False,
+        mon_lib_srv        = mon_lib_srv,
+        rotamer_manager    = rotamer_manager)
+      self.xrs = self.pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
+      self.pdb_h.write_pdb_file(file_name="rsr_after_rot_fix.pdb",
+          crystal_symmetry=self.xrs.crystal_symmetry())
       # if True:
       if ncs_restraints_group_list is None or len(ncs_restraints_group_list)==0:
         #No NCS
@@ -505,21 +510,24 @@ class minimize_wrapper_with_map():
             xray_structure              = self.xrs,
             pdb_hierarchy               = self.pdb_h,
             geometry_restraints_manager = grm,
-            rms_bonds_limit             = 0.01,
+            rms_bonds_limit             = 0.015,
             rms_angles_limit            = 1.0)
         # division supposed to put more weight onto restraints. Need checking.
         self.w = self.weight.weight/3.0
-        # self.w = 1
+        # self.w = self.weight.weight
+        # self.w =0.001
         print >> self.log, self.w
-        for s in self.weight.msg_strings:
-          print >> self.log, s
+        # for s in self.weight.msg_strings:
+        #   print >> self.log, s
         print >> self.log, "  Minimizing..."
+        print >> self.log, "     with weight %f" % self.w
         self.log.flush()
         refine_object = simple(
             target_map                  = target_map,
-            selection                   = None,
+              selection                   = None,
             max_iterations              = 150,
             geometry_restraints_manager = grm.geometry,
+            selection_real_space        = selection_real_space,
             states_accumulator          = None,
             ncs_groups                  = ncs_groups)
         refine_object.refine(weight = self.w, xray_structure = self.xrs)
@@ -582,7 +590,11 @@ class minimize_wrapper_with_map():
           # self.structure_monitor.update(
           #   xray_structure = tfg_obj.xray_structure,
           #   accept_as_is   = True)
-    self.pdb_h.adopt_xray_structure(self.xrs)
+      self.pdb_h.adopt_xray_structure(self.xrs)
+      # ms = geometry_no_grm(
+      #     pdb_hierarchy=self.pdb_h,
+      #     molprobity_scores=True)
+      # print >> self.log, ms.format_molprobity_scores(prefix="    ")
 
 
     # print >> log, "pdb_h", self.pdb_h.atoms_size()
