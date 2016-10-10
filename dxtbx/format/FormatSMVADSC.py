@@ -154,7 +154,7 @@ class FormatSMVADSC(FormatSMV):
 
     return raw_data
 
-  #def get_mask(self):
+  #def get_mask(self, goniometer_shadow_mask=False, goniometer=None):
     #from scitbx.array_family import flex
     #from iotbx.detectors import image_divider
 
