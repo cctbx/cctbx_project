@@ -603,8 +603,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static flex_double
     as_double(f_t const& a)
     {
-      shared_plain<double> result(a.size(), init_functor_null<double>());
-      for(std::size_t i=0;i<a.size();i++) result[i] = a[i];
+      shared_plain<double> result(a.begin(), a.end());
       return flex_double(result, a.accessor());
     }
 
