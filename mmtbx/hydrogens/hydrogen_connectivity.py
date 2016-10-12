@@ -75,12 +75,10 @@ class atom_info(object):
 # a0, a1 are objects "atom_info"
 # ----------------------------------------------------------------------------
 def determine_H_neighbors(geometry_restraints, bond_proxies, angle_proxies,
-  dihedral_proxies, hd_selection, sites_cart):
+  dihedral_proxies, hd_selection, sites_cart, atoms):
   fsc2=geometry_restraints.shell_sym_tables[2].full_simple_connectivity()
   fsc1=geometry_restraints.shell_sym_tables[1].full_simple_connectivity()
   #fsc0=geometry_restraints.shell_sym_tables[0].full_simple_connectivity()
-  #hd_selection = xray_structure.hd_selection()
-  #sites_cart = xray_structure.sites_cart()
   # Maybe there is better way to get number of atoms?
   n_atoms = len(sites_cart)
   connectivity = {}
@@ -92,46 +90,54 @@ def determine_H_neighbors(geometry_restraints, bond_proxies, angle_proxies,
     if(not is_i_hd and not is_j_hd): continue
     elif(is_i_hd and is_j_hd):       assert 0
     else:
-      if  (is_i_hd): ih, ix = i_seq, j_seq
-      elif(is_j_hd): ih, ix = j_seq, i_seq
+      if  (is_i_hd): ih, i_parent = i_seq, j_seq
+      elif(is_j_hd): ih, i_parent = j_seq, i_seq
       else:
         raise Sorry("Something went wrong in bond proxies")
     rh = matrix.col(sites_cart[ih])
-    r0 = matrix.col(sites_cart[ix])
+    r0 = matrix.col(sites_cart[i_parent])
     dist = (r0 - rh).length()
     parent = atom_info(
-      iseq       = ix,
+      iseq       = i_parent,
       dist_ideal = bproxy.distance_ideal,
       dist       = dist)
+    altloc_h = atoms[ih].parent().altloc
     connectivity[ih]=[parent]
+    # this is connectivity[ih][1] --> list of second non-H neighbours
+    connectivity[ih].append([])
+    # this is connectivity[ih][2] --> list of second H/D neighbours
     connectivity[ih].append([])
     # find second neighbors
-    i_parent = parent.iseq
     second_neighbors = list(fsc1[ih])
+    count_H = 0
+    altconf_dict = {}
     for i_second in second_neighbors:
       iselection = flex.size_t([ih,i_parent,i_second])
       ap = angle_proxies.proxy_select(
         n_seq      = n_atoms,
         iselection = iselection)
-      # Check that list ap is not empty = check if angle proxy exists
+      # check if angle proxy exists = check that list ap is not empty
       if ap:
-        angle =  ap[0].angle_ideal
+        altloc_i_second = atoms[i_second].parent().altloc
+        #rint atoms[i_second].name, atoms[i_second].parent().altloc, atoms[i_second].parent().parent().resseq
+        #ag_isecond = atoms[i_second].parent().parent().atom_groups()
+        if ((altloc_i_second != altloc_h and altloc_i_second != 'A') and altloc_h ==''):
+          continue
         neighbor = atom_info(
           iseq = i_second,
-          angle_ideal = angle)
-        connectivity[ih][1].append(neighbor)
-    reduced_neighbs = []
-    for atom in connectivity[ih][1]:
-      if (not hd_selection[atom.iseq]):
-        reduced_neighbs.append(atom)
-    (connectivity[ih][0]).reduced_neighbs = reduced_neighbs
-    (connectivity[ih][0]).count_H = \
-      len(connectivity[ih][1]) - len(reduced_neighbs)
+          angle_ideal = ap[0].angle_ideal)
+        if (hd_selection[i_second]):
+          connectivity[ih][2].append(neighbor)
+          count_H = count_H + 1
+        else:
+          connectivity[ih][1].append(neighbor)
+    (connectivity[ih][0]).count_H = count_H
     # find third neighbors, if necessary
-    if (len(reduced_neighbs) == 1):
+    if (len(connectivity[ih][1]) == 1):
       connectivity[ih].append([])
-      i_second = (reduced_neighbs[0]).iseq
+      i_second = ((connectivity[ih][1])[0]).iseq
       third_neighbors = list(fsc2[ih])
+      third_no_dihedrals = []
       for i_third in third_neighbors:
         if (not hd_selection[i_third]):
           iselection = flex.size_t([i_parent,i_second,i_third])
@@ -139,8 +145,6 @@ def determine_H_neighbors(geometry_restraints, bond_proxies, angle_proxies,
             n_seq      = n_atoms,
             iselection = iselection)
           if ap:
-            neighbor = atom_info(
-              iseq = i_third)
             iselection_dihe = flex.size_t([ih,i_parent,i_second,i_third])
             dp = dihedral_proxies.proxy_select(
               n_seq      = n_atoms,
@@ -150,15 +154,23 @@ def determine_H_neighbors(geometry_restraints, bond_proxies, angle_proxies,
               dihedral = dihedral_angle(
                 sites=[sites_cart[i_third], sites_cart[i_second],
                 sites_cart[i_parent],sites_cart[ih]])
-              (connectivity[ih][0]).dihedral = dihedral
-              (connectivity[ih][0]).dihe_list = [ih,i_parent,i_second,i_third]
               sites_cart_dihe = sites_cart.select(iselection_dihe).deep_copy()
               delta = dp.deltas(sites_cart=sites_cart_dihe)[0]
               dihedral_ideal = math.degrees(dihedral) + delta
-              (connectivity[ih][0]).dihedral_ideal = dihedral_ideal
+              neighbor = atom_info(
+                iseq           = i_third,
+                dihedral       = dihedral,
+                dihedral_ideal = dihedral_ideal)
               #print dihedral_id, delta, math.degrees(dihedral), dihedral_ideal
-            connectivity[ih][2].append(neighbor)
-    if (len(reduced_neighbs) == 2):
+              connectivity[ih][3].append(neighbor)
+            else:
+              neighbor = atom_info(
+                iseq = i_third)
+              third_no_dihedrals.append(neighbor)
+      if (not connectivity[ih][3]):
+        connectivity[ih][3] = third_no_dihedrals
+    if (len(connectivity[ih][1]) == 2):
+      reduced_neighbs = connectivity[ih][1]
       ix = i_parent
       iy = (reduced_neighbs[0]).iseq
       iz = (reduced_neighbs[1]).iseq
@@ -166,8 +178,9 @@ def determine_H_neighbors(geometry_restraints, bond_proxies, angle_proxies,
       (connectivity[ih][0]).angle_ideal =  angle_proxies.proxy_select(
         n_seq      = n_atoms,
         iselection = iselection)[0].angle_ideal
-    if (len(reduced_neighbs) == 3):
+    if (len(connectivity[ih][1]) == 3):
     # for tetrahedral, all 3 ideal angles are needed
+      reduced_neighbs = connectivity[ih][1]
       angles = []
       ix = i_parent
       _list = [(0,1),(1,2),(2,0)]
@@ -230,30 +243,35 @@ def run(args, out=sys.stdout):
   dihedral_proxies = restraints_manager.geometry.dihedral_proxies
 
   names = list(pdb_hierarchy.atoms().extract_name())
+  atoms_list = list(pdb_hierarchy.atoms_with_labels())
   sites_cart = xray_structure.sites_cart()
   #scatterers = xray_structure.scatterers()
   hd_selection = xray_structure.hd_selection()
-  sites_cart = xray_structure.sites_cart()
+  atoms = pdb_hierarchy.atoms()
+
 
   print >>log, '\nNow determining connectivity table for H atoms...'
   connectivity = determine_H_neighbors(
-    geometry_restraints   = grm,
-    bond_proxies          = bond_proxies_simple,
-    angle_proxies         = angle_proxies,
-    dihedral_proxies      = dihedral_proxies,
-    hd_selection          = hd_selection,
-    sites_cart            = sites_cart)
+    geometry_restraints = grm,
+    bond_proxies        = bond_proxies_simple,
+    angle_proxies       = angle_proxies,
+    dihedral_proxies    = dihedral_proxies,
+    hd_selection        = hd_selection,
+    sites_cart          = sites_cart,
+    atoms               = atoms)
 
-  if(0):
+  if(1):
     print >>log, '\nHydrogen atom connectivity list'
     for ih in connectivity.keys():
-      if(len(connectivity[ih])==3):
-        string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
+      residue = atoms_list[ih].resseq
+      if(len(connectivity[ih])==4):
+        string = " ".join([names[p.iseq] for p in connectivity[ih][3]])
       else:
         string = 'n/a'
-      print >>log, names[ih],': ', names[(connectivity[ih][0]).iseq], \
-        ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), \
-        ',', string
+      print >>log, '%s (%s): %s, %s, %s, %s' % (names[ih], residue.strip(),
+        names[(connectivity[ih][0]).iseq],
+        " ".join([names[p.iseq] for p in connectivity[ih][1]]),
+        (" ".join([names[p.iseq] for p in connectivity[ih][2]])), string)
 
 
 if (__name__ == "__main__"):

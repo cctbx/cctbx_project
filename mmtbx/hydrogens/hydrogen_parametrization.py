@@ -63,7 +63,8 @@ class parameterization_info(object):
 # 1. planar geometry
 # 2. two tetragonal CH2 geometry
 # 3. H out of plane of its 3 neighbors (should be rare and not in AA)
-def get_coefficients(rh, a0, a1, a2, ih2, idealize, sites_cart, typeh):
+def get_coefficients(ih, a0, a1, a2, ih2, idealize, sites_cart, typeh):
+  rh = matrix.col(sites_cart[ih])
   r0 = matrix.col(sites_cart[a0.iseq])
   r1 = matrix.col(sites_cart[a1.iseq])
   r2 = matrix.col(sites_cart[a2.iseq])
@@ -89,9 +90,14 @@ def get_coefficients(rh, a0, a1, a2, ih2, idealize, sites_cart, typeh):
       "Denominator zero: (1-c0*c0) in get_h_parameterization.")
   a = (c1-c0*c2)/(1-c0*c0)
   b = (c2-c0*c1)/(1-c0*c0)
+  root = None
   # check if H, A0, A1, A2 are in a plane
-  if (sumang < (2*math.pi + 0.04) and (sumang > 2*math.pi - 0.04)):
+  if (sumang < (2*math.pi + 0.05) and (sumang > 2*math.pi - 0.05)):
     h = None
+  elif (sumang > (2*math.pi + 0.05) and 1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2 < 0):
+    root = 1-c1*c1-c2*c2-c0*c0+2*c0*c1*c2
+    h = None
+    return sumang, a, b, h, root
   else:
     # two tetragonal geometry: e.g. CH2 group
     if (ih2 is not None):
@@ -119,7 +125,7 @@ def get_coefficients(rh, a0, a1, a2, ih2, idealize, sites_cart, typeh):
       #test if vector v points to same 'side' as uh0
       if((u10.cross(u20)).dot(uh0) < 0):
         h = -h
-  return sumang, a, b, h
+  return sumang, a, b, h, root
 
 # obtain coefficients for tetragonal H (such as HA) using Cramer's rule
 def get_coefficients_alg3(rh, a0, a1, a2, a3, idealize, sites_cart):
@@ -181,14 +187,15 @@ def get_coefficients_alg3(rh, a0, a1, a2, a3, idealize, sites_cart):
 def get_h_parameterization(connectivity, sites_cart, idealize):
   h_parameterization = {}
   for ih in connectivity.keys():
-  # for debugging
-  #  print 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
-  #    atoms_list[ih].resseq, 'chain', atoms_list[ih].chain_id
+   #for debugging
+    #print 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
+    #  atoms_list[ih].resseq, 'chain', atoms_list[ih].chain_id
     # if entry exists already, skip it
     if ih in h_parameterization:
       continue
     a0 = connectivity[ih][0]
-    count_H, reduced_neighbs = a0.count_H, a0.reduced_neighbs
+    count_H  = a0.count_H
+    reduced_neighbs = connectivity[ih][1]
     n_red_neigbs = len(reduced_neighbs)
     rh = matrix.col(sites_cart[ih])
     r0 = matrix.col(sites_cart[a0.iseq])
@@ -201,16 +208,14 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
       a1, a2  = reduced_neighbs[0], reduced_neighbs[1]
       # if H is second neighbor, gets its index
       if (count_H == 1):
-        hlist = connectivity[ih][1]
-        hlist.remove(a1)
-        hlist.remove(a2)
+        hlist = connectivity[ih][2]
         if hlist:
           ih2 = (hlist[0])
           i_h2 = (hlist[0]).iseq
       else:
         ih2 = None
-      sumang, a, b, h = get_coefficients(
-        rh         = rh,
+      sumang, a, b, h, root = get_coefficients(
+        ih         = ih,
         a0         = a0,
         a1         = a1,
         a2         = a2,
@@ -226,11 +231,13 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
         b      = b,
         dist_h = dist_h)
       # alg2a
-      if (sumang < (2*math.pi + 0.05) and (sumang > 2*math.pi - 0.05)):
+      if (sumang > (2*math.pi + 0.05) and root < 0):
+        h_parameterization[ih].htype = 'unk_ideal'
+      elif (sumang < (2*math.pi + 0.05) and (sumang > 2*math.pi - 0.05)):
         h_parameterization[ih].htype = 'flat_2neigbs'
       else:
-        # 2 tetragonal geometry
         if (count_H == 1):
+        # 2 tetragonal geometry
           h_parameterization[ih].htype = '2tetra'
           h_parameterization[ih].alpha = h
           h_parameterization[i_h2] = parameterization_info(
@@ -268,25 +275,28 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
         dist_h = dist_h,
         htype  = '3neigbs')
     # alg1a: X-H2 planar groups, such as in ARG, ASN, GLN
-    elif(n_red_neigbs == 1 and count_H == 1 and len(connectivity[ih][2])==2):
+    # requires that dihedral angle restraint exists
+    elif(n_red_neigbs == 1 and count_H == 1 and len(connectivity[ih])==4):
       a1 = reduced_neighbs[0]
       r1 = matrix.col(sites_cart[a1.iseq])
-      hlist = connectivity[ih][1]
-      hlist.remove(a1)
+      hlist = connectivity[ih][2]
       ih_2 = hlist[0].iseq
-      if(a0.dihe_list is None):
+      #if(len(connectivity[ih])!=4):
+      #  continue
+      b1 = (connectivity[ih][3])[0]
+      if (b1.dihedral_ideal == None):
         continue
-      iseq_b1 = a0.dihe_list[3]
+      #iseq_b1 = b1.iseq
       dihedral = dihedral_angle(
-        sites=[sites_cart[iseq_b1], sites_cart[a1.iseq],
+        sites=[sites_cart[b1.iseq], sites_cart[a1.iseq],
         sites_cart[a0.iseq],sites_cart[ih]])
       #print 'dihedrals', a0.dihedral, dihedral, a0.dihedral_ideal
-      rb1 = matrix.col(sites_cart[iseq_b1])
+      rb1 = matrix.col(sites_cart[b1.iseq])
       uh0 = (rh - r0).normalize()
       u10 = (r1 - r0).normalize()
       if idealize:
         alpha = math.radians(a1.angle_ideal)
-        phi = math.radians(a0.dihedral_ideal)
+        phi = math.radians(b1.dihedral_ideal)
         #phi = dihedral
       else:
         alpha = (u10).angle(uh0)
@@ -300,7 +310,7 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
         htype  = 'alg1a',
         a0     = a0.iseq,
         a1     = a1.iseq,
-        a2     = iseq_b1,
+        a2     = b1.iseq,
         phi    = phi,
         n      = 0,
         alpha  = alpha,
@@ -309,7 +319,7 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
         htype  = 'alg1a',
         a0     = a0.iseq,
         a1     = a1.iseq,
-        a2     = iseq_b1,
+        a2     = b1.iseq,
         phi    = phi+math.pi,
         n      = 0,
         alpha  = alpha,
@@ -317,11 +327,12 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
     # case 1b
 # a0.dihedral = dihedral angle between angle ideal and actual position
     elif(n_red_neigbs == 1 and (count_H == 0 or count_H ==2)):
-      if(count_H == 2 and a0.dihe_list is None):
+      #if(count_H == 0 and len(connectivity[ih])!=4):
+      #  print 'the culprit is ', ih, names[ih], atoms_list[ih].resseq
+      if (len(connectivity[ih])!=4):
         continue
       a1 = reduced_neighbs[0]
-      sec_neigbs = connectivity[ih][2]
-      b1 = sec_neigbs[0]
+      b1 = (connectivity[ih][3])[0]
       r1 = matrix.col(sites_cart[a1.iseq])
       rb1 = matrix.col(sites_cart[b1.iseq])
       uh0 = (rh - r0).normalize()
@@ -331,9 +342,8 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
         sites_cart[a1.iseq],sites_cart[b1.iseq]])
       if idealize:
         alpha = math.radians(a1.angle_ideal)
-        #phi = math.radians(a0.dihedral_ideal)
+        #phi = math.radians(b1.dihedral_ideal)
         #allow for rotation even for idealize = True
-        #phi = a0.dihedral
         phi = dihedral
       else:
         alpha = (u10).angle(uh0)
@@ -353,8 +363,7 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
         dist_h = dist_h)
       if (count_H == 2):
         h_parameterization[ih].htype = 'prop'
-        hlist = connectivity[ih][1]
-        hlist.remove(a1)
+        hlist = connectivity[ih][2]
         # TO DO: Can the order be reversed? To be kept in mind!!
         ih_2, ih_3 = hlist[0].iseq, hlist[1].iseq
         h_parameterization[ih_2] = parameterization_info(
@@ -366,6 +375,10 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
           n      = 1,
           alpha  = alpha,
           dist_h = dist_h)
+        ih_2_coord = generate_H_positions(
+          sites_cart        = sites_cart,
+          ih                = ih_2,
+          para_info         = h_parameterization[ih_2]).rH_gen
         h_parameterization[ih_3] = parameterization_info(
           htype  = 'prop',
           a0     = a0.iseq,
@@ -375,6 +388,10 @@ def get_h_parameterization(connectivity, sites_cart, idealize):
           n      = 2,
           alpha  = alpha,
           dist_h = dist_h)
+        if ((ih_2_coord - matrix.col(sites_cart[ih_3])).length() <
+          (ih_2_coord - matrix.col(sites_cart[ih_2])).length() ):
+          h_parameterization[ih_2].n = 2
+          h_parameterization[ih_3].n = 1
     else:
       a1 = reduced_neighbs[0]
       h_parameterization[ih] = parameterization_info(
@@ -510,6 +527,8 @@ def run(args, out=sys.stdout):
   hd_selection = xray_structure.hd_selection()
   names = list(pdb_hierarchy.atoms().extract_name())
   sites_cart = xray_structure.sites_cart()
+  atoms = pdb_hierarchy.atoms()
+  names = list(atoms.extract_name())
   #scatterers = xray_structure.scatterers()
   atoms_list = list(pdb_hierarchy.atoms_with_labels())
 
@@ -517,48 +536,54 @@ def run(args, out=sys.stdout):
 
   print >>log, '\nNow determining connectivity table for H atoms...'
   connectivity = hydrogen_connectivity.determine_H_neighbors(
-    geometry_restraints   = geometry_restraints,
-    bond_proxies          = bond_proxies_simple,
-    angle_proxies         = angle_proxies,
-    dihedral_proxies      = dihedral_proxies,
-    hd_selection          = hd_selection,
-    sites_cart            = sites_cart)
+    geometry_restraints = geometry_restraints,
+    bond_proxies        = bond_proxies_simple,
+    angle_proxies       = angle_proxies,
+    dihedral_proxies    = dihedral_proxies,
+    hd_selection        = hd_selection,
+    sites_cart          = sites_cart,
+    atoms               = atoms)
 
   print >>log, '\nNow determining the parameterization for H atoms...'
-  h_parameterization = get_h_parameterization(
-    connectivity   = connectivity,
-    sites_cart     = sites_cart,
-    idealize       = idealize)
-  # for debugging
   #h_parameterization = get_h_parameterization(
   #  connectivity   = connectivity,
   #  sites_cart     = sites_cart,
-  #  idealize       = idealize,
-  #  atoms_list     = atoms_list,
-  #  names          = names)
+  #  idealize       = idealize)
+  # for debugging
+  h_parameterization = get_h_parameterization(
+    connectivity   = connectivity,
+    sites_cart     = sites_cart,
+    idealize       = idealize,
+    atoms_list     = atoms_list,
+    names          = names)
 
   print >>log, '\nNow reconstructing H atoms...'
+  # H atoms for which distance compared to input model is large
   long_distance_list = []
+  # H atoms with unknown parameterization
   unk_list = []
+  # H atoms with nonsensical ideal angles
+  unk_ideal_list = []
   for ih in h_parameterization.keys():
     residue = atoms_list[ih].resseq
     hp = h_parameterization[ih]
-    h_obj = generate_H_positions(
-      sites_cart        = sites_cart,
-      ih                = ih,
-      para_info         = hp)
-    if(h_obj.distance is not None):
-      print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
-        residue, 'distance:', h_obj.distance
-      if(h_obj.distance > 0.03):
-        long_distance_list.append(ih)
-    else:
-      print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', residue
+    if (hp.htype == 'unk'):
       unk_list.append(ih)
-
-  # list output for residues with unknown algorithm
+    elif (hp.htype == 'unk_ideal'):
+      unk_ideal_list.append(ih)
+    else:
+      h_obj = generate_H_positions(
+        sites_cart        = sites_cart,
+        ih                = ih,
+        para_info         = hp)
+      if(h_obj.distance is not None):
+        print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
+          residue, 'distance:', h_obj.distance
+        if(h_obj.distance > 0.03):
+          long_distance_list.append(ih)
+  print >>log, '*'*79
+  # list residues with unknown parameterization
   if unk_list:
-    print >>log, '*'*79
     print >>log, 'Warning: The following atoms where not assigned an H type'
     for ih in unk_list:
       residue = atoms_list[ih].resseq
@@ -567,9 +592,19 @@ def run(args, out=sys.stdout):
         'chain', atoms_list[ih].chain_id
     print >>log, '*'*79
 
+  # list residues with nonsensical angles
+  if unk_ideal_list:
+    print >>log, 'Warning: The following atoms have nonsensical ideal angles.'
+    print >>log, 'Check the geo file for ideal angles involving these H atoms.'
+    for ih in unk_ideal_list:
+      residue = atoms_list[ih].resseq
+      hp = h_parameterization[ih]
+      print >> log, 'atom:', names[ih], 'residue:', residue, \
+        'chain', atoms_list[ih].chain_id
+    print >>log, '*'*79
+
   # list output for residues where position is not reproduced
   if long_distance_list:
-    print >>log, '*'*79
     print >>log, 'Warning: The position of the following H atoms was not reproduced'
     for ih in long_distance_list:
       residue = atoms_list[ih].resseq
@@ -578,7 +613,7 @@ def run(args, out=sys.stdout):
         sites_cart        = sites_cart,
         ih                = ih,
         para_info         = hp)
-      if(h_obj.distance is not None and h_obj.distance > 0.03):
+      if(h_obj.distance is not None and h_obj.distance > 0.05):
         print >> log, hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
           residue, 'chain', atoms_list[ih].chain_id, 'distance:', h_obj.distance
       sites_cart[ih] = h_obj.rH_gen

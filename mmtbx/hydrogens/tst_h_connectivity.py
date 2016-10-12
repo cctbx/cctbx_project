@@ -67,15 +67,17 @@ def exercise():
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
   dihedral_proxies = restraints_manager.geometry.dihedral_proxies
   hd_selection = xray_structure.hd_selection()
+  atoms = pdb_hierarchy.atoms()
 
   # determine values with code to be tested
   connectivity = hydrogen_connectivity.determine_H_neighbors(
-    geometry_restraints   = geometry_restraints,
-    bond_proxies          = bond_proxies_simple,
-    angle_proxies         = angle_proxies,
-    dihedral_proxies      = dihedral_proxies,
-    hd_selection          = hd_selection,
-    sites_cart            = sites_cart)
+    geometry_restraints = geometry_restraints,
+    bond_proxies        = bond_proxies_simple,
+    angle_proxies       = angle_proxies,
+    dihedral_proxies    = dihedral_proxies,
+    hd_selection        = hd_selection,
+    sites_cart          = sites_cart,
+    atoms               = atoms)
 
   bond_list = {}
   angle_list = {}
@@ -83,14 +85,14 @@ def exercise():
   for ih in connectivity.keys():
     a0 = (connectivity[ih][0])
     bond_list[ih]=[a0.iseq, a0.dist_ideal]
-    for atom in connectivity[ih][1]:
+    for atom in connectivity[ih][1]+connectivity[ih][2]:
       helper = tuple(sorted([ih, a0.iseq, atom.iseq]))
       angle_list[helper]=atom.angle_ideal
-    if(len(connectivity[ih])==3):
+    if(len(connectivity[ih])==4):
       third_nb_list[ih]=[]
-      for atom in connectivity[ih][2]:
-        third_nb_list[ih].append(atom.iseq)
-#      print third_nb_list[ih]
+      for third in connectivity[ih][3]:
+        third_nb_list[ih].append(third.iseq)
+      #print third_nb_list[ih]
 
 #-----------------------------------------------------------------------------
 # This is useful to keep for debugging: human readable output of connectivity
@@ -140,7 +142,7 @@ def exercise():
       angle_ctrl[tuple(sorted(list(ap.i_seqs)))]=ap.angle_ideal
 
 # HH needs also third neighbors:
-  third_nb_ctrl = {19: [8, 9]}
+  third_nb_ctrl = {19: [8]}
 
   assert (bond_list == bond_ctrl), '1-2 neighbors and distance_ideal are wrong'
   assert (angle_list == angle_ctrl), '1-3 neighbors and angle_ideal are wrong'

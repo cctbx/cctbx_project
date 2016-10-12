@@ -35,8 +35,9 @@ def exercise(pdb_str, idealize):
     normalization = False)
 
   sites_cart = xray_structure.sites_cart()
-  names = list(pdb_hierarchy.atoms().extract_name())
   atoms_list = list(pdb_hierarchy.atoms_with_labels())
+  atoms = pdb_hierarchy.atoms()
+  names = list(atoms.extract_name())
 
   bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
       sites_cart = sites_cart)
@@ -45,12 +46,14 @@ def exercise(pdb_str, idealize):
   hd_selection = xray_structure.hd_selection()
 
   connectivity = hydrogen_connectivity.determine_H_neighbors(
-    geometry_restraints   = geometry_restraints,
-    bond_proxies          = bond_proxies_simple,
-    angle_proxies         = angle_proxies,
-    dihedral_proxies      = dihedral_proxies,
-    hd_selection          = hd_selection,
-    sites_cart            = sites_cart)
+    geometry_restraints = geometry_restraints,
+    bond_proxies        = bond_proxies_simple,
+    angle_proxies       = angle_proxies,
+    dihedral_proxies    = dihedral_proxies,
+    hd_selection        = hd_selection,
+    sites_cart          = sites_cart,
+    atoms               = atoms)
+
   h_parameterization = hydrogen_parametrization.get_h_parameterization(
     connectivity   = connectivity,
     sites_cart     = sites_cart,
