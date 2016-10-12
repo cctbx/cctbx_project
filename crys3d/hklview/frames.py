@@ -574,12 +574,13 @@ class HKLViewFrame (wx.Frame) :
   def OnLoadFile (self, evt) :
     file_name = wx.FileSelector("Reflections file",
       wildcard="Reflection files (*.mtz, *.sca, *.hkl)|*.mtz;*.sca;*.hkl",
-      default_path="",
+      default_path=os.getcwd(),
       flags=wx.OPEN)
     self.load_reflections_file(to_str(file_name))
 
   def OnSave (self, evt) :
     output_file = wx.FileSelector("Save image as:",
+      default_path=os.getcwd(),
       default_filename="hklview.png",
       wildcard="PNG image (*.png)|*.png",
       flags=wx.SAVE)
