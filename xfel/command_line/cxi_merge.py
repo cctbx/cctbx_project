@@ -155,6 +155,9 @@ merging {
     .help = (key,value) dictionary where key is the filename of the integrated data pickle file (supplied
     .help = with the data phil parameter and value is the h,k,l reindexing operator that resolves the
     .help = indexing ambiguity.
+  minimum_multiplicity = None
+    .type = int
+    .help = If defined, merged structure factors not produced for the Miller indices below this threshold.
 }
 scaling {
   mtz_file = None
@@ -267,6 +270,7 @@ def get_observations (work_params):
   print "Step 1.  Get a list of all files"
   if work_params.a_list is not None:
     permissible_file_names = [a.strip() for a in open(work_params.a_list,"r").readlines()]
+    permissible_file_hash = dict( zip(permissible_file_names, [None]*len(permissible_file_names)) )
     n_sorry = 0
   file_names = []
   for dir_name in data_dirs :
@@ -278,6 +282,11 @@ def get_observations (work_params):
       else:
         pickle_list = glob.glob(dir_name)
       for pickle_filename in pickle_list:
+        if work_params.a_list is not None and pickle_filename not in permissible_file_hash:
+          # use A_list mechanism to reject files not on the "acceptable" list
+          #print "SORRY--%s FILE NOT ON THE A-List"%(pickle_filename)
+          n_sorry+=1
+          continue
         if os.path.isfile(pickle_filename) and pickle_filename.endswith("."+extension):
           if data_subset==0 or \
             (data_subset==1 and (int(os.path.basename(pickle_filename).split("."+extension)[0][-1])%2==1)) or \
@@ -285,7 +294,7 @@ def get_observations (work_params):
             file_names.append(pickle_filename)
       continue
     for file_name in os.listdir(dir_name):
-      if work_params.a_list is not None and os.path.join(dir_name, file_name) not in permissible_file_names:
+      if work_params.a_list is not None and os.path.join(dir_name, file_name) not in permissible_file_hash:
         # use A_list mechanism to reject files not on the "acceptable" list
         print "SORRY--%s FILE NOT ON THE A-List"%(os.path.join(dir_name, file_name))
         n_sorry+=1
@@ -1009,10 +1018,15 @@ class scaling_manager (intensity_data) :
     print >> self.log, ""
     print >> self.log, "#" * 80
     print >> self.log, "OUTPUT FILES"
+    if self.params.merging.minimum_multiplicity is None:
+      multiplicity_flag = flex.bool(len(self.summed_N),True)
+    else:
+      multiplicity_flag = (self.summed_N > self.params.merging.minimum_multiplicity)
     Iobs_all = flex.double(self.miller_set.size())
     SigI_all = flex.double(self.miller_set.size())
     for i in xrange(len(Iobs_all)):
       if (self.summed_weight[i] > 0.):
+       if (multiplicity_flag[i]):
         Iobs_all[i] = self.summed_wt_I[i] / self.summed_weight[i]
         SigI_all[i] = math.sqrt(1. / self.summed_weight[i])
     if (self.params.set_average_unit_cell) :
