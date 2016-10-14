@@ -3940,6 +3940,7 @@ xfel/cxi/gfx/wx_detectors.py -text
 xfel/cxi/integrate_image_api.py -text
 xfel/cxi/merging_database_flex.py -text
 xfel/cxi/merging_utils.py -text
+xfel/cxi/postrefinement_legacy_rs.py -text
 xfel/cxi/spectra_filter.py -text
 xfel/cxi/strong_zulu.py -text
 xfel/cxi/util.py -text
