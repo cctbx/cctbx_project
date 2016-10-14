@@ -21,9 +21,7 @@ import sys
 from xfel.command_line.cxi_merge import master_phil,scaling_manager
 from xfel.command_line.cxi_merge import unit_cell_distribution,show_overall_observations
 from xfel.command_line.cxi_merge import scaling_result
-from cctbx.crystal_orientation import crystal_orientation
 from xfel import column_parser
-from xfel.cxi.util import is_odd_numbered
 from cctbx import miller
 
 #-----------------------------------------------------------------------
@@ -53,7 +51,7 @@ class xscaling_manager (scaling_manager) :
                len(self.frames["cc"]),
                statsy.mean(),  statsy.unweighted_sample_standard_deviation(),
                )
-    if self.params.scaling.report_ML:
+    if self.params.scaling.report_ML and self.frames.has_key("half_mosaicity_deg"):
       mosaic = self.frames["half_mosaicity_deg"].select(self.those_accepted)
       Mstat = flex.mean_and_variance(mosaic)
       print >> self.log, "%5d images, half mosaicity is %6.3f +/- %5.3f degrees"%(
@@ -81,7 +79,7 @@ class xscaling_manager (scaling_manager) :
       self.n_low_corr
 
   def read_all_mysql(self):
-    print "reading observations from MySQL database"
+    print "reading observations from %s database"%(self.params.backend)
 
     if self.params.backend == 'MySQL':
       from xfel.cxi.merging_database import manager
@@ -118,85 +116,16 @@ class xscaling_manager (scaling_manager) :
     parser.set_int("frame_id",self.frames_mysql["frame_id"])
     parser.set_double("wavelength",self.frames_mysql["wavelength"])
     parser.set_double("cc",self.frames_mysql["cc"])
-    parser.set_double("slope",self.frames_mysql["slope"])
-    parser.set_double("offset",self.frames_mysql["offset"])
-    if self.params.scaling.report_ML:
-      parser.set_double("domain_size_ang",self.frames_mysql["domain_size_ang"])
-      parser.set_double("half_mosaicity_deg",self.frames_mysql["half_mosaicity_deg"])
+    try:
+      parser.set_double("slope",self.frames_mysql["slope"])
+      parser.set_double("offset",self.frames_mysql["offset"])
+      if self.params.scaling.report_ML:
+        parser.set_double("domain_size_ang",self.frames_mysql["domain_size_ang"])
+        parser.set_double("half_mosaicity_deg",self.frames_mysql["half_mosaicity_deg"])
+    except KeyError: pass
     self._frames_mysql = parser
 
     CART.join()
-
-  def read_all(self):
-    # XXX Should not be used any more--migrate C++ into
-    # cxi/merging_database_fs.py?
-    print "reading observations from flat-file database"
-    self.frames = dict( frame_id=flex.int(),
-                        wavelength=flex.double(),
-                        cc=flex.double(),
-                        slope=flex.double(),
-                        offset=flex.double(),
-                        odd_numbered=flex.bool(),
-                        orientation=[],
-                        unit_cell=[])
-    self.millers = dict(merged_asu_hkl=flex.miller_index())
-    G = open(self.params.output.prefix+"_miller.db","r")
-    for line in G.xreadlines():
-      tokens = line.strip().split()
-      self.millers["merged_asu_hkl"].append((int(tokens[1]),int(tokens[2]),int(tokens[3])))
-
-# --- start C++ read
-    parser = column_parser()
-    parser.set_int("hkl_id",0)
-    parser.set_double("i",1)
-    parser.set_double("sigi",2)
-    parser.set_int("frame_id",5)
-    parser.set_int("H",7)
-    parser.set_int("K",8)
-    parser.set_int("L",9)
-
-    G = open(self.params.output.prefix+"_observation.db","r")
-    for line in G.xreadlines():
-      parser.parse_from_line(line)
-    self.observations = dict(hkl_id=parser.get_int("hkl_id"),
-                             i=parser.get_double("i"),
-                             sigi=parser.get_double("sigi"),
-                             frame_id=parser.get_int("frame_id"),
-                             H=parser.get_int("H"),
-                             K=parser.get_int("K"),
-                             L=parser.get_int("L"),
-                             )
-    self._observations = parser
-    G.close()
-# --- done with C++ read
-
-    G = open(self.params.output.prefix+"_frame.db","r")
-    for line in G.xreadlines():
-      tokens = line.strip().split()
-      self.frames["frame_id"].append(int(tokens[0]))
-      self.frames["wavelength"].append(float(tokens[1]))
-      self.frames["cc"].append(float(tokens[5]))
-      self.frames["slope"].append(float(tokens[6]))
-      self.frames["offset"].append(float(tokens[7]))
-      self.frames["odd_numbered"].append( is_odd_numbered(tokens[17]) )
-      # components of orientation direct matrix
-      odm = (float(tokens[8]), float(tokens[9]), float(tokens[10]),
-             float(tokens[11]), float(tokens[12]), float(tokens[13]),
-             float(tokens[14]), float(tokens[15]), float(tokens[16]),)
-      CO = crystal_orientation(odm, False)
-      self.frames["orientation"].append(CO)
-      self.frames["unit_cell"].append(CO.unit_cell())
-    G.close()
-    parser = column_parser()
-    parser.set_int("frame_id",0)
-    parser.set_double("wavelength",1)
-    parser.set_double("cc",5)
-    parser.set_double("slope",6)
-    parser.set_double("offset",7)
-    G = open(self.params.output.prefix+"_frame.db","r")
-    for line in G.xreadlines():
-      parser.parse_from_line(line)
-    self._frames = parser
 
 #-----------------------------------------------------------------------
 def run(args):

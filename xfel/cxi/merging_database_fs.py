@@ -114,10 +114,9 @@ class manager:
               self.params.output.prefix,
               self._semaphore)).start()
 
-
   def initialize_db(self, indices):
     from os import remove
-
+    print self.params.postrefinement.algorithm
     for suffix in '_frame.db', '_miller.db', '_observation.db':
       try:
         remove(self.params.output.prefix + suffix)
@@ -126,10 +125,121 @@ class manager:
 
     self._db_commands_queue.put(('miller', (1, 2, 3), indices, None))
 
+  def insert_frame_legacy(self,result,wavelength,corr,slope,offset,data):
+    from scitbx import matrix
+    """Legacy compatibility with cxi.merge; insert frame-data to backend.
+    XXX needs to be backported to the MySQL and SQLite backends (put into a base class)
+    result: an unpickled dictionary from an integration pickle
+    wavelength, beam_x, beam_y, distance: parameters from the model
+    data: an instance of a "frame_data" container class
+    postx: an instance of the legacy_cxi_merge_postrefinement results, or None
+    """
+    have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
+    #cell_params = data.indexed_cell.parameters()
+    #reserve_cell_params =
+    #  result["sa_parameters"][0]["reserve_orientation"].unit_cell().parameters()
+    # cell params == reserve cell params, within numerical precision
+
+    kwargs = {'wavelength': wavelength,
+              'beam_x': result['xbeam'],
+              'beam_y': result['ybeam'],
+              'distance': result['distance'],
+              'c_c': corr,
+              'slope': slope,
+              'offset': offset,
+              'unique_file_name': data.file_name}
+    if have_sa_params:
+      sa_parameters = result['sa_parameters'][0]
+      res_ori_direct = sa_parameters['reserve_orientation'].direct_matrix().elems
+
+      kwargs['res_ori_1'] = res_ori_direct[0]
+      kwargs['res_ori_2'] = res_ori_direct[1]
+      kwargs['res_ori_3'] = res_ori_direct[2]
+      kwargs['res_ori_4'] = res_ori_direct[3]
+      kwargs['res_ori_5'] = res_ori_direct[4]
+      kwargs['res_ori_6'] = res_ori_direct[5]
+      kwargs['res_ori_7'] = res_ori_direct[6]
+      kwargs['res_ori_8'] = res_ori_direct[7]
+      kwargs['res_ori_9'] = res_ori_direct[8]
+
+      kwargs['rotation100_rad'] = sa_parameters.rotation100_rad
+      kwargs['rotation010_rad'] = sa_parameters.rotation010_rad
+      kwargs['rotation001_rad'] = sa_parameters.rotation001_rad
+
+      kwargs['half_mosaicity_deg'] = sa_parameters.half_mosaicity_deg
+      kwargs['wave_HE_ang'] = sa_parameters.wave_HE_ang
+      kwargs['wave_LE_ang'] = sa_parameters.wave_LE_ang
+      kwargs['domain_size_ang'] = sa_parameters.domain_size_ang
+
+    else:
+      res_ori_direct = matrix.sqr(
+        data.indexed_cell.orthogonalization_matrix()).transpose().elems
+
+      kwargs['res_ori_1'] = res_ori_direct[0]
+      kwargs['res_ori_2'] = res_ori_direct[1]
+      kwargs['res_ori_3'] = res_ori_direct[2]
+      kwargs['res_ori_4'] = res_ori_direct[3]
+      kwargs['res_ori_5'] = res_ori_direct[4]
+      kwargs['res_ori_6'] = res_ori_direct[5]
+      kwargs['res_ori_7'] = res_ori_direct[6]
+      kwargs['res_ori_8'] = res_ori_direct[7]
+      kwargs['res_ori_9'] = res_ori_direct[8]
+      if self.params.scaling.report_ML:
+        kwargs['half_mosaicity_deg'] = result["ML_half_mosaicity_deg"][0]
+        kwargs['domain_size_ang'] = result["ML_domain_size_ang"][0]
+      else:
+        kwargs['half_mosaicity_deg'] =float("NaN")
+        kwargs['domain_size_ang'] =float("NaN")
+    return self.insert_frame(**kwargs)
+
+  def insert_frame_updated(self,result,wavelength,data,postx):
+    from scitbx import matrix
+    """New compatibility with postrefinement container
+    XXX needs to be backported to the MySQL and SQLite backends (put into a base class)
+    """
+    kwargs = {'wavelength': wavelength,
+              'beam_x': result['xbeam'],
+              'beam_y': result['ybeam'],
+              'distance': result['distance'],
+              'c_c': postx.final_corr,
+              'unique_file_name': data.file_name}
+    values = postx.MINI.parameterization(postx.MINI.x)
+    kwargs["G"]=values.G
+    kwargs["BFACTOR"]=values.BFACTOR
+    kwargs["RS"]=values.RS
+    kwargs["thetax"]=values.thetax
+    kwargs["thetay"]=values.thetay
+    Astar=postx.refinery.ORI.reciprocal_matrix()
+    kwargs['Astar_1'], kwargs['Astar_2'], kwargs['Astar_3'],\
+    kwargs['Astar_4'], kwargs['Astar_5'], kwargs['Astar_6'],\
+    kwargs['Astar_7'], kwargs['Astar_8'], kwargs['Astar_9'] = Astar
+    return self.insert_frame(**kwargs)
 
   def insert_frame(self, **kwargs):
     order = []
-    order_dict = {'wavelength': 1,
+    if self.params.postrefinement.algorithm in ["rs2"]:
+      order_dict = {'wavelength': 1,
+                  'beam_x': 2,
+                  'beam_y': 3,
+                  'distance': 4,
+                  'G': 5,
+                  'BFACTOR': 6,
+                  'RS': 7,
+                  'Astar_1': 8,
+                  'Astar_2': 9,
+                  'Astar_3': 10,
+                  'Astar_4': 11,
+                  'Astar_5': 12,
+                  'Astar_6': 13,
+                  'Astar_7': 14,
+                  'Astar_8': 15,
+                  'Astar_9': 16,
+                  'thetax': 17,
+                  'thetay': 18,
+                  'unique_file_name': 19,
+                  'c_c': 20}
+    else:
+      order_dict = {'wavelength': 1,
                   'beam_x': 2,
                   'beam_y': 3,
                   'distance': 4,
@@ -171,7 +281,6 @@ class manager:
         # If the key does not match, put it back in the queue for
         # someone else to pick up.
         self._db_results_queue.put(item)
-
 
   def insert_observation(self, **kwargs):
     order = []
@@ -236,6 +345,48 @@ class manager:
 
 
   def read_frames(self):
+    if self.params.postrefinement.algorithm in ["rs2"]:
+      return self.read_frames_updated_detail()
+    else:
+      return self.read_frames_legacy_detail()
+
+  def read_frames_updated_detail(self):
+    from cctbx.crystal_orientation import crystal_orientation
+    from xfel.cxi.util import is_odd_numbered
+
+    frames = {'frame_id': flex.int(),
+              'wavelength': flex.double(),
+              'cc': flex.double(),
+              'G': flex.double(),
+              'BFACTOR': flex.double(),
+              'RS': flex.double(),
+              'odd_numbered': flex.bool(),
+              'thetax': flex.double(),
+              'thetay': flex.double(),
+              'orientation': [],
+              'unit_cell': [],
+              'unique_file_name': []}
+    stream = open(self.params.output.prefix + '_frame.db', 'r')
+    for row in stream:
+      items = row.split()
+      CO = crystal_orientation([float(t) for t in items[8:17]], True)
+      unique_file_name = eval(items[19])
+      frames['frame_id'].append(int(items[0]))
+      frames['wavelength'].append(float(items[1]))
+      frames['cc'].append(float(items[20]))
+      frames['G'].append(float(items[5]))
+      frames['BFACTOR'].append(float(items[6]))
+      frames['RS'].append(float(items[7]))
+      frames['thetax'].append(float(items[17]))
+      frames['thetay'].append(float(items[18]))
+      frames['odd_numbered'].append(is_odd_numbered(unique_file_name))
+      frames['orientation'].append(CO)
+      frames['unit_cell'].append(CO.unit_cell())
+      frames['unique_file_name'].append(unique_file_name)
+    stream.close()
+    return frames
+
+  def read_frames_legacy_detail(self):
     from cctbx.crystal_orientation import crystal_orientation
     from xfel.cxi.util import is_odd_numbered
 

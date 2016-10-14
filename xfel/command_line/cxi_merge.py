@@ -199,10 +199,16 @@ postrefinement {
     .type = bool
     .help = enable the preliminary postrefinement algorithm (monochromatic)
     .expert_level = 3
-  algorithm = *rs eta_deff
+  algorithm = *rs rs2 eta_deff
     .type = choice
     .help = rs only, eta_deff protocol 7
     .expert_level = 3
+  rs2
+    .help = Reimplement postrefinement with the following (Oct 2016):
+    .help = Refinement engine now work on analytical derivatives instead of finite differences
+    .help = Better convergence using "traditional convergence test"
+    .help = Use a streamlined frame_db schema
+    {}
 }
 include_negatives = False
   .type = bool
@@ -1415,11 +1421,14 @@ class scaling_manager (intensity_data) :
     data.corr = corr
     data.wavelength = wavelength
 
+    from xfel.cxi.postrefinement_factory import factory
+    PF = factory(self.params)
+    postrefinement_algorithm = PF.postrefinement_algorithm()
+
     if self.params.postrefinement.enable:
       # Refactorization of the Sauter(2015) code; result should be same to 5 significant figures.
       # Lack of binary identity is due to the use of Python for old-code weighted correlation,
       #   contrasted with flex.double arithmetic for new-code.
-      from xfel.cxi.postrefinement_legacy_rs import legacy_rs as postrefinement_algorithm
       postx=postrefinement_algorithm(observations_original_index, self.params,
            self.i_model, self.miller_set, result, out)
       try:
@@ -1433,70 +1442,11 @@ class scaling_manager (intensity_data) :
       slope = 1.0
       offset = 0.0
 
-    print >> out, result.get("sa_parameters")[0]
-    have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
-    #have_sa_params = (result.get("sa_parameters")[0].find('None')!=0)
-    observations_original_index_indices = observations_original_index.indices()
     if db_mgr is None: return unpack(MINI.x) # special exit for two-color indexing
 
-    #cell_params = data.indexed_cell.parameters()
-    #reserve_cell_params = result["sa_parameters"][0]["reserve_orientation"].unit_cell().parameters()
-    # cell params and reserve cell params are essentially equal within numerical precision
+    frame_id_0_base = PF.insert_frame_call(locals())
 
-    kwargs = {'wavelength': wavelength,
-              'beam_x': result['xbeam'],
-              'beam_y': result['ybeam'],
-              'distance': result['distance'],
-              'c_c': corr,
-              'slope': slope,
-              'offset': offset,
-              'unique_file_name': data.file_name}
-
-    if have_sa_params:
-      sa_parameters = result['sa_parameters'][0]
-      res_ori_direct = sa_parameters['reserve_orientation'].direct_matrix().elems
-
-      kwargs['res_ori_1'] = res_ori_direct[0]
-      kwargs['res_ori_2'] = res_ori_direct[1]
-      kwargs['res_ori_3'] = res_ori_direct[2]
-      kwargs['res_ori_4'] = res_ori_direct[3]
-      kwargs['res_ori_5'] = res_ori_direct[4]
-      kwargs['res_ori_6'] = res_ori_direct[5]
-      kwargs['res_ori_7'] = res_ori_direct[6]
-      kwargs['res_ori_8'] = res_ori_direct[7]
-      kwargs['res_ori_9'] = res_ori_direct[8]
-
-      kwargs['rotation100_rad'] = sa_parameters.rotation100_rad
-      kwargs['rotation010_rad'] = sa_parameters.rotation010_rad
-      kwargs['rotation001_rad'] = sa_parameters.rotation001_rad
-
-      kwargs['half_mosaicity_deg'] = sa_parameters.half_mosaicity_deg
-      kwargs['wave_HE_ang'] = sa_parameters.wave_HE_ang
-      kwargs['wave_LE_ang'] = sa_parameters.wave_LE_ang
-      kwargs['domain_size_ang'] = sa_parameters.domain_size_ang
-
-    else:
-      res_ori_direct = matrix.sqr(
-        data.indexed_cell.orthogonalization_matrix()).transpose().elems
-
-      kwargs['res_ori_1'] = res_ori_direct[0]
-      kwargs['res_ori_2'] = res_ori_direct[1]
-      kwargs['res_ori_3'] = res_ori_direct[2]
-      kwargs['res_ori_4'] = res_ori_direct[3]
-      kwargs['res_ori_5'] = res_ori_direct[4]
-      kwargs['res_ori_6'] = res_ori_direct[5]
-      kwargs['res_ori_7'] = res_ori_direct[6]
-      kwargs['res_ori_8'] = res_ori_direct[7]
-      kwargs['res_ori_9'] = res_ori_direct[8]
-      if self.params.scaling.report_ML:
-        kwargs['half_mosaicity_deg'] = result["ML_half_mosaicity_deg"][0]
-        kwargs['domain_size_ang'] = result["ML_domain_size_ang"][0]
-      else:
-        kwargs['half_mosaicity_deg'] =float("NaN")
-        kwargs['domain_size_ang'] =float("NaN")
-
-    frame_id_0_base = db_mgr.insert_frame(**kwargs)
-
+    observations_original_index_indices = observations_original_index.indices()
     xypred = result["mapped_predictions"][0]
     indices = flex.size_t([pair[1] for pair in matches.pairs()])
 
