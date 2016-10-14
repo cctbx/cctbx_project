@@ -737,6 +737,7 @@ dxtbx/tests/test_scan.py -text
 dxtbx/tests/tstFormatCBFFull.py -text
 dxtbx/tests/tst_beamline_definitions.py -text
 dxtbx/tests/tst_datablock.py -text
+dxtbx/tests/tst_dials_226.py -text
 dxtbx/tests/tst_dxtbx.py -text
 dxtbx/tests/tst_filecache.py -text
 dxtbx/tests/tst_imageset.py -text
