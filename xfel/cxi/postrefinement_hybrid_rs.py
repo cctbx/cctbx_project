@@ -176,6 +176,14 @@ class rs_hybrid(object):
     print >> self.out, "CORR: NEW correlation is", SWC.corr
     self.final_corr = SWC.corr
 
+    # New range assertions for refined variables
+    # XXX Likely these limits are problem-specific (especially G-max) so look for another approach
+    #     or expose the limits as phil parameters.
+    values = self.get_parameter_values()
+    assert self.final_corr > 0.1
+    assert 0 < values.G and values.G < 0.5
+    assert -25 < values.BFACTOR and values.BFACTOR < 25
+
     return observations_original_index,observations,matches
 
   def result_for_samosa(self):
@@ -258,6 +266,8 @@ class per_frame_helper(normal_eqns.non_linear_ls, normal_eqns.non_linear_ls_mixi
 
   def build_up(pfh, objective_only=False):
     values = pfh.parameterization(pfh.x)
+    # XXX revisit these limits.  Seems like an ad hoc approach to have to set these limits
+    #     Moreover, these tests throw out ~30% of LM14 data, thus search for another approach
     assert -150. < values.BFACTOR < 150. ,"limits on the exponent, please"
     assert -0.5 < 180.*values.thetax/math.pi < 0.5 , "limits on the theta rotation, please"
     assert -0.5 < 180.*values.thetay/math.pi < 0.5 , "limits on the theta rotation, please"
