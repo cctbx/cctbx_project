@@ -10,6 +10,8 @@ class factory(object):
         from xfel.cxi.postrefinement_legacy_rs import legacy_rs as postrefinement_algorithm
       elif self.params.postrefinement.algorithm in ['rs2']:
         from xfel.cxi.postrefinement_updated_rs import updated_rs as postrefinement_algorithm
+      elif self.params.postrefinement.algorithm in ['rs_hybrid']:
+        from xfel.cxi.postrefinement_hybrid_rs import rs_hybrid as postrefinement_algorithm
       return postrefinement_algorithm
     return None
 

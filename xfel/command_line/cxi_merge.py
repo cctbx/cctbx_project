@@ -199,7 +199,7 @@ postrefinement {
     .type = bool
     .help = enable the preliminary postrefinement algorithm (monochromatic)
     .expert_level = 3
-  algorithm = *rs rs2 eta_deff
+  algorithm = *rs rs2 rs_hybrid eta_deff
     .type = choice
     .help = rs only, eta_deff protocol 7
     .expert_level = 3
@@ -207,8 +207,36 @@ postrefinement {
     .help = Reimplement postrefinement with the following (Oct 2016):
     .help = Refinement engine now work on analytical derivatives instead of finite differences
     .help = Better convergence using "traditional convergence test"
-    .help = Use a streamlined frame_db schema
+    .help = Use a streamlined frame_db schema, currently only supported for FS (filesystem) backend
     {}
+  rs_hybrid
+    .help = More aggressive postrefinement with the following (Oct 2016):
+    .help = One round of 'rs2' using LBFGS minimizer as above to refine G,B,rotx,roty
+    .help = Gentle weighting rather than unit weighting for the postrefinement target
+    .help = Second round of LevMar adding an Rs refinement parameter
+    .help = Option of weighting the merged terms by partiality
+    {}
+  target_weighting = *unit variance gentle extreme
+    .type = choice
+    .help = weights for the residuals in the postrefinement target (only for rs_hybrid)
+    .help = Unit: each residual weighted by 1.0
+    .help = Variance: weighted by 1/sigma**2.  Doesn't seem right, constructive feedback invited
+    .help = Gentle: weighted by |I|/sigma**2.  Seems like best option
+    .help = Extreme: weighted by (I/sigma)**2.  Also seems right, but severely downweights weak refl
+  merge_weighting = *variance
+    .type = choice
+    .help = assumed that individual reflections are weighted by the counting variance
+  merge_partiality_exponent = 0
+    .type = float
+    .help = additionally weight each measurement by partiality**exp when merging
+    .help = 0 is no weighting, 1 is partiality weighting, 2 is weighting by partiality-squared
+  lineshape = *lorentzian
+    .type = choice
+    .help = Soft sphere RLP modeled with Lorentzian radial profile as in prime
+  show_trumpet_plot = False
+    .type = bool
+    .help = each-image trumpet plot showing before-after plot. Spot color warmth indicates I/sigma
+    .help = Spot radius for lower plot reflects partiality. Only implemented for rs_hybrid
 }
 include_negatives = False
   .type = bool
@@ -1436,6 +1464,10 @@ class scaling_manager (intensity_data) :
         observations_original_index,observations,matches = postx.result_for_cxi_merge(file_name)
       except (AssertionError,ValueError),e:
         return null_data(file_name=file_name, log_out=out.getvalue(), low_signal=True)
+
+      if self.params.postrefinement.show_trumpet_plot is True:
+        from xfel.cxi.trumpet_plot import trumpet_wrapper
+        trumpet_wrapper(result, postx, file_name, self.params, out)
 
     if not self.params.scaling.enable or self.params.postrefinement.enable: # Do not scale anything
       print >> out, "Scale factor to an isomorphous reference PDB will NOT be applied."

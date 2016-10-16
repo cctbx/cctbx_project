@@ -203,7 +203,7 @@ class manager:
               'distance': result['distance'],
               'c_c': postx.final_corr,
               'unique_file_name': data.file_name}
-    values = postx.MINI.parameterization(postx.MINI.x)
+    values = postx.get_parameter_values()
     kwargs["G"]=values.G
     kwargs["BFACTOR"]=values.BFACTOR
     kwargs["RS"]=values.RS
@@ -217,7 +217,7 @@ class manager:
 
   def insert_frame(self, **kwargs):
     order = []
-    if self.params.postrefinement.algorithm in ["rs2"]:
+    if self.params.postrefinement.algorithm in ["rs2","rs_hybrid"]:
       order_dict = {'wavelength': 1,
                   'beam_x': 2,
                   'beam_y': 3,
@@ -345,7 +345,7 @@ class manager:
 
 
   def read_frames(self):
-    if self.params.postrefinement.algorithm in ["rs2"]:
+    if self.params.postrefinement.algorithm in ["rs2","rs_hybrid"]:
       return self.read_frames_updated_detail()
     else:
       return self.read_frames_legacy_detail()

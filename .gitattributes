@@ -3934,6 +3934,7 @@ xfel/cxi/cspad_ana/pyana_hitfind.cfg -text
 xfel/cxi/cspad_ana/rayonix_tbx.py -text
 xfel/cxi/cspad_ana/xes_faster_histograms.py -text
 xfel/cxi/cspad_ana/xes_histograms.py -text
+xfel/cxi/data_utils.py -text
 xfel/cxi/display_powder_arcs.py -text
 xfel/cxi/gfx/__init__.py -text
 xfel/cxi/gfx/trials_plot.py -text
@@ -3942,10 +3943,12 @@ xfel/cxi/integrate_image_api.py -text
 xfel/cxi/merging_database_flex.py -text
 xfel/cxi/merging_utils.py -text
 xfel/cxi/postrefinement_factory.py -text
+xfel/cxi/postrefinement_hybrid_rs.py -text
 xfel/cxi/postrefinement_legacy_rs.py -text
 xfel/cxi/postrefinement_updated_rs.py -text
 xfel/cxi/spectra_filter.py -text
 xfel/cxi/strong_zulu.py -text
+xfel/cxi/trumpet_plot.py -text
 xfel/cxi/util.py -text
 xfel/graph_proc/__init__.py -text
 xfel/graph_proc/components.py -text

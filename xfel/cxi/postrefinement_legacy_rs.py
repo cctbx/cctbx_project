@@ -160,6 +160,10 @@ class legacy_rs(object):
       miller_indices=observations.indices())
     return observations_original_index,observations,matches
 
+  def get_parameter_values(self):
+    values = self.parameterization_class(self.MINI.x)
+    return values
+
   def result_for_samosa(self):
     values = self.parameterization_class(self.MINI.x)
     return self.refinery.get_eff_Astar(values), values.RS
@@ -341,4 +345,3 @@ class lbfgs_minimizer_base:
     print >> self.out, "FINALMODEL",
     print >> self.out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
     values.show(self.out)
-
