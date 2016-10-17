@@ -85,7 +85,7 @@ class FormatCBFFullPilatus(FormatCBFFull):
         beam = self._beam()
 
       except Exception:
-        pass
+        beam = None
 
       if beam:
         # attenuation coefficient depends on the beam wavelength
