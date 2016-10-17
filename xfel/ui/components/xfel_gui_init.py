@@ -692,18 +692,20 @@ class MainWindow(wx.Frame):
     self.run_sentinel.start()
     self.run_window.run_light.change_status('on')
 
-  def stop_run_sentinel(self):
+  def stop_run_sentinel(self, block = True):
     self.run_window.run_light.change_status('off')
     self.run_sentinel.active = False
-    self.run_sentinel.join()
+    if block:
+      self.run_sentinel.join()
 
   def start_job_monitor(self):
     self.job_monitor = JobMonitor(self, active=True)
     self.job_monitor.start()
 
-  def stop_job_monitor(self):
+  def stop_job_monitor(self, block = True):
     self.job_monitor.active = False
-    self.job_monitor.join()
+    if block:
+      self.job_monitor.join()
 
   def start_job_sentinel(self):
     self.job_sentinel = JobSentinel(self, active=True)
@@ -713,11 +715,12 @@ class MainWindow(wx.Frame):
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_pause.GetId(), True)
 
-  def stop_job_sentinel(self):
+  def stop_job_sentinel(self, block = True):
     if self.job_sentinel is not None:
       self.run_window.job_light.change_status('off')
       self.job_sentinel.active = False
-      self.job_sentinel.join()
+      if block:
+        self.job_sentinel.join()
 
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
     self.toolbar.EnableTool(self.tb_btn_pause.GetId(), False)
@@ -727,29 +730,32 @@ class MainWindow(wx.Frame):
     self.prg_sentinel.start()
     self.run_window.prg_light.change_status('on')
 
-  def stop_prg_sentinel(self):
+  def stop_prg_sentinel(self, block = True):
     self.run_window.prg_light.change_status('off')
     self.prg_sentinel.active = False
-    self.prg_sentinel.join()
+    if block:
+      self.prg_sentinel.join()
 
   def start_runstats_sentinel(self):
     self.runstats_sentinel = RunStatsSentinel(self, active=True)
     self.runstats_sentinel.start()
     self.run_window.runstats_light.change_status('on')
 
-  def stop_runstats_sentinel(self):
+  def stop_runstats_sentinel(self, block = True):
     self.run_window.runstats_light.change_status('off')
     self.runstats_sentinel.active = False
-    self.runstats_sentinel.join()
+    if block:
+      self.runstats_sentinel.join()
 
   def OnAboutBox(self, e):
     ''' About dialog '''
     info = wx.AboutDialogInfo()
-    info.SetName('iXFEL')
+    info.SetName('cctbx.xfel')
     info.SetLicense(license)
     info.SetDescription(description)
     info.AddDeveloper('Artem Lyubimov')
     info.AddDeveloper('Aaron Brewster')
+    info.AddDeveloper('Iris Young')
     info.AddDeveloper('Axel Brunger')
     info.AddDeveloper('Nicholas Sauter')
     wx.AboutBox(info)
@@ -800,15 +806,15 @@ class MainWindow(wx.Frame):
     tab = self.run_window.main_nbook.GetSelection()
     if tab == 2:
       if self.job_monitor.active:
-        self.stop_job_monitor()
+        self.stop_job_monitor(block = False)
         self.run_window.jmn_light.change_status('off')
     elif tab == 3:
       if self.prg_sentinel.active:
-        self.stop_prg_sentinel()
+        self.stop_prg_sentinel(block = False)
         self.run_window.prg_light.change_status('off')
     elif tab == 4:
       if self.runstats_sentinel.active:
-        self.stop_runstats_sentinel()
+        self.stop_runstats_sentinel(block = False)
         self.run_window.runstats_light.change_status('off')
 
 
