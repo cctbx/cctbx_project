@@ -215,7 +215,11 @@ postrefinement {
     .help = Gentle weighting rather than unit weighting for the postrefinement target
     .help = Second round of LevMar adding an Rs refinement parameter
     .help = Option of weighting the merged terms by partiality
-    {}
+    {
+    partiality_threshold = 0.2
+      .type = float
+      .help = throw out observations below this value. Hard coded as 0.2 for rs2, allow value for hybrid
+    }
   target_weighting = *unit variance gentle extreme
     .type = choice
     .help = weights for the residuals in the postrefinement target (only for rs_hybrid)
@@ -1507,34 +1511,6 @@ class scaling_manager (intensity_data) :
 
     db_mgr.insert_observation(**kwargs)
 
-    if False:
-      # ******************************************************
-      # try a new procedure to scale obs to the reference data with K & B,
-      # to minimize (for positive Iobs only) functional...
-      # ahead of doing this, section simply plots calc & obs...
-      # ******************************************************
-      print "For %d reflections, got slope %f, correlation %f" % \
-        (data.n_obs - data.n_rejected, slope, corr)
-      print "average obs", sum_y / (data.n_obs - data.n_rejected), \
-        "average calc", sum_x / (data.n_obs - data.n_rejected), \
-        "offset",offset
-      print "Rejected %d reflections with negative intensities" % \
-        data.n_rejected
-
-      reference= flex.double()
-      observed=flex.double()
-      for pair in matches.pairs():
-        if (observations.data()[pair[1]] -offset <= 0):
-          continue
-        I_r = self.i_model.data()[pair[0]]
-        I_o = observations.data()[pair[1]]
-        reference.append(I_r)
-        observed.append((I_o - offset)/slope)
-
-      from matplotlib import pyplot as plt
-      plt.plot(flex.log10(observed),flex.log10(reference),"r.")
-      plt.show()
-
     print >> out, "For %d reflections, got slope %f, correlation %f" % \
         (data.n_obs - data.n_rejected, slope, corr)
     print >> out, "average obs", sum_y / (data.n_obs - data.n_rejected), \
@@ -1548,6 +1524,9 @@ class scaling_manager (intensity_data) :
       print >> out, "Skipping these data - correlation too low."
     else:
       data.accept = True
+      if self.params.postrefinement.enable and self.params.postrefinement.algorithm in ["rs_hybrid"]:
+        assert slope == 1.0
+        assert self.params.include_negatives
       for pair in matches.pairs():
         if not self.params.include_negatives and (observations.data()[pair[1]] <= 0) :
           continue

@@ -149,7 +149,12 @@ class rs_hybrid(object):
 
   def result_for_cxi_merge(self, file_name):
     scaler = self.nave1_refinery.scaler_callable(self.get_parameter_values())
-    fat_selection = (self.nave1_refinery.lorentz_callable(self.get_parameter_values()) > 0.2)
+    values = self.get_parameter_values()
+    p_scaler = flex.pow(self.refinery.get_partiality_array(values),
+                        0.5*self.params.postrefinement.merge_partiality_exponent)
+
+    fat_selection = (self.nave1_refinery.lorentz_callable(self.get_parameter_values()) >
+                     self.params.postrefinement.rs_hybrid.partiality_threshold) # was 0.2 for rs2
     fat_count = fat_selection.count(True)
 
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
@@ -164,7 +169,7 @@ class rs_hybrid(object):
     observations = self.observations_pair1_selected.customized_copy(
       indices = self.observations_pair1_selected.indices().select(fat_selection),
       data = (self.observations_pair1_selected.data()/scaler).select(fat_selection),
-      sigmas = (self.observations_pair1_selected.sigmas()/scaler).select(fat_selection)
+      sigmas = (self.observations_pair1_selected.sigmas()/(scaler * p_scaler)).select(fat_selection)
     )
     matches = miller.match_multi_indices(
       miller_indices_unique=self.miller_set.indices(),
@@ -179,7 +184,6 @@ class rs_hybrid(object):
     # New range assertions for refined variables
     # XXX Likely these limits are problem-specific (especially G-max) so look for another approach
     #     or expose the limits as phil parameters.
-    values = self.get_parameter_values()
     assert self.final_corr > 0.1
     assert 0 < values.G and values.G < 0.5
     assert -25 < values.BFACTOR and values.BFACTOR < 25
