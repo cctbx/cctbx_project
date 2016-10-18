@@ -22,42 +22,34 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
   '''
 
   @staticmethod
-  def split_tag(str):
-    splitted = str.split("//")
-    if (len(splitted) == 2):
-      return (splitted[0], splitted[1])
-    else:
-      return (splitted[0], None)
-
-  @staticmethod
   def understand(image_file):
     import h5py
 
-    image, tag = FormatHDF5SaclaMPCCD.split_tag(image_file)
-    h5_handle = h5py.File(image, 'r')
+    h5_handle = h5py.File(image_file, 'r')
 
-    if tag is None:
-      for elem in h5_handle:
-        if elem.startswith("tag-"):
-          return True
-      return False
-    else:
-      return (tag in h5_handle)
+    for elem in h5_handle:
+      if elem.startswith("tag-"):
+        return True
+    return False
 
   def __init__(self, image_file, index = 0, reconst_mode = False):
     assert(self.understand(image_file))
-    image, tag = self.split_tag(image_file)
     self._raw_data = None
     self.index = index
-    self.tag = tag
-    self.image_filename = image
-    FormatHDF5.__init__(self, image)
+    self.image_filename = image_file
+    FormatHDF5.__init__(self, image_file)
 
     self.PIXEL_SIZE = 50 / 1000 # 50 um
     self.RECONST_SIZE = 2398 # compatible with DataConvert3 -reconst mode
 
     # These hard-coded values can be overwritten
     # by MPCCD_GEOMETRY and MPCCD_DISTANCE
+    # 
+    # These values can be retrieved from SACLA API.
+    # Alternatively, you can get it from a CrystFEL geometry file by
+    # awk '/corner_x/{x=50*$3} /corner_y/{y=50*$3; printf x","y","rot","}
+    #      /\/ss/{rot=-atan2($3, $4)/3.141592*180}' input.geom
+
     self.distance = 50.0 # mm
     self.panel_origins = [(-1755.000000, 51711.000000, 0.000000),
                           (-1711.000000, 24944.000000, 0.000000),
@@ -95,9 +87,8 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     import h5py
     h5_handle = h5py.File(self.image_filename, 'r')
 
-    self._images = [tag for tag in h5_handle if tag.startswith("tag-")]
-    if self.tag is None:
-      self.tag = self._images[self.index]
+    self._images = sorted([tag for tag in h5_handle if tag.startswith("tag-")])
+    self.tag = self._images[self.index]
     h5_handle.close()
 
   def get_image_file(self, index=None):
@@ -132,11 +123,11 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
                        self.RECONST_SIZE / 2 * self.PIXEL_SIZE),
         fast_direction = '+x',
         slow_direction = '-y',
-        PIXEL_SIZE = (self.PIXEL_SIZE,
+        pixel_size = (self.PIXEL_SIZE,
                       self.PIXEL_SIZE),
         image_size = (self.RECONST_SIZE,
                       self.RECONST_SIZE),
-        trusted_range = (-1, 1000000),
+        trusted_range = (0, 65535),
         px_mm = px_mm,
         mask = [])  # TODO: add gaps
 
@@ -160,7 +151,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
       p.set_type("SENSOR_PAD")
       p.set_name('Panel%d' % i)
       p.set_image_size((512, 1024))
-      p.set_trusted_range((-1, 1000000))
+      p.set_trusted_range((0, 65535))
       p.set_pixel_size((self.PIXEL_SIZE, self.PIXEL_SIZE))
       p.set_thickness(t0)
       p.set_local_frame(
