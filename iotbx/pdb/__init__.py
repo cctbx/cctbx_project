@@ -1161,7 +1161,6 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         translation_vectors=self.t,
         serial_numbers=self.serial_number,
         coordinates_present_flags=self.coordinates_present)
-
     def format_BOIMT_pdb_string(self):
       '''
       BIOMT data sample
@@ -1176,6 +1175,15 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         lines.append(fmt2%(int(sn_), r_[3],r_[4],r_[5], t_[1]))
         lines.append(fmt3%(int(sn_), r_[6],r_[7],r_[8], t_[2]))
       return "\n".join(lines)
+    def contains_only_identity_matrices(self):
+      """
+      Check if the object contains only identity matrices, e.g. PDBID 2jee
+      """
+      result = True
+      for r, t in zip(self.r, self.t):
+        result = result and (r.is_r3_identity_matrix() and t.is_col_zero())
+      return result
+
 
   def process_BIOMT_records(self,error_handle=True,eps=1e-4):
     '''(pdb_data,boolean,float) -> group of lists

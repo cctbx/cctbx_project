@@ -603,7 +603,7 @@ class input(object):
             group_by_tr[tr_id] = [[key],[selection_str]]
       group_key = set([' or '.join(group_by_tr[x][0]) for x in group_by_tr])
       group_val = [' or '.join(group_by_tr[x][1]) for x in group_by_tr]
-      assert len(group_key) == 1
+      assert len(group_key) == 1, group_key
       gk = list(group_key)[0]
       self.ncs_to_asu_selection[gk] = group_val
       # add the identity case to tr_id_to_selection

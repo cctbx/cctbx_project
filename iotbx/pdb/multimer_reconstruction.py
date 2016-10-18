@@ -81,7 +81,9 @@ class multimer(object):
       transform_info = pdb_inp.process_mtrix_records(
         error_handle=error_handle,
         eps=eps)
-      if transform_info.as_pdb_string() == '' or (not ncs_only(transform_info)):
+      if (transform_info.as_pdb_string() == '' or
+          not ncs_only(transform_info) or
+          transform_info.contains_only_identity_matrices()):
         transform_info = None
       else:
         transform_info = insure_identity_is_in_transform_info(transform_info)
