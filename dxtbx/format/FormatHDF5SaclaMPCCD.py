@@ -44,7 +44,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
 
     # These hard-coded values can be overwritten
     # by MPCCD_GEOMETRY and MPCCD_DISTANCE
-    # 
+    #
     # These values can be retrieved from SACLA API.
     # Alternatively, you can get it from a CrystFEL geometry file by
     # awk '/corner_x/{x=50*$3} /corner_y/{y=50*$3; printf x","y","rot","}

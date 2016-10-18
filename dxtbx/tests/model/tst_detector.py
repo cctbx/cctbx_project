@@ -8,6 +8,11 @@ def tst_get_gain(detector):
   assert abs(detector[0].get_gain() - 2.0) < 1e-7
   print 'OK'
 
+def tst_get_identifier(detector):
+  detector[0].set_identifier("HELLO")
+  assert detector[0].get_identifier() == "HELLO"
+  print 'OK'
+
 def tst_get_pixel_lab_coord(detector):
   from scitbx import matrix
   eps = 1e-7
@@ -165,12 +170,14 @@ def tst_detector():
       (512, 512),         # Image size
       (0, 1000),          # Trusted range
       0.1,                # Thickness
-      "Si"))              # Material
+      "Si",               # Material
+      identifier="123"))  # Identifier
     return detector
 
   detector = create_detector()
 
   # Perform some tests
+  tst_get_identifier(detector)
   tst_get_gain(detector)
   tst_set_mosflm_beam_centre(detector)
   tst_get_pixel_lab_coord(detector)

@@ -401,7 +401,8 @@ namespace dxtbx { namespace model { namespace boost_python {
                 tiny<double,2>,
                 double,
                 std::string,
-                double>((
+                double,
+                std::string>((
         arg("type"),
         arg("name"),
         arg("fast_axis"),
@@ -412,7 +413,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("trusted_range"),
         arg("thickness"),
         arg("material"),
-        arg("mu")=0.0)))
+        arg("mu")=0.0,
+        arg("identifier")="")))
       .def(init<std::string,
                 std::string,
                 tiny<double,3>,
@@ -424,7 +426,8 @@ namespace dxtbx { namespace model { namespace boost_python {
                 double,
                 std::string,
                 shared_ptr<PxMmStrategy>,
-                double >((
+                double,
+                std::string>((
         arg("type"),
         arg("name"),
         arg("fast_axis"),
@@ -436,7 +439,10 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("thickness"),
         arg("material"),
         arg("px_mm"),
-        arg("mu")=0.0)))
+        arg("mu")=0.0,
+        arg("identifier")="")))
+      .def("get_identifier", &Panel::get_identifier)
+      .def("set_identifier", &Panel::set_identifier)
       .def("get_gain", &Panel::get_gain)
       .def("set_gain", &Panel::set_gain)
       .def("get_image_size_mm", &Panel::get_image_size_mm)

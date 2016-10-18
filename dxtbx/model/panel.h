@@ -54,13 +54,15 @@ namespace dxtbx { namespace model {
           tiny<double,2> trusted_range,
           double thickness,
           std::string material,
-          double mu)
+          double mu,
+          std::string identifier)
       : PanelData(type, name,
           fast_axis, slow_axis, origin,
           pixel_size, image_size,
                   trusted_range, thickness, material, mu),
         gain_(1.0),
-        convert_coord_(new SimplePxMmStrategy()) {}
+        convert_coord_(new SimplePxMmStrategy()),
+        identifier_(identifier) {}
 
     /** Construct with data with px/mm strategy */
     Panel(std::string type,
@@ -74,15 +76,31 @@ namespace dxtbx { namespace model {
           double thickness,
           std::string material,
           shared_ptr<PxMmStrategy> convert_coord,
-          double mu)
+          double mu,
+          std::string identifier)
       : PanelData(type, name,
           fast_axis, slow_axis, origin,
           pixel_size, image_size,
                   trusted_range, thickness, material, mu),
         gain_(1.0),
-        convert_coord_(convert_coord) {}
+        convert_coord_(convert_coord),
+        identifier_(identifier) {}
 
     virtual ~Panel() {}
+
+    /**
+     * Set the identifier
+     */
+    void set_identifier(std::string identifier) {
+      identifier_ = identifier;
+    }
+
+    /**
+     * Get the identifier
+     */
+    std::string get_identifier() const {
+      return identifier_;
+    }
 
     /** Set the gain */
     void set_gain(double gain) {
@@ -274,12 +292,16 @@ namespace dxtbx { namespace model {
 
     double gain_;
     shared_ptr<PxMmStrategy> convert_coord_;
+    std::string identifier_;
   };
 
   /** Print panel information */
   inline
   std::ostream& operator<<(std::ostream &os, const Panel &p) {
     os << "Panel:" << std::endl;
+    os << "  name: " << p.get_name() << std::endl;
+    os << "  type: " << p.get_type() << std::endl;
+    os << "  identifier: " << p.get_identifier() << std::endl;
     os << "  pixel_size:" << p.get_pixel_size().const_ref() << std::endl;
     os << "  image_size: " << p.get_image_size().const_ref() << std::endl;
     os << "  trusted_range: " << p.get_trusted_range().const_ref() << std::endl;
