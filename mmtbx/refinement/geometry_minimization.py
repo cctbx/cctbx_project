@@ -426,38 +426,38 @@ def minimize_wrapper_for_ramachandran(
     log = null_out()
   # assert hierarchy.atoms_size()==xrs.scatterers().size(), "%d %d" % (
   #     hierarchy.atoms_size(), xrs.scatterers().size())
+  params_line = grand_master_phil_str
+  params = iotbx.phil.parse(
+      input_string=params_line, process_includes=True).extract()
+  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  params.pdb_interpretation.peptide_link.oldfield.weight_scale=oldfield_weight_scale
+  params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=oldfield_plot_cutoff
+  params.pdb_interpretation.nonbonded_weight = nonbonded_weight
+  params.pdb_interpretation.c_beta_restraints=True
+  params.pdb_interpretation.max_reasonable_bond_distance = None
+  params.pdb_interpretation.peptide_link.apply_peptide_plane = True
+  params.pdb_interpretation.ncs_search.enabled = True
+  params.pdb_interpretation.restraints_library.rdl = True
+
+  processed_pdb_files_srv = mmtbx.utils.\
+      process_pdb_file_srv(
+          crystal_symmetry= xrs.crystal_symmetry(),
+          pdb_interpretation_params = params.pdb_interpretation,
+          stop_for_unknowns         = False,
+          log=log,
+          cif_objects=None)
+  processed_pdb_file, junk = processed_pdb_files_srv.\
+      process_pdb_files(raw_records=flex.split_lines(hierarchy.as_pdb_string()))
+
+  mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
+  ener_lib = processed_pdb_files_srv.ener_lib
+
+  ncs_restraints_group_list = []
+  if processed_pdb_file.ncs_obj is not None:
+    ncs_restraints_group_list = processed_pdb_file.ncs_obj.get_ncs_restraints_group_list()
+
   if grm is None:
-    params_line = grand_master_phil_str
-    params = iotbx.phil.parse(
-        input_string=params_line, process_includes=True).extract()
-    params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    params.pdb_interpretation.peptide_link.ramachandran_restraints = True
-    params.pdb_interpretation.peptide_link.oldfield.weight_scale=oldfield_weight_scale
-    params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=oldfield_plot_cutoff
-    params.pdb_interpretation.nonbonded_weight = nonbonded_weight
-    params.pdb_interpretation.c_beta_restraints=True
-    params.pdb_interpretation.max_reasonable_bond_distance = None
-    params.pdb_interpretation.peptide_link.apply_peptide_plane = True
-    params.pdb_interpretation.ncs_search.enabled = True
-    params.pdb_interpretation.restraints_library.rdl = True
-
-    processed_pdb_files_srv = mmtbx.utils.\
-        process_pdb_file_srv(
-            crystal_symmetry= xrs.crystal_symmetry(),
-            pdb_interpretation_params = params.pdb_interpretation,
-            stop_for_unknowns         = False,
-            log=log,
-            cif_objects=None)
-    processed_pdb_file, junk = processed_pdb_files_srv.\
-        process_pdb_files(raw_records=flex.split_lines(hierarchy.as_pdb_string()))
-
-    mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
-    ener_lib = processed_pdb_files_srv.ener_lib
-
-    ncs_restraints_group_list = []
-    if processed_pdb_file.ncs_obj is not None:
-      ncs_restraints_group_list = processed_pdb_file.ncs_obj.get_ncs_restraints_group_list()
-
     grm = get_geometry_restraints_manager(
         processed_pdb_file, xrs, params=params)
   else:
