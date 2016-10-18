@@ -795,6 +795,7 @@ def get_default_header():
 @1viewid {Overview}
 @master {mainchain} indent
 @master {Calphas} indent
+@master {Virtual BB} indent
 @master {sidechain} indent
 @master {H's} indent
 @pointmaster 'H' {H's}
