@@ -133,6 +133,14 @@ class model_idealization():
     o_c.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
     o_c.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
     o_c.raise_improper_alt_conf_if_necessary()
+    if len(self.original_hierarchy.models()) > 1:
+      raise Sorry("Multi model files are not supported")
+    ca_only_present = False
+    for c in self.original_hierarchy.only_model().chains():
+      if c.is_ca_only():
+        ca_only_present = True
+    if ca_only_present:
+      raise Sorry("Don't support modes with chains containing only CA atoms.")
 
     self.original_boxed_hierarchy = self.original_hierarchy.deep_copy()
     self.original_boxed_hierarchy.reset_atom_i_seqs()
