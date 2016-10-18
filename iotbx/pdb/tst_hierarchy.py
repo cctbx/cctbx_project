@@ -6659,6 +6659,44 @@ ATOM     15  O   MET A   4      40.633 -70.625  61.911  1.00 23.73           O
   assert h3.atoms()[0].parent() is not None # WORKING!!!
   show_atoms(h3)
 
+def exercise_is_ca_only():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      0  N   ASP A   1      49.347 -62.804  60.380  1.00 34.60           N
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      2  C   ASP A   1      47.122 -63.665  61.114  1.00 34.02           C
+ATOM      3  O   ASP A   1      47.573 -64.451  61.947  1.00 32.23           O
+ATOM      4  N   VAL A   2      45.889 -63.176  61.175  1.00 31.94           N
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      6  C   VAL A   2      44.472 -64.973  61.900  1.00 28.28           C
+ATOM      7  O   VAL A   2      43.989 -65.221  60.796  1.00 27.24           O
+ATOM      8  N   GLN B   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN B   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN B   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN B   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET B   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET B   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET B   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
+"""))
+  pdb_h = pdb_inp.construct_hierarchy()
+  for chain in pdb_h.only_model().chains():
+    assert not chain.is_ca_only()
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      8  N   GLN B   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN B   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN B   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN B   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET B   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET B   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET B   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
+"""))
+  pdb_h = pdb_inp.construct_hierarchy()
+  result = [chain.is_ca_only() for chain in pdb_h.only_model().chains()]
+  assert result == [True, False], result
+
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
@@ -6718,6 +6756,7 @@ def exercise(args):
     exercise_atom_xyz_9999()
     # exercise_is_pure_main_conf()
     exercise_selection_and_deep_copy()
+    exercise_is_ca_only()
     if (not forever): break
   print format_cpu_times()
 

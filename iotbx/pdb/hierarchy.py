@@ -1838,6 +1838,18 @@ class _(boost.python.injector, ext.chain, __hash_eq_mixin):
       return True
     return False
 
+  def is_ca_only(self):
+    """
+    Determine if chain consists only from CA atoms.
+    Upgrade options:
+      - implement threshold for cases where several residues are present in
+        full;
+      - figure out how to deal with HETATM records of the same chain.
+      - Ignore possible incorrect alignment of atom names.
+    """
+    atom_names = self.atoms().extract_name()
+    return atom_names.all_eq(" CA ")
+
 class _(boost.python.injector, ext.residue_group, __hash_eq_mixin):
 
   def only_atom_group(self):
