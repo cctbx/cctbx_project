@@ -108,8 +108,8 @@ class xfel_db_application(object):
 
     self.columns_dict = self.init_tables.set_up_columns_dict(self)
 
-  def execute_query(self, query, commit = False, verbose = False):
-    if verbose:
+  def execute_query(self, query, commit = False):
+    if self.params.db.verbose:
       from time import time
       st = time()
       self.query_count += 1
@@ -125,7 +125,7 @@ class xfel_db_application(object):
         if commit:
           dbobj.commit()
 
-        if verbose:
+        if self.params.db.verbose:
           print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, time() - st), query[:min(len(query),145)]
         return cursor
       except OperationalError, e:

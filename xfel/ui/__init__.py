@@ -63,6 +63,10 @@ db {
   password = ""
     .type = str
     .help = Database password. Will be cached as plain text!
+  verbose = False
+    .type = bool
+    .expert_level = 2
+    .help = Print to the terminal all database queries
 }
 """
 master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
