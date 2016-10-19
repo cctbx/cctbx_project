@@ -536,6 +536,20 @@ class model_idealization():
       # still need to run gm if rotamers were fixed
       print >> self.log, "Not using ncs"
 
+    # need to update SS manager for the whole model here.
+    if self.params.use_ss_restraints:
+      ss_manager = manager(
+          pdb_hierarchy=self.whole_pdb_h,
+          geometry_restraints_manager=self.whole_grm.geometry,
+          sec_str_from_pdb_file=self.filtered_whole_ann,
+          params=None,
+          mon_lib_srv=self.mon_lib_srv,
+          verbose=-1,
+          log=self.log)
+      self.whole_grm.geometry.set_secondary_structure_restraints(
+          ss_manager=ss_manager,
+          hierarchy=self.whole_pdb_h,
+          log=self.log)
     print >> self.log, "loop_ideal.ref_exclusion_selection", loop_ideal.ref_exclusion_selection
     print >> self.log, "Minimizing whole model"
     self.minimize(
