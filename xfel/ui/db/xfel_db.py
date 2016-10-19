@@ -26,6 +26,15 @@ class initialize(initialize_base):
                      "imageset", "imageset_event", "beam", "detector", "experiment",
                      "crystal", "cell", "cell_bin", "bin", "isoform"]
 
+  def __getattr__(self, prop):
+    if prop == "dbobj":
+      return get_db_connection(self.params)
+    raise AttributeError("%s not found"%prop)
+
+  def __setattr__(self, prop, val):
+    if prop == "dbobj": pass
+    return super(initialize, self).__setattr__(prop, val)
+
   def __init__(self, params, dbobj):
     initialize_base.__init__(self, params, dbobj, interactive = False, drop_tables = None)
 
@@ -310,25 +319,29 @@ class xfel_db_application(object):
       return Trial(self, trial_id)
 
   def get_trial_rungroups(self, trial_id, only_active = False):
-    query = "SELECT rungroup_id FROM `%s_trial_rungroup` WHERE `%s_trial_rungroup`.trial_id = %d" % \
-            (self.params.experiment_tag, self.params.experiment_tag, trial_id)
-    cursor = self.execute_query(query)
-    rungroups = [Rungroup(self, i[0]) for i in cursor.fetchall()]
+    tag = self.params.experiment_tag
     if only_active:
-      return [rg for rg in rungroups if rg.active]
+      query = """SELECT t_rg.rungroup_id FROM `%s_trial_rungroup` t_rg
+                 JOIN `%s_rungroup` rg ON rg.id = t_rg.rungroup_id
+                 WHERE t_rg.trial_id = %d AND rg.active = True""" % (tag, tag, trial_id)
     else:
-      return rungroups
+      query = """SELECT t_rg.rungroup_id FROM `%s_trial_rungroup` t_rg
+                 WHERE t_rg.trial_id = %d""" % (tag, trial_id)
+    cursor = self.execute_query(query)
+    rungroup_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    return self.get_all_x(Rungroup, "rungroup", where = "WHERE rungroup.id IN (%s)"%",".join(rungroup_ids))
 
   def get_trial_runs(self, trial_id):
-    rungroups = self.get_trial_rungroups(trial_id, only_active=True)
-    runs = []
-    run_ids = []
-    for rungroup in rungroups:
-      for run in rungroup.runs:
-        if run.id not in run_ids:
-          run_ids.append(run.id)
-          runs.append(run)
-    return runs
+    tag = self.params.experiment_tag
+    query = """SELECT run.id FROM `%s_run` run
+               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND run.run <= rg.endrun
+               JOIN `%s_trial_rungroup` t_rg on t_rg.rungroup_id = rg.id
+               JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
+               WHERE trial.id=%d AND rg.active=True
+               """ %(tag, tag, tag, tag, trial_id)
+    cursor = self.execute_query(query)
+    run_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
 
   def get_all_trials(self, only_active = False):
     if only_active:
