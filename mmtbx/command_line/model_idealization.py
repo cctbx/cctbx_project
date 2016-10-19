@@ -4,6 +4,7 @@ from __future__ import division
 import sys, os
 from iotbx.pdb import secondary_structure as ioss
 from mmtbx.secondary_structure import build as ssb
+from mmtbx.secondary_structure import manager
 import mmtbx.utils
 from scitbx.array_family import flex
 from iotbx.pdb import write_whole_pdb_file
@@ -42,6 +43,9 @@ additionally_fix_rotamer_outliers = True
   .type = bool
   .help = At the late stage if rotamer is still outlier choose another one \
     with minimal clash with surrounding atoms
+use_ss_restraints = True
+  .type = bool
+  .help = Use Secondary Structure restraints
 use_starting_model_for_final_gm = False
   .type = bool
   .help = Use supplied model for final geometry minimization. Otherwise just \
@@ -140,7 +144,7 @@ class model_idealization():
       if c.is_ca_only():
         ca_only_present = True
     if ca_only_present:
-      raise Sorry("Don't support modes with chains containing only CA atoms.")
+      raise Sorry("Don't support models with chains containing only CA atoms.")
 
     self.original_boxed_hierarchy = self.original_hierarchy.deep_copy()
     self.original_boxed_hierarchy.reset_atom_i_seqs()
@@ -299,6 +303,21 @@ class model_idealization():
     self.whole_grm = get_geometry_restraints_manager(
         processed_pdb_file, self.whole_xrs, params=params)
 
+    # set SS restratins
+    if self.params.use_ss_restraints:
+      ss_manager = manager(
+          pdb_hierarchy=self.whole_pdb_h,
+          geometry_restraints_manager=self.whole_grm.geometry,
+          sec_str_from_pdb_file=self.filtered_whole_ann,
+          params=None,
+          mon_lib_srv=self.mon_lib_srv,
+          verbose=-1,
+          log=self.log)
+      self.whole_grm.geometry.set_secondary_structure_restraints(
+          ss_manager=ss_manager,
+          hierarchy=self.whole_pdb_h,
+          log=self.log)
+
     # now select part of it for working with master hierarchy
     if self.using_ncs:
       self.master_grm = self.whole_grm.select(self.master_sel)
@@ -356,29 +375,35 @@ class model_idealization():
       self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
     # STOP()
 
-    # getting grm without SS restraints
-    self.get_grm()
-
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
     self.original_ann = None
+    self.filtered_whole_ann = None
     if self.ann is not None:
       self.original_ann = self.ann.deep_copy()
       print >> self.log, "Original SS annotation"
       print >> self.log, self.original_ann.as_pdb_str()
-    if self.ann is not None:
       self.ann.remove_short_annotations()
+      self.filtered_whole_ann = self.ann.deep_copy()
       self.ann.remove_empty_annotations(
           hierarchy=self.working_pdb_h)
+      self.filtered_whole_ann.remove_empty_annotations(
+          hierarchy=self.whole_pdb_h)
       # self.ann.concatenate_consecutive_helices()
       self.ann.split_helices_with_prolines(
           hierarchy=self.working_pdb_h,
+          asc=None)
+      self.filtered_whole_ann.split_helices_with_prolines(
+          hierarchy=self.whole_pdb_h,
           asc=None)
       # print >> self.log, "Splitted SS annotation"
       # print >> self.log, ann.as_pdb_str()
       print >> self.log, "Filtered SS annotation"
       print >> self.log, self.ann.as_pdb_str()
-      # STOP()
+
+    # getting grm with SS restraints
+    self.get_grm()
+
     if (self.ann is None or
         self.ann.get_n_helices() + self.ann.get_n_sheets() == 0 or
         not self.params.ss_idealization.enabled):
@@ -412,6 +437,7 @@ class model_idealization():
           xray_structure=self.working_xrs,
           ss_annotation=self.ann,
           params=self.params.ss_idealization,
+          grm=self.working_grm,
           fix_rotamer_outliers=True,
           cif_objects=self.cif_objects,
           verbose=True,
