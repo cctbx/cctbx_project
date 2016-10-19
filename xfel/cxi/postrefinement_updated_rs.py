@@ -4,7 +4,7 @@ from scitbx import matrix
 from cctbx import miller
 from dials.array_family import flex
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
-from libtbx import adopt_init_args, group_args
+from libtbx import adopt_init_args
 from xfel.cxi.postrefinement_legacy_rs import legacy_rs, rs_refinery, rs_parameterization, lbfgs_minimizer_base
 
 class updated_rs(legacy_rs):
@@ -125,13 +125,16 @@ class updated_rs(legacy_rs):
     self.MINI = lbfgs_minimizer_derivatives( current_x = self.current,
         parameterization = self.parameterization_class, refinery = self.refinery,
         out = self.out )
+    self.refined_mini = self.MINI
 
   def result_for_cxi_merge(self, file_name):
     scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
-    if self.params.postrefinement.algorithm=="rs2":
-      fat_selection = (self.refinery.lorentz_callable(self.parameterization_class(self.MINI.x)) > 0.2)
-    else:
-      fat_selection = (self.refinery.lorentz_callable(self.parameterization_class(self.MINI.x)) < 0.9)
+    values = self.get_parameter_values()
+    partiality_array = self.refinery.get_partiality_array(values)
+    p_scaler = flex.pow(partiality_array,
+                        0.5*self.params.postrefinement.merge_partiality_exponent)
+
+    fat_selection = (partiality_array > 0.2)
     fat_count = fat_selection.count(True)
 
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
@@ -146,7 +149,7 @@ class updated_rs(legacy_rs):
     observations = self.observations_pair1_selected.customized_copy(
       indices = self.observations_pair1_selected.indices().select(fat_selection),
       data = (self.observations_pair1_selected.data()/scaler).select(fat_selection),
-      sigmas = (self.observations_pair1_selected.sigmas()/scaler).select(fat_selection)
+      sigmas = (self.observations_pair1_selected.sigmas()/(scaler * p_scaler)).select(fat_selection)
     )
     matches = miller.match_multi_indices(
       miller_indices_unique=self.miller_set.indices(),
@@ -157,57 +160,21 @@ class updated_rs(legacy_rs):
     SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
     print >> self.out, "CORR: NEW correlation is", SWC.corr
     self.final_corr = SWC.corr
+    self.refined_mini = self.MINI
+
+    # New range assertions for refined variables
+    # XXX Likely these limits are problem-specific so look for another approach
+    #     or expose the limits as phil parameters.
+    assert self.final_corr > 0.1
+    assert 0 < values.G
+    assert -25 < values.BFACTOR and values.BFACTOR < 25
+    assert -0.5 < 180.*values.thetax/math.pi < 0.5 , "limits on the theta rotation, please"
+    assert -0.5 < 180.*values.thetay/math.pi < 0.5 , "limits on the theta rotation, please"
 
     return observations_original_index,observations,matches
 
-class refinery_base(group_args):
-    def __init__(self, **kwargs):
-      group_args.__init__(self,**kwargs)
-      mandatory = ["ORI","MILLER","BEAM","WAVE","ICALCVEC","IOBSVEC"]
-      for key in mandatory: getattr(self,key)
-      self.DSSQ = self.ORI.unit_cell().d_star_sq(self.MILLER)
-
-    """Refinery class takes reference and observations, and implements target
-    functions and derivatives for a particular model paradigm."""
-    def get_Rh_array(self, values):
-      Rh = flex.double()
-      eff_Astar = self.get_eff_Astar(values)
-      for mill in self.MILLER:
-        x = eff_Astar * matrix.col(mill)
-        Svec = x + self.BEAM
-        Rh.append(Svec.length() - (1./self.WAVE))
-      return Rh
-
-    def get_s1_array(self, values):
-      miller_vec = self.MILLER.as_vec3_double()
-      ref_ori = matrix.sqr(self.ORI.reciprocal_matrix())
-      Rx = matrix.col((1,0,0)).axis_and_angle_as_r3_rotation_matrix(values.thetax)
-      Ry = matrix.col((0,1,0)).axis_and_angle_as_r3_rotation_matrix(values.thetay)
-      s_array = flex.mat3_double(len(self.MILLER),Ry * Rx * ref_ori) * miller_vec
-      s1_array = s_array + flex.vec3_double(len(self.MILLER), self.BEAM)
-      return s1_array
-
-    def get_eff_Astar(self, values):
-      thetax = values.thetax; thetay = values.thetay;
-      effective_orientation = self.ORI.rotate_thru((1,0,0),thetax
-         ).rotate_thru((0,1,0),thetay
-         )
-      return matrix.sqr(effective_orientation.reciprocal_matrix())
-
-    def scaler_callable(self, values):
-      PB = self.get_partiality_array(values)
-      EXP = flex.exp(-2.*values.BFACTOR*self.DSSQ)
-      terms = values.G * EXP * PB
-      return terms
-
-    def fvec_callable(self, values):
-      PB = self.get_partiality_array(values)
-      EXP = flex.exp(-2.*values.BFACTOR*self.DSSQ)
-      terms = (values.G * EXP * PB * self.ICALCVEC - self.IOBSVEC)
-      # Ideas for improvement
-      #   straightforward to also include sigma weighting
-      #   add extra terms representing rotational excursion: terms.concatenate(1.e7*Rh)
-      return terms
+  def get_parameter_values(self):
+    return self.refined_mini.parameterization(self.refined_mini.x)
 
 class rs2_refinery(rs_refinery):
 

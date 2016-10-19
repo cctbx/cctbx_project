@@ -150,7 +150,8 @@ class rs_hybrid(object):
   def result_for_cxi_merge(self, file_name):
     scaler = self.nave1_refinery.scaler_callable(self.get_parameter_values())
     values = self.get_parameter_values()
-    p_scaler = flex.pow(self.refinery.get_partiality_array(values),
+    partiality_array = self.refinery.get_partiality_array(values)
+    p_scaler = flex.pow(partiality_array,
                         0.5*self.params.postrefinement.merge_partiality_exponent)
 
     fat_selection = (self.nave1_refinery.lorentz_callable(self.get_parameter_values()) >
