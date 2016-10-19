@@ -83,7 +83,7 @@ def exercise_box_rebuild () :
 
 def exercise_map_utils () :
   #
-  # UNSTABLE
+  # UNSTABLE 2x
   #
   hierarchy, fmodel = get_1yjp_pdb_and_fmodel()
   sel_cache = hierarchy.atom_selection_cache()
