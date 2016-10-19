@@ -217,7 +217,8 @@ class manager:
 
   def insert_frame(self, **kwargs):
     order = []
-    if self.params.postrefinement.algorithm in ["rs2","rs_hybrid"]:
+    if self.params.postrefinement.enable==True and \
+       self.params.postrefinement.algorithm in ["rs2","rs_hybrid"]:
       order_dict = {'wavelength': 1,
                   'beam_x': 2,
                   'beam_y': 3,
