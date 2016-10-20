@@ -69,7 +69,7 @@ def run(args):
                  'n_img':0})
   import xfel.ui.components.xfel_gui_plotter as pltr
   plotter = pltr.PopUpCharts()
-  plotter.plot_uc_histogram(info=info, extra_title=extra_title)
+  plotter.plot_uc_histogram(info_list=[info], extra_title=extra_title)
   plotter.plot_uc_3Dplot(info=info)
   plotter.plt.show()
 

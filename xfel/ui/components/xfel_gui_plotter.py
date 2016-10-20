@@ -132,10 +132,11 @@ class PopUpCharts(object):
     outliers.set_selected(data < q1_x - cut_x, True)
     return outliers
 
-  def plot_uc_histogram(self, info, extra_title = None, xsize = 10, ysize = 10):
+  def plot_uc_histogram(self, info_list, extra_title = None, xsize = 10, ysize = 10):
     """
-    Plot a 3x3 grid of plots showing the unit cell dimensions.
-    @param info Dictionary of data
+    Plot a 3x3 grid of plots showing unit cell dimensions.
+    @param info list of lists of dictionaries. The outer list groups seperate lists
+    of cells to be plotted in the same graph, where each dictionary describes one cell.
     @param extra_title will be added to the title of the plot
     @param xsize if class initialized with not interacive, this is the x size of the
     plot to save in inches
@@ -146,113 +147,126 @@ class PopUpCharts(object):
     # Initialize figure
     fig = self.plt.figure(figsize=(12, 10))
     gsp = GridSpec(3, 3)
+    sub_a = fig.add_subplot(gsp[0])
+    sub_b = fig.add_subplot(gsp[1], sharey=sub_a)
+    sub_c = fig.add_subplot(gsp[2], sharey=sub_a)
+    sub_ab = fig.add_subplot(gsp[3])
+    sub_bc = fig.add_subplot(gsp[4])
+    sub_ac = fig.add_subplot(gsp[5])
+    sub_alpha = fig.add_subplot(gsp[6])
+    sub_beta = fig.add_subplot(gsp[7], sharey=sub_alpha)
+    sub_gamma = fig.add_subplot(gsp[8], sharey=sub_alpha)
+    total = 0
 
-    # Extract uc dimensions from info list
-    a = flex.double([i['a'] for i in info])
-    b = flex.double([i['b'] for i in info])
-    c = flex.double([i['c'] for i in info])
-    alpha = flex.double([i['alpha'] for i in info])
-    beta = flex.double([i['beta'] for i in info])
-    gamma = flex.double([i['gamma'] for i in info])
+    for info in info_list:
+      # Extract uc dimensions from info list
+      a = flex.double([i['a'] for i in info])
+      b = flex.double([i['b'] for i in info])
+      c = flex.double([i['c'] for i in info])
+      alpha = flex.double([i['alpha'] for i in info])
+      beta = flex.double([i['beta'] for i in info])
+      gamma = flex.double([i['gamma'] for i in info])
 
-    accepted = flex.bool(len(a), True)
-    for d in [a, b, c, alpha, beta, gamma]:
-      outliers = self.reject_outliers(d)
-      accepted &= ~outliers
+      accepted = flex.bool(len(a), True)
+      for d in [a, b, c, alpha, beta, gamma]:
+        outliers = self.reject_outliers(d)
+        accepted &= ~outliers
 
-    a = a.select(accepted)
-    b = b.select(accepted)
-    c = c.select(accepted)
-    alpha = alpha.select(accepted)
-    beta = beta.select(accepted)
-    gamma = gamma.select(accepted)
+      a = a.select(accepted)
+      b = b.select(accepted)
+      c = c.select(accepted)
+      alpha = alpha.select(accepted)
+      beta = beta.select(accepted)
+      gamma = gamma.select(accepted)
 
-    nbins = int(np.sqrt(len(info))) * 2
+      total += len(a)
 
-    title = 'Histogram of Unit Cell Dimensions ({} images)'.format(len(a))
+      nbins = int(np.sqrt(len(a))) * 2
+
+      sub_a.hist(a, nbins, normed=False,
+                 alpha=0.75, histtype='stepfilled')
+      sub_a.set_xlabel(
+        "a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
+                                          flex.mean_and_variance(a).unweighted_sample_standard_deviation()))
+      sub_a.set_ylabel('Number of images')
+
+      sub_b.hist(b, nbins, normed=False,
+               alpha=0.75, histtype='stepfilled')
+      sub_b.set_xlabel(
+        "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
+                                          flex.mean_and_variance(b).unweighted_sample_standard_deviation()))
+      self.plt.setp(sub_b.get_yticklabels(), visible=False)
+
+      sub_c.hist(c, nbins, normed=False,
+               alpha=0.75, histtype='stepfilled')
+      sub_c.set_xlabel(
+        "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
+                                          flex.mean_and_variance(c).unweighted_sample_standard_deviation()))
+      self.plt.setp(sub_c.get_yticklabels(), visible=False)
+
+      if len(info_list) == 1:
+        sub_ab.hist2d(a, b, bins=100)
+      else:
+        sub_ab.plot(a.as_numpy_array(), b.as_numpy_array(), '.')
+      sub_ab.set_xlabel("a axis")
+      sub_ab.set_ylabel("b axis")
+      plt.setp(sub_ab.get_yticklabels(), visible=False)
+
+      if len(info_list) == 1:
+        sub_bc.hist2d(b, c, bins=100)
+      else:
+        sub_bc.plot(b.as_numpy_array(), c.as_numpy_array(), '.')
+      sub_bc.set_xlabel("b axis")
+      sub_bc.set_ylabel("c axis")
+      plt.setp(sub_bc.get_yticklabels(), visible=False)
+
+      if len(info_list) == 1:
+        sub_ac.hist2d(a, c, bins=100)
+      else:
+        sub_ac.plot(a.as_numpy_array(), c.as_numpy_array(), '.')
+      sub_ac.set_xlabel("a axis")
+      sub_ac.set_ylabel("c axis")
+      plt.setp(sub_bc.get_yticklabels(), visible=False)
+
+      sub_alpha.hist(alpha, nbins, normed=False,
+                     alpha=0.75,  histtype='stepfilled')
+      sub_alpha.set_xlabel(
+        r'$\alpha (%.2f +/- %.2f\circ)$' % (flex.mean(alpha),
+                                             flex.mean_and_variance(alpha).unweighted_sample_standard_deviation()))
+      sub_alpha.set_ylabel('Number of images')
+
+      sub_beta.hist(beta, nbins, normed=False,
+                    alpha=0.75, histtype='stepfilled')
+      sub_beta.set_xlabel(
+        r'$\beta (%.2f +/- %.2f\circ)$' % (flex.mean(beta),
+                                           flex.mean_and_variance(beta).unweighted_sample_standard_deviation()))
+      self.plt.setp(sub_beta.get_yticklabels(), visible=False)
+      sub_gamma.hist(gamma, nbins, normed=False,
+                     alpha=0.75, histtype='stepfilled')
+      sub_gamma.set_xlabel(
+        r'$\gamma (%.2f +/- %.2f\circ)$' % (flex.mean(gamma),
+                                            flex.mean_and_variance(gamma).unweighted_sample_standard_deviation()))
+      self.plt.setp(sub_gamma.get_yticklabels(), visible=False)
+
+    sub_b.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_ab.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_ab.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_bc.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_bc.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_ac.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_ac.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    title = 'Histogram of Unit Cell Dimensions ({} images)'.format(total)
     if extra_title is not None:
       title += " (%s)"%extra_title
     fig.suptitle(title, fontsize=18)
-
-    sub_a = fig.add_subplot(gsp[0])
-    sub_a.hist(a, nbins, normed=False, facecolor='#2c7fb8',
-             alpha=0.75, histtype='stepfilled')
-    sub_a.set_xlabel(
-      "a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
-                                        flex.mean_and_variance(a).unweighted_sample_standard_deviation()))
-    sub_a.set_ylabel('Number of images')
-
-    sub_b = fig.add_subplot(gsp[1], sharey=sub_a)
-    sub_b.hist(b, nbins, normed=False, facecolor='#2c7fb8',
-             alpha=0.75, histtype='stepfilled')
-    sub_b.set_xlabel(
-      "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
-                                        flex.mean_and_variance(b).unweighted_sample_standard_deviation()))
-    self.plt.setp(sub_b.get_yticklabels(), visible=False)
-    sub_b.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-
-    sub_c = fig.add_subplot(gsp[2], sharey=sub_a)
-    sub_c.hist(c, nbins, normed=False, facecolor='#2c7fb8',
-             alpha=0.75, histtype='stepfilled')
-    sub_c.set_xlabel(
-      "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
-                                        flex.mean_and_variance(c).unweighted_sample_standard_deviation()))
-    self.plt.setp(sub_c.get_yticklabels(), visible=False)
-    sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-
-    sub_ab = fig.add_subplot(gsp[3])
-    sub_ab.hist2d(a, b, bins=100)
-    sub_ab.set_xlabel("a axis")
-    sub_ab.set_ylabel("b axis")
-    plt.setp(sub_ab.get_yticklabels(), visible=False)
-    sub_ab.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_ab.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-
-    sub_bc = fig.add_subplot(gsp[4])
-    sub_bc.hist2d(b, c, bins=100)
-    sub_bc.set_xlabel("b axis")
-    sub_bc.set_ylabel("c axis")
-    plt.setp(sub_bc.get_yticklabels(), visible=False)
-    sub_bc.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_bc.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-
-    sub_ac = fig.add_subplot(gsp[5])
-    sub_ac.hist2d(a, c, bins=100)
-    sub_ac.set_xlabel("a axis")
-    sub_ac.set_ylabel("c axis")
-    plt.setp(sub_bc.get_yticklabels(), visible=False)
-    sub_ac.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_ac.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-
-    sub_alpha = fig.add_subplot(gsp[6])
-    sub_alpha.hist(alpha, nbins, normed=False, facecolor='#7fcdbb',
-                   alpha=0.75,  histtype='stepfilled')
-    sub_alpha.set_xlabel(
-      r'$\alpha (%.2f +/- %.2f\circ)$' % (flex.mean(alpha),
-                                           flex.mean_and_variance(alpha).unweighted_sample_standard_deviation()))
-    sub_alpha.set_ylabel('Number of images')
-
-    sub_beta = fig.add_subplot(gsp[7], sharey=sub_alpha)
-    sub_beta.hist(beta, nbins, normed=False, facecolor='#7fcdbb',
-                  alpha=0.75, histtype='stepfilled')
-    sub_beta.set_xlabel(
-      r'$\beta (%.2f +/- %.2f\circ)$' % (flex.mean(beta),
-                                         flex.mean_and_variance(beta).unweighted_sample_standard_deviation()))
-    self.plt.setp(sub_beta.get_yticklabels(), visible=False)
-    sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-
-    sub_gamma = fig.add_subplot(gsp[8], sharey=sub_alpha)
-    sub_gamma.hist(gamma, nbins, normed=False, facecolor='#7fcdbb',
-                   alpha=0.75, histtype='stepfilled')
-    sub_gamma.set_xlabel(
-      r'$\gamma (%.2f +/- %.2f\circ)$' % (flex.mean(gamma),
-                                          flex.mean_and_variance(gamma).unweighted_sample_standard_deviation()))
-    self.plt.setp(sub_gamma.get_yticklabels(), visible=False)
-    sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
     gsp.update(wspace=0)
 

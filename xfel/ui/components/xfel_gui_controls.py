@@ -794,5 +794,4 @@ class IsoformInfoCtrl(CtrlBase):
     if self.uc_values is not None:
       import xfel.ui.components.xfel_gui_plotter as pltr
       plotter = pltr.PopUpCharts()
-      plotter.plot_uc_histogram(info=self.uc_values)
-
+      plotter.plot_uc_histogram(info_list=[self.uc_values])
