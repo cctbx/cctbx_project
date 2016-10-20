@@ -150,6 +150,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["thickness"] = obj.get_thickness();
     result["material"] = obj.get_material();
     result["mu"] = obj.get_mu();
+    result["identifier"] = obj.get_identifier();
     result["mask"] = boost::python::list(obj.get_mask());
     result["gain"] = obj.get_gain();
     result["px_mm_strategy"] = to_dict(obj.get_px_mm_strategy());
@@ -181,6 +182,9 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
     if (obj.has_key("mu")) {
       result->set_mu(boost::python::extract<double>(obj["mu"]));
+    }
+    if (obj.has_key("identifier")) {
+      result->set_identifier(boost::python::extract<std::string>(obj["identifier"]));
     }
     if (obj.has_key("mask")) {
       scitbx::af::shared<int4> mask =
