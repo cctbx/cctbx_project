@@ -1703,7 +1703,12 @@ def run(args):
   #  file_name="nobs.mtz")
   if work_params.data_subsubsets.subsubset is not None and work_params.data_subsubsets.subsubset_total is not None:
     easy_pickle.dump("scaler_%d.pickle"%work_params.data_subsubsets.subsubset, scaler)
-  print >> out, ""
+  explanation = """
+Explanation:
+Completeness      = # unique Miller indices present in data / # Miller indices theoretical in asymmetric unit
+Asu. Multiplicity = # measurements / # Miller indices theoretical in asymmetric unit
+Obs. Multiplicity = # measurements / # unique Miller indices present in data"""
+  print >> out, explanation
   mtz_file, miller_array = scaler.finalize_and_save_data()
   #table_pickle_file = "%s_graphs.pkl" % work_params.output.prefix
   #easy_pickle.dump(table_pickle_file, [table1, table2])
@@ -1742,6 +1747,8 @@ def show_overall_observations(
   for i_bin in obs.binner().range_used():
     sel_w = obs.binner().selection(i_bin)
     sel_fo_all = obs.select(sel_w)
+    obs.binner()._have_format_strings=True
+    obs.binner().fmt_bin_range_used ="%6.3f -%6.3f"
     d_range = obs.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_counts=False)
     sel_redundancy = redundancy.select(sel_w)
@@ -1824,8 +1831,8 @@ def show_overall_observations(
   if (title is not None) :
     print >> out, title
   from libtbx import table_utils
-  table_header = ["","","","<asu","<obs","","","",""]
-  table_header2 = ["Bin","Resolution Range","Completeness","redun>","redun>","n_meas","<I>","<I/sig(I)>"]
+  table_header = ["","","","","<asu","<obs","","","",""]
+  table_header2 = ["Bin","Resolution Range","Completeness","%","multi>","multi>","n_meas","<I>","<I/sig(I)>"]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
@@ -1834,6 +1841,7 @@ def show_overall_observations(
     table_row.append("%3d" % bin.i_bin)
     table_row.append("%-13s" % bin.d_range)
     table_row.append("%13s" % bin.complete_tag)
+    table_row.append("%5.2f" % (100*bin.completeness))
     table_row.append("%6.2f" % bin.redundancy_asu)
     table_row.append("%6.2f" % bin.redundancy_obs)
     table_row.append("%6d" % bin.measurements)
@@ -1845,6 +1853,7 @@ def show_overall_observations(
       format_value("%3s",   "All"),
       format_value("%-13s", "                 "),
       format_value("%13s",  "[%d/%d]"%(cumulative_unique,cumulative_theor)),
+      format_value("%5.2f", 100*(cumulative_unique/cumulative_theor)),
       format_value("%6.2f", cumulative_meas/cumulative_theor),
       format_value("%6.2f", cumulative_meas/cumulative_unique),
       format_value("%6d",   cumulative_meas),
