@@ -740,7 +740,7 @@ class ImageSet(object):
       if index is None:
         index = 0
       path = self.get_path(index)
-      return "%s-%d" % (path, index)
+      return "%s-%d" % (path, self._image_index(index))
     return self.get_path(index)
 
   def _image_index(self, index=None):
