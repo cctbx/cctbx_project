@@ -343,6 +343,20 @@ class xfel_db_application(object):
     run_ids = ["%d"%i[0] for i in cursor.fetchall()]
     return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
 
+  def get_trial_tags(self, trial_id):
+    tag = self.params.experiment_tag
+    query = """SELECT tag.id FROM `%s_tag` tag
+               JOIN `%s_run_tag` rt ON rt.tag_id = tag.id
+               JOIN `%s_run` run ON run.id = rt.run_id
+               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND run.run <= rg.endrun
+               JOIN `%s_trial_rungroup` t_rg ON t_rg.rungroup_id = rg.id
+               JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
+               WHERE trial.id=%d AND rg.active=True
+               """ % (tag, tag, tag, tag, tag, tag, trial_id)
+    cursor = self.execute_query(query)
+    tag_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    return self.get_all_x(Tag, "tag", where = "WHERE tag.id IN (%s)"%",".join(tag_ids))
+
   def get_all_trials(self, only_active = False):
     if only_active:
       return [t for t in self.get_all_x(Trial, "trial") if t.active]
