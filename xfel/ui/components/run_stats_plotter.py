@@ -161,7 +161,7 @@ def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=
     slice_idx_high_sel = idx_high_sel[start:end+1]
     n_idx_low = slice_idx_low_sel.count(True)
     n_idx_high = slice_idx_high_sel.count(True)
-    tags = run_tags[idx]
+    tags = run_tags[idx] if idx < len(run_tags) else []
     ax4.text(start_t, 3.9, " " + ", ".join(tags)).set_fontsize(3*plot_ratio)
     ax4.text(start_t, .9, "run %d" % run_numbers[idx]).set_fontsize(3*plot_ratio)
     ax4.text(start_t, .7, "%d f/%d h" % (lengths[idx], n_hits)).set_fontsize(3*plot_ratio)
@@ -175,7 +175,16 @@ def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=
       item.tick_params(labelsize=3*plot_ratio)
     start += lengths[idx]
   if interactive:
+    def onclick(event):
+      import math
+      ts = event.xdata
+      diffs = flex.abs(t - ts)
+      ts = t[flex.first_index(diffs, flex.min(diffs))]
+      print get_paths_from_timestamps([ts], tag="shot")[0]
+
+    cid = f.canvas.mpl_connect('button_press_event', onclick)
     plt.show()
+    f.canvas.mpl_disconnect(cid)
   else:
     f.set_size_inches(xsize, ysize)
     f.savefig("runstats_tmp.png", bbox_inches='tight', dpi=100)
