@@ -45,7 +45,7 @@ description = 'The cctbx.xfel UI is developed for use during data collection ' \
 
 class TagSet(object):
   def __init__(self, tag_selection_mode, tags):
-    assert set_type in ['union', 'intersection']
+    assert tag_selection_mode in ['union', 'intersection']
     self.mode = tag_selection_mode
     self.tags = tags
   def __str__(self):
@@ -474,11 +474,8 @@ EVT_UNITCELL_REFRESH = wx.PyEventBinder(tp_EVT_UNITCELL_REFRESH, 1)
 
 class RefreshUnitCell(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
-  def __init__(self, etype, eid, result=None):
+  def __init__(self, etype, eid):
     wx.PyCommandEvent.__init__(self, etype, eid)
-    self.result = result
-  def GetValue(self):
-    return self.result
 
 class UnitCellSentinel(Thread):
   ''' Worker thread for unit cell analysis; generated so that the GUI does not lock up when
@@ -490,14 +487,12 @@ class UnitCellSentinel(Thread):
     Thread.__init__(self)
     self.parent = parent
     self.active = active
-    self.output = self.parent.params.output_folder
-    self.infos = {}
 
     # on initialization (and restart), make sure tab drawn from scratch
     self.parent.run_window.unitcell_tab.redraw_windows = True
 
   def post_refresh(self):
-    evt = RefreshUnitCell(tp_EVT_UNITCELL_REFRESH, -1, self.infos)
+    evt = RefreshUnitCell(tp_EVT_UNITCELL_REFRESH, -1)
     wx.PostEvent(self.parent.run_window.unitcell_tab, evt)
 
   def run(self):
@@ -507,9 +502,27 @@ class UnitCellSentinel(Thread):
 
     while self.active:
       self.parent.run_window.unitcell_light.change_status('idle')
-      # fetch unit cell info objects
-      # generate the plot as a png
-      # post the static bitmap to the tab
+      trial = self.parent.run_window.unitcell_tab.trial
+      tag_sets = self.parent.run_window.unitcell_tab.tag_sets
+
+      info_list = []
+      for tag_set in tag_sets:
+        print "Reading data for tagset", str(tag_set)
+        cells = self.db.get_stats(trial=trial, tags=tag_set.tags, isigi_cutoff = 1.0, tag_selection_mode = tag_set.mode)()
+        info = []
+        for cell in cells:
+          info.append({'a':cell.cell_a,
+                       'b':cell.cell_b,
+                       'c':cell.cell_c,
+                       'alpha':cell.cell_alpha,
+                       'beta':cell.cell_beta,
+                       'gamma':cell.cell_gamma,
+                       'n_img':0})
+        info_list.append(info)
+      import xfel.ui.components.xfel_gui_plotter as pltr
+      plotter = pltr.PopUpCharts(interactive=False)
+      self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(info_list=info_list)
+
       self.parent.run_window.unitcell_light.change_status('on')
       time.sleep(5)
 
