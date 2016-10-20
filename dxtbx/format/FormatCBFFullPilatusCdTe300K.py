@@ -33,12 +33,12 @@ class FormatCBFFullPilatusCdTe300K(FormatCBFFullPilatus):
 
     return False
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
     assert(self.understand(image_file))
 
-    FormatCBFFullPilatus.__init__(self, image_file)
+    FormatCBFFullPilatus.__init__(self, image_file, **kwargs)
 
     return
 

@@ -45,9 +45,9 @@ class FormatHDF5Nexus(FormatHDF5):
 
     return False
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     assert(self.understand(image_file))
-    FormatHDF5.__init__(self, image_file)
+    FormatHDF5.__init__(self, image_file, **kwargs)
 
   def _start(self):
     import h5py

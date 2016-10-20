@@ -23,7 +23,7 @@ class FormatEigerStream(Format, FormatMultiImage):
       return False
     return True
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''
     Initialise the class
 
@@ -38,8 +38,8 @@ class FormatEigerStream(Format, FormatMultiImage):
     self._beam_instance = None
     self._scan_instance = None
 
-    FormatMultiImage.__init__(self)
-    Format.__init__(self, image_file)
+    FormatMultiImage.__init__(self, **kwargs)
+    Format.__init__(self, image_file, **kwargs)
 
     self.setup()
     return

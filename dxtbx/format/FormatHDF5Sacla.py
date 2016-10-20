@@ -12,9 +12,9 @@ class FormatHDF5Sacla(FormatHDF5, FormatStill):
 
     return 'file_info' in h5_handle and 'run_number_list' in h5_handle['file_info']
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     assert(self.understand(image_file))
-    FormatHDF5.__init__(self, image_file)
+    FormatHDF5.__init__(self, image_file, **kwargs)
 
   def _start(self):
     import h5py

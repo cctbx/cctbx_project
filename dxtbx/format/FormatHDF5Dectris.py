@@ -17,11 +17,11 @@ class FormatHDF5Dectris(FormatHDF5):
 
     return tag == "\211HDF\r\n\032\n"
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
 
     assert(self.understand(image_file))
 
-    FormatHDF5.__init__(self, image_file)
+    FormatHDF5.__init__(self, image_file, **kwargs)
 
   def _start(self):
     from iotbx.detectors.eiger import EIGERImage

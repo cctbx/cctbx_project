@@ -21,10 +21,10 @@ class FormatXDS(Format):
     from rstbx.cftbx.coordinate_frame_helpers import is_recognized_file
     return is_recognized_file(image_file)
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
-    Format.__init__(self, image_file)
+    Format.__init__(self, image_file, **kwargs)
 
     assert(self.understand(image_file))
     return

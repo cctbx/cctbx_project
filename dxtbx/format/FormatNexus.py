@@ -28,9 +28,9 @@ from dxtbx.format.nexus import MaskFactory
 
 class FormatNexus(FormatHDF5):
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     assert(self.understand(image_file))
-    FormatHDF5.__init__(self, image_file)
+    FormatHDF5.__init__(self, image_file, **kwargs)
 
   @staticmethod
   def understand(image_file):

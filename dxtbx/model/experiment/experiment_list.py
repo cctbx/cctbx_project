@@ -373,6 +373,7 @@ class ExperimentList(object):
       r['mask'] = imset.external_lookup.mask.filename
       r['gain'] = imset.external_lookup.gain.filename
       r['pedestal'] = imset.external_lookup.pedestal.filename
+      r['params'] = imset.format_kwargs()
       result['imageset'].append(r)
 
     # Extract all the model dictionaries
@@ -537,6 +538,10 @@ class ExperimentListDict(object):
 
         # Create the imageset from the input data
         if imageset is not None:
+          if 'params' in imageset:
+            format_kwargs = imageset['params']
+          else:
+            format_kwargs = None
           if 'mask' in imageset and imageset['mask'] is not None:
             mask_filename = load_path(imageset['mask'])
             if self._check_format:
@@ -565,11 +570,11 @@ class ExperimentListDict(object):
             pedestal_filename = None
             pedestal = None
           if imageset['__id__'] == 'ImageSet':
-            imageset = self._make_stills(imageset)
+            imageset = self._make_stills(imageset, format_kwargs=format_kwargs)
           elif imageset['__id__'] == 'ImageGrid':
-            imageset = self._make_grid(imageset)
+            imageset = self._make_grid(imageset, format_kwargs=format_kwargs)
           elif imageset['__id__'] == 'ImageSweep':
-            imageset = self._make_sweep(imageset, scan)
+            imageset = self._make_sweep(imageset, scan, format_kwargs=format_kwargs)
           elif imageset['__id__'] == 'MemImageSet':
             imageset = self._make_mem_imageset(imageset)
           else:
@@ -633,7 +638,7 @@ class ExperimentListDict(object):
     ''' Can't make a mem imageset from dict. '''
     return None
 
-  def _make_stills(self, imageset):
+  def _make_stills(self, imageset, format_kwargs=None):
     ''' Make a still imageset. '''
     from dxtbx.imageset import ImageSetFactory
     from dxtbx.serialize.filename import load_path
@@ -644,15 +649,15 @@ class ExperimentListDict(object):
       assert len(indices) == len(filenames)
     return ImageSetFactory.make_imageset(
       filenames, None, check_format=self._check_format,
-      single_file_indices=indices)
+      single_file_indices=indices, format_kwargs=format_kwargs)
 
-  def _make_grid(self, imageset):
+  def _make_grid(self, imageset, format_kwargs=None):
     ''' Make a still imageset. '''
     from dxtbx.imageset import ImageGrid
     grid_size = imageset['grid_size']
-    return ImageGrid.from_imageset(self._make_stills(imageset), grid_size)
+    return ImageGrid.from_imageset(self._make_stills(imageset, format_kwargs=format_kwargs), grid_size)
 
-  def _make_sweep(self, imageset, scan):
+  def _make_sweep(self, imageset, scan, format_kwargs=None):
     ''' Make an image sweep. '''
     from dxtbx.sweep_filenames import template_image_range
     from dxtbx.imageset import ImageSetFactory
@@ -674,7 +679,8 @@ class ExperimentListDict(object):
       list(range(i0, i1+1)),
       None,
       check_format=self._check_format,
-      scan=scan)
+      scan=scan,
+      format_kwargs=format_kwargs)
 
   @staticmethod
   def model_or_none(mlist, eobj, name):

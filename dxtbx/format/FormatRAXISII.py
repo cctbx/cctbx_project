@@ -13,12 +13,12 @@ class FormatRAXISII(Format):
 
     return tag == "R-AXIS2"
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
     assert(self.understand(image_file))
 
-    Format.__init__(self, image_file)
+    Format.__init__(self, image_file, **kwargs)
 
   def detectorbase_start(self): pass
   def _start(self):

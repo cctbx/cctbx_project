@@ -2,6 +2,9 @@ from __future__ import division
 
 class FormatMultiImage(object):
 
+  def __init__(self, **kwargs):
+    pass
+
   def get_num_images(self):
     raise RuntimeError('Overload!')
 

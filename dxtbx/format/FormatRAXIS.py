@@ -92,10 +92,10 @@ class FormatRAXIS(Format):
 
     return False
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     assert(self.understand(image_file))
 
-    Format.__init__(self, image_file)
+    Format.__init__(self, image_file, **kwargs)
 
     return
 

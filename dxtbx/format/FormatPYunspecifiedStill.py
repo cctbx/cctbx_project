@@ -27,12 +27,12 @@ class FormatPYunspecifiedStill(FormatStill, FormatPYunspecified):
     return data['OSC_RANGE'] <= 0
 
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
     assert(self.understand(image_file))
 
-    FormatPYunspecified.__init__(self, image_file)
+    FormatPYunspecified.__init__(self, image_file, **kwargs)
 
 class FormatPYunspecifiedStillInMemory(FormatStill, FormatPYunspecifiedInMemory):
   """ Overrides the Format object's init method to accept an image dictionary
@@ -53,9 +53,9 @@ class FormatPYunspecifiedStillInMemory(FormatStill, FormatPYunspecifiedInMemory)
 
     return data['OSC_RANGE'] <= 0
 
-  def __init__(self, data):
+  def __init__(self, data, **kwargs):
     """ @param data In memory image dictionary, alredy initialized """
-    FormatPYunspecifiedInMemory.__init__(self, data)
+    FormatPYunspecifiedInMemory.__init__(self, data, **kwargs)
 
     import copy
     self._image_file = copy.deepcopy(data)

@@ -101,7 +101,7 @@ class Format(object):
   def ignore(cls):
     return False
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''Initialize a class instance from an image file.'''
 
     self._image_file = image_file

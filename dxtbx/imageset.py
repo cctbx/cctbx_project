@@ -205,10 +205,15 @@ class SingleFileReader(ReaderBase):
 class MultiFileState(object):
   '''A class to keep track of multi file reader state.'''
 
-  def __init__(self, format_class):
+  def __init__(self, format_class, format_kwargs=None):
     '''Initialise with format class.'''
     self._format_class = format_class
     self._current_format_instance = None
+
+    if format_kwargs is None:
+      self._format_kwargs = {}
+    else:
+      self._format_kwargs = format_kwargs
 
   def format_class(self):
     '''Get the format class.'''
@@ -222,7 +227,7 @@ class MultiFileState(object):
         filename != self.get_format().get_image_file()):
 
       # Read the format instance
-      format_instance = self._format_class(filename)
+      format_instance = self._format_class(filename, **self._format_kwargs)
 
       # Check the format instance is valid
       if not self._is_format_valid(format_instance):
@@ -246,11 +251,13 @@ class MultiFileState(object):
     else:
       current_filename = None
     return { 'format_class' : self._format_class,
-             'current_filename' : current_filename }
+             'current_filename' : current_filename,
+             'format_kwargs' : self._format_kwargs }
 
   def __setstate__(self, state):
     ''' Set the format class and load the image. '''
     self._format_class = state['format_class']
+    self._format_kwargs = state['format_kwargs']
     self._current_format_instance = None
     if state['current_filename'] is not None:
       self.load_file(state['current_filename'])
@@ -264,7 +271,8 @@ class NullFormatChecker(object):
 class MultiFileReader(ReaderBase):
   '''A multi file reader class implementing the ReaderBase interface.'''
 
-  def __init__(self, format_class, filenames, formatchecker=None):
+  def __init__(self, format_class, filenames, formatchecker=None,
+               format_kwargs=None):
     '''Initialise the reader with the format and list of filenames.'''
     ReaderBase.__init__(self)
 
@@ -278,7 +286,7 @@ class MultiFileReader(ReaderBase):
     self._filenames = filenames
 
     # Handle the state of the MultiFileReader class
-    self._state = MultiFileState(format_class)
+    self._state = MultiFileState(format_class, format_kwargs=format_kwargs)
 
     # A function object to check formats are valid
     if formatchecker != None:
@@ -454,7 +462,7 @@ class ExternalLookup(object):
 class ImageSet(object):
   ''' A class exposing the external image set interface. '''
 
-  def __init__(self, reader, indices=None, models=None):
+  def __init__(self, reader, indices=None, models=None, format_kwargs=None):
     ''' Initialise the ImageSet object.
 
     Params:
@@ -487,6 +495,9 @@ class ImageSet(object):
     # Some static stuff
     self.external_lookup = ExternalLookup()
 
+    # The format kwargs
+    self._format_kwargs = format_kwargs
+
   def __getitem__(self, item):
     ''' Get an item from the image set stream.
 
@@ -503,7 +514,11 @@ class ImageSet(object):
     '''
     if isinstance(item, slice):
       indices = self._indices[item]
-      subset = ImageSet(self.reader(), indices, self._models)
+      subset = ImageSet(
+        self.reader(),
+        indices,
+        self._models,
+        format_kwargs=self.format_kwargs())
       subset.external_lookup = self.external_lookup
       return subset
     else:
@@ -623,6 +638,10 @@ class ImageSet(object):
       return True
     return self.reader() == other.reader()
 
+  def format_kwargs(self):
+    ''' Get the format keyword args '''
+    return self._format_kwargs
+
   def indices(self):
     ''' Return the indices in the image set. '''
     return list(self._indices)
@@ -734,7 +753,7 @@ class ImageSet(object):
 
   def complete_set(self):
     ''' Return the set of all images (i.e. not just the subset). '''
-    return ImageSet(self.reader(), models=self._models)
+    return ImageSet(self.reader(), models=self._models, format_kwargs=self.format_kwargs())
 
 
 class ImageGrid(ImageSet):
@@ -742,7 +761,8 @@ class ImageGrid(ImageSet):
   A class implementing an interface useful for processing grid scans
 
   '''
-  def __init__(self, reader, indices=None, models=None, grid_size=None):
+  def __init__(self, reader, indices=None, models=None, grid_size=None,
+               format_kwargs=None):
     ''' Initialise the ImageSet object.
 
     Params:
@@ -750,7 +770,8 @@ class ImageGrid(ImageSet):
         array_range The image range (first, last)
 
     '''
-    super(ImageGrid, self).__init__(reader, indices, models)
+    super(ImageGrid, self).__init__(reader, indices, models,
+                                    format_kwargs=format_kwargs)
 
     # Set the grid size
     num = grid_size[0] * grid_size[1]
@@ -774,7 +795,8 @@ class ImageGrid(ImageSet):
       imageset.reader(),
       imageset._indices,
       imageset._models,
-      grid_size)
+      grid_size,
+      format_kwargs=self.format_kwargs())
 
 
 class MemImageSet(ImageSet):
@@ -782,7 +804,7 @@ class MemImageSet(ImageSet):
   an already instantiated list of Format objects. Derives from ImageSet for clarity and for
   the dials importer, but overrides all of ImageSet's methods '''
 
-  def __init__(self, images, indices=None):
+  def __init__(self, images, indices=None, format_kwargs=None):
     ''' Initialise the MemImageSet object.
 
     Params:
@@ -828,7 +850,10 @@ class MemImageSet(ImageSet):
     '''
     if isinstance(item, slice):
       indices = self._indices[item]
-      subset = MemImageSet(self._images, indices)
+      subset = MemImageSet(
+        self._images,
+        indices,
+        format_kwargs=self.format_kwarg())
       subset.external_lookup = self.external_lookup
       return subset
     else:
@@ -1020,7 +1045,8 @@ class ImageSweep(ImageSet):
 
   def __init__(self, reader, indices=None,
                beam=None, goniometer=None,
-               detector=None, scan=None):
+               detector=None, scan=None,
+               format_kwargs=None):
     ''' Create the sweep.
 
     If the models are given here. They are used, otherwise the models
@@ -1038,7 +1064,7 @@ class ImageSweep(ImageSet):
         scan The scan model
 
     '''
-    ImageSet.__init__(self, reader, indices)
+    ImageSet.__init__(self, reader, indices, format_kwargs=format_kwargs)
     # FIXME_HACK
     if scan is not None and self._indices != [0]:
       assert(scan.get_num_images() == (self._indices[-1] - self._indices[0] + 1))
@@ -1068,8 +1094,14 @@ class ImageSweep(ImageSet):
         scan = None
       else:
         scan = self._scan[item]
-      subset = ImageSweep(self.reader(), self._indices[item],
-        self._beam, self._goniometer, self._detector, scan)
+      subset = ImageSweep(
+        self.reader(),
+        self._indices[item],
+        self._beam,
+        self._goniometer,
+        self._detector,
+        scan,
+        format_kwargs=self.format_kwargs())
       subset.external_lookup = self.external_lookup
       return subset
     else:
@@ -1550,7 +1582,7 @@ class ImageSetFactory(object):
 
   @staticmethod
   def make_imageset(filenames, format_class=None, check_format=True,
-                    single_file_indices=None):
+                    single_file_indices=None, format_kwargs=None):
     '''Create an image set'''
     from dxtbx.format.Registry import Registry
     from format.FormatMultiImage import FormatMultiImage
@@ -1563,18 +1595,22 @@ class ImageSetFactory(object):
     else:
       if issubclass(format_class, FormatMultiImage):
         assert len(set(filenames)) == 1
-        format_instance = format_class(filenames[0])
+        if format_kwargs is None:
+          format_kwargs = {}
+        format_instance = format_class(filenames[0], **format_kwargs)
         reader = SingleFileReader(format_instance)
       else:
-        reader = MultiFileReader(format_class, filenames)
+        reader = MultiFileReader(format_class, filenames,
+                                 format_kwargs=format_kwargs)
 
     # Return the imageset
-    return ImageSet(reader, indices=single_file_indices)
+    return ImageSet(reader, indices=single_file_indices,
+                    format_kwargs=format_kwargs)
 
   @staticmethod
   def make_sweep(template, indices, format_class=None, beam=None,
                  detector=None, goniometer=None, scan=None,
-                 check_format=True):
+                 check_format=True, format_kwargs=None):
     '''Create a sweep'''
     import os
     from dxtbx.format.Registry import Registry
@@ -1620,8 +1656,10 @@ class ImageSetFactory(object):
       reader = NullReader(filenames)
     else:
       if issubclass(format_class, FormatMultiImage):
+        if format_kwargs is None:
+          format_kwargs = {}
         assert len(filenames) == 1
-        format_instance = format_class(filenames[0])
+        format_instance = format_class(filenames[0], **format_kwargs)
         if scan is not None:
           image0 = scan.get_array_range()[0]
           indices = list(range(scan.get_num_images()))
@@ -1629,7 +1667,8 @@ class ImageSetFactory(object):
       else:
         assert(template_format is not None)
         filenames = SweepFileList(template_format, array_range)
-        reader = MultiFileReader(format_class, filenames)
+        reader = MultiFileReader(format_class, filenames,
+                                 format_kwargs=format_kwargs)
 
     # Create the sweep object
     sweep = ImageSweep(
@@ -1638,7 +1677,8 @@ class ImageSetFactory(object):
       beam=beam,
       detector=detector,
       goniometer=goniometer,
-      scan=scan)
+      scan=scan,
+      format_kwargs=format_kwargs)
 
     # Return the sweep
     return sweep

@@ -30,12 +30,12 @@ class FormatCBFFullPilatus(FormatCBFFull):
 
     return False
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
     assert(self.understand(image_file))
 
-    FormatCBFFull.__init__(self, image_file)
+    FormatCBFFull.__init__(self, image_file, **kwargs)
 
     self._raw_data = None
 

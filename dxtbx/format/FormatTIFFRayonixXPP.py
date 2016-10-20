@@ -55,7 +55,7 @@ class FormatTIFFRayonixXPP(FormatTIFFRayonix):
 
     return pattern.match(filepath)
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment.'''
 
@@ -63,7 +63,7 @@ class FormatTIFFRayonixXPP(FormatTIFFRayonix):
 
     from iotbx.detectors.mar import MARImage
     MARImage._read_header_asserts = lambda self: None
-    FormatTIFFRayonix.__init__(self, image_file)
+    FormatTIFFRayonix.__init__(self, image_file, **kwargs)
 
     return
 

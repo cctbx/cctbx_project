@@ -198,7 +198,7 @@ class FormatCBFCspadInMemory(FormatCBFCspad):
     """
     return False
 
-  def __init__(self, cbf_handle):
+  def __init__(self, cbf_handle, **kwargs):
     """ @param cbf_handle In memory cbf_handle, alredy initialized """
     from dxtbx.model.detector import Detector, detector_factory
     from dxtbx.model.beam import Beam, beam_factory

@@ -40,14 +40,14 @@ class FormatSMVRigakuA200SPring8BL26B1(FormatSMVRigakuA200):
 
     return True
 
-  def __init__(self, image_file):
+  def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment. Easy from Rigaku A200 images as
     they contain everything pretty much we need...'''
 
     assert(self.understand(image_file))
 
-    FormatSMVRigakuA200.__init__(self, image_file)
+    FormatSMVRigakuA200.__init__(self, image_file, **kwargs)
 
     return
 

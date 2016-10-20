@@ -32,12 +32,12 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
         return True
     return False
 
-  def __init__(self, image_file, index = 0, reconst_mode = False):
+  def __init__(self, image_file, index = 0, reconst_mode = False, **kwargs):
     assert(self.understand(image_file))
     self._raw_data = None
     self.index = index
     self.image_filename = image_file
-    FormatHDF5.__init__(self, image_file)
+    FormatHDF5.__init__(self, image_file, **kwargs)
 
     self.PIXEL_SIZE = 50 / 1000 # 50 um
     self.RECONST_SIZE = 2398 # compatible with DataConvert3 -reconst mode
