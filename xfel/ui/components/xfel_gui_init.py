@@ -43,6 +43,14 @@ license = 'cctbx.xfel and cctbx.xfel UI are developed under the open source ' \
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
               'and initial processing at LCSL XFEL beamlines.'
 
+class TagSet(object):
+  def __init__(self, tag_selection_mode, tags):
+    assert set_type in ['union', 'intersection']
+    self.mode = tag_selection_mode
+    self.tags = tags
+  def __str__(self):
+    return ", ".join([t.name for t in self.tags]) + (' (%s)' % self.mode.upper())
+
 
 # ------------------------------- Run Sentinel ------------------------------- #
 
@@ -1821,7 +1829,7 @@ class UnitCellTab(BaseTab):
     self.trial_no = None
     self.trial = None
     self.all_tags = []
-    self.selected_tags = []
+    self.tag_sets = []
     self.png = None
     self.static_bitmap = None
     self.redraw_windows = True
@@ -1863,6 +1871,28 @@ class UnitCellTab(BaseTab):
                                      label='Add selection',
                                      size=(200, -1))
 
+    self.tag_sets_checklist = gctr.CheckListCtrl(self,
+                                                 label='Tag sets:',
+                                                 label_size=(200, -1),
+                                                 label_style='normal',
+                                                 ctrl_size=(150, 200),
+                                                 direction='vertical',
+                                                 choices=[])
+
+    self.remove_sele_button = wx.Button(self,
+                                        label='Remove selection',
+                                        size=(200, -1))
+
+    self.reset_sele_button = wx.Button(self,
+                                       label='Reset selections',
+                                       size=(200, -1))
+
+    self.button_box_sizer = wx.GridBagSizer(1, 2)
+    self.button_box_sizer.Add(self.remove_sele_button, pos=(0, 0),
+                              border=10)
+    self.button_box_sizer.Add(self.reset_sele_button, pos=(0, 1),
+                              border=10)
+
     self.add_sele_sizer = wx.GridBagSizer(4, 1)
     self.add_sele_sizer.Add(self.trial_number, pos=(0, 0),
                             flag=wx.ALL, border=10)
@@ -1872,14 +1902,14 @@ class UnitCellTab(BaseTab):
                             flag=wx.ALL, border=10)
     self.add_sele_sizer.Add(self.add_sele_button, pos=(3, 0),
                             flag=wx.ALL, border=10)
-    self.selection_columns_sizer.Add(self.add_sele_sizer, flag=wx.EXPAND, border=10)
+    self.selection_columns_sizer.Add(self.add_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.remove_sele_sizer = wx.GridBagSizer(3, 1)
-    # self.remove_sele_sizer.Add(self.tag_sets_checklist, pos=(0, 0),
-    #                            flag=wx.ALL, border=10)
-    # self.remove_sele_sizer.Add(self.button_box, pos=(1, 0),
-    #                            flag=wx.ALL, border=10)
-    self.selection_columns_sizer.Add(self.remove_sele_sizer, flag=wx.EXPAND)
+    self.remove_sele_sizer.Add(self.tag_sets_checklist, pos=(0, 0),
+                               flag=wx.ALL, border=10)
+    self.remove_sele_sizer.Add(self.button_box_sizer, pos=(1, 0),
+                               flag=wx.ALL, border=10)
+    self.selection_columns_sizer.Add(self.remove_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.main_sizer.Add(self.selection_columns_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
