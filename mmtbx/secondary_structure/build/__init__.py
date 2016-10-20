@@ -654,12 +654,24 @@ def substitute_ss(real_h,
     grm = get_geometry_restraints_manager(
       processed_pdb_file, xray_structure)
     t8 = time()
-
+  else:
+    ss_manager = secondary_structure.manager(
+        pdb_hierarchy=real_h,
+        geometry_restraints_manager=grm.geometry,
+        sec_str_from_pdb_file=ss_annotation,
+        params=None,
+        mon_lib_srv=None,
+        verbose=-1,
+        log=log)
+    grm.geometry.set_secondary_structure_restraints(
+        ss_manager=ss_manager,
+        hierarchy=real_h,
+        log=log)
   real_h.reset_i_seq_if_necessary()
-  if verbose:
-    print >> log, "Adding reference coordinate restraints..."
   from mmtbx.geometry_restraints import reference
   if reference_map is None:
+    if verbose:
+      print >> log, "Adding reference coordinate restraints..."
     grm.geometry.append_reference_coordinate_restraints_in_place(
         reference.add_coordinate_restraints(
             sites_cart = real_h.atoms().extract_xyz().select(helix_selection),

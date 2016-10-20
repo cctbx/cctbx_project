@@ -313,6 +313,8 @@ class model_idealization():
           mon_lib_srv=self.mon_lib_srv,
           verbose=-1,
           log=self.log)
+      # self.whole_pdb_h.write_pdb_file(file_name="for_ss.pdb")
+      self.whole_pdb_h.reset_atom_i_seqs()
       self.whole_grm.geometry.set_secondary_structure_restraints(
           ss_manager=ss_manager,
           hierarchy=self.whole_pdb_h,
@@ -357,6 +359,7 @@ class model_idealization():
       self.working_pdb_h = self.master_pdb_h
     else:
       self.working_pdb_h = self.whole_pdb_h
+    self.working_pdb_h.reset_atom_i_seqs()
 
     self.ann = ioss.annotation.from_phil(
         phil_helices=self.params.secondary_structure.protein.helix,
