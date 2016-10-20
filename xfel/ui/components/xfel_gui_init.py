@@ -403,6 +403,14 @@ class RunStatsSentinel(Thread):
             self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
               d_min=self.parent.run_window.runstats_tab.d_min)())
             self.run_tags.append([tag.name for tag in run.tags])
+    self.reorder()
+
+  def reorder(self):
+    run_numbers_ordered = sorted(self.run_numbers)
+    order = [self.run_numbers.index(rn) for rn in run_numbers_ordered]
+    self.run_numbers = run_numbers_ordered
+    self.stats = [self.stats[i] for i in order]
+    self.run_tags = [self.run_tags[i] for i in order]
 
   def fetch_should_have_indexed_timestamps(self):
     from xfel.ui.components.run_stats_plotter import \
@@ -450,6 +458,52 @@ class RunStatsSentinel(Thread):
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
       run_tags=self.run_tags)
 
+# ----------------------------- Unit Cell Sentinel ----------------------------- #
+
+# Set up events for monitoring unit cell statistics
+tp_EVT_UNITCELL_REFRESH = wx.NewEventType()
+EVT_UNITCELL_REFRESH = wx.PyEventBinder(tp_EVT_UNITCELL_REFRESH, 1)
+
+class RefreshUnitCell(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, result=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.result = result
+  def GetValue(self):
+    return self.result
+
+class UnitCellSentinel(Thread):
+  ''' Worker thread for unit cell analysis; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+    self.output = self.parent.params.output_folder
+    self.infos = {}
+
+    # on initialization (and restart), make sure tab drawn from scratch
+    self.parent.run_window.unitcell_tab.redraw_windows = True
+
+  def post_refresh(self):
+    evt = RefreshUnitCell(tp_EVT_UNITCELL_REFRESH, -1, self.infos)
+    wx.PostEvent(self.parent.run_window.unitcell_tab, evt)
+
+  def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+    self.db = xfel_db_application(self.parent.params)
+
+    while self.active:
+      self.parent.run_window.unitcell_light.change_status('idle')
+      # fetch unit cell info objects
+      # generate the plot as a png
+      # post the static bitmap to the tab
+      self.parent.run_window.unitcell_light.change_status('on')
+      time.sleep(5)
 
 # ------------------------------- Frames Sentinel ------------------------------- #
 
@@ -593,6 +647,7 @@ class MainWindow(wx.Frame):
     self.job_monitor = None
     self.prg_sentinel = None
     self.runstats_sentinel = None
+    self.unitcell_sentinel = None
 
     self.params = load_cached_settings()
     self.db = None
@@ -687,6 +742,9 @@ class MainWindow(wx.Frame):
     if self.runstats_sentinel is not None and self.runstats_sentinel.active:
       self.stop_runstats_sentinel()
 
+    if self.unitcell_sentinel is not None and self.unitcell_sentinel.active:
+      self.stop_unitcell_sentinel()
+
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
     self.run_sentinel.start()
@@ -747,6 +805,17 @@ class MainWindow(wx.Frame):
     if block:
       self.runstats_sentinel.join()
 
+  def start_unitcell_sentinel(self):
+    self.unitcell_sentinel = UnitCellSentinel(self, active=True)
+    self.unitcell_sentinel.start()
+    self.run_window.unitcell_light.change_status('on')
+
+  def stop_unitcell_sentinel(self, block = True):
+    self.run_window.unitcell_light.change_status('off')
+    self.unitcell_sentinel.active = False
+    if block:
+      self.unitcell_sentinel.join()
+
   def OnAboutBox(self, e):
     ''' About dialog '''
     info = wx.AboutDialogInfo()
@@ -800,6 +869,10 @@ class MainWindow(wx.Frame):
         self.start_runstats_sentinel()
         self.run_window.runstats_light.change_status('on')
     elif tab == 5:
+      if self.unitcell_sentinel is None or not self.unitcell_sentinel.active:
+        self.start_unitcell_sentinel()
+        self.run_window.unitcell_light.change_status('on')
+    elif tab == 6:
       self.run_window.merge_tab.find_trials()
 
   def onLeavingTab(self, e):
@@ -816,6 +889,10 @@ class MainWindow(wx.Frame):
       if self.runstats_sentinel.active:
         self.stop_runstats_sentinel(block = False)
         self.run_window.runstats_light.change_status('off')
+    elif tab == 5:
+      if self.unitcell_sentinel.active:
+        self.stop_unitcell_sentinel(block = False)
+        self.run_window.unitcell_light.change_status('off')
 
 
   def onQuit(self, e):
@@ -838,25 +915,29 @@ class RunWindow(wx.Panel):
     self.jobs_tab = JobsTab(self.main_nbook, main=self.parent)
     self.status_tab = StatusTab(self.main_nbook, main=self.parent)
     self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
+    self.unitcell_tab = UnitCellTab(self.main_nbook, main=self.parent)
     self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, 'Runs')
     self.main_nbook.AddPage(self.trials_tab, 'Trials')
     self.main_nbook.AddPage(self.jobs_tab, 'Jobs')
     self.main_nbook.AddPage(self.status_tab, 'Status')
     self.main_nbook.AddPage(self.runstats_tab, 'Run Stats')
+    self.main_nbook.AddPage(self.unitcell_tab, 'Unit Cell')
     self.main_nbook.AddPage(self.merge_tab, 'Merge')
 
-    self.sentinel_box = wx.FlexGridSizer(1, 5, 0, 20)
+    self.sentinel_box = wx.FlexGridSizer(1, 6, 0, 20)
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
     self.jmn_light = gctr.SentinelStatus(self.main_panel, label='Job Monitor')
     self.prg_light = gctr.SentinelStatus(self.main_panel, label='Progress Sentinel')
     self.runstats_light = gctr.SentinelStatus(self.main_panel, label='Run Stats Sentinel')
+    self.unitcell_light = gctr.SentinelStatus(self.main_panel, label='Unit Cell Sentinel')
     self.sentinel_box.Add(self.run_light)
     self.sentinel_box.Add(self.job_light)
     self.sentinel_box.Add(self.jmn_light)
     self.sentinel_box.Add(self.prg_light)
     self.sentinel_box.Add(self.runstats_light)
+    self.sentinel_box.Add(self.unitcell_light)
 
     nb_sizer = wx.BoxSizer(wx.VERTICAL)
     nb_sizer.Add(self.main_nbook, 1, flag=wx.EXPAND | wx.ALL, border=3)
@@ -1485,7 +1566,6 @@ class StatusTab(BaseTab):
     self.rows[name]['high_bin'] = row.bins.ctr.GetClientData(
       row.bins.ctr.GetSelection())
 
-
 class RunStatsTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
@@ -1731,6 +1811,78 @@ class RunStatsTab(BaseTab):
     n_strong = self.n_strong_cutoff.n_strong.GetValue()
     if n_strong.isdigit():
       self.n_strong = int(n_strong)
+
+class UnitCellTab(BaseTab):
+  def __init__(self, parent, main):
+    BaseTab.__init__(self, parent=parent)
+
+    self.main = main
+    self.all_trials = []
+    self.trial_no = None
+    self.trial = None
+    self.all_tags = []
+    self.selected_tags = []
+    self.png = None
+    self.static_bitmap = None
+    self.redraw_windows = True
+
+    # self.unitcell_panel = wx.Panel(self, size=(200, 120))
+    # self.unitcell_box = wx.StaticBox(self.unitcell_panel, label='Unit Cell Analysis')
+    # self.unitcell_sizer = wx.StaticBoxSizer(self.unitcell_box, wx.VERTICAL | wx.EXPAND)
+    # self.unitcell_panel.SetSizer(self.unitcell_sizer)
+
+    self.selection_columns_panel = wx.Panel(self, size=(200, 120))
+    self.selection_columns_box = wx.StaticBox(self.selection_columns_panel, label='Select tag sets')
+    self.selection_columns_sizer = wx.StaticBoxSizer(self.selection_columns_box, wx.HORIZONTAL | wx.EXPAND)
+    self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
+
+    self.trial_number = gctr.ChoiceCtrl(self,
+                                        label='Trial:',
+                                        label_size=(90, -1),
+                                        label_style='normal',
+                                        ctrl_size=(100, -1),
+                                        choices=[])
+
+    self.tag_checklist = gctr.CheckListCtrl(self,
+                                            label='Tags:',
+                                            label_size=(200, -1),
+                                            label_style='normal',
+                                            ctrl_size=(150, 200),
+                                            direction='vertical',
+                                            choices=[])
+
+    self.selection_type_radio = gctr.RadioCtrl(self,
+                                               label='',
+                                               label_style='normal',
+                                               label_size=(-1, -1),
+                                               direction='horizontal',
+                                               items={'union':'union',
+                                                      'inter':'intersection'})
+
+    self.add_sele_button = wx.Button(self,
+                                     label='Add selection',
+                                     size=(200, -1))
+
+    self.add_sele_sizer = wx.GridBagSizer(4, 1)
+    self.add_sele_sizer.Add(self.trial_number, pos=(0, 0),
+                            flag=wx.ALL, border=10)
+    self.add_sele_sizer.Add(self.tag_checklist, pos=(1, 0),
+                            flag=wx.ALL, border=10)
+    self.add_sele_sizer.Add(self.selection_type_radio, pos=(2, 0),
+                            flag=wx.ALL, border=10)
+    self.add_sele_sizer.Add(self.add_sele_button, pos=(3, 0),
+                            flag=wx.ALL, border=10)
+    self.selection_columns_sizer.Add(self.add_sele_sizer, flag=wx.EXPAND, border=10)
+
+    self.remove_sele_sizer = wx.GridBagSizer(3, 1)
+    # self.remove_sele_sizer.Add(self.tag_sets_checklist, pos=(0, 0),
+    #                            flag=wx.ALL, border=10)
+    # self.remove_sele_sizer.Add(self.button_box, pos=(1, 0),
+    #                            flag=wx.ALL, border=10)
+    self.selection_columns_sizer.Add(self.remove_sele_sizer, flag=wx.EXPAND)
+
+    self.main_sizer.Add(self.selection_columns_panel, 1,
+                        flag=wx.EXPAND | wx.ALL, border=10)
 
 class MergeTab(BaseTab):
   def __init__(self, parent, main, prefix='prime'):
