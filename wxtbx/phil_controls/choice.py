@@ -25,6 +25,10 @@ class ChoiceCtrl (wx.Choice, phil_controls.PhilCtrl) :
       captions.insert(0, "---")
       choices.insert(0, None)
       selection = 0
+    # not ideal, but changing "selection = None" to "selection = 0" can break
+    # other choice widgets in other GUI panels
+    if (selection is None) and not (allow_none):
+      selection = 0
     self._options = choices
     self.SetItems(captions)
     self.SetSelection(selection)
