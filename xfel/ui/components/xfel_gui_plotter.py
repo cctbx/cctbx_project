@@ -116,9 +116,10 @@ class PopUpCharts(object):
   ''' Class to generate chargs and graphs that will appear in separate
   windows when user requests them, e.g. unit cell histogram chart '''
 
-  def __init__(self):
+  def __init__(self, interactive = True):
     import matplotlib.pyplot as plt
     self.plt=plt
+    self.interactive = interactive
 
   def reject_outliers(self, data):
     from scitbx.math import five_number_summary
@@ -131,7 +132,16 @@ class PopUpCharts(object):
     outliers.set_selected(data < q1_x - cut_x, True)
     return outliers
 
-  def plot_uc_histogram(self, info, extra_title = None):
+  def plot_uc_histogram(self, info, extra_title = None, xsize = 10, ysize = 10):
+    """
+    Plot a 3x3 grid of plots showing the unit cell dimensions.
+    @param info Dictionary of data
+    @param extra_title will be added to the title of the plot
+    @param xsize if class initialized with not interacive, this is the x size of the
+    plot to save in inches
+    @param ysize as xsize
+    @return if not interactive, returns the path of the saved image, otherwise None
+    """
 
     # Initialize figure
     fig = self.plt.figure(figsize=(12, 10))
@@ -246,7 +256,15 @@ class PopUpCharts(object):
 
     gsp.update(wspace=0)
 
+    if not self.interactive:
+      fig.set_size_inches(xsize, ysize)
+      fig.savefig("ucell_tmp.png", bbox_inches='tight', dpi=100)
+      plt.close(fig)
+      return "ucell_tmp.png"
+
   def plot_uc_3Dplot(self, info):
+    assert self.interactive
+
     import numpy as np
     from mpl_toolkits.mplot3d import Axes3D # import dependency
 
