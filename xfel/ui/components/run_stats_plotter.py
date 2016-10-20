@@ -79,17 +79,28 @@ def get_run_stats(timestamps,
   xtal_hits = n_strong >= n_strong_cutoff
   # indexing and droplet hit rate in a sliding window
   half_idx_rate_window = min(50, int(len(isigi_low)//20))
-  idx_low_sel = (isigi_low > 0) & (n_strong >= n_strong_cutoff)
-  idx_high_sel = (isigi_high > 0) & (n_strong >= n_strong_cutoff)
+  half_hq_rate_window = 500
+  low_sel = (isigi_low > 0) & (n_strong >= n_strong_cutoff)
+  high_sel = (isigi_high > 0) & (n_strong >= n_strong_cutoff)
   idx_rate = flex.double()
+  hq_rate = flex.double()
   drop_hit_rate = flex.double()
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)
     idx_max = min(i + half_idx_rate_window, len(isigi_low))
     idx_span = idx_max - idx_min
-    idx_sel = idx_low_sel[idx_min:idx_max]
+    idx_sel = low_sel[idx_min:idx_max]
     idx_local_rate = idx_sel.count(True)/idx_span
     idx_rate.append(idx_local_rate)
+    hq_min = max(0, i - half_hq_rate_window)
+    hq_max = min(i + half_hq_rate_window, len(isigi_low))
+    hq_span = hq_max - hq_min
+    hq_sel = low_sel[hq_min:hq_max]
+    hq_local_sel = high_sel[hq_min:hq_max]
+    if hq_sel.count(True) > 0:
+      hq_rate.append(hq_local_sel.count(True)/hq_sel.count(True))
+    else:
+      hq_rate.append(0)
     drop_sel = drop_hits[idx_min:idx_max]
     drop_local_rate = drop_sel.count(True)/idx_span
     drop_hit_rate.append(drop_local_rate)
@@ -100,8 +111,9 @@ def get_run_stats(timestamps,
           n_strong,
           xtal_hits,
           idx_rate,
-          idx_low_sel,
-          idx_high_sel,
+          hq_rate,
+          low_sel,
+          high_sel,
           isigi_low,
           isigi_high,
           half_idx_rate_window*2,
@@ -112,28 +124,30 @@ def get_run_stats(timestamps,
 def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=10):
   plot_ratio = max(min(xsize, ysize)/2.5, 3)
   t, drop_ratios, drop_hits, drop_hit_rate, n_strong, xtal_hits, \
-  idx_rate, idx_low_sel, idx_high_sel, isigi_low, isigi_high, \
+  idx_rate, hq_rate, low_sel, high_sel, isigi_low, isigi_high, \
   window, lengths, boundaries, run_numbers = stats
   if len(t) == 0:
     return None
-  max_idx_rate = max(idx_rate)
-  max_drop_rate = max(drop_hit_rate)
-  drop_rate_scaled = drop_hit_rate * max_idx_rate/max_drop_rate
   f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
   for a in (ax1, ax2, ax3, ax4):
     a.tick_params(axis='x', which='both', bottom='off', top='off')
-  ax1.scatter(t.select(~idx_low_sel), n_strong.select(~idx_low_sel), edgecolors="none", color ='grey', s=plot_ratio)
-  ax1.scatter(t.select(idx_low_sel), n_strong.select(idx_low_sel), edgecolors="none", color='blue', s=plot_ratio)
+  ax1.scatter(t.select(~low_sel), n_strong.select(~low_sel), edgecolors="none", color ='grey', s=plot_ratio)
+  ax1.scatter(t.select(low_sel), n_strong.select(low_sel), edgecolors="none", color='blue', s=plot_ratio)
   ax1.axis('tight')
   ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index").set_fontsize(3*plot_ratio)
   ax2.plot(t, idx_rate*100)
-  ax2.plot(t, drop_rate_scaled*100, color='green')
+  ax2_twin = ax2.twinx()
+  ax2_twin.plot(t, drop_hit_rate*100, color='green')
   ax2.axis('tight')
-  ax2.set_ylabel("green: droplet\nblue:indexed\n(arbitrary/%)").set_fontsize(3*plot_ratio)
+  ax2.set_ylabel("blue:% indexed").set_fontsize(3*plot_ratio)
+  ax2_twin.set_ylabel("green: % droplet").set_fontsize(3*plot_ratio)
   ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=plot_ratio)
   ax3.scatter(t, isigi_high, edgecolors="none", color='orange', s=plot_ratio)
+  ax3_twin = ax3.twinx()
+  ax3_twin.plot(t, hq_rate*100, color='orange')
   ax3.axis('tight')
-  ax3.set_ylabel("signal-to-noise\nred: low res\nyellow: %3.1f Ang" % d_min).set_fontsize(3*plot_ratio)
+  ax3.set_ylabel("I/sig(I)\nred: low\nyellow: %3.1f Ang" % d_min).set_fontsize(3*plot_ratio)
+  ax3_twin.set_ylabel("line:% HQ").set_fontsize(3*plot_ratio)
   for a in [ax1, ax2, ax3, ax4]:
     xlab = a.get_xticklabels()
     ylab = a.get_yticklabels()
@@ -157,10 +171,10 @@ def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=
     n_hits = slice_hits.count(True)
     slice_drops = drop_hits[start:end+1]
     n_drops = slice_drops.count(True)
-    slice_idx_low_sel = idx_low_sel[start:end+1]
-    slice_idx_high_sel = idx_high_sel[start:end+1]
-    n_idx_low = slice_idx_low_sel.count(True)
-    n_idx_high = slice_idx_high_sel.count(True)
+    slice_low_sel = low_sel[start:end+1]
+    slice_high_sel = high_sel[start:end+1]
+    n_idx_low = slice_low_sel.count(True)
+    n_idx_high = slice_high_sel.count(True)
     tags = run_tags[idx] if idx < len(run_tags) else []
     ax4.text(start_t, 3.9, " " + ", ".join(tags)).set_fontsize(3*plot_ratio)
     ax4.text(start_t, .9, "run %d" % run_numbers[idx]).set_fontsize(3*plot_ratio)
