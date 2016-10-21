@@ -336,7 +336,7 @@ class xfel_db_application(object):
   def get_trial_runs(self, trial_id):
     tag = self.params.experiment_tag
     query = """SELECT run.id FROM `%s_run` run
-               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND run.run <= rg.endrun
+               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND (run.run <= rg.endrun OR rg.endrun is NULL)
                JOIN `%s_trial_rungroup` t_rg on t_rg.rungroup_id = rg.id
                JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
                WHERE trial.id=%d AND rg.active=True
@@ -352,7 +352,7 @@ class xfel_db_application(object):
     query = """SELECT tag.id FROM `%s_tag` tag
                JOIN `%s_run_tag` rt ON rt.tag_id = tag.id
                JOIN `%s_run` run ON run.id = rt.run_id
-               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND run.run <= rg.endrun
+               JOIN `%s_rungroup` rg ON run.run >= rg.startrun AND (run.run <= rg.endrun OR rg.endrun is NULL)
                JOIN `%s_trial_rungroup` t_rg ON t_rg.rungroup_id = rg.id
                JOIN `%s_trial` trial ON trial.id = t_rg.trial_id
                WHERE trial.id=%d AND rg.active=True
