@@ -37,21 +37,28 @@ def run(args):
   jobs = app.get_all_jobs()
   for rungroup in trial.rungroups:
     for run in rungroup.runs:
-      job_found = None
-      for job in jobs:
-        if job.trial.id == trial.id and job.rungroup.id == rungroup.id and job.run.id == run.id:
-          all_path = os.path.join(os.path.sep.join(job.get_log_path().split(os.path.sep)[:-2]), "all")
-          assert job_found is None
-          job_found = job
-      assert job_found is not None
-      job = job_found
+      if params.output_folder is None:
+        job = None
+        all_path = None
+      else:
+        job_found = None
+        for job in jobs:
+          if job.trial.id == trial.id and job.rungroup.id == rungroup.id and job.run.id == run.id:
+            all_path = os.path.join(os.path.sep.join(job.get_log_path().split(os.path.sep)[:-2]), "all")
+            assert job_found is None
+            job_found = job
+        assert job_found is not None
+        job = job_found
 
       where = "WHERE event.n_strong >= %d" % params.hit_cutoff
       events = app.get_all_events(trial = trial, runs = [run], only_indexed = False, where = where)
       for e in events:
         t = e.timestamp
         ts = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
-        print os.path.join(all_path, "shot-" + ts + ".pickle")
+        if all_path is None:
+          print "%04d"%run.run, ts
+        else:
+          print os.path.join(all_path, "shot-" + ts + ".pickle")
 
 if __name__ == "__main__":
   run(sys.argv[1:])
