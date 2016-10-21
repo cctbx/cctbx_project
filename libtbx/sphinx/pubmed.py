@@ -62,11 +62,12 @@ class PubMedDirective(Directive):
       journal = article["Journal"]
       journal_text = "| *%s*" %(journal["ISOAbbreviation"])
       issue = journal["JournalIssue"]
-      if issue.has_key("Volume"):
-        journal_text += " **%s**, %s" %(
-          issue["Volume"], article["Pagination"]["MedlinePgn"] )
+      if 'Volume' in issue:
+        journal_text += " **%s**" % issue['Volume']
+        if 'Pagination' in article:
+          journal_text += ", %s" % article["Pagination"]["MedlinePgn"]
       date = issue["PubDate"]
-      if date.has_key("Month"):
+      if 'Month' in date:
         journal_text += " (%s %s %s)."%(date.get("Day",1), date["Month"], date["Year"])
       else:
         journal_text += " (%s)"%(date["Year"])
