@@ -452,7 +452,7 @@ class RunStatsSentinel(Thread):
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
       run_tags=self.run_tags,
-      xsize=sizex/100, ysize=sizey/100) # convert px to inches
+      xsize=sizex/100, ysize=sizey/100, high_vis=self.parent.high_vis) # convert px to inches
     self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_interactive(self):
@@ -464,7 +464,7 @@ class RunStatsSentinel(Thread):
       interactive=True,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
-      run_tags=self.run_tags)
+      run_tags=self.run_tags, high_vis=self.parent.high_vis)
 
 # ----------------------------- Unit Cell Sentinel ----------------------------- #
 
@@ -520,7 +520,8 @@ class UnitCellSentinel(Thread):
         info_list.append(info)
       import xfel.ui.components.xfel_gui_plotter as pltr
       plotter = pltr.PopUpCharts(interactive=False)
-      self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(info_list=info_list)
+      self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(info_list=info_list,
+                                                                          high_vis=self.parent.high_vis)
       self.post_refresh()
       self.parent.run_window.unitcell_light.change_status('on')
       time.sleep(5)
@@ -672,6 +673,8 @@ class MainWindow(wx.Frame):
     self.params = load_cached_settings()
     self.db = None
 
+    self.high_vis = False
+
     # Toolbar
     self.toolbar = self.CreateToolBar(wx.TB_TEXT)
     self.tb_btn_quit = self.toolbar.AddLabelTool(wx.ID_EXIT,
@@ -682,7 +685,7 @@ class MainWindow(wx.Frame):
     self.toolbar.AddSeparator()
     self.tb_btn_watch_new_runs = self.toolbar.AddLabelTool(wx.ID_ANY,
                                  label='Watch for new runs',
-                                 bitmap=wx.Bitmap('{}/32x32/search.png'.format(icons)),
+                                 bitmap=wx.Bitmap('{}/32x32/quick_restart.png'.format(icons)),
                                  shortHelp='Watch for new runs',
                                  longHelp='Watch for new runs')
     self.tb_btn_auto_submit = self.toolbar.AddLabelTool(wx.ID_ANY,
@@ -702,6 +705,11 @@ class MainWindow(wx.Frame):
                         bitmap=wx.Bitmap('{}/32x32/settings.png'.format(icons)),
                         shortHelp='Settings',
                         longHelp='Database, user and experiment settings')
+    self.tb_btn_zoom = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                 label='Large text',
+                                                 bitmap=wx.Bitmap('{}/32x32/search.png'.format(icons)),
+                                                 shortHelp='Change text size',
+                                                 longHelp='Change text size for plots')
 
     self.toolbar.Realize()
 
@@ -735,6 +743,7 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onAutoSubmit, self.tb_btn_auto_submit)
     self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
     self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
+    self.Bind(wx.EVT_TOOL, self.onZoom, self.tb_btn_zoom)
     self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange,
               self.run_window.main_nbook)
     self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.onLeavingTab,
@@ -769,7 +778,7 @@ class MainWindow(wx.Frame):
       if block:
         self.run_sentinel.join()
     self.run_window.run_light.change_status('off')
-    self.toolbar.SetToolNormalBitmap(self.tb_btn_watch_new_runs.Id, wx.Bitmap('{}/32x32/search.png'.format(icons)))
+    self.toolbar.SetToolNormalBitmap(self.tb_btn_watch_new_runs.Id, wx.Bitmap('{}/32x32/quick_restart.png'.format(icons)))
 
   def start_job_monitor(self):
     self.job_monitor = JobMonitor(self, active=True)
@@ -855,6 +864,9 @@ class MainWindow(wx.Frame):
       self.params = settings_dlg.params
       self.title = 'CCTBX.XFEL | {} | {}'.format(self.params.experiment_tag,
                                                  self.params.experiment)
+
+  def onZoom(self, e):
+    self.high_vis = not self.high_vis
 
   def onCalibration(self, e):
     calib_dlg = dlg.CalibrationDialog(self, db=self.db)
@@ -1396,7 +1408,7 @@ class StatusTab(BaseTab):
 
     else:
       plotter = pltr.PopUpCharts()
-      plotter.plot_uc_histogram(info_list=[info])
+      plotter.plot_uc_histogram(info_list=[info], high_vis=self.main.high_vis)
       plotter.plot_uc_3Dplot(info=info)
       plotter.plt.show()
 
