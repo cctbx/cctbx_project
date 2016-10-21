@@ -153,12 +153,12 @@ class PopUpCharts(object):
     # Initialize figure
     fig = plt.figure(figsize=(xsize, ysize))
     gsp = GridSpec(3, 3)
-    sub_a = fig.add_subplot(gsp[0])
-    sub_b = fig.add_subplot(gsp[1], sharey=sub_a)
-    sub_c = fig.add_subplot(gsp[2], sharey=sub_a)
-    sub_ab = fig.add_subplot(gsp[3])
-    sub_bc = fig.add_subplot(gsp[4])
-    sub_ac = fig.add_subplot(gsp[5])
+    sub_ab = fig.add_subplot(gsp[0])
+    sub_bc = fig.add_subplot(gsp[1])
+    sub_ac = fig.add_subplot(gsp[2])
+    sub_a = fig.add_subplot(gsp[3])
+    sub_b = fig.add_subplot(gsp[4], sharey=sub_a)
+    sub_c = fig.add_subplot(gsp[5], sharey=sub_a)
     sub_alpha = fig.add_subplot(gsp[6])
     sub_beta = fig.add_subplot(gsp[7], sharey=sub_alpha)
     sub_gamma = fig.add_subplot(gsp[8], sharey=sub_alpha)
@@ -237,7 +237,10 @@ class PopUpCharts(object):
       sub_ac.set_ylabel("c axis").set_fontsize(text_ratio)
       # plt.setp(sub_bc.get_yticklabels(), visible=False)
 
-      for ax in (sub_a, sub_b, sub_c, sub_ab, sub_bc, sub_ac, sub_alpha, sub_beta, sub_gamma):
+      for ax in (sub_a, sub_b, sub_c, sub_alpha, sub_beta, sub_gamma):
+        ax.tick_params(axis='both', which='both', left='off', right='off')
+        ax.set_yticklabels([])
+      for ax in (sub_ab, sub_bc, sub_ac):
         ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off')
         ax.set_xticklabels([])
         ax.set_yticklabels([])
