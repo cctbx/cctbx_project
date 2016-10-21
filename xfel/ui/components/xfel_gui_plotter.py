@@ -132,7 +132,7 @@ class PopUpCharts(object):
     outliers.set_selected(data < q1_x - cut_x, True)
     return outliers
 
-  def plot_uc_histogram(self, info_list, extra_title = None, xsize = 10, ysize = 10):
+  def plot_uc_histogram(self, info_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
@@ -144,8 +144,14 @@ class PopUpCharts(object):
     @return if not interactive, returns the path of the saved image, otherwise None
     """
 
+    plot_ratio = max(min(xsize, ysize)/2.5, 3)
+    if high_vis:
+      text_ratio = plot_ratio*6
+    else:
+      text_ratio = plot_ratio*3
+
     # Initialize figure
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=(xsize, ysize))
     gsp = GridSpec(3, 3)
     sub_a = fig.add_subplot(gsp[0])
     sub_b = fig.add_subplot(gsp[1], sharey=sub_a)
@@ -187,45 +193,48 @@ class PopUpCharts(object):
                  alpha=0.75, histtype='stepfilled')
       sub_a.set_xlabel(
         "a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
-                                          flex.mean_and_variance(a).unweighted_sample_standard_deviation()))
-      sub_a.set_ylabel('Number of images')
+                                          flex.mean_and_variance(a).unweighted_sample_standard_deviation())
+        ).set_fontsize(text_ratio)
+      sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
 
       sub_b.hist(b, nbins, normed=False,
                alpha=0.75, histtype='stepfilled')
       sub_b.set_xlabel(
         "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
-                                          flex.mean_and_variance(b).unweighted_sample_standard_deviation()))
+                                          flex.mean_and_variance(b).unweighted_sample_standard_deviation())
+        ).set_fontsize(text_ratio)
       self.plt.setp(sub_b.get_yticklabels(), visible=False)
 
       sub_c.hist(c, nbins, normed=False,
                alpha=0.75, histtype='stepfilled')
       sub_c.set_xlabel(
         "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
-                                          flex.mean_and_variance(c).unweighted_sample_standard_deviation()))
+                                          flex.mean_and_variance(c).unweighted_sample_standard_deviation())
+        ).set_fontsize(text_ratio)
       self.plt.setp(sub_c.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
         sub_ab.hist2d(a, b, bins=100)
       else:
         sub_ab.plot(a.as_numpy_array(), b.as_numpy_array(), '.')
-      sub_ab.set_xlabel("a axis")
-      sub_ab.set_ylabel("b axis")
+      sub_ab.set_xlabel("a axis").set_fontsize(text_ratio)
+      sub_ab.set_ylabel("b axis").set_fontsize(text_ratio)
       # plt.setp(sub_ab.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
         sub_bc.hist2d(b, c, bins=100)
       else:
         sub_bc.plot(b.as_numpy_array(), c.as_numpy_array(), '.')
-      sub_bc.set_xlabel("b axis")
-      sub_bc.set_ylabel("c axis")
+      sub_bc.set_xlabel("b axis").set_fontsize(text_ratio)
+      sub_bc.set_ylabel("c axis").set_fontsize(text_ratio)
       # plt.setp(sub_bc.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
         sub_ac.hist2d(a, c, bins=100)
       else:
         sub_ac.plot(a.as_numpy_array(), c.as_numpy_array(), '.')
-      sub_ac.set_xlabel("a axis")
-      sub_ac.set_ylabel("c axis")
+      sub_ac.set_xlabel("a axis").set_fontsize(text_ratio)
+      sub_ac.set_ylabel("c axis").set_fontsize(text_ratio)
       # plt.setp(sub_bc.get_yticklabels(), visible=False)
 
       for ax in (sub_a, sub_b, sub_c, sub_ab, sub_bc, sub_ac, sub_alpha, sub_beta, sub_gamma):
@@ -237,20 +246,23 @@ class PopUpCharts(object):
                      alpha=0.75,  histtype='stepfilled')
       sub_alpha.set_xlabel(
         r'$\alpha (%.2f +/- %.2f\circ)$' % (flex.mean(alpha),
-                                             flex.mean_and_variance(alpha).unweighted_sample_standard_deviation()))
-      sub_alpha.set_ylabel('Number of images')
+                                             flex.mean_and_variance(alpha).unweighted_sample_standard_deviation())
+        ).set_fontsize(text_ratio)
+      sub_alpha.set_ylabel('Number of images').set_fontsize(text_ratio)
 
       sub_beta.hist(beta, nbins, normed=False,
                     alpha=0.75, histtype='stepfilled')
       sub_beta.set_xlabel(
         r'$\beta (%.2f +/- %.2f\circ)$' % (flex.mean(beta),
-                                           flex.mean_and_variance(beta).unweighted_sample_standard_deviation()))
+                                           flex.mean_and_variance(beta).unweighted_sample_standard_deviation())
+        ).set_fontsize(text_ratio)
       self.plt.setp(sub_beta.get_yticklabels(), visible=False)
       sub_gamma.hist(gamma, nbins, normed=False,
                      alpha=0.75, histtype='stepfilled')
       sub_gamma.set_xlabel(
         r'$\gamma (%.2f +/- %.2f\circ)$' % (flex.mean(gamma),
-                                            flex.mean_and_variance(gamma).unweighted_sample_standard_deviation()))
+                                            flex.mean_and_variance(gamma).unweighted_sample_standard_deviation())
+        ).set_fontsize(text_ratio)
       self.plt.setp(sub_gamma.get_yticklabels(), visible=False)
 
     sub_b.xaxis.get_major_ticks()[0].label1.set_visible(False)
