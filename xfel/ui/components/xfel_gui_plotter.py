@@ -163,8 +163,11 @@ class PopUpCharts(object):
     sub_beta = fig.add_subplot(gsp[7], sharey=sub_alpha)
     sub_gamma = fig.add_subplot(gsp[8], sharey=sub_alpha)
     total = 0
+    abc_hist_ylim = 0
 
     for info in info_list:
+      if len(info) == 0:
+        continue
       # Extract uc dimensions from info list
       a = flex.double([i['a'] for i in info])
       b = flex.double([i['b'] for i in info])
@@ -189,7 +192,7 @@ class PopUpCharts(object):
 
       nbins = int(np.sqrt(len(a))) * 2
 
-      sub_a.hist(a, nbins, normed=False,
+      a_hist = sub_a.hist(a, nbins, normed=False,
                  alpha=0.75, histtype='stepfilled')
       sub_a.set_xlabel(
         "a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
@@ -197,7 +200,7 @@ class PopUpCharts(object):
         ).set_fontsize(text_ratio)
       sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
 
-      sub_b.hist(b, nbins, normed=False,
+      b_hist = sub_b.hist(b, nbins, normed=False,
                alpha=0.75, histtype='stepfilled')
       sub_b.set_xlabel(
         "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
@@ -205,13 +208,16 @@ class PopUpCharts(object):
         ).set_fontsize(text_ratio)
       self.plt.setp(sub_b.get_yticklabels(), visible=False)
 
-      sub_c.hist(c, nbins, normed=False,
+      c_hist = sub_c.hist(c, nbins, normed=False,
                alpha=0.75, histtype='stepfilled')
       sub_c.set_xlabel(
         "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
                                           flex.mean_and_variance(c).unweighted_sample_standard_deviation())
         ).set_fontsize(text_ratio)
       self.plt.setp(sub_c.get_yticklabels(), visible=False)
+
+      abc_hist_ylim = max(1.2*max([max(h[0]) for h in (a_hist, b_hist, c_hist)]), abc_hist_ylim)
+      sub_a.set_ylim([0, abc_hist_ylim])
 
       if len(info_list) == 1:
         sub_ab.hist2d(a, b, bins=100)
