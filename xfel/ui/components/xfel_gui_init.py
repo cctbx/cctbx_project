@@ -452,7 +452,9 @@ class RunStatsSentinel(Thread):
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
       run_tags=self.run_tags,
-      xsize=sizex/100, ysize=sizey/100, high_vis=self.parent.high_vis) # convert px to inches
+      xsize=(sizex-115)/82, ysize=(sizey-115)/82,
+      high_vis=self.parent.high_vis)
+      # convert px to inches with fudge factor for scaling inside borders
     self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_interactive(self):
@@ -1624,7 +1626,7 @@ class RunStatsTab(BaseTab):
 
     self.runstats_panel = wx.Panel(self, size=(900, 120))
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
-    self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL | wx.EXPAND)
+    self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.ALL | wx.EXPAND)
     self.runstats_panel.SetSizer(self.runstats_sizer)
 
     self.trial_number = gctr.ChoiceCtrl(self,
@@ -1700,9 +1702,9 @@ class RunStatsTab(BaseTab):
     self.should_have_indexed_box_sizer.Add(self.should_have_indexed_results_sizer)
     self.bottom_sizer.Add(self.should_have_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
 
-    self.main_sizer.Add(self.runstats_panel, 2,
+    self.main_sizer.Add(self.runstats_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.bottom_sizer, 1,
+    self.main_sizer.Add(self.bottom_sizer, 0,
                         flag=wx.EXPAND | wx.ALL, border=10)
 
     # Bindings
