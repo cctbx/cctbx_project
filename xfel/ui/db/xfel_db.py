@@ -329,6 +329,8 @@ class xfel_db_application(object):
                  WHERE t_rg.trial_id = %d""" % (tag, trial_id)
     cursor = self.execute_query(query)
     rungroup_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(rungroup_ids) == 0:
+      return []
     return self.get_all_x(Rungroup, "rungroup", where = "WHERE rungroup.id IN (%s)"%",".join(rungroup_ids))
 
   def get_trial_runs(self, trial_id):
@@ -341,6 +343,8 @@ class xfel_db_application(object):
                """ %(tag, tag, tag, tag, trial_id)
     cursor = self.execute_query(query)
     run_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(run_ids) == 0:
+      return []
     return self.get_all_x(Run, "run", where = "WHERE run.id IN (%s)"%",".join(run_ids))
 
   def get_trial_tags(self, trial_id):
@@ -355,6 +359,8 @@ class xfel_db_application(object):
                """ % (tag, tag, tag, tag, tag, tag, trial_id)
     cursor = self.execute_query(query)
     tag_ids = ["%d"%i[0] for i in cursor.fetchall()]
+    if len(tag_ids) == 0:
+      return []
     return self.get_all_x(Tag, "tag", where = "WHERE tag.id IN (%s)"%",".join(tag_ids))
 
   def get_all_trials(self, only_active = False):
