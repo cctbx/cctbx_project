@@ -681,16 +681,16 @@ class MainWindow(wx.Frame):
                        shortHelp='Quit',
                        longHelp='Exit CCTBX.XFEL')
     self.toolbar.AddSeparator()
-    self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY,
-                      label='Run Jobs',
-                      bitmap=wx.Bitmap('{}/32x32/play.png'.format(icons)),
-                      shortHelp='Run All Jobs',
-                      longHelp='Activate all pending jobs')
-    self.tb_btn_pause = self.toolbar.AddLabelTool(wx.ID_ANY,
-                        label='Pause Jobs',
-                        bitmap=wx.Bitmap('{}/32x32/pause.png'.format(icons)),
-                        shortHelp='Pause All Jobs',
-                        longHelp='Pause all pending jobs')
+    self.tb_btn_watch_new_runs = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                 label='Watch for new runs',
+                                 bitmap=wx.Bitmap('{}/32x32/search.png'.format(icons)),
+                                 shortHelp='Watch for new runs',
+                                 longHelp='Watch for new runs')
+    self.tb_btn_auto_submit = self.toolbar.AddLabelTool(wx.ID_ANY,
+                              label='Auto-submit jobs',
+                              bitmap=wx.Bitmap('{}/32x32/play.png'.format(icons)),
+                              shortHelp='Auto-submit jobs',
+                              longHelp='Auto-submit all pending jobs')
     self.toolbar.AddSeparator()
     self.tb_btn_calibrate = self.toolbar.AddLabelTool(wx.ID_ANY,
                         label='Calibration',
@@ -705,7 +705,6 @@ class MainWindow(wx.Frame):
                         longHelp='Database, user and experiment settings')
 
     self.toolbar.Realize()
-    self.toolbar.EnableTool(self.tb_btn_pause.GetId(), False)
 
     # Status bar
     self.sb = self.CreateStatusBar()
@@ -733,8 +732,8 @@ class MainWindow(wx.Frame):
 
     # Bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
-    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
-    self.Bind(wx.EVT_TOOL, self.onPause, self.tb_btn_pause)
+    self.Bind(wx.EVT_TOOL, self.onWatchRuns, self.tb_btn_watch_new_runs)
+    self.Bind(wx.EVT_TOOL, self.onAutoSubmit, self.tb_btn_auto_submit)
     self.Bind(wx.EVT_TOOL, self.onCalibration, self.tb_btn_calibrate)
     self.Bind(wx.EVT_TOOL, self.onSettings, self.tb_btn_settings)
     self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange,
@@ -771,11 +770,15 @@ class MainWindow(wx.Frame):
     self.run_sentinel.start()
     self.run_window.run_light.change_status('on')
 
+    self.toolbar.SetToolNormalBitmap(self.tb_btn_watch_new_runs.Id, wx.Bitmap('{}/32x32/pause.png'.format(icons)))
+
   def stop_run_sentinel(self, block = True):
     self.run_window.run_light.change_status('off')
     self.run_sentinel.active = False
     if block:
       self.run_sentinel.join()
+
+    self.toolbar.SetToolNormalBitmap(self.tb_btn_watch_new_runs.Id, wx.Bitmap('{}/32x32/search.png'.format(icons)))
 
   def start_job_monitor(self):
     self.job_monitor = JobMonitor(self, active=True)
@@ -791,8 +794,7 @@ class MainWindow(wx.Frame):
     self.job_sentinel.start()
     self.run_window.job_light.change_status('on')
 
-    self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
-    self.toolbar.EnableTool(self.tb_btn_pause.GetId(), True)
+    self.toolbar.SetToolNormalBitmap(self.tb_btn_auto_submit.Id, wx.Bitmap('{}/32x32/pause.png'.format(icons)))
 
   def stop_job_sentinel(self, block = True):
     if self.job_sentinel is not None:
@@ -801,8 +803,7 @@ class MainWindow(wx.Frame):
       if block:
         self.job_sentinel.join()
 
-    self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
-    self.toolbar.EnableTool(self.tb_btn_pause.GetId(), False)
+    self.toolbar.SetToolNormalBitmap(self.tb_btn_auto_submit.Id, wx.Bitmap('{}/32x32/play.png'.format(icons)))
 
   def start_prg_sentinel(self):
     self.prg_sentinel = ProgressSentinel(self, active=True)
@@ -867,13 +868,19 @@ class MainWindow(wx.Frame):
 
     calib_dlg.ShowModal()
 
-  def onRun(self, e):
-    ''' All the jobs will be activated here '''
-    self.start_job_sentinel()
+  def onWatchRuns(self, e):
+    ''' Toggle autosubmit '''
+    if self.run_sentinel is not None and self.run_sentinel.active:
+      self.stop_run_sentinel(block = True)
+    else:
+      self.start_run_sentinel()
 
-  def onPause(self, e):
-    ''' Pause all jobs '''
-    self.stop_job_sentinel()
+  def onAutoSubmit(self, e):
+    ''' Toggle autosubmit '''
+    if self.job_sentinel is not None and self.job_sentinel.active:
+      self.stop_job_sentinel(block = True)
+    else:
+      self.start_job_sentinel()
 
   def onTabChange(self, e):
     tab = self.run_window.main_nbook.GetSelection()
