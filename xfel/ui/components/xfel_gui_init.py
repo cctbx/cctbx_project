@@ -506,6 +506,7 @@ class UnitCellSentinel(Thread):
       self.parent.run_window.unitcell_light.change_status('idle')
       trial = self.parent.run_window.unitcell_tab.trial
       tag_sets = self.parent.run_window.unitcell_tab.tag_sets
+      sizex, sizey = self.parent.run_window.unitcell_tab.unit_cell_panel.GetSize()
 
       info_list = []
       for tag_set in tag_sets:
@@ -522,8 +523,10 @@ class UnitCellSentinel(Thread):
         info_list.append(info)
       import xfel.ui.components.xfel_gui_plotter as pltr
       plotter = pltr.PopUpCharts(interactive=False)
-      self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(info_list=info_list,
-                                                                          high_vis=self.parent.high_vis)
+      self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(
+        info_list=info_list,
+        xsize=(sizex-115)/82, ysize=(sizey-115)/82,
+        high_vis=self.parent.high_vis)
       self.post_refresh()
       self.parent.run_window.unitcell_light.change_status('on')
       time.sleep(5)
