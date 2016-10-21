@@ -1732,7 +1732,6 @@ class RunStatsTab(BaseTab):
     if len(new_trials) > 0:
       self.trial_number.ctr.Clear()
       self.all_trials = [None] + all_db_trials
-      print self.all_trials
       for trial in self.all_trials:
         if trial is None:
           entry = 'None'
