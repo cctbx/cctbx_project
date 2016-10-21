@@ -392,7 +392,7 @@ class RunStatsSentinel(Thread):
   def refresh_stats(self):
     from xfel.ui.db.stats import HitrateStats
     import copy
-    if self.parent.run_window.runstats_tab.trial is not None:
+    if self.parent.run_window.runstats_tab.trial_no is not None:
       trial = self.db.get_trial(
         trial_number=self.parent.run_window.runstats_tab.trial_no)
       if len(trial.isoforms) == 0:
@@ -1610,23 +1610,10 @@ class RunStatsTab(BaseTab):
     self.n_strong = 40
     self.should_have_indexed_image_paths = None
 
-    # self.runstats_panel = FlexGridSizer(self, size=(900, 300))
-    # self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
-    # self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL)
-    # self.runstats_panel.SetSizer(self.runstats_sizer)
-
     self.runstats_panel = wx.Panel(self, size=(900, 120))
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
     self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.VERTICAL | wx.EXPAND)
     self.runstats_panel.SetSizer(self.runstats_sizer)
-
-    # self.figure_panel = wx.Panel(self, size=(900, 120))
-    # self.figure_box = wx.StaticBox(self.figure_panel, wx.VERTICAL)
-    # # self.figure_sizer = wx.BoxSizer(wx.VERTICAL | wx.EXPAND)
-    # self.figure_sizer = wx.GridBagSizer(1, 1)
-    # self.figure_sizer.Add(self.figure_box, pos=(0, 0),
-    #                       flag=wx.LEFT | wx.TOP | wx.RIGHT, border=10)
-    # self.runstats_sizer.Add(self.figure_sizer, flag=wx.EXPAND)
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
@@ -1718,10 +1705,18 @@ class RunStatsTab(BaseTab):
 
 
   def onTrialChoice(self, e):
-    self.trial_no = self.trial_number.ctr.GetSelection()
-    self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
-    self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
-    self.find_runs()
+    trial_idx = self.trial_number.ctr.GetSelection()
+    if trial_idx == 0:
+      self.trial_no = None
+      self.trial = None
+      self.run_numbers.ctr.Clear()
+      self.all_runs = []
+      self.selected_runs = []
+    else:
+      self.trial_no = int(self.trial_number.ctr.GetClientData(trial_idx))
+      self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
+      self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
+      self.find_runs()
 
   def onRunChoice(self, e):
     self.tag_last_three = False
@@ -1732,11 +1727,27 @@ class RunStatsTab(BaseTab):
       self.main.run_window.runstats_light.change_status('idle')
 
   def find_trials(self):
-    self.all_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
-    self.trial_number.ctr.Clear()
-    for trial in self.all_trials:
-      self.trial_number.ctr.Append(trial)
-    self.trial_number.ctr.SetSelection(self.trial_no)
+    all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    new_trials = [i for i in all_db_trials if i not in self.all_trials]
+    if len(new_trials) > 0:
+      self.trial_number.ctr.Clear()
+      self.all_trials = [None] + all_db_trials
+      print self.all_trials
+      for trial in self.all_trials:
+        if trial is None:
+          entry = 'None'
+          self.trial_number.ctr.Append(entry)
+          self.trial_number.ctr.SetClientData(0, None)
+        else:
+          entry = trial
+          self.trial_number.ctr.Append(entry)
+          item_idx = self.trial_number.ctr.FindString(entry)
+          self.trial_number.ctr.SetClientData(item_idx, trial)
+
+      if self.trial_no is not None:
+        self.trial_number.ctr.SetSelection(self.trial_no)
+      else:
+        self.trial_number.ctr.SetSelection(0)
 
   def find_runs(self):
     self.run_numbers.ctr.Clear()
@@ -1974,8 +1985,8 @@ class UnitCellTab(BaseTab):
       self.trial_no = None
       self.trial = None
     elif self.trial_number.ctr.GetClientData(trial_idx) != self.trial_no:
-      self.trial_no = self.trial_number.ctr.GetClientData(trial_idx)
-      self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
+      self.trial_no = int(self.trial_number.ctr.GetClientData(trial_idx))
+      self.trial = self.main.db.get_trial(trial_number=self.trial_no)
     self.find_tags()
 
   def find_tags(self):
