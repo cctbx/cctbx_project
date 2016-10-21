@@ -751,18 +751,10 @@ class MainWindow(wx.Frame):
   def stop_sentinels(self):
     self.stop_run_sentinel()
     self.stop_job_sentinel()
-
-    if self.job_monitor is not None and self.job_monitor.active:
-      self.stop_job_monitor()
-
-    if self.prg_sentinel is not None and self.prg_sentinel.active:
-      self.stop_prg_sentinel()
-
-    if self.runstats_sentinel is not None and self.runstats_sentinel.active:
-      self.stop_runstats_sentinel()
-
-    if self.unitcell_sentinel is not None and self.unitcell_sentinel.active:
-      self.stop_unitcell_sentinel()
+    self.stop_job_monitor()
+    self.stop_prg_sentinel()
+    self.stop_runstats_sentinel()
+    self.stop_unitcell_sentinel()
 
   def start_run_sentinel(self):
     self.run_sentinel = RunSentinel(self, active=True)
@@ -772,11 +764,11 @@ class MainWindow(wx.Frame):
     self.toolbar.SetToolNormalBitmap(self.tb_btn_watch_new_runs.Id, wx.Bitmap('{}/32x32/pause.png'.format(icons)))
 
   def stop_run_sentinel(self, block = True):
+    if self.run_sentinel is not None and self.run_sentinel.active:
+      self.run_sentinel.active = False
+      if block:
+        self.run_sentinel.join()
     self.run_window.run_light.change_status('off')
-    self.run_sentinel.active = False
-    if block:
-      self.run_sentinel.join()
-
     self.toolbar.SetToolNormalBitmap(self.tb_btn_watch_new_runs.Id, wx.Bitmap('{}/32x32/search.png'.format(icons)))
 
   def start_job_monitor(self):
@@ -784,9 +776,10 @@ class MainWindow(wx.Frame):
     self.job_monitor.start()
 
   def stop_job_monitor(self, block = True):
-    self.job_monitor.active = False
-    if block:
-      self.job_monitor.join()
+    if self.job_monitor is not None and self.job_monitor.active:
+      self.job_monitor.active = False
+      if block:
+        self.job_monitor.join()
 
   def start_job_sentinel(self):
     self.job_sentinel = JobSentinel(self, active=True)
@@ -796,12 +789,11 @@ class MainWindow(wx.Frame):
     self.toolbar.SetToolNormalBitmap(self.tb_btn_auto_submit.Id, wx.Bitmap('{}/32x32/pause.png'.format(icons)))
 
   def stop_job_sentinel(self, block = True):
-    if self.job_sentinel is not None:
-      self.run_window.job_light.change_status('off')
+    if self.job_sentinel is not None and self.job_sentinel.active:
       self.job_sentinel.active = False
       if block:
         self.job_sentinel.join()
-
+    self.run_window.job_light.change_status('off')
     self.toolbar.SetToolNormalBitmap(self.tb_btn_auto_submit.Id, wx.Bitmap('{}/32x32/play.png'.format(icons)))
 
   def start_prg_sentinel(self):
@@ -810,10 +802,11 @@ class MainWindow(wx.Frame):
     self.run_window.prg_light.change_status('on')
 
   def stop_prg_sentinel(self, block = True):
+    if self.prg_sentinel is not None and self.prg_sentinel.active:
+      self.prg_sentinel.active = False
+      if block:
+        self.prg_sentinel.join()
     self.run_window.prg_light.change_status('off')
-    self.prg_sentinel.active = False
-    if block:
-      self.prg_sentinel.join()
 
   def start_runstats_sentinel(self):
     self.runstats_sentinel = RunStatsSentinel(self, active=True)
@@ -821,10 +814,11 @@ class MainWindow(wx.Frame):
     self.run_window.runstats_light.change_status('on')
 
   def stop_runstats_sentinel(self, block = True):
+    if self.runstats_sentinel is not None and self.runstats_sentinel.active:
+      self.runstats_sentinel.active = False
+      if block:
+        self.runstats_sentinel.join()
     self.run_window.runstats_light.change_status('off')
-    self.runstats_sentinel.active = False
-    if block:
-      self.runstats_sentinel.join()
 
   def start_unitcell_sentinel(self):
     self.unitcell_sentinel = UnitCellSentinel(self, active=True)
@@ -832,10 +826,11 @@ class MainWindow(wx.Frame):
     self.run_window.unitcell_light.change_status('on')
 
   def stop_unitcell_sentinel(self, block = True):
+    if self.unitcell_sentinel is not None and self.unitcell_sentinel.active:
+      self.unitcell_sentinel.active = False
+      if block:
+        self.unitcell_sentinel.join()
     self.run_window.unitcell_light.change_status('off')
-    self.unitcell_sentinel.active = False
-    if block:
-      self.unitcell_sentinel.join()
 
   def OnAboutBox(self, e):
     ''' About dialog '''
