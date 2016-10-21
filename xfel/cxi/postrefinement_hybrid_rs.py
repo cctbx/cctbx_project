@@ -5,7 +5,7 @@ from cctbx import miller
 from dials.array_family import flex
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from xfel.cxi.postrefinement_legacy_rs import rs_parameterization
-from xfel.cxi.postrefinement_updated_rs import rs2_refinery,lbfgs_minimizer_derivatives
+from xfel.cxi.postrefinement_updated_rs import rs2_refinery,lbfgs_minimizer_derivatives,chosen_weights
 from scitbx.lstbx import normal_eqns
 from scitbx.lstbx import normal_eqns_solving
 
@@ -55,12 +55,7 @@ class rs_hybrid(object):
     )
 ###################
     I_observed = observations_pair1_selected.data()
-    variance_weights = 1./(observations_pair1_selected.sigmas()*observations_pair1_selected.sigmas())
-    detail_variance_weights = flex.pow(flex.double([1./a for a in observations_pair1_selected.sigmas()]),2)
-    gentle_weights = flex.pow(flex.sqrt(flex.abs(I_observed))/observations_pair1_selected.sigmas(),2)
-    isigi_weights = flex.pow(I_observed/observations_pair1_selected.sigmas(),2)
-    unit_weights = flex.double(len(I_observed),1.)
-    chosen_weights = gentle_weights
+    chosen = chosen_weights(observations_pair1_selected, params)
 
     MILLER = observations_original_index_pair1_selected.indices()
     ORI = result["current_orientation"][0]
@@ -117,9 +112,9 @@ class rs_hybrid(object):
     self.rs2_parameterization_class = rs_parameterization
 
     self.rs2_refinery = rs2_refinery(ORI=ORI, MILLER=MILLER, BEAM=BEAM, WAVE=WAVE,
-        ICALCVEC = I_reference, IOBSVEC = I_observed, WEIGHTS = chosen_weights)
+        ICALCVEC = I_reference, IOBSVEC = I_observed, WEIGHTS = chosen)
     self.nave1_refinery = nave1_refinery(ORI=ORI, MILLER=MILLER, BEAM=BEAM, WAVE=WAVE,
-        ICALCVEC = I_reference, IOBSVEC = I_observed, WEIGHTS = chosen_weights)
+        ICALCVEC = I_reference, IOBSVEC = I_observed, WEIGHTS = chosen)
 
     self.out=out; self.params = params;
     self.miller_set = miller_set

@@ -7,6 +7,16 @@ from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlati
 from libtbx import adopt_init_args
 from xfel.cxi.postrefinement_legacy_rs import legacy_rs, rs_refinery, rs_parameterization, lbfgs_minimizer_base
 
+def chosen_weights(observation_set, params):
+    data = observation_set.data()
+    sigmas = observation_set.sigmas()
+    return {
+      "unit": flex.double(len(data),1.),
+      "variance": 1./(sigmas*sigmas),
+      "gentle": flex.pow(flex.sqrt(flex.abs(data))/sigmas,2),
+      "extreme": flex.pow(data/sigmas,2)
+    } [ params.postrefinement.target_weighting ]
+
 class updated_rs(legacy_rs):
   def __init__(self,measurements_orig, params, i_model, miller_set, result, out):
     measurements = measurements_orig.deep_copy()
@@ -55,6 +65,8 @@ class updated_rs(legacy_rs):
     )
 ###################
     I_observed = observations_pair1_selected.data()
+    chosen = chosen_weights(observations_pair1_selected, params)
+
     MILLER = observations_original_index_pair1_selected.indices()
     ORI = result["current_orientation"][0]
     Astar = matrix.sqr(ORI.reciprocal_matrix())
@@ -109,7 +121,7 @@ class updated_rs(legacy_rs):
 
       parameterization_class = rs_parameterization
       refinery = rs2_refinery(ORI=ORI, MILLER=MILLER, BEAM=BEAM, WAVE=WAVE,
-        ICALCVEC = I_reference, IOBSVEC = I_observed)
+        ICALCVEC = I_reference, IOBSVEC = I_observed, WEIGHTS = chosen)
 
     func = refinery.fvec_callable(parameterization_class(current))
     functional = flex.sum(func*func)
@@ -238,12 +250,13 @@ class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
     values = self.parameterization(self.x)
     assert -150. < values.BFACTOR < 150. # limits on the exponent, please
     self.func = self.refinery.fvec_callable(values)
-    functional = flex.sum(self.func*self.func)
+    functional = flex.sum(self.refinery.WEIGHTS*self.func*self.func)
     self.f = functional
     jacobian = self.refinery.jacobian_callable(values)
     self.g = flex.double(self.n)
     for ix in xrange(self.n):
-      self.g[ix] = flex.sum(2. * self.func * jacobian[ix])
-    print >> self.out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+      self.g[ix] = flex.sum(2. * self.refinery.WEIGHTS * self.func * jacobian[ix])
+    print >> self.out, "rms %10.3f"%math.sqrt(flex.sum(self.refinery.WEIGHTS*self.func*self.func)/
+                                              flex.sum(self.refinery.WEIGHTS)),
     values.show(self.out)
     return self.f, self.g
