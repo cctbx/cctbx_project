@@ -122,6 +122,7 @@ class updated_rs(legacy_rs):
       parameterization_class = rs_parameterization
       refinery = rs2_refinery(ORI=ORI, MILLER=MILLER, BEAM=BEAM, WAVE=WAVE,
         ICALCVEC = I_reference, IOBSVEC = I_observed, WEIGHTS = chosen)
+      refinery.set_profile_shape(params.postrefinement.lineshape)
 
     func = refinery.fvec_callable(parameterization_class(current))
     functional = flex.sum(func*func)
@@ -190,6 +191,20 @@ class updated_rs(legacy_rs):
 
 class rs2_refinery(rs_refinery):
 
+    def set_profile_shape(self, shape):
+      self.profile_shape = shape
+      self.get_partiality_array = {
+        "lorentzian":super(rs2_refinery, self).get_partiality_array,
+        "gaussian": self.get_gaussian_partiality_array
+      }[shape]
+
+    def get_gaussian_partiality_array(self,values):
+      rs = values.RS
+      Rh = self.get_Rh_array(values)
+      immersion = Rh/rs
+      gaussian = flex.exp(-2. * math.log(2) * (immersion*immersion))
+      return gaussian
+
     def jacobian_callable(self,values):
       PB = self.get_partiality_array(values)
       EXP = flex.exp(-2.*values.BFACTOR*self.DSSQ)
@@ -214,7 +229,8 @@ class rs2_refinery(rs_refinery):
       rs = values.RS
       Rh = self.get_Rh_array(values)
       rs_sq = rs*rs
-      dPB_dRh = -PB * 4. * Rh / (2. * Rh * Rh + rs_sq)
+      dPB_dRh = { "lorentzian": -PB * 4. * Rh / (2. * Rh * Rh + rs_sq),
+                  "gaussian": -PB * 4. * math.log(2) * Rh / rs_sq }[self.profile_shape]
       dPB_dthetax = dPB_dRh * dRh_dthetax
       dPB_dthetay = dPB_dRh * dRh_dthetay
       Px_terms = P_terms * dPB_dthetax; Py_terms = P_terms * dPB_dthetay

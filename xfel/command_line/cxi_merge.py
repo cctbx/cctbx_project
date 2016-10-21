@@ -222,7 +222,7 @@ postrefinement {
     }
   target_weighting = *unit variance gentle extreme
     .type = choice
-    .help = weights for the residuals in the postrefinement target (only for rs_hybrid)
+    .help = weights for the residuals in the postrefinement target (for rs2 or rs_hybrid)
     .help = Unit: each residual weighted by 1.0
     .help = Variance: weighted by 1/sigma**2.  Doesn't seem right, constructive feedback invited
     .help = Gentle: weighted by |I|/sigma**2.  Seems like best option
@@ -234,9 +234,10 @@ postrefinement {
     .type = float
     .help = additionally weight each measurement by partiality**exp when merging
     .help = 0 is no weighting, 1 is partiality weighting, 2 is weighting by partiality-squared
-  lineshape = *lorentzian
+  lineshape = *lorentzian gaussian
     .type = choice
     .help = Soft sphere RLP modeled with Lorentzian radial profile as in prime
+    .help = or Gaussian radial profile. (for rs2 or rs_hybrid)
   show_trumpet_plot = False
     .type = bool
     .help = each-image trumpet plot showing before-after plot. Spot color warmth indicates I/sigma
