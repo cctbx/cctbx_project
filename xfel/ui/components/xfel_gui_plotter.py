@@ -145,7 +145,7 @@ class PopUpCharts(object):
     """
 
     # Initialize figure
-    fig = self.plt.figure(figsize=(12, 10))
+    fig = plt.figure(figsize=(8, 8))
     gsp = GridSpec(3, 3)
     sub_a = fig.add_subplot(gsp[0])
     sub_b = fig.add_subplot(gsp[1], sharey=sub_a)
@@ -210,7 +210,7 @@ class PopUpCharts(object):
         sub_ab.plot(a.as_numpy_array(), b.as_numpy_array(), '.')
       sub_ab.set_xlabel("a axis")
       sub_ab.set_ylabel("b axis")
-      plt.setp(sub_ab.get_yticklabels(), visible=False)
+      # plt.setp(sub_ab.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
         sub_bc.hist2d(b, c, bins=100)
@@ -218,7 +218,7 @@ class PopUpCharts(object):
         sub_bc.plot(b.as_numpy_array(), c.as_numpy_array(), '.')
       sub_bc.set_xlabel("b axis")
       sub_bc.set_ylabel("c axis")
-      plt.setp(sub_bc.get_yticklabels(), visible=False)
+      # plt.setp(sub_bc.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
         sub_ac.hist2d(a, c, bins=100)
@@ -226,7 +226,12 @@ class PopUpCharts(object):
         sub_ac.plot(a.as_numpy_array(), c.as_numpy_array(), '.')
       sub_ac.set_xlabel("a axis")
       sub_ac.set_ylabel("c axis")
-      plt.setp(sub_bc.get_yticklabels(), visible=False)
+      # plt.setp(sub_bc.get_yticklabels(), visible=False)
+
+      for ax in (sub_a, sub_b, sub_c, sub_ab, sub_bc, sub_ac, sub_alpha, sub_beta, sub_gamma):
+        ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off')
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
 
       sub_alpha.hist(alpha, nbins, normed=False,
                      alpha=0.75,  histtype='stepfilled')
@@ -263,10 +268,10 @@ class PopUpCharts(object):
     sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
-    title = 'Histogram of Unit Cell Dimensions ({} images)'.format(total)
-    if extra_title is not None:
-      title += " (%s)"%extra_title
-    fig.suptitle(title, fontsize=18)
+    # title = 'Histogram of Unit Cell Dimensions ({} images)'.format(total)
+    # if extra_title is not None:
+    #   title += " (%s)"%extra_title
+    # fig.suptitle(title, fontsize=18)
 
     gsp.update(wspace=0)
 

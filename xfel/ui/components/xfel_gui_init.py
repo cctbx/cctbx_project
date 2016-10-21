@@ -507,7 +507,6 @@ class UnitCellSentinel(Thread):
 
       info_list = []
       for tag_set in tag_sets:
-        print "Reading data for tagset", str(tag_set)
         cells = self.db.get_stats(trial=trial, tags=tag_set.tags, isigi_cutoff = 1.0, tag_selection_mode = tag_set.mode)()
         info = []
         for cell in cells:
@@ -522,7 +521,7 @@ class UnitCellSentinel(Thread):
       import xfel.ui.components.xfel_gui_plotter as pltr
       plotter = pltr.PopUpCharts(interactive=False)
       self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(info_list=info_list)
-
+      self.post_refresh()
       self.parent.run_window.unitcell_light.change_status('on')
       time.sleep(5)
 
@@ -1848,21 +1847,24 @@ class UnitCellTab(BaseTab):
     self.all_trials = []
     self.trial_no = None
     self.trial = None
-    self.all_tags = []
+    self.tags = []
     self.tag_sets = []
     self.png = None
     self.static_bitmap = None
     self.redraw_windows = True
 
-    # self.unitcell_panel = wx.Panel(self, size=(200, 120))
-    # self.unitcell_box = wx.StaticBox(self.unitcell_panel, label='Unit Cell Analysis')
-    # self.unitcell_sizer = wx.StaticBoxSizer(self.unitcell_box, wx.VERTICAL | wx.EXPAND)
-    # self.unitcell_panel.SetSizer(self.unitcell_sizer)
+    # self.tab_panel = wx.Panel(self, size=(300, 300))
+    self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    # self.tab_panel.SetSizer(self.tab_sizer)
 
-    self.selection_columns_panel = wx.Panel(self, size=(200, 120))
+    self.selection_columns_panel = wx.Panel(self, size=(100, 120))
     self.selection_columns_box = wx.StaticBox(self.selection_columns_panel, label='Select tag sets')
-    self.selection_columns_sizer = wx.StaticBoxSizer(self.selection_columns_box, wx.HORIZONTAL | wx.EXPAND)
+    self.selection_columns_sizer = wx.StaticBoxSizer(self.selection_columns_box, wx.VERTICAL)
     self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
+
+    # self.selection_columns_panel = wx.Panel(self, size=(100, 120))
+    # self.selection_columns_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    # self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
@@ -1875,7 +1877,7 @@ class UnitCellTab(BaseTab):
                                             label='Tags:',
                                             label_size=(200, -1),
                                             label_style='normal',
-                                            ctrl_size=(150, 200),
+                                            ctrl_size=(150, 180),
                                             direction='vertical',
                                             choices=[])
 
@@ -1887,52 +1889,154 @@ class UnitCellTab(BaseTab):
                                                items={'union':'union',
                                                       'inter':'intersection'})
 
-    self.add_sele_button = wx.Button(self,
+    self.add_sele_button = wx.Button(self.selection_columns_panel,
                                      label='Add selection',
                                      size=(200, -1))
 
-    self.tag_sets_checklist = gctr.CheckListCtrl(self,
-                                                 label='Tag sets:',
-                                                 label_size=(200, -1),
-                                                 label_style='normal',
-                                                 ctrl_size=(150, 200),
-                                                 direction='vertical',
-                                                 choices=[])
+    self.tag_set_checklist = gctr.CheckListCtrl(self,
+                                                label='Tag sets:',
+                                                label_size=(200, -1),
+                                                label_style='normal',
+                                                ctrl_size=(150, 200),
+                                                direction='vertical',
+                                                choices=[])
 
-    self.remove_sele_button = wx.Button(self,
+    self.remove_sele_button = wx.Button(self.selection_columns_panel,
                                         label='Remove selection',
                                         size=(200, -1))
 
-    self.reset_sele_button = wx.Button(self,
+    self.reset_sele_button = wx.Button(self.selection_columns_panel,
                                        label='Reset selections',
                                        size=(200, -1))
-
-    self.button_box_sizer = wx.GridBagSizer(1, 2)
-    self.button_box_sizer.Add(self.remove_sele_button, pos=(0, 0),
-                              border=10)
-    self.button_box_sizer.Add(self.reset_sele_button, pos=(0, 1),
-                              border=10)
 
     self.add_sele_sizer = wx.GridBagSizer(4, 1)
     self.add_sele_sizer.Add(self.trial_number, pos=(0, 0),
                             flag=wx.ALL, border=10)
     self.add_sele_sizer.Add(self.tag_checklist, pos=(1, 0),
-                            flag=wx.ALL, border=10)
+                            flag=wx.ALL | wx.EXPAND, border=10)
     self.add_sele_sizer.Add(self.selection_type_radio, pos=(2, 0),
-                            flag=wx.ALL, border=10)
+                            flag=wx.ALL | wx.ALIGN_CENTER, border=10)
     self.add_sele_sizer.Add(self.add_sele_button, pos=(3, 0),
-                            flag=wx.ALL, border=10)
+                            flag=wx.ALL)
     self.selection_columns_sizer.Add(self.add_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.remove_sele_sizer = wx.GridBagSizer(3, 1)
-    self.remove_sele_sizer.Add(self.tag_sets_checklist, pos=(0, 0),
-                               flag=wx.ALL, border=10)
-    self.remove_sele_sizer.Add(self.button_box_sizer, pos=(1, 0),
-                               flag=wx.ALL, border=10)
+    self.remove_sele_sizer.Add(self.tag_set_checklist, pos=(0, 0),
+                               flag=wx.ALL | wx.EXPAND, border=10)
+    self.remove_sele_sizer.Add(self.remove_sele_button, pos=(1, 0),
+                               flag=wx.ALL)
+    self.remove_sele_sizer.Add(self.reset_sele_button, pos=(2, 0),
+                               flag=wx.ALL)
     self.selection_columns_sizer.Add(self.remove_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
-    self.main_sizer.Add(self.selection_columns_panel, 1,
+    self.unit_cell_panel = wx.Panel(self, size=(200, 120))
+    self.unit_cell_box = wx.StaticBox(self.unit_cell_panel, label='Unit cell analysis')
+    self.unit_cell_sizer = wx.StaticBoxSizer(self.unit_cell_box, wx.VERTICAL | wx.EXPAND)
+    self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
+
+    # self.main_sizer.Add(self.selection_columns_panel, 1,
+    #                     flag=wx.EXPAND | wx.ALL, border=10)
+    # self.main_sizer.Add(self.unit_cell_panel, 1,
+    #                     flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.tab_sizer.Add(self.selection_columns_panel, 0,
+                       flag=wx.ALIGN_LEFT | wx.EXPAND, border=10)
+    self.tab_sizer.Add(self.unit_cell_panel, 1,
+                       flag=wx.EXPAND | wx.ALL)
+    self.main_sizer.Add(self.tab_sizer, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
+
+    self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onAddTagSet, self.add_sele_button)
+    self.Bind(wx.EVT_BUTTON, self.onRemoveTagSet, self.remove_sele_button)
+    self.Bind(wx.EVT_BUTTON, self.onResetTagSets, self.reset_sele_button)
+    self.Bind(EVT_UNITCELL_REFRESH, self.onRefresh)
+
+  def find_trials(self):
+    all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    new_trials = [i for i in all_db_trials if i not in self.all_trials]
+    if len(new_trials) > 0:
+      self.trial_number.ctr.Clear()
+      self.all_trials = [None] + all_db_trials
+      for trial in self.all_trials:
+        if trial is not None:
+          entry = trial
+          self.trial_number.ctr.Append(entry)
+          item_idx = self.trial_number.ctr.FindString(entry)
+          self.trial_number.ctr.SetClientData(item_idx, trial)
+        else:
+          entry = 'None'
+          self.trial_number.ctr.Append(entry)
+          self.trial_number.ctr.SetClientData(0, None)
+      if self.trial_no is not None:
+        self.trial_number.ctr.SetSelection(self.trial_no)
+      else:
+        self.trial_number.ctr.SetSelection(0)
+
+  def onTrialChoice(self, e):
+    trial_idx = self.trial_number.ctr.GetSelection()
+    if trial_idx == 0:
+      self.trial_no = None
+      self.trial = None
+    elif self.trial_number.ctr.GetClientData(trial_idx) != self.trial_no:
+      self.trial_no = self.trial_number.ctr.GetClientData(trial_idx)
+      self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
+    self.find_tags()
+
+  def find_tags(self):
+    self.tag_checklist.ctr.Clear()
+    if self.trial is not None:
+      self.tags = self.trial.tags
+      tag_names = [t.name for t in self.tags]
+      self.tag_checklist.ctr.InsertItems(items=tag_names, pos=0)
+    self.refresh_tag_sets()
+
+  def onAddTagSet(self, e):
+    checked_items = self.tag_checklist.ctr.GetCheckedStrings()
+    selected_tags = [i for i in self.main.db.get_all_tags()
+                     if i.name in checked_items]
+    selected_tags = selected_tags
+    if self.selection_type_radio.union.GetValue() == 1:
+      mode = 'union'
+    else:
+      mode = 'intersection'
+    tag_set = TagSet(mode, selected_tags)
+    self.tag_sets.append(tag_set)
+    self.refresh_tag_sets()
+
+  def refresh_tag_sets(self):
+    self.tag_set_checklist.ctr.Clear()
+    tag_set_strings = [str(ts) for ts in self.tag_sets]
+    self.tag_set_checklist.ctr.InsertItems(items = tag_set_strings, pos=0)
+
+  def onRemoveTagSet(self, e):
+    all_items = self.tag_set_checklist.ctr.GetStrings()
+    checked_items = self.tag_set_checklist.ctr.GetCheckedStrings()
+    selected_tag_sets = [ts for ts in self.tag_sets if str(ts) in checked_items]
+    for ts in selected_tag_sets:
+      idx = all_items.index(str(ts))
+      self.tag_set_checklist.ctr.Delete(idx)
+      self.tag_sets.remove(ts)
+
+  def onResetTagSets(self, e):
+    self.tag_set_checklist.ctr.Clear()
+    self.tag_sets = []
+    self.selected_tag_sets = []
+
+  def onRefresh(self, e):
+    self.find_trials()
+    self.plot_unit_cell_analysis()
+
+  def plot_unit_cell_analysis(self):
+    if self.png is not None:
+      if self.static_bitmap is not None:
+        self.static_bitmap.Destroy()
+      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
+      self.static_bitmap = wx.StaticBitmap(
+        self.unit_cell_panel, wx.ID_ANY, wx.BitmapFromImage(img))
+      self.unit_cell_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
+      self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
+      self.unit_cell_panel.Layout()
 
 class MergeTab(BaseTab):
   def __init__(self, parent, main, prefix='prime'):
