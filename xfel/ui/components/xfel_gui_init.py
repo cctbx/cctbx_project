@@ -367,6 +367,7 @@ class RunStatsSentinel(Thread):
     self.run_numbers = []
     self.stats = []
     self.run_tags = []
+    self.run_statuses = []
 
     # on initialization (and restart), make sure run stats drawn from scratch
     self.parent.run_window.runstats_tab.redraw_windows = True
@@ -395,22 +396,35 @@ class RunStatsSentinel(Thread):
     if self.parent.run_window.runstats_tab.trial_no is not None:
       trial = self.db.get_trial(
         trial_number=self.parent.run_window.runstats_tab.trial_no)
-      if len(trial.isoforms) == 0:
+      if trial is not None and len(trial.isoforms) == 0:
         print "Please select a trial using isoforms."
         return
       selected_runs = copy.deepcopy(self.parent.run_window.runstats_tab.selected_runs)
       self.run_numbers = []
+      trial_ids = []
+      rungroup_ids = []
       self.stats = []
       self.trgr = {}
       self.run_tags = []
+      self.run_statuses = []
       for rg in trial.rungroups:
         for run in rg.runs:
           if run.run not in self.run_numbers and run.run in selected_runs:
             self.run_numbers.append(run.run)
+            trial_ids.append(trial.id)
+            rungroup_ids.append(rg.id)
             self.trgr[run.run] = (trial, rg, run)
             self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
               d_min=self.parent.run_window.runstats_tab.d_min)())
             self.run_tags.append([tag.name for tag in run.tags])
+      jobs = self.db.get_all_jobs()
+      for idx in xrange(len(self.run_numbers)):
+        run_no = self.run_numbers[idx]
+        rg_id = rungroup_ids[idx]
+        t_id = trial_ids[idx]
+        for job in jobs:
+          if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
+            self.run_statuses.append(job.status)
     self.reorder()
 
   def reorder(self):
@@ -419,6 +433,7 @@ class RunStatsSentinel(Thread):
     self.run_numbers = run_numbers_ordered
     self.stats = [self.stats[i] for i in order]
     self.run_tags = [self.run_tags[i] for i in order]
+    self.run_statuses = [self.run_statuses[i] for i in order]
 
   def fetch_should_have_indexed_timestamps(self):
     from xfel.ui.components.run_stats_plotter import \
@@ -452,6 +467,7 @@ class RunStatsSentinel(Thread):
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
       run_tags=self.run_tags,
+      run_statuses=self.run_statuses,
       xsize=(sizex-115)/82, ysize=(sizey-115)/82,
       high_vis=self.parent.high_vis)
       # convert px to inches with fudge factor for scaling inside borders
@@ -466,7 +482,9 @@ class RunStatsSentinel(Thread):
       interactive=True,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
-      run_tags=self.run_tags, high_vis=self.parent.high_vis)
+      run_tags=self.run_tags,
+      run_statuses=self.run_statuses,
+      high_vis=self.parent.high_vis)
 
 # ----------------------------- Unit Cell Sentinel ----------------------------- #
 
@@ -509,7 +527,9 @@ class UnitCellSentinel(Thread):
       sizex, sizey = self.parent.run_window.unitcell_tab.unit_cell_panel.GetSize()
 
       info_list = []
+      legend_list = []
       for tag_set in tag_sets:
+        legend_list.append(str(tag_set))
         cells = self.db.get_stats(trial=trial, tags=tag_set.tags, isigi_cutoff = 1.0, tag_selection_mode = tag_set.mode)()
         info = []
         for cell in cells:
@@ -525,6 +545,7 @@ class UnitCellSentinel(Thread):
       plotter = pltr.PopUpCharts(interactive=False)
       self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(
         info_list=info_list,
+        legend_list=legend_list,
         xsize=(sizex-115)/82, ysize=(sizey-115)/82,
         high_vis=self.parent.high_vis)
       self.post_refresh()
@@ -1413,7 +1434,7 @@ class StatusTab(BaseTab):
 
     else:
       plotter = pltr.PopUpCharts()
-      plotter.plot_uc_histogram(info_list=[info], high_vis=self.main.high_vis)
+      plotter.plot_uc_histogram(info_list=[info], legend_list=[], high_vis=self.main.high_vis)
       plotter.plot_uc_3Dplot(info=info)
       plotter.plt.show()
 

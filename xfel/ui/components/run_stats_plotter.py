@@ -121,7 +121,7 @@ def get_run_stats(timestamps,
           tuple_of_timestamp_boundaries,
           run_numbers)
 
-def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=10, high_vis=False):
+def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True, xsize=30, ysize=10, high_vis=False):
   plot_ratio = max(min(xsize, ysize)/2.5, 3)
   if high_vis:
     spot_ratio = plot_ratio*4
@@ -134,26 +134,31 @@ def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=
   window, lengths, boundaries, run_numbers = stats
   if len(t) == 0:
     return None
+  n_runs = len(boundaries)//2
+  if len(run_tags) != n_runs:
+    run_tags = [[] for i in xrange(n_runs)]
+  if len(run_statuses) != n_runs:
+    run_statuses = [None for i in xrange(n_runs)]
   f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
   for a in (ax1, ax2, ax3, ax4):
     a.tick_params(axis='x', which='both', bottom='off', top='off')
   ax1.scatter(t.select(~low_sel), n_strong.select(~low_sel), edgecolors="none", color ='grey', s=spot_ratio)
   ax1.scatter(t.select(low_sel), n_strong.select(low_sel), edgecolors="none", color='blue', s=spot_ratio)
   ax1.axis('tight')
-  ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index").set_fontsize(text_ratio)
+  ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index", fontsize=text_ratio)
   ax2.plot(t, idx_rate*100)
   ax2_twin = ax2.twinx()
   ax2_twin.plot(t, drop_hit_rate*100, color='green')
   ax2.axis('tight')
-  ax2.set_ylabel("blue:% indexed").set_fontsize(text_ratio)
-  ax2_twin.set_ylabel("green: % droplet").set_fontsize(text_ratio)
+  ax2.set_ylabel("blue:% indexed", fontsize=text_ratio)
+  ax2_twin.set_ylabel("green: % droplet", fontsize=text_ratio)
   ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=spot_ratio)
   ax3.scatter(t, isigi_high, edgecolors="none", color='orange', s=spot_ratio)
   ax3_twin = ax3.twinx()
   ax3_twin.plot(t, hq_rate*100, color='orange')
   ax3.axis('tight')
-  ax3.set_ylabel("I/sig(I)\nred: low\nyellow: %3.1f Ang" % d_min).set_fontsize(text_ratio)
-  ax3_twin.set_ylabel("line:% HQ").set_fontsize(text_ratio)
+  ax3.set_ylabel("I/sig(I)\nred: low\nyellow: %3.1f Ang" % d_min, fontsize=text_ratio)
+  ax3_twin.set_ylabel("line:% HQ", fontsize=text_ratio)
   for a in [ax1, ax2, ax3, ax4, ax2_twin, ax3_twin]:
     xlab = a.get_xticklabels()
     ylab = a.get_yticklabels()
@@ -181,15 +186,24 @@ def plot_run_stats(stats, d_min, run_tags=[], interactive=True, xsize=30, ysize=
     slice_high_sel = high_sel[start:end+1]
     n_idx_low = slice_low_sel.count(True)
     n_idx_high = slice_high_sel.count(True)
-    tags = run_tags[idx] if idx < len(run_tags) else []
-    ax4.text(start_t, 3.85, " " + ", ".join(tags)).set_fontsize(text_ratio)
-    ax4.text(start_t, .85, "run %d" % run_numbers[idx]).set_fontsize(text_ratio)
-    ax4.text(start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits)).set_fontsize(text_ratio)
-    ax4.text(start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high)).set_fontsize(text_ratio)
-    ax4.text(start_t, .25, "%-3.1f%% drop/%-3.1f%% hit" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx]))).set_fontsize(text_ratio)
+    tags = run_tags[idx]
+    status = run_statuses[idx]
+    if status == "DONE":
+      status_color = 'green'
+    elif status == "RUN":
+      status_color = 'yellow'
+    elif status is None:
+      status_color = 'black'
+    else:
+      status_color = 'red'
+    ax4.text(start_t, 3.85, " " + ", ".join(tags), fontsize=text_ratio, color=status_color)
+    ax4.text(start_t, .85, "run %d" % run_numbers[idx], fontsize=text_ratio)
+    ax4.text(start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio)
+    ax4.text(start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio)
+    ax4.text(start_t, .25, "%-3.1f%% drop/%-3.1f%% hit" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio)
     ax4.text(start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
-      (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx])).set_fontsize(text_ratio)
-    ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min).set_fontsize(text_ratio)
+      (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio)
+    ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
     ax4.set_yticks([])
     for item in [ax1, ax2, ax3, ax4]:
       item.tick_params(labelsize=text_ratio)
@@ -217,6 +231,7 @@ def plot_multirun_stats(runs,
                         ratio_cutoff=1,
                         n_strong_cutoff=40,
                         run_tags=[],
+                        run_statuses=[],
                         interactive=False,
                         compress_runs=True,
                         xsize=30,
@@ -262,7 +277,7 @@ def plot_multirun_stats(runs,
                               runs_with_data,
                               ratio_cutoff=ratio_cutoff,
                               n_strong_cutoff=n_strong_cutoff)
-  png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, interactive=interactive,
+  png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, interactive=interactive,
     xsize=xsize, ysize=ysize, high_vis=high_vis)
   return png
 

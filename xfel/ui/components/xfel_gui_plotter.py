@@ -132,7 +132,7 @@ class PopUpCharts(object):
     outliers.set_selected(data < q1_x - cut_x, True)
     return outliers
 
-  def plot_uc_histogram(self, info_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False):
+  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
@@ -289,10 +289,15 @@ class PopUpCharts(object):
     sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)
 
-    # title = 'Histogram of Unit Cell Dimensions ({} images)'.format(total)
-    # if extra_title is not None:
-    #   title += " (%s)"%extra_title
-    # fig.suptitle(title, fontsize=18)
+    # if len(legend_list) > 0:
+    #   import matplotlib.patches as mpatches
+    #   rgb_alphas = [a_hist[2][i] for i in range(len(a_hist[2]))]
+    #   assert len(legend_list) == len(rgb_alphas)
+    #   patches = [mpatches.Patch(
+    #     color=rgb_alphas[i].get_facecolor(),
+    #     label=legend_list[i])
+    #   for i in xrange(len(rgb_alphas))]
+    #   fig.legend(patches, 'upper right')
 
     gsp.update(wspace=0)
 
