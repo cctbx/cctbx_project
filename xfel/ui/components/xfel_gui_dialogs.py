@@ -907,8 +907,8 @@ class MultiRunTagDialog(BaseDialog):
       if r.run in run_numbers_selected:
         self.selected[r.run] = [r]
     for b in self.parent.all_tag_buttons:
-      if b.run.run_id in self.selected.keys():
-        self.selected[b.run.run_id].append(b)
+      if b.run.run in self.selected.keys():
+        self.selected[b.run.run].append(b)
 
   def onSortDefault(self, e):
     self.db_tags_selected_sort = self.db_tag_names
@@ -930,8 +930,8 @@ class MultiRunTagDialog(BaseDialog):
       runs_with_tags_buttons = self.parent.all_tag_buttons
 
       for tag in add_tags:
-        for run_id in self.selected.keys():
-          run, button = self.selected[run_id]
+        for run_number in self.selected.keys():
+          run, button = self.selected[run_number]
           run_tags = run.app.get_run_tags(run.run_id)
           run_tag_ids = [t.tag_id for t in run_tags]
           if tag.tag_id not in run_tag_ids:
@@ -952,8 +952,8 @@ class MultiRunTagDialog(BaseDialog):
       remove_tags = [t for t in self.db_tags if self.db_tag_names.index(t.name) in tag_indices]
 
       for tag in remove_tags:
-        for run_id in self.selected.keys():
-          run, button = self.selected[run_id]
+        for run_number in self.selected.keys():
+          run, button = self.selected[run_number]
           run_tags = run.app.get_run_tags(run.run_id)
           run_tag_ids = [t.tag_id for t in run_tags]
           if tag.tag_id in run_tag_ids:
