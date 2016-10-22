@@ -35,13 +35,13 @@ def submit_all_jobs(app):
   for trial in trials:
     for rungroup in trial.rungroups:
       assert rungroup.active
-      rg_start = app.get_run(run_id=rungroup.startrun)
+      rg_start = app.get_run(run_number=rungroup.startrun)
       if rungroup.endrun is None:
         # open ended run group
         rg_runs = [r for r in runs if r.run >= rg_start.run]
       else:
         # closed run group
-        rg_end = app.get_run(run_id=rungroup.endrun)
+        rg_end = app.get_run(run_number=rungroup.endrun)
         rg_runs = [r for r in runs if r.run >= rg_start.run and r.run <= rg_end.run]
       for run in rg_runs:
         needed_jobs.append(_job(trial, rungroup, run))

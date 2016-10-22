@@ -1147,11 +1147,11 @@ class RunBlockDialog(BaseDialog):
 
     else:
       db = block.app
-      self.first_run = db.get_run(run_id=block.startrun).run
+      self.first_run = db.get_run(run_number=block.startrun).run
       if block.endrun is None:
         self.last_run = None
       else:
-        self.last_run = db.get_run(run_id=block.endrun).run
+        self.last_run = db.get_run(run_number=block.endrun).run
 
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
