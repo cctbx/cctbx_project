@@ -1411,7 +1411,7 @@ class RunBlockDialog(BaseDialog):
       first = int(self.runblocks_start.ctr.GetValue())
       assert first > 0 and first >= self.first_avail
       self.first_run = first
-      startrun = self.db.get_run(run_number=first).id
+      startrun = self.db.get_run(run_number=first).run
     except (ValueError, AssertionError) as e:
       print "Please select a run between %d and %d." % (self.first_avail, self.last_avail)
       raise e
@@ -1420,7 +1420,7 @@ class RunBlockDialog(BaseDialog):
         last = int(self.runblocks_end.ctr.GetValue())
         assert last > 0 and last <= self.last_avail and last >= first
         self.last_run = last
-        endrun = self.db.get_run(run_number=int(last)).id
+        endrun = self.db.get_run(run_number=int(last)).run
       except (ValueError, AssertionError) as e:
         print "Please select a run between %d and %d." % (self.first_run, self.last_avail)
         raise e
