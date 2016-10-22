@@ -140,9 +140,18 @@ class updated_rs(legacy_rs):
         out = self.out )
     self.refined_mini = self.MINI
 
+  def rs2_parameter_range_assertions(self,values):
+    # New range assertions for refined variables
+    assert 0 < values.G
+    assert -25 < values.BFACTOR and values.BFACTOR < 25
+    assert -0.5 < 180.*values.thetax/math.pi < 0.5 , "limits on the theta rotation, please"
+    assert -0.5 < 180.*values.thetay/math.pi < 0.5 , "limits on the theta rotation, please"
+
   def result_for_cxi_merge(self, file_name):
-    scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
     values = self.get_parameter_values()
+    self.rs2_parameter_range_assertions(values)
+    scaler = self.refinery.scaler_callable(self.parameterization_class(self.MINI.x))
+
     partiality_array = self.refinery.get_partiality_array(values)
     p_scaler = flex.pow(partiality_array,
                         0.5*self.params.postrefinement.merge_partiality_exponent)
@@ -174,15 +183,8 @@ class updated_rs(legacy_rs):
     print >> self.out, "CORR: NEW correlation is", SWC.corr
     self.final_corr = SWC.corr
     self.refined_mini = self.MINI
-
-    # New range assertions for refined variables
-    # XXX Likely these limits are problem-specific so look for another approach
-    #     or expose the limits as phil parameters.
+    #another range assertion
     assert self.final_corr > 0.1
-    assert 0 < values.G
-    assert -25 < values.BFACTOR and values.BFACTOR < 25
-    assert -0.5 < 180.*values.thetax/math.pi < 0.5 , "limits on the theta rotation, please"
-    assert -0.5 < 180.*values.thetay/math.pi < 0.5 , "limits on the theta rotation, please"
 
     return observations_original_index,observations,matches
 

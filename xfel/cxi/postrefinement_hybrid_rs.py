@@ -5,11 +5,11 @@ from cctbx import miller
 from dials.array_family import flex
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from xfel.cxi.postrefinement_legacy_rs import rs_parameterization
-from xfel.cxi.postrefinement_updated_rs import rs2_refinery,lbfgs_minimizer_derivatives,chosen_weights
+from xfel.cxi.postrefinement_updated_rs import rs2_refinery,lbfgs_minimizer_derivatives,chosen_weights,updated_rs
 from scitbx.lstbx import normal_eqns
 from scitbx.lstbx import normal_eqns_solving
 
-class rs_hybrid(object):
+class rs_hybrid(updated_rs):
   def __init__(self,measurements_orig, params, i_model, miller_set, result, out):
     measurements = measurements_orig.deep_copy()
     # Now manipulate the data to conform to unit cell, asu, and space group
@@ -113,8 +113,10 @@ class rs_hybrid(object):
 
     self.rs2_refinery = rs2_refinery(ORI=ORI, MILLER=MILLER, BEAM=BEAM, WAVE=WAVE,
         ICALCVEC = I_reference, IOBSVEC = I_observed, WEIGHTS = chosen)
+    self.rs2_refinery.set_profile_shape(params.postrefinement.lineshape)
     self.nave1_refinery = nave1_refinery(ORI=ORI, MILLER=MILLER, BEAM=BEAM, WAVE=WAVE,
         ICALCVEC = I_reference, IOBSVEC = I_observed, WEIGHTS = chosen)
+    self.nave1_refinery.set_profile_shape(params.postrefinement.lineshape)
 
     self.out=out; self.params = params;
     self.miller_set = miller_set
@@ -143,8 +145,10 @@ class rs_hybrid(object):
     self.refinery = self.nave1_refinery # used elsewhere, not private interface
 
   def result_for_cxi_merge(self, file_name):
-    scaler = self.nave1_refinery.scaler_callable(self.get_parameter_values())
     values = self.get_parameter_values()
+    self.rs2_parameter_range_assertions(values)
+    scaler = self.nave1_refinery.scaler_callable(self.get_parameter_values())
+
     partiality_array = self.refinery.get_partiality_array(values)
     p_scaler = flex.pow(partiality_array,
                         0.5*self.params.postrefinement.merge_partiality_exponent)
@@ -176,13 +180,11 @@ class rs_hybrid(object):
     SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
     print >> self.out, "CORR: NEW correlation is", SWC.corr
     self.final_corr = SWC.corr
-
-    # New range assertions for refined variables
-    # XXX Likely these limits are problem-specific (especially G-max) so look for another approach
-    #     or expose the limits as phil parameters.
+    #another range assertion
     assert self.final_corr > 0.1
-    assert 0 < values.G and values.G < 0.5
-    assert -25 < values.BFACTOR and values.BFACTOR < 25
+    # XXX Specific to the hybrid_rs method, and likely these limits are problem-specific (especially G-max) so look for another approach
+    #     or expose the limits as phil parameters.
+    assert values.G < 0.5
 
     return observations_original_index,observations,matches
 
