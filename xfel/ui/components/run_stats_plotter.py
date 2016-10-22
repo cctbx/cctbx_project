@@ -167,8 +167,9 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
   f.subplots_adjust(hspace=0)
   # add lines and text summaries at the timestamp boundaries
   for boundary in boundaries:
-    for a in (ax1, ax2, ax3):
-      a.axvline(x=boundary, ymin=0, ymax=3, linewidth=1, color='k')
+    if boundary is not None:
+      for a in (ax1, ax2, ax3):
+        a.axvline(x=boundary, ymin=0, ymax=3, linewidth=1, color='k')
   run_starts = boundaries[0::2]
   run_ends = boundaries[1::2]
   start = 0
@@ -176,6 +177,7 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
   for idx in xrange(len(run_numbers)):
     start_t = run_starts[idx]
     end_t = run_ends[idx]
+    if start_t is None or end_t is None: continue
     end += lengths[idx]
     slice_t = t[start:end+1]
     slice_hits = xtal_hits[start:end+1]
@@ -266,6 +268,8 @@ def plot_multirun_stats(runs,
       boundaries.append(tslice[-1])
       lengths.append(len(tslice))
       runs_with_data.append(run_numbers[idx])
+    else:
+      boundaries.extend([None]*2)
   stats_tuple = get_run_stats(tset,
                               two_theta_low_set,
                               two_theta_high_set,
