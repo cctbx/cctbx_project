@@ -73,7 +73,7 @@ phil_scope = parse('''
       .type = choice
       .help = "Muliprocessing method"
     mpi {
-      method = client_server *striping
+      method = *client_server striping
         .type = choice
         .help = Method of serving data to child processes in MPI. client_server:    \
                 use one process as a server that sends timestamps to each process.  \

@@ -925,6 +925,9 @@ class MainWindow(wx.Frame):
         self.start_prg_sentinel()
         self.run_window.prg_light.change_status('on')
     elif tab == 4:
+      if self.job_monitor is None or not self.job_monitor.active:
+        self.start_job_monitor()
+        self.run_window.jmn_light.change_status('on')
       if self.runstats_sentinel is None or not self.runstats_sentinel.active:
         self.start_runstats_sentinel()
         self.run_window.runstats_light.change_status('on')
@@ -946,6 +949,9 @@ class MainWindow(wx.Frame):
         self.stop_prg_sentinel(block = False)
         self.run_window.prg_light.change_status('off')
     elif tab == 4:
+      if self.job_monitor.active:
+        self.stop_job_monitor(block = False)
+        self.run_window.jmn_light.change_status('off')
       if self.runstats_sentinel.active:
         self.stop_runstats_sentinel(block = False)
         self.run_window.runstats_light.change_status('off')
