@@ -158,6 +158,8 @@ class updated_rs(legacy_rs):
 
     fat_selection = (partiality_array > 0.2)
     fat_count = fat_selection.count(True)
+    scaler_s = scaler.select(fat_selection)
+    p_scaler_s = p_scaler.select(fat_selection)
 
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
@@ -170,8 +172,8 @@ class updated_rs(legacy_rs):
 
     observations = self.observations_pair1_selected.customized_copy(
       indices = self.observations_pair1_selected.indices().select(fat_selection),
-      data = (self.observations_pair1_selected.data()/scaler).select(fat_selection),
-      sigmas = (self.observations_pair1_selected.sigmas()/(scaler * p_scaler)).select(fat_selection)
+      data = (self.observations_pair1_selected.data().select(fat_selection)/scaler_s),
+      sigmas = (self.observations_pair1_selected.sigmas().select(fat_selection)/(scaler_s * p_scaler_s))
     )
     matches = miller.match_multi_indices(
       miller_indices_unique=self.miller_set.indices(),
@@ -231,7 +233,8 @@ class rs2_refinery(rs_refinery):
       rs = values.RS
       Rh = self.get_Rh_array(values)
       rs_sq = rs*rs
-      dPB_dRh = { "lorentzian": -PB * 4. * Rh / (2. * Rh * Rh + rs_sq),
+      denomin = (2. * Rh * Rh + rs_sq)
+      dPB_dRh = { "lorentzian": -PB * 4. * Rh / denomin,
                   "gaussian": -PB * 4. * math.log(2) * Rh / rs_sq }[self.profile_shape]
       dPB_dthetax = dPB_dRh * dRh_dthetax
       dPB_dthetay = dPB_dRh * dRh_dthetay

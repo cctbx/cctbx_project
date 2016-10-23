@@ -217,8 +217,9 @@ postrefinement {
     .help = Option of weighting the merged terms by partiality
     {
     partiality_threshold = 0.2
-      .type = float
+      .type = float ( value_min = 0.01 )
       .help = throw out observations below this value. Hard coded as 0.2 for rs2, allow value for hybrid
+      .help = must enforce minimum positive value because partiality appears in the denominator
     }
   target_weighting = *unit variance gentle extreme
     .type = choice
@@ -1467,7 +1468,7 @@ class scaling_manager (intensity_data) :
       try:
         postx.run_plain()
         observations_original_index,observations,matches = postx.result_for_cxi_merge(file_name)
-      except (AssertionError,ValueError),e:
+      except (AssertionError,ValueError,RuntimeError),e:
         return null_data(file_name=file_name, log_out=out.getvalue(), low_signal=True)
 
       if self.params.postrefinement.show_trumpet_plot is True:

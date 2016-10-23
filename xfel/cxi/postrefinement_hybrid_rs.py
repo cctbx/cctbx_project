@@ -156,6 +156,8 @@ class rs_hybrid(updated_rs):
     fat_selection = (self.nave1_refinery.lorentz_callable(self.get_parameter_values()) >
                      self.params.postrefinement.rs_hybrid.partiality_threshold) # was 0.2 for rs2
     fat_count = fat_selection.count(True)
+    scaler_s = scaler.select(fat_selection)
+    p_scaler_s = p_scaler.select(fat_selection)
 
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
@@ -168,8 +170,8 @@ class rs_hybrid(updated_rs):
 
     observations = self.observations_pair1_selected.customized_copy(
       indices = self.observations_pair1_selected.indices().select(fat_selection),
-      data = (self.observations_pair1_selected.data()/scaler).select(fat_selection),
-      sigmas = (self.observations_pair1_selected.sigmas()/(scaler * p_scaler)).select(fat_selection)
+      data = (self.observations_pair1_selected.data().select(fat_selection)/scaler_s),
+      sigmas = (self.observations_pair1_selected.sigmas().select(fat_selection)/(scaler_s * p_scaler_s))
     )
     matches = miller.match_multi_indices(
       miller_indices_unique=self.miller_set.indices(),
@@ -222,12 +224,14 @@ class nave1_refinery(rs2_refinery):
       Rh = self.get_Rh_array(values)
       rs_sq = rs*rs
       denomin = (2. * Rh * Rh + rs_sq)
-      dPB_dRh = -PB * 4. * Rh / denomin
+      dPB_dRh = { "lorentzian": -PB * 4. * Rh / denomin,
+                  "gaussian": -PB * 4. * math.log(2) * Rh / rs_sq }[self.profile_shape]
       dPB_dthetax = dPB_dRh * dRh_dthetax
       dPB_dthetay = dPB_dRh * dRh_dthetay
       Px_terms = P_terms * dPB_dthetax /1000.; Py_terms = P_terms * dPB_dthetay /1000.
 
-      dPB_drs = 4 * rs * Rh * Rh / (denomin * denomin)
+      dPB_drs = { "lorentzian": 4 * rs * Rh * Rh / (denomin * denomin),
+                  "gaussian": 4 * math.log(2) * PB * Rh * Rh / (rs * rs_sq) }[self.profile_shape]
       Prs_terms = P_terms * dPB_drs
 
       return [G_terms,B_terms,Prs_terms,Px_terms,Py_terms]
@@ -268,6 +272,7 @@ class per_frame_helper(normal_eqns.non_linear_ls, normal_eqns.non_linear_ls_mixi
 
   def build_up(pfh, objective_only=False):
     values = pfh.parameterization(pfh.x)
+    assert 0. < values.G
     # XXX revisit these limits.  Seems like an ad hoc approach to have to set these limits
     #     Moreover, these tests throw out ~30% of LM14 data, thus search for another approach
     assert -150. < values.BFACTOR < 150. ,"limits on the exponent, please"
