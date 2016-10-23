@@ -716,6 +716,17 @@ class GaugeBar(CtrlBase):
     self.SetSizer(self.sizer)
 
 
+tp_EVT_STATUS_CHANGE = wx.NewEventType()
+EVT_STATUS_CHANGE = wx.PyEventBinder(tp_EVT_STATUS_CHANGE, 1)
+
+class StatusChange(wx.PyCommandEvent):
+  ''' Send event when status light is updated '''
+  def __init__(self, etype, eid, status=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.status = status
+  def GetValue(self):
+    return self.status
+
 class SentinelStatus(CtrlBase):
   def __init__(self, parent,
                label='',
@@ -738,7 +749,14 @@ class SentinelStatus(CtrlBase):
 
     self.SetSizer(self.sizer)
 
+    self.Bind(EVT_STATUS_CHANGE, self.onChangeStatus)
+
   def change_status(self, status):
+    evt = StatusChange(tp_EVT_STATUS_CHANGE, -1, status)
+    wx.PostEvent(self, evt)
+
+  def onChangeStatus(self, evt):
+    status = evt.GetValue()
 
     if status == 'on':
       bmp = wx.Bitmap('{}/16x16/led_on.png'.format(icons))
