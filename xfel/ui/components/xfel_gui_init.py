@@ -611,9 +611,10 @@ class ClusteringResult(wx.PyCommandEvent):
     return self.result
 
 class Clusterer():
-  def __init__(self, trial, runblocks, output, sample_size, threshold):
+  def __init__(self, trial, runblocks, tags, output, sample_size, threshold):
     self.trial = trial
     self.runblocks = runblocks
+    self.tags = tags
     self.output = output
     self.sample_size = sample_size
     self.threshold = threshold
@@ -623,12 +624,21 @@ class Clusterer():
     # 1. Get all pickle files, check if new ones arrived
     run_numbers = []
     rb_paths = []
+    tag_ids = set([t.id for t in self.tags])
     for rb in self.runblocks:
       for run in rb.runs:
         if run.run not in run_numbers:
+          if len(tag_ids) > 0:
+            run_tag_ids = set([t.id for t in run.tags])
+            if len(tag_ids.intersection(run_tag_ids)) == 0:
+              continue
           run_numbers.append(run.run)
-          rb_paths.append(os.path.join(get_run_path(self.output, self.trial,
-                                                    rb, run), "out"))
+          # test for integration folder
+          path = os.path.join(get_run_path(self.output, self.trial, rb, run), "integration")
+          if not os.path.exists(path):
+            path = os.path.join(get_run_path(self.output, self.trial, rb, run), "out")
+          rb_paths.append(path)
+
     all_pickles = []
 
     for path in rb_paths:
@@ -663,6 +673,7 @@ class ClusteringWorker(Thread):
                parent,
                trial,
                runblocks,
+               tags,
                output,
                sample_size=1000,
                threshold=250,):
@@ -670,12 +681,13 @@ class ClusteringWorker(Thread):
     self.parent = parent
     self.trial = trial
     self.runblocks = runblocks
+    self.tags = tags
     self.output = output
     self.sample_size = sample_size
     self.threshold = threshold
 
   def run(self):
-    clusterer = Clusterer(self.trial, self.runblocks, self.output,
+    clusterer = Clusterer(self.trial, self.runblocks, self.tags, self.output,
                           self.sample_size, self.threshold)
     self.clusters = clusterer.unit_cell_clustering()
 
@@ -1448,8 +1460,9 @@ class StatusTab(BaseTab):
   def onClustering(self, e):
     trial = self.main.db.get_trial(trial_number=self.trial_no)
     runblocks = trial.rungroups
+    tags = self.selected_tags
 
-    clustering = ClusteringWorker(self, trial=trial, runblocks=runblocks,
+    clustering = ClusteringWorker(self, trial=trial, runblocks=runblocks, tags=tags,
                                   output=self.main.params.output_folder,
                                   threshold=self.opt_cluster.threshold.GetValue(),
                                   sample_size=self.opt_cluster.num_images.GetValue())
@@ -1463,7 +1476,7 @@ class StatusTab(BaseTab):
       print 'Nothing to cluster!'
     else:
       counter = 0
-      clusters = sorted(e.GetValue(), key=lambda x: x.members, reverse=True)
+      clusters = sorted(e.GetValue(), key=lambda x: len(x.members), reverse=True)
       for cluster in clusters:
         sorted_pg_comp = sorted(cluster.pg_composition.items(),
                                 key=lambda x: -1 * x[1])
@@ -1483,12 +1496,19 @@ class StatusTab(BaseTab):
           iso.ctr_pg.SetValue(cons_pg[0])
           iso.ctr_num.SetValue(str(len(cluster.members)))
           iso.ctr_uc.SetValue(uc_line)
-          iso.uc_values = [i.uc for i in cluster.members]
+          iso.uc_values = [{'a'    :i.uc[0],
+                            'b'    :i.uc[1],
+                            'c'    :i.uc[2],
+                            'alpha':i.uc[3],
+                            'beta' :i.uc[4],
+                            'gamma':i.uc[5],
+                            'n_img':1} for i in cluster.members]
           self.iso_box_sizer.Add(iso,
                                  flag=wx.EXPAND| wx.TOP | wx.LEFT | wx.RIGHT,
                                  border=10)
 
           counter += 1
+          if counter >= len(ascii_uppercase): counter = 0
 
     self.iso_panel.SetSizer(self.iso_box_sizer)
     self.iso_panel.Layout()
