@@ -459,7 +459,7 @@ class RunStatsSentinel(Thread):
   def plot_stats_static(self):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
     self.refresh_stats()
-    sizex, sizey = self.parent.run_window.runstats_tab.runstats_panel.GetSize()
+    sizex, sizey = self.parent.run_window.runstats_tab.runstats_panelsize
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       self.stats, self.run_numbers,
       d_min=self.parent.run_window.runstats_tab.d_min,
@@ -524,7 +524,7 @@ class UnitCellSentinel(Thread):
       self.parent.run_window.unitcell_light.change_status('idle')
       trial = self.parent.run_window.unitcell_tab.trial
       tag_sets = self.parent.run_window.unitcell_tab.tag_sets
-      sizex, sizey = self.parent.run_window.unitcell_tab.unit_cell_panel.GetSize()
+      sizex, sizey = self.parent.run_window.unitcell_tab.unit_cell_panelsize
 
       info_list = []
       legend_list = []
@@ -1675,6 +1675,7 @@ class RunStatsTab(BaseTab):
     self.should_have_indexed_image_paths = None
 
     self.runstats_panel = wx.Panel(self, size=(900, 120))
+    self.runstats_panelsize = self.runstats_panel.GetSize()
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
     self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.ALL | wx.EXPAND)
     self.runstats_panel.SetSizer(self.runstats_sizer)
@@ -1766,7 +1767,11 @@ class RunStatsTab(BaseTab):
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
+    self.Bind(wx.EVT_SIZE, self.OnSize)
 
+  def OnSize(self, e):
+    self.runstats_panelsize = self.runstats_panel.GetSize()
+    e.Skip()
 
   def onTrialChoice(self, e):
     trial_idx = self.trial_number.ctr.GetSelection()
@@ -1999,6 +2004,7 @@ class UnitCellTab(BaseTab):
     self.selection_columns_sizer.Add(self.remove_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
+    self.unit_cell_panelsize = self.unit_cell_panel.GetSize()
     self.unit_cell_box = wx.StaticBox(self.unit_cell_panel, label='Unit cell analysis')
     self.unit_cell_sizer = wx.StaticBoxSizer(self.unit_cell_box, wx.VERTICAL | wx.EXPAND)
     self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
@@ -2020,6 +2026,11 @@ class UnitCellTab(BaseTab):
     self.Bind(wx.EVT_BUTTON, self.onRemoveTagSet, self.remove_sele_button)
     self.Bind(wx.EVT_BUTTON, self.onResetTagSets, self.reset_sele_button)
     self.Bind(EVT_UNITCELL_REFRESH, self.onRefresh)
+    self.Bind(wx.EVT_SIZE, self.OnSize)
+
+  def OnSize(self, e):
+    self.unit_cell_panelsize = self.unit_cell_panel.GetSize()
+    e.Skip()
 
   def find_trials(self):
     all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
