@@ -119,8 +119,10 @@ roots at $\pm r_s$ (Fig. 2).  Outside of this domain the partiality is 0.
   \label{fig:2}
   \end{center}
   \begin{center}
-  {Fig. 2. Two partiality models:  a simple hard-sphere model ($p_A$, blue), and a soft-sphere Lorentzian
-  function ($p_B$, red).}
+  {Fig. 2. Three partiality models:  
+  a simple hard-sphere model ($p_A$, blue), a soft-sphere Lorentzian
+  function ($p_B$, red), and an intermediate model based on a Gaussian function
+  ($p_G$, green).  }
   \end{center}
   \end{figure}
 
@@ -338,7 +340,115 @@ The derivatives of $\mathbf{q}$ work out as follows:
 
 The derivatives of the rotation operator are already encoded in the cctbx library ({\tt scitbx/matrix/\_\_init\_\_.py}).  Formulae for the rotation operator and its derivative with 
 respect to angle $\theta$ are given in the LaTeX documentation included in that directory.
+
+  \subsection*{5 The model { \tt rs\_hybrid}: Additional refinement of the parameter $r_s$ }
+After refining the parameters $G$, $B$, $\theta_{x}$, and $\theta_{y}$
+we now decide to add a second minimization round to refine an additional parameter for each crystal lattice:
+$r_s$, the RLP radius, as shown in Fig. 1.
+
+\par We thus need the derivative of the residual $\mathscr{R}_i$ with respect to this new parameter:
+        
+   \begin{equation}
+    \frac{\partial\mathscr{R}_i}{\partial r_s} = 
+  \frac{\partial\mathscr{R}_i}{\partial p_B}
+   \frac{\partial p_B} {\partial r_s}
+    \text{,}
+    \label{eqn:dRrs}
+  \end{equation}
+
+where  $\dfrac{\partial\mathscr{R}_i}{\partial p_B}$ has already been given by Eqn. \eqref{eqn:P_terms}. 
+
+The remaining factor is derived from the partiality expression associated with the Lorentzian RLP 
+profile, Eqn. \eqref{eqn:pb}.  Using the quotient rule, with $N$=numerator and $D$=denominator,
+
+   \begin{equation}
+    \frac{\partial p_B} {\partial r_s} = 
+  \frac{
+      \dfrac{\partial N}{\partial{r_s}} D-
+      \dfrac{\partial D}{\partial{r_s}} N
+    }
+    {D^2}
+    =
+   \frac{4{r_s}{r_h}^2}{(2r_h^2 + r_s^2)^2}
+    \text{.}
+    \label{eqn:dpb_drs}
+  \end{equation}
+
+  \subsection*{6 A Gaussian-shaped radial profile for the RLP }
+One criticism of the RLP model B and its Lorentzian-shaped radial profile $p_B (r_h)$ is that the
+profile tails off very gradually.  There is still a significant partiality fraction many radii away from the
+RLP center.  Perhaps this is unphysical; after all, we are trying to test the hypothesis that negative
+measurements are in fact false predictions that are in fact too far from the Ewald sphere to contribute
+any diffracted signal.  Therefore, let's choose a model that would provide more sharp delineation 
+between RLP and not-RLP.  We'll then test if this model fits the data better, presumably by looking 
+at the target functional or the correlation coefficient.
+A candidate function giving a sharper cutoff, while still being smoothly
+differentiable, is the Gaussian,
+
+   \begin{equation}
+    G = 
+  \frac{1}{\sqrt{2\pi\sigma^2}}
+   \exp (- \dfrac {(x - \mu)^2}{2\sigma^2})
+    \text{,}
+    \label{eqn:gaussian}
+  \end{equation}
+
+with mean $\mu$ and standard deviation $\sigma$.
+  
+As before, we develop a modified function that has an amplitude of 1 at a reciprocal-distance offset $r_h$ of 0:
+
+   \begin{equation}
+    G^{\prime} = 
+   \exp (- \dfrac {r_h^2}{2\sigma^2})
+    \text{.}
+    \label{eqn:gaussprime}
+  \end{equation}
+
+To eliminate the variable $\sigma$ we set the FWHM of function \eqref{eqn:gaussprime} ,
+   \begin{equation}
+   2 \sqrt{(2 \ln{2})\sigma^2}
+    \text{,}
+    \label{eqn:fwhmgaussprime}
+  \end{equation}
+
+to be equal to the FWHM expression worked out for models A and B in eqn \eqref{eqn:fwhm}. From this 
+condition we can work out the value of the variance
+
+   \begin{equation}
+   \sigma^2 = 
+    \dfrac {r_s^2} {4\ln{2}}
+    \text{,}
+    \label{eqn:gsigma}
+  \end{equation}
+
+and now eliminate $\sigma$ to arrive at a new expression for the partiality (model G):
+
+   \begin{equation}
+  p_G = 
+    \exp( \dfrac {-(2 \ln{2}) r_h^2} {r_s^2}
+    )
+    \text{,}
+    \label{eqn:pg}
+  \end{equation}
+
+This function is plotted in Fig. 2 (green dots), illustrating that $p_G$ is a better 
+approximation to the 
+hard-sphere RLP model (blue) than is $p_B$ (red).  Finally, for parameter refinement we need the 
+partial derivatives of $p_G$ with respect to its constituent variables,
+
+  \begin{equation}
+    \frac{\partial{p_G}}{\partial{r_h}} = 
+    - p_G \frac {(4 \ln{2}) r_h}{r_s^2}
+    \text{, }
+    \label{eqn:dpG_drh}
+  \end{equation}
+and
+  \begin{equation}
+    \frac{\partial{p_G}}{\partial{r_s}} = p_G\frac{(4 \ln{2})r_h^2}{r_s^3}
+    \text{.}
+    \label{eqn:dpG_drs}
+  \end{equation}
+
+  
 %%%%%%%%%%%%%%%%%%%%%
-
-
 \end{document}
