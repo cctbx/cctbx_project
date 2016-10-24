@@ -29,8 +29,8 @@ class chooser_wrapper(object):
   def get_detector(self):  return self.image_set.get_detector()
   def get_scan(self):  return self.image_set.get_scan()
   def get_beam(self):  return self.image_set.get_beam()
-  def get_mask(self):
-    return self.image_set.get_mask(self.index)
+  def get_mask(self, goniometer=None):
+    return self.image_set.get_mask(self.index, goniometer=goniometer)
 
   def get_raw_data(self):
     if self._raw_data is None:
