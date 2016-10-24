@@ -238,7 +238,8 @@ class structure_monitor(object):
     self.xray_structure_start = xray_structure.deep_copy_scatterers()
     self.states_collector = mmtbx.utils.states(
       pdb_hierarchy  = self.pdb_hierarchy,
-      xray_structure = self.xray_structure)
+      xray_structure = self.xray_structure,
+      counter        = 1)
     self.states_collector.add(sites_cart = self.xray_structure.sites_cart())
     self.rotamer_manager = RotamerEval()
     self.assert_pdb_hierarchy_xray_structure_sync()

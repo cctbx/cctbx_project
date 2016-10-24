@@ -3363,9 +3363,9 @@ class experimental_data_target_and_gradients(object):
     return result
 
 class states(object):
-  def __init__(self, pdb_hierarchy, xray_structure=None):
+  def __init__(self, pdb_hierarchy, xray_structure=None, counter=0):
     adopt_init_args(self, locals())
-    self.counter = 0
+    self.counter = counter
     self.root = iotbx.pdb.hierarchy.root()
     self.sites_carts = []
 
