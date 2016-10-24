@@ -61,6 +61,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     FormatCBFMiniPilatus.__init__(self, image_file, **kwargs)
 
     self._raw_data = None
+    self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
 
     return
 
@@ -313,15 +314,16 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     return GoniometerShadowMaskGenerator(
       goniometer, coords, flex.size_t(len(coords), 1))
 
-  def get_mask(self, goniometer_shadow_mask=False, goniometer=None):
-    gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
-    scan = self.get_scan()
-    detector = self.get_detector()
+  def get_mask(self, goniometer=None):
     mask = super(FormatCBFMiniPilatusDLS12M, self).get_mask()
-    shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
-    assert len(mask) == len(shadow_mask)
-    for m, sm in zip(mask, shadow_mask):
-      m &= sm
+    if self._dynamic_shadowing:
+      gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
+      scan = self.get_scan()
+      detector = self.get_detector()
+      shadow_mask = gonio_masker.get_mask(detector, scan.get_oscillation()[0])
+      assert len(mask) == len(shadow_mask)
+      for m, sm in zip(mask, shadow_mask):
+        m &= sm
 
     return mask
 

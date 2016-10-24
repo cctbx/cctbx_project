@@ -584,7 +584,7 @@ class ImageSet(object):
       return pedestal
     return self.external_lookup.pedestal.data
 
-  def get_mask(self, index, goniometer_shadow_mask=False):
+  def get_mask(self, index):
     '''
     Get the mask at the given index.
     Queries a format object for a dynamic mask if it exists.
@@ -592,8 +592,7 @@ class ImageSet(object):
 
     '''
     # Check for a dynamic mask
-    dyn_mask = self.reader().get_format(index).get_mask(
-      goniometer_shadow_mask=goniometer_shadow_mask)
+    dyn_mask = self.reader().get_format(index).get_mask()
     if dyn_mask is None:
 
       # Get the image and detector

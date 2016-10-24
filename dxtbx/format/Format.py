@@ -263,7 +263,7 @@ class Format(object):
     long as the result is an scan.'''
     return None
 
-  def get_mask(self, goniometer_shadow_mask=False, goniometer=None):
+  def get_mask(self, goniometer=None):
     '''Overload this method to provide dynamic masks to be used during
     spotfinding or integration.'''
 

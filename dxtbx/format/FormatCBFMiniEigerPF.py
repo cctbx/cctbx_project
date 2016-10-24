@@ -223,7 +223,7 @@ class FormatCBFMiniEigerPF(FormatCBFMini):
 
     return self._raw_data
 
-  def get_mask(self, goniometer_shadow_mask=False, goniometer=None):
+  def get_mask(self, goniometer=None):
     from scitbx.array_family import flex
     detector = self.get_detector()
     mask = [flex.bool(flex.grid(reversed(p.get_image_size())), True) for p in detector]

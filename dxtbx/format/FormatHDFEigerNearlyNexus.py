@@ -343,7 +343,7 @@ class FormatEigerNearlyNexus(FormatHDF5):
   def get_raw_data(self, index):
     return self._raw_data[index]
 
-  def get_mask(self, index=None, goniometer_shadow_mask=False, goniometer=None):
+  def get_mask(self, index=None, goniometer=None):
     return self._mask
 
   def get_num_images(self):
