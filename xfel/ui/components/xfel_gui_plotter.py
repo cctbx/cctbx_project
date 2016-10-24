@@ -147,25 +147,34 @@ class PopUpCharts(object):
     plot_ratio = max(min(xsize, ysize)/2.5, 3)
     if high_vis:
       text_ratio = plot_ratio*6
+      seperator = "\n"
     else:
       text_ratio = plot_ratio*3
+      seperator = " "
 
     # Initialize figure
     fig = plt.figure(figsize=(xsize, ysize))
-    gsp = GridSpec(3, 3)
-    sub_ab = fig.add_subplot(gsp[0])
-    sub_bc = fig.add_subplot(gsp[1])
-    sub_ac = fig.add_subplot(gsp[2])
-    sub_a = fig.add_subplot(gsp[3])
-    sub_b = fig.add_subplot(gsp[4], sharey=sub_a)
-    sub_c = fig.add_subplot(gsp[5], sharey=sub_a)
-    sub_alpha = fig.add_subplot(gsp[6])
-    sub_beta = fig.add_subplot(gsp[7], sharey=sub_alpha)
-    sub_gamma = fig.add_subplot(gsp[8], sharey=sub_alpha)
+    gsp = GridSpec(4, 3)
+    legend_sub_a = fig.add_subplot(gsp[0])
+    legend_sub_b = fig.add_subplot(gsp[1])
+    legend_sub_c = fig.add_subplot(gsp[2])
+    sub_ba = fig.add_subplot(gsp[3])
+    sub_cb = fig.add_subplot(gsp[4])
+    sub_ac = fig.add_subplot(gsp[5])
+    sub_a = fig.add_subplot(gsp[6])
+    sub_b = fig.add_subplot(gsp[7], sharey=sub_a)
+    sub_c = fig.add_subplot(gsp[8], sharey=sub_a)
+    sub_alpha = fig.add_subplot(gsp[9])
+    sub_beta = fig.add_subplot(gsp[10], sharey=sub_alpha)
+    sub_gamma = fig.add_subplot(gsp[11], sharey=sub_alpha)
     total = 0
     abc_hist_ylim = 0
 
-    for info in info_list:
+    legend_sub_a.axis('off')
+    legend_sub_b.axis('off')
+    legend_sub_c.axis('off')
+
+    for legend, info in zip(legend_list, info_list):
       if len(info) == 0:
         continue
       # Extract uc dimensions from info list
@@ -192,48 +201,58 @@ class PopUpCharts(object):
 
       nbins = int(np.sqrt(len(a))) * 2
 
+      n_str = "N: %d"%len(a)
+      varstr = "%.1f +/- %.1f"%(flex.mean(a),
+                                flex.mean_and_variance(a).unweighted_sample_standard_deviation())
+      if len(legend) > 0:
+        a_legend = n_str + " " + legend + seperator + varstr
+      else:
+        a_legend = n_str + varstr
       a_hist = sub_a.hist(a, nbins, normed=False,
-                 alpha=0.75, histtype='stepfilled')
-      sub_a.set_xlabel(
-        "a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
-                                          flex.mean_and_variance(a).unweighted_sample_standard_deviation())
-        ).set_fontsize(text_ratio)
+                 alpha=0.75, histtype='stepfilled', label = a_legend)
+      sub_a.set_xlabel("a-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
       sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
 
+      varstr = "%.1f +/- %.1f"%(flex.mean(b),
+                                flex.mean_and_variance(b).unweighted_sample_standard_deviation())
+      if len(legend) > 0:
+        b_legend = legend + seperator + varstr
+      else:
+        b_legend = varstr
       b_hist = sub_b.hist(b, nbins, normed=False,
-               alpha=0.75, histtype='stepfilled')
-      sub_b.set_xlabel(
-        "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
-                                          flex.mean_and_variance(b).unweighted_sample_standard_deviation())
-        ).set_fontsize(text_ratio)
+               alpha=0.75, histtype='stepfilled', label = b_legend)
+      sub_b.set_xlabel("b-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
       self.plt.setp(sub_b.get_yticklabels(), visible=False)
 
+      varstr = "%.1f +/- %.1f"%(flex.mean(c),
+                                flex.mean_and_variance(c).unweighted_sample_standard_deviation())
+      if len(legend) > 0:
+        c_legend = legend + seperator + varstr
+      else:
+        c_legend = varstr
       c_hist = sub_c.hist(c, nbins, normed=False,
-               alpha=0.75, histtype='stepfilled')
-      sub_c.set_xlabel(
-        "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
-                                          flex.mean_and_variance(c).unweighted_sample_standard_deviation())
-        ).set_fontsize(text_ratio)
+               alpha=0.75, histtype='stepfilled', label = c_legend)
+      sub_c.set_xlabel("c-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
       self.plt.setp(sub_c.get_yticklabels(), visible=False)
 
       abc_hist_ylim = max(1.2*max([max(h[0]) for h in (a_hist, b_hist, c_hist)]), abc_hist_ylim)
       sub_a.set_ylim([0, abc_hist_ylim])
 
       if len(info_list) == 1:
-        sub_ab.hist2d(a, b, bins=100)
+        sub_ba.hist2d(b, a, bins=100)
       else:
-        sub_ab.plot(a.as_numpy_array(), b.as_numpy_array(), '.')
-      sub_ab.set_xlabel("a axis").set_fontsize(text_ratio)
-      sub_ab.set_ylabel("b axis").set_fontsize(text_ratio)
-      # plt.setp(sub_ab.get_yticklabels(), visible=False)
+        sub_ba.plot(b.as_numpy_array(), a.as_numpy_array(), '.')
+      sub_ba.set_xlabel("b axis").set_fontsize(text_ratio)
+      sub_ba.set_ylabel("a axis").set_fontsize(text_ratio)
+      # plt.setp(sub_ba.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
-        sub_bc.hist2d(b, c, bins=100)
+        sub_cb.hist2d(c, b, bins=100)
       else:
-        sub_bc.plot(b.as_numpy_array(), c.as_numpy_array(), '.')
-      sub_bc.set_xlabel("b axis").set_fontsize(text_ratio)
-      sub_bc.set_ylabel("c axis").set_fontsize(text_ratio)
-      # plt.setp(sub_bc.get_yticklabels(), visible=False)
+        sub_cb.plot(c.as_numpy_array(), b.as_numpy_array(), '.')
+      sub_cb.set_xlabel("c axis").set_fontsize(text_ratio)
+      sub_cb.set_ylabel("b axis").set_fontsize(text_ratio)
+      # plt.setp(sub_cb.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
         sub_ac.hist2d(a, c, bins=100)
@@ -241,12 +260,12 @@ class PopUpCharts(object):
         sub_ac.plot(a.as_numpy_array(), c.as_numpy_array(), '.')
       sub_ac.set_xlabel("a axis").set_fontsize(text_ratio)
       sub_ac.set_ylabel("c axis").set_fontsize(text_ratio)
-      # plt.setp(sub_bc.get_yticklabels(), visible=False)
+      # plt.setp(sub_cb.get_yticklabels(), visible=False)
 
       for ax in (sub_a, sub_b, sub_c, sub_alpha, sub_beta, sub_gamma):
         ax.tick_params(axis='both', which='both', left='off', right='off')
         ax.set_yticklabels([])
-      for ax in (sub_ab, sub_bc, sub_ac):
+      for ax in (sub_ba, sub_cb, sub_ac):
         ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off')
         ax.set_xticklabels([])
         ax.set_yticklabels([])
@@ -278,16 +297,23 @@ class PopUpCharts(object):
     sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_ab.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_ab.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_bc.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_bc.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_ba.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_ba.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_cb.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_cb.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     sub_ac.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_ac.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_gamma.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    h, l = sub_a.get_legend_handles_labels()
+    legend_sub_a.legend(h, l, fontsize=text_ratio)
+    h, l = sub_b.get_legend_handles_labels()
+    legend_sub_b.legend(h, l, fontsize=text_ratio)
+    h, l = sub_c.get_legend_handles_labels()
+    legend_sub_c.legend(h, l, fontsize=text_ratio)
 
     # if len(legend_list) > 0:
     #   import matplotlib.patches as mpatches

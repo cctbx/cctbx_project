@@ -49,7 +49,10 @@ class TagSet(object):
     self.mode = tag_selection_mode
     self.tags = tags
   def __str__(self):
-    return ", ".join([t.name for t in self.tags]) + (' (%s)' % self.mode.upper())
+    if len(self.tags) > 1:
+      return ", ".join([t.name for t in self.tags]) + (' (%s)' % self.mode.upper())
+    else:
+      return ", ".join([t.name for t in self.tags])
 
 
 # ------------------------------- Run Sentinel ------------------------------- #
