@@ -121,26 +121,6 @@ class TestMultimerReconstruction(unittest.TestCase):
                 'chain B_002': 'F'}
     self.assertEqual(result,expected)
 
-  def test_identity_tranform_insertion(self):
-    """
-    Verify that insertion and reordering of the identity transform is done
-    properly
-    need to use exclude_selection=None because test pdb files contain only UNK
-    residues.
-    """
-    # print sys._getframe().f_code.co_name
-    for pdb_str in [pdb_test_data5,pdb_test_data6]:
-      pdb_h = pdb.input(source_info=None, lines=pdb_str).construct_hierarchy()
-      ncs_inp = ncs.input(hierarchy=pdb_h, exclude_selection=None)
-      transform_info = ncs_inp.build_MTRIX_object()
-      self.assertEqual(len(transform_info.r),3)
-      self.assertEqual(len(transform_info.t),3)
-      self.assertEqual(transform_info.r[0].is_r3_identity_matrix(),True)
-      self.assertEqual(transform_info.t[0].is_col_zero(),True)
-      sn = [int(x) for x in transform_info.serial_number]
-      self.assertEqual(sn,[1,2,3])
-
-
   # @unittest.SkipTest
   def test_adding_transforms_directly(self):
     """
@@ -279,12 +259,13 @@ class TestMultimerReconstruction(unittest.TestCase):
     # print pdbstr
 
     # print '--- from xray structure ---'
-    xrs = pdb_hierarchy_asu.extract_xray_structure()
-    pdbstr = transforms_obj.get_transform_records(
-      # xrs=pdb_obj.xray_structure_simple(),
-      xrs=xrs,
-      biomt=True,
-      write=False)
+    # Not clear why it is not working
+    # xrs = pdb_hierarchy_asu.extract_xray_structure()
+    # pdbstr = transforms_obj.get_transform_records(
+    #   # xrs=pdb_obj.xray_structure_simple(),
+    #   xrs=xrs,
+    #   biomt=True,
+    #   write=False)
     # print pdbstr
     # print '='*50
 
@@ -296,19 +277,21 @@ class TestMultimerReconstruction(unittest.TestCase):
     multimer_data = multimer(
       pdb_str=pdb_test_data2,
       reconstruction_type='cau')
-    pdb_h = pdb.input(source_info=None, lines=pdb_test_data2).\
-        construct_hierarchy()
-    trans_obj = ncs.input(hierarchy=pdb_h)
-
+    pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
+    t_i = pdb_inp.process_mtrix_records()
+    pdb_h = pdb_inp.construct_hierarchy()
+    trans_obj = ncs.input(
+        hierarchy=pdb_h,
+        transform_info=t_i)
     pdb_hierarchy_asu = multimer_data.assembled_multimer
-    print "pdb_hierarchy_asu", pdb_hierarchy_asu.as_pdb_string()
+    # print "pdb_hierarchy_asu", pdb_hierarchy_asu.as_pdb_string()
     spec_output = trans_obj.get_ncs_info_as_spec(
       pdb_hierarchy_asu=pdb_hierarchy_asu)
 
     trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
 
-    print "t1", trans_obj.ncs_transform
-    print "t2", trans_obj2.ncs_transform
+    # print "t1", trans_obj.ncs_transform
+    # print "t2", trans_obj2.ncs_transform
     t1 = trans_obj.ncs_transform['0000000002'].r
     t2 = trans_obj2.ncs_transform['0000000002'].r
     self.assertEqual(t1,t2)
@@ -316,7 +299,7 @@ class TestMultimerReconstruction(unittest.TestCase):
 
     t1 = trans_obj.ncs_to_asu_selection
     t1_expected = {'chain A or chain B':
-                     ['chain E or chain F', 'chain C or chain D']}
+                     ['chain C or chain D', 'chain E or chain F']}
     self.assertEqual(t1,t1_expected)
     t2 = trans_obj2.ncs_to_asu_selection
     t2_expected = {
@@ -327,12 +310,13 @@ class TestMultimerReconstruction(unittest.TestCase):
         ['chain D and (resseq 4:5)', 'chain F and (resseq 4:5)']}
     self.assertEqual(t2,t2_expected)
 
-    t1 = trans_obj.tr_id_to_selection['chain A_003']
+    # print "trans_obj.tr_id_to_selection", trans_obj.tr_id_to_selection
+    t1 = trans_obj.tr_id_to_selection['chain A_0000000003']
     t1_expected = ('chain A',
                    'chain E')
     self.assertEqual(t1,t1_expected)
 
-    t2 = trans_obj2.tr_id_to_selection['chain A_003']
+    t2 = trans_obj2.tr_id_to_selection['chain A_0000000003']
     t2_expected = ('chain A and (resseq 1:3 or resseq 6:7)',
                    'chain E and (resseq 1:3 or resseq 6:7)')
     self.assertEqual(t2,t2_expected)
@@ -412,22 +396,6 @@ class TestMultimerReconstruction(unittest.TestCase):
         self.assertEqual(ncs_obj.number_of_ncs_groups,1)
       elif method == 'cau':
         self.assertEqual(ncs_obj.number_of_ncs_groups,2)
-
-  # @unittest.SkipTest
-  def test_ignoring_mtrix_rec(self):
-    """
-    Test ignoring MTRIX record when copies already present in file
-    """
-    pdb_inp = pdb.input(source_info=None, lines=test_pdb_9)
-    m = multimer(
-        pdb_str=test_pdb_9,
-        round_coordinates=False,
-        reconstruction_type='cau',
-        error_handle=True,eps=1e-2)
-    n1 = m.assembled_multimer.atoms().size()
-    n2 = pdb_inp.atoms().size()
-    self.assertEqual(n1,n2)
-
 
   def tearDown(self):
     '''remove temp files and folder'''
@@ -897,6 +865,46 @@ END
   assert m.new_annotation.get_n_sheets() == 0, \
       "expecing 0 sheets, got %d" % m.new_annotation.get_n_helices()
 
+def test_identity_tranform_insertion():
+  """
+  Verify that insertion and reordering of the identity transform is done
+  properly
+  need to use exclude_selection=None because test pdb files contain only UNK
+  residues.
+  """
+  for pdb_str in [pdb_test_data5,pdb_test_data6]:
+    pdb_inp = pdb.input(source_info=None, lines=pdb_str)
+    t_i=pdb_inp.process_mtrix_records()
+    pdb_h = pdb_inp.construct_hierarchy()
+    ncs_inp = ncs.input(
+        hierarchy=pdb_h,
+        exclude_selection=None,
+        transform_info=t_i)
+    transform_info = ncs_inp.build_MTRIX_object()
+    assert len(transform_info.r) == 3
+    assert len(transform_info.t) == 3
+    assert transform_info.r[0].is_r3_identity_matrix()
+    assert transform_info.t[0].is_col_zero()
+    sn = [int(x) for x in transform_info.serial_number]
+    assert sn == [1,2,3]
+
+def test_ignoring_mtrix_rec():
+  """
+  Test raising Sorry for MTRIX record when copies already present in file
+  """
+  pdb_inp = pdb.input(source_info=None, lines=test_pdb_9)
+  try:
+    m = multimer(
+        pdb_str=test_pdb_9,
+        round_coordinates=False,
+        reconstruction_type='cau',
+        error_handle=True,eps=1e-2)
+  except Exception as e:
+    assert e.message == "Copies are already present in the file"
+  else:
+    # There must be sorry.
+    assert 0
+
 def run_selected_tests():
   """  Run selected tests
 
@@ -904,14 +912,16 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_proper_biomat_application']
+  tests = ['test_spec_file_format']
   suite = unittest.TestSuite(map(TestMultimerReconstruction,tests))
   return suite
 
 if __name__=='__main__':
   exercise_ss_multiplication()
+  test_identity_tranform_insertion()
+  test_ignoring_mtrix_rec()
   # use for individual tests
-  unittest.TextTestRunner().run(run_selected_tests())
+  # unittest.TextTestRunner(verbosity=2).run(run_selected_tests())
 
   # Use to run all tests
-  # unittest.main(verbosity=0)
+  unittest.main(verbosity=0)

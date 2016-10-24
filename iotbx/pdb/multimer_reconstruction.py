@@ -88,18 +88,16 @@ class multimer(object):
                   "'ba': biological assembly \n" + \
                   "'cau': crystallographic asymmetric unit \n")
     if (transform_info.as_pdb_string() == '' or
-        not ncs_only(transform_info) or
         transform_info.contains_only_identity_matrices()):
-      transform_info = None
-    else:
-      transform_info = insure_identity_is_in_transform_info(transform_info)
+      raise Sorry('Sorry, no transform info of appropriate type was found.')
+    if not ncs_only(transform_info):
+      raise Sorry("Copies are already present in the file")
+    transform_info = insure_identity_is_in_transform_info(transform_info)
     if len(pdb_obj.hierarchy.models()) > 1:
       raise Sorry('Sorry, this feature currently supports on single models ' +
                   'hierarchies')
 
     # Read the relevant transformation matrices
-    if transform_info is None:
-      raise Sorry('Sorry, no transform info of appropriate type was found.')
     self.transforms_obj = iotbx.ncs.input(
       hierarchy=pdb_obj.hierarchy,
       transform_info=transform_info,
