@@ -43,9 +43,9 @@ class get_definition(dxtbx.data.beamline_defs.template):
 
     b[l('df.m.dev')]       = 'Fixed \\c 3-circle diffractometer'
     b[l('df.m.dev_type')]  = 'Fluid Film Devices'
-    b[l('df.m.method')]    = '\\f rotation with 0.1 degree frames'
+    b[l('df.m.method')]    = 'shutterless scans'
     b[l('df.m.spec_supp')] = 'MiTeGen MicroMount'
-    b[l('df.rad.source')]  = 'Diamond Light Source Beamline I19'
+    b[l('df.rad.source')]  = 'Diamond Light Source Beamline I19-1'
     b[l('df.rad.mono')]    = 'Silicon 111'
 
     return b
