@@ -15,10 +15,6 @@ from dxtbx.model import ParallaxCorrectedPxMmStrategy
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 import os
-if 'P6M_60_PANEL' in os.environ:
-  single_panel = False
-else:
-  single_panel = True
 
 if 'DXTBX_ENABLE_SMARGON' in os.environ:
   enable_smargon = True
@@ -48,10 +44,11 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     assert(self.understand(image_file))
 
+    self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
+    self._multi_panel = kwargs.get('multi_panel', False)
     FormatCBFMiniPilatus.__init__(self, image_file, **kwargs)
 
     self._raw_data = None
-    self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
 
     return
 
@@ -186,7 +183,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     pixel_y *= 1000.0
     distance *= 1000.0
 
-    if single_panel:
+    if not self._multi_panel:
       detector = self._detector_factory.simple(
         'PAD', distance, (beam_x * pixel_x, beam_y * pixel_y),
         '+x', '-y', (pixel_x, pixel_y), (nx, ny), (underload, overload), [],
@@ -362,21 +359,19 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     return pixel_values
 
-  if not single_panel:
+  def get_raw_data(self):
+    if not self._multi_panel:
+      return super(FormatCBFMiniPilatusDLS6MSN100, self).get_raw_data()
 
-    def get_raw_data(self):
-      if self._raw_data is None:
-        raw_data = self.read_cbf_image(self._image_file)
-
-        self._raw_data = []
-
-        d = self.get_detector()
-
-        for panel in d:
-          xmin, ymin, xmax, ymax = self.coords[panel.get_name()]
-          self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
-
-      return tuple(self._raw_data)
+    if self._raw_data is None:
+      raw_data = self.read_cbf_image(self._image_file)
+      self._raw_data = []
+      d = self.get_detector()
+      for panel in d:
+        xmin, ymin, xmax, ymax = self.coords[panel.get_name()]
+        self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
+      self._raw_data = tuple(self._raw_data)
+    return self._raw_data
 
 
 if enable_smargon:

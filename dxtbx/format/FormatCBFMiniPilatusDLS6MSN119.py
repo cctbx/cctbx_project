@@ -12,12 +12,6 @@ from __future__ import division
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 
-import os
-if 'P6M_60_PANEL' in os.environ:
-  single_panel = False
-else:
-  single_panel = True
-
 def read_cbf_image(cbf_image):
   from cbflib_adaptbx import uncompress
   import binascii

@@ -15,17 +15,6 @@ from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 __mask = None
 
-# if group_rows == True, then interpret data as 24 panels, where each row
-# of 5 panels is grouped as one "panel"
-# elif group_rows == False, then interpret data as 120 panels,
-# 24 rows * 5 columns - bodge through ENV variable in 1st cut...
-
-import os
-if 'P12M_120_PANEL' in os.environ:
-  group_rows = False
-else:
-  group_rows = True
-
 def read_mask():
   global __mask
   if not __mask:
@@ -58,10 +47,16 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
     assert(self.understand(image_file))
 
+    # if multi_panel == False, then interpret data as 24 panels, where each row
+    # of 5 panels is grouped as one "panel"
+    # elif multi_panel == True, then interpret data as 120 panels,
+    # 24 rows * 5 columns
+    self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
+    self._multi_panel = kwargs.get('multi_panel', False)
     FormatCBFMiniPilatus.__init__(self, image_file, **kwargs)
 
     self._raw_data = None
-    self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
+
 
     return
 
@@ -125,7 +120,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
       row_origin = 250.0 * normal - off_x * fast - 16.8 * slow
 
-      if group_rows:
+      if not self._multi_panel:
         xmin, xmax = 0, 2463
 
         # OK two calls to add_panel here for detector like things => two
