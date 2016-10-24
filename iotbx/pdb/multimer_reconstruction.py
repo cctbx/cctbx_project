@@ -81,18 +81,18 @@ class multimer(object):
       transform_info = pdb_inp.process_mtrix_records(
         error_handle=error_handle,
         eps=eps)
-      if (transform_info.as_pdb_string() == '' or
-          not ncs_only(transform_info) or
-          transform_info.contains_only_identity_matrices()):
-        transform_info = None
-      else:
-        transform_info = insure_identity_is_in_transform_info(transform_info)
       self.transform_type = 'crystall_asymmetric_unit'
     else:
       raise Sorry('Sorry, wrong reconstruction type is given \n' + \
                   'Reconstruction type can be: \n' + \
                   "'ba': biological assembly \n" + \
                   "'cau': crystallographic asymmetric unit \n")
+    if (transform_info.as_pdb_string() == '' or
+        not ncs_only(transform_info) or
+        transform_info.contains_only_identity_matrices()):
+      transform_info = None
+    else:
+      transform_info = insure_identity_is_in_transform_info(transform_info)
     if len(pdb_obj.hierarchy.models()) > 1:
       raise Sorry('Sorry, this feature currently supports on single models ' +
                   'hierarchies')
