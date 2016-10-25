@@ -281,7 +281,7 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
 
   def get_raw_data(self):
     if not self._multi_panel:
-      return super(FormatCBFMiniPilatusDLS6MSN100, self).get_raw_data()
+      return super(FormatCBFMiniPilatusDLS6MSN126, self).get_raw_data()
 
     if self._raw_data is None:
       raw_data = self.read_cbf_image(self._image_file)
