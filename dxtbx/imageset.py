@@ -566,7 +566,7 @@ class ImageSet(object):
 
     '''
     from scitbx.array_family import flex
-    fmt = self.reader().get_format(index)
+    fmt = self.get_format(index)
     gain = fmt.get_gain()
     if gain is not None:
       return gain
@@ -578,7 +578,7 @@ class ImageSet(object):
 
     '''
     from scitbx.array_family import flex
-    fmt = self.reader().get_format(index)
+    fmt = self.get_format(index)
     pedestal = fmt.get_pedestal()
     if pedestal is not None:
       return pedestal
@@ -594,7 +594,7 @@ class ImageSet(object):
     # Check for a dynamic mask
     if goniometer is None:
       goniometer = self.get_goniometer(index)
-    dyn_mask = self.reader().get_format(index).get_mask(goniometer=goniometer)
+    dyn_mask = self.get_format(index).get_mask(goniometer=goniometer)
     if dyn_mask is None:
 
       # Get the image and detector
