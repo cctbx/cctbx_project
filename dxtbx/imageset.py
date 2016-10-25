@@ -735,6 +735,10 @@ class ImageSet(object):
     ''' Get the path for the index '''
     return self.reader().get_path(self._image_index(index))
 
+  def get_format(self, index):
+    ''' Get the format class for the index '''
+    return self.reader().get_format(self._image_index(index))
+
   def get_image_identifier(self, index):
     ''' Get the path for the index '''
     if isinstance(self.reader(), SingleFileReader):
