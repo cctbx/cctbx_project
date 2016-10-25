@@ -89,7 +89,7 @@ class NullReader(ReaderBase):
 
   def get_path(self, index=None):
     ''' Get an image path. '''
-    if index == None:
+    if index == None or self._single_file:
       return self._filenames[0]
     return self._filenames[index]
 
@@ -650,7 +650,10 @@ class ImageSet(object):
   def paths(self):
     ''' Return a list of filenames referenced by this set. '''
     filenames = self.reader().get_image_paths()
-    return [filenames[i] for i in self._indices]
+    if self.reader().is_single_file_reader():
+      return [filenames[0]] * len(self._indices)
+    else:
+      return [filenames[i] for i in self._indices]
 
   def is_valid(self):
     ''' Validate all the images in the image set. Can take a long time. '''
@@ -1596,7 +1599,7 @@ class ImageSetFactory(object):
     if format_class == None and check_format:
       format_class = Registry.find(filenames[0])
     if format_class is None:
-      reader = NullReader(filenames)
+      reader = NullReader(filenames, single_file_indices is not None)
     else:
       if issubclass(format_class, FormatMultiImage):
         assert len(set(filenames)) == 1
