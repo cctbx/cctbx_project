@@ -496,7 +496,10 @@ class ImageSet(object):
     self.external_lookup = ExternalLookup()
 
     # The format kwargs
-    self._format_kwargs = format_kwargs
+    if format_kwargs is None:
+      self._format_kwargs = {}
+    else:
+      self._format_kwargs = format_kwargs
 
   def __getitem__(self, item):
     ''' Get an item from the image set stream.
@@ -1657,7 +1660,6 @@ class ImageSetFactory(object):
       format_class = Registry.find(filenames[0])
 
     # Create the reader
-    indices = None
     if format_class is None:
       if template_format is not None:
         filenames = SweepFileList(template_format, array_range)
@@ -1668,12 +1670,11 @@ class ImageSetFactory(object):
           format_kwargs = {}
         assert len(filenames) == 1
         format_instance = format_class(filenames[0], **format_kwargs)
-        if scan is not None:
-          image0 = scan.get_array_range()[0]
-          indices = list(range(scan.get_num_images()))
         reader = SingleFileReader(format_instance)
+        indices = [i - 1 for i in indices]
       else:
         assert(template_format is not None)
+        indices = None
         filenames = SweepFileList(template_format, array_range)
         reader = MultiFileReader(format_class, filenames,
                                  format_kwargs=format_kwargs)

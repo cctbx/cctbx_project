@@ -541,7 +541,7 @@ class ExperimentListDict(object):
           if 'params' in imageset:
             format_kwargs = imageset['params']
           else:
-            format_kwargs = None
+            format_kwargs = {}
           if 'mask' in imageset and imageset['mask'] is not None:
             mask_filename = load_path(imageset['mask'])
             if self._check_format:
@@ -580,7 +580,7 @@ class ExperimentListDict(object):
           else:
             raise RuntimeError('Unknown imageset type')
 
-          # Fill in any models if they aren't already there
+          # Set the external lookup
           if imageset is not None:
             imageset.external_lookup.mask.data = mask
             imageset.external_lookup.mask.filename = mask_filename
@@ -588,14 +588,6 @@ class ExperimentListDict(object):
             imageset.external_lookup.gain.filename = gain_filename
             imageset.external_lookup.pedestal.data = pedestal
             imageset.external_lookup.pedestal.filename = pedestal_filename
-            if beam is None:
-              beam = imageset.get_beam()
-            if detector is None:
-              detector = imageset.get_detector()
-            if goniometer is None:
-              goniometer = imageset.get_goniometer()
-            if scan is None:
-              scan = imageset.get_scan()
 
           # Update the imageset models
           if isinstance(imageset, ImageSweep):

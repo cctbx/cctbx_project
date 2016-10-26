@@ -591,6 +591,7 @@ class DataBlockFilenameImporter(object):
                                   format_kwargs=None):
     ''' Create a multi file sweep or imageset. '''
     from dxtbx.imageset import ImageSetFactory
+    from os.path import abspath
 
     # Make either an imageset or sweep
     if len(records) == 1 and records[0].template is not None:
@@ -601,7 +602,7 @@ class DataBlockFilenameImporter(object):
 
       # Create the sweep
       imageset = ImageSetFactory.make_sweep(
-        records[0].template, range(*image_range),
+        abspath(records[0].template), range(*image_range),
         format_class,
         records[0].beam, records[0].detector,
         records[0].goniometer, records[0].scan,
@@ -616,8 +617,10 @@ class DataBlockFilenameImporter(object):
         filenames.append(r.filename)
 
       # make an imageset
-      imageset = ImageSetFactory.make_imageset(filenames, format_class,
-                                               format_kwargs=format_kwargs)
+      imageset = ImageSetFactory.make_imageset(
+        map(abspath, filenames),
+        format_class,
+        format_kwargs=format_kwargs)
       for i, r in enumerate(records):
         imageset.set_beam(r.beam, i)
         imageset.set_detector(r.detector, i)
@@ -631,9 +634,10 @@ class DataBlockFilenameImporter(object):
                                    format_kwargs=None):
     ''' Create an imageset from a multi image file. '''
     from dxtbx.imageset import SingleFileReader, ImageSet, ImageSweep
+    from os.path import abspath
     if format_kwargs is None:
       format_kwargs = {}
-    format_instance = format_class(filename, **format_kwargs)
+    format_instance = format_class(abspath(filename), **format_kwargs)
     try:
       scan = format_instance.get_scan()
       if abs(scan.get_oscillation()[1]) > 0.0:
@@ -733,6 +737,8 @@ class DataBlockDictImporter(object):
         elif "master" in imageset:
           template = load_path(imageset['master'])
           i0, i1 = scan.get_image_range()
+          indices = imageset['images']
+          assert min(indices) == i0-1 and max(indices) == i1-1
           iset = ImageSetFactory.make_sweep(
             template, range(i0, i1+1), None,
             beam, detector, gonio, scan, check_format,
@@ -769,10 +775,8 @@ class DataBlockDictImporter(object):
           beam, detector, gonio, scan = load_models(image)
           iset.set_beam(beam, i)
           iset.set_detector(detector, i)
-          if gonio:
-            iset.set_goniometer(gonio, i)
-          if scan:
-            iset.set_scan(scan, i)
+          iset.set_goniometer(gonio, i)
+          iset.set_scan(scan, i)
         if 'mask' in imageset and imageset['mask'] is not None:
           imageset['mask'] = load_path(imageset['mask'])
           iset.external_lookup.mask.filename = imageset['mask']
