@@ -142,10 +142,10 @@ class updated_rs(legacy_rs):
 
   def rs2_parameter_range_assertions(self,values):
     # New range assertions for refined variables
-    assert 0 < values.G
-    assert -25 < values.BFACTOR and values.BFACTOR < 25
-    assert -0.5 < 180.*values.thetax/math.pi < 0.5 , "limits on the theta rotation, please"
-    assert -0.5 < 180.*values.thetay/math.pi < 0.5 , "limits on the theta rotation, please"
+    assert 0 < values.G, "G-scale value out of range ( < 0 ) after rs2 refinement"
+    assert -25 < values.BFACTOR and values.BFACTOR < 25, "B-factor value out of range ( |B|>25 ) after rs2 refinement"
+    assert -0.5<180.*values.thetax/math.pi<0.5,"thetax value out of range ( |rotx|>.5 degrees ) after rs2 refinement"
+    assert -0.5<180.*values.thetay/math.pi<0.5,"thetay value out of range ( |roty|>.5 degrees ) after rs2 refinement"
 
   def result_for_cxi_merge(self, file_name):
     values = self.get_parameter_values()
@@ -164,7 +164,7 @@ class updated_rs(legacy_rs):
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 3:
-      raise ValueError
+      raise ValueError, "< 3 near-fulls after refinement"
     print >> self.out, "On total %5d the fat selection is %5d"%(
       len(self.observations_pair1_selected.indices()), fat_count)
     observations_original_index = \
@@ -186,7 +186,7 @@ class updated_rs(legacy_rs):
     self.final_corr = SWC.corr
     self.refined_mini = self.MINI
     #another range assertion
-    assert self.final_corr > 0.1
+    assert self.final_corr > 0.1,"correlation coefficient out of range (<= 0.1) after rs2 refinement"
 
     return observations_original_index,observations,matches
 
@@ -269,7 +269,7 @@ class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
 
   def compute_functional_and_gradients(self):
     values = self.parameterization(self.x)
-    assert -150. < values.BFACTOR < 150. # limits on the exponent, please
+    assert -150. < values.BFACTOR < 150,"B-factor out of range (+/-150) within rs2 functional and gradients"
     self.func = self.refinery.fvec_callable(values)
     functional = flex.sum(self.refinery.WEIGHTS*self.func*self.func)
     self.f = functional

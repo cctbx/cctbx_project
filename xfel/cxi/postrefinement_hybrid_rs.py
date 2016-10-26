@@ -162,7 +162,7 @@ class rs_hybrid(updated_rs):
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 3:
-      raise ValueError
+      raise ValueError, "< 3 near-fulls after refinement"
     print >> self.out, "On total %5d the fat selection is %5d"%(
       len(self.observations_pair1_selected.indices()), fat_count)
     observations_original_index = \
@@ -183,10 +183,10 @@ class rs_hybrid(updated_rs):
     print >> self.out, "CORR: NEW correlation is", SWC.corr
     self.final_corr = SWC.corr
     #another range assertion
-    assert self.final_corr > 0.1
+    assert self.final_corr > 0.1,"correlation coefficient out of range (<= 0.1) after LevMar refinement"
     # XXX Specific to the hybrid_rs method, and likely these limits are problem-specific (especially G-max) so look for another approach
     #     or expose the limits as phil parameters.
-    assert values.G < 0.5
+    assert values.G < 0.5 , "G-scale value out of range ( > 0.5 XXX may be too strict ) after LevMar refinement"
 
     return observations_original_index,observations,matches
 
@@ -272,13 +272,15 @@ class per_frame_helper(normal_eqns.non_linear_ls, normal_eqns.non_linear_ls_mixi
 
   def build_up(pfh, objective_only=False):
     values = pfh.parameterization(pfh.x)
-    assert 0. < values.G
+    assert 0. < values.G , "G-scale value out of range ( < 0 ) within LevMar build_up"
     # XXX revisit these limits.  Seems like an ad hoc approach to have to set these limits
-    #     Moreover, these tests throw out ~30% of LM14 data, thus search for another approach
-    assert -150. < values.BFACTOR < 150. ,"limits on the exponent, please"
-    assert -0.5 < 180.*values.thetax/math.pi < 0.5 , "limits on the theta rotation, please"
-    assert -0.5 < 180.*values.thetay/math.pi < 0.5 , "limits on the theta rotation, please"
-    assert 0.000001 < values.RS < 0.0003 , "limits on the RLP size, please"
+    # However, the assertions are necessary to avoid floating point exceptions at the C++ level
+    # Regardless, these tests throw out ~30% of LM14 data, thus search for another approach
+    assert -150. < values.BFACTOR < 150. ,"B-factor out of range (+/-150) within LevMar build_up"
+    assert -0.5 < 180.*values.thetax/math.pi < 0.5 , "thetax out of range ( |rotx|>.5 degrees ) within LevMar build_up"
+    assert -0.5 < 180.*values.thetay/math.pi < 0.5 , "thetay out of range ( |roty|>.5 degrees ) within LevMar build_up"
+    assert 0.000001 < values.RS , "RLP size out of range (<0.000001) within LevMar build_up"
+    assert values.RS < 0.001 , "RLP size out of range (>0.001) within LevMar build_up"
     residuals = pfh.refinery.fvec_callable(values)
     pfh.reset()
     if objective_only:

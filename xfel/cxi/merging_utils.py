@@ -51,7 +51,8 @@ class null_data (object) :
                 file_error=False,
                 low_signal=False,
                 wrong_bravais=False,
-                wrong_cell=False) :
+                wrong_cell=False,
+                reason=None) :
     adopt_init_args(self, locals())
 
   def show_log_out (self, out) :

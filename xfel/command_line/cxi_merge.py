@@ -559,6 +559,7 @@ class scaling_manager (intensity_data) :
     self.n_wrong_bravais = 0
     self.n_wrong_cell = 0
     self.n_low_corr = 0
+    self.failure_modes = {}
     self.observations = flex.int()
     self.corr_values = flex.double()
     self.rejected_fractions = flex.double()
@@ -612,13 +613,17 @@ class scaling_manager (intensity_data) :
       self.n_wrong_cell
     print >> self.log, "  %d rejected for low signal" % \
       self.n_low_signal
-    print >> self.log, "  %d rejected due to poor correlation" % \
+    print >> self.log, "  %d rejected due to up-front poor correlation under min_corr parameter" % \
       self.n_low_corr
     print >> self.log, "  %d rejected for file errors or no reindex matrix" % \
       self.n_file_error
+    for key in self.failure_modes.keys():
+      print >>self.log, "  %d rejected due to %s"%(self.failure_modes[key], key)
+
     checksum = self.n_accepted  + self.n_file_error \
                + self.n_low_corr + self.n_low_signal \
-               + self.n_wrong_bravais + self.n_wrong_cell
+               + self.n_wrong_bravais + self.n_wrong_cell \
+               + sum([val for val in self.failure_modes.itervalues()])
     assert checksum == len(file_names)
 
     if self.params.raw_data.sdfac_refine:
@@ -694,6 +699,13 @@ class scaling_manager (intensity_data) :
         self.n_wrong_bravais += 1
       elif (data.wrong_cell) :
         self.n_wrong_cell += 1
+      elif (getattr(data,"reason",None) is not None):
+        if str(data.reason)!="":
+          self.failure_modes[str(data.reason)] = self.failure_modes.get(str(data.reason),0) + 1
+        elif repr(type(data.reason))!="":
+          self.failure_modes[repr(type(data.reason))] = self.failure_modes.get(repr(type(data.reason)),0) + 1
+        else:
+          self.failure_modes["other reasons"] = self.failure_modes.get("other reasons",0) + 1
       return
     if (data.accept) :
       self.n_accepted    += 1
@@ -731,6 +743,8 @@ class scaling_manager (intensity_data) :
     self.n_processed += data.n_processed
     self.n_wrong_bravais += data.n_wrong_bravais
     self.n_wrong_cell += data.n_wrong_cell
+    for key in data.failure_modes.keys():
+      self.failure_modes[key] = self.failure_modes.get(key,0) + data.failure_modes[key]
 
     for index, isigi in data.ISIGI.iteritems() :
       if (index in self.ISIGI):
@@ -1469,7 +1483,7 @@ class scaling_manager (intensity_data) :
         postx.run_plain()
         observations_original_index,observations,matches = postx.result_for_cxi_merge(file_name)
       except (AssertionError,ValueError,RuntimeError),e:
-        return null_data(file_name=file_name, log_out=out.getvalue(), low_signal=True)
+        return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
 
       if self.params.postrefinement.show_trumpet_plot is True:
         from xfel.cxi.trumpet_plot import trumpet_wrapper
