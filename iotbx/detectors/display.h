@@ -839,7 +839,7 @@ class generic_flex_image: public FlexImage<double>{
       //std::cout<<"the 90-percentile pixel value is "<<percentile<<std::endl;
 
       double adjlevel = 0.4;
-      correction = (percentile>0.) ? brightness * adjlevel/percentile : 1.0;
+      correction = (percentile>0.) ? brightness * adjlevel/percentile : brightness / 5.0;
   }
 };
 
