@@ -134,9 +134,9 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     detector = Detector()
     root = detector.hierarchy()
     root.set_frame(
-      (1, 0, 0),
-      (0, 1, 0),
-      (0, 0, - self.distance))
+      (-1, 0, 0),
+      ( 0, 1, 0),
+      ( 0, 0, - self.distance))
 
     for i in range(8):
       angle = math.pi * self.panel_rotations[i] / 180.0
