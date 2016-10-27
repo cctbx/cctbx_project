@@ -470,6 +470,8 @@ class ImageSet(object):
         array_range The image range (first, last)
 
     '''
+
+
     # If no reader is set then throw an exception
     if not reader:
       raise ValueError("ImageSet needs a reader!")
@@ -1660,6 +1662,7 @@ class ImageSetFactory(object):
       format_class = Registry.find(filenames[0])
 
     # Create the reader
+    indices = None
     if format_class is None:
       if template_format is not None:
         filenames = SweepFileList(template_format, array_range)
@@ -1671,10 +1674,9 @@ class ImageSetFactory(object):
         assert len(filenames) == 1
         format_instance = format_class(filenames[0], **format_kwargs)
         reader = SingleFileReader(format_instance)
-        indices = [i - 1 for i in indices]
+        indices = list(range(*array_range))
       else:
         assert(template_format is not None)
-        indices = None
         filenames = SweepFileList(template_format, array_range)
         reader = MultiFileReader(format_class, filenames,
                                  format_kwargs=format_kwargs)
