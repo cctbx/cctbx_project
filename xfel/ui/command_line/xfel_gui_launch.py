@@ -11,6 +11,9 @@ Description : XFEL UI startup module.
 '''
 
 import wx
+import matplotlib as mp
+mp.use('PS')
+
 from xfel.ui.components.xfel_gui_init import MainWindow
 from xfel.ui.components.xfel_gui_dialogs import SettingsDialog
 
