@@ -230,7 +230,6 @@ class DataBlock(object):
         for i in xrange(len(iset)):
           image_dict = OrderedDict()
           image_dict['filename'] = abspath(iset.get_path(i))
-          image_dict["mask"] = abspath_or_none(iset.external_lookup.mask.filename)
           image_dict["gain"] = abspath_or_none(iset.external_lookup.gain.filename)
           image_dict["pedestal"] = abspath_or_none(iset.external_lookup.pedestal.filename)
           if iset.reader().is_single_file_reader():
@@ -252,6 +251,7 @@ class DataBlock(object):
           except Exception:
             pass
           image_list.append(image_dict)
+        imageset["mask"] = abspath_or_none(iset.external_lookup.mask.filename)
         imageset['images'] = image_list
         imageset['params'] = iset.format_kwargs()
         result['imageset'].append(imageset)
