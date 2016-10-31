@@ -166,7 +166,8 @@ class model(crystal.special_position_settings):
     # 2013-01-19 return list of best ones (can be alternatives)
 
     # if you want the superposed model use:
-    #  superposed_model2=match.get_transformed_model2()
+    #  superposed_model2=match.get_transformed_model2(
+    #     template=other_model)
 
     if not hasattr(self,'match_dict'):
       self.match_dict={}
@@ -247,6 +248,12 @@ def generate_singles(n, i):
 
 def pair_sort_function(pair_a, pair_b):
   return cmp(pair_a[0], pair_b[0])
+
+def inside_zero_one(c):
+  new_c=[]
+  for x in c:
+    new_c.append(math.fmod(x+100.,1.0))
+  return matrix.col(new_c)
 
 def match_refine_times():
   return dicts.easy(
@@ -407,19 +414,38 @@ class match_refine(object):
 
   def get_transformed_model2(self,output_pdb=None,
     scattering_type="SE",f=sys.stdout,
-    return_superposed_model2=True):
-      # tt 2013-01-25
+    return_superposed_model2=True,template_pdb_inp=None):
+      # tt 2013-01-25; 2016-10-31
       from cctbx import xray
       xray_scatterer = xray.scatterer( scattering_type = scattering_type)
       model2=self.ref_model2.as_xray_structure(xray_scatterer)
       from cctbx.array_family import flex
       new_coords=flex.vec3_double()
-      for x in model2.sites_frac():
-        new_coords.append(self.rt * x)
+      for i_model2 in xrange(self.ref_model2.size()):
+        c2 = matrix.col(self.eucl_symop * self.ref_model2[i_model2].site)
+        c2 += self.adjusted_shift
+        c2=inside_zero_one(c2)
+        new_coords.append(c2)
       model2.set_sites_frac(new_coords)
 
+
       if output_pdb is not None:
-        pdb_string=model2.as_pdb_file()
+        assert template_pdb_inp is not None 
+        # Set up new xrs with these sites and with scattering types, occ, b,
+        #   labels from original 2nd model
+        xrs=xray.structure(model2.xray_structure())
+        assert len(model2.scatterers())==len(template_pdb_inp.atoms())
+        b_iso_values=flex.double()
+        for scatterer,atom in zip(model2.scatterers(),template_pdb_inp.atoms()):
+          b_iso_values.append(atom.b)
+          new_scatterer = xray.scatterer(
+            scattering_type = atom.element,
+            label=atom.name,
+            occupancy=atom.occ,
+            site=scatterer.site)
+          xrs.add_scatterer(new_scatterer)
+        xrs.set_b_iso(values = b_iso_values)
+        pdb_string=xrs.as_pdb_file()
         ff=open(output_pdb,'w')
         print >>ff, pdb_string
         ff.close()

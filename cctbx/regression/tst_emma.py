@@ -1,5 +1,7 @@
 from __future__ import division
 from cctbx import euclidean_model_matching as emma
+from iotbx.command_line.emma import get_emma_model_from_pdb
+from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
@@ -9,6 +11,134 @@ from libtbx.test_utils import approx_equal, show_diff
 from cStringIO import StringIO
 import random
 import sys
+
+target_p1="""
+CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 1
+HETATM 8695 ZN    ZN A   1      17.869  52.603 -22.252  1.00 71.42          ZN  
+HETATM 8696 ZN    ZN A   2      13.880  35.387 -29.691  1.00 52.39          ZN  
+HETATM 8697 ZN    ZN B   1     -18.309  55.887 -22.399  1.00 69.35          ZN  
+HETATM 8698 ZN    ZN B   2     -16.873  38.206 -14.862  1.00 52.32          ZN  
+HETATM 8699 ZN    ZN C   1      17.122  50.509  37.216  1.00 71.99          ZN  
+HETATM 8700 ZN    ZN C   2      13.610  33.302  29.476  1.00 64.25          ZN  
+HETATM 8701 ZN    ZN D   1     -18.170  53.456  36.514  1.00 69.79          ZN  
+HETATM 8702 ZN    ZN D   2     -17.078  36.031  44.336  1.00 54.56          ZN  
+HETATM 8703 ZN    ZN E   1      19.385  86.977  52.280  1.00 71.29          ZN  
+HETATM 8704 ZN    ZN E   2      36.676  83.705  44.841  1.00 64.49          ZN  
+HETATM 8705 ZN    ZN F   1      17.852  51.246  51.495  1.00 69.29          ZN  
+HETATM 8706 ZN    ZN F   2      35.249  52.846  59.559  1.00 57.36          ZN 
+"""
+
+target_p1_inverse="""
+CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 1
+ATOM      1 ZN    ZN A   1     -17.869 -52.603  22.252  1.00 71.42          ZN
+ATOM      2 ZN    ZN A   2     -13.880 -35.387  29.691  1.00 52.39          ZN
+ATOM      3 ZN    ZN B   1      18.309 -55.887  22.399  1.00 69.35          ZN
+ATOM      4 ZN    ZN B   2      16.873 -38.206  14.862  1.00 52.32          ZN
+ATOM      5 ZN    ZN C   1     -17.122 -50.509 -37.216  1.00 71.99          ZN
+ATOM      6 ZN    ZN C   2     -13.610 -33.302 -29.476  1.00 64.25          ZN
+ATOM      7 ZN    ZN D   1      18.170 -53.456 -36.514  1.00 69.79          ZN
+ATOM      8 ZN    ZN D   2      17.078 -36.031 -44.336  1.00 54.56          ZN
+ATOM      9 ZN    ZN E   1     -19.385 -86.977 -52.280  1.00 71.29          ZN
+ATOM     10 ZN    ZN E   2     -36.676 -83.705 -44.841  1.00 64.49          ZN
+ATOM     11 ZN    ZN F   1     -17.852 -51.246 -51.495  1.00 69.29          ZN
+ATOM     12 ZN    ZN F   2     -35.249 -52.846 -59.559  1.00 57.36          ZN
+"""
+
+target_p1_partial="""
+CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 1
+ATOM      1 ZN    ZN A   1      38.446  73.180   3.309  1.00 71.42          ZN
+ATOM      2 ZN    ZN A   2      34.457  55.964  -4.130  1.00 52.39          ZN
+ATOM      3 ZN    ZN B   1       2.268  76.464   3.162  1.00 69.35          ZN
+ATOM      4 ZN    ZN B   2       3.704  58.783  10.699  1.00 52.32          ZN
+ATOM      5 ZN    ZN C   1      37.699  71.086  62.777  1.00 71.99          ZN
+ATOM      6 ZN    ZN C   2      34.187  53.879  55.037  1.00 64.25          ZN
+ATOM      7 ZN    ZN D   1       2.407  74.033  62.075  1.00 69.79          ZN
+ATOM      8 ZN    ZN D   2       3.499  56.608  69.897  1.00 54.56          ZN
+ATOM      9 ZN    ZN E   1      39.962 107.554  77.841  1.00 71.29          ZN
+ATOM     10 ZN    ZN E   2      57.253 104.282  70.402  1.00 64.49          ZN
+ATOM     11 ZN    ZN F   1      38.429  71.823  77.056  1.00 69.29          ZN
+ATOM     12 ZN    ZN F   2      55.826  73.423  85.120  1.00 57.36          ZN
+"""
+
+target_p1_inverse_partial="""
+CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 1
+ATOM      1 ZN    ZN A   1       2.708 -32.026  47.813  1.00 71.42          ZN
+ATOM      2 ZN    ZN A   2       6.697 -14.810  55.252  1.00 52.39          ZN
+ATOM      3 ZN    ZN B   1      38.886 -35.310  47.960  1.00 69.35          ZN
+ATOM      4 ZN    ZN B   2      37.450 -17.629  40.423  1.00 52.32          ZN
+ATOM      5 ZN    ZN C   1       3.455 -29.932 -11.655  1.00 71.99          ZN
+ATOM      6 ZN    ZN C   2       6.967 -12.725  -3.915  1.00 64.25          ZN
+ATOM      7 ZN    ZN D   1      38.747 -32.879 -10.953  1.00 69.79          ZN
+ATOM      8 ZN    ZN D   2      37.655 -15.454 -18.775  1.00 54.56          ZN
+ATOM      9 ZN    ZN E   1       1.192 -66.400 -26.719  1.00 71.29          ZN
+ATOM     10 ZN    ZN E   2     -16.099 -63.128 -19.280  1.00 64.49          ZN
+ATOM     11 ZN    ZN F   1       2.725 -30.669 -25.934  1.00 69.29          ZN
+ATOM     12 ZN    ZN F   2     -14.672 -32.269 -33.998  1.00 57.36          ZN
+"""
+
+target_p43212="""
+CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 43 21 2
+HETATM 8695 ZN    ZN A   1      17.869  52.603 -22.252  1.00 71.42          ZN  
+HETATM 8696 ZN    ZN A   2      13.880  35.387 -29.691  1.00 52.39          ZN  
+HETATM 8697 ZN    ZN B   1     -18.309  55.887 -22.399  1.00 69.35          ZN  
+HETATM 8698 ZN    ZN B   2     -16.873  38.206 -14.862  1.00 52.32          ZN  
+HETATM 8699 ZN    ZN C   1      17.122  50.509  37.216  1.00 71.99          ZN  
+HETATM 8700 ZN    ZN C   2      13.610  33.302  29.476  1.00 64.25          ZN  
+HETATM 8701 ZN    ZN D   1     -18.170  53.456  36.514  1.00 69.79          ZN  
+HETATM 8702 ZN    ZN D   2     -17.078  36.031  44.336  1.00 54.56          ZN  
+HETATM 8703 ZN    ZN E   1      19.385  86.977  52.280  1.00 71.29          ZN  
+HETATM 8704 ZN    ZN E   2      36.676  83.705  44.841  1.00 64.49          ZN  
+HETATM 8705 ZN    ZN F   1      17.852  51.246  51.495  1.00 69.29          ZN  
+HETATM 8706 ZN    ZN F   2      35.249  52.846  59.559  1.00 57.36          ZN 
+"""
+
+target_p43212_inverse="""
+CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 41 21 2
+ATOM      1 ZN    ZN A   1     -17.869 -52.603  22.252  1.00 71.42          ZN
+ATOM      2 ZN    ZN A   2     -13.880 -35.387  29.691  1.00 52.39          ZN
+ATOM      3 ZN    ZN B   1      18.309 -55.887  22.399  1.00 69.35          ZN
+ATOM      4 ZN    ZN B   2      16.873 -38.206  14.862  1.00 52.32          ZN
+ATOM      5 ZN    ZN C   1     -17.122 -50.509 -37.216  1.00 71.99          ZN
+ATOM      6 ZN    ZN C   2     -13.610 -33.302 -29.476  1.00 64.25          ZN
+ATOM      7 ZN    ZN D   1      18.170 -53.456 -36.514  1.00 69.79          ZN
+ATOM      8 ZN    ZN D   2      17.078 -36.031 -44.336  1.00 54.56          ZN
+ATOM      9 ZN    ZN E   1     -19.385 -86.977 -52.280  1.00 71.29          ZN
+ATOM     10 ZN    ZN E   2     -36.676 -83.705 -44.841  1.00 64.49          ZN
+ATOM     11 ZN    ZN F   1     -17.852 -51.246 -51.495  1.00 69.29          ZN
+ATOM     12 ZN    ZN F   2     -35.249 -52.846 -59.559  1.00 57.36          ZN
+"""
+
+target_p43212_half="""
+CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 43 21 2
+ATOM      1 ZN    ZN A   1      89.888 124.623  67.210  1.00 71.42          ZN
+ATOM      2 ZN    ZN A   2      85.899 107.406  59.771  1.00 52.39          ZN
+ATOM      3 ZN    ZN B   1      53.710 127.906  67.063  1.00 69.35          ZN
+ATOM      4 ZN    ZN B   2      55.146 110.225  74.600  1.00 52.32          ZN
+ATOM      5 ZN    ZN C   1      89.141 122.528 126.678  1.00 71.99          ZN
+ATOM      6 ZN    ZN C   2      85.629 105.321 118.938  1.00 64.25          ZN
+ATOM      7 ZN    ZN D   1      53.849 125.475 125.976  1.00 69.79          ZN
+ATOM      8 ZN    ZN D   2      54.941 108.050 133.798  1.00 54.56          ZN
+ATOM      9 ZN    ZN E   1      91.404 158.996 141.742  1.00 71.29          ZN
+ATOM     10 ZN    ZN E   2     108.695 155.724 134.303  1.00 64.49          ZN
+ATOM     11 ZN    ZN F   1      89.871 123.266 140.957  1.00 69.29          ZN
+ATOM     12 ZN    ZN F   2     107.268 124.865 149.021  1.00 57.36          ZN
+"""
+
+target_p43212_inverse_half="""
+CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 41 21 2
+ATOM      1 ZN    ZN A   1      54.150  19.416 111.714  1.00 71.42          ZN
+ATOM      2 ZN    ZN A   2      58.139  36.632 119.153  1.00 52.39          ZN
+ATOM      3 ZN    ZN B   1      90.328  16.132 111.861  1.00 69.35          ZN
+ATOM      4 ZN    ZN B   2      88.892  33.813 104.324  1.00 52.32          ZN
+ATOM      5 ZN    ZN C   1      54.897  21.510  52.246  1.00 71.99          ZN
+ATOM      6 ZN    ZN C   2      58.409  38.717  59.986  1.00 64.25          ZN
+ATOM      7 ZN    ZN D   1      90.189  18.563  52.948  1.00 69.79          ZN
+ATOM      8 ZN    ZN D   2      89.097  35.988  45.126  1.00 54.56          ZN
+ATOM      9 ZN    ZN E   1      52.634 -14.958  37.182  1.00 71.29          ZN
+ATOM     10 ZN    ZN E   2      35.343 -11.686  44.621  1.00 64.49          ZN
+ATOM     11 ZN    ZN F   1      54.167  20.773  37.967  1.00 69.29          ZN
+ATOM     12 ZN    ZN F   2      36.770  19.173  29.903  1.00 57.36          ZN
+"""
 
 def verify_match(model1, model2, tolerance, match_rt, pairs):
   adj_tolerance = tolerance * (1 + 1.e-6)
@@ -238,5 +368,42 @@ P -1
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
     "StaticModels",))
 
+def tst_pdb_output():
+  print "Testing pdb-output option"
+  xray_scatterer = xray.scatterer( scattering_type = 'SE')
+  for sg,target_list in zip(
+     ['p1','p43212'], 
+     [ 
+        [target_p1,target_p1_inverse,target_p1_partial,
+           target_p1_inverse_partial],
+        [target_p43212,target_p43212_inverse,target_p43212_half,
+           target_p43212_inverse_half]
+     ]
+     ):
+    print "Testing group of targets in %s" %(sg)
+    for t1 in target_list:
+      e1=get_emma_model_from_pdb(pdb_records=t1)
+      for t2 in target_list:
+        e2=get_emma_model_from_pdb(pdb_records=t2)
+        match_list=e1.best_superpositions_on_other(
+          e2)
+        match=match_list[0]
+        assert match
+        offset_e2=match.get_transformed_model2()
+
+        # make sure that offset_i2 is pretty much the same as e1 now.
+        new_match_list=e1.best_superpositions_on_other(
+          offset_e2)
+        new_match=new_match_list[0]
+        assert new_match
+        assert approx_equal(new_match.rms,0.,eps=0.01)
+        assert len(new_match.pairs)==12
+        assert approx_equal(
+           new_match.rt.r,matrix.sqr((1, 0, 0, 0, 1, 0, 0, 0, 1)))
+        assert approx_equal(new_match.rt.t.transpose(),matrix.col((0, 0, 0)))
+        
+
 if (__name__ == "__main__"):
   run()
+  tst_pdb_output() 
+
