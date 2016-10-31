@@ -430,7 +430,7 @@ class match_refine(object):
 
 
       if output_pdb is not None:
-        assert template_pdb_inp is not None 
+        assert template_pdb_inp is not None
         # Set up new xrs with these sites and with scattering types, occ, b,
         #   labels from original 2nd model
         xrs=xray.structure(model2.xray_structure())

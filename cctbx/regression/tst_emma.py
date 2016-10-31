@@ -14,18 +14,18 @@ import sys
 
 target_p1="""
 CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 1
-HETATM 8695 ZN    ZN A   1      17.869  52.603 -22.252  1.00 71.42          ZN  
-HETATM 8696 ZN    ZN A   2      13.880  35.387 -29.691  1.00 52.39          ZN  
-HETATM 8697 ZN    ZN B   1     -18.309  55.887 -22.399  1.00 69.35          ZN  
-HETATM 8698 ZN    ZN B   2     -16.873  38.206 -14.862  1.00 52.32          ZN  
-HETATM 8699 ZN    ZN C   1      17.122  50.509  37.216  1.00 71.99          ZN  
-HETATM 8700 ZN    ZN C   2      13.610  33.302  29.476  1.00 64.25          ZN  
-HETATM 8701 ZN    ZN D   1     -18.170  53.456  36.514  1.00 69.79          ZN  
-HETATM 8702 ZN    ZN D   2     -17.078  36.031  44.336  1.00 54.56          ZN  
-HETATM 8703 ZN    ZN E   1      19.385  86.977  52.280  1.00 71.29          ZN  
-HETATM 8704 ZN    ZN E   2      36.676  83.705  44.841  1.00 64.49          ZN  
-HETATM 8705 ZN    ZN F   1      17.852  51.246  51.495  1.00 69.29          ZN  
-HETATM 8706 ZN    ZN F   2      35.249  52.846  59.559  1.00 57.36          ZN 
+HETATM 8695 ZN    ZN A   1      17.869  52.603 -22.252  1.00 71.42          ZN
+HETATM 8696 ZN    ZN A   2      13.880  35.387 -29.691  1.00 52.39          ZN
+HETATM 8697 ZN    ZN B   1     -18.309  55.887 -22.399  1.00 69.35          ZN
+HETATM 8698 ZN    ZN B   2     -16.873  38.206 -14.862  1.00 52.32          ZN
+HETATM 8699 ZN    ZN C   1      17.122  50.509  37.216  1.00 71.99          ZN
+HETATM 8700 ZN    ZN C   2      13.610  33.302  29.476  1.00 64.25          ZN
+HETATM 8701 ZN    ZN D   1     -18.170  53.456  36.514  1.00 69.79          ZN
+HETATM 8702 ZN    ZN D   2     -17.078  36.031  44.336  1.00 54.56          ZN
+HETATM 8703 ZN    ZN E   1      19.385  86.977  52.280  1.00 71.29          ZN
+HETATM 8704 ZN    ZN E   2      36.676  83.705  44.841  1.00 64.49          ZN
+HETATM 8705 ZN    ZN F   1      17.852  51.246  51.495  1.00 69.29          ZN
+HETATM 8706 ZN    ZN F   2      35.249  52.846  59.559  1.00 57.36          ZN
 """
 
 target_p1_inverse="""
@@ -78,18 +78,18 @@ ATOM     12 ZN    ZN F   2     -14.672 -32.269 -33.998  1.00 57.36          ZN
 
 target_p43212="""
 CRYST1  144.039  144.039  178.924  90.00  90.00  90.00 P 43 21 2
-HETATM 8695 ZN    ZN A   1      17.869  52.603 -22.252  1.00 71.42          ZN  
-HETATM 8696 ZN    ZN A   2      13.880  35.387 -29.691  1.00 52.39          ZN  
-HETATM 8697 ZN    ZN B   1     -18.309  55.887 -22.399  1.00 69.35          ZN  
-HETATM 8698 ZN    ZN B   2     -16.873  38.206 -14.862  1.00 52.32          ZN  
-HETATM 8699 ZN    ZN C   1      17.122  50.509  37.216  1.00 71.99          ZN  
-HETATM 8700 ZN    ZN C   2      13.610  33.302  29.476  1.00 64.25          ZN  
-HETATM 8701 ZN    ZN D   1     -18.170  53.456  36.514  1.00 69.79          ZN  
-HETATM 8702 ZN    ZN D   2     -17.078  36.031  44.336  1.00 54.56          ZN  
-HETATM 8703 ZN    ZN E   1      19.385  86.977  52.280  1.00 71.29          ZN  
-HETATM 8704 ZN    ZN E   2      36.676  83.705  44.841  1.00 64.49          ZN  
-HETATM 8705 ZN    ZN F   1      17.852  51.246  51.495  1.00 69.29          ZN  
-HETATM 8706 ZN    ZN F   2      35.249  52.846  59.559  1.00 57.36          ZN 
+HETATM 8695 ZN    ZN A   1      17.869  52.603 -22.252  1.00 71.42          ZN
+HETATM 8696 ZN    ZN A   2      13.880  35.387 -29.691  1.00 52.39          ZN
+HETATM 8697 ZN    ZN B   1     -18.309  55.887 -22.399  1.00 69.35          ZN
+HETATM 8698 ZN    ZN B   2     -16.873  38.206 -14.862  1.00 52.32          ZN
+HETATM 8699 ZN    ZN C   1      17.122  50.509  37.216  1.00 71.99          ZN
+HETATM 8700 ZN    ZN C   2      13.610  33.302  29.476  1.00 64.25          ZN
+HETATM 8701 ZN    ZN D   1     -18.170  53.456  36.514  1.00 69.79          ZN
+HETATM 8702 ZN    ZN D   2     -17.078  36.031  44.336  1.00 54.56          ZN
+HETATM 8703 ZN    ZN E   1      19.385  86.977  52.280  1.00 71.29          ZN
+HETATM 8704 ZN    ZN E   2      36.676  83.705  44.841  1.00 64.49          ZN
+HETATM 8705 ZN    ZN F   1      17.852  51.246  51.495  1.00 69.29          ZN
+HETATM 8706 ZN    ZN F   2      35.249  52.846  59.559  1.00 57.36          ZN
 """
 
 target_p43212_inverse="""
@@ -372,8 +372,8 @@ def tst_pdb_output():
   print "Testing pdb-output option"
   xray_scatterer = xray.scatterer( scattering_type = 'SE')
   for sg,target_list in zip(
-     ['p1','p43212'], 
-     [ 
+     ['p1','p43212'],
+     [
         [target_p1,target_p1_inverse,target_p1_partial,
            target_p1_inverse_partial],
         [target_p43212,target_p43212_inverse,target_p43212_half,
@@ -401,9 +401,8 @@ def tst_pdb_output():
         assert approx_equal(
            new_match.rt.r,matrix.sqr((1, 0, 0, 0, 1, 0, 0, 0, 1)))
         assert approx_equal(new_match.rt.t.transpose(),matrix.col((0, 0, 0)))
-        
+
 
 if (__name__ == "__main__"):
   run()
-  tst_pdb_output() 
-
+  tst_pdb_output()
