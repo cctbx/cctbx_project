@@ -3043,6 +3043,7 @@ scitbx/math/modulo.h -text
 scitbx/math/multiple_superposition.py -text
 scitbx/math/numeric_limits.h -text
 scitbx/math/parabolic_cylinder_d.h -text
+scitbx/math/periodogram.py -text
 scitbx/math/polygon_intersection.h -text
 scitbx/math/rotate_around_axis.h -text
 scitbx/math/rotation.h -text
@@ -3067,6 +3068,7 @@ scitbx/math/tests/tst_g_function.py -text
 scitbx/math/tests/tst_gaussian_fit_1d_analytical.py -text
 scitbx/math/tests/tst_gcd.py svneol=native#text/x-python
 scitbx/math/tests/tst_minimum_covering_ellipsoid.py svneol=native#text/x-python
+scitbx/math/tests/tst_periodogram.py -text
 scitbx/math/tests/tst_similarity_indices.py -text
 scitbx/math/tests/tst_uniform_rotation_matrix.py -text
 scitbx/math/tests/tst_weighted_correlation.py svneol=native#text/x-python
