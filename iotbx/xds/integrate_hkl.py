@@ -26,6 +26,7 @@ class reader:
     self.alfbet0 = []
     self.alfbet1 = []
     self.psi = []
+    self.iseg = []
 
   @staticmethod
   def is_integrate_hkl_file(filename):
@@ -190,6 +191,8 @@ class reader:
     self.alfbet0.append(tuple(tokens[15:17]))
     self.alfbet1.append(tuple(tokens[17:19]))
     self.psi.append(tokens[19])
+    if len(self.iseg) > 20:
+      self.iseg.append(tokens[20])
 
   def as_miller_arrays(self,
                        crystal_symmetry=None,
