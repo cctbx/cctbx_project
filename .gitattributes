@@ -3991,6 +3991,7 @@ xfel/mono_simulation/parameters.h -text
 xfel/mono_simulation/util.py -text
 xfel/mono_simulation/vector_collection.h -text
 xfel/sacla/dump_sacla_data.py -text
+xfel/sacla/mpccd_geom2json.py -text
 xfel/small_cell/__init__.py -text
 xfel/small_cell/small_cell.py -text
 xfel/small_cell/solve_orientation.py -text
