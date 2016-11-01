@@ -147,14 +147,16 @@ class filter_intensities_by_sigma (object) :
       bad_data = array_merged.select(reject_sel)
       array = array.delete_indices(other=bad_data)
       # and merge again...
-      merge = array.merge_equivalents()
+      merge = array.merge_equivalents(
+        use_internal_variance=use_internal_variance)
       array_merged = merge.array()
     elif (sigma_filtering == "scalepack") :
       self.observed_criterion_sigma_I = -3
       reject_sel = (array.data() < -3* array.sigmas())
       self.n_rejected_before_merge = reject_sel.count(True)
       array = array.select(~reject_sel)
-      merge = array.merge_equivalents()
+      merge = array.merge_equivalents(
+        use_internal_variance=use_internal_variance)
       array_merged = merge.array()
     elif (sigma_filtering == "scala") or (sigma_filtering is None) :
       pass
