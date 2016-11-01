@@ -191,8 +191,8 @@ class reader:
     self.alfbet0.append(tuple(tokens[15:17]))
     self.alfbet1.append(tuple(tokens[17:19]))
     self.psi.append(tokens[19])
-    if len(self.iseg) > 20:
-      self.iseg.append(tokens[20])
+    if len(tokens) > 20:
+      self.iseg.append(int(tokens[20]))
 
   def as_miller_arrays(self,
                        crystal_symmetry=None,
