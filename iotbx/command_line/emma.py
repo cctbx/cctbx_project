@@ -174,11 +174,18 @@ def run(args, command_name="phenix.emma"):
   if (diffraction_index_equivalent):
     print "Models are diffraction index equivalent."
     print
+  second_model_as_pdb_inp=None
   emma_models = []
   for file_name in command_line.args:
     emma_models.append(get_emma_model(
       file_name=file_name,
       crystal_symmetry=crystal_symmetry))
+    if len(emma_models)==2 and os.path.isfile(file_name):
+      try:
+        second_model_as_pdb_inp=iotbx.pdb.input(
+           file_name=file_name)
+      except Exception,e:
+        pass
   emma_models[0].show("Reference model")
   emma_models[1].show("Other model")
   for model,label in zip(emma_models, ["reference", "other"]):
@@ -203,8 +210,12 @@ def run(args, command_name="phenix.emma"):
         print
         match.show()
         if first and output_pdb: # 2013-01-25 tt
-          match.get_transformed_model2(output_pdb=output_pdb,
-            scattering_type="SE",f=sys.stdout)
+          if second_model_as_pdb_inp:
+            match.get_transformed_model2(output_pdb=output_pdb,
+              template_pdb_inp=second_model_as_pdb_inp,
+              f=sys.stdout)
+          else:
+            print "No output model as input model was not PDB"
         first=False
       if (max_n_pairs is None):
         max_n_pairs = len(match.pairs)
