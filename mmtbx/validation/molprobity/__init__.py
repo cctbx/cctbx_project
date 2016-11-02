@@ -132,6 +132,7 @@ class molprobity (slots_getstate_setstate) :
     "xtriage",
     "_multi_criterion",
     "file_name",
+    "kinemage_file"
   ]
 
   # backwards compatibility with saved results
