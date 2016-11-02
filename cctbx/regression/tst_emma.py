@@ -6,6 +6,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
+import iotbx.pdb
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, show_diff
 from cStringIO import StringIO
@@ -139,6 +140,40 @@ ATOM     10 ZN    ZN E   2      35.343 -11.686  44.621  1.00 64.49          ZN
 ATOM     11 ZN    ZN F   1      54.167  20.773  37.967  1.00 69.29          ZN
 ATOM     12 ZN    ZN F   2      36.770  19.173  29.903  1.00 57.36          ZN
 """
+
+pdb6="""
+CRYST1   25.000   25.000   25.000  90.00 100.00  90.00 P 1 21 1
+ATOM      1  N   GLN R  92      56.308  21.768  24.816  1.00  0.00           N
+ATOM      2  CA  GLN R  92      56.603  22.162  26.183  1.00  2.50           C
+ATOM      3  C   GLN R  92      56.704  23.694  26.279  1.00  0.00           C
+ATOM      4  O   GLN R  92      57.301  24.360  25.424  1.00  0.00           O
+ATOM      5  CB  GLN R  92      57.895  21.483  26.649  1.00  0.00           C
+ATOM      6  CG  GLN R  92      58.220  21.612  28.124  1.00  0.00           C
+"""
+pdb5="""
+CRYST1   25.000   25.000   25.000  90.00 100.00  90.00 P 1 21 1
+ATOM    664  N   GLN R  92      10.579  -3.235   0.175  1.00 16.04      P9   N
+ATOM    665  CA  GLN R  92      10.924  -2.975   1.574  1.00 16.32      P9   C
+ATOM    666  CB  GLN R  92      12.268  -3.629   1.888  0.65 16.46      P9   C
+ATOM    667  CG  GLN R  92      12.787  -3.408   3.288  0.55 16.88      P9   C
+ATOM    668  CD  GLN R  92      14.105  -4.123   3.509  0.51 17.19      P9   C
+"""
+
+pdb5_out=\
+"""REMARK Number of scatterers: 5
+REMARK At special positions: 0
+REMARK Cartesian coordinates
+CRYST1   25.000   25.000   25.000  90.00 100.00  90.00 P 1 21 1
+SCALE1      0.040000  0.000000  0.007053        0.00000
+SCALE2      0.000000  0.040000  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.040617        0.00000
+ATOM      1  N    N      1      10.579  21.833   0.175  1.00 16.04           N
+ATOM      2  CA   CA     2      10.924  22.093   1.574  1.00 16.32           C
+ATOM      3  CB   CB     3      12.268  21.439   1.888  0.65 16.46           C
+ATOM      4  CG   CG     4      12.787  21.660   3.288  0.55 16.88           C
+ATOM      5  CD   CD     5      14.105  20.945   3.509  0.51 17.19           C
+END"""
+
 
 def verify_match(model1, model2, tolerance, match_rt, pairs):
   adj_tolerance = tolerance * (1 + 1.e-6)
@@ -389,7 +424,7 @@ def tst_pdb_output():
           e2)
         match=match_list[0]
         assert match
-        offset_e2=match.get_transformed_model2()
+	offset_e2=match.get_transformed_model2()
 
         # make sure that offset_i2 is pretty much the same as e1 now.
         new_match_list=e1.best_superpositions_on_other(
@@ -402,6 +437,25 @@ def tst_pdb_output():
            new_match.rt.r,matrix.sqr((1, 0, 0, 0, 1, 0, 0, 0, 1)))
         assert approx_equal(new_match.rt.t.transpose(),matrix.col((0, 0, 0)))
 
+  print "Testing pdb-output option with different-sized entries"
+  e1=get_emma_model_from_pdb(pdb_records=pdb6)
+  e2=get_emma_model_from_pdb(pdb_records=pdb5)
+  pdb_inp_e2=iotbx.pdb.input(source_info=None, lines=pdb5)
+
+  match_list=e1.best_superpositions_on_other(e2)
+  match=match_list[0]
+  assert match
+  output_pdb="output.pdb"
+  offset_e2=match.get_transformed_model2(output_pdb=output_pdb,
+    template_pdb_inp=pdb_inp_e2)
+  offset_e2_text_lines=open(output_pdb).readlines()
+  for o,e in zip(open(output_pdb).readlines(),pdb5_out.splitlines()):
+     o=o.strip()
+     e=e.strip()
+     if o != e:
+       print o
+       print e
+       assert o==e
 
 if (__name__ == "__main__"):
   run()
