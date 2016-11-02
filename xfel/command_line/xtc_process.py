@@ -109,6 +109,11 @@ xtc_phil_str = '''
     address = None
       .type = str
       .help = Detector address, e.g. CxiDs2.0:Cspad.0, or detector alias, e.g. Ds1CsPad
+    stream = None
+      .type = int
+      .expert_level = 2
+      .help = Stream number to read from. Usually not necessary as psana will read the data \
+              from all streams by default
     override_trusted_max = None
       .type = int
       .help = During spot finding, override the saturation value for this data. \
@@ -444,6 +449,8 @@ class InMemScript(DialsProcessScript):
     elif params.input.use_ffb:
       # as ffb is only at SLAC, ok to hardcode /reg/d here
       dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
+    if params.input.stream is not None:
+      dataset_name += ":stream=%d"%params.input.stream
     ds = psana.DataSource(dataset_name)
 
     if params.format.file_format == "cbf":

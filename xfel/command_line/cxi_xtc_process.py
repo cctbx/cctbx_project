@@ -55,6 +55,11 @@ phil_scope = parse('''
     run_num = None
       .type = int
       .help = "Run number or run range to process"
+    stream = None
+      .type = int
+      .expert_level = 2
+      .help = Stream number to read from. Usually not necessary as psana will read the data \
+              from all streams by default
     use_ffb = False
       .type = bool
       .help = "Run on the ffb if possible. Only for active users!"
@@ -161,6 +166,8 @@ class Script(object):
     elif params.input.use_ffb:
       # as ffb is only at SLAC, ok to hardcode /reg/d here
       dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
+    if params.input.stream is not None:
+      dataset_name += ":stream=%d"%params.input.stream
     ds = DataSource(dataset_name)
 
     # set this to sys.maxint to analyze all events
