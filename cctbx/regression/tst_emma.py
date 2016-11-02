@@ -424,7 +424,7 @@ def tst_pdb_output():
           e2)
         match=match_list[0]
         assert match
-	offset_e2=match.get_transformed_model2()
+        offset_e2=match.get_transformed_model2()
 
         # make sure that offset_i2 is pretty much the same as e1 now.
         new_match_list=e1.best_superpositions_on_other(
