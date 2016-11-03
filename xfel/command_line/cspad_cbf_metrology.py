@@ -62,6 +62,9 @@ phil_scope = parse("""
     .type = ints
     .help = Specify a list of panels to include during refinement. Default (None) is to use \
             all panels.
+  output_lcls_geometry = True
+    .type = bool
+    .help = If True, convert final refined geometry to LCLS format
 """, process_includes=True)
 
 refine_defaults_scope = parse("""
@@ -283,7 +286,7 @@ def refine(params, merged_scope, combine_phil):
       if params.refine_distance:
         diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
       else:
-        diff_phil = "refinement.parameterisation.detector.fix_list=Dist1,Tau1\n" # fix detector rotz, distance
+        diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Tau1\n" # fix detector rotz, distance
       if params.refine_energy:
         diff_phil += "refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
     else:
@@ -319,12 +322,18 @@ def refine(params, merged_scope, combine_phil):
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
 
-  command = "cxi.cbfheader2slaccalib cbf_header=%s_refined_detector_level%d.def out_metrology_file=0-end.data.%s"%(params.tag, deploy_level, params.tag)
-  print command
-  result = easy_run.fully_buffered(command=command).raise_if_errors()
-  result.show_stdout()
-
-  print "Done. Soft link 0-end.data.%s to 0-end.data in the geometry folder of your calibration folder for your experiment to deploy this metrology."%params.tag
+  if params.output_lcls_geometry:
+    command = "cxi.cbfheader2slaccalib cbf_header=%s_refined_detector_level%d.def out_metrology_file=0-end.data.%s"%(params.tag, deploy_level, params.tag)
+    print command
+    result = easy_run.fully_buffered(command=command)
+    errmsg = "\n".join(result.stderr_lines)
+    if "ImportError" in errmsg and "PSCalib.GeometryAccess" in errmsg:
+      print "Not converting to LCLS geometry as PSDM is not available"
+      print "Done."
+    else:
+      result.raise_if_errors()
+      result.show_stdout()
+      print "Done. Soft link 0-end.data.%s to 0-end.data in the geometry folder of your calibration folder for your experiment to deploy this metrology."%params.tag
 
 if __name__ == "__main__":
   run(sys.argv[1:])
