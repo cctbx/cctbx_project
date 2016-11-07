@@ -7,6 +7,7 @@ mmtbx.validation, which use the same APIs for storing and displaying results.
 # TODO combine with some parts of mmtbx.kinemage.validation
 
 from __future__ import division
+from mmtbx.rotamer import rotamer_eval
 from mmtbx.validation import validation, residue
 from mmtbx.validation import model_properties
 from mmtbx.validation import experimental
@@ -24,7 +25,7 @@ from mmtbx.validation import sequence
 from libtbx.str_utils import make_header, make_sub_header, format_value
 from libtbx import slots_getstate_setstate, \
     slots_getstate_setstate_default_initializer
-from libtbx.utils import null_out, Sorry
+from libtbx.utils import null_out, to_str, Sorry
 import libtbx.load_env
 import libtbx.phil
 import os.path
@@ -187,6 +188,7 @@ class molprobity (slots_getstate_setstate) :
     if (flags is None) :
       flags = molprobity_flags()
     if pdb_hierarchy.contains_protein() :
+      self.find_missing_atoms(out=null_out())
       if (flags.ramalyze) :
         self.ramalyze = ramalyze.ramalyze(
           pdb_hierarchy=pdb_hierarchy,
@@ -436,6 +438,42 @@ class molprobity (slots_getstate_setstate) :
     Print summary of outliers or scores for each analysis.
     """
     return self.summarize().show(*args, **kwds)
+
+  def find_missing_atoms (self, out=None) :
+    '''
+    Function for finding missing protein atoms
+    Derived from run_find_missing function in phenix/validation/__init__.py
+    '''
+    if out is None :
+      out = sys.stdout
+    self.missing_atoms = []
+    # make_header("Finding missing atoms", out=out)
+    try :
+      missing_list = rotamer_eval.eval_sidechain_completeness(
+        pdb_hierarchy=self.pdb_hierarchy,
+        ignore_hydrogens=True,
+        report_whole_res=True,
+        return_ca_pos=True)
+    except Exception, e :
+      print >> out, to_str(e)
+    else :
+      for (res_info, missing_atoms, xyz) in missing_list :
+        if len(missing_atoms) == 0 :
+          continue
+        chain_id = res_info[0:2].strip()
+        try :
+          resseq = int(res_info[2:6])
+        except ValueError : # FIXME use hybrid36?
+          print >> out, "  warning: indecipherable residue number '%s'" % \
+            res_info[2:6]
+          print res_info
+          continue
+        alt = res_info[-4]
+        resname = res_info[-3:]
+        # self.get_residue_info((chain_id, resseq, resname, alt), "missing")
+        self.missing_atoms.append((chain_id, "%s %s" % (resname, str(resseq)),
+          alt, ", ".join(missing_atoms),
+          "chain '%s' and resseq %s" % (chain_id, str(resseq)), xyz))
 
   def r_work (self, outer_shell=False) :
     if (outer_shell) :
