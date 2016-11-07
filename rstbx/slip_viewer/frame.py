@@ -857,8 +857,33 @@ class XrayFrame (AppFrame,XFBaseClass) :
               pdf_canvas.drawPath(path, fill=filled)
 
           elif layer.type == self.pyslip.TypeText:
-            print Warning(
-              "PDF output of text layers not yet implemented")
+            for (lon, lat, tdata, placement,
+                 radius, colour, textcolour, fontname, fontsize,
+                 offset_x, offset_y, data) in layer.data:
+              if placement != 'cc':
+                print Warning("Only centered placement available when drawing text on pdf")
+              if layer.map_rel:
+                fs = self.pyslip.tiles.map_relative_to_picture_fast_slow(
+                  lon, lat)
+              else:
+                raise NotImplementedError(
+                  "PDF output in view-relative coordinates not implemented")
+              from reportlab.pdfbase.pdfmetrics import stringWidth
+              scale = 5 # XXX this scaleup by 5 is arbitrary!
+              try:
+                w = stringWidth(tdata, fontname, fontsize*scale)
+              except KeyError:
+                fontname = "Helvetica"
+                w = stringWidth(tdata, fontname, fontsize*scale)
+              if fs[0] - (w/2) < 0: # handle text falling off the left side
+                txt = pdf_canvas.beginText(x = 0, y = fs[1])
+              else:
+                txt = pdf_canvas.beginText(x = fs[0]-(w/2), y = fs[1])
+              txt.setFont(fontname, fontsize*scale)
+              txt.setFillColor(textcolour)
+              txt.setStrokeColor(textcolour)
+              txt.textLine(tdata)
+              pdf_canvas.drawText(txt)
 
         pdf_canvas.save()
 
