@@ -82,7 +82,7 @@ class FormatSMVJHSim(FormatSMV):
     image_size = (float(self._header_dictionary['SIZE1']),
                   float(self._header_dictionary['SIZE2']))
     overload = 65535
-    underload = 1
+    underload = -1
 
     return self._detector_factory.simple(
         'CCD', distance, (beam_y, beam_x), '+x', '-y',
