@@ -540,6 +540,12 @@ def cmd_run(args, validated=False, out=sys.stdout):
     cpm_obj.pdb_hierarchy_selected.write_pdb_file(file_name="box_polder.pdb",
       crystal_symmetry=box_1.box_crystal_symmetry)
   #
+  polder_file_name = "polder_map_coeffs.mtz"
+  if (params.output_file_name_prefix is not None):
+    polder_file_name = params.output_file_name_prefix + "_" + polder_file_name
+  #
+  print >> log, '*' * 79
+  print >> log, 'File %s was written.' % polder_file_name
   print >> log, "Finished."
   return True
 
