@@ -31,7 +31,12 @@ envs = {
 }
 
 # To download this file:
-# svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
+# wget https://raw.githubusercontent.com/cctbx/cctbx/master/libtbx/auto_build/bootstrap.py
+# or
+# curl https://raw.githubusercontent.com/cctbx/cctbx/master/libtbx/auto_build/bootstrap.py > bootstrap.py
+
+# To get the version before the switch to git:
+# svn export -r 25697 svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
 
 # Note: to relocate an SVN repo:
 # svn relocate svn+ssh://<username>@svn.code.sf.net/p/cctbx/code/trunk
@@ -644,8 +649,10 @@ class libsvm_module(SourceModule):
 # These must all provide anonymous access.
 class cctbx_module(SourceModule):
   module = 'cctbx_project'
-  anonymous = ['svn','svn://svn.code.sf.net/p/cctbx/code/trunk']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/cctbx/code/trunk']
+  anonymous = ['git',
+               'git@github.com:cctbx/cctbx.git',
+               'https://github.com/cctbx/cctbx.git',
+               'https://github.com/cctbx/cctbx/archive/master.zip']
 
 class cbflib_module(SourceModule):
   module = 'cbflib'
