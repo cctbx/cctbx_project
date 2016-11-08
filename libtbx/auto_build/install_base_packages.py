@@ -1021,7 +1021,7 @@ _replace_sysconfig_paths(build_time_vars)
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     self.configure_and_build(
       config_args=["darwin64-x86_64-cc", self.prefix,
-                   "no-hw", "--openssldir=...",
+                   "no-hw", "--openssldir=share",
                    ],
       log=pkg_log, limit_nproc=1) # openssl is not parallel buildable
     self.include_dirs.append(op.join(self.base_dir, "include", "openssl"))
