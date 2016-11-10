@@ -15,7 +15,10 @@ def run (params) :
     for array in data_SR.as_miller_arrays():
        this_label = array.info().label_string().lower()
        if this_label.find("iobs")>=0:
-         return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
+         i_array = array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
+         c_array = i_array.complete_array(
+                   d_min = params.d_min / math.pow(1 + params.unit_cell_length_tolerance, 1 / 3))
+         return c_array
        if this_label.find("imean")>=0:
          return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
        if this_label.find(params.scaling.mtz_column_F)>=0:

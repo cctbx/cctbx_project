@@ -49,6 +49,7 @@ data_subset = 0
 model = None
   .type = str
   .help = PDB filename containing atomic coordinates & isomorphous cryst1 record
+  .help = or MTZ filename from a previous cycle of cxi.merge (not yet tested with prime MTZ)
 model_reindex_op = h,k,l
   .type = str
   .help = Kludge for cases with an indexing ambiguity, need to be able to adjust scaling model
@@ -794,6 +795,8 @@ class scaling_manager (intensity_data) :
     for i in xrange(len(self.summed_N)):
       if (self.summed_N[i] <= 0):
         continue
+      # skip structure factor if i_model.sigma is invalid (intentionally < 0)
+      if self.i_model.sigmas()[i] < 0: continue
       I_r       = self.i_model.data()[i]
       I_o       = sum_I[i]/self.summed_N[i]
       N      += 1
@@ -810,13 +813,16 @@ class scaling_manager (intensity_data) :
         % (N, slope, corr)
     return N, corr
 
-  def get_overall_correlation_flex (self, data_a, data_b) :
+  def XXXget_overall_correlation_flex (self, data_a, data_b) :
     """
     Correlate any two sets of data.
     @param data_a data set a
     @param data_b data set b
     @return tuple containing correlation coefficent, slope and offset.
     """
+    # XXX function is deprecated since it does not account for the possibility
+    # that the data sigma might be invalid (set to -1 intentionally)
+    # it would be straightforward to rewrite the calling code to account for this.
     import math
 
     assert len(data_a) == len(data_b)
@@ -1574,6 +1580,40 @@ class scaling_manager (intensity_data) :
       data.show_log_out(sys.stdout)
     return data
 
+def consistent_set_and_model(work_params,i_model=None):
+  # Adjust the minimum d-spacing of the generated Miller set to assure
+  # that the desired high-resolution limit is included even if the
+  # observed unit cell differs slightly from the target.  Use the same
+  # expansion formula as used in merging/general_fcalc.py, to assure consistency.
+  # If a reference model is present, ensure that Miller indices are ordered
+  # identically.
+  miller_set = symmetry(
+      unit_cell=work_params.target_unit_cell,
+      space_group_info=work_params.target_space_group
+    ).build_miller_set(
+      anomalous_flag=not work_params.merge_anomalous,
+      d_max=work_params.d_max,
+      d_min=work_params.d_min / math.pow(
+        1 + work_params.unit_cell_length_tolerance, 1 / 3))
+  miller_set = miller_set.change_basis(
+    work_params.model_reindex_op).map_to_asu()
+
+  if i_model is not None:
+    # manage the sizes of arrays.  General_fcalc assures that
+    # N(i_model) >= N(miller_set) since it fills non-matches with invalid structure factors
+    # However, if N(i_model) > N(miller_set) it's because this run of cxi.merge requested
+    # a smaller resolution range.  Must prune off the reference model.
+
+    if i_model.indices().size() > miller_set.indices().size():
+      matches = miller.match_indices(i_model.indices(), miller_set.indices())
+      pairs = matches.pairs()
+      i_model = i_model.select(pairs.column(0))
+
+    matches = miller.match_indices(i_model.indices(), miller_set.indices())
+    assert not matches.have_singles()
+    miller_set = miller_set.select(matches.permutation())
+
+  return miller_set, i_model
 #-----------------------------------------------------------------------
 def run(args):
   if ("--help" in args) :
@@ -1619,26 +1659,7 @@ def run(args):
   print >> out, "  ", work_params.target_unit_cell
   print >> out, "  ", work_params.target_space_group
 
-  # Adjust the minimum d-spacing of the generated Miller set to assure
-  # that the desired high-resolution limit is included even if the
-  # observed unit cell differs slightly from the target.  If a
-  # reference model is present, ensure that Miller indices are ordered
-  # identically.
-  miller_set = symmetry(
-      unit_cell=work_params.target_unit_cell,
-      space_group_info=work_params.target_space_group
-    ).build_miller_set(
-      anomalous_flag=not work_params.merge_anomalous,
-      d_max=work_params.d_max,
-      d_min=work_params.d_min / math.pow(
-        1 + work_params.unit_cell_length_tolerance, 1 / 3))
-  miller_set = miller_set.change_basis(
-    work_params.model_reindex_op).map_to_asu()
-
-  if i_model is not None:
-    matches = miller.match_indices(i_model.indices(), miller_set.indices())
-    assert not matches.have_singles()
-    miller_set = miller_set.select(matches.permutation())
+  miller_set, i_model = consistent_set_and_model(work_params,i_model)
 
   frame_files = get_observations(work_params)
   scaler = scaling_manager(

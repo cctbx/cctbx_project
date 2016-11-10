@@ -4,7 +4,6 @@ from rstbx.dials_core.integration_core import show_observations
 import iotbx.phil
 from cctbx.array_family import flex
 from cctbx import miller
-from cctbx.crystal import symmetry
 from cctbx import uctbx
 from libtbx.utils import Usage, multi_out
 from libtbx import easy_pickle
@@ -19,6 +18,7 @@ op = os.path
 from xfel.command_line.cxi_merge import master_phil
 from xfel.command_line.cxi_merge import get_observations
 from xfel.command_line.cxi_merge import frame_data, null_data
+from xfel.command_line.cxi_merge import consistent_set_and_model
 
 class unit_cell_distribution (object) :
   """
@@ -615,26 +615,7 @@ def run(args):
   print >> out, "  ", work_params.target_unit_cell
   print >> out, "  ", work_params.target_space_group
 
-  # Adjust the minimum d-spacing of the generated Miller set to assure
-  # that the desired high-resolution limit is included even if the
-  # observed unit cell differs slightly from the target.  If a
-  # reference model is present, ensure that Miller indices are ordered
-  # identically.
-  miller_set = symmetry(
-      unit_cell=work_params.target_unit_cell,
-      space_group_info=work_params.target_space_group
-    ).build_miller_set(
-      anomalous_flag=not work_params.merge_anomalous,
-      d_max=work_params.d_max,
-      d_min=work_params.d_min / math.pow(
-        1 + work_params.unit_cell_length_tolerance, 1 / 3))
-  miller_set = miller_set.change_basis(
-    work_params.model_reindex_op).map_to_asu()
-
-  if i_model is not None:
-    matches = miller.match_indices(i_model.indices(), miller_set.indices())
-    assert not matches.have_singles()
-    miller_set = miller_set.select(matches.permutation())
+  miller_set, i_model = consistent_set_and_model(work_params,i_model)
 
   frame_files = get_observations(work_params)
   scaler = scaling_manager(

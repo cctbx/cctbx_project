@@ -8,12 +8,10 @@ from __future__ import division
 
 import iotbx.phil
 from cctbx.array_family import flex
-from cctbx.crystal import symmetry
 from cctbx import uctbx
 from iotbx import mtz
 from libtbx.utils import Usage, multi_out
 from libtbx import easy_pickle
-import math
 import os
 import time
 import sys
@@ -21,6 +19,7 @@ import sys
 from xfel.command_line.cxi_merge import master_phil,scaling_manager
 from xfel.command_line.cxi_merge import unit_cell_distribution,show_overall_observations
 from xfel.command_line.cxi_merge import scaling_result
+from xfel.command_line.cxi_merge import consistent_set_and_model
 from xfel import column_parser
 from cctbx import miller
 
@@ -210,21 +209,7 @@ def run(args):
   print >> out, "  ", work_params.target_unit_cell
   print >> out, "  ", work_params.target_space_group
 
-  miller_set = symmetry(
-      unit_cell=work_params.target_unit_cell,
-      space_group_info=work_params.target_space_group
-    ).build_miller_set(
-      anomalous_flag=not work_params.merge_anomalous,
-      d_max=work_params.d_max,
-      d_min=work_params.d_min / math.pow(
-        1 + work_params.unit_cell_length_tolerance, 1 / 3))
-  miller_set = miller_set.change_basis(
-    work_params.model_reindex_op).map_to_asu()
-
-  if i_model is not None:
-    matches = miller.match_indices(i_model.indices(), miller_set.indices())
-    assert not matches.have_singles()
-    miller_set = miller_set.select(matches.permutation())
+  miller_set, i_model = consistent_set_and_model(work_params,i_model)
 
 # ---- Augment this code with any special procedures for x scaling
   scaler = xscaling_manager(
