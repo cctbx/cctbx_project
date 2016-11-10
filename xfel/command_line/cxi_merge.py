@@ -1441,6 +1441,10 @@ class scaling_manager (intensity_data) :
         if use_weights: I_w = 1./(observations.sigmas()[pair[1]])**2 #variance weighting
         else: I_w = 1.
 
+        # skip the structure factor if i_model.sigma is invalid (intentionally < 0)
+        if self.i_model.sigmas()[pair[0]] < 0:
+          I_w = 0.
+
         I_r = self.i_model.data()[pair[0]]
         I_o = observations.data()[pair[1]]
         sum_xx += I_w * I_r**2

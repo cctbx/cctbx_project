@@ -63,6 +63,7 @@ class legacy_rs(object):
 
     #calculation of correlation here
     I_reference = flex.double([i_model.data()[pair[0]] for pair in matches.pairs()])
+    I_invalid = flex.bool([i_model.sigmas()[pair[0]] < 0. for pair in matches.pairs()])
     use_weights = False # New facility for getting variance-weighted correlation
 
     if use_weights:
@@ -71,6 +72,7 @@ class legacy_rs(object):
         [1./(observations_pair1_selected.sigmas()[pair[1]])**2 for pair in matches.pairs()])
     else:
       I_weight = flex.double(len(observations_pair1_selected.sigmas()), 1.)
+    I_weight.set_selected(I_invalid,0.)
 
     """Explanation of 'include_negatives' semantics as originally implemented in cxi.merge postrefinement:
        include_negatives = True
