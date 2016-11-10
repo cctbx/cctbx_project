@@ -41,7 +41,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     static
     boost::python::tuple getinitargs(const Goniometer &obj) {
       return boost::python::make_tuple(
-        obj.get_rotation_axis(),
+        obj.get_rotation_axis_datum(),
         obj.get_fixed_rotation(),
         obj.get_setting_rotation());
     }
@@ -50,7 +50,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   template <>
   boost::python::dict to_dict<Goniometer>(const Goniometer &obj) {
     boost::python::dict result;
-    result["rotation_axis"] = obj.get_rotation_axis();
+    result["rotation_axis"] = obj.get_rotation_axis_datum();
     result["fixed_rotation"] = obj.get_fixed_rotation();
     result["setting_rotation"] = obj.get_setting_rotation();
     return result;
@@ -88,6 +88,10 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Goniometer::get_rotation_axis)
       .def("set_rotation_axis",
         &Goniometer::set_rotation_axis)
+      .def("get_rotation_axis_datum",
+        &Goniometer::get_rotation_axis_datum)
+      .def("set_rotation_axis_datum",
+        &Goniometer::set_rotation_axis_datum)
       .def("get_fixed_rotation",
         &Goniometer::get_fixed_rotation)
       .def("set_fixed_rotation",

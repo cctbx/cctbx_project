@@ -110,7 +110,7 @@ namespace dxtbx { namespace model {
 
     /**
      * Initialise the goniometer.
-     * @param rotation_axis The goniometer rotation axis
+     * @param rotation_axis The goniometer rotation axis at datum
      * @param fixed_rotation The additional fixed rotation of the sample
      * @param setting_rotation The additional setting rotation of the axis
      */
@@ -128,6 +128,11 @@ namespace dxtbx { namespace model {
 
     /** Get the rotation axis */
     vec3 <double> get_rotation_axis() const {
+      return setting_rotation_ * rotation_axis_;
+    }
+
+    /** Get the rotation axis at datum */
+    vec3 <double> get_rotation_axis_datum() const {
       return rotation_axis_;
     }
 
@@ -143,6 +148,12 @@ namespace dxtbx { namespace model {
 
     /** Set the rotation axis */
     void set_rotation_axis(vec3 <double> rotation_axis) {
+      DXTBX_ASSERT(rotation_axis.length() > 0);
+      rotation_axis_ = setting_rotation_.inverse() * rotation_axis.normalize();
+    }
+
+    /** Set the rotation axis */
+    void set_rotation_axis_datum(vec3 <double> rotation_axis) {
       DXTBX_ASSERT(rotation_axis.length() > 0);
       rotation_axis_ = rotation_axis.normalize();
     }
