@@ -32,14 +32,15 @@ OPENSSL_PKG = "openssl-1.0.2h.tar.gz"
 # base packages updated on 2/15/2015 by bkpoon
 
 # from CCI
-PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
+#PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
+PYTHON_PKG = "Python-2.7.12.tar.gz"
 NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
 ZLIB_PKG = "zlib-1.2.8.tar.gz"
 SCIPY_PKG = "scipy-0.14.0.tar.gz"        # not used by default
 PYRTF_PKG = "PyRTF-0.45.tar.gz"          # for phenix.table_one, etc.
-BIOPYTHON_PKG = "biopython-1.66.tar.gz"  # used in iotbx
+BIOPYTHON_PKG = "biopython-1.68.tar.gz"  # used in iotbx
 SPHINX_PKG = "Sphinx-1.4.4.tar.gz"       # for documentation ()
 NUMPYDOC_PKG = "numpydoc-0.5.tar.gz"     # for documentation
 IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
