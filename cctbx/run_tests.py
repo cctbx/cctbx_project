@@ -107,7 +107,7 @@ tst_list = (
   ["$D/development/make_cns_input.py", "P31"],
   ["$D/development/tst_cns_epsilon.py", "P31"],
   ["$D/development/tst_cns_hl.py", "P31"],
-  ["$D/development/run_shelx.py", "P31"],
+  #["$D/development/run_shelx.py", "P31"],
   ["$D/development/run_shelx76.py", "P31"],
    "$D/regression/tst_pointgroup_tools.py",
    "$D/sgtbx/sub_lattice_tools.py",
