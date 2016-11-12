@@ -85,7 +85,7 @@ class align_pdb_residues (object) :
       ref_seq_fasta = ">%s\n%s" % (self.reference_sequence_name,
         self.reference_sequence)
       fasta = ref_seq_fasta + "\n" + fasta
-    self.muscle_aln = get_muscle_alignment(fasta, out=out)
+    self.muscle_aln, errors = get_muscle_alignment(fasta, out=out)
     assert (self.muscle_aln is not None)
 
   # I am not proud of this.
@@ -327,19 +327,20 @@ def run_muscle (fasta_sequences, group_sequences=True) :
   #  cmd += " -stable"
   muscle_out = easy_run.fully_buffered(cmd,
     stdin_lines=fasta_sequences)
-  return muscle_out.stdout_lines
+  return muscle_out.stdout_lines, muscle_out.stderr_lines
 
 def get_muscle_alignment (fasta_sequences, group_sequences=True, out=None) :
-  muscle_out = run_muscle(fasta_sequences, group_sequences)
+  muscle_out, errors = run_muscle(fasta_sequences, group_sequences)
   from iotbx.bioinformatics import clustal_alignment_parse
   alignment, null = clustal_alignment_parse("\n".join(muscle_out))
   if (out is not None) :
     print >> out, "\n".join(muscle_out)
-  return alignment
+  return alignment, errors
 
 def get_muscle_alignment_ordered(sequences, out = None):
 
   from iotbx import bioinformatics
+  from iotbx.pdb.amino_acid_codes import validate_sequence
 
   name_for = {}
 
@@ -347,13 +348,29 @@ def get_muscle_alignment_ordered(sequences, out = None):
     name = name_for.get( seq, "Chain_%d" % i )
     name_for[ seq ] = name
 
-  alignment = get_muscle_alignment(
+  alignment, errors = get_muscle_alignment(
     fasta_sequences = "\n".join(
       str( bioinformatics.sequence( name = name, sequence = seq.sequence ) )
       for ( seq, name ) in name_for.items()
       ),
     out = out,
     )
+
+  # check for errors and handle:
+  #   invalid characters in sequences
+  if (len(errors) > 0):
+    for error in errors:
+      error = error.strip()
+      if ('Invalid character' in error):
+        for seq in name_for.keys():
+          invalid = validate_sequence(
+            seq.sequence, protein=True, strict_protein=False,
+            nucleic_acid=True, strict_nucleic_acid=False)
+          if (len(invalid) > 0):
+            name_for.pop(seq)
+        sequences = name_for.keys()
+      elif (len(error) > 0):
+        raise Sorry(error)
 
   lookup = dict( zip( alignment.names, alignment.alignments ) )
   assert all( n in lookup for n in name_for.values() )
