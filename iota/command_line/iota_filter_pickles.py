@@ -9,8 +9,7 @@ def main(hdf5Filename, data, destDir, powder):
   """
   ideally, if pulse is on, you should expect to have 1 - 1 -1 for all events
   otherwise 0 -1 - 1. Currently, we have more than one pickle read out for
-  each rotatation angle. Solution is picking the last one.
-  Problem is being fixed!
+  each rotatation angle. Solution is picking the pickle with maximum value for Ipm3.
   """
   f = h5py.File(hdf5Filename)
 
