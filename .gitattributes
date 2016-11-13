@@ -1237,6 +1237,7 @@ gltbx/wx_viewers_images.py -text
 iota/__init__.py -text
 iota/command_line/__init__.py -text
 iota/command_line/iota_bulletproof.py -text
+iota/command_line/iota_filter_pickles.py -text
 iota/command_line/iota_main.py -text
 iota/command_line/iota_mpi.py -text
 iota/command_line/iota_mpi_submit.py -text
