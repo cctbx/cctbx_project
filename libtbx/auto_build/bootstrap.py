@@ -419,7 +419,7 @@ class Toolbox(object):
 
     if os.path.exists(destination):
       print "Existing non-git directory -- don't know what to do. skipping: %s" % module
-      if ('cctbx.git' in parameters[0]):
+      if ('cctbx_project.git' in parameters[0]):
         print '\n' + '=' * 80 + '\nCCTBX is transitioning to git.\nPlease continue committing changes using svn until November 22, 2016.\nAfter that, commits will only be done through git.\n\nTo update cctbx_project, please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n'
       return
 
@@ -652,9 +652,9 @@ class libsvm_module(SourceModule):
 class cctbx_module(SourceModule):
   module = 'cctbx_project'
   anonymous = ['git',
-               'git@github.com:cctbx/cctbx.git',
-               'https://github.com/cctbx/cctbx.git',
-               'https://github.com/cctbx/cctbx/archive/master.zip']
+               'git@github.com:cctbx/cctbx_project.git',
+               'https://github.com/cctbx/cctbx_project.git',
+               'https://github.com/cctbx/cctbx_project/archive/master.zip']
 
 class cbflib_module(SourceModule):
   module = 'cbflib'
