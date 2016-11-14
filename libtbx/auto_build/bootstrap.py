@@ -31,18 +31,14 @@ envs = {
 }
 
 # To download this file:
-# wget https://raw.githubusercontent.com/cctbx/cctbx/master/libtbx/auto_build/bootstrap.py
+# wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 # or
-# curl https://raw.githubusercontent.com/cctbx/cctbx/master/libtbx/auto_build/bootstrap.py > bootstrap.py
+# curl https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py > bootstrap.py
 
 # To get the version before the switch to git:
 # svn export -r 25697 svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
 
-# Note: to relocate an SVN repo:
-# svn relocate svn+ssh://<username>@svn.code.sf.net/p/cctbx/code/trunk
-
-
-# Utililty function to be executed on slave machine or called directly by standalone bootstrap script
+# Utility function to be executed on slave machine or called directly by standalone bootstrap script
 def tar_extract(workdir, archive, modulename=None):
   try:
     # delete tar target folder if it exists
