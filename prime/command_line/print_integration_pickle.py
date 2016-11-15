@@ -88,12 +88,11 @@ def read_pickles(data):
 def read_input(args):
   if len(args) == 0:
     print "prime.print_integration_pickle: for viewing systematic absences and beam xy position from integration pickles."
-    print "usage: prime.print_integration_pickle data=integrated.lst pixel_size_mm=0.079346 check_sys_absent=True target_space_group=P212121"
+    print "usage: prime.print_integration_pickle data=integrated.lst pixel_size_mm=0.079346"
     exit()
   data = []
   hklrefin = None
   pixel_size_mm = None
-  check_sys_absent = False
   target_space_group = None
   target_unit_cell = None
   target_anomalous_flag = False
@@ -109,8 +108,6 @@ def read_input(args):
       hklrefin = pair[1]
     if pair[0]=='pixel_size_mm':
       pixel_size_mm = float(pair[1])
-    if pair[0]=='check_sys_absent':
-      check_sys_absent = bool(pair[1])
     if pair[0]=='target_space_group':
       target_space_group = pair[1]
     if pair[0]=='target_unit_cell':
@@ -135,22 +132,18 @@ def read_input(args):
   if len(data)==0:
     print "Please provide data path. (eg. data=/path/to/pickle/)"
     exit()
-  if check_sys_absent:
-    if target_space_group is None:
-      print "Please provide target space group if you want to check systematic absence (eg. target_space_group=P212121)"
-      exit()
   if pixel_size_mm is None:
     print "Please specify pixel size (eg. pixel_size_mm=0.079346)"
     exit()
-  return data, hklrefin, pixel_size_mm, check_sys_absent, target_unit_cell, target_space_group, target_anomalous_flag, flag_plot, d_min, d_max, n_residues
+  return data, hklrefin, pixel_size_mm, target_unit_cell, target_space_group, target_anomalous_flag, flag_plot, d_min, d_max, n_residues
 
 
 if (__name__ == "__main__"):
   cc_bin_low_thres = 0.25
   beam_thres = 0.5
-  uc_tol = 20
+  uc_tol = 3
   #0 .read input parameters and frames (pickle files)
-  data, hklrefin, pixel_size_mm, check_sys_absent_input, target_unit_cell, \
+  data, hklrefin, pixel_size_mm, target_unit_cell, \
     target_space_group, target_anomalous_flag, flag_plot, d_min, d_max, n_residues = read_input(args = sys.argv[1:])
   frame_files = read_pickles(data)
   xbeam_set = flex.double()
@@ -170,7 +163,6 @@ if (__name__ == "__main__"):
   dd_mm = flex.double()
   wavelength_set = flex.double()
   for pickle_filename in frame_files:
-    check_sys_absent = check_sys_absent_input
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
     pickle_filename_arr = pickle_filename.split('/')
     pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
@@ -187,7 +179,7 @@ if (__name__ == "__main__"):
     #observations = observations.change_basis(cb_op)
     #apply constrain using the crystal system
     #check systematic absent
-    if check_sys_absent:
+    if target_unit_cell is not None:
       try:
         from cctbx.crystal import symmetry
         miller_set = symmetry(
@@ -200,14 +192,11 @@ if (__name__ == "__main__"):
                           crystal_symmetry=miller_set.crystal_symmetry())
       except Exception:
         print 'Cannot apply target space group: observed space group=', observations.space_group_info()
-        check_sys_absent = False
+        pass
     #check if the uc is good
     flag_good_unit_cell = False
-    if check_sys_absent:
-      if target_unit_cell is None:
-        flag_good_unit_cell = True
-      else:
-        flag_good_unit_cell = good_unit_cell(observations.unit_cell().parameters(), None, uc_tol, target_unit_cell=target_unit_cell)
+    if target_unit_cell is not None:
+      flag_good_unit_cell = good_unit_cell(observations.unit_cell().parameters(), None, uc_tol, target_unit_cell=target_unit_cell)
     flag_good_unit_cell_set.append(flag_good_unit_cell)
     #calculate partiality
     wavelength = observations_pickle["wavelength"]
@@ -358,7 +347,7 @@ if (__name__ == "__main__"):
     d_bins_set.append(d_bins)
     oodsqr_bins_set.append(oodsqr_bins)
     sys_abs_lst = flex.double()
-    if check_sys_absent:
+    if target_unit_cell is not None:
       cn_refl = 0
       for sys_absent_flag, d_spacing, miller_index_ori, miller_index_asu, I, sigI in zip(observations.sys_absent_flags(), observations.d_spacings().data(), observations.indices(), observations_asu.indices(), observations.data(), observations.sigmas()):
         if sys_absent_flag[1]:
@@ -377,37 +366,56 @@ if (__name__ == "__main__"):
   ybeam_std = np.std(ybeam_set)
   xbeam_filtered_set = flex.double()
   ybeam_filtered_set = flex.double()
-  frame_filtered_set = []
   sys_abs_all_filtered = flex.double()
-  txt_out = ''
-  txt_out_mix = ''
-  txt_out_uc = ''
+  txt_out_good = ''
+  txt_out_bad = ''
   txt_out_report_beam_filter = 'Images with beam center displaced > %6.2f mm.:\n'%(beam_thres)
   txt_out_report_cc_filter = 'Images with cc < %6.2f:\n'%(cc_bin_low_thres)
+  txt_out_report_uc_filter = 'Images with delta_uc > %6.2f %%:\n'%(uc_tol)
   from scitbx.matrix import col
+  cn_good, cn_bad = (0,0)
+  #go through list of integration results and filter out bad cc, uc, and beam center
   for pickle_filename, xbeam, ybeam, sys_abs_lst, cc_bin_low, flag_good_unit_cell in \
     zip(frame_files, xbeam_set, \
     ybeam_set, sys_abs_set, cc_bin_low_set, flag_good_unit_cell_set):
     pickle_filename_arr = pickle_filename.split('/')
     pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
+    #calculate beam drift (from mean)
     pred_xy = col((xbeam, ybeam))
     calc_xy = col((xbeam_mean, ybeam_mean))
     diff_xy = pred_xy - calc_xy
+    #pregenerate output
     txt_out_report_tmp = '{0:80} {1:6.2f} {2:6.2f} {3:6.2f} {4:6.4f}\n'.format(pickle_filename_only, xbeam, ybeam, cc_bin_low, diff_xy.length())
-    if diff_xy.length() < beam_thres:
+    flag_good_beam = False
+    flag_good_cc = False
+    if diff_xy.length() < beam_thres: flag_good_beam = True
+    if (cc_bin_low > cc_bin_low_thres) or hklrefin is None: flag_good_cc = True
+    if flag_good_beam:
       xbeam_filtered_set.append(xbeam)
       ybeam_filtered_set.append(ybeam)
-      frame_filtered_set.append(pickle_filename)
-      txt_out += pickle_filename + '\n'
       sys_abs_all_filtered.extend(sys_abs_lst)
-      if cc_bin_low > cc_bin_low_thres and flag_good_unit_cell:
-        txt_out_mix += pickle_filename + '\n'
-      else:
-        txt_out_report_cc_filter += txt_out_report_tmp
-      if flag_good_unit_cell:
-        txt_out_uc += pickle_filename + '\n'
     else:
       txt_out_report_beam_filter += txt_out_report_tmp
+    if ~flag_good_cc:
+      txt_out_report_cc_filter += txt_out_report_tmp
+    if ~flag_good_unit_cell:
+      txt_out_report_uc_filter += txt_out_report_tmp
+    #output only good integration results
+    #print flag_good_beam, flag_good_cc, flag_good_unit_cell
+    if flag_good_beam and flag_good_cc and flag_good_unit_cell:
+      txt_out_good += pickle_filename + '\n'
+      cn_good += 1
+    else:
+      txt_out_bad += pickle_filename + '\n'
+      cn_bad += 1
+  print
+  print 'Images with delta_beam_xy > %6.2f mm (image name, xbeam, ybeam, cciso, delta_xy)'%(beam_thres)
+  print txt_out_report_beam_filter
+  if hklrefin is not None:
+    print txt_out_report_cc_filter
+  if target_unit_cell is not None:
+    print txt_out_report_uc_filter
+  #prevent devision by zero (not the best way but will correct it)
   try:
     print
     print 'CC mean=%6.2f median=%6.2f std=%6.2f'%(flex.mean(cc_bin_low_set), np.median(cc_bin_low_set), np.std(cc_bin_low_set))
@@ -420,21 +428,13 @@ if (__name__ == "__main__"):
     print 'No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f'%(len(frame_files), len(frame_files) - (len(txt_out.split('\n'))-1), len(frame_files) - (len(txt_out_mix.split('\n'))-1))
   except Exception:
     pass
-  print
-  print 'Reporting outliers (image name, xbeam, ybeam, cciso, delta_xy)'
-  print txt_out_report_beam_filter
-  print txt_out_report_cc_filter
-  #write out filtered beamxy pickle files
-  f = open('integration_pickle_beam_filter.lst', 'w')
-  f.write(txt_out)
+  print 'Total images: %d good: %d bad: %d'%(len(frame_files), cn_good, cn_bad)
+  #write out good and bad pickle files
+  f = open('integration_filter.lst', 'w')
+  f.write(txt_out_good)
   f.close()
-  #write out mix filter pickle files
-  f = open('integration_mix_filter.lst', 'w')
-  f.write(txt_out_mix)
-  f.close()
-  #write out filtered beamxy and uc pickle files
-  f = open('integration_pickle_beam_uc_filter.lst', 'w')
-  f.write(txt_out_uc)
+  f = open('integration_fail_filter.lst', 'w')
+  f.write(txt_out_bad)
   f.close()
   if flag_plot:
     plt.subplot(211)
@@ -506,6 +506,7 @@ if (__name__ == "__main__"):
         cn_i += 1
     plt.show()
   #print twin operators
+  """
   idah = indamb_handler()
   for pickle_filename in frame_files:
     pickle_filename_arr = pickle_filename.split('/')
@@ -515,3 +516,4 @@ if (__name__ == "__main__"):
     operators = idah.generate_twin_operators(observations, flag_all=True)
     ops_hkl = [op.operator.r().as_hkl() for op in operators]
     print pickle_filename_only, ops_hkl
+  """
