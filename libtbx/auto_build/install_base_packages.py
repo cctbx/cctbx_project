@@ -920,6 +920,21 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="reportlab")
 
   def build_sphinx(self):
+
+    # workaround for macOS >= 10.11 and Python 2.7.12
+    # issue: Sphinx has dependencies automatically installed via pip, but they
+    # fail due to [SSL: CERTIFICATE_VERIFY_FAILED] error. Tried updating pip to
+    # 9.0.1, updating openssl to 1.0.2j
+    # fix: Manually install dependencies using pip via command-line
+    if ( (self.flag_is_mac) and (get_os_version() in ('10.11', '10.12')) ):
+      cmd = self.python_exe + ' -m pip install '
+      for dependency in ['imagesize', '"alabaster<0.8,>=0.7"',
+                         '"babel!=2.0,>=1.3"', '"snowballstemmer>=1.1"',
+                         '"Pygments>=2.0"', '"Jinja2>=2.3"', '"pytz>=0a"',
+                         'MarkupSafe', '"docutils==0.12"']:
+        self.call(cmd + dependency)
+      self.call(cmd + '--ignore-installed "six==1.10.0"')
+
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=SPHINX_PKG,
@@ -1370,6 +1385,13 @@ _replace_sysconfig_paths(build_time_vars)
     #    print font_cache, os.path.exists(font_cache)
     #    if (os.path.exists(font_cache)):
     #      os.remove(font_cache)
+
+    # workaround for macOS >= 10.11 and Python 2.7.12
+    # see build_sphinx for explanation
+    if ( (self.flag_is_mac) and (get_os_version() in ('10.11', '10.12')) ):
+      cmd = self.python_exe + ' -m pip install '
+      for dependency in ['cycler']:
+        self.call(cmd + dependency)
 
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
