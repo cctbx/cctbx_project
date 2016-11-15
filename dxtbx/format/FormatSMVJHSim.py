@@ -20,29 +20,16 @@ class FormatSMVJHSim(FormatSMV):
 
   @staticmethod
   def understand(image_file):
-    '''Check to see if this looks like an JHSim SMV format image, i.e. we
-    can make sense of it. Essentially that will be if it contains all of
-    the keys we are looking for and not some we are not (i.e. that belong
-    to a Rigaku Saturn.)'''
+    '''Check to see if this looks like an JHSim SMV format image, i.e. we can
+    make sense of it. From JH: "The best way to identify images from any of my
+    simulators is to look for BEAMLINE=fake in the header."'''
 
     size, header = FormatSMV.get_smv_header(image_file)
 
-    wanted_header_items = ['BEAM_CENTER_X', 'BEAM_CENTER_Y',
-                           'DISTANCE', 'WAVELENGTH', 'PIXEL_SIZE',
-                           'OSC_START', 'OSC_RANGE', 'SIZE1', 'SIZE2',
-                           'BYTE_ORDER']
-
-    for header_item in wanted_header_items:
-      if not header_item in header:
-        return 0
-
-    unwanted_header_items = ['DTREK_DATE_TIME']
-
-    for header_item in unwanted_header_items:
-      if header_item in header:
-        return False
-
-    return True
+    if header.get('BEAMLINE') == 'fake':
+      return True
+    else:
+      return False
 
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
