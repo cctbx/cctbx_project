@@ -252,6 +252,7 @@ class b_plot_panel (plots.plot_container) :
     a.set_xticks(xmarks)
     a.set_xticklabels(xlabels)
     a.set_ylim(self._ymin, self._ymax)
+    a.set_xlim(0, len(plot[4]))
     plot_labels = ["B(iso)"]
     if (set(is_alt) != set([numpy.NaN])) :
       p.plot(x, is_alt, "d", color='m')
