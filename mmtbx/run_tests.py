@@ -28,6 +28,8 @@ tst_list = (
   "$D/regression/tls/tst_u_tls_vs_u_ens_03.py",
   "$D/regression/tls/tst_u_tls_vs_u_ens_04.py",
   "$D/regression/tls/tst_tls_as_xyz.py",
+  "$D/regression/tls/tst_formula_t_S_10_vs_11_2igd.py",
+  "$D/regression/tls/tst_formula_t_S_10_vs_11_4muy.py",
   #
   "$D/regression/tst_angle.py",
   "$D/rotamer/tst_rotamer_eval.py",

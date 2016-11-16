@@ -2379,6 +2379,8 @@ mmtbx/regression/tls/data_tls_analysis/dec04_test159.mes -text
 mmtbx/regression/tls/data_tls_analysis/dec04_test168.mes -text
 mmtbx/regression/tls/data_tls_analysis/dec04_test169.mes -text
 mmtbx/regression/tls/data_tls_analysis/dec04_test215.mes -text
+mmtbx/regression/tls/tst_formula_t_S_10_vs_11_2igd.py -text
+mmtbx/regression/tls/tst_formula_t_S_10_vs_11_4muy.py -text
 mmtbx/regression/tls/tst_get_t_scheme.py -text
 mmtbx/regression/tls/tst_tls.py -text
 mmtbx/regression/tls/tst_tls_analysis.py -text

@@ -1113,8 +1113,10 @@ class u_tls_vs_u_ens(object):
       xray_structure       = xrs,
       n_models             = n_models,
       origin               = origin,
-      use_states           = False,
+      use_states           = write_pdb_files,
       log                  = null_out())
+    if(write_pdb_files):
+      r.write_pdb_file(file_name="ensemble_%s.pdb"%str(n_models))
     #
     xyz_all = r.sites_cart_ens
     n_atoms = xyz_all[0].size()

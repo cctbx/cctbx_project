@@ -101,7 +101,7 @@ def show_number(x, title, prefix="  ", log=None):
 
 class run(object):
   def __init__(self, T, L, S, log=sys.stdout, eps=1.e-6, self_check_eps=1.e-5,
-               force_t_S=None):
+               force_t_S=None, find_t_S_using_formula="11"):
     """
     Decompose TLS matrices into physically iterpretable components.
     """
@@ -109,7 +109,13 @@ class run(object):
     self.ff = "%12.9f"
     self.eps = eps
     self.self_check_eps = self_check_eps
+    # Choose how to deal with t_S START
     self.force_t_S = force_t_S
+    self.find_t_S_using_formula = find_t_S_using_formula
+    assert self.find_t_S_using_formula in ["10","11", None]
+    if(self.force_t_S is not None):
+      assert self.find_t_S_using_formula is None
+    # Choose how to deal with t_S END
     print >> self.log, "Small is defined as:", self.eps
     self.T_M, self.L_M, self.S_M = T, L, S
     print_step("Input TLS matrices:", self.log)
@@ -270,142 +276,148 @@ class run(object):
     Determination of screw components.
     """
     print_step("Step C:", self.log)
-    T_ = self.T_CL.as_sym_mat3()
-    self.T_CLxx, self.T_CLyy, self.T_CLzz = T_[0], T_[1], T_[2]
-    #
-    # Left branch
-    #
-    if(not (self.is_zero(self.Lxx) or
-            self.is_zero(self.Lyy) or
-            self.is_zero(self.Lzz))):
-      tlxx = self.T_CLxx*self.Lxx
-      tlyy = self.T_CLyy*self.Lyy
-      tlzz = self.T_CLzz*self.Lzz
-      t11, t22, t33 = tlxx, tlyy, tlzz # the rest is below
-      rx, ry, rz = math.sqrt(tlxx), math.sqrt(tlyy), math.sqrt(tlzz)
-      t12 = self.T_CL[1] * math.sqrt(self.Lxx*self.Lyy)
-      t13 = self.T_CL[2] * math.sqrt(self.Lxx*self.Lzz)
-      t23 = self.T_CL[5] * math.sqrt(self.Lyy*self.Lzz)
-      t_min_C = max(self.Sxx-rx, self.Syy-ry, self.Szz-rz)
-      t_max_C = min(self.Sxx+rx, self.Syy+ry, self.Szz+rz)
-      show_number(x=[t_min_C, t_max_C], title="t_min_C,t_max_C eq.(24):", log=self.log)
-      if(t_min_C > t_max_C):
-        raise Sorry("Step C (left branch): Empty (tmin_c,tmax_c) interval.")
-      ######## HACK START
-      #t_0 = self.S_L.trace()/3.
-      num = self.Sxx*self.Lyy**2*self.Lzz**2 +\
-            self.Syy*self.Lzz**2*self.Lxx**2 +\
-            self.Szz*self.Lxx**2*self.Lyy**2
-      den = self.Lyy**2*self.Lzz**2 + \
-            self.Lzz**2*self.Lxx**2 + \
-            self.Lxx**2*self.Lyy**2
-      t_0 = num/den
-      ######## HACK END
-      show_number(x=t_0, title="t_0 eq.(20):", log=self.log)
-      # compose T_lambda and find tau_max (30)
-      T_lambda = matrix.sqr(
-        [t11, t12, t13,
-         t12, t22, t23,
-         t13, t23, t33])
-      show_matrix(x=T_lambda, title="T_lambda eq.(29)", log=self.log)
-      es = eigensystem.real_symmetric(T_lambda.as_sym_mat3())
-      vals = es.values()
-      assert vals[0]>=vals[1]>=vals[2]
-      tau_max = vals[0]
-      #
-      if(tau_max < 0):
-        raise Sorry("Step C (left branch): Eq.(32): tau_max<0.")
-      t_min_tau = max(self.Sxx,self.Syy,self.Szz)-math.sqrt(tau_max)
-      t_max_tau = min(self.Sxx,self.Syy,self.Szz)+math.sqrt(tau_max)
-      show_number(x=[t_min_tau, t_max_tau],
-        title="t_min_tau, t_max_tau eq.(31):", log=self.log)
-      if(t_min_tau > t_max_tau):
-        raise Sorry("Step C (left branch): Empty (tmin_t,tmax_t) interval.")
-      # (38):
-      arg = t_0**2 + (t11+t22+t33)/3. - (self.Sxx**2+self.Syy**2+self.Szz**2)/3.
-      if(arg < 0):
-        raise Sorry("Step C (left branch): Negative argument when estimating tmin_a.")
-      t_a = math.sqrt(arg)
-      show_number(x=t_a, title="t_a eq.(38):", log=self.log)
-      t_min_a = t_0-t_a
-      t_max_a = t_0+t_a
-      show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a eq.(37):", log=self.log)
-      # compute t_min, t_max - this is step b)
-      t_min = max(t_min_C, t_min_tau, t_min_a)
-      t_max = min(t_max_C, t_max_tau, t_max_a)
-      if(t_min > t_max):
-        raise Sorry("Step C (left branch): Intersection of the intervals for t_S is empty.")
-      elif(self.is_zero(t_min-t_max)):
-        _, b_s, c_s = self.as_bs_cs(t=t_min, txx=t11,tyy=t22,tzz=t33,
-          txy=t12,tyz=t23,tzx=t13)
-        if( (self.is_zero(b_s) or bs>0) and (c_s<0 or self.is_zero(c_s))):
-          self.t_S = t_min
-        else:
-          raise Sorry("Step C (left branch): t_min=t_max gives non positive semidefinite V_lambda.")
-      elif(t_min < t_max):
-        step = (t_max-t_min)/100000.
-        target = 1.e+9
-        t_S_best = t_min
-        while t_S_best <= t_max:
-          _, b_s, c_s = self.as_bs_cs(t=t_S_best, txx=t11,tyy=t22,tzz=t33,
-            txy=t12,tyz=t23,tzx=t13)
-          if(b_s >= 0 and c_s <= 0):
-            target_ = abs(t_0-t_S_best)
-            if(target_ < target):
-              target = target_
-              self.t_S = t_S_best
-          t_S_best += step
-        assert self.t_S <= t_max
-        if(self.t_S is None):
-          raise Sorry("Step C (left branch): Interval (t_min,t_max) has no t giving positive semidefinite V.")
-        self.t_S = self.t_S
-    #
-    # Right branch, Section 4.4
-    #
-    else:
-      Lxx, Lyy, Lzz = self.Lxx, self.Lyy, self.Lzz
-      if(self.is_zero(self.Lxx)): Lxx = 0
-      if(self.is_zero(self.Lyy)): Lyy = 0
-      if(self.is_zero(self.Lzz)): Lzz = 0
-      tlxx = self.T_CLxx*Lxx
-      tlyy = self.T_CLyy*Lyy
-      tlzz = self.T_CLzz*Lzz
-      t11, t22, t33 = tlxx, tlyy, tlzz # the rest is below
-      rx, ry, rz = math.sqrt(tlxx), math.sqrt(tlyy), math.sqrt(tlzz)
-      t12 = self.T_CL[1] * math.sqrt(Lxx*Lyy)
-      t13 = self.T_CL[2] * math.sqrt(Lxx*Lzz)
-      t23 = self.T_CL[5] * math.sqrt(Lyy*Lzz)
-      # helper-function to check Cauchy conditions
-      def cauchy_conditions(i,j,k, tSs): # diagonals: 0,4,8; 4,0,8; 8,0,4
-        if(self.is_zero(self.L_L[i])):
-          t_S = self.S_L[i]
-          cp1 = (self.S_L[j] - t_S)**2 - self.T_CL[j]*self.L_L[j]
-          cp2 = (self.S_L[k] - t_S)**2 - self.T_CL[k]*self.L_L[k]
-          if( not ((cp1 < 0 or self.is_zero(cp1)) and
-                   (cp2 < 0 or self.is_zero(cp2))) ):
-            raise Sorry("Step C (right branch): Cauchy condition failed (23).")
-          a_s, b_s, c_s = self.as_bs_cs(t=t_S, txx=t11,tyy=t22,tzz=t33,
-            txy=t12,tyz=t23,tzx=t13)
-          self.check_33_34_35(a_s=a_s, b_s=b_s, c_s=c_s)
-          tSs.append(t_S)
-      #
-      tSs = []
-      cauchy_conditions(i=0,j=4,k=8, tSs=tSs)
-      cauchy_conditions(i=4,j=0,k=8, tSs=tSs)
-      cauchy_conditions(i=8,j=0,k=4, tSs=tSs)
-      if(len(tSs)==1): self.t_S = tSs[0]
-      elif(len(tSs)==0): raise RuntimeError
-      else:
-        self.t_S = tSs[0]
-        for tSs_ in tSs[1:]:
-          if(not self.is_zero(x = self.t_S-tSs_)):
-            assert 0
-    # end-of-procedure check, then truncate
-    if(self.t_S is None):
-      raise RuntimeError
-    # override with provided value
+
     if(self.force_t_S is not None):
       self.t_S = self.force_t_S
+    else: # HUGE CLOSE BEGIN
+      T_ = self.T_CL.as_sym_mat3()
+      self.T_CLxx, self.T_CLyy, self.T_CLzz = T_[0], T_[1], T_[2]
+      #
+      # Left branch
+      #
+      if(not (self.is_zero(self.Lxx) or
+              self.is_zero(self.Lyy) or
+              self.is_zero(self.Lzz))):
+        tlxx = self.T_CLxx*self.Lxx
+        tlyy = self.T_CLyy*self.Lyy
+        tlzz = self.T_CLzz*self.Lzz
+        t11, t22, t33 = tlxx, tlyy, tlzz # the rest is below
+        rx, ry, rz = math.sqrt(tlxx), math.sqrt(tlyy), math.sqrt(tlzz)
+        t12 = self.T_CL[1] * math.sqrt(self.Lxx*self.Lyy)
+        t13 = self.T_CL[2] * math.sqrt(self.Lxx*self.Lzz)
+        t23 = self.T_CL[5] * math.sqrt(self.Lyy*self.Lzz)
+        t_min_C = max(self.Sxx-rx, self.Syy-ry, self.Szz-rz)
+        t_max_C = min(self.Sxx+rx, self.Syy+ry, self.Szz+rz)
+        show_number(x=[t_min_C, t_max_C], title="t_min_C,t_max_C eq.(24):", log=self.log)
+        if(t_min_C > t_max_C):
+          raise Sorry("Step C (left branch): Empty (tmin_c,tmax_c) interval.")
+        # Compute t_S using formula 10 or 11 (from 2016/17 paper II).
+        if(  self.find_t_S_using_formula=="10"):
+          t_0 = self.S_L.trace()/3.
+        elif(self.find_t_S_using_formula=="11"):
+          num = self.Sxx*self.Lyy**2*self.Lzz**2 +\
+                self.Syy*self.Lzz**2*self.Lxx**2 +\
+                self.Szz*self.Lxx**2*self.Lyy**2
+          den = self.Lyy**2*self.Lzz**2 + \
+                self.Lzz**2*self.Lxx**2 + \
+                self.Lxx**2*self.Lyy**2
+          t_0 = num/den
+        else: assert 0
+        #
+        show_number(x=t_0, title="t_0 eq.(20):", log=self.log)
+        # compose T_lambda and find tau_max (30)
+        T_lambda = matrix.sqr(
+          [t11, t12, t13,
+           t12, t22, t23,
+           t13, t23, t33])
+        show_matrix(x=T_lambda, title="T_lambda eq.(29)", log=self.log)
+        es = eigensystem.real_symmetric(T_lambda.as_sym_mat3())
+        vals = es.values()
+        assert vals[0]>=vals[1]>=vals[2]
+        tau_max = vals[0]
+        #
+        if(tau_max < 0):
+          raise Sorry("Step C (left branch): Eq.(32): tau_max<0.")
+        t_min_tau = max(self.Sxx,self.Syy,self.Szz)-math.sqrt(tau_max)
+        t_max_tau = min(self.Sxx,self.Syy,self.Szz)+math.sqrt(tau_max)
+        show_number(x=[t_min_tau, t_max_tau],
+          title="t_min_tau, t_max_tau eq.(31):", log=self.log)
+        if(t_min_tau > t_max_tau):
+          raise Sorry("Step C (left branch): Empty (tmin_t,tmax_t) interval.")
+        # (38):
+        arg = t_0**2 + (t11+t22+t33)/3. - (self.Sxx**2+self.Syy**2+self.Szz**2)/3.
+        if(arg < 0):
+          raise Sorry("Step C (left branch): Negative argument when estimating tmin_a.")
+        t_a = math.sqrt(arg)
+        show_number(x=t_a, title="t_a eq.(38):", log=self.log)
+        t_min_a = t_0-t_a
+        t_max_a = t_0+t_a
+        show_number(x=[t_min_a, t_max_a], title="t_min_a, t_max_a eq.(37):", log=self.log)
+        # compute t_min, t_max - this is step b)
+        t_min = max(t_min_C, t_min_tau, t_min_a)
+        t_max = min(t_max_C, t_max_tau, t_max_a)
+        if(t_min > t_max):
+          raise Sorry("Step C (left branch): Intersection of the intervals for t_S is empty.")
+        elif(self.is_zero(t_min-t_max)):
+          _, b_s, c_s = self.as_bs_cs(t=t_min, txx=t11,tyy=t22,tzz=t33,
+            txy=t12,tyz=t23,tzx=t13)
+          if( (self.is_zero(b_s) or bs>0) and (c_s<0 or self.is_zero(c_s))):
+            self.t_S = t_min
+          else:
+            raise Sorry("Step C (left branch): t_min=t_max gives non positive semidefinite V_lambda.")
+        elif(t_min < t_max):
+          step = (t_max-t_min)/100000.
+          target = 1.e+9
+          t_S_best = t_min
+          while t_S_best <= t_max:
+            _, b_s, c_s = self.as_bs_cs(t=t_S_best, txx=t11,tyy=t22,tzz=t33,
+              txy=t12,tyz=t23,tzx=t13)
+            if(b_s >= 0 and c_s <= 0):
+              target_ = abs(t_0-t_S_best)
+              if(target_ < target):
+                target = target_
+                self.t_S = t_S_best
+            t_S_best += step
+          assert self.t_S <= t_max
+          if(self.t_S is None):
+            raise Sorry("Step C (left branch): Interval (t_min,t_max) has no t giving positive semidefinite V.")
+          self.t_S = self.t_S
+      #
+      # Right branch, Section 4.4
+      #
+      else:
+        Lxx, Lyy, Lzz = self.Lxx, self.Lyy, self.Lzz
+        if(self.is_zero(self.Lxx)): Lxx = 0
+        if(self.is_zero(self.Lyy)): Lyy = 0
+        if(self.is_zero(self.Lzz)): Lzz = 0
+        tlxx = self.T_CLxx*Lxx
+        tlyy = self.T_CLyy*Lyy
+        tlzz = self.T_CLzz*Lzz
+        t11, t22, t33 = tlxx, tlyy, tlzz # the rest is below
+        rx, ry, rz = math.sqrt(tlxx), math.sqrt(tlyy), math.sqrt(tlzz)
+        t12 = self.T_CL[1] * math.sqrt(Lxx*Lyy)
+        t13 = self.T_CL[2] * math.sqrt(Lxx*Lzz)
+        t23 = self.T_CL[5] * math.sqrt(Lyy*Lzz)
+        # helper-function to check Cauchy conditions
+        def cauchy_conditions(i,j,k, tSs): # diagonals: 0,4,8; 4,0,8; 8,0,4
+          if(self.is_zero(self.L_L[i])):
+            t_S = self.S_L[i]
+            cp1 = (self.S_L[j] - t_S)**2 - self.T_CL[j]*self.L_L[j]
+            cp2 = (self.S_L[k] - t_S)**2 - self.T_CL[k]*self.L_L[k]
+            if( not ((cp1 < 0 or self.is_zero(cp1)) and
+                     (cp2 < 0 or self.is_zero(cp2))) ):
+              raise Sorry("Step C (right branch): Cauchy condition failed (23).")
+            a_s, b_s, c_s = self.as_bs_cs(t=t_S, txx=t11,tyy=t22,tzz=t33,
+              txy=t12,tyz=t23,tzx=t13)
+            self.check_33_34_35(a_s=a_s, b_s=b_s, c_s=c_s)
+            tSs.append(t_S)
+        #
+        tSs = []
+        cauchy_conditions(i=0,j=4,k=8, tSs=tSs)
+        cauchy_conditions(i=4,j=0,k=8, tSs=tSs)
+        cauchy_conditions(i=8,j=0,k=4, tSs=tSs)
+        if(len(tSs)==1): self.t_S = tSs[0]
+        elif(len(tSs)==0): raise RuntimeError
+        else:
+          self.t_S = tSs[0]
+          for tSs_ in tSs[1:]:
+            if(not self.is_zero(x = self.t_S-tSs_)):
+              assert 0
+      # end-of-procedure check, then truncate
+      if(self.t_S is None):
+        raise RuntimeError
+    # HUGE CLOSE END
+    ####
     #
     # At this point t_S is found or procedure terminated earlier.
     #

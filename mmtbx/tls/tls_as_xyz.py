@@ -11,7 +11,7 @@ import sys
 from mmtbx.tls import analysis
 from mmtbx.tls import tools
 
-random.seed(2679941)
+random.seed(2679941) ###
 
 from mmtbx_tls_ext import *
 
