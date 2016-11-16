@@ -655,11 +655,13 @@ def substitute_ss(real_h,
       processed_pdb_file, xray_structure)
     t8 = time()
   else:
+    ss_params = secondary_structure.default_params
+    ss_params.secondary_structure.protein.remove_outliers=False
     ss_manager = secondary_structure.manager(
         pdb_hierarchy=real_h,
         geometry_restraints_manager=grm.geometry,
         sec_str_from_pdb_file=ss_annotation,
-        params=None,
+        params=ss_params.secondary_structure,
         mon_lib_srv=None,
         verbose=-1,
         log=log)
