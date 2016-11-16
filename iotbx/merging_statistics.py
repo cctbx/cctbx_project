@@ -243,6 +243,7 @@ class merging_stats (object) :
     self.sigi_mean = 0
     self.i_over_sigma_mean = 0
     self.i_mean_over_sigi_mean = 0
+    self.unmerged_i_over_sigma_mean = 0
     self.cc_one_half = 0
     self.cc_one_half_significance = None
     self.cc_one_half_critical_value = None
@@ -258,6 +259,9 @@ class merging_stats (object) :
       i_over_sigma = nonzero_array.data() / nonzero_array.sigmas()
       self.i_over_sigma_mean = flex.mean(i_over_sigma)
       self.i_mean_over_sigi_mean = self.i_mean/self.sigi_mean
+      nonzero_array = array.select(array.sigmas() > 0)
+      unmerged_i_over_sigma = nonzero_array.data() / nonzero_array.sigmas()
+      self.unmerged_i_over_sigma_mean = flex.mean(unmerged_i_over_sigma)
       self.r_merge = merge.r_merge()
       self.r_meas = merge.r_meas()
       self.r_pim = merge.r_pim()

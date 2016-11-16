@@ -135,11 +135,13 @@ def exercise (debug=False) :
   args = [hkl_file, "use_internal_variance=False"]
   result = merging_statistics.run(args, out=out)
   assert approx_equal(result.overall.i_over_sigma_mean, 4.4867598237199)
+  assert approx_equal(result.overall.unmerged_i_over_sigma_mean, 2.559049577429115)
   args = [hkl_file,
           #"use_internal_variance=True" # this is the default behaviour
           ]
   result = merging_statistics.run(args, out=out)
   assert approx_equal(result.overall.i_over_sigma_mean, 4.063574245292925)
+  assert approx_equal(result.overall.unmerged_i_over_sigma_mean, 2.559049577429115)
   # test eliminate_sys_absent option
   out = StringIO()
   hkl_file = libtbx.env.find_in_repositories(
