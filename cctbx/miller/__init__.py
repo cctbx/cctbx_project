@@ -1680,11 +1680,12 @@ class set(crystal.symmetry):
         d_max=0,
         d_min=0,
         reflections_per_bin=None,
+        n_bins=None,
         d_tolerance=1.e-10):
     assert d_max >= 0
     assert d_min >= 0
-    assert isinstance(reflections_per_bin, int)
-    assert reflections_per_bin > 0
+    assert isinstance(reflections_per_bin, int) or isinstance(n_bins, int)
+    assert reflections_per_bin > 0 or n_bins > 0
     assert d_tolerance > 0
     assert d_tolerance < 0.5
     d_star_sq = self.d_star_sq().data()
@@ -1693,7 +1694,9 @@ class set(crystal.symmetry):
     if (d_min > 0):
       d_star_sq = d_star_sq.select(d_star_sq < 1./d_min**2)
     assert d_star_sq.size() > 0
-    n_bins = max(1, iround(d_star_sq.size() / float(reflections_per_bin)))
+    if n_bins is None:
+      n_bins = max(1, iround(d_star_sq.size() / float(reflections_per_bin)))
+    assert n_bins <= self.size(), "n_bins (%i) must be <= number of reflections (%i)" %(n_bins, self.size())
     reflections_per_bin = d_star_sq.size() / float(n_bins)
     d_star_sq = d_star_sq.select(flex.sort_permutation(d_star_sq))
     limits = flex.double()
