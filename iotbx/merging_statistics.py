@@ -57,6 +57,8 @@ use_internal_variance = True
 eliminate_sys_absent = True
   .type = bool
   .short_caption = Eliminate systematically absent reflections before computation of merging statistics.
+cc_one_half_significance_level = None
+  .type = float(value_min=0, value_max=None)
 """ % sigma_filtering_phil_str
 
 class model_based_arrays (object) :
@@ -186,7 +188,8 @@ class merging_stats (object) :
       anomalous=False,
       debug=None,
       sigma_filtering="scala",
-      use_internal_variance=True) :
+      use_internal_variance=True,
+      cc_one_half_significance_level=None) :
     import cctbx.miller
     from scitbx.array_family import flex
     assert (array.sigmas() is not None)
@@ -241,6 +244,8 @@ class merging_stats (object) :
     self.i_over_sigma_mean = 0
     self.i_mean_over_sigi_mean = 0
     self.cc_one_half = 0
+    self.cc_one_half_significance = None
+    self.cc_one_half_critical_value = None
     self.cc_star = 0
     self.r_merge = self.r_meas = self.r_pim = None
     for x in sorted(set(redundancies)) :
@@ -258,6 +263,21 @@ class merging_stats (object) :
       self.r_pim = merge.r_pim()
       self.cc_one_half = cctbx.miller.compute_cc_one_half(
         unmerged=array)
+      if cc_one_half_significance_level is not None:
+        # https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Testing_using_Student.27s_t-distribution
+        r = self.cc_one_half
+        n = (redundancies > 1).count(True)
+        p = cc_one_half_significance_level
+        if r == -1 or n <= 2:
+          self.cc_one_half_significance = False
+          self.cc_one_half_critical_value = 0
+        else:
+          t = r * sqrt((n-2)/(1-r**2))
+          from scitbx.math import distributions
+          dist = distributions.students_t_distribution(n-2)
+          self.cc_one_half_significance = t > dist.quantile(1-p)
+          t1 = dist.quantile(1-p)
+          self.cc_one_half_critical_value = t1/sqrt(t1**2 + n - 2)
       if (self.cc_one_half == 0) :
         self.cc_star = 0
       elif (self.cc_one_half < -0.999) :
@@ -278,7 +298,7 @@ class merging_stats (object) :
     return getattr(self, "anom_half_corr", None)
 
   def format (self) :
-    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %s  %s  %s  %5.3f  %5.3f" % (
+    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %s  %s  %s  % 5.3f%s  % 5.3f" % (
       self.d_max,
       self.d_min,
       self.n_obs,
@@ -287,10 +307,11 @@ class merging_stats (object) :
       self.completeness*100,
       self.i_mean,
       self.i_over_sigma_mean,
-      format_value("%5.3f", self.r_merge),
-      format_value("%5.3f", self.r_meas),
-      format_value("%5.3f", self.r_pim),
+      format_value("% 7.3f", self.r_merge),
+      format_value("% 7.3f", self.r_meas),
+      format_value("% 7.3f", self.r_pim),
       self.cc_one_half,
+      "*" if self.cc_one_half_significance else "",
       self.anom_half_corr)
 
   def format_for_model_cc (self) :
@@ -329,6 +350,7 @@ class merging_stats (object) :
     table = [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
             self.r_merge, self.r_meas, self.r_pim, self.cc_one_half,
+            self.cc_one_half_significance, self.cc_one_half_critical_value,
             self.anom_half_corr]
     if (self.cc_work is not None) :
       table.extend([self.cc_star, self.cc_work, self.cc_free, self.r_work,
@@ -380,6 +402,7 @@ class dataset_statistics (object) :
       eliminate_sys_absent=True,
       d_min_tolerance=1.e-6,
       extend_d_max_min=False,
+      cc_one_half_significance_level=None,
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
@@ -436,7 +459,8 @@ class dataset_statistics (object) :
       anomalous=anomalous,
       debug=debug,
       sigma_filtering=sigma_filtering,
-      use_internal_variance=use_internal_variance)
+      use_internal_variance=use_internal_variance,
+      cc_one_half_significance_level=cc_one_half_significance_level)
     self.bins = []
     title = "Intensity merging statistics"
     column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
@@ -444,13 +468,17 @@ class dataset_statistics (object) :
         "CC(anom)"]
     graph_names = ["Reflection counts", "Redundancy", "Completeness",
         "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2", "CC(anom)"]
-    graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10],[0,11]]
+    graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,10],[0,13]]
+    if cc_one_half_significance_level is not None:
+      column_labels.extend(["CC1/2 significance", "CC1/2 critical value"])
+      graph_names.extend(["CC1/2 significance", "CC1/2 critical value"])
+      graph_columns[-2] = [0,10,12]
     #--- CC* mode
     if (model_arrays is not None) :
       title = "Model quality and intensity merging statistics"
       column_labels.extend(["CC*", "CC(work)", "CC(free)", "R-work", "R-free"])
       graph_names.extend(["CC*", "Model R-factors"])
-      graph_columns.extend([[0,11,12,13],[0,14,15]])
+      graph_columns.extend([[0,11,14,15],[0,16,17]])
     #---
     self.table = data_plots.table_data(
       title=title,
@@ -468,7 +496,8 @@ class dataset_statistics (object) :
         anomalous=anomalous,
         debug=debug,
         sigma_filtering=sigma_filtering,
-        use_internal_variance=use_internal_variance)
+        use_internal_variance=use_internal_variance,
+        cc_one_half_significance_level=cc_one_half_significance_level)
       self.bins.append(bin_stats)
       self.table.add_row(bin_stats.table_data())
 
@@ -548,7 +577,8 @@ class dataset_statistics (object) :
     print >> out, ""
     print >> out, """\
   Statistics by resolution bin:
- d_max  d_min   #obs  #uniq   mult.  %comp       <I>  <I/sI>  r_mrg r_meas  r_pim  cc1/2  cc_ano"""
+ d_max  d_min   #obs  #uniq   mult.  %%comp       <I>  <I/sI>    r_mrg   r_meas    r_pim   %scc1/2   cc_ano""" %(
+      ' ' if self.overall.cc_one_half_significance is not None else '')
     for bin_stats in self.bins :
       print >> out, bin_stats.format()
     print >> out, self.overall.format()
