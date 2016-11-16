@@ -112,6 +112,7 @@ already be on a common scale, but with individual observations unmerged.
     d_min=params.high_resolution,
     d_max=params.low_resolution,
     n_bins=params.n_bins,
+    binning_method=params.binning_method,
     anomalous=params.anomalous,
     debug=params.debug,
     file_name=params.file_name,

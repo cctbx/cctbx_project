@@ -41,6 +41,9 @@ n_bins = 10
   .short_caption = Number of resolution bins
   .input_size = 64
   .style = spinner
+binning_method = *volume counting_sorted
+  .type = choice
+  .help = "Use equal-volume bins or bins with approximately equal numbers of reflections per bin."
 extend_d_max_min = False
   .type = bool
   .expert_level = 2
@@ -368,6 +371,7 @@ class dataset_statistics (object) :
       d_max=None,
       anomalous=False,
       n_bins=10,
+      binning_method='volume',
       debug=False,
       file_name=None,
       model_arrays=None,
@@ -422,7 +426,10 @@ class dataset_statistics (object) :
         d_min=d_min_cutoff)
       overall_d_max_min = d_max_cutoff, d_min_cutoff
     else :
-      i_obs.setup_binner(n_bins=n_bins)
+      if binning_method == 'volume':
+        i_obs.setup_binner(n_bins=n_bins)
+      elif binning_method == 'counting_sorted':
+        i_obs.setup_binner_counting_sorted(n_bins=n_bins)
     self.overall = merging_stats(i_obs,
       d_max_min=overall_d_max_min,
       model_arrays=model_arrays,
