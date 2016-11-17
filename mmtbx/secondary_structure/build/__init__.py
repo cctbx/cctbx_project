@@ -13,6 +13,8 @@ from mmtbx.command_line.geometry_minimization import \
   get_geometry_restraints_manager
 from time import time
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
+from cctbx import crystal
+
 
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -502,6 +504,16 @@ def substitute_ss(real_h,
       raise Sorry(error_msg)
   phil_str = ann.as_restraint_groups()
 
+  # gathering initial special position atoms
+  special_position_settings = crystal.special_position_settings(
+      crystal_symmetry = xray_structure.crystal_symmetry())
+  site_symmetry_table = \
+      special_position_settings.site_symmetry_table(
+        sites_cart = real_h.atoms().extract_xyz(),
+        unconditional_general_position_flags=(
+          real_h.atoms().extract_occ() != 1))
+  original_spi = site_symmetry_table.special_position_indices()
+
   t2 = time()
   # Actually idelizing SS elements
   log.write("Replacing ss-elements with ideal ones:\n")
@@ -707,6 +719,29 @@ def substitute_ss(real_h,
           sigma           = processed_params.sigma_on_torsion_nonss)
 
   real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
+  #
+  # Check and correct for special positions
+  #
+  special_position_settings = crystal.special_position_settings(
+      crystal_symmetry = xray_structure.crystal_symmetry())
+  site_symmetry_table = \
+      special_position_settings.site_symmetry_table(
+        sites_cart = real_h.atoms().extract_xyz(),
+        unconditional_general_position_flags=(
+          real_h.atoms().extract_occ() != 1))
+  spi = site_symmetry_table.special_position_indices()
+  if spi.size() > 0:
+    print >> log, "Moving atoms from special positions:"
+    for spi_i in spi:
+      if spi_i not in original_spi:
+        new_coords = (
+            real_h.atoms()[spi_i].xyz[0]+0.2,
+            real_h.atoms()[spi_i].xyz[1]+0.2,
+            real_h.atoms()[spi_i].xyz[2]+0.2)
+        print >> log, "  ", real_h.atoms()[spi_i].id_str(),
+        print >> log, tuple(real_h.atoms()[spi_i].xyz), "-->", new_coords
+        real_h.atoms()[spi_i].set_xyz(new_coords)
+
   t9 = time()
   if processed_params.file_name_before_regularization is not None:
     grm.geometry.pair_proxies(sites_cart=real_h.atoms().extract_xyz())
