@@ -200,7 +200,10 @@ class merging_stats (object) :
     array = array.select(positive_sel)
     # calculate CC(anom) first, because the default behavior is to switch to
     # non-anomalous data for the rest of the analyses
-    self.anom_half_corr = array.half_dataset_anomalous_correlation()
+    self.cc_anom, n_anom_pairs = array.half_dataset_anomalous_correlation(
+      return_n_pairs=True)
+    self.cc_anom_significance = None
+    self.cc_anom_critical_value = None
     array = array.customized_copy(anomalous_flag=anomalous).map_to_asu()
     array = array.sort("packed_indices")
     filter = filter_intensities_by_sigma(
@@ -268,20 +271,25 @@ class merging_stats (object) :
       self.cc_one_half = cctbx.miller.compute_cc_one_half(
         unmerged=array)
       if cc_one_half_significance_level is not None:
-        # https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Testing_using_Student.27s_t-distribution
-        r = self.cc_one_half
-        n = (redundancies > 1).count(True)
-        p = cc_one_half_significance_level
-        if r == -1 or n <= 2:
-          self.cc_one_half_significance = False
-          self.cc_one_half_critical_value = 0
-        else:
-          t = r * sqrt((n-2)/(1-r**2))
-          from scitbx.math import distributions
-          dist = distributions.students_t_distribution(n-2)
-          self.cc_one_half_significance = t > dist.quantile(1-p)
-          t1 = dist.quantile(1-p)
-          self.cc_one_half_critical_value = t1/sqrt(t1**2 + n - 2)
+        def compute_cc_significance(r, n, p):
+          # https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Testing_using_Student.27s_t-distribution
+          if r == -1 or n <= 2:
+            significance = False
+            critical_value = 0
+          else:
+            t = r * sqrt((n-2)/(1-r**2))
+            from scitbx.math import distributions
+            dist = distributions.students_t_distribution(n-2)
+            significance = t > dist.quantile(1-p)
+            t1 = dist.quantile(1-p)
+            critical_value = t1/sqrt(t1**2 + n - 2)
+          return significance, critical_value
+        self.cc_one_half_significance, self.cc_one_half_critical_value \
+          = compute_cc_significance(
+            self.cc_one_half, (redundancies > 1).count(True), cc_one_half_significance_level)
+        self.cc_anom_significance, self.cc_anom_critical_value \
+          = compute_cc_significance(
+            self.cc_anom, n_anom_pairs, cc_one_half_significance_level)
       if (self.cc_one_half == 0) :
         self.cc_star = 0
       elif (self.cc_one_half < -0.999) :
@@ -298,11 +306,11 @@ class merging_stats (object) :
         model_arrays.cc_work_and_free(array_merged)
 
   @property
-  def cc_anom (self) :
-    return getattr(self, "anom_half_corr", None)
+  def anom_half_corr (self) :
+    return getattr(self, "cc_anom", None)
 
   def format (self) :
-    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %s  %s  %s  % 5.3f%s  % 5.3f" % (
+    return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %s  %s  %s  % 5.3f%s  % 5.3f%s" % (
       self.d_max,
       self.d_min,
       self.n_obs,
@@ -316,7 +324,8 @@ class merging_stats (object) :
       format_value("% 7.3f", self.r_pim),
       self.cc_one_half,
       "*" if self.cc_one_half_significance else "",
-      self.anom_half_corr)
+      self.cc_anom,
+      "*" if self.cc_anom_significance else "")
 
   def format_for_model_cc (self) :
     return "%6.2f  %6.2f  %6d  %6.2f  %6.2f  %5.3f  %5.3f   %s   %s  %s  %s"%(
@@ -355,7 +364,7 @@ class merging_stats (object) :
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
             self.r_merge, self.r_meas, self.r_pim, self.cc_one_half,
             self.cc_one_half_significance, self.cc_one_half_critical_value,
-            self.anom_half_corr]
+            self.cc_anom]
     if (self.cc_work is not None) :
       table.extend([self.cc_star, self.cc_work, self.cc_free, self.r_work,
         self.r_free])
@@ -559,7 +568,7 @@ class dataset_statistics (object) :
       force_exact_x_labels=True)
     for bin in self.bins :
       data = bin.table_data()
-      table.add_row([ (1/bin.d_min**2), bin.anom_half_corr ])
+      table.add_row([ (1/bin.d_min**2), bin.cc_anom ])
     return table
 
   def show_loggraph (self, out=None) :

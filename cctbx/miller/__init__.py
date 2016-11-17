@@ -4690,7 +4690,7 @@ class array(set):
         data.append(bin_array.cc_one_half(n_trials=n_trials))
     return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
-  def half_dataset_anomalous_correlation (self, use_binning=False) :
+  def half_dataset_anomalous_correlation (self, use_binning=False, return_n_pairs=False) :
     """
     Calculate the correlation of the anomalous differences of two randomly
     assigned half-datasets (starting from unmerged data).
@@ -4718,6 +4718,8 @@ class array(set):
         data=split_datasets.data_2)
       dano2 = array2.anomalous_differences()
       assert dano1.indices().all_eq(dano2.indices())
+      if return_n_pairs:
+        return dano1.correlation(other=dano2, use_binning=False).coefficient(), dano1.size()
       return dano1.correlation(other=dano2, use_binning=False).coefficient()
     assert self.binner() is not None
     tmp_array.use_binning_of(other=self)

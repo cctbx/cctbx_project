@@ -153,11 +153,15 @@ def exercise (debug=False) :
   result = merging_statistics.run(args, out=out)
   assert approx_equal(result.overall.d_max, 43.069972142418365)
   assert result.overall.n_obs == 118981, result.overall.n_obs
-  args = [hkl_file, "eliminate_sys_absent=False"]
+  args = [hkl_file, "binning_method=counting_sorted",
+          "eliminate_sys_absent=False", "n_bins=20",
+          "cc_one_half_significance_level=0.01"]
   result = merging_statistics.run(args, out=out)
   assert approx_equal(result.overall.d_max, 52.445602416992195)
   assert result.overall.n_obs == 119045, result.overall.n_obs
-
+  assert approx_equal(result.bins[0].cc_anom, 0.8643541913267925)
+  assert result.bins[0].cc_anom_significance is True
+  assert approx_equal(result.bins[0].cc_anom_critical_value, 0.08001889224417998)
 
 if (__name__ == "__main__") :
   exercise(debug=("--debug" in sys.argv))
