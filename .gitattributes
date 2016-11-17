@@ -2103,6 +2103,7 @@ mmtbx/hydrogens/hydrogen_connectivity.py -text
 mmtbx/hydrogens/hydrogen_parametrization.py -text
 mmtbx/hydrogens/modify_gradients.py -text
 mmtbx/hydrogens/parameterization.py -text
+mmtbx/hydrogens/riding_h.py -text
 mmtbx/hydrogens/tst.py -text
 mmtbx/hydrogens/tst_connectivity.py -text
 mmtbx/hydrogens/tst_h_connectivity.py -text
