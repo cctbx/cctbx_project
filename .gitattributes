@@ -2099,7 +2099,6 @@ mmtbx/geometry_restraints/tst_reference_coordinate2.py -text
 mmtbx/grow_density.py -text
 mmtbx/hydrogens/connectivity.py -text
 mmtbx/hydrogens/find.py -text
-mmtbx/hydrogens/hydrogen_connectivity.py -text
 mmtbx/hydrogens/hydrogen_parametrization.py -text
 mmtbx/hydrogens/modify_gradients.py -text
 mmtbx/hydrogens/parameterization.py -text
