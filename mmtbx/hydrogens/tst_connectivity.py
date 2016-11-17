@@ -6,7 +6,8 @@ import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.model
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
-import hydrogen_connectivity
+from mmtbx.hydrogens import riding_h
+
 #from mmtbx import hydrogens
 
 pdb_str = """\
@@ -52,47 +53,35 @@ def exercise():
     raw_records    = pdb_str,
     force_symmetry = True)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xray_structure = processed_pdb_file.xray_structure()
-
   geometry_restraints = processed_pdb_file.geometry_restraints_manager(
     show_energies = False)
+
+# necessary for comparison
+  xray_structure = processed_pdb_file.xray_structure()
   restraints_manager = mmtbx.restraints.manager(
     geometry      = geometry_restraints,
     normalization = False)
-
-  sites_cart = xray_structure.sites_cart()
-
-  bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
-      sites_cart = sites_cart)
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
-  dihedral_proxies = restraints_manager.geometry.dihedral_proxies
-  hd_selection = xray_structure.hd_selection()
-  atoms = pdb_hierarchy.atoms()
 
-  # determine values with code to be tested
-  connectivity = hydrogen_connectivity.determine_H_neighbors(
-    geometry_restraints = geometry_restraints,
-    bond_proxies        = bond_proxies_simple,
-    angle_proxies       = angle_proxies,
-    dihedral_proxies    = dihedral_proxies,
-    hd_selection        = hd_selection,
-    sites_cart          = sites_cart,
-    atoms               = atoms)
+  riding_h_manager = riding_h.create_riding_h_manager(
+      hierarchy           = pdb_hierarchy,
+      geometry_restraints = geometry_restraints,
+      crystal_symmetry    = xray_structure.crystal_symmetry())
+  h_connectivity = riding_h_manager.h_connectivity
 
   bond_list = {}
   angle_list = {}
   third_nb_list = {}
-  for ih in connectivity.keys():
-    a0 = (connectivity[ih][0])
+  for ih in h_connectivity.keys():
+    a0 = (h_connectivity[ih][0])
     bond_list[ih]=[a0.iseq, a0.dist_ideal]
-    for atom in connectivity[ih][1]+connectivity[ih][2]:
+    for atom in h_connectivity[ih][1]+h_connectivity[ih][2]:
       helper = tuple(sorted([ih, a0.iseq, atom.iseq]))
       angle_list[helper]=atom.angle_ideal
-    if(len(connectivity[ih])==4):
+    if(len(h_connectivity[ih])==4):
       third_nb_list[ih]=[]
-      for third in connectivity[ih][3]:
+      for third in h_connectivity[ih][3]:
         third_nb_list[ih].append(third.iseq)
-      #print third_nb_list[ih]
 
 #-----------------------------------------------------------------------------
 # This is useful to keep for debugging: human readable output of connectivity
@@ -107,7 +96,7 @@ def exercise():
 #      ',', string
 #-----------------------------------------------------------------------------
 
-# determine values directly from pdb_str
+# determine bonds from pdb_str
   model = mmtbx.model.manager(
     restraints_manager = restraints_manager,
     xray_structure     = xray_structure,
@@ -116,7 +105,7 @@ def exercise():
   for i in model.xh_connectivity_table():
     bond_ctrl[i[1]]=[i[0],i[3]]
 
-# We know the angles beforehand
+# List of angle restraints
   angles = [
     (4, 1, 12),
     (2, 1, 12),
@@ -142,7 +131,7 @@ def exercise():
       angle_ctrl[tuple(sorted(list(ap.i_seqs)))]=ap.angle_ideal
 
 # HH needs also third neighbors:
-  third_nb_ctrl = {19: [8]}
+  third_nb_ctrl = {19: [8, 9]}
 
   assert (bond_list == bond_ctrl), '1-2 neighbors and distance_ideal are wrong'
   assert (angle_list == angle_ctrl), '1-3 neighbors and angle_ideal are wrong'
