@@ -5,8 +5,8 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
-import hydrogen_connectivity
-import hydrogen_parametrization
+from mmtbx.hydrogens import riding_h
+from mmtbx.hydrogens import parameterization
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for nucleic acids
@@ -30,70 +30,46 @@ def exercise():
 
   geometry_restraints = processed_pdb_file.geometry_restraints_manager(
     show_energies = False)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry_restraints,
-    normalization = False)
 
   sites_cart = xray_structure.sites_cart()
-  names = list(pdb_hierarchy.atoms().extract_name())
-  atoms_list = list(pdb_hierarchy.atoms_with_labels())
   atoms = pdb_hierarchy.atoms()
 
-  bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
-      sites_cart = sites_cart)
-  angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
-  dihedral_proxies = restraints_manager.geometry.dihedral_proxies
-  hd_selection = xray_structure.hd_selection()
-
-  connectivity = hydrogen_connectivity.determine_H_neighbors(
+  riding_h_manager = riding_h.create_riding_h_manager(
+    hierarchy           = pdb_hierarchy,
     geometry_restraints = geometry_restraints,
-    bond_proxies        = bond_proxies_simple,
-    angle_proxies       = angle_proxies,
-    dihedral_proxies    = dihedral_proxies,
-    hd_selection        = hd_selection,
-    sites_cart          = sites_cart,
-    atoms               = atoms)
+    crystal_symmetry    = xray_structure.crystal_symmetry())
 
-  idealize = True
+  h_parameterization = riding_h_manager.h_parameterization
 
-  h_parameterization = hydrogen_parametrization.get_h_parameterization(
-    connectivity = connectivity,
-    sites_cart   = sites_cart,
-    idealize     = idealize)
+  diagnostics = parameterization.diagnostics_parameterization(
+    connectivity_obj   = riding_h_manager.connectivity_obj,
+    h_parameterization = h_parameterization,
+    sites_cart         = sites_cart,
+    threshold          = 0.05)
 
+  h_distances        = diagnostics.h_distances
+  unk_list           = diagnostics.unk_list
 
 # There are 90 H atoms in the pdb_string, check if all of them are recognized
-  #assert (len(h_parameterization.keys()) == 90), 'Not all H atoms are parameterized'
+  assert (len(h_parameterization.keys()) == 90), 'Not all H atoms are parameterized'
 
-# For each H atom, check if distance between computed H and that in input model is not
-# too large. 0.0014 is uncertainty of distance. 0.05 is quite good reproducibility.
-  n_unk = 0
+# For each H atom, check if distance between computed H and that in input model is
+# not too large
   type_list = []
-  for ih in h_parameterization.keys():
-    residue = atoms_list[ih].resseq
+  for ih in h_distances:
+    labels = atoms[ih].fetch_labels()
     hp = h_parameterization[ih]
     type_list.append(hp.htype)
-    h_obj = hydrogen_parametrization.generate_H_positions(
-      sites_cart = sites_cart,
-      ih         = ih,
-      para_info  = hp)
-    assert (h_obj.distance < 0.05), 'distance too large: %s  atom: %s (%s) residue: %s ' \
-      % (hp.htype, names[ih], ih, residue)
-    if(hp.htype == 'unk'):
-      n_unk = n_unk + 1
-
-# KEEP: useful for debugging
-  #for ih in h_parameterization.keys():
-  #  hp = h_parameterization[ih]
-  #  print "'"+hp.htype+"'"+',',
+    assert (h_distances[ih] < 0.03), 'distance too large: %s  atom: %s (%s) residue: %s ' \
+      % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
 
 # Check if there are atoms with unknown parameterization
-  assert(n_unk == 0), 'Some H atoms are not recognized'
+  assert(len(unk_list) == 0), 'Some H atoms are not recognized'
 
 # Check that parameterization types are correct
+  assert (len(h_parameterization) == 90), 'Fewer H atoms than expected'
   for type1, type2 in zip(type_list, type_list_known):
     assert (type1 == type2)
-
 
 # DNA and RNA nucleic acids
 pdb_str = """\

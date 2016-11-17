@@ -4,15 +4,15 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
-import hydrogen_connectivity
-import hydrogen_parametrization
+from mmtbx.hydrogens import riding_h
+from mmtbx.hydrogens import parameterization
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for planar X-H2 groups
 # Steps:
 # 1) determine parameterization
 # 2) Compare calculated position of H from parameterization to input position
-# test fails if distance is > 0.02 A
+# test fails if distance is > 0.03 A
 # Aim is to test if ideal dihedral angles are correct for any configuration
 #-----------------------------------------------------------------------------
 
@@ -30,45 +30,38 @@ def exercise(pdb_str, idealize):
 
   geometry_restraints = processed_pdb_file.geometry_restraints_manager(
     show_energies = False)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry_restraints,
-    normalization = False)
 
   sites_cart = xray_structure.sites_cart()
-  atoms_list = list(pdb_hierarchy.atoms_with_labels())
   atoms = pdb_hierarchy.atoms()
-  names = list(atoms.extract_name())
 
-  bond_proxies_simple, asu = restraints_manager.geometry.get_all_bond_proxies(
-      sites_cart = sites_cart)
-  angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
-  dihedral_proxies = restraints_manager.geometry.dihedral_proxies
-  hd_selection = xray_structure.hd_selection()
-
-  connectivity = hydrogen_connectivity.determine_H_neighbors(
+  riding_h_manager = riding_h.create_riding_h_manager(
+    hierarchy           = pdb_hierarchy,
     geometry_restraints = geometry_restraints,
-    bond_proxies        = bond_proxies_simple,
-    angle_proxies       = angle_proxies,
-    dihedral_proxies    = dihedral_proxies,
-    hd_selection        = hd_selection,
-    sites_cart          = sites_cart,
-    atoms               = atoms)
+    crystal_symmetry    = xray_structure.crystal_symmetry())
 
-  h_parameterization = hydrogen_parametrization.get_h_parameterization(
-    connectivity   = connectivity,
-    sites_cart     = sites_cart,
-    idealize       = idealize)
+  h_parameterization = riding_h_manager.h_parameterization
 
-  for ih in h_parameterization.keys():
-    residue = atoms_list[ih].resseq
+  diagnostics = parameterization.diagnostics_parameterization(
+    connectivity_obj   = riding_h_manager.connectivity_obj,
+    h_parameterization = h_parameterization,
+    sites_cart         = sites_cart,
+    threshold          = 0.05)
+
+  number_h           = diagnostics.number_h
+  h_distances        = diagnostics.h_distances
+  unk_list           = diagnostics.unk_list
+
+  #type_list = []
+  for ih in h_distances:
+    labels = atoms[ih].fetch_labels()
     hp = h_parameterization[ih]
-    h_obj = hydrogen_parametrization.generate_H_positions(
-      sites_cart = sites_cart,
-      ih         = ih,
-      para_info  = hp)
-    if(h_obj.distance > 0.02):
-      print  hp.htype, 'atom:', names[ih]+' ('+str(ih)+ ') residue:', \
-        residue, 'distance:', h_obj.distance
+    #type_list.append(hp.htype)
+    assert (h_distances[ih] < 0.01), 'distance too large: %s  atom: %s (%s) residue: %s ' \
+      % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
+
+
+  assert (number_h == len(h_parameterization.keys())), 'not all H atoms are parameterized'
+  assert(len(unk_list) == 0), 'Some H atoms are not recognized'
 
 
 pdb_str_00 = """
@@ -224,7 +217,6 @@ pdb_list_name = ['pdb_str_00', 'pdb_str_01', 'pdb_str_02', 'pdb_str_03',
   'pdb_str_04', 'pdb_str_05']
 
 def run():
-  #for idealize in [True, False]:
   for pdb_str, str_name in zip(pdb_list,pdb_list_name):
     print 'pdb_string:', str_name, 'idealize =', True
     exercise(pdb_str=pdb_str, idealize=True)
