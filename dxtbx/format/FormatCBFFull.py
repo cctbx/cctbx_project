@@ -34,6 +34,8 @@ class FormatCBFFull(FormatCBF):
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
+    # It appears Pycbf can not handle unicode filenames (see dials/dials#256)
+    image_file = str(image_file)
     assert(self.understand(image_file))
 
     FormatCBF.__init__(self, image_file, **kwargs)
