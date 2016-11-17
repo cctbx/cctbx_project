@@ -2097,6 +2097,7 @@ mmtbx/geometry_restraints/tst_ramachandran.py -text
 mmtbx/geometry_restraints/tst_reference_coordinate.py svneol=native#text/x-python
 mmtbx/geometry_restraints/tst_reference_coordinate2.py -text
 mmtbx/grow_density.py -text
+mmtbx/hydrogens/connectivity.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/hydrogens/hydrogen_connectivity.py -text
 mmtbx/hydrogens/hydrogen_parametrization.py -text
