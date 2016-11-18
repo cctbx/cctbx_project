@@ -392,7 +392,10 @@ class model_idealization():
           hierarchy=self.working_pdb_h)
       self.filtered_whole_ann.remove_empty_annotations(
           hierarchy=self.whole_pdb_h)
-      # self.ann.concatenate_consecutive_helices()
+      self.ann.concatenate_consecutive_helices(
+          hierarchy=self.whole_pdb_h)
+      self.filtered_whole_ann.concatenate_consecutive_helices(
+          hierarchy=self.whole_pdb_h)
       self.ann.split_helices_with_prolines(
           hierarchy=self.working_pdb_h,
           asc=None)
@@ -403,6 +406,7 @@ class model_idealization():
       # print >> self.log, ann.as_pdb_str()
       print >> self.log, "Filtered SS annotation"
       print >> self.log, self.ann.as_pdb_str()
+      # STOP()
 
     # getting grm with SS restraints
     self.get_grm()

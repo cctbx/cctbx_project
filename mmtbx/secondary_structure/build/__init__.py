@@ -170,14 +170,16 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
   """
   resname = current_reference_ag.resname.upper()
   c = one_three.get(resname, None)
-  if c is None:
-    msg = "Only standard protein residues are currently supported.\n"
-    msg += "The residue %s (chain %s, resid %s) chain is not standard." % (
-        resname,
-        current_reference_ag.parent().parent().id,
-        current_reference_ag.parent().resid())
-    raise Sorry(msg)
-  ag_to_place.resname = three_one[c]
+
+  # seems to work with unusual residues...
+  # if c is None:
+  #   msg = "Only standard protein residues are currently supported.\n"
+  #   msg += "The residue %s (chain %s, resid %s) chain is not standard." % (
+  #       resname,
+  #       current_reference_ag.parent().parent().id,
+  #       current_reference_ag.parent().resid())
+  #   raise Sorry(msg)
+  ag_to_place.resname = three_one.get(c,resname)
   if c == 'G':
     return
 

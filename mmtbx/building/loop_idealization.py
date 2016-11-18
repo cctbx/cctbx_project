@@ -502,8 +502,8 @@ def place_side_chains(hierarchy, original_h,
       orig_ag = original_h.select(asc.selection("resseq %d" % rg.resseq_as_int())
           ).models()[0].chains()[0].residue_groups()[0].atom_groups()[0]
       # get ideal
-      ideal_ag = ideal_res_dict[ag.resname.lower()].models()[0].chains()[0].\
-        residue_groups()[0].atom_groups()[0]
+      # ideal_ag = ideal_res_dict[ag.resname.lower()].models()[0].chains()[0].\
+      #   residue_groups()[0].atom_groups()[0]
       # print "got to placement"
       side_chain_placement(ag, orig_ag, rotamer_manager)
 
