@@ -1525,6 +1525,17 @@ def exercise_sort():
     p = flex.sort_permutation(x, True)
     assert tuple(p) == (0,2,1)
     assert approx_equal(x.select(p), (3,2,1))
+    x = flex_type(
+      [7, 1, 1, 5, 1, 3, 3, 7, 1, 7, 3, 3, 5, 7, 5, 5, 5, 1, 1, 1])
+    expected = [
+      1, 2, 4, 8, 17, 18, 19, 5, 6, 10, 11, 3, 12, 14, 15, 16, 0, 7, 9, 13]
+    p = flex.sort_permutation(x, stable=True)
+    assert approx_equal(p, expected)
+    expected = [
+      0, 7, 9, 13, 3, 12, 14, 15, 16, 5, 6, 10, 11, 1, 2, 4, 8, 17, 18, 19]
+    p = flex.sort_permutation(x, reverse=True, stable=True)
+    assert approx_equal(p, expected)
+
   for i_trial in xrange(10):
     a = flex.size_t([0,0,0,1,1,2,2,2,3,4,4])
     if (i_trial):

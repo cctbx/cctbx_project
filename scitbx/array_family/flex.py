@@ -30,8 +30,9 @@ class _(boost.python.injector, grid):
     print >> f, "all:", self.all()
     return self
 
-def sorted(data, reverse=False):
-  return data.select(sort_permutation(data=data, reverse=reverse))
+def sorted(data, reverse=False, stable=False):
+  return data.select(
+    sort_permutation(data=data, reverse=reverse, stable=stable))
 
 def as_scitbx_matrix(a):
   assert a.nd() == 2

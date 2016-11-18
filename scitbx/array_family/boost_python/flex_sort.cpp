@@ -15,9 +15,9 @@ namespace {
     using namespace boost::python;
     def("sort_permutation",
       // cast needed for Intel C++ 9.1
-      (shared<std::size_t>(*)(const_ref<ElementType> const&, bool))
+      (shared<std::size_t>(*)(const_ref<ElementType> const&, bool, bool))
         af::sort_permutation, (
-          arg("data"), arg("reverse")=false));
+          arg("data"), arg("reverse")=false, arg("stable")=false));
   }
 
 } // namespace <anonymous>
