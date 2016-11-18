@@ -31,7 +31,7 @@ def exercise (debug=False) :
     print out.getvalue()
   assert ("R-merge: 0.073" in out.getvalue())
   assert ("R-meas:  0.079" in out.getvalue())
-  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.2    0.252    0.275    0.110   0.9""" in out.getvalue()), out.getvalue()
+  assert ("""  1.81   1.74  12528   2073    6.04  97.05    1449.2     5.2    0.252    0.275    0.110   0.967   0.281""" in out.getvalue()), out.getvalue()
   cif_block = result.as_cif_block()
   assert "_reflns_shell" in cif_block
   assert approx_equal(float(cif_block["_reflns.pdbx_Rpim_I_obs"]), result.overall.r_pim)
@@ -90,7 +90,7 @@ def exercise (debug=False) :
   result = merging_statistics.run(args, out=out)
   if (debug) :
     print out.getvalue()
-  assert ("28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135   0.9" in out.getvalue()), out.getvalue()
+  assert (" 28.49   3.76  15737   1224   12.86  99.84   47967.0    11.6    0.482    0.500    0.135   0.973  -0.513" in out.getvalue()), out.getvalue()
   # exercise 2: estimate resolution cutoffs (and symmetry_file argument)
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/unmerged.sca",
@@ -159,7 +159,7 @@ def exercise (debug=False) :
   result = merging_statistics.run(args, out=out)
   assert approx_equal(result.overall.d_max, 52.445602416992195)
   assert result.overall.n_obs == 119045, result.overall.n_obs
-  assert approx_equal(result.bins[0].cc_anom, 0.8643541913267925)
+  assert approx_equal(result.bins[0].cc_anom, 0.8445946103668791)
   assert result.bins[0].cc_anom_significance is True
   assert approx_equal(result.bins[0].cc_anom_critical_value, 0.08001889224417998)
 
