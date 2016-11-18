@@ -88,7 +88,6 @@ def calculate_axes_and_angle(xrs1, xrs2):
   angle = a1.angle(a2)*180./math.pi
   return a1, a2, angle
 
-
 def run(args, log=sys.stdout):
   if(len(args)==0 or (len(args)==1 and
      ("-h" in args or "--h" in args or "-help" in args or "--help" in args))):
