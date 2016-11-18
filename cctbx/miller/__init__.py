@@ -1049,7 +1049,8 @@ class set(crystal.symmetry):
     assert reverse in [False, True]
     if (by_value == "resolution"):
       return flex.sort_permutation(
-        data=self.unit_cell().d_star_sq(self.indices()), reverse=reverse)
+        data=self.unit_cell().d_star_sq(self.indices()),
+        reverse=reverse, stable=True)
     elif (by_value == "asu_indices"):
       # sort on asu_indices, keeping anom pairs together, group by Friedel mates
       asu_indices=self.indices().deep_copy()
@@ -1062,11 +1063,12 @@ class set(crystal.symmetry):
       offset=flex.double(self.indices().size(), 0)
       offset.set_selected(friedel_mate_flags.iselection(),0.01)
       data=index_span(asu_indices).pack(asu_indices).as_double()+offset
-      return flex.sort_permutation(data=data,reverse=reverse)
+      return flex.sort_permutation(data=data, reverse=reverse, stable=True)
 
     else:
       return flex.sort_permutation(
-        data=index_span(self.indices()).pack(self.indices()), reverse=reverse)
+        data=index_span(self.indices()).pack(self.indices()),
+        reverse=reverse, stable=True)
 
   def sort(self, by_value="resolution", reverse=False):
     """
@@ -2536,15 +2538,15 @@ class array(set):
         by_value=by_value, reverse=reverse)
     elif (by_value == "data"):
       result = flex.sort_permutation(
-        data=self.data(), reverse=not reverse)
+        data=self.data(), reverse=not reverse, stable=True)
     elif (by_value == "abs"):
       result = flex.sort_permutation(
-        data=flex.abs(self.data()), reverse=not reverse)
+        data=flex.abs(self.data()), reverse=not reverse, stable=True)
     elif (isinstance(by_value, str)):
       raise ValueError("Unknown: by_value=%s" % by_value)
     else:
       result = flex.sort_permutation(
-        data=by_value, reverse=not reverse)
+        data=by_value, reverse=not reverse, stable=True)
     return result
 
   def patterson_symmetry(self):
