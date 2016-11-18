@@ -1,6 +1,7 @@
 from __future__ import division
 #import sys
 #import time
+import random
 import math
 from cctbx import geometry_restraints
 from libtbx import group_args
@@ -96,15 +97,19 @@ def determine_H_neighbors(geometry_restraints, pdb_hierarchy):
     #print 'atom:', atoms[ih].name+' ('+str(ih)+ ') residue:', \
     #  atoms[ih].parent().parent().resseq
     i_parent_altloc = atoms[i_parent].parent().altloc
+#    number_h = number_h + 1
 # ---------------------------------------------------------
 # if entry exists already == H has two bonds -> nonsensical
     if (ih in h_connectivity):
       double_H[ih] = [(h_connectivity[ih][0]).iseq, i_parent]
-      try:
-          del h_connectivity[ih]
-      except KeyError:
-          pass
-      continue
+      if random.randint(0,100) < 50:
+        try:
+            del h_connectivity[ih]
+            number_h = number_h - 1
+        except KeyError:
+            pass
+      else:
+        continue
 # ---------------------------------------------------------
     number_h = number_h + 1
     # h_connectivity[ih][0] --> parent atom
