@@ -8,7 +8,7 @@ import mmtbx.model
 import mmtbx.refinement.geometry_minimization
 import scitbx.lbfgs
 import cctbx.geometry_restraints
-from mmtbx.hydrogens import riding_h
+from mmtbx.hydrogens import riding
 from mmtbx.hydrogens import parameterization
 #from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 #import iotbx.phil
@@ -63,7 +63,7 @@ def exercise(pdb_str, idealize):
   pdb_hierarchy.adopt_xray_structure(xray_structure)
   sites_cart = xray_structure.sites_cart()
 
-  riding_h_manager = riding_h.create_riding_h_manager(
+  riding_h_manager = riding.manager(
     hierarchy           = pdb_hierarchy,
     geometry_restraints = geometry_restraints,
     crystal_symmetry    = xray_structure.crystal_symmetry(),

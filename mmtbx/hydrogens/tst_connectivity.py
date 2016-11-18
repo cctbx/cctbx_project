@@ -6,7 +6,7 @@ import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.model
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
-from mmtbx.hydrogens import riding_h
+from mmtbx.hydrogens import riding
 
 #from mmtbx import hydrogens
 
@@ -63,10 +63,10 @@ def exercise():
     normalization = False)
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
-  riding_h_manager = riding_h.create_riding_h_manager(
-      hierarchy           = pdb_hierarchy,
-      geometry_restraints = geometry_restraints,
-      crystal_symmetry    = xray_structure.crystal_symmetry())
+  riding_h_manager = riding.manager(
+    hierarchy           = pdb_hierarchy,
+    geometry_restraints = geometry_restraints,
+    crystal_symmetry    = xray_structure.crystal_symmetry())
   h_connectivity = riding_h_manager.h_connectivity
 
   bond_list = {}
