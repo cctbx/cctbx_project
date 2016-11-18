@@ -2099,16 +2099,11 @@ mmtbx/geometry_restraints/tst_reference_coordinate2.py -text
 mmtbx/grow_density.py -text
 mmtbx/hydrogens/connectivity.py -text
 mmtbx/hydrogens/find.py -text
-mmtbx/hydrogens/hydrogen_parametrization.py -text
 mmtbx/hydrogens/modify_gradients.py -text
 mmtbx/hydrogens/parameterization.py -text
 mmtbx/hydrogens/riding_h.py -text
 mmtbx/hydrogens/tst.py -text
 mmtbx/hydrogens/tst_connectivity.py -text
-mmtbx/hydrogens/tst_h_connectivity.py -text
-mmtbx/hydrogens/tst_h_parametrization_1.py -text
-mmtbx/hydrogens/tst_h_parametrization_2.py -text
-mmtbx/hydrogens/tst_h_parametrization_3.py -text
 mmtbx/hydrogens/tst_parameterization_1.py -text
 mmtbx/hydrogens/tst_parameterization_2.py -text
 mmtbx/hydrogens/tst_parameterization_3.py -text
