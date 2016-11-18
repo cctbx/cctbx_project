@@ -6,6 +6,7 @@ import iotbx.pdb
 from libtbx.utils import Sorry
 from scitbx.linalg import eigensystem
 import math
+import scitbx.math
 from scitbx import matrix
 
 legend = """phenix.angle:
@@ -23,14 +24,6 @@ How to run:
 Feedback:
   PAfonine@lbl.gov
   phenixbb@phenix-online.org"""
-
-def compute(xrs):
-  import scitbx.math
-  sites_cart_moving = xrs.sites_cart()-xrs.center_of_mass()
-  es = scitbx.math.principal_axes_of_inertia(points=sites_cart_moving).eigensystem()
-  vecs = es.vectors()
-  axis = vecs[6], vecs[7], vecs[8]
-  return matrix.col((axis[0], axis[1], axis[2]))
 
 def process_args(args):
   pdb_file_name, line_selections = None,[]
@@ -71,16 +64,30 @@ def process_args(args):
         "Atom selection '%s' selects less than two points."%ls)
   return ph, asc, sel1, sel2
 
-def axis_from_two_points(xrs, selection):
-  assert selection.count(True) == 2
-  sites_cart = xrs.sites_cart()
-  isel = selection.iselection()
-  s1,s2 = sites_cart[isel[0]], sites_cart[isel[1]]
-  a = [s2[0]-s1[0], s2[1]-s1[1], s2[2]-s1[2]]
-  norm = math.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
-  if(abs(norm)<1.e-9):
-    raise Sorry("Two points defining axis coincide.")
-  return matrix.col((a[0]/norm, a[1]/norm, a[2]/norm))
+def get_axis_from_xrs(xrs):
+  if xrs.scatterers().size() > 2:
+    sites_cart_moving = xrs.sites_cart()-xrs.center_of_mass()
+    es = scitbx.math.principal_axes_of_inertia(points=sites_cart_moving).eigensystem()
+    vecs = es.vectors()
+    axis = vecs[6], vecs[7], vecs[8]
+    return matrix.col((axis[0], axis[1], axis[2]))
+  elif xrs.scatterers().size() == 2:
+    sites_cart = xrs.sites_cart()
+    assert sites_cart.size() == 2
+    s1,s2 = sites_cart[0], sites_cart[1]
+    a = [s2[0]-s1[0], s2[1]-s1[1], s2[2]-s1[2]]
+    norm = math.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
+    if(abs(norm)<1.e-9):
+      raise Sorry("Two points defining axis coincide.")
+    return matrix.col((a[0]/norm, a[1]/norm, a[2]/norm))
+  return None
+
+def calculate_axes_and_angle(xrs1, xrs2):
+  a1 = get_axis_from_xrs(xrs1)
+  a2 = get_axis_from_xrs(xrs2)
+  angle = a1.angle(a2)*180./math.pi
+  return a1, a2, angle
+
 
 def run(args, log=sys.stdout):
   if(len(args)==0 or (len(args)==1 and
@@ -98,17 +105,9 @@ def run(args, log=sys.stdout):
   sel2 = sel2.select(sel12)
   xrs  = xrs.orthorhombic_unit_cell_around_centered_scatterers(buffer_size = 3)
   #
-  if(sel1.count(True)>2):
-    a1 = compute(xrs = xrs.select(sel1))
-  else:
-    a1 = axis_from_two_points(xrs=xrs, selection=sel1)
-  if(sel2.count(True)>2):
-    a2 = compute(xrs = xrs.select(sel2))
-  else:
-    a2 = axis_from_two_points(xrs=xrs, selection=sel2)
+  a1, a2, angle = calculate_axes_and_angle(xrs.select(sel1), xrs.select(sel2))
   print >> log, "Axis 1: %6.4f %6.4f %6.4f"%(a1[0], a1[1], a1[2])
   print >> log, "Axis 2: %6.4f %6.4f %6.4f"%(a2[0], a2[1], a2[2])
-  angle = a1.angle(a2)*180./math.pi
   print >> log, "Angle : %6.4f" % angle
 
 if (__name__ == "__main__"):

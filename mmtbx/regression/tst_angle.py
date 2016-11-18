@@ -799,6 +799,7 @@ def run(prefix, target, pdb_strs, eps=1.e-3):
     cmd1='phenix.angle %s.pdb "chain X" "chain Y" '%(prefix)
     cmd2='phenix.angle %s.pdb "chain Y" "chain X" '%(prefix)
     for cmd in [cmd1,cmd2]:
+      print cmd
       r = float(easy_run.go(cmd).stdout_lines[2].split()[2])
       assert approx_equal(r, target, eps)
       cntr += 1
