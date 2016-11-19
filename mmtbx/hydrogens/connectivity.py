@@ -1,7 +1,5 @@
 from __future__ import division
 #import sys
-#import time
-import random
 import math
 from cctbx import geometry_restraints
 from libtbx import group_args
@@ -99,17 +97,11 @@ def determine_H_neighbors(geometry_restraints, pdb_hierarchy):
     i_parent_altloc = atoms[i_parent].parent().altloc
 #    number_h = number_h + 1
 # ---------------------------------------------------------
-# if entry exists already == H has two bonds -> nonsensical
+# if entry exists already == H has two bonds
+# use the first atom encountered, ignore all others
     if (ih in h_connectivity):
       double_H[ih] = [(h_connectivity[ih][0]).iseq, i_parent]
-      if random.randint(0,100) < 50:
-        try:
-            del h_connectivity[ih]
-            number_h = number_h - 1
-        except KeyError:
-            pass
-      else:
-        continue
+      continue
 # ---------------------------------------------------------
     number_h = number_h + 1
     # h_connectivity[ih][0] --> parent atom
@@ -123,8 +115,8 @@ def determine_H_neighbors(geometry_restraints, pdb_hierarchy):
     count_H = 0
     altloc_dict = {}
 
-    # loop to find second neighbors (ignore those where angle proxies don't exist,
-    # and choose same altloc for all second neighbors)
+    # loop to find second neighbors (ignore those where angle proxies don't
+    # exist, and choose same altloc for all second neighbors)
     for i_second in second_neighbors:
       iselection = flex.size_t([ih,i_parent,i_second])
       ap = angle_proxies.proxy_select(
@@ -137,13 +129,16 @@ def determine_H_neighbors(geometry_restraints, pdb_hierarchy):
         altloc_dict_temp = {}
         i_second_altloc = atoms[i_second].parent().altloc
         # make sure that all second neighbors belong to same altloc
-        if (h_connectivity[ih][1] and atoms[(h_connectivity[ih][1])[0].iseq].parent().altloc != ''):
+        if (h_connectivity[ih][1] and
+          atoms[(h_connectivity[ih][1])[0].iseq].parent().altloc != ''):
           iseq_previous = (h_connectivity[ih][1])[0].iseq
           overall_altloc = atoms[iseq_previous].parent().altloc
-          if (i_second_altloc != '' and altloc_h == '' and i_second_altloc != overall_altloc):
+          if (i_second_altloc != '' and altloc_h == ''
+            and i_second_altloc != overall_altloc):
             continue
         # if no previous altloc, chose that which has highest occ
-        elif (i_second_altloc != '' and altloc_h == '' and i_parent_altloc != i_second_altloc):
+        elif (i_second_altloc != '' and altloc_h == ''
+          and i_parent_altloc != i_second_altloc):
           altloc_dict_temp = make_altloc_dict(
             atoms            = atoms,
             index            = i_second,
@@ -195,10 +190,12 @@ def determine_H_neighbors(geometry_restraints, pdb_hierarchy):
             altloc_dict_third_temp = {}
             i_third_altloc = atoms[i_third].parent().altloc
             # make sure that all third neighbors belong to the same altloc
-            if (h_connectivity[ih][3] and atoms[(h_connectivity[ih][3])[0].iseq].parent().altloc != ''):
+            if (h_connectivity[ih][3] and
+              atoms[(h_connectivity[ih][3])[0].iseq].parent().altloc != ''):
               iseq_previous_third = (h_connectivity[ih][3])[0].iseq
               overall_altloc_third = atoms[iseq_previous_third].parent().altloc
-              if (i_third_altloc != '' and altloc_h == '' and i_third_altloc != overall_altloc_third):
+              if (i_third_altloc != '' and altloc_h == ''
+                and i_third_altloc != overall_altloc_third):
                 continue
             elif (i_third_altloc != '' and altloc_h == ''):
               altloc_dict_third_temp = make_altloc_dict(
@@ -208,7 +205,8 @@ def determine_H_neighbors(geometry_restraints, pdb_hierarchy):
                 neighbors        = third_neighbors,
                 altloc           = i_third_altloc)
             if (i_third in altloc_dict_third_temp.keys()):
-              i_third = max(altloc_dict_third_temp, key=lambda k: altloc_dict_third_temp[k])
+              i_third = max(altloc_dict_third_temp,
+                key=lambda k: altloc_dict_third_temp[k])
             altloc_dict_third.update(altloc_dict_third_temp)
             # get dihedral angle between H, A0, A1 and third neighbor(B1, B2)
             iselection_dihe = flex.size_t([ih,i_parent,i_second,i_third])
