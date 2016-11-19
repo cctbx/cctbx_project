@@ -2689,6 +2689,11 @@ prime/postrefine/mod_results.py -text
 prime/postrefine/mod_run.py -text
 prime/postrefine/mod_util.py -text
 prime/postrefine/postrefine.py -text
+prime/postrefine/unittest/test_data/int_shot-s00-E1_0_00002_20140518051704255_masked.pickle -text
+prime/postrefine/unittest/test_data/int_shot-s00-E4_0_00004_20140519085451743_masked.pickle -text
+prime/postrefine/unittest/test_data/int_shot-s00-E7_0_00002_20140518055446723_masked.pickle -text
+prime/postrefine/unittest/test_data/int_shot-s00-E8_0_00006_20140520114153420_masked.pickle -text
+prime/postrefine/unittest/tst_mod_input.py -text
 prime/postrefine/whiteboard.tex -text
 prime/readme.txt -text
 prime/whiteboard.tex -text
