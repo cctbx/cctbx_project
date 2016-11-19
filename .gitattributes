@@ -2110,6 +2110,11 @@ mmtbx/hydrogens/tst_parameterization_3.py -text
 mmtbx/hydrogens/tst_parameterization_4.py -text
 mmtbx/hydrogens/tst_parameterization_5.py -text
 mmtbx/hydrogens/tst_parameterization_6.py -text
+mmtbx/hydrogens/tst_riding_fd_1.py -text
+mmtbx/hydrogens/tst_riding_fd_2.py -text
+mmtbx/hydrogens/tst_riding_fd_3.py -text
+mmtbx/hydrogens/tst_riding_fd_4.py -text
+mmtbx/hydrogens/tst_riding_fd_5.py -text
 mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
 mmtbx/idealized_aa_residues/__init__.py -text
