@@ -69,3 +69,19 @@ class manager(object):
     xray_structure.set_sites_cart(sites_cart)
     hierarchy.adopt_xray_structure(xray_structure)
 
+  def idealize_hydrogens_sc_inplace(self, sites_cart):
+    for ih in self.h_parameterization.keys():
+      hp = self.h_parameterization[ih]
+      rh = matrix.col(sites_cart[ih])
+      rh_calc = None
+      if (hp.htype in ['unk','unk_ideal']):
+        rh_calc = rh
+      else:
+        rh_calc = parameterization.compute_H_position(
+          ih         = ih,
+          sites_cart = sites_cart,
+          hp         = hp)
+        if (rh_calc is None):
+          rh_calc = rh
+      sites_cart[ih] = rh_calc
+

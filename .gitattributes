@@ -2104,6 +2104,11 @@ mmtbx/hydrogens/parameterization.py -text
 mmtbx/hydrogens/riding.py -text
 mmtbx/hydrogens/tst.py -text
 mmtbx/hydrogens/tst_connectivity.py -text
+mmtbx/hydrogens/tst_fd_1.py -text
+mmtbx/hydrogens/tst_fd_2.py -text
+mmtbx/hydrogens/tst_fd_3.py -text
+mmtbx/hydrogens/tst_fd_4.py -text
+mmtbx/hydrogens/tst_fd_5.py -text
 mmtbx/hydrogens/tst_parameterization_1.py -text
 mmtbx/hydrogens/tst_parameterization_2.py -text
 mmtbx/hydrogens/tst_parameterization_3.py -text
