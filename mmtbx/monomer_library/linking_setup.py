@@ -105,7 +105,7 @@ def update_skip_if_longer(amino_acid_bond_cutoff,
     ("common_amino_acid", "common_rna_dna") : amino_acid_bond_cutoff**2,
     ("common_rna_dna",    "common_small_molecule") : other_bond_cutoff**2,
     ("common_amino_acid", "common_small_molecule") : amino_acid_bond_cutoff*other_bond_cutoff,
-    ("other",             "common_small_molecule") : amino_acid_bond_cutoff*other_bond_cutoff,
+    ("common_small_molecule", 'other') : other_bond_cutoff*other_bond_cutoff,
     #
     ("metal", "metal") : metal_coordination_cutoff**2,
     }
