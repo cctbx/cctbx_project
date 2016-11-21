@@ -17,13 +17,11 @@ def run(argv=None):
   @return     @c 0 on successful termination, @c 1 on error, and @c 2
               for command line syntax errors
   """
-
   import libtbx.load_env
 
   from libtbx import easy_pickle, option_parser
   from scitbx.array_family import flex
   from xfel.cxi.cspad_ana import cspad_tbx
-  from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 
   if argv is None:
     argv = sys.argv
@@ -66,99 +64,86 @@ def run(argv=None):
   # Loop over all images and accumulate statistics.
   nfail = 0
   nmemb = 0
-  for path in paths:
-    if command_line.options.verbose:
-      sys.stdout.write("Processing %s...\n" % path)
 
+  if len(paths) == 1:
+    # test if the iamge is a multi-image
+    from dxtbx.format.Registry import Registry
+    from dxtbx.format.FormatMultiImage import FormatMultiImage
+    format_class = Registry.find(paths[0])
+    if not issubclass(format_class, FormatMultiImage):
+      from libtbx.utils import Usage
+      raise Usage("Supply more than one image")
+
+    print "Loading image..."
+    i = format_class(paths[0])
+    print "Loaded"
+
+    def read_single_image(n):
+      if command_line.options.verbose:
+        sys.stdout.write("Processing %s: %d...\n" % (paths[0], n))
+
+      beam = i.get_beam(n)
+      assert len(i.get_detector(n)) == 1
+      detector = i.get_detector(n)[0]
+
+      beam_center = detector.get_beam_centre(beam.get_s0())
+      detector_address = format_class.__name__
+      distance = detector.get_distance()
+      img = i.get_raw_data(n).as_1d().as_double()
+      pixel_size = 0.5 * sum(detector.get_pixel_size())
+      saturated_value = int(round(detector.get_trusted_range()[1]))
+      size = detector.get_image_size()
+      scan = i.get_scan(n)
+      if scan is None:
+        time_tuple = (0, 0)
+      else:
+        time_tuple = (scan.get_epochs()[0], 0)
+      wavelength = beam.get_wavelength()
+
+      active_areas = flex.int((0, 0, size[0], size[1]))
+
+      return beam_center, detector_address, distance, img, pixel_size, saturated_value, size, time_tuple, wavelength, active_areas
+
+    iterable = xrange(i.get_num_images())
+  else:
+    def read_single_image(path):
+      if command_line.options.verbose:
+        sys.stdout.write("Processing %s...\n" % path)
+
+      from dxtbx.format.Registry import Registry
+      format_class = Registry.find(path)
+      i = format_class(path)
+
+      beam = i.get_beam()
+      assert len(i.get_detector()) == 1
+      detector = i.get_detector()[0]
+
+      beam_center = detector.get_beam_centre(beam.get_s0())
+      detector_address = format_class.__name__
+      distance = detector.get_distance()
+      img = i.get_raw_data().as_1d().as_double()
+      pixel_size = 0.5 * sum(detector.get_pixel_size())
+      saturated_value = int(round(detector.get_trusted_range()[1]))
+      size = detector.get_image_size()
+      scan = i.get_scan()
+      if scan is None:
+        time_tuple = (0, 0)
+      else:
+        time_tuple = (scan.get_epochs()[0], 0)
+      wavelength = beam.get_wavelength()
+
+      active_areas = flex.int((0, 0, size[0], size[1]))
+      return beam_center, detector_address, distance, img, pixel_size, saturated_value, size, time_tuple, wavelength, active_areas
+    iterable = paths
+
+  for item in iterable:
     try:
-      # Promote the image to double-precision floating point type.
-      # All real-valued flex arrays have the as_double() function.
-      d = easy_pickle.load(path)
-      distance = d['DISTANCE']
-      img = d['DATA'].as_1d().as_double()
-      wavelength = d['WAVELENGTH']
-      time_tuple = reverse_timestamp(d['TIMESTAMP'])
-
-      # Warn if the header items across the set of images do not match
-      # up.  Note that discrepancies regarding the image size are
-      # fatal.
-      if 'active_areas' in locals():
-        if (active_areas != d['ACTIVE_AREAS']).count(True) != 0:
-          sys.stderr.write("Active areas do not match\n")
-      else:
-        active_areas = d['ACTIVE_AREAS']
-
-      if 'beam_center' in locals():
-        if beam_center != (d['BEAM_CENTER_X'], d['BEAM_CENTER_Y']):
-          sys.stderr.write("Beam centers do not match\n")
-      else:
-        beam_center = (d['BEAM_CENTER_X'], d['BEAM_CENTER_Y'])
-
-      if 'detector_address' in locals():
-        if detector_address != d['DETECTOR_ADDRESS']:
-          sys.stderr.write("Detector addresses do not match\n")
-      else:
-        detector_address = d['DETECTOR_ADDRESS']
-
-      if 'saturated_value' in locals():
-        if saturated_value != d['SATURATED_VALUE']:
-          sys.stderr.write("Saturated values do not match\n")
-      else:
-        saturated_value = d['SATURATED_VALUE']
-
-      if 'size' in locals():
-        if size != (d['SIZE1'], d['SIZE2']):
-          sys.stderr.write("Image sizes do not match\n")
-          return 1
-      else:
-        size = (d['SIZE1'], d['SIZE2'])
-      if size != d['DATA'].focus():
-        sys.stderr.write("Image size does not match pixel array\n")
-        return 1
-
-      if 'pixel_size' in locals():
-        if pixel_size != d['PIXEL_SIZE']:
-          sys.stderr.write("Pixel sizes do not match\n")
-          return 1
-      else:
-        if 'PIXEL_SIZE' in d:
-          pixel_size = d['PIXEL_SIZE']
-        else:
-          pixel_size = None
-
-
+      #XXX This code assumes a monolithic detector!
+      beam_center, detector_address, distance, img, pixel_size, saturated_value, size, time_tuple, wavelength, active_areas = \
+        read_single_image(item)
     except Exception:
-      try:
-        # Fall back on reading the image with dxtbx, and shoehorn the
-        # extracted information into what would have been found in a
-        # pickle file.  XXX This code assumes a monolithic detector!
-
-        from dxtbx.format.Registry import Registry
-
-        format_class = Registry.find(path)
-        i = format_class(path)
-
-        beam = i.get_beam()
-        assert len(i.get_detector()) == 1
-        detector = i.get_detector()[0]
-
-        beam_center = detector.get_beam_centre(beam.get_s0())
-        detector_address = format_class.__name__
-        distance = detector.get_distance()
-        img = i.get_raw_data().as_1d().as_double()
-        pixel_size = 0.5 * sum(detector.get_pixel_size())
-        saturated_value = int(round(detector.get_trusted_range()[1]))
-        size = detector.get_image_size()
-        time_tuple = (i.get_scan().get_epochs()[0], 0)
-        wavelength = beam.get_wavelength()
-
-        active_areas = flex.int((0, 0, size[0], size[1]))
-
-
-      except Exception:
-        nfail += 1
-        continue
-
+      nfail += 1
+      continue
 
     # See also event() in xfel.cxi.cspad_ana.average_tbx.  Record the
     # base time as the timestamp of the first image.
@@ -206,7 +191,7 @@ def run(argv=None):
   # Output the average image, maximum projection image, and standard
   # deviation image, if requested.
   if command_line.options.avg_path is not None:
-    avg_img.resize(flex.grid(size[0], size[1]))
+    avg_img.resize(flex.grid(size[1], size[0]))
     d = cspad_tbx.dpack(
       active_areas=active_areas,
       address=detector_address,
@@ -221,7 +206,7 @@ def run(argv=None):
     easy_pickle.dump(command_line.options.avg_path, d)
 
   if command_line.options.max_path is not None:
-    max_img.resize(flex.grid(size[0], size[1]))
+    max_img.resize(flex.grid(size[1], size[0]))
     d = cspad_tbx.dpack(
       active_areas=active_areas,
       address=detector_address,
@@ -247,7 +232,7 @@ def run(argv=None):
     else:
       stddev_img = flex.sqrt(stddev_img / (nmemb - 1))
 
-    stddev_img.resize(flex.grid(size[0], size[1]))
+    stddev_img.resize(flex.grid(size[1], size[0]))
     d = cspad_tbx.dpack(
       active_areas=active_areas,
       address=detector_address,
