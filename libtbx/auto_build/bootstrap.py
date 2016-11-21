@@ -1393,7 +1393,11 @@ class Builder(object):
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure()
     fname = self.opjoin("config_modules.cmd")
-    confstr = subprocess.list2cmdline(configcmd)
+    ldlibpath = ""
+    sys.platform.startswith("linux"):
+      ldlibpath = "export LD_LIBRARY_PATH=../base/lib\n"
+      # because that was the environment when python and base components were built during bootstrap
+    confstr = ldlibpath + subprocess.list2cmdline(configcmd)
     if not self.isPlatformWindows():
       fname = self.opjoin("config_modules.sh")
       confstr = '#!/bin/sh\n\n' + confstr
@@ -1404,6 +1408,11 @@ class Builder(object):
       workdir=['build'],
       description="save configure command",
     ))
+    if not self.isPlatformWindows():
+      self.add_step(self.shell(command=[ 'chmod', '+x', fname ],
+        workdir=['build'],
+        description="permit execution of config_modules.sh",
+      ))
 
   def add_make(self):
     self.add_command('libtbx.scons', args=['-j',
