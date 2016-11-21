@@ -974,6 +974,14 @@ class Builder(object):
         return True
     return False
 
+  def isPlatformLinux(self):
+    if self.platform and 'linux' in self.platform:
+        return True
+    else:
+      if sys.platform.startswith("linux"):
+        return True
+    return False
+
   def add_auth(self, account, username):
     self.auth[account] = username
 
@@ -1394,7 +1402,7 @@ class Builder(object):
         ] + self.get_libtbx_configure()
     fname = self.opjoin("config_modules.cmd")
     ldlibpath = ""
-    sys.platform.startswith("linux"):
+    if self.isPlatformLinux():
       ldlibpath = "export LD_LIBRARY_PATH=../base/lib\n"
       # because that was the environment when python and base components were built during bootstrap
     confstr = ldlibpath + subprocess.list2cmdline(configcmd)
