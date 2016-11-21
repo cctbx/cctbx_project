@@ -2154,6 +2154,26 @@ ATOM     45  CA  ASN A 210     -64.179  33.784 -14.816  1.00 64.69           C
 ATOM     46  C   ASN A 210     -63.605  34.499 -16.022  1.00 72.64           C
 ATOM     47  CB  ASN A 210     -63.830  34.555 -13.567  1.00 77.34           C
 """,
+  'linking_test_CM-SO4.pdb' : '''
+HETATM 5816  N26  CM C   4      11.872  46.521  11.694  1.00 15.75      A    N  
+HETATM 6475  S   SO4 D   4      12.593  45.477   7.849  1.00 30.00           S  
+HETATM 6476  O1  SO4 D   4      13.522  46.224   6.981  1.00 30.00           O  
+HETATM 6477  O2  SO4 D   4      11.558  44.829   7.018  1.00 30.00           O  
+HETATM 6478  O3  SO4 D   4      13.343  44.439   8.588  1.00 30.00           O  
+HETATM 6479  O4  SO4 D   4      11.949  46.390   8.816  1.00 30.00           O  
+''',
+  "CM.cif" : """
+data_comp_CM
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.charge
+CM N26    N N  0.000 0
+""",
         }
 
 links = {
@@ -2197,6 +2217,7 @@ links = {
   "linking_test_CYS_CYS_alt_loc.pdb" : [17,17],
   #
   "linking_test_MAN-before-ASN.pdb" : [15,15],
+  'linking_test_CM-SO4.pdb' : [4,4],
   }
 
 def run_and_test(cmd, pdb, i):
@@ -2283,6 +2304,7 @@ def run(only_i=None):
         "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
         ] and 0: continue
     if pdb.find("CD_GHE")>-1: continue
+    #if pdb.find('SO4')==-1: continue
     print 'pdb',pdb
     j+=1
     if only_i is not None and only_i!=j: continue
