@@ -35,9 +35,8 @@ def exercise():
   atoms = pdb_hierarchy.atoms()
 
   riding_h_manager = riding.manager(
-    hierarchy           = pdb_hierarchy,
-    geometry_restraints = geometry_restraints,
-    crystal_symmetry    = xray_structure.crystal_symmetry())
+    pdb_hierarchy           = pdb_hierarchy,
+    geometry_restraints = geometry_restraints)
 
   h_parameterization = riding_h_manager.h_parameterization
 

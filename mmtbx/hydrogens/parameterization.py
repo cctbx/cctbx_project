@@ -7,29 +7,6 @@ from libtbx import group_args
 from stdlib import math
 from scitbx.math import dihedral_angle
 
-legend = """\
-phenix.hydrogen_parameterization:
-Computes the parameters for the compuationf of H atom positions
-based on their parent atoms
-
-Inputs:
-  - Model file in PDB format (other files are not supported)
-
-Usage examples:
-   phenix.hydrogen_parameterization model.pdb
-
-Output:
-   This code produces a dictionary
-   H atom index is the key, pointing to an object which contains necessary
-   parameters to build the H atom again (knowing the coordinates of
-   the parent atoms)
-   H (iseq) --> parameterization_info
-
-Important:
-  Hydrogen atoms need to be present in the file.
-  H atoms can be generated with phenix.reduce
-"""
-
 class parameterization_info(object):
   def __init__(
     self,
@@ -51,7 +28,7 @@ class parameterization_info(object):
 # 1. planar geometry
 # 2. two tetragonal CH2 geometry
 # 3. H out of plane of its 3 neighbors (should be rare and not in AA)
-def get_coefficients(ih, a0, a1, a2, ih2, idealize, sites_cart, typeh):
+def get_coefficients(ih,a0,a1,a2,ih2, use_ideal_bonds_angles, sites_cart,typeh):
   rh = matrix.col(sites_cart[ih])
   r0 = matrix.col(sites_cart[a0.iseq])
   r1 = matrix.col(sites_cart[a1.iseq])
@@ -59,7 +36,7 @@ def get_coefficients(ih, a0, a1, a2, ih2, idealize, sites_cart, typeh):
   uh0 = (rh - r0).normalize()
   u10 = (r1 - r0).normalize()
   u20 = (r2 - r0).normalize()
-  if idealize:
+  if use_ideal_bonds_angles:
     alpha0 = math.radians(a0.angle_ideal[0])
     alpha1 = math.radians(a1.angle_ideal)
     alpha2 = math.radians(a2.angle_ideal)
@@ -92,7 +69,7 @@ def get_coefficients(ih, a0, a1, a2, ih2, idealize, sites_cart, typeh):
     if (ih2 is not None):
       rh2 = matrix.col(sites_cart[ih2.iseq])
       uh02 = (rh2 - r0).normalize()
-      if idealize:
+      if use_ideal_bonds_angles:
         h = math.radians(ih2.angle_ideal) * 0.5
       else:
         h = (uh0).angle(uh02) * 0.5
@@ -117,7 +94,7 @@ def get_coefficients(ih, a0, a1, a2, ih2, idealize, sites_cart, typeh):
   return sumang, a, b, h, root
 
 # obtain coefficients for tetragonal H (such as HA) using Cramer's rule
-def get_coefficients_alg3(rh, a0, a1, a2, a3, idealize, sites_cart):
+def get_coefficients_alg3(rh, a0,a1,a2,a3, use_ideal_bonds_angles, sites_cart):
   r0 = matrix.col(sites_cart[a0.iseq])
   r1 = matrix.col(sites_cart[a1.iseq])
   r2 = matrix.col(sites_cart[a2.iseq])
@@ -126,7 +103,7 @@ def get_coefficients_alg3(rh, a0, a1, a2, a3, idealize, sites_cart):
   u10 = (r1 - r0).normalize()
   u20 = (r2 - r0).normalize()
   u30 = (r3 - r0).normalize()
-  if idealize:
+  if use_ideal_bonds_angles:
     alpha0 = math.radians(a1.angle_ideal)
     alpha1 = math.radians(a2.angle_ideal)
     alpha2 = math.radians(a3.angle_ideal)
@@ -171,7 +148,7 @@ def get_coefficients_alg3(rh, a0, a1, a2, a3, idealize, sites_cart):
 
 
 # for every H atom, determine the type of bond
-def get_h_parameterization(h_connectivity, sites_cart, idealize):
+def get_h_parameterization(h_connectivity, sites_cart, use_ideal_bonds_angles):
   h_parameterization = {}
   n_atoms = len(sites_cart)
   for ih in h_connectivity.keys():
@@ -189,7 +166,7 @@ def get_h_parameterization(h_connectivity, sites_cart, idealize):
     n_red_neigbs = len(reduced_neighbs)
     rh = matrix.col(sites_cart[ih])
     r0 = matrix.col(sites_cart[a0.iseq])
-    if idealize:
+    if use_ideal_bonds_angles:
       dist_h = a0.dist_ideal
     else:
       dist_h = (r0 - rh).length()
@@ -205,14 +182,14 @@ def get_h_parameterization(h_connectivity, sites_cart, idealize):
       else:
         ih2 = None
       sumang, a, b, h, root = get_coefficients(
-        ih         = ih,
-        a0         = a0,
-        a1         = a1,
-        a2         = a2,
-        ih2        = ih2,
-        idealize   = idealize,
-        sites_cart = sites_cart,
-        typeh      = 'alg2')
+        ih                     = ih,
+        a0                     = a0,
+        a1                     = a1,
+        a2                     = a2,
+        ih2                    = ih2,
+        use_ideal_bonds_angles = use_ideal_bonds_angles,
+        sites_cart             = sites_cart,
+        typeh                  = 'alg2')
       h_parameterization[ih] = parameterization_info(
         a0     = a0.iseq,
         a1     = a1.iseq,
@@ -247,12 +224,12 @@ def get_h_parameterization(h_connectivity, sites_cart, idealize):
     elif (n_red_neigbs == 3 and count_H == 0):
       a1, a2, a3  = reduced_neighbs[0], reduced_neighbs[1], reduced_neighbs[2]
       a, b, h = get_coefficients_alg3(
-        rh         = rh,
-        a0         = a0,
-        a1         = a1,
-        a2         = a2,
-        a3         = a3,
-        idealize   = idealize,
+        rh                     = rh,
+        a0                     = a0,
+        a1                     = a1,
+        a2                     = a2,
+        a3                     = a3,
+        use_ideal_bonds_angles = use_ideal_bonds_angles,
         sites_cart = sites_cart)
       h_parameterization[ih] = parameterization_info(
         a0     = a0.iseq,
@@ -307,7 +284,7 @@ def get_h_parameterization(h_connectivity, sites_cart, idealize):
       rb1 = matrix.col(sites_cart[b1.iseq])
       uh0 = (rh - r0).normalize()
       u10 = (r1 - r0).normalize()
-      if idealize:
+      if use_ideal_bonds_angles:
         alpha = math.radians(a1.angle_ideal)
         phi = math.radians(b1.dihedral_ideal)
         #phi = dihedral
@@ -354,7 +331,7 @@ def get_h_parameterization(h_connectivity, sites_cart, idealize):
       dihedral = dihedral_angle(
         sites=[sites_cart[ih], sites_cart[a0.iseq],
         sites_cart[a1.iseq],sites_cart[b1.iseq]])
-      if idealize:
+      if use_ideal_bonds_angles:
         alpha = math.radians(a1.angle_ideal)
         #phi = math.radians(b1.dihedral_ideal)
         #allow for rotation even for idealize = True

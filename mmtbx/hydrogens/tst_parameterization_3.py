@@ -9,14 +9,10 @@ from mmtbx.hydrogens import parameterization
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for planar X-H2 groups
-# Steps:
-# 1) determine parameterization
-# 2) Compare calculated position of H from parameterization to input position
-# test fails if distance is > 0.03 A
 # Aim is to test if ideal dihedral angles are correct for any configuration
 #-----------------------------------------------------------------------------
 
-def exercise(pdb_str, idealize):
+def exercise(pdb_str):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -35,9 +31,8 @@ def exercise(pdb_str, idealize):
   atoms = pdb_hierarchy.atoms()
 
   riding_h_manager = riding.manager(
-    hierarchy           = pdb_hierarchy,
-    geometry_restraints = geometry_restraints,
-    crystal_symmetry    = xray_structure.crystal_symmetry())
+    pdb_hierarchy           = pdb_hierarchy,
+    geometry_restraints = geometry_restraints)
 
   h_parameterization = riding_h_manager.h_parameterization
 
@@ -56,11 +51,13 @@ def exercise(pdb_str, idealize):
     labels = atoms[ih].fetch_labels()
     hp = h_parameterization[ih]
     #type_list.append(hp.htype)
-    assert (h_distances[ih] < 0.01), 'distance too large: %s  atom: %s (%s) residue: %s ' \
+    assert (h_distances[ih] < 0.01), \
+      'distance too large: %s  atom: %s (%s) residue: %s ' \
       % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
 
 
-  assert (number_h == len(h_parameterization.keys())), 'not all H atoms are parameterized'
+  assert (number_h == len(h_parameterization.keys())), \
+    'not all H atoms are parameterized'
   assert(len(unk_list) == 0), 'Some H atoms are not recognized'
 
 
@@ -218,8 +215,8 @@ pdb_list_name = ['pdb_str_00', 'pdb_str_01', 'pdb_str_02', 'pdb_str_03',
 
 def run():
   for pdb_str, str_name in zip(pdb_list,pdb_list_name):
-    print 'pdb_string:', str_name, 'idealize =', True
-    exercise(pdb_str=pdb_str, idealize=True)
+    #print 'pdb_string:', str_name, 'use_ideal_bonds_angles =', True
+    exercise(pdb_str=pdb_str)
 
 if (__name__ == "__main__"):
   t0 = time.time()

@@ -16,20 +16,20 @@ from mmtbx.hydrogens import modify_gradients
 # C-H exchange might not be sensical, but it's always good to test anyway
 #-----------------------------------------------------------------------------
 #
-def exercise(pdb_str, eps, idealize):
+def exercise(pdb_str, eps):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
-      mon_lib_srv    = mon_lib_srv,
-      ener_lib       = ener_lib,
-      raw_records    = pdb_str,
-      force_symmetry = True)
+    mon_lib_srv    = mon_lib_srv,
+    ener_lib       = ener_lib,
+    raw_records    = pdb_str,
+    force_symmetry = True)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xray_structure = processed_pdb_file.xray_structure()
   sites_cart = xray_structure.sites_cart()
   geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = 5.0)
+    show_energies      = False,
+    plain_pairs_radius = 5.0)
 
   es = geometry.energies_sites(
     sites_cart = sites_cart,
@@ -37,14 +37,13 @@ def exercise(pdb_str, eps, idealize):
   g_analytical = es.gradients
 #
   riding_h_manager = riding.manager(
-    hierarchy           = pdb_hierarchy,
-    geometry_restraints = geometry,
-    crystal_symmetry    = xray_structure.crystal_symmetry())
+    pdb_hierarchy       = pdb_hierarchy,
+    geometry_restraints = geometry)
 
   h_parameterization = riding_h_manager.h_parameterization
 
-  riding_h_manager.idealize_hydrogens(
-      hierarchy=pdb_hierarchy,
+  riding_h_manager.idealize_hydrogens_inplace(
+      pdb_hierarchy=pdb_hierarchy,
       xray_structure=xray_structure)
   #sites_cart = pdb_hierarchy.atoms().extract_xyz()
   sites_cart = xray_structure.sites_cart()
@@ -69,17 +68,20 @@ def exercise(pdb_str, eps, idealize):
       ts = []
       for sign in [-1,1]:
         sites_cart_ = sites_cart.deep_copy()
+        xray_structure_ = xray_structure.deep_copy_scatterers()
         sites_cart_[i_site] = [
           sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
+        xray_structure_.set_sites_cart(sites_cart_)
         # after shift, recalculate H position
-        riding_h_manager.idealize_hydrogens_sc_inplace(
-            sites_cart=sites_cart_)
+        riding_h_manager.idealize_hydrogens_inplace(
+          xray_structure=xray_structure_)
+        sites_cart_ = xray_structure_.sites_cart()
         ts.append(geometry.energies_sites(
           sites_cart = sites_cart_,
           compute_gradients = False).target)
       g_fd_i.append((ts[1]-ts[0])/(2*eps))
     g_fd.append(g_fd_i)
-  #
+
   for g1, g2 in zip(g_analytical, g_fd):
     #print g1,g2
     assert approx_equal(g1,g2, 1.e-4)
@@ -318,10 +320,10 @@ pdb_list_name = ['pdb_str_01', 'pdb_str_02', 'pdb_str_03', 'pdb_str_04', 'pdb_st
 #pdb_list_name = ['pdb_str_02']
 
 def run():
-  for idealize in [True, False]:
-    for pdb_str, str_name in zip(pdb_list,pdb_list_name):
+  #for idealize in [True, False]:
+  for pdb_str, str_name in zip(pdb_list,pdb_list_name):
       #print 'pdb_string:', str_name, 'idealize =', idealize
-      exercise(pdb_str=pdb_str, eps=1.e-4, idealize=idealize)
+    exercise(pdb_str=pdb_str, eps=1.e-4)
 
 
 if (__name__ == "__main__"):

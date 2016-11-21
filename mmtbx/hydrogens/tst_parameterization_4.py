@@ -20,7 +20,7 @@ from mmtbx.hydrogens import parameterization
 #-----------------------------------------------------------------------------
 
 
-def exercise(pdb_str, idealize):
+def exercise(pdb_str, use_ideal_bonds_angles):
 # --------------------------------------------------------------
 #          code to switch off CDL
 # --------------------------------------------------------------
@@ -64,10 +64,9 @@ def exercise(pdb_str, idealize):
   sites_cart = xray_structure.sites_cart()
 
   riding_h_manager = riding.manager(
-    hierarchy           = pdb_hierarchy,
+    pdb_hierarchy           = pdb_hierarchy,
     geometry_restraints = geometry_restraints,
-    crystal_symmetry    = xray_structure.crystal_symmetry(),
-    idealize            = idealize)
+    use_ideal_bonds_angles = use_ideal_bonds_angles)
 
   h_parameterization = riding_h_manager.h_parameterization
 
@@ -86,7 +85,7 @@ def exercise(pdb_str, idealize):
     labels = atoms[ih].fetch_labels()
     hp = h_parameterization[ih]
     #type_list.append(hp.htype)
-    if idealize:
+    if use_ideal_bonds_angles:
       assert (h_distances[ih] < 0.03), \
         'distance too large: %s  atom: %s (%s) residue: %s ' \
         % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
@@ -208,10 +207,10 @@ pdb_list_name = ['pdb_str_00', 'pdb_str_01', 'pdb_str_02', 'pdb_str_03',
   'pdb_str_04', 'pdb_str_05']
 
 def run():
-  for idealize in [True, False]:
-    print 'idealize =', idealize
+  for use_ideal_bonds_angles in [True, False]:
+    print 'use_ideal_bonds_angles =', use_ideal_bonds_angles
     for pdb_str, str_name in zip(pdb_list,pdb_list_name):
-      exercise(pdb_str=pdb_str, idealize=idealize)
+      exercise(pdb_str=pdb_str, use_ideal_bonds_angles=use_ideal_bonds_angles)
 
 if (__name__ == "__main__"):
   t0 = time.time()

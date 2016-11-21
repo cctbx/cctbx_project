@@ -64,9 +64,8 @@ def exercise():
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
   riding_h_manager = riding.manager(
-    hierarchy           = pdb_hierarchy,
-    geometry_restraints = geometry_restraints,
-    crystal_symmetry    = xray_structure.crystal_symmetry())
+    pdb_hierarchy           = pdb_hierarchy,
+    geometry_restraints = geometry_restraints)
   h_connectivity = riding_h_manager.h_connectivity
 
   bond_list = {}

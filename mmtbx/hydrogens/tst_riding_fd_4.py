@@ -30,15 +30,14 @@ def exercise(pdb_str, eps, idealize):
   g_analytical = es.gradients
 #
   riding_h_manager = riding.manager(
-    hierarchy           = pdb_hierarchy,
-    geometry_restraints = geometry,
-    crystal_symmetry    = xray_structure.crystal_symmetry())
+    pdb_hierarchy       = pdb_hierarchy,
+    geometry_restraints = geometry)
 
   h_parameterization = riding_h_manager.h_parameterization
 
-  riding_h_manager.idealize_hydrogens(
-      hierarchy=pdb_hierarchy,
-      xray_structure=xray_structure)
+  riding_h_manager.idealize_hydrogens_inplace(
+    pdb_hierarchy=pdb_hierarchy,
+    xray_structure=xray_structure)
   #sites_cart = pdb_hierarchy.atoms().extract_xyz()
   sites_cart = xray_structure.sites_cart()
 
@@ -62,17 +61,20 @@ def exercise(pdb_str, eps, idealize):
       ts = []
       for sign in [-1,1]:
         sites_cart_ = sites_cart.deep_copy()
+        xray_structure_ = xray_structure.deep_copy_scatterers()
         sites_cart_[i_site] = [
           sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
+        xray_structure_.set_sites_cart(sites_cart_)
         # after shift, recalculate H position
-        riding_h_manager.idealize_hydrogens_sc_inplace(
-            sites_cart=sites_cart_)
+        riding_h_manager.idealize_hydrogens_inplace(
+          xray_structure=xray_structure_)
+        sites_cart_ = xray_structure_.sites_cart()
         ts.append(geometry.energies_sites(
           sites_cart = sites_cart_,
           compute_gradients = False).target)
       g_fd_i.append((ts[1]-ts[0])/(2*eps))
     g_fd.append(g_fd_i)
-  #
+
   for g1, g2 in zip(g_analytical, g_fd):
     #print g1,g2
     assert approx_equal(g1,g2, 1.e-4)

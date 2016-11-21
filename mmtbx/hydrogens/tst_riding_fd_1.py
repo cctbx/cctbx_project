@@ -23,7 +23,7 @@ from scitbx import matrix
 # H with rotational degree of freedom (SER, etc)
 #-----------------------------------------------------------------------------
 
-def exercise(pdb_str, eps, idealize):
+def exercise(pdb_str, eps, use_ideal_bonds_angles):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -44,9 +44,9 @@ def exercise(pdb_str, eps, idealize):
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
 
   riding_h_manager = riding.manager(
-    hierarchy           = pdb_hierarchy,
-    geometry_restraints = geometry,
-    crystal_symmetry    = xray_structure.crystal_symmetry())
+    pdb_hierarchy          = pdb_hierarchy,
+    geometry_restraints    = geometry,
+    use_ideal_bonds_angles = use_ideal_bonds_angles)
 
   h_parameterization = riding_h_manager.h_parameterization
 
@@ -282,14 +282,12 @@ pdb_list_name = ['pdb_str_00', 'pdb_str_01', 'pdb_str_02', 'pdb_str_03',
   'pdb_str_04', 'pdb_str_05', 'pdb_str_06', 'pdb_str_07', 'pdb_str_08',
   'pdb_str_09', 'pdb_str_10', 'pdb_str_11']
 
-#pdb_list = [pdb_str_02, pdb_str_03]
-#pdb_list_name = ['pdb_str_02', 'pdb_str_03']
-
 def run():
-  for idealize in [True, False]:
+  for use_ideal_bonds_angles in [True, False]:
     for pdb_str, str_name in zip(pdb_list,pdb_list_name):
       #print 'pdb_string:', str_name, 'idealize =', idealize
-      exercise(pdb_str=pdb_str, eps=1.e-4, idealize=idealize)
+      exercise(pdb_str=pdb_str, eps=1.e-4,
+        use_ideal_bonds_angles=use_ideal_bonds_angles)
 
 if (__name__ == "__main__"):
   t0 = time.time()
