@@ -4666,7 +4666,8 @@ class array(set):
 
   # this is tested as part of phenix.merging_statistics (note that the exact
   # values are not reproducible)
-  def cc_one_half (self, use_binning=False, n_trials=1, anomalous_flag=False) :
+  def cc_one_half (self, use_binning=False, n_trials=1, anomalous_flag=False,
+                   return_n_refl=False) :
     """
     Calculate the correlation between two randomly assigned pools of unmerged
     data ("CC 1/2").  If desired the mean over multiple trials can be taken.
@@ -4680,7 +4681,8 @@ class array(set):
       tmp_array = self.customized_copy(
         anomalous_flag=anomalous_flag).map_to_asu()
       tmp_array = tmp_array.sort("packed_indices")
-      return compute_cc_one_half(tmp_array, n_trials=n_trials)
+      return compute_cc_one_half(tmp_array, n_trials=n_trials,
+                                 return_n_refl=return_n_refl)
     assert self.binner() is not None
     data = []
     for i_bin in self.binner().range_all():
@@ -4690,6 +4692,44 @@ class array(set):
         data.append(None)
       else :
         data.append(bin_array.cc_one_half(n_trials=n_trials))
+    return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
+
+  def cc_one_half_sigma_tau(self, use_binning=False, anomalous_flag=False,
+                            use_internal_variance=True,
+                            return_n_refl=False):
+    """
+    Calculation of CC1/2 by the 'sigma-tau' method, avoiding the random
+    assignment into half-datasets of the above method.
+    See Assmann et al., J. Appl. Cryst. (2016). 49, 1021–1028.
+
+    var_y is the variange of the average intensities across the unique
+    reflections of a resolution shell.
+    var_e is the average variance of the observations contributing to the
+    merged intensities
+    """
+    assert self.is_xray_intensity_array()
+    if (not use_binning):
+      merged = self.merge_equivalents(
+        use_internal_variance=use_internal_variance).array()
+      if merged.size() == 1:
+        cc_one_half = 0
+      else:
+        mav = flex.mean_and_variance(merged.data())
+        var_y = mav.unweighted_sample_variance()
+        var_e = flex.mean(flex.pow2(self.sigmas()))
+        cc_one_half = (var_y - 0.5 * var_e)/(var_y + 0.5 * var_e)
+      if return_n_refl:
+        return cc_one_half, merged.size()
+      return cc_one_half
+    assert self.binner() is not None
+    data = []
+    for i_bin in self.binner().range_all():
+      sel = self.binner().selection(i_bin)
+      bin_array = self.select(sel)
+      if (bin_array.size() == 0) :
+        data.append(None)
+      else :
+        data.append(bin_array.cc_one_half_sigma_tau(n_trials=n_trials))
     return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
   def half_dataset_anomalous_correlation (self, use_binning=False, return_n_pairs=False) :
@@ -5523,7 +5563,7 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
 
 # this is tested as part of phenix.merging_statistics (note that the exact
 # values are not reproducible)
-def compute_cc_one_half (unmerged, n_trials=1) :
+def compute_cc_one_half (unmerged, n_trials=1, return_n_refl=False) :
   """
   Implementation of array.cc_one_half, assuming that the reflections are
   already in the ASU.  Because the implementation uses random numbers, the
@@ -5547,7 +5587,10 @@ def compute_cc_one_half (unmerged, n_trials=1) :
     data_2 = split_datasets.data_2
     cc = flex.linear_correlation(data_1, data_2).coefficient()
     cc_all.append(cc)
-  return sum(cc_all) / n_trials
+  cc_one_half = sum(cc_all) / n_trials
+  if return_n_refl:
+    return cc_one_half, data_1.size()
+  return cc_one_half
 
 class systematic_absences_info (object) :
   """

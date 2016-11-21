@@ -98,7 +98,8 @@ def exercise_unmerged () :
   # platforms - therefore we can only check for very approximate values.
   # Exact numerical results are tested with real data (stored elsewhere).
   # CC1/2, etc.
-  assert approx_equal(i_obs.cc_one_half(), 0.9998, eps=0.001)
+  assert approx_equal(i_obs.cc_one_half(), 0.9999, eps=0.001)
+  assert approx_equal(i_obs.cc_one_half_sigma_tau(), 0.9999, eps=0.001)
   assert i_obs.resolution_filter(d_max=1.2).cc_one_half() > 0
   assert i_obs.cc_anom() > 0.1
   r_ano = i_obs.r_anom()

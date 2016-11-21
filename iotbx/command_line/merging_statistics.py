@@ -121,6 +121,7 @@ already be on a common scale, but with individual observations unmerged.
     eliminate_sys_absent=params.eliminate_sys_absent,
     extend_d_max_min=params.extend_d_max_min,
     cc_one_half_significance_level=params.cc_one_half_significance_level,
+    cc_one_half_method=params.cc_one_half_method,
     log=out)
   result.show(out=out)
   if (getattr(params, "loggraph", False)) :

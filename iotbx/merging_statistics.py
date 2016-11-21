@@ -59,6 +59,8 @@ eliminate_sys_absent = True
   .short_caption = Eliminate systematically absent reflections before computation of merging statistics.
 cc_one_half_significance_level = None
   .type = float(value_min=0, value_max=None)
+cc_one_half_method = *half_dataset sigma_tau
+  .type = choice
 """ % sigma_filtering_phil_str
 
 class model_based_arrays (object) :
@@ -189,9 +191,12 @@ class merging_stats (object) :
       debug=None,
       sigma_filtering="scala",
       use_internal_variance=True,
-      cc_one_half_significance_level=None) :
+      cc_one_half_significance_level=None,
+      cc_one_half_method='half_dataset') :
     import cctbx.miller
     from scitbx.array_family import flex
+    assert cc_one_half_method in ('half_dataset', 'sigma_tau')
+    self.cc_one_half_method = cc_one_half_method
     assert (array.sigmas() is not None)
     non_negative_sel = array.sigmas() >= 0
     self.n_neg_sigmas = non_negative_sel.count(False)
@@ -248,8 +253,13 @@ class merging_stats (object) :
     self.i_mean_over_sigi_mean = 0
     self.unmerged_i_over_sigma_mean = 0
     self.cc_one_half = 0
+    self.cc_one_half_n_refl = 0
     self.cc_one_half_significance = None
     self.cc_one_half_critical_value = None
+    self.cc_one_half_sigma_tau = 0
+    self.cc_one_half_sigma_tau_n_refl = 0
+    self.cc_one_half_sigma_tau_significance = None
+    self.cc_one_half_sigma_tau_critical_value = None
     self.cc_star = 0
     self.r_merge = self.r_meas = self.r_pim = None
     for x in sorted(set(redundancies)) :
@@ -268,8 +278,11 @@ class merging_stats (object) :
       self.r_merge = merge.r_merge()
       self.r_meas = merge.r_meas()
       self.r_pim = merge.r_pim()
-      self.cc_one_half = cctbx.miller.compute_cc_one_half(
-        unmerged=array)
+      self.cc_one_half, self.cc_one_half_n_refl = cctbx.miller.compute_cc_one_half(
+        unmerged=array, return_n_refl=True)
+      self.cc_one_half_sigma_tau, self.cc_one_half_sigma_tau_n_refl = \
+        array.cc_one_half_sigma_tau(
+          use_internal_variance=use_internal_variance, return_n_refl=True)
       if cc_one_half_significance_level is not None:
         def compute_cc_significance(r, n, p):
           # https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Testing_using_Student.27s_t-distribution
@@ -284,12 +297,17 @@ class merging_stats (object) :
             t1 = dist.quantile(1-p)
             critical_value = t1/sqrt(t1**2 + n - 2)
           return significance, critical_value
-        self.cc_one_half_significance, self.cc_one_half_critical_value \
-          = compute_cc_significance(
-            self.cc_one_half, (redundancies > 1).count(True), cc_one_half_significance_level)
-        self.cc_anom_significance, self.cc_anom_critical_value \
-          = compute_cc_significance(
+        self.cc_one_half_significance, self.cc_one_half_critical_value = \
+          compute_cc_significance(
+            self.cc_one_half, self.cc_one_half_n_refl,
+            cc_one_half_significance_level)
+        self.cc_anom_significance, self.cc_anom_critical_value = \
+          compute_cc_significance(
             self.cc_anom, n_anom_pairs, cc_one_half_significance_level)
+        self.cc_one_half_sigma_tau_significance, self.cc_one_half_sigma_tau_critical_value = \
+          compute_cc_significance(
+            self.cc_one_half_sigma_tau, array_merged.size(),
+            cc_one_half_significance_level)
       if (self.cc_one_half == 0) :
         self.cc_star = 0
       elif (self.cc_one_half < -0.999) :
@@ -310,6 +328,12 @@ class merging_stats (object) :
     return getattr(self, "cc_anom", None)
 
   def format (self) :
+    if self.cc_one_half_method == 'sigma_tau':
+      cc_one_half = self.cc_one_half_sigma_tau
+      cc_one_half_significance = self.cc_one_half_sigma_tau_significance
+    else:
+      cc_one_half = self.cc_one_half
+      cc_one_half_significance = self.cc_one_half_significance
     return "%6.2f %6.2f %6d %6d   %5.2f %6.2f  %8.1f  %6.1f  %s  %s  %s  % 5.3f%s  % 5.3f%s" % (
       self.d_max,
       self.d_min,
@@ -322,8 +346,8 @@ class merging_stats (object) :
       format_value("% 7.3f", self.r_merge),
       format_value("% 7.3f", self.r_meas),
       format_value("% 7.3f", self.r_pim),
-      self.cc_one_half,
-      "*" if self.cc_one_half_significance else "",
+      cc_one_half,
+      "*" if cc_one_half_significance else "",
       self.cc_anom,
       "*" if self.cc_anom_significance else "")
 
@@ -416,6 +440,7 @@ class dataset_statistics (object) :
       d_min_tolerance=1.e-6,
       extend_d_max_min=False,
       cc_one_half_significance_level=None,
+      cc_one_half_method='half_dataset',
       log=None) :
     self.file_name = file_name
     if (log is None) : log = null_out()
@@ -473,7 +498,8 @@ class dataset_statistics (object) :
       debug=debug,
       sigma_filtering=sigma_filtering,
       use_internal_variance=use_internal_variance,
-      cc_one_half_significance_level=cc_one_half_significance_level)
+      cc_one_half_significance_level=cc_one_half_significance_level,
+      cc_one_half_method=cc_one_half_method)
     self.bins = []
     title = "Intensity merging statistics"
     column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
@@ -510,9 +536,18 @@ class dataset_statistics (object) :
         debug=debug,
         sigma_filtering=sigma_filtering,
         use_internal_variance=use_internal_variance,
-        cc_one_half_significance_level=cc_one_half_significance_level)
+        cc_one_half_significance_level=cc_one_half_significance_level,
+        cc_one_half_method=cc_one_half_method)
       self.bins.append(bin_stats)
       self.table.add_row(bin_stats.table_data())
+
+    from scitbx.array_family import flex
+    self.cc_one_half_overall = flex.mean_weighted(
+      flex.double(b.cc_one_half for b in self.bins),
+      flex.double(b.cc_one_half_n_refl for b in self.bins))
+    self.cc_one_half_sigma_tau_overall = flex.mean_weighted(
+      flex.double(b.cc_one_half_sigma_tau for b in self.bins),
+      flex.double(b.cc_one_half_sigma_tau_n_refl for b in self.bins))
 
   @property
   def signal_table (self) :
