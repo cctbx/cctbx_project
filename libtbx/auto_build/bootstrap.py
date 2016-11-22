@@ -970,7 +970,7 @@ class Builder(object):
     if self.platform and 'windows' in self.platform:
         return True
     else:
-      if sys.platform == "win32":
+      if self.platform == "dev" and sys.platform == "win32":
         return True
     return False
 
@@ -978,7 +978,7 @@ class Builder(object):
     if self.platform and 'linux' in self.platform:
         return True
     else:
-      if sys.platform.startswith("linux"):
+      if self.platform == "dev" and sys.platform.startswith("linux"):
         return True
     return False
 
