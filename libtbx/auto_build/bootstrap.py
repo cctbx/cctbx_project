@@ -1401,9 +1401,9 @@ class Builder(object):
         self.opjoin('..', 'modules', 'cctbx_project', 'libtbx', 'configure.py')
         ] + self.get_libtbx_configure()
     fname = self.opjoin("config_modules.cmd")
-    ldlibpath = ""
+    ldlibpath = ''
     if self.isPlatformLinux():
-      ldlibpath = "export LD_LIBRARY_PATH=../base/lib\n"
+      ldlibpath = 'export LD_LIBRARY_PATH=../base/lib\n'
       # because that was the environment when python and base components were built during bootstrap
     confstr = ldlibpath + subprocess.list2cmdline(configcmd)
     if not self.isPlatformWindows():
