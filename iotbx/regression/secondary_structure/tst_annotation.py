@@ -488,6 +488,159 @@ def tst_from_cif_block_4():
   assert [len(x.strands) for x in ann.sheets] == [2]
   # print ann.as_pdb_str()
 
+def tst_from_minimal_cif_helix():
+  """reading annotation that contains only required mmCIF records -
+  http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Categories/struct_conf.html
+  """
+  cif_answer_minimal_helix = """\
+loop_
+  _struct_conf.conf_type_id
+  _struct_conf.id
+  _struct_conf.pdbx_PDB_helix_id
+  _struct_conf.beg_label_comp_id
+  _struct_conf.beg_label_asym_id
+  _struct_conf.beg_label_seq_id
+  _struct_conf.pdbx_beg_PDB_ins_code
+  _struct_conf.end_label_comp_id
+  _struct_conf.end_label_asym_id
+  _struct_conf.end_label_seq_id
+  _struct_conf.pdbx_end_PDB_ins_code
+  _struct_conf.pdbx_PDB_helix_class
+  _struct_conf.details
+  _struct_conf.pdbx_PDB_helix_length
+  HELX_P  1  1  ARG   87  A  ?  GLN   92  A  ?  0  ?  5
+  HELX_P  2  2  ARG  287  B  ?  GLN  292  B  ?  0  ?  5
+  HELX_P  3  3  PRO    1  A  ?  LEU    5  A  ?  0  ?  4
+"""
+  pdb_answer_minimal_helix = """\
+HELIX    1   1 ARG A   87  GLN A   92  1                                   5
+HELIX    2   2 ARG B  287  GLN B  292  1                                   5
+HELIX    3   3 PRO A    1  LEU A    5  1                                   4"""
+  minimal_helix = """\
+    data_4ZTE
+    loop_
+    _struct_conf.id
+    _struct_conf.conf_type_id
+    _struct_conf.beg_label_comp_id
+    _struct_conf.beg_label_asym_id
+    _struct_conf.beg_label_seq_id
+    _struct_conf.end_label_comp_id
+    _struct_conf.end_label_asym_id
+    _struct_conf.end_label_seq_id
+      HELX1  HELX_RH_AL_P  ARG  A   87  GLN  A   92
+      HELX2  HELX_RH_AL_P  ARG  B  287  GLN  B  292
+      STRN1  STRN_P        PRO  A    1  LEU  A    5
+  """
+  cif_model = iotbx.cif.reader(input_string=minimal_helix).model()
+  cif_block = cif_model.values()[0]
+  ann = annotation.from_cif_block(cif_block)
+  assert not show_diff(ann.as_pdb_str(), pdb_answer_minimal_helix)
+
+  cif_loops = ann.as_cif_loops()
+  assert len(cif_loops) == 1
+  helix_loop = cif_loops[0]
+  out = StringIO()
+  helix_loop.show(out)
+  v = out.getvalue()
+  # print "\"%s\"" % v
+  assert not show_diff(out.getvalue(), cif_answer_minimal_helix)
+
+def tst_from_minimal_cif_sheet():
+  cif_minimal_sheet = """\
+      data_4ZTE
+      #
+      _struct_sheet.id               A
+      #
+      _struct_sheet_order.sheet_id     A
+      _struct_sheet_order.range_id_1   1
+      _struct_sheet_order.range_id_2   2
+      #
+      loop_
+      _struct_sheet_range.sheet_id
+      _struct_sheet_range.id
+      _struct_sheet_range.beg_label_comp_id
+      _struct_sheet_range.beg_label_asym_id
+      _struct_sheet_range.beg_label_seq_id
+      _struct_sheet_range.end_label_comp_id
+      _struct_sheet_range.end_label_asym_id
+      _struct_sheet_range.end_label_seq_id
+      A 1 SER A 4  ALA A 7
+      A 2 MET A 22 GLU A 25
+      #
+      _pdbx_struct_sheet_hbond.sheet_id                A
+      _pdbx_struct_sheet_hbond.range_id_1              1
+      _pdbx_struct_sheet_hbond.range_id_2              2
+      _pdbx_struct_sheet_hbond.range_1_label_atom_id   N
+      _pdbx_struct_sheet_hbond.range_1_label_seq_id    4
+      _pdbx_struct_sheet_hbond.range_2_label_atom_id   O
+      _pdbx_struct_sheet_hbond.range_2_label_seq_id    25
+      #
+      """
+  pdb_answer_minimal_sheet = """\
+SHEET    1   A 2 SER A   4  ALA A   7  0
+SHEET    2   A 2 MET A  22  GLU A  25  0  O    . .  25   N    . .   4"""
+  answer_struct_sheet_loops = ["""\
+loop_
+  _struct_sheet.id
+  _struct_sheet.type
+  _struct_sheet.number_strands
+  _struct_sheet.details
+  A  ?  2  ?
+""","""\
+loop_
+  _struct_sheet_order.sheet_id
+  _struct_sheet_order.range_id_1
+  _struct_sheet_order.range_id_2
+  _struct_sheet_order.offset
+  _struct_sheet_order.sense
+  A  1  2  ?  ?
+""","""\
+loop_
+  _struct_sheet_range.sheet_id
+  _struct_sheet_range.id
+  _struct_sheet_range.beg_label_comp_id
+  _struct_sheet_range.beg_label_asym_id
+  _struct_sheet_range.beg_label_seq_id
+  _struct_sheet_range.pdbx_beg_PDB_ins_code
+  _struct_sheet_range.end_label_comp_id
+  _struct_sheet_range.end_label_asym_id
+  _struct_sheet_range.end_label_seq_id
+  _struct_sheet_range.pdbx_end_PDB_ins_code
+  A  1  SER  A   4  ?  ALA  A   7  ?
+  A  2  MET  A  22  ?  GLU  A  25  ?
+""","""\
+loop_
+  _pdbx_struct_sheet_hbond.sheet_id
+  _pdbx_struct_sheet_hbond.range_id_1
+  _pdbx_struct_sheet_hbond.range_id_2
+  _pdbx_struct_sheet_hbond.range_1_label_atom_id
+  _pdbx_struct_sheet_hbond.range_1_label_comp_id
+  _pdbx_struct_sheet_hbond.range_1_label_asym_id
+  _pdbx_struct_sheet_hbond.range_1_label_seq_id
+  _pdbx_struct_sheet_hbond.range_1_PDB_ins_code
+  _pdbx_struct_sheet_hbond.range_2_label_atom_id
+  _pdbx_struct_sheet_hbond.range_2_label_comp_id
+  _pdbx_struct_sheet_hbond.range_2_label_asym_id
+  _pdbx_struct_sheet_hbond.range_2_label_seq_id
+  _pdbx_struct_sheet_hbond.range_2_PDB_ins_code
+  A  1  2  N  .  .  4  ?  O  .  .  25  ?
+"""]
+
+  cif_model = iotbx.cif.reader(input_string=cif_minimal_sheet).model()
+  cif_block = cif_model.values()[0]
+  ann = annotation.from_cif_block(cif_block)
+  # print ann.as_pdb_str()
+  assert not show_diff(ann.as_pdb_str(), pdb_answer_minimal_sheet)
+
+  cif_loops = ann.as_cif_loops()
+  assert len(cif_loops) == 4, len(cif_loops)
+  for i, sheet_loop in enumerate(cif_loops):
+    out = StringIO()
+    sheet_loop.show(out)
+    v = out.getvalue()
+    # print "\"%s\"" % v
+    assert not show_diff(out.getvalue(), answer_struct_sheet_loops[i])
+
 def tst_to_cif_helix():
   pdb_str = """\
 HELIX    1 AA1 SER A   26  LYS A   30  5                                   5
@@ -1272,6 +1425,8 @@ if (__name__ == "__main__"):
   tst_from_cif_block_2()
   tst_from_cif_block_3()
   tst_from_cif_block_4()
+  tst_from_minimal_cif_helix()
+  tst_from_minimal_cif_sheet()
   tst_to_cif_helix()
   tst_to_cif_sheet()
   # tst_to_cif_annotation()

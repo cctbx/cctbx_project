@@ -103,12 +103,15 @@ def segments_are_similar(atom_selection_1=None,
 
     return True
 
-def choose_correct_cif_record(cif_dict, key1, key2):
+def choose_correct_cif_record(cif_dict, key1, key2, mandatory=True):
   if key1 in cif_dict:
     val = cif_dict[key1]
     if val != '?' and val != '.':
       return val
-  return cif_dict[key2]
+  if mandatory:
+    return cif_dict[key2]
+  else:
+    return cif_dict.get(key2, '.')
 
 class one_strand_pair_registration_atoms:
   def __init__(self,
@@ -561,9 +564,10 @@ class annotation(structure_base):
         and struct_sheet_hbond_loop is not None):
       for sheet_row in struct_sheet_loop.iterrows():
         sheet_id = sheet_row['_struct_sheet.id']
-        number_of_strands = int(sheet_row['_struct_sheet.number_strands'])
+        # we will count number_of_strands in from_cif_rows
+        # number_of_strands = int(sheet_row['_struct_sheet.number_strands'])
         try:
-          sh = pdb_sheet.from_cif_rows(sheet_id, number_of_strands,
+          sh = pdb_sheet.from_cif_rows(sheet_id,
               struct_sheet_order_loop, struct_sheet_range_loop,
               struct_sheet_hbond_loop)
         except ValueError as e:
@@ -1498,10 +1502,10 @@ class pdb_helix (structure_base) :
             cif_row,
             '_struct_conf.beg_auth_asym_id',
             '_struct_conf.beg_label_asym_id'))
-    start_resseq = choose_correct_cif_record(
+    start_resseq = int(choose_correct_cif_record(
         cif_row,
         '_struct_conf.beg_auth_seq_id',
-        '_struct_conf.beg_label_seq_id')
+        '_struct_conf.beg_label_seq_id'))
     end_resname = choose_correct_cif_record(
         cif_row,
         '_struct_conf.end_auth_comp_id',
@@ -1511,28 +1515,37 @@ class pdb_helix (structure_base) :
             cif_row,
             '_struct_conf.end_auth_asym_id',
             '_struct_conf.end_label_asym_id'))
-    end_resseq = choose_correct_cif_record(
+    end_resseq = int(choose_correct_cif_record(
         cif_row,
         '_struct_conf.end_auth_seq_id',
-        '_struct_conf.end_label_seq_id')
+        '_struct_conf.end_label_seq_id'))
+    comment = ""
+    if ('_struct_conf.details' in cif_row and
+        cif_row['_struct_conf.details'] != '?' and
+        cif_row['_struct_conf.details'] != '.'):
+      comment = cif_row['_struct_conf.details']
+    # this is not mandatory item in mmCIF, so we'll try to estimate it in case
+    # it is absent. Since it is mmCIF, it should not contain hybrid36 notation,
+    # so int() should be fine
+    length = int(cif_row.get('_struct_conf.pdbx_PDB_helix_length', 0))
+    if length == 0:
+      length = end_resseq - start_resseq
 
     return cls(
       serial=serial,
-      helix_id=cif_row['_struct_conf.pdbx_PDB_helix_id'],
+      helix_id=cif_row.get('_struct_conf.pdbx_PDB_helix_id', None),
       start_resname=start_resname,
       start_chain_id=start_chain_id,
-      start_resseq=start_resseq,
-      start_icode=cls.parse_cif_insertion_code(cif_row['_struct_conf.pdbx_beg_PDB_ins_code']),
+      start_resseq=cls.convert_resseq(start_resseq),
+      start_icode=cls.parse_cif_insertion_code(cif_row.get('_struct_conf.pdbx_beg_PDB_ins_code', '.')),
       end_resname=end_resname,
       end_chain_id=end_chain_id,
-      end_resseq=end_resseq,
-      end_icode=cls.parse_cif_insertion_code(cif_row['_struct_conf.pdbx_end_PDB_ins_code']),
-      helix_class=cls.helix_class_to_str(int(cif_row['_struct_conf.pdbx_PDB_helix_class'])),
+      end_resseq=cls.convert_resseq(end_resseq),
+      end_icode=cls.parse_cif_insertion_code(cif_row.get('_struct_conf.pdbx_end_PDB_ins_code', '.')),
+      helix_class=cls.helix_class_to_str(int(cif_row.get('_struct_conf.pdbx_PDB_helix_class',0))),
       helix_selection=None,
-      comment=(cif_row['_struct_conf.details'] if \
-          cif_row['_struct_conf.details'] != '?' and cif_row['_struct_conf.details'] != '.' \
-          else ''),
-      length=int(cif_row['_struct_conf.pdbx_PDB_helix_length']))
+      comment=comment,
+      length=length)
 
   @classmethod
   def from_pdb_record(cls, line):
@@ -1830,10 +1843,10 @@ class pdb_strand(structure_base):
         cif_dict,
         '_struct_sheet_range.beg_auth_asym_id',
         '_struct_sheet_range.beg_label_asym_id')
-    start_resseq = choose_correct_cif_record(
+    start_resseq = int(choose_correct_cif_record(
         cif_dict,
         '_struct_sheet_range.beg_auth_seq_id',
-        '_struct_sheet_range.beg_label_seq_id')
+        '_struct_sheet_range.beg_label_seq_id'))
     end_resname = choose_correct_cif_record(
         cif_dict,
         '_struct_sheet_range.end_auth_comp_id',
@@ -1842,23 +1855,23 @@ class pdb_strand(structure_base):
         cif_dict,
         '_struct_sheet_range.end_auth_asym_id',
         '_struct_sheet_range.end_label_asym_id')
-    end_resseq = choose_correct_cif_record(
+    end_resseq = int(choose_correct_cif_record(
         cif_dict,
         '_struct_sheet_range.end_auth_seq_id',
-        '_struct_sheet_range.end_label_seq_id')
+        '_struct_sheet_range.end_label_seq_id'))
     return cls(
         sheet_id=cif_dict['_struct_sheet_range.sheet_id'],
         strand_id=int(cif_dict['_struct_sheet_range.id']),
         start_resname=start_resname,
         start_chain_id=cls.parse_chain_id(start_chain_id),
-        start_resseq=start_resseq,
+        start_resseq=cls.convert_resseq(start_resseq),
         start_icode=cls.parse_cif_insertion_code(
-            cif_dict['_struct_sheet_range.pdbx_beg_PDB_ins_code']),
+            cif_dict.get('_struct_sheet_range.pdbx_beg_PDB_ins_code','.')),
         end_resname=end_resname,
         end_chain_id=cls.parse_chain_id(end_chain_id),
-        end_resseq=end_resseq,
+        end_resseq=cls.convert_resseq(end_resseq),
         end_icode=cls.parse_cif_insertion_code(
-            cif_dict['_struct_sheet_range.pdbx_end_PDB_ins_code']),
+            cif_dict.get('_struct_sheet_range.pdbx_end_PDB_ins_code', '.')),
         sense=sense,
       )
 
@@ -1974,17 +1987,19 @@ class pdb_strand_register(structure_base):
     cur_resname = choose_correct_cif_record(
         cif_dict,
         '_pdbx_struct_sheet_hbond.range_2_auth_comp_id',
-        '_pdbx_struct_sheet_hbond.range_2_label_comp_id')
+        '_pdbx_struct_sheet_hbond.range_2_label_comp_id',
+        mandatory=False)
     cur_chain_id = choose_correct_cif_record(
         cif_dict,
         '_pdbx_struct_sheet_hbond.range_2_auth_asym_id',
-        '_pdbx_struct_sheet_hbond.range_2_label_asym_id')
-    cur_resseq = choose_correct_cif_record(
+        '_pdbx_struct_sheet_hbond.range_2_label_asym_id',
+        mandatory=False)
+    cur_resseq = int(choose_correct_cif_record(
         cif_dict,
         '_pdbx_struct_sheet_hbond.range_2_auth_seq_id',
-        '_pdbx_struct_sheet_hbond.range_2_label_seq_id')
+        '_pdbx_struct_sheet_hbond.range_2_label_seq_id'))
     cur_icode = cls.parse_cif_insertion_code(
-        cif_dict['_pdbx_struct_sheet_hbond.range_2_PDB_ins_code'])
+        cif_dict.get('_pdbx_struct_sheet_hbond.range_2_PDB_ins_code','.'))
     prev_atom = cls.adjust_cif_atom_name(
         choose_correct_cif_record(
           cif_dict,
@@ -1993,27 +2008,29 @@ class pdb_strand_register(structure_base):
     prev_resname = choose_correct_cif_record(
         cif_dict,
         '_pdbx_struct_sheet_hbond.range_1_auth_comp_id',
-        '_pdbx_struct_sheet_hbond.range_1_label_comp_id')
+        '_pdbx_struct_sheet_hbond.range_1_label_comp_id',
+        mandatory=False)
     prev_chain_id = choose_correct_cif_record(
         cif_dict,
         '_pdbx_struct_sheet_hbond.range_1_auth_asym_id',
-        '_pdbx_struct_sheet_hbond.range_1_label_asym_id')
-    prev_resseq = choose_correct_cif_record(
+        '_pdbx_struct_sheet_hbond.range_1_label_asym_id',
+        mandatory=False)
+    prev_resseq = int(choose_correct_cif_record(
         cif_dict,
         '_pdbx_struct_sheet_hbond.range_1_auth_seq_id',
-        '_pdbx_struct_sheet_hbond.range_1_label_seq_id')
+        '_pdbx_struct_sheet_hbond.range_1_label_seq_id'))
     prev_icode = cls.parse_cif_insertion_code(
-        cif_dict['_pdbx_struct_sheet_hbond.range_1_PDB_ins_code'])
+        cif_dict.get('_pdbx_struct_sheet_hbond.range_1_PDB_ins_code','.'))
     return cls(
         cur_atom=cur_atom,
         cur_resname=cur_resname,
         cur_chain_id=cls.parse_chain_id(cur_chain_id),
-        cur_resseq=cur_resseq,
+        cur_resseq=cls.convert_resseq(cur_resseq),
         cur_icode=cur_icode,
         prev_atom=prev_atom,
         prev_resname=prev_resname,
         prev_chain_id=cls.parse_chain_id(prev_chain_id),
-        prev_resseq=prev_resseq,
+        prev_resseq=cls.convert_resseq(prev_resseq),
         prev_icode=prev_icode)
 
   def get_cur_resseq_as_int(self):
@@ -2130,11 +2147,16 @@ class pdb_sheet(structure_base):
                registrations=registrations)
 
   @classmethod
-  def from_cif_rows(cls, sheet_id, number_of_strands,
+  def from_cif_rows(cls, sheet_id,
             struct_sheet_order_loop, struct_sheet_range_loop,
             struct_sheet_hbond_loop):
     strands = []
     registrations = []
+    number_of_strands = 0
+    # counting number of strands
+    for row in struct_sheet_range_loop.iterrows():
+      if row['_struct_sheet_range.sheet_id'] == sheet_id:
+        number_of_strands += 1
     for i in range(1, number_of_strands+1):
       if i == 1:
         # the first strand, no sense, no hbond
@@ -2162,8 +2184,12 @@ class pdb_sheet(structure_base):
           if (row['_struct_sheet_order.sheet_id'] == sheet_id and
               int(row['_struct_sheet_order.range_id_1']) == i-1 and
               int(row['_struct_sheet_order.range_id_2']) == i):
-            str_sense = row['_struct_sheet_order.sense']
-            sense = 1 if str_sense=='parallel' else -1
+            str_sense = row.get('_struct_sheet_order.sense', '.')
+            sense = 0
+            if str_sense == 'parallel':
+              sense = 1
+            elif str_sense == 'anti-parallel':
+              sense = -1
             break
         for row in struct_sheet_hbond_loop.iterrows():
           if (row['_pdbx_struct_sheet_hbond.sheet_id'] == sheet_id and
@@ -2437,7 +2463,7 @@ class pdb_sheet(structure_base):
 
     for i, strand, registration in zip(range(self.n_strands), self.strands, self.registrations):
       # _struct_sheet_order
-      if strand.sense != 0:
+      if i != 0:
         result['_struct_sheet_order.sheet_id'].append(self.sheet_id)
         result['_struct_sheet_order.range_id_1'].append(i)
         result['_struct_sheet_order.range_id_2'].append(i+1)
