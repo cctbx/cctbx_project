@@ -2154,6 +2154,69 @@ ATOM     45  CA  ASN A 210     -64.179  33.784 -14.816  1.00 64.69           C
 ATOM     46  C   ASN A 210     -63.605  34.499 -16.022  1.00 72.64           C
 ATOM     47  CB  ASN A 210     -63.830  34.555 -13.567  1.00 77.34           C
 """,
+  "linking_test_partial_alt_loc_glyco.pdb" : """
+HETATM 3615  C1 ANDG B 401      11.587 187.498  -2.208  0.50 17.33           C
+HETATM 3616  C2 ANDG B 401      10.855 188.231  -1.091  0.50 17.55           C
+HETATM 3617  C3 ANDG B 401      10.531 189.647  -1.547  0.50 16.69           C
+HETATM 3618  C4 ANDG B 401      11.775 190.352  -2.092  0.50 16.31           C
+HETATM 3619  C5 ANDG B 401      12.356 189.491  -3.197  0.50 16.42           C
+HETATM 3620  C6 ANDG B 401      13.546 190.144  -3.891  0.50 17.65           C
+HETATM 3621  C7 ANDG B 401       9.454 186.869   0.419  0.50 17.55           C
+HETATM 3622  C8 ANDG B 401       8.079 186.314   0.643  0.50 16.99           C
+HETATM 3623  O  ANDG B 401      12.733 188.238  -2.631  0.50 16.58           O
+HETATM 3624  O3 ANDG B 401      10.019 190.380  -0.453  0.50 17.04           O
+HETATM 3625  O4 ANDG B 401      11.386 191.615  -2.628  0.50 15.06           O
+HETATM 3626  O6 ANDG B 401      14.616 190.314  -2.961  0.50 17.54           O
+HETATM 3627  O7 ANDG B 401      10.336 186.702   1.248  0.50 18.38           O
+HETATM 3628  N2 ANDG B 401       9.620 187.548  -0.722  0.50 17.55           N
+HETATM 3629  O1LANDG B 401      10.701 187.349  -3.322  0.50 17.86           O
+HETATM 3630  C1 BNAG B 402      11.696 187.522  -2.281  0.50 19.30           C
+HETATM 3631  C2 BNAG B 402      10.842 188.218  -1.233  0.50 19.73           C
+HETATM 3632  C3 BNAG B 402      10.507 189.651  -1.615  0.50 18.14           C
+HETATM 3633  C4 BNAG B 402      11.754 190.377  -2.114  0.50 17.57           C
+HETATM 3634  C5 BNAG B 402      12.374 189.564  -3.233  0.50 17.69           C
+HETATM 3635  C6 BNAG B 402      13.544 190.278  -3.896  0.50 19.10           C
+HETATM 3636  C7 BNAG B 402       9.520 186.549  -0.070  0.50 22.13           C
+HETATM 3637  C8 BNAG B 402       8.215 185.818   0.005  0.50 22.97           C
+HETATM 3638  N2 BNAG B 402       9.630 187.444  -1.049  0.50 20.88           N
+HETATM 3639  O1 BNAG B 402      12.174 186.314  -1.691  0.50 19.78           O
+HETATM 3640  O3 BNAG B 402      10.007 190.337  -0.478  0.50 17.72           O
+HETATM 3641  O4 BNAG B 402      11.350 191.649  -2.605  0.50 15.73           O
+HETATM 3642  O5 BNAG B 402      12.803 188.319  -2.692  0.50 18.12           O
+HETATM 3643  O6 BNAG B 402      14.675 190.273  -3.024  0.50 18.91           O
+HETATM 3644  O7 BNAG B 402      10.422 186.331   0.724  0.50 24.09           O
+HETATM 3645  C1 AFUC B 403       8.585 190.434  -0.438  0.50 18.44           C
+HETATM 3646  C1 BFUC B 403       8.574 190.425  -0.442  0.50 18.71           C
+HETATM 3647  C2  FUC B 403       8.154 190.791   0.979  1.00 19.23           C
+HETATM 3648  C3  FUC B 403       8.688 192.169   1.357  1.00 19.53           C
+HETATM 3649  C4  FUC B 403       8.143 193.181   0.356  1.00 20.34           C
+HETATM 3650  C5  FUC B 403       8.484 192.740  -1.077  1.00 20.67           C
+HETATM 3651  C6  FUC B 403       7.889 193.667  -2.123  1.00 22.65           C
+HETATM 3652  O2  FUC B 403       8.618 189.805   1.908  1.00 20.29           O
+HETATM 3653  O3  FUC B 403       8.325 192.496   2.712  1.00 19.86           O
+HETATM 3654  O4  FUC B 403       6.720 193.304   0.464  1.00 20.42           O
+HETATM 3655  O5  FUC B 403       8.050 191.390  -1.356  1.00 18.33           O
+HETATM 3656  C1 AGAL B 404      12.208 192.729  -2.260  0.50 14.68           C
+HETATM 3657  C1 BGAL B 404      12.218 192.731  -2.262  0.50 15.08           C
+HETATM 3658  C2 AGAL B 404      11.977 193.809  -3.313  0.50 14.65           C
+HETATM 3659  C2 BGAL B 404      11.974 193.813  -3.310  0.50 14.87           C
+HETATM 3660  C3  GAL B 404      12.714 195.089  -2.980  1.00 14.36           C
+HETATM 3661  C4 AGAL B 404      12.326 195.524  -1.566  0.50 14.68           C
+HETATM 3662  C4 BGAL B 404      12.331 195.517  -1.566  0.50 14.89           C
+HETATM 3663  C5 AGAL B 404      12.545 194.397  -0.567  0.50 14.42           C
+HETATM 3664  C5 BGAL B 404      12.656 194.395  -0.596  0.50 14.74           C
+HETATM 3665  C6 AGAL B 404      12.057 194.809   0.817  0.50 14.38           C
+HETATM 3666  C6 BGAL B 404      12.314 194.806   0.831  0.50 14.69           C
+HETATM 3667  O2 AGAL B 404      12.381 193.340  -4.606  0.50 14.14           O
+HETATM 3668  O2 BGAL B 404      12.367 193.348  -4.608  0.50 14.30           O
+HETATM 3669  O3  GAL B 404      12.351 196.082  -3.971  1.00 15.47           O
+HETATM 3670  O4 AGAL B 404      10.951 195.945  -1.547  0.50 14.29           O
+HETATM 3671  O4 BGAL B 404      10.932 195.846  -1.506  0.50 14.61           O
+HETATM 3672  O5 AGAL B 404      11.840 193.232  -0.984  0.50 15.24           O
+HETATM 3673  O5 BGAL B 404      11.921 193.232  -0.964  0.50 15.68           O
+HETATM 3674  O6 AGAL B 404      12.320 193.790   1.794  0.50 13.65           O
+HETATM 3675  O6 BGAL B 404      12.433 193.702   1.739  0.50 14.16           O
+""",
   'linking_test_CM-SO4.pdb' : '''
 HETATM 5816  N26  CM C   4      11.872  46.521  11.694  1.00 15.75      A    N  
 HETATM 6475  S   SO4 D   4      12.593  45.477   7.849  1.00 30.00           S  
@@ -2217,6 +2280,7 @@ links = {
   "linking_test_CYS_CYS_alt_loc.pdb" : [17,17],
   #
   "linking_test_MAN-before-ASN.pdb" : [15,15],
+  "linking_test_partial_alt_loc_glyco.pdb" : [63,67],
   'linking_test_CM-SO4.pdb' : [4,4],
   }
 
@@ -2304,6 +2368,7 @@ def run(only_i=None):
         "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
         ] and 0: continue
     if pdb.find("CD_GHE")>-1: continue
+    if pdb.find("partial")>-1: continue
     #if pdb.find('SO4')==-1: continue
     print 'pdb',pdb
     j+=1
