@@ -1,3 +1,4 @@
+/.git-notifier*
 boost_adaptbx/*.pyc
 boost_adaptbx/boost/*.pyc
 boost_adaptbx/command_line/*.pyc
