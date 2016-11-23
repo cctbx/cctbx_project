@@ -54,7 +54,7 @@ class _(boost.python.injector, ccd_cpp):
           phi_psi_angles = utils.get_pair_angles(phi_psi_pair)
           before_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key, round_coords=True)
           if (ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_OUTLIER):
-              # or ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_ALLOWED):
+            # or ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_ALLOWED):
             # assert i == 0
             if i != 0:
               # this is a error, we should spot rama outliers on the first angle

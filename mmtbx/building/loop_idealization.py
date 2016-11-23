@@ -12,6 +12,7 @@ from mmtbx.secondary_structure.build import side_chain_placement, \
     set_xyz_smart
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from cctbx import maptbx
+from scitbx.array_family import flex
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -239,6 +240,10 @@ class loop_idealization():
           hierarchy, resnum, 2, 2, include_intermediate=True)
       list_of_reference_exclusion += excl_res
     out_i = 0
+    chain_ss_annot = self.secondary_structure_annotation
+    if chain_ss_annot is not None:
+      chain_ss_annot = self.secondary_structure_annotation.deep_copy()
+      chain_ss_annot.remove_empty_annotations(hierarchy=working_h)
     for rama_out_resnum in rama_out_resnums:
       print >> self.log
       print >> self.log, "Fixing outlier:", rama_out_resnum
@@ -247,7 +252,8 @@ class loop_idealization():
         pdb_hierarchy=working_h,
         out_res_num=rama_out_resnum,
         prefix=self.params.output_prefix,
-        minimize=False)
+        minimize=False,
+        ss_annotation=chain_ss_annot)
       print >> self.log, "listing outliers after loop minimization"
       outp = utils.list_rama_outliers_h(new_h, self.r)
       print >> self.log, outp
@@ -260,17 +266,22 @@ class loop_idealization():
     return list_of_reference_exclusion, new_h
 
   def ccd_solution_is_ok(self,
-      anchor_rmsd, mc_rmsd, ccd_radius, change_all_angles, change_radius):
+      anchor_rmsd, mc_rmsd, ccd_radius, change_all_angles, change_radius,
+      contains_ss_element):
     adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0}
-    if (mc_rmsd < adaptive_mc_rmsd[ccd_radius] and anchor_rmsd < 0.3):
+    ss_multiplier = 1
+    if contains_ss_element:
+      ss_multiplier = 0.2
+    if (mc_rmsd < adaptive_mc_rmsd[ccd_radius]*ss_multiplier and anchor_rmsd < 0.3):
       return True
     elif ccd_radius == 3 and change_all_angles and change_radius == 2:
       # we are desperate and trying the most extensive search,
       # this deserves relaxed criteria...
-      return mc_rmsd < 5 and anchor_rmsd < 0.4
+      return mc_rmsd < 5*ss_multiplier and anchor_rmsd < 0.4
 
   def fix_rama_outlier(self,
-      pdb_hierarchy, out_res_num, prefix="", minimize=True):
+      pdb_hierarchy, out_res_num, prefix="", minimize=True,
+      ss_annotation=None):
 
     original_pdb_h = pdb_hierarchy.deep_copy()
     original_pdb_h.reset_atom_i_seqs()
@@ -293,11 +304,13 @@ class loop_idealization():
     # while ccd_radius <= 3:
       print >> self.log, "  Starting optimization with radius, change_all, change_radius:", ccd_radius, change_all, change_radius
       self.log.flush()
-      moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection = get_fixed_moving_parts(
+      #
+      moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection, contains_ss_element = get_fixed_moving_parts(
           pdb_hierarchy=pdb_hierarchy,
           out_res_num=out_res_num,
           n_following=ccd_radius,
-          n_previous=ccd_radius)
+          n_previous=ccd_radius,
+          ss_annotation=ss_annotation)
       moving_h_set = None
       if change_all:
         moving_h_set = starting_conformations.get_all_starting_conformations(
@@ -315,7 +328,7 @@ class loop_idealization():
 
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
-        # or there's a bug in get_starting_conformatiosn
+        # or there's a bug in get_starting_conformations
         return original_pdb_h
 
       for i, h in enumerate(moving_h_set):
@@ -380,7 +393,8 @@ class loop_idealization():
             mc_rmsd=mc_rmsd,
             ccd_radius=ccd_radius,
             change_all_angles=change_all,
-            change_radius=change_radius):
+            change_radius=change_radius,
+            contains_ss_element=contains_ss_element):
           print "Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter
           self.log.flush()
           if minimize:
@@ -528,17 +542,36 @@ def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
       res.append(residue_list[i].resseq)
     return res
 
-def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
+def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
+    ss_annotation=None):
   # limitation: only one  chain in pdb_hierarchy!!!
   original_pdb_h = pdb_hierarchy.deep_copy()
   start_res_num, end_res_num = get_res_nums_around(
       pdb_hierarchy, out_res_num, n_following, n_previous)
-
   xrs = original_pdb_h.extract_xray_structure()
   truncate_to_poly_gly(pdb_hierarchy, start_res_num, end_res_num)
   cache = pdb_hierarchy.atom_selection_cache()
   # print "selectioin:", "resid %d through %d" % (start_res_num, end_res_num)
-  m_selection = cache.iselection("(name N or name CA or name C or name O) and resid %s through %s" % (start_res_num, end_res_num))
+  m_selection = cache.iselection(
+      "(name N or name CA or name C or name O) and resid %s through %s" % (
+          start_res_num, end_res_num))
+  # Somewhere here would be the place to tweak n_following, n_previous to
+  # exclude SS parts. It would be nice to increase n_prev in case
+  # we need to cut on n_following etc.
+  # If no ss_annotation is provided, don't filter.
+  contains_ss_element = False
+  if ss_annotation is not None:
+    ss_selection_str = ss_annotation.overall_selection()
+    ss_selection = cache.iselection(ss_selection_str)
+    intersect = flex.size_t(sorted(list(set(ss_selection) & set(m_selection))))
+    if intersect.size > 0:
+      intersect_h = pdb_hierarchy.select(intersect)
+      print "Hitting SS element"
+      print intersect_h.as_pdb_string()
+      contains_ss_element = True
+      # assert 0, "hitting SS element!"
+
+
   moving_h = pdb_hierarchy.select(m_selection)
   moving_h.reset_atom_i_seqs()
   # print dir(moving_h)
@@ -571,7 +604,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous):
 
   fixed_ref_atoms = [fixed_N, fixed_CA, fixed_C]
 
-  return moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection
+  return moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection, contains_ss_element
 
 def get_main_chain_rmsd_range(
     hierarchy, original_h, all_atoms=False, placing_range=None):
