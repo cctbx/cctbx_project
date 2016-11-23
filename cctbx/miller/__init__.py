@@ -4691,7 +4691,8 @@ class array(set):
       if (bin_array.size() == 0) :
         data.append(None)
       else :
-        data.append(bin_array.cc_one_half(n_trials=n_trials))
+        data.append(bin_array.cc_one_half(
+          n_trials=n_trials, return_n_refl=return_n_refl))
     return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
   def cc_one_half_sigma_tau(self, use_binning=False, anomalous_flag=False,
@@ -4729,7 +4730,8 @@ class array(set):
       if (bin_array.size() == 0) :
         data.append(None)
       else :
-        data.append(bin_array.cc_one_half_sigma_tau(n_trials=n_trials))
+        data.append(bin_array.cc_one_half_sigma_tau(
+          use_internal_variance=use_internal_variance, return_n_refl=return_n_refl))
     return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
   def half_dataset_anomalous_correlation (self, use_binning=False, return_n_pairs=False) :
