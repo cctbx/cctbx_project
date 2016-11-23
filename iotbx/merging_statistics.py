@@ -290,6 +290,7 @@ class merging_stats (object) :
             significance = False
             critical_value = 0
           else:
+            dist = distributions.students_t_distribution(n-2)
             t = dist.quantile(1-p)
             critical_value = t/sqrt(n - 2 + t**2)
             significance = r > critical_value
