@@ -101,7 +101,8 @@ class Isoform(db_proxy):
       cells = self.app.get_all_x(Cell, 'cell', where = "WHERE isoform_id = %d"%self.id)
       assert len(cells) == 1
       return cells[0]
-    raise AttributeError(key)
+    else:
+      return super(Isoform, self).__getattr__(key)
 
 class Cell(db_proxy):
   def __init__(self, app, cell_id = None, crystal = None, **kwargs):
