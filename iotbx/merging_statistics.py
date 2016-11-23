@@ -290,12 +290,9 @@ class merging_stats (object) :
             significance = False
             critical_value = 0
           else:
-            t = r * sqrt((n-2)/(1-r**2))
-            from scitbx.math import distributions
-            dist = distributions.students_t_distribution(n-2)
-            significance = t > dist.quantile(1-p)
-            t1 = dist.quantile(1-p)
-            critical_value = t1/sqrt(t1**2 + n - 2)
+            t = dist.quantile(1-p)
+            critical_value = t/sqrt(n - 2 + t**2)
+            significance = r > critical_value
           return significance, critical_value
         self.cc_one_half_significance, self.cc_one_half_critical_value = \
           compute_cc_significance(
