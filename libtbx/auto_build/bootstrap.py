@@ -1735,8 +1735,8 @@ class PhenixExternalRegression(PhenixBuilder):
       old_path = os.environ.get("PATH", "") # this is just another now
                                             # universal hack to get Amber to
                                             # compile...
-      environment["PATH"] = '%s:%s' % (os.path.join("modules", #os.getcwd(),
-                                                    "base",
+      environment["PATH"] = '%s:%s' % (os.path.join(#os.getcwd(),
+                                                    "build",
                                                     "bin",
                                                   ),
                                        old_path,
