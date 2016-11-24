@@ -144,12 +144,9 @@ class ThreeProteinResidues(list):
       else:
         bond=self.bond_params_table.lookup(c.i_seq, n.i_seq)
       if not bond:
-        #assert c.i_seq
-        #assert n.i_seq
         break
     else:
       return True
-    #assert d2
     if return_value: return d2
     return False
 
@@ -288,10 +285,10 @@ class ThreeProteinResidues(list):
         key.append(phi_or_psi)
       else:
         key.append(round_to_ten(phi_or_psi))
-    #print self, self.get_ramalyze_key(verbose=1)
     return tuple(key)
 
   def get_ramalyze_key(self,
+                       limit=30.,
                        verbose=False,
                        ):
     from mmtbx.validation import ramalyze
@@ -302,7 +299,7 @@ class ThreeProteinResidues(list):
     # This should be consistent with mmtbx/validation/ramalyze.py,
     # lines 179-195. Particularly, prepro comes before ile/val
     if self[1].resname == "PRO":
-      if self.cis_group(limit=30): return ramalyze.RAMA_CISPRO
+      if self.cis_group(limit=limit): return ramalyze.RAMA_CISPRO
       else: return ramalyze.RAMA_TRANSPRO
     elif self[1].resname == "GLY": return ramalyze.RAMA_GLYCINE
     elif self[2].resname == "PRO": return ramalyze.RAMA_PREPRO
