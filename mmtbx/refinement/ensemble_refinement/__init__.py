@@ -1830,6 +1830,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     if (use_amber) :
       amber_params = params.ensemble_refinement.amber
       import amber_adaptbx
+      assert 0, "amber bindings out of date"
       make_header("Initializing AMBER", out=log)
       print >> log, "  topology: %s" % amber_params.topology_file_name
       amber_structs = amber_adaptbx.get_amber_structs(
