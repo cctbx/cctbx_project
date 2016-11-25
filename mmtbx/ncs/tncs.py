@@ -108,6 +108,7 @@ class groups(object):
     components = connected_component_algorithm.connected_components(g)
     import itertools
     self.ncs_pairs = []
+    largest_tncsnumber = [ 0, "" ]
     for (i,group) in enumerate(components):
       chains = [g.vertex_label(vertex=v) for v in group]
       fracscats = []
@@ -118,6 +119,9 @@ class groups(object):
         radii.append(sup[-2])
       fs = sum(fracscats)/len(fracscats)
       rad = sum(radii)/len(radii)
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      n = 0
+      previous_id = ""
       for pair in itertools.combinations(chains,2):
         sup = result[frozenset(pair)][1]
         ncs_pair = ext.pair(
@@ -133,6 +137,17 @@ class groups(object):
         fmt="group %d chains %s <> %s angle: %4.2f trans.vect.: (%s) fracscat: %5.3f"
         t = ",".join([("%6.3f"%t_).strip() for t_ in sup[1]]).strip()
         print fmt%(i, pair[0].id, pair[1].id, sup[2], t, fs)
+        if pair[0].id == previous_id:
+          n += 1
+        else:
+          previous_id = pair[0].id
+          n = 1
+        if n > largest_tncsnumber[0]:
+          largest_tncsnumber[0] = n
+          largest_tncsnumber[1] = previous_id
+    print "largest_tncsnumber= ", str(largest_tncsnumber)
+
+
 
 def initialize_rho_mn(ncs_pairs, d_spacings_data, binner, rms=0.5):
   """
@@ -460,3 +475,14 @@ class compute_eps_factor(object):
       print >> log, "  fracscat:", ncs_pair.fracscat
     print >> log, "tNCS eps factor: min,max,mean: %6.4f %6.4f %6.4f"%\
       self.epsfac.min_max_mean().as_tuple()
+
+
+
+
+if __name__ == '__main__':
+  xtal = iotbx.pdb.input(file_name= sys.argv[1] )
+  hroot = xtal.construct_hierarchy()
+  xtalsym = xtal.crystal_symmetry()
+  groups(hroot, xtalsym, float(sys.argv[2]))
+
+
