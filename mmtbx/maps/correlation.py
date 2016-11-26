@@ -9,6 +9,7 @@ cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 
 def fsc_model_map(xray_structure, map, d_min, log=sys.stdout, radius=2.,
                   prefix=""):
+  XXX make radius dynamic
   sgn = xray_structure.crystal_symmetry().space_group().type().number()
   f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
   n_bins=min(30, f_calc.data().size()//500)
