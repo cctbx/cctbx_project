@@ -126,12 +126,20 @@ class geometry(geometry_no_grm):
     if automatically_use_amber and hasattr(esg, "amber"):
       self.used_amber=True
       amber_parm = restraints_manager.amber_structs.parm
-      self.a, angle_deltas = esg.angle_deviations(sites_cart, amber_parm,
-                                        ignore_hd=ignore_hydrogens,
-                                        get_deltas=True)
-      self.b, bond_deltas = esg.bond_deviations(sites_cart, amber_parm,
-                                        ignore_hd=ignore_hydrogens,
-                                        get_deltas=True)
+      self.a, angle_deltas, angle_extremes = esg.angle_deviations(
+        sites_cart, amber_parm,
+        ignore_hd=ignore_hydrogens,
+        get_deltas=True,
+        get_extremes=True,
+        )
+      self.angle_extremes = angle_extremes
+      self.b, bond_deltas, bond_extremes = esg.bond_deviations(
+        sites_cart, amber_parm,
+        ignore_hd=ignore_hydrogens,
+        get_deltas=True,
+        get_extremes=True,
+        )
+      self.bond_extremes = bond_extremes
       self.a_number = esg.n_angle_proxies(amber_parm,
                                           ignore_hd=ignore_hydrogens)
       self.b_number = esg.n_bond_proxies(amber_parm,
@@ -140,7 +148,6 @@ class geometry(geometry_no_grm):
       self.c_number=0
       self.p_number=0
       self.d_number=0
-
       self.bond_deltas_histogram = \
         flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
       self.angle_deltas_histogram = \
@@ -210,9 +217,19 @@ class geometry(geometry_no_grm):
       esg.ramachandran_residual_sum)
     del energies_sites, esg # we accumulate this object, so make it clean asap
 
+  def __setattr1__(self, attr, value):
+    print '__setattr__',attr,value
+    if attr=="a_max":
+      assert 0
+    self.__dict__[attr] = value
+
   def show(self, out=None, prefix="", pdb_deposition=False, message = ""):
     if(out is None): out = sys.stdout
-    if(pdb_deposition): prefix = "REMARK   3  "
+    if(pdb_deposition):
+      prefix = "REMARK   3  "
+    else:
+      if hasattr(self, 'bond_extremes'): print >> out, self.bond_extremes
+      if hasattr(self, 'angle_extremes'): print >> out, self.angle_extremes
     print >> out, self.format_basic_geometry_statistics(prefix=prefix)
     print >> out, self.format_molprobity_scores(prefix=prefix)
     out.flush()
