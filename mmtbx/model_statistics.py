@@ -165,6 +165,10 @@ class geometry(geometry_no_grm):
       return
     self.a = esg.angle_deviations()
     self.b = esg.bond_deviations()
+    self.b_z = esg.bond_deviations_z()
+    self.a_z = esg.angle_deviations_z()
+    self.b_w = esg.bond_deviations_weighted()
+    self.a_w = esg.angle_deviations_weighted()
     self.a_number = esg.get_filtered_n_angle_proxies()
     self.b_number = esg.get_filtered_n_bond_proxies()
     self.c = esg.chirality_deviations()
@@ -237,7 +241,11 @@ class geometry(geometry_no_grm):
   def _capitalize(self, s):
     return s.capitalize()
 
-  def format_basic_geometry_statistics(self, prefix=""):
+  def format_basic_geometry_statistics(self,
+                                       prefix="",
+                                       include_rmsz=False,
+                                       include_w_rmsd=False,
+                                      ):
     def fmt(f1,f2,d1):
       fmt_str= "%6.3f %7.3f %6d"
       if f1 is None  : return '   -       -       -  '
@@ -259,19 +267,32 @@ class geometry(geometry_no_grm):
 
     if getattr(self, "b_mean", None):
       result += """
-%sDEVIATIONS FROM IDEAL VALUES.
-%s               RMSD     MAX  COUNT
-%s BOND      : %s
-%s ANGLE     : %s
+%(prefix)sDEVIATIONS FROM IDEAL VALUES.
+%(prefix)s               RMSD     MAX  COUNT""" % locals()
+      if include_rmsz:
+        result += "    RMSZ"
+      if include_w_rmsd:
+        result += "  W-RMSD"
+      result += "\n%s BOND      : %s" % (
+        prefix,
+        fmt(self.b_mean, self.b_max, self.b_number))
+      if include_rmsz:
+        result += "  %6.3f" % self.b_z[2]
+      if include_w_rmsd:
+        result += "  %6.3f" % self.b_w[2]
+      result += "\n%s ANGLE     : %s" % (
+        prefix,
+        fmt(self.a_mean, self.a_max, self.a_number))
+      if include_rmsz:
+        result += "  %6.3f" % self.a_z[2]
+      if include_w_rmsd:
+        result += "  %6.3f" % self.a_w[2]
+      result += """
 %s CHIRALITY : %s
 %s PLANARITY : %s
 %s DIHEDRAL  : %s
 %s MIN NONBONDED DISTANCE : %s
 %s"""%(
-       prefix,
-       prefix,
-       prefix, fmt(self.b_mean, self.b_max, self.b_number),
-       prefix, fmt(self.a_mean, self.a_max, self.a_number),
        prefix, fmt(self.c_mean, self.c_max, self.c_number),
        prefix, fmt(self.p_mean, self.p_max, self.p_number),
        prefix, fmt(self.d_mean, self.d_max, self.d_number),
