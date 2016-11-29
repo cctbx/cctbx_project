@@ -120,8 +120,8 @@ class groups(object):
       fs = sum(fracscats)/len(fracscats)
       rad = sum(radii)/len(radii)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      n = 0
-      previous_id = ""
+      n = 1
+      previous_id = itertools.combinations(chains,2).next()[0].id
       for pair in itertools.combinations(chains,2):
         sup = result[frozenset(pair)][1]
         ncs_pair = ext.pair(
