@@ -18,6 +18,9 @@ class FormatSMVJHSim(FormatSMV):
   '''A class for reading SMV format JHSim images, and correctly constructing
   a model for the experiment from this.'''
 
+  # Metadata not in the header
+  ADC_OFFSET = 1
+
   @staticmethod
   def understand(image_file):
     '''Check to see if this looks like an JHSim SMV format image, i.e. we can
@@ -143,8 +146,8 @@ class FormatSMVJHSim(FormatSMV):
     else:
       raw_data = read_uint16_bs(streambuf(f), int(size[0] * size[1]))
 
-    # ADC offset = 1 - this is not in the header...
-    raw_data -= 1
+    # Subtract ADC offset
+    raw_data -= self.ADC_OFFSET
 
     image_size = panel.get_image_size()
     raw_data.reshape(flex.grid(image_size[1], image_size[0]))
