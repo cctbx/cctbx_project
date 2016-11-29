@@ -71,8 +71,15 @@ class FormatSMVJHSim(FormatSMV):
     overload = 65535
     underload = -1
 
+    # Guess whether this is mimicking a Pilatus, if so set detector type so
+    # that spot-finding parameters are appropriate
+    if pixel_size == 0.172:
+      stype = 'SENSOR_PAD'
+    else:
+      stype = 'CCD'
+
     return self._detector_factory.simple(
-        'CCD', distance, (beam_y, beam_x), '+x', '-y',
+        stype, distance, (beam_y, beam_x), '+x', '-y',
         (pixel_size, pixel_size), image_size, (underload, overload), [])
 
   def _beam(self):
