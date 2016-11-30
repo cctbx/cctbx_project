@@ -354,24 +354,28 @@ List of available parameters:
 """
 
 def process_input(argv=None, flag_check_exist=True):
-  if argv == None:
-    argv = sys.argv[1:]
+  flag_show_help = False
   user_phil = []
-  for arg in argv:
-    if os.path.isfile(arg):
-      user_phil.append(iotbx.phil.parse(open(arg).read()))
-    elif (os.path.isdir(arg)) :
-      user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
-    else :
-      if arg == '--help' or arg == '-h':
-        print txt_help
-        master_phil.show(attributes_level=1)
-        exit()
-      try:
-        user_phil.append(iotbx.phil.parse(arg))
-      except RuntimeError, e :
-        raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
-
+  if argv == None:
+    flag_show_help = True
+  else:
+    for arg in argv:
+      if os.path.isfile(arg):
+        user_phil.append(iotbx.phil.parse(open(arg).read()))
+      elif (os.path.isdir(arg)) :
+        user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
+      else :
+        if arg == '--help' or arg == '-h':
+          flag_show_help = True
+        else:
+          try:
+            user_phil.append(iotbx.phil.parse(arg))
+          except RuntimeError, e :
+            raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
+  if flag_show_help:
+    print txt_help
+    master_phil.show(attributes_level=1)
+    exit()
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
   if not params.data:

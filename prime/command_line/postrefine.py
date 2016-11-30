@@ -78,4 +78,4 @@ class postrefine_handler(object):
 
 if __name__=="__main__":
   prh = postrefine_handler()
-  prh.run(sys.argv[:1])
+  prh.run(sys.argv[1:] if len(sys.argv)>1 else None)

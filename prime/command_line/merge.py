@@ -122,4 +122,4 @@ class merge_handler(object):
 
 if __name__=="__main__":
   mh = merge_handler()
-  mh.run(sys.argv[:1])
+  mh.run(sys.argv[1:] if len(sys.argv)>1 else None)

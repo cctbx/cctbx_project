@@ -249,4 +249,4 @@ class indexing_ambiguity_handler(object):
 
 if __name__=="__main__":
   idah = indexing_ambiguity_handler()
-  idah.run(sys.argv[:1])
+  idah.run(sys.argv[1:] if len(sys.argv)>1 else None)

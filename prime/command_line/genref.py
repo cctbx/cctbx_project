@@ -83,4 +83,4 @@ class genref_handler(object):
 
 if __name__=="__main__":
   grh = genref_handler()
-  grh.run(sys.argv[:1])
+  grh.run(sys.argv[1:] if len(sys.argv)>1 else None)
