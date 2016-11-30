@@ -230,8 +230,8 @@ Residues matching in forward direction:     16  RMSD:   1.45
 Residues matching in reverse direction:     31  RMSD:   1.40
 Residues near but not matching one-to-one:  12  RMSD:   1.87
 
-All residues near target:                   59  RMSD:   1.52
-Residues far from target:                    2  RMSD:   2.04
+All residues near target:                   59  RMSD:   1.52 Seq match (%):  6.8
+Residues far from target:                    2  RMSD:   4.27
 """
 
   found_text="\n".join(f.getvalue().splitlines()[-6:])
