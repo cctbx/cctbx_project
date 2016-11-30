@@ -52,6 +52,38 @@ master_phil = iotbx.phil.parse("""
 """, process_includes=True)
 master_params = master_phil
 
+class rmsd_values:
+  def __init__(self):
+    self.id_list=[]
+    self.rmsd_list=[]
+    self.n_list=[]
+    self.match_percent_list=[]
+
+  def add_match_percent(self,id=None,match_percent=None):
+    ipoint=self.id_list.index(id)
+    self.match_percent_list[ipoint]=match_percent
+
+  def add_rmsd(self,id=None,rmsd=None,n=None):
+    self.id_list.append(id)
+    self.rmsd_list.append(rmsd)
+    self.n_list.append(n)
+    self.match_percent_list.append(0)
+
+  def get_match_percent(self,id=None):
+    for local_id,local_match_percent in zip(
+       self.id_list,self.match_percent_list):
+      if id==local_id:
+        return local_match_percent
+    return 0
+
+  def get_values(self,id=None):
+    for local_id,local_rmsd,local_n in zip(
+       self.id_list,self.rmsd_list,self.n_list):
+      if id==local_id:
+        return local_rmsd,local_n
+    return 0,0
+
+
 def get_params(args,out=sys.stdout):
     command_line = iotbx.phil.process_command_line_with_files(
       args=args,
@@ -136,9 +168,37 @@ def get_best_match(xyz1,xyz2,crystal_symmetry=None,
     from libtbx import group_args
     return group_args(i=i,j=j,distance=distance)
 
+def get_pdb_inp(text=None,file_name=None,source_info="string"):
+  import iotbx.pdb
+  if file_name:
+    text=open(file_name).read()
+    source_info="file %s" %(file_name)
+  elif not text:
+    text=""
+  from cctbx.array_family import flex
+  return iotbx.pdb.input(source_info=source_info,
+       lines=flex.split_lines(text))
+
+def get_seq_from_lines(lines):
+  seq=[]
+  for line in lines:
+    h=get_pdb_inp(line).construct_hierarchy()
+    for res in h.models()[0].chains()[0].residues():
+      seq.append(res.resname)
+  return seq
+
+def get_match_percent(seq1,seq2):
+  assert len(seq1)==len(seq2)
+  assert len(seq1)>0
+  match_n=0
+  for a,b in zip(seq1,seq2):
+    if a==b: match_n+=1
+  match_percent=100.*match_n/len(seq1)
+  return match_n,match_percent
+
 def run(args=None,
-   chain_hierarchy=None,
    target_hierarchy=None,
+   chain_hierarchy=None,
    target_file=None, # model
    chain_file=None, # query
    crystal_symmetry=None,
@@ -171,15 +231,21 @@ def run(args=None,
   # get the hierarchies
   if not chain_hierarchy or not target_hierarchy:
     assert chain_file and target_file
-    from phenix.autosol.get_pdb_inp import get_pdb_inp
     pdb_inp=get_pdb_inp(file_name=chain_file  )
     if not crystal_symmetry:
       crystal_symmetry=pdb_inp.crystal_symmetry_from_cryst1()
     chain_hierarchy=pdb_inp.construct_hierarchy()
     target_pdb_inp=get_pdb_inp(file_name=target_file)
-    if not crystal_symmetry:
+    if not crystal_symmetry or not crystal_symmetry.unit_cell():
       crystal_symmetry=target_pdb_inp.crystal_symmetry_from_cryst1()
     target_hierarchy=target_pdb_inp.construct_hierarchy()
+  if not crystal_symmetry or not crystal_symmetry.unit_cell():
+    crystal_symmetry=get_pdb_inp(
+        text="CRYST1 1000.000 1000.000 1000.000  90.00  90.00  90.00 P 1"
+        ).crystal_symmetry_from_cryst1()
+    if use_crystal_symmetry:
+        raise Sorry(
+        "Please set use_crystal_symmetry=False (no crystal symmetry supplied)")
   if not quiet:
     print >>out,"Looking for chain similarity for "+\
       "%s (%d residues) in the model %s (%d residues)" %(
@@ -187,7 +253,7 @@ def run(args=None,
      target_file,target_hierarchy.overall_counts().n_residues)
     if verbose:
       print >>out,"Chain type is: %s" %(chain_type)
-  if crystal_symmetry is None:
+  if crystal_symmetry is None or crystal_symmetry.unit_cell() is None:
     raise Sorry("Need crystal symmetry in at least one input file")
   # get the CA residues
   if chain_type in ["RNA","DNA"]:
@@ -235,7 +301,7 @@ def run(args=None,
         best_j=info.j
     if best_dd > max_dist:
       far_away_match_list.append(i)
-      far_away_match_rmsd_list.append(best_dd)
+      far_away_match_rmsd_list.append(best_dd**2)
       if (not quiet) and verbose:
         print >>out,"%s" %(chain_ca_lines[i])
       continue
@@ -252,6 +318,8 @@ def run(args=None,
   reverse_match_rmsd_list=flex.double()
   unaligned_match_list=[]
   unaligned_match_rmsd_list=flex.double()
+  close_match_rmsd_list=flex.double()
+  close_match_list=[]
   last_i=None
   last_j=None
   for [i,j,dd],[next_i,next_j,next_dd] in zip(
@@ -263,30 +331,40 @@ def run(args=None,
         if next_j==j+1:
           n_forward+=1
           forward_match_list.append([i,j])
+          close_match_list.append([i,j])
           forward_match_rmsd_list.append(dd**2)
+          close_match_rmsd_list.append(dd**2)
           found=True
         elif next_j==j-1:
           n_reverse+=1
           reverse_match_list.append([i,j])
+          close_match_list.append([i,j])
           reverse_match_rmsd_list.append(dd**2)
+          close_match_rmsd_list.append(dd**2)
           found=True
     else: # not the first time
       if i==last_i+1: # continuing a segment
         if j==last_j+1:
           n_forward+=1
           forward_match_list.append([i,j])
+          close_match_list.append([i,j])
           forward_match_rmsd_list.append(dd**2)
+          close_match_rmsd_list.append(dd**2)
           found=True
         elif j==last_j-1:
           n_reverse+=1
           reverse_match_list.append([i,j])
+          close_match_list.append([i,j])
           reverse_match_rmsd_list.append(dd**2)
+          close_match_rmsd_list.append(dd**2)
           found=True
     if not found:
       last_i=None
       last_j=None
       unaligned_match_list.append([i,j])
+      close_match_list.append([i,j])
       unaligned_match_rmsd_list.append(dd**2)
+      close_match_rmsd_list.append(dd**2)
     else:
       last_i=i
       last_j=j
@@ -301,53 +379,106 @@ def run(args=None,
     print >>out,"%s %d  %d  N: %d" %(
      direction,n_forward,n_reverse,chain_xyz_fract.size())
 
+  rv=rmsd_values()
+  if forward_match_rmsd_list.size():
+      id='forward'
+      rmsd=forward_match_rmsd_list.min_max_mean().mean**0.5
+      n=forward_match_rmsd_list.size() 
+      rv.add_rmsd(id=id,rmsd=rmsd,n=n)
+  if reverse_match_rmsd_list.size():
+      id='reverse'
+      rmsd=reverse_match_rmsd_list.min_max_mean().mean**0.5
+      n=reverse_match_rmsd_list.size()
+      rv.add_rmsd(id=id,rmsd=rmsd,n=n)
+  if unaligned_match_rmsd_list.size():
+      id='unaligned'
+      rmsd=unaligned_match_rmsd_list.min_max_mean().mean**0.5
+      n=unaligned_match_rmsd_list.size()
+      rv.add_rmsd(id=id,rmsd=rmsd,n=n)
+  if close_match_rmsd_list.size():
+      id='close'
+      rmsd=close_match_rmsd_list.min_max_mean().mean**0.5
+      n=close_match_rmsd_list.size()
+      rv.add_rmsd(id=id,rmsd=rmsd,n=n)
+
+  if far_away_match_rmsd_list.size():
+      id='far_away'
+      rmsd=far_away_match_rmsd_list.min_max_mean().mean**0.5
+      n=far_away_match_rmsd_list.size()
+      rv.add_rmsd(id=id,rmsd=rmsd,n=n)
+
   if not quiet:
     if verbose:
       print >>out,"Total CA: %d  Too far to match: %d " %(
         chain_xyz_fract.size(),len(far_away_match_list))
 
-    if forward_match_rmsd_list.size():
+    rmsd,n=rv.get_values(id='forward')
+    if n:
       print >>out,\
           "\nResidues matching in forward direction:   %4d  RMSD: %6.2f" %(
-         forward_match_rmsd_list.size(),
-         forward_match_rmsd_list.min_max_mean().mean**0.5)
+         n,rmsd)
       if verbose:
         for i,j in forward_match_list:
           print >>out,"ID:%d:%d  RESIDUES:  \n%s\n%s" %( i,j, chain_ca_lines[i],
            target_xyz_lines[j])
 
-    if reverse_match_rmsd_list.size():
+    rmsd,n=rv.get_values(id='reverse')
+    if n:
       print >>out,\
          "Residues matching in reverse direction:   %4d  RMSD: %6.2f" %(
-         reverse_match_rmsd_list.size(),
-         reverse_match_rmsd_list.min_max_mean().mean**0.5)
+         n,rmsd)
       if verbose:
         for i,j in reverse_match_list:
           print >>out,"ID:%d:%d  RESIDUES:  \n%s\n%s" %(
            i,j, chain_ca_lines[i],
            target_xyz_lines[j])
 
-    if unaligned_match_rmsd_list.size():
+    rmsd,n=rv.get_values(id='unaligned')
+    if n:
       print >>out,\
         "Residues near but not matching one-to-one:%4d  RMSD: %6.2f" %(
-         unaligned_match_rmsd_list.size(),
-         unaligned_match_rmsd_list.min_max_mean().mean**0.5)
+         n,rmsd)
       if verbose:
         for i,j in unaligned_match_list:
           print >>out,"ID:%d:%d  RESIDUES:  \n%s\n%s" %(i,j, chain_ca_lines[i],
             target_xyz_lines[j])
 
-    if far_away_match_rmsd_list.size():
+    rmsd,n=rv.get_values(id='close')
+    if n:
+      lines_chain_ca=[]
+      lines_target_xyz=[]
+      for i,j in close_match_list:
+        lines_chain_ca.append(chain_ca_lines[i])
+        lines_target_xyz.append(target_xyz_lines[j])
+      seq_chain_ca=get_seq_from_lines(lines_chain_ca)
+      seq_target_xyz=get_seq_from_lines(lines_target_xyz)
+      if verbose:
+         print "SEQ1:",seq_chain_ca,len(lines_chain_ca)
+         print "SEQ2:",seq_target_xyz,len(lines_target_xyz)
+
+      match_n,match_percent=get_match_percent(seq_chain_ca,seq_target_xyz)
+      rv.add_match_percent(id='close',match_percent=match_percent)
+      print >>out,\
+        "\nAll residues near target:                 "+\
+         "%4d  RMSD: %6.2f Seq match (%%):%5.1f" %(n,rmsd,match_percent)
+      if verbose:
+        for i,j in close_match_list:
+          print >>out,"ID:%d:%d  RESIDUES:  \n%s\n%s" %(i,j, chain_ca_lines[i],
+            target_xyz_lines[j])
+
+    rmsd,n=rv.get_values(id='far_away')
+    if n:
       print >>out,\
         "Residues far from target:                 %4d  RMSD: %6.2f" %(
-         far_away_match_rmsd_list.size(),
-         far_away_match_rmsd_list.min_max_mean().mean**0.5)
+         n,rmsd)
       if verbose:
         for i in far_away_match_list:
           print >>out,"ID:%d  RESIDUES:  \n%s" %(i,chain_ca_lines[i])
 
-
-  return n_forward,n_reverse,len(pair_list)
+  rv.n_forward=n_forward
+  rv.n_reverse=n_reverse
+  rv.n=len(pair_list)
+  return rv
 
 if __name__=="__main__":
   args=sys.argv[1:]
