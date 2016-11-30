@@ -13,7 +13,6 @@ import sys, os, math
 from scitbx.matrix import sqr
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.mlab as mlab
 from cctbx.uctbx import unit_cell
 from prime.postrefine.mod_leastsqr import good_unit_cell
 from cctbx import statistics
@@ -168,15 +167,12 @@ if (__name__ == "__main__"):
     pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
     flag_hklisoin_found, miller_array_iso = get_miller_array_from_mtz(hklrefin)
     observations = observations_pickle["observations"][0]
-    swap_dict = {'test_xx1.pickle':0, \
-      'tes_xx2.pickle':0}
+    swap_dict = {'test0.pickle':0, \
+      'test1.pickle':0}
     if pickle_filename_only in swap_dict:
       from cctbx import sgtbx
-      cb_op = sgtbx.change_of_basis_op('a,c,b')
+      cb_op = sgtbx.change_of_basis_op('-h,l,k')
       observations = observations.change_basis(cb_op)
-    #from cctbx import sgtbx
-    #cb_op = sgtbx.change_of_basis_op('c,b,a')
-    #observations = observations.change_basis(cb_op)
     #apply constrain using the crystal system
     #check systematic absent
     if target_unit_cell is not None:
@@ -396,9 +392,9 @@ if (__name__ == "__main__"):
       sys_abs_all_filtered.extend(sys_abs_lst)
     else:
       txt_out_report_beam_filter += txt_out_report_tmp
-    if ~flag_good_cc:
+    if flag_good_cc==False:
       txt_out_report_cc_filter += txt_out_report_tmp
-    if ~flag_good_unit_cell:
+    if flag_good_unit_cell==False:
       txt_out_report_uc_filter += txt_out_report_tmp
     #output only good integration results
     #print flag_good_beam, flag_good_cc, flag_good_unit_cell
@@ -462,10 +458,6 @@ if (__name__ == "__main__"):
       sigma = np.std(x)
       num_bins = 25
       n, bins, patches = plt.hist(x, num_bins, normed=False, facecolor='blue', alpha=0.5)
-      #y = mlab.normpdf(bins, mu, sigma)
-      #plt.plot(bins, y, 'r--')
-      #plt.ylim([0,70])
-      #plt.xlim([-150,500])
       plt.ylabel('Frequencies')
       plt.grid()
       plt.title('Systematic absences with |I/sigI| > 2.0\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
@@ -477,10 +469,6 @@ if (__name__ == "__main__"):
       sigma = np.std(x)
       num_bins = 25
       n, bins, patches = plt.hist(x, num_bins, normed=False, facecolor='blue', alpha=0.5)
-      #y = mlab.normpdf(bins, mu, sigma)
-      #plt.plot(bins, y, 'r--')
-      #plt.ylim([0,70])
-      #plt.xlim([-150,500])
       plt.ylabel('Frequencies')
       plt.grid()
       plt.title('Systematic absences with |I/sigI| > 2.0 (After BeamXY filter)\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
@@ -506,7 +494,6 @@ if (__name__ == "__main__"):
         cn_i += 1
     plt.show()
   #print twin operators
-  """
   idah = indamb_handler()
   for pickle_filename in frame_files:
     pickle_filename_arr = pickle_filename.split('/')
@@ -516,4 +503,3 @@ if (__name__ == "__main__"):
     operators = idah.generate_twin_operators(observations, flag_all=True)
     ops_hkl = [op.operator.r().as_hkl() for op in operators]
     print pickle_filename_only, ops_hkl
-  """
