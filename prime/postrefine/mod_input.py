@@ -1,17 +1,7 @@
 from __future__ import division
-
-"""read PRIME input"""
-#Define exceptions
-class ReadInputError(Exception): pass
-class InvalidData(ReadInputError): pass
-class InvalidCrystalSystem(ReadInputError): pass
-class InvalidPixelSize(ReadInputError): pass
-class InvalidRunNo(ReadInputError): pass
-class InvalidNumberOfResidues(ReadInputError): pass
-
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
-import sys, os, shutil, glob
+import sys, os
 
 master_phil = iotbx.phil.parse("""
 data = None
@@ -208,31 +198,23 @@ n_residues = None
 indexing_ambiguity
   .help = "Parameters used in resolving indexing ambiguity"
 {
-  mode = Auto
-    .type = str
-    .help = Set to Forced to solve pseudo-twinning.
+  flag_on = False
+    .type = bool
+    .help = Set to True to allow the program to read in polarity info. \
+      from the pickle file specified in index_basis_in.
   index_basis_in = None
     .type = path
-    .help = Pickle file with basis solution or an mtz file of an isomorphous structure.
-  assigned_basis = None
-    .multiple = True
+    .help = Pickle file storing polarity info. (output from Brehm & \
+      Diederichs clustering algorithm).
+  assigned_basis = h,k,l
     .type = str
-    .help = Specify list of basis formats for pseudo-twinning.
+    .help = In case index_basis_in given is an mtz file, you can specify a basis that each integration can be converted to.
   d_min = 3.0
     .type = float
     .help = In case index_basis_in given is an mtz file, you can pecify minimum resolution used to calculate correlation with the given mtz file.
   d_max = 10.0
     .type = float
     .help = In case index_basis_in given is an mtz file, you can pecify maximum resolution used to calculate correlation with the given mtz file.
-  sigma_min = 1.5
-    .type = float
-    .help = Minimum I/sigI cutoff.
-  n_sample_frames = 300
-  .type = int
-  .help = No. of frames used in scoring r_matrix. Images (n_selected_frames) with the highest score will be used in the Brehm & Diederichs algorithm.
-  n_selected_frames = 100
-  .type = int
-  .help = No. of frames used in Auto solution mode. The rest of the frame data will be determined against this merged dataset.
 }
 hklisoin = None
   .type = path
@@ -314,22 +296,6 @@ percent_cone_fraction = 5.0
 isoform_name = None
   .type = str
   .help = Use this isoform.
-timeout_seconds = 300
-  .type = int
-  .help = Time limits used for multiprocessing.
-queue
-  .help = "Parameters used for submitting jobs to queuing system."
-{
-  mode = None
-    .type = str
-    .help = Queing system type. Only bsub is available now.
-  qname = psanaq
-    .type = str
-    .help = For system with queue name, specify your queue name here. For LCLS users, primary queue is the default value while high priority queue at NEH and FEH are psnehhiprioq and psfehhiprioq.
-  n_nodes = 10
-    .type = int
-    .help = No. of nodes used.
-}
 """)
 
 txt_help = """**************************************************************************************************
@@ -353,74 +319,59 @@ For feedback, please contact monarin@stanford.edu.
 List of available parameters:
 """
 
-def process_input(argv=None, flag_check_exist=True):
-  flag_show_help = False
-  user_phil = []
+def process_input(argv=None):
   if argv == None:
-    flag_show_help = True
-  else:
-    for arg in argv:
-      if os.path.isfile(arg):
-        user_phil.append(iotbx.phil.parse(open(arg).read()))
-      elif (os.path.isdir(arg)) :
-        user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
-      else :
-        if arg == '--help' or arg == '-h':
-          flag_show_help = True
-        else:
-          try:
-            user_phil.append(iotbx.phil.parse(arg))
-          except RuntimeError, e :
-            raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
-  if flag_show_help:
-    print txt_help
-    master_phil.show(attributes_level=1)
-    exit()
+    argv = sys.argv[1:]
+
+  user_phil = []
+  for arg in sys.argv[1:]:
+    if os.path.isfile(arg):
+
+      user_phil.append(iotbx.phil.parse(open(arg).read()))
+    elif (os.path.isdir(arg)) :
+      user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
+    else :
+      print arg
+      if arg == '--help' or arg == '-h':
+        print txt_help
+        master_phil.show(attributes_level=1)
+        exit()
+      try :
+        user_phil.append(iotbx.phil.parse(arg))
+      except RuntimeError, e :
+        raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
+
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
-  if not params.data:
-    raise InvalidData, "Error: Data is required. Please specify path to your data folder (data=/path/to/integration/results)."
+
+  if (len(params.data) == 0):
+    master_phil.show()
+    raise Usage("Use the above list of parameters to generate your input file (.phil). For more information, run prime.postrefine -h.")
 
   #check target_crystal_system
   crystal_system_dict = {'Triclinic': 0, 'Monoclinic': 0, 'Orthorhombic': 0, 'Tetragonal': 0, 'Trigonal': 0, 'Hexagonal': 0, 'Cubic':0}
   if params.target_crystal_system is not None:
     if params.target_crystal_system not in crystal_system_dict:
-      raise InvalidCrystalSystem, "Error: Invalid input target_crystal_system. Please choose following options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic."
+      raise Sorry("Oops, incorrect target_crystal_system (available options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic).")
 
   #check n_residues
-  if not params.n_residues:
-    raise InvalidNumberOfResidues, "Error: Number of residues is required. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx)."
+  if params.n_residues is None:
+    raise Sorry("Oops, we have a new required parameter n_residues. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx).")
 
-  #check pixel_size
-  if not params.pixel_size_mm:
-    #look in the new integration pickle format (2016-08-05)
-    try:
-      frame_files = read_pickles(params.data)
-      frame_0 = frame_files[0]
-      import cPickle as pickle
-      int_pickle = pickle.load(open(frame_0,"rb"))
-      params.pixel_size_mm = int_pickle['pixel_size']
-      print 'Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)'%(params.pixel_size_mm)
-    except Exception:
-      raise InvalidPixelSize, "Error: Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd, set pixel_size_mm=0.079346)."
+  #check indexing ambiguity parameters
+  if params.indexing_ambiguity.flag_on and \
+     params.indexing_ambiguity.index_basis_in is None and \
+     params.indexing_ambiguity.assigned_basis == 'h,k,l':
+     raise Sorry("Oops, you asked to resolve indexing ambiguity but not given any solution file nor assigned basis. \nPlease give the solution file (eg. indexing_ambiguity.index_basis_in=any.pickle/or.mtz) OR \nassigned basis (eg. indexing_ambiguity.assigned_basis=k,h,-l) OR \nturn indexing ambiguity off (eg. indexing_ambiguity.flag_on=False).")
+  if str(params.indexing_ambiguity.index_basis_in).endswith('mtz') and params.indexing_ambiguity.assigned_basis == 'h,k,l':
+    raise Sorry("Oops, you asked to resolve indexing ambiguity and gave the solution file as an mtz file. \nPlease give the assigned basis (eg. indexing_ambiguity.assigned_basis=k,h,-l) to proceed.")
 
   #generate run_no folder
-  if flag_check_exist:
-    if os.path.exists(params.run_no):
-      print "Warning: run number %s already exists."%(params.run_no)
-      run_overwrite = raw_input('Overwrite?: N/Y (Enter for default)')
-      if run_overwrite == 'Y':
-        shutil.rmtree(params.run_no)
-      else:
-        raise InvalidRunNo, "Error: Run number exists. Please specifiy different run no."
+  if os.path.exists(params.run_no):
+    raise Sorry("Oops, the run number %s already exists."%params.run_no)
 
-    #make folders
-    os.makedirs(params.run_no+'/pickles')
-    os.makedirs(params.run_no+'/inputs')
-    os.makedirs(params.run_no+'/mtz')
-    os.makedirs(params.run_no+'/hist')
-    os.makedirs(params.run_no+'/qout')
-    os.makedirs(params.run_no+'/index_ambiguity')
+  os.makedirs(params.run_no)
+
   #capture input read out by phil
   from cStringIO import StringIO
   class Capturing(list):
@@ -438,27 +389,5 @@ def process_input(argv=None, flag_check_exist=True):
   txt_out = 'prime.postrefine input:\n'
   for one_output in output:
     txt_out += one_output + '\n'
-  return params, txt_out
 
-def read_pickles(data):
-  frame_files = []
-  for p in data:
-    if os.path.isdir(p) == False:
-      if os.path.isfile(p):
-        #check if list-of-pickle text file is given
-        pickle_list_file = open(p,'r')
-        pickle_list = pickle_list_file.read().split("\n")
-      else:
-        # p is a glob
-        pickle_list = glob.glob(p)
-      for pickle_filename in pickle_list:
-        if os.path.isfile(pickle_filename):
-          frame_files.append(pickle_filename)
-    else:
-      for pickle_filename in os.listdir(p):
-        if pickle_filename.endswith('.pickle'):
-          frame_files.append(p+'/'+pickle_filename)
-  #check if pickle_dir is given in input file instead of from cmd arguments.
-  if not frame_files:
-    raise InvalidData, "Error: no integration results found in the specified data parameter."
-  return frame_files
+  return params, txt_out
