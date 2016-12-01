@@ -7,8 +7,10 @@ from __future__ import division
 
 
 import iotbx.phil
-import sys
-from libtbx.utils import Sorry
+import sys,os
+from libtbx.utils import Sorry,null_out
+from scitbx.array_family import flex
+from copy import deepcopy
 
 master_phil = iotbx.phil.parse("""
 
@@ -16,9 +18,19 @@ master_phil = iotbx.phil.parse("""
     pdb_in = None
       .type = path
       .multiple = True
-      .help = Input PDB file
+      .help = Input PDB file (enter once for target and once for query unless \
+              query_dir is set)
       .short_caption = Input PDB file
 
+    unique_only = True
+      .type = bool
+      .help = Use only unique chains in query
+      .short_caption = Unique only
+
+    query_dir = None
+      .type = path
+      .help = directory containing query PDB files (any number)
+      .short_caption = Query directory
   }
   crystal_info {
     chain_type = *PROTEIN RNA DNA
@@ -196,6 +208,81 @@ def get_match_percent(seq1,seq2):
   match_percent=100.*match_n/len(seq1)
   return match_n,match_percent
 
+def extract_unique_part_of_hierarchy(ph,out=sys.stdout):
+  new_hierarchy=iotbx.pdb.input(
+    source_info="Model",lines=flex.split_lines("")).construct_hierarchy()
+  mm=iotbx.pdb.hierarchy.model()
+  new_hierarchy.append_model(mm)
+
+  unique_sequences=[]
+  for model in ph.models()[:1]:
+    for chain in model.chains():
+      try:
+        seq=chain.as_padded_sequence()  # has XXX for missing residues
+      except Exception, e:
+        seq="XXX"
+      if not seq in unique_sequences:
+        unique_sequences.append(seq)
+        mm.append_chain(chain.detached_copy())
+        print >>out,"Adding chain %s" %(chain.id)
+      else:
+        print >>out,"Skipping chain %s" %(chain.id)
+  return new_hierarchy
+
+def run_all(params=None,out=sys.stdout):
+  if params.control.verbose:
+    local_out=out
+  else:
+    local_out=null_out()
+  rv_list=[]
+  file_list=[]
+  for query_file in os.listdir(params.input_files.query_dir):
+    file_name=os.path.join(params.input_files.query_dir,query_file) 
+    if not os.path.isfile(file_name): continue
+    local_params=deepcopy(params)
+    local_params.input_files.query_dir=None
+    local_params.input_files.pdb_in.append(file_name)
+    try:
+      rv=run(params=local_params,out=local_out)
+    except Exception,e:
+      if str(e).find("CifParserError"):
+        print >>out,"NOTE: skipping %s as it is not a valid model file" %(
+           file_name)
+        continue # it was not a valid PDB file...just skip it
+      else:
+        raise Sorry(str(e))
+    rv_list.append(rv)
+    file_list.append(file_name)
+
+  print >>out,"\nCLOSE is within 3 A. FAR is greater than 3 A."
+  print >>out,"\nCA SCORE is number of close CA / rmsd of these CA."
+  print >>out,"\nSEQ SCORE is number of close CA matching target sequence.\n"
+
+  print >>out,"\n"
+  print >>out,"               ----ALL RESIDUES----     CLOSE RESIDUES ONLY"
+  print >>out,\
+              "     MODEL     --CLOSE-    ---FAR--    FORWARD REVERSE MIXED"+\
+              "  CA                   SEQ"
+  print >>out,"               RMSD   N    RMSD   N       N       N      N  "+\
+              " SCORE  SEQ MATCH(%)  SCORE"+"\n" 
+
+  results_dict={}
+  score_list=[]
+  for rv,full_f in zip(rv_list,file_list):
+    results_dict[full_f]=rv
+    (rmsd,n)=rv.get_values('close')
+    score=n/max(0.1,rmsd)
+    score_list.append([score,full_f])
+  score_list.sort()
+  score_list.reverse()
+  for score,full_f in score_list:
+    rv=results_dict[full_f]
+    seq_score=0.01*rv.get_match_percent('close')*rv.get_values('close')[1]
+    print >>out,"%14s %4.2f %4d   %4.1f %4d   %4d    %4d    %4d %6.1f   %5.1f      %6.0f" %(
+       (os.path.split(full_f)[-1],)+rv.get_values('close')+rv.get_values('far_away')+
+       (rv.get_values('forward')[1],)+(rv.get_values('reverse')[1],)+(rv.get_values('unaligned')[1],)+(score,)+(rv.get_match_percent('close'),)+(seq_score,))
+
+
 def run(args=None,
    target_hierarchy=None,
    chain_hierarchy=None,
@@ -207,10 +294,22 @@ def run(args=None,
    verbose=None,
    use_crystal_symmetry=None,
    chain_type=None,
+   params=None,
    out=sys.stdout):
   if not args: args=[]
-  params=get_params(args,out=out)
-
+  if not params:
+    params=get_params(args,out=out)
+  if params.input_files.pdb_in:
+    print >>out,"Using %s as target" %(params.input_files.pdb_in[0])
+  elif chain_file or chain_hierarchy:
+    pass # it is fine
+  else:
+    raise Sorry("Need target model (pdb_in)")
+  if params.input_files.query_dir and \
+      os.path.isdir(params.input_files.query_dir):
+    print >>out,"\nUsing all files in %s as queries\n" %(
+       params.input_files.query_dir)
+    return run_all(params=params,out=out)
 
   if verbose is None:
     verbose=params.control.verbose
@@ -223,11 +322,21 @@ def run(args=None,
   if max_dist is None:
     max_dist=params.comparison.max_dist
 
+  if verbose:
+    local_out=out
+  else:
+    local_out=null_out()
+
   if not target_file and len(params.input_files.pdb_in)>0:
      target_file=params.input_files.pdb_in[0]  # model
   if not chain_file and len(params.input_files.pdb_in)>1:
      chain_file=params.input_files.pdb_in[1] # query
 
+  # set dummy crystal_symmetry if necessary
+  if not params.crystal_info.use_crystal_symmetry:
+    crystal_symmetry=get_pdb_inp(
+        text="CRYST1 1000.000 1000.000 1000.000  90.00  90.00  90.00 P 1"
+        ).crystal_symmetry_from_cryst1()
   # get the hierarchies
   if not chain_hierarchy or not target_hierarchy:
     assert chain_file and target_file
@@ -235,6 +344,10 @@ def run(args=None,
     if not crystal_symmetry:
       crystal_symmetry=pdb_inp.crystal_symmetry_from_cryst1()
     chain_hierarchy=pdb_inp.construct_hierarchy()
+    if params.input_files.unique_only:
+      print >>out,"\nUsing only unique part of query\n"
+      chain_hierarchy=extract_unique_part_of_hierarchy(
+        chain_hierarchy,out=local_out)
     target_pdb_inp=get_pdb_inp(file_name=target_file)
     if not crystal_symmetry or not crystal_symmetry.unit_cell():
       crystal_symmetry=target_pdb_inp.crystal_symmetry_from_cryst1()
