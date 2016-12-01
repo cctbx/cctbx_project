@@ -20,16 +20,21 @@ from mmtbx_building_loop_closure_ext import ccd_cpp
 
 class _(boost.python.injector, ccd_cpp):
 
-  def run(self):
-    # self.states.add(sites_cart=self.moving_h.atoms().extract_xyz())
+  def run(self, direction_forward=True, save_states=False):
+    if save_states:
+      self.states = mmtbx.utils.states(pdb_hierarchy=self.moving_h)
+      self.states.add(sites_cart=self.moving_h.atoms().extract_xyz())
 
     phi_psi_atoms = utils.get_phi_psi_atoms(self.moving_h)
+    if not direction_forward:
+      phi_psi_atoms.reverse()
 
     # here we can start a ccd cycle
     self.n_iter = 0
     rmsd_good = 1000
     previous_rmsd = 1000
     self.early_exit = False
+    # self.moving_h.write_pdb_file(file_name="start_ccd.pdb")
     while (rmsd_good > self.needed_rmsd and
         self.n_iter <= self.max_number_of_iterations and not self.early_exit):
       # print_rama_stats(phi_psi_atoms, r)
@@ -45,13 +50,22 @@ class _(boost.python.injector, ccd_cpp):
         for i, atoms in enumerate(phi_psi_pair):
           # current phi-psi angles:
           # find the optimal angle
-          ccd_angle = self._find_angle(atoms[1].xyz, atoms[2].xyz)
+          if direction_forward:
+            ccd_angle = self._find_angle(atoms[1].xyz, atoms[2].xyz)
+          else:
+            ccd_angle = self._find_angle(atoms[2].xyz, atoms[1].xyz)
           # print "phi_psi_angles", phi_psi_angles
           # rama_score = r.evaluate("general", phi_psi_angles)
           # print "rama_score", rama_score
+
+
           angle_modified = self._modify_angle(ccd_angle)
+          # angle_modified = ccd_angle
+          # print "ccd_angle", ccd_angle, angle_modified
+          # angle_modified = - angle_modified
 
           phi_psi_angles = utils.get_pair_angles(phi_psi_pair)
+          # print "phi_psi_angles", phi_psi_angles
           before_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key, round_coords=True)
           if (ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_OUTLIER):
             # or ramalyze.evalScore(rama_key, before_rotation_rama_score) == RAMALYZE_ALLOWED):
@@ -72,7 +86,7 @@ class _(boost.python.injector, ccd_cpp):
             # outcome and proceed to the next phi-psi pair
             now_psi_angle0 = utils.get_dihedral_angle(phi_psi_pair[1])
             utils.rotate_atoms_around_bond(self.moving_h, atoms[1], atoms[2],
-                angle=-phi_psi_angles[0]+target_phi_psi[0])
+                angle=-phi_psi_angles[0]+target_phi_psi[0],direction_forward=direction_forward)
             # now psi angle
             now_psi_angle = utils.get_dihedral_angle(phi_psi_pair[1])
 
@@ -85,16 +99,17 @@ class _(boost.python.injector, ccd_cpp):
             # approx_equal(now_psi_angle0, now_psi_angle)
             # assert now_psi_angle0 == now_psi_angle
             utils.rotate_atoms_around_bond(self.moving_h, atoms[2], atoms[3],
-                angle=-now_psi_angle+target_phi_psi[1])
+                angle=-now_psi_angle+target_phi_psi[1], direction_forward=direction_forward)
 
             # approx_equal(utils.get_dihedral_angle(phi_psi_pair[0]), target_phi_psi[0])
             # approx_equal(utils.get_dihedral_angle(phi_psi_pair[1]), target_phi_psi[1])
             resulting_rama_ev = utils.rama_evaluate(phi_psi_pair, self.r, rama_key)
+            # print "evaluation:", resulting_rama_ev, RAMALYZE_FAVORED
             assert resulting_rama_ev == RAMALYZE_FAVORED, resulting_rama_ev
             break # we are done with this phi_psi_pair
           # rotate the whole thing around
           utils.rotate_atoms_around_bond(self.moving_h, atoms[1], atoms[2],
-              angle=angle_modified)
+              angle=angle_modified, direction_forward=direction_forward)
           after_rotation_rama_score = utils.get_rama_score(phi_psi_pair, self.r, rama_key, round_coords=True)
           # print "before/after rotation rama:", before_rotation_rama_score, after_rotation_rama_score
           # if before_rotation_rama_score > after_rotation_rama_score:
@@ -103,7 +118,7 @@ class _(boost.python.injector, ccd_cpp):
             # print "  rotate back"
             if True: # always
               utils.rotate_atoms_around_bond(self.moving_h, atoms[1], atoms[2],
-                  angle=-angle_modified)
+                  angle=-angle_modified,direction_forward=direction_forward)
           s = utils.get_rama_score(phi_psi_pair, self.r, rama_key,round_coords=True)
           assert utils.rama_score_evaluate(rama_key, s) != RAMALYZE_OUTLIER, s
 
@@ -118,14 +133,17 @@ class _(boost.python.injector, ccd_cpp):
           self.fixed_ref_atoms,
           [self.moving_h.atoms()[x] for x in self.moving_ref_atoms_iseqs])
       self.resulting_rmsd = rmsd_good
-      # print "n_iter, rmsd:", n_iter, rmsd_good,
+      # print "n_iter, rmsd:", self.n_iter, rmsd_good
       # print get_main_chain_rmsd(moving_h, original_h)
 
-      # self.states.add(sites_cart=self.moving_h.atoms().extract_xyz())
+      if save_states:
+        self.states.add(sites_cart=self.moving_h.atoms().extract_xyz())
       # if n_iter % 100 == 0:
       #   moving_h.write_pdb_file(file_name="int_%d.pdb" % n_iter)
       self.n_iter += 1
-      self.early_exit = previous_rmsd - rmsd_good < self.convergence_diff
+      self.early_exit = abs(previous_rmsd - rmsd_good) < self.convergence_diff
+      # if self.early_exit:
+      #   print "  Early exit:", self.early_exit, previous_rmsd - rmsd_good
       previous_rmsd = rmsd_good
     # print "number of iterations:", n_iter
     # print_rama_stats(phi_psi_atoms, r)

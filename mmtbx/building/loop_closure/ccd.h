@@ -100,24 +100,24 @@ class ccd_cpp {
     int max_number_of_iterations;
 
 
-    ccd_cpp(
-        scitbx::af::tiny<scitbx::vec3<double>, 3 > fixed_ref_atoms_,
-        iotbx::pdb::hierarchy::root & moving_h_,
-        scitbx::af::tiny<size_t, 3> moving_ref_atoms_iseqs_,
-        const int& max_number_of_iterations_=500,
-        const double& needed_rmsd_=0.1)
-    :
-      fixed_ref_atoms(fixed_ref_atoms_),
-      moving_h(moving_h_),
-      moving_ref_atoms_iseqs(moving_ref_atoms_iseqs_),
-      max_number_of_iterations(max_number_of_iterations_),
-      needed_rmsd(needed_rmsd_)
-    {
-      r = mmtbx::validation::ramachandran::rama_eval();
-      moving_h_atoms = moving_h.atoms();
-      convergence_diff = 1e-5;
+  ccd_cpp(
+      scitbx::af::tiny<scitbx::vec3<double>, 3 > fixed_ref_atoms_,
+      iotbx::pdb::hierarchy::root & moving_h_,
+      scitbx::af::tiny<size_t, 3> moving_ref_atoms_iseqs_,
+      const int& max_number_of_iterations_=500,
+      const double& needed_rmsd_=0.1)
+  :
+    fixed_ref_atoms(fixed_ref_atoms_),
+    moving_h(moving_h_),
+    moving_ref_atoms_iseqs(moving_ref_atoms_iseqs_),
+    max_number_of_iterations(max_number_of_iterations_),
+    needed_rmsd(needed_rmsd_)
+  {
+    r = mmtbx::validation::ramachandran::rama_eval();
+    moving_h_atoms = moving_h.atoms();
+    convergence_diff = 1e-5;
 
-    };
+  };
 
 
 };

@@ -142,13 +142,16 @@ def get_rmsd_xyz_fixed(fixed_points, moving_points):
 
 
 def rotate_atoms_around_bond(
-    moving_h, atom_axis_point_1, atom_axis_point_2, angle, degrees=True):
+    moving_h, atom_axis_point_1, atom_axis_point_2, angle, degrees=True,
+    direction_forward=True):
   # changes moving_h
   # print "in rotation, iseqs:", atom_axis_point_1.i_seq, atom_axis_point_2.i_seq
   #
   # find xyz based on i_seqs
   rotate_xyz1 = None
   rotate_xyz2 = None
+  if not direction_forward:
+    angle = -angle
   atoms = moving_h.atoms()
   for a in atoms:
     if a.i_seq == atom_axis_point_1.i_seq:
@@ -157,7 +160,8 @@ def rotate_atoms_around_bond(
       rotate_xyz2 = a.xyz
   # rotate stuff
   for a in atoms:
-    if a.i_seq > atom_axis_point_1.i_seq:
+    if ((direction_forward and a.i_seq > atom_axis_point_1.i_seq) or
+        (not direction_forward and a.i_seq < atom_axis_point_1.i_seq)):
       new_xyz = rotate_point_around_axis(
           axis_point_1=rotate_xyz1,
           axis_point_2=rotate_xyz2,

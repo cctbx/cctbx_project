@@ -32,7 +32,7 @@ loop_idealization
     .type = str
   minimize_whole = True
     .type = bool
-  force_rama_fixes = True
+  force_rama_fixes = False
     .type = bool
     .help = If true, the procedure will pick and apply the best variant even \
       if all of them are above thresholds to be picked straight away. \
@@ -40,7 +40,8 @@ loop_idealization
       a ramachandran outlier intact.
   save_states = False
     .type = bool
-    .help = Save states of CCD. Generates a states file for every model.
+    .help = Save states of CCD. Generates a states file for every model. \
+      Warning! Significantly slower!
   number_of_ccd_trials = 3
     .type = int
     .help = How many times we are trying to fix outliers in the same chain
@@ -263,9 +264,10 @@ class loop_idealization():
       anchor_rmsd, mc_rmsd, ccd_radius, change_all_angles, change_radius,
       contains_ss_element):
     adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0}
+    # adaptive_mc_rmsd = {1:2.5, 2:3.0, 3:3.5}
     ss_multiplier = 1
-    if contains_ss_element:
-      ss_multiplier = 0.2
+    # if contains_ss_element:
+    #   ss_multiplier = 0.2
     if (mc_rmsd < adaptive_mc_rmsd[ccd_radius]*ss_multiplier and anchor_rmsd < 0.3):
       return True
     elif ccd_radius == 3 and change_all_angles and change_radius == 2:
@@ -281,41 +283,88 @@ class loop_idealization():
     original_pdb_h.reset_atom_i_seqs()
     chain_id = original_pdb_h.only_model().only_chain().id
     all_results = []
+    # only forward
+    # variants_searches = [
+    #     #ccd_radius, change_all, change_radius, direction_forward
+    #     ((1, False, 0, True ),1),
+    #     # ((1, False, 0, False),1),
+    #     ((2, False, 0, True ),1),
+    #     # ((2, False, 0, False),1),
+    #     ((3, False, 0, True ),2),
+    #     # ((3, False, 0, False),2),
+    #     ((2, True,  1, True ),1),
+    #     # ((2, True,  1, False),1),
+    #     ((3, True,  1, True ),2),
+    #     # ((3, True,  1, False),2),
+    #     ((3, True,  2, True ),3),
+    #     # ((3, True,  2, False),3),
+    # ]
+    # only backward
+    # variants_searches = [
+    #     #ccd_radius, change_all, change_radius, direction_forward
+    #     # ((1, False, 0, True ),1),
+    #     ((1, False, 0, False),1),
+    #     # ((2, False, 0, True ),1),
+    #     ((2, False, 0, False),1),
+    #     # ((3, False, 0, True ),2),
+    #     ((3, False, 0, False),2),
+    #     # ((2, True,  1, True ),1),
+    #     ((2, True,  1, False),1),
+    #     # ((3, True,  1, True ),2),
+    #     ((3, True,  1, False),2),
+    #     # ((3, True,  2, True ),3),
+    #     ((3, True,  2, False),3),
+    # ]
+    # both
     variants_searches = [
-        ((1, False, 0),1),
-        ((2, False, 0),1),
-        ((3, False, 0),2),
-        ((2, True, 1),1),
-        ((3, True, 1),2),
-        ((3, True, 2),3),
+        #ccd_radius, change_all, change_radius, direction_forward
+        ((1, False, 0, True ),1),
+        ((1, False, 0, False),1),
+        ((2, False, 0, True ),1),
+        ((2, False, 0, False),1),
+        ((3, False, 0, True ),2),
+        ((3, False, 0, False),2),
+        ((2, True,  1, True ),1),
+        ((2, True,  1, False),1),
+        ((3, True,  1, True ),2),
+        ((3, True,  1, False),2),
+        ((3, True,  2, True ),3),
+        ((3, True,  2, False),3),
     ]
     decided_variants = []
     for variant, level in variants_searches:
       if level <= self.params.variant_search_level:
         decided_variants.append(variant)
 
-    for ccd_radius, change_all, change_radius in decided_variants:
+    for ccd_radius, change_all, change_radius, direction_forward in decided_variants:
     # while ccd_radius <= 3:
-      print >> self.log, "  Starting optimization with radius, change_all, change_radius:", ccd_radius, change_all, change_radius
+      print >> self.log, "  Starting optimization with radius=%d, " % ccd_radius,
+      print >> self.log, "change_all=%s, change_radius=%d, " % (change_all, change_radius),
+      print >> self.log, "direction=forward" if direction_forward else "direction=backwards"
       self.log.flush()
       #
-      moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection, contains_ss_element = get_fixed_moving_parts(
-          pdb_hierarchy=pdb_hierarchy,
-          out_res_num=out_res_num,
-          n_following=ccd_radius,
-          n_previous=ccd_radius,
-          ss_annotation=ss_annotation)
+      (moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms,
+          m_selection, contains_ss_element) = get_fixed_moving_parts(
+              pdb_hierarchy=pdb_hierarchy,
+              out_res_num=out_res_num,
+              n_following=ccd_radius,
+              n_previous=ccd_radius,
+              ss_annotation=ss_annotation,
+              direction_forward=direction_forward)
+      # print "moving_ref_atoms_iseqs", moving_ref_atoms_iseqs
       moving_h_set = None
       if change_all:
         moving_h_set = starting_conformations.get_all_starting_conformations(
             moving_h,
             change_radius,
+            direction_forward=direction_forward,
             cutoff=self.params.variant_number_cutoff,
             # log=self.log,
             )
       else:
         moving_h_set = starting_conformations.get_starting_conformations(
             moving_h,
+            direction_forward=direction_forward,
             cutoff=self.params.variant_number_cutoff,
             # log=self.log,
             )
@@ -329,13 +378,13 @@ class loop_idealization():
         fixed_ref_atoms_coors = [x.xyz for x in fixed_ref_atoms]
         # print "params to constructor", fixed_ref_atoms, h, moving_ref_atoms_iseqs
         ccd_obj = ccd_cpp(fixed_ref_atoms_coors, h, moving_ref_atoms_iseqs)
-        ccd_obj.run()
+        ccd_obj.run(direction_forward=direction_forward, save_states=self.params.save_states)
         resulting_rmsd = ccd_obj.resulting_rmsd
         n_iter = ccd_obj.n_iter
 
-        # states = ccd_obj.states
-        # if self.params.save_states:
-        #   states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num, ccd_radius, change_all, change_radius, i))
+        if self.params.save_states:
+          states = ccd_obj.states
+          states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num, ccd_radius, change_all, change_radius, i))
         map_target = 0
         if self.reference_map is not None:
           map_target = maptbx.real_space_target_simple(
@@ -537,7 +586,7 @@ def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
     return res
 
 def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
-    ss_annotation=None):
+    ss_annotation=None, direction_forward=True):
   # limitation: only one  chain in pdb_hierarchy!!!
   original_pdb_h = pdb_hierarchy.deep_copy()
   start_res_num, end_res_num = get_res_nums_around(
@@ -576,25 +625,34 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
   moving_ref_atoms_iseqs = []
   # here we need N, CA, C atoms from the end_res_num residue
   eff_end_resnum = end_res_num
+  if not direction_forward:
+    eff_end_resnum = start_res_num
   sel = m_cache.selection("resid %s" % end_res_num)
   while len(moving_h.select(sel).atoms()) == 0:
-    eff_end_resnum -= 1
+    if direction_forward:
+      eff_end_resnum -= 1
+    else:
+      eff_end_resnum += 1
     sel = m_cache.selection("resid %s" % eff_end_resnum)
 
+  # print "fixed_ref_atoms:"
   sel = m_cache.selection("resid %s and name N" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_N = a.detached_copy()
+  # print "  ", a.id_str()
 
   sel = m_cache.selection("resid %s and name CA" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_CA = a.detached_copy()
+  # print "  ", a.id_str()
 
   sel = m_cache.selection("resid %s and name C" % eff_end_resnum)
   a = moving_h.select(sel).atoms()[0]
   moving_ref_atoms_iseqs.append(a.i_seq)
   fixed_C = a.detached_copy()
+  # print "  ", a.id_str()
 
   fixed_ref_atoms = [fixed_N, fixed_CA, fixed_C]
 
