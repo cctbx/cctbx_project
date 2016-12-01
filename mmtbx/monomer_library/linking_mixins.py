@@ -937,17 +937,19 @@ Residue classes
           origin_id=origin_id,
         ))
       try:
+        #bond_asu_table.add_pair([i_seq, j_seq])
         bond_asu_table.add_pair(
           i_seq=i_seq,
           j_seq=j_seq,
           rt_mx_ji=sym_pair.rt_mx_ji)
       except RuntimeError, e:
-        raise Sorry("""
+        error = """
     Difficulties linking atoms
       %s
       %s
     Suggestions include providing restraints for any unknown residues.
-        """ % (atom1.quote(), atom2.quote()))
+        """ % (atom1.quote(), atom2.quote())
+        print >> log, error
     # output
     if link_data:
       print >> log, "  Number of additional links: simple=%d, symmetry=%d" % (
