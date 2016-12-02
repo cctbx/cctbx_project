@@ -601,7 +601,6 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         r=r, t=t,
         coordinates_present=(cp or ignore_transform),
         serial_number=sn)
-    print len(result.r)
     return result
 
   def process_mtrix_records(self,error_handle=True,eps=1e-4):
