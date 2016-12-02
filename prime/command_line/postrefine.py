@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 7/13/2014
-Description : Commands linked to prime.postrefine libraries.
+Description : Main commandline for prime.
 '''
 import os, sys
 from libtbx.easy_mp import pool_map
@@ -12,26 +12,25 @@ from cctbx.array_family import flex
 from datetime import datetime, time
 import math
 
-def determine_mean_I_mproc(frame_no, frame_files, iparams, avg_mode):
+def determine_mean_I_mproc(args):
   from prime.postrefine import postref_handler
   prh = postref_handler()
-  mean_I = prh.calc_mean_intensity(frame_files[frame_no], iparams, avg_mode)
+  frame_file, iparams, avg_mode = args
+  mean_I = prh.calc_mean_intensity(frame_file, iparams, avg_mode)
   return mean_I
 
-def scale_frame_by_mean_I_mproc(frame_no, frame_files, iparams, mean_of_mean_I, avg_mode):
+def scale_frame_by_mean_I_mproc(args):
   from prime.postrefine import postref_handler
   prh = postref_handler()
-  pres = prh.scale_frame_by_mean_I(frame_no,frame_files[frame_no], iparams, mean_of_mean_I, avg_mode)
+  frame_no, frame_file, iparams, mean_of_mean_I, avg_mode = args
+  pres = prh.scale_frame_by_mean_I(frame_no, frame_file, iparams, mean_of_mean_I, avg_mode)
   return pres
 
-def postrefine_by_frame_mproc(frame_no, frame_files, iparams, miller_array_ref, pres_results, avg_mode):
+def postrefine_by_frame_mproc(args):
   from prime.postrefine import postref_handler
   prh = postref_handler()
-  if len(pres_results) == 0:
-    pres_in = None
-  else:
-    pres_in = pres_results[frame_no]
-  pres = prh.postrefine_by_frame(frame_no, frame_files[frame_no], iparams, miller_array_ref, pres_in, avg_mode)
+  frame_no, frame_file, iparams, miller_array_ref, pres_in, avg_mode = args
+  pres = prh.postrefine_by_frame(frame_no, frame_file, iparams, miller_array_ref, pres_in, avg_mode)
   return pres
 
 def read_pickles(data):
@@ -59,7 +58,7 @@ def read_pickles(data):
     exit()
   return frame_files
 
-if (__name__ == "__main__"):
+def run(argv):
   #capture starting time
   time_global_start=datetime.now()
   import logging
@@ -73,7 +72,7 @@ if (__name__ == "__main__"):
   logging.basicConfig(format='%(asctime)s\t%(levelname)s\t%(message)s', level=logging.DEBUG)
   #0 .read input parameters and frames (pickle files)
   from prime.postrefine import read_input
-  iparams, txt_out_input = read_input(sys.argv[:1])
+  iparams, txt_out_input = read_input(argv)
   iparams.flag_volume_correction = False
   if iparams.partiality_model == "Lognormal":
     iparams.voigt_nu = 0.008 #use voigt_nu as lognpdf zero parameter
@@ -95,11 +94,10 @@ if (__name__ == "__main__"):
     mean_of_mean_I = 0
   else:
     #Calculate <I> for each frame
-    def determine_mean_I_mproc_wrapper(arg):
-      return determine_mean_I_mproc(arg, frame_files, iparams, avg_mode)
+    frame_args = [(frame_file, iparams, avg_mode) for frame_file in frame_files]
     determine_mean_I_result = pool_map(
-            iterable=frames,
-            func=determine_mean_I_mproc_wrapper,
+            iterable=frame_args,
+            func=determine_mean_I_mproc,
             processes=iparams.n_processors)
     frames_mean_I = flex.double()
     for result in determine_mean_I_result:
@@ -109,11 +107,10 @@ if (__name__ == "__main__"):
           frames_mean_I.append(mean_I)
     mean_of_mean_I = np.median(frames_mean_I)
   #use the calculate <mean_I> to scale each frame
-  def scale_frame_by_mean_I_mproc_wrapper(arg):
-    return scale_frame_by_mean_I_mproc(arg, frame_files, iparams, mean_of_mean_I, avg_mode)
+  frame_args = [(frame_no, frame_file, iparams, mean_of_mean_I, avg_mode) for frame_no, frame_file in zip(frames, frame_files)]
   scale_frame_by_mean_I_result = pool_map(
-          iterable=frames,
-          func=scale_frame_by_mean_I_mproc_wrapper,
+          iterable=frame_args,
+          func=scale_frame_by_mean_I_mproc,
           processes=iparams.n_processors)
   observations_merge_mean_set = []
   for result in scale_frame_by_mean_I_result:
@@ -216,7 +213,7 @@ if (__name__ == "__main__"):
   n_iters = iparams.n_postref_cycle
   txt_merge_postref = ''
   postrefine_by_frame_result = None
-  postrefine_by_frame_pres_list = []
+  postrefine_by_frame_pres_list = [None]*len(frames)
   for i_iter in range(n_iters):
     miller_array_ref = miller_array_ref.generate_bijvoet_mates()
     if i_iter == (n_iters-1):
@@ -229,13 +226,10 @@ if (__name__ == "__main__"):
       _txt_merge_postref += ' * Indexing ambiguity on (solution file='+str(iparams.indexing_ambiguity.index_basis_in)+')\n'
     txt_merge_postref += _txt_merge_postref
     print _txt_merge_postref
-
-    def postrefine_by_frame_mproc_wrapper(arg):
-      return postrefine_by_frame_mproc(arg, frame_files, iparams,
-                                       miller_array_ref, postrefine_by_frame_pres_list, avg_mode)
+    frame_args = [(frame_no, frame_file, iparams, miller_array_ref, pres_in, avg_mode) for frame_no, frame_file, pres_in in zip(frames, frame_files, postrefine_by_frame_pres_list)]
     postrefine_by_frame_result = pool_map(
-            iterable=frames,
-            func=postrefine_by_frame_mproc_wrapper,
+            iterable=frame_args,
+            func=postrefine_by_frame_mproc,
             processes=iparams.n_processors)
     postrefine_by_frame_good = []
     postrefine_by_frame_pres_list = []
@@ -325,3 +319,8 @@ if (__name__ == "__main__"):
   f = open(iparams.run_no+'/log.txt', 'w')
   f.write(txt_out)
   f.close()
+  return txt_out
+
+
+if (__name__ == "__main__"):
+  run(sys.argv[1:] if len(sys.argv) > 1 else None)

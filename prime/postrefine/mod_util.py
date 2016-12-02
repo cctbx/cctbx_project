@@ -997,7 +997,7 @@ class intensities_scaler(object):
           _cc12_n, _cc12_n_astar, _cc12_n_bstar, _cc12_n_cstar)
 
     txt_out += '-------------------------------------------------------------------------------------------------------------------------------\n'
-    txt_out += '        TOTAL        %7.2f %7.2f %7.2f %7.2f %10.1f %10.1f %10.1f %10.1f %6.0f %6.0f %6.0f %6.0f\n' \
+    txt_out += '       total        %7.2f %7.2f %7.2f %7.2f %10.1f %10.1f %10.1f %10.1f %6.0f %6.0f %6.0f %6.0f\n' \
           %(cc12*100, cc12_astar*100, cc12_bstar*100, cc12_cstar*100, \
           np.mean(miller_array_merge.data()), np.mean(I_even_astar), np.mean(I_even_bstar), np.mean(I_even_cstar), \
           cn12_n_sum, cc12_n_astar_sum, cc12_n_bstar_sum, cc12_n_cstar_sum)

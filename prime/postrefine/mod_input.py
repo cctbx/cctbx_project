@@ -320,30 +320,29 @@ List of available parameters:
 """
 
 def process_input(argv=None):
-  if argv == None:
-    argv = sys.argv[1:]
-
   user_phil = []
-  for arg in sys.argv[1:]:
-    if os.path.isfile(arg):
-
-      user_phil.append(iotbx.phil.parse(open(arg).read()))
-    elif (os.path.isdir(arg)) :
-      user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
-    else :
-      print arg
-      if arg == '--help' or arg == '-h':
-        print txt_help
-        master_phil.show(attributes_level=1)
-        exit()
-      try :
-        user_phil.append(iotbx.phil.parse(arg))
-      except RuntimeError, e :
-        raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
-
+  if argv == None:
+    master_phil.show()
+    raise Usage("Use the above list of parameters to generate your input file (.phil). For more information, run prime.postrefine -h.")
+  else:
+    for arg in argv:
+      if os.path.isfile(arg):
+        user_phil.append(iotbx.phil.parse(open(arg).read()))
+      elif (os.path.isdir(arg)) :
+        user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
+      else :
+        if arg == '--help' or arg == '-h':
+          print txt_help
+          master_phil.show(attributes_level=1)
+          raise Usage("Run prime.run to generate a list of initial parameters.")
+        else:
+          try:
+            user_phil.append(iotbx.phil.parse(arg))
+          except RuntimeError, e :
+            raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
+  #setup phil parameters
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
-
   if (len(params.data) == 0):
     master_phil.show()
     raise Usage("Use the above list of parameters to generate your input file (.phil). For more information, run prime.postrefine -h.")
