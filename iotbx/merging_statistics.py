@@ -290,12 +290,11 @@ class merging_stats (object) :
             significance = False
             critical_value = 0
           else:
-            t = r * sqrt((n-2)/(1-r**2))
             from scitbx.math import distributions
             dist = distributions.students_t_distribution(n-2)
-            significance = t > dist.quantile(1-p)
-            t1 = dist.quantile(1-p)
-            critical_value = t1/sqrt(t1**2 + n - 2)
+            t = dist.quantile(1-p)
+            critical_value = t/sqrt(n - 2 + t**2)
+            significance = r > critical_value
           return significance, critical_value
         self.cc_one_half_significance, self.cc_one_half_critical_value = \
           compute_cc_significance(
@@ -904,12 +903,7 @@ def select_data (file_name, data_labels, log=None,
   for array in miller_arrays :
     labels = array.info().label_string()
     if (labels == data_labels) :
-      if (array.is_xray_amplitude_array()) :
-        new_array=array.f_as_f_sq()
-        new_array.set_info(array.info())
-        i_obs=new_array
-      else:
-        i_obs = array
+      i_obs = array
       break
     elif (array.is_xray_intensity_array()) :
       all_i_obs.append(array)
@@ -918,17 +912,10 @@ def select_data (file_name, data_labels, log=None,
     if (i_obs is None and len(all_i_obs)==0) :
       for array in miller_arrays :
         if (array.is_xray_amplitude_array()) :
-          new_array=array.f_as_f_sq()
-          new_array.set_info(array.info())
-          all_i_obs.append(new_array)
+          all_i_obs.append(array.f_as_f_sq())
   if (i_obs is None) :
     if (len(all_i_obs) == 0) :
       raise Sorry("No intensities found in %s." % file_name)
-    elif (data_labels):
-      raise Sorry("Could not find the labels '%s' in %s." %(str(data_labels),
-        file_name) +
-         "\n Choices are: %s" %(
-        "\n".join(["  labels=%s"%a.info().label_string() for a in all_i_obs])))
     elif (len(all_i_obs) > 1) :
       raise Sorry("Multiple intensity arrays - please specify one:\n%s" %
         "\n".join(["  labels=%s"%a.info().label_string() for a in all_i_obs]))
