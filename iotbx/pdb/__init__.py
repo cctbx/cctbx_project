@@ -2000,6 +2000,8 @@ def format_MTRIX_pdb_string(rotation_matrices, translation_vectors,
   return "\n".join(lines)
 
 def mtrix_and_biomt_records_container():
+  # this is for extracting class contains the matrices because the class
+  # definition was injected to C++ class for unclear reason.
   return  _._mtrix_and_biomt_records_container()
 
 def write_whole_pdb_file(
