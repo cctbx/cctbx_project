@@ -82,10 +82,21 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
               f = smart_open.for_reading(file_name)
               return f
     # try local mirror for PDB and X-ray data files first, if it exists
-    if (data_type == "pdb") and ("PDB_MIRROR_PDB" in os.environ) :
+    if (data_type == "pdb") and (format == "pdb") and \
+           ("PDB_MIRROR_PDB" in os.environ) :
       subdir = os.path.join(os.environ["PDB_MIRROR_PDB"], id[1:3])
       if (os.path.isdir(subdir)) :
         file_name = os.path.join(subdir, "pdb%s.ent.gz" % id)
+        if (os.path.isfile(file_name)) :
+          print >> log, "Reading from local mirror:"
+          print >> log, "  " + file_name
+          f = smart_open.for_reading(file_name)
+          return f
+    if (data_type == "pdb") and (format == "cif") and \
+           ("PDB_MIRROR_MMCIF" in os.environ) :
+      subdir = os.path.join(os.environ["PDB_MIRROR_MMCIF"], id[1:3])
+      if (os.path.isdir(subdir)) :
+        file_name = os.path.join(subdir, "%s.cif.gz" % id)
         if (os.path.isfile(file_name)) :
           print >> log, "Reading from local mirror:"
           print >> log, "  " + file_name
