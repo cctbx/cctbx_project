@@ -1761,7 +1761,6 @@ class process_command_line_args(object):
          abs(0.-ucp[5])<1.e-3): continue
       tmp_.append(cs)
     crystal_symmetries = tmp_[:]
-    del tmp_
     ###
     if(len(crystal_symmetries)>1):
       assert self.crystal_symmetry is None # make sure it's undefined from start
