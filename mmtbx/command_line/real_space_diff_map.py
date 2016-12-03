@@ -90,12 +90,24 @@ def run(args, log=sys.stdout):
   result_obj = compdiff(
     map_data_obs = map_data,
     xrs          = xrs,
-    d_min        = d_min)
+    d_min        = d_min,
+    vector_map   = False)
   write_ccp4_map(
     map_data    = result_obj.map_result,
     unit_cell   = xrs.unit_cell(),
     space_group = xrs.space_group(),
-    file_name   = "map_model_difference.ccp4")
+    file_name   = "map_model_difference_1.ccp4")
+  #
+  result_obj = compdiff(
+    map_data_obs = map_data,
+    xrs          = xrs,
+    d_min        = d_min,
+    vector_map   = True)
+  write_ccp4_map(
+    map_data    = result_obj.map_result,
+    unit_cell   = xrs.unit_cell(),
+    space_group = xrs.space_group(),
+    file_name   = "map_model_difference_2.ccp4")
 
 def scale_k1(x,y):
   x = x.as_1d()
@@ -112,9 +124,11 @@ def write_ccp4_map(map_data, unit_cell, space_group, file_name):
     map_data       = map_data.as_double(),
     labels=flex.std_string([" "]))
 
-def scale_two_real_maps_in_fourier_space(m1, m2, cs, d_min):
+def scale_two_real_maps_in_fourier_space(m1, m2, cs, d_min, vector_map):
   f1 = maptbx.map_to_map_coefficients(m=m1, cs=cs, d_min=d_min)
   f2 = maptbx.map_to_map_coefficients(m=m2, cs=cs, d_min=d_min)
+  if(vector_map):
+    f2 = f2.phase_transfer(phase_source=f1)
   ss = 1./flex.pow2(f1.d_spacings().data()) / 4.
   bs = flex.double([i for i in xrange(0,100)])
   mc = mmtbx.bulk_solvent.complex_f_minus_f_kb_scaled(
@@ -134,6 +148,7 @@ class compdiff(object):
         map_data_obs,
         xrs,
         d_min,
+        vector_map,
         box_dimension=30):
     adopt_init_args(self, locals())
     self.crystal_gridding = maptbx.crystal_gridding(
@@ -182,10 +197,11 @@ class compdiff(object):
       cs = crystal.symmetry(unit_cell=ucb, space_group="P1")
       #######
       diff_map = scale_two_real_maps_in_fourier_space(
-        m1    = map_box_obs,
-        m2    = map_box_calc,
-        cs    = cs,
-        d_min = self.d_min)
+        m1         = map_box_obs,
+        m2         = map_box_calc,
+        cs         = cs,
+        d_min      = self.d_min,
+        vector_map = self.vector_map)
       maptbx.set_box(
         map_data_from = diff_map,
         map_data_to   = self.map_result,
