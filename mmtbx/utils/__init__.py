@@ -3256,7 +3256,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       labels=flex.std_string([" "]))
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
-    box_map_coeffs = maptbx.box_map_coefficients(
+    box_map_coeffs = maptbx.map_to_map_coefficients(
       m     = self.map_box,
       d_min = d_min,
       cs    = self.xray_structure_box.crystal_symmetry())
@@ -3265,7 +3265,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     return fft_map
 
   def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz"):
-    box_map_coeffs = self.box_map_coefficients(
+    box_map_coeffs = maptbx.map_to_map_coefficients(
       m     = maptbx.map_box,
       d_min = d_min,
       cs    = self.xray_structure_box.crystal_symmetry())
