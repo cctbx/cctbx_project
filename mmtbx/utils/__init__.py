@@ -3256,13 +3256,13 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       labels=flex.std_string([" "]))
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
-    box_map_coeffs = maptbx.map_to_map_coefficients(d_min = d_min)
+    box_map_coeffs = self.box_map_coefficients(d_min = d_min)
     fft_map = box_map_coeffs.fft_map(resolution_factor=resolution_factor)
     fft_map.apply_sigma_scaling()
     return fft_map
 
   def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz"):
-    box_map_coeffs = self.map_to_map_coefficients(d_min = d_min)
+    box_map_coeffs = self.box_map_coefficients(d_min = d_min)
     if(file_name is not None):
       mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
       mtz_object = mtz_dataset.mtz_object()
