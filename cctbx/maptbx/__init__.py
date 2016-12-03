@@ -18,7 +18,6 @@ import scitbx.math
 from cctbx import adptbx
 from libtbx import group_args
 from scitbx import fftpack
-import cctbx.miller
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -1138,6 +1137,7 @@ def d_min_from_map(map_data, unit_cell, resolution_factor=1./2.):
   return max(d1,d2,d3)
 
 def map_to_map_coefficients(m, cs, d_min):
+  import cctbx.miller
   fft = fftpack.real_to_complex_3d([i for i in m.all()])
   map_box = copy(
     m, flex.grid(fft.m_real()).set_focus(m.focus()))
