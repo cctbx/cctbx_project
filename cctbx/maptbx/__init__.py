@@ -17,6 +17,8 @@ import sys, os
 import scitbx.math
 from cctbx import adptbx
 from libtbx import group_args
+from scitbx import fftpack
+import cctbx.miller
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -394,19 +396,15 @@ class boxes_by_dimension(object):
                prefix=""):
     self.n_real = n_real
     #
-    step_1 = abc[0]/n_real[0]
-    step_2 = abc[1]/n_real[1]
-    step_3 = abc[2]/n_real[2]
-    i_step_1 = int(dim/step_1)
-    i_step_2 = int(dim/step_2)
-    i_step_3 = int(dim/step_3)
+    step_1 = abc[0]/n_real[0] # step size along edge
+    step_2 = abc[1]/n_real[1] # step size along edge
+    step_3 = abc[2]/n_real[2] # step size along edge
+    i_step_1 = int(dim/step_1) # points per box edge
+    i_step_2 = int(dim/step_2) # points per box edge
+    i_step_3 = int(dim/step_3) # points per box edge
     #
     n_boxes = self._generate_boxes(i_step_1,i_step_2,i_step_3)
     assert n_boxes == len(self.starts)
-    if(log):
-      print >> log, prefix, "n1,n2,n3 (n_real)  :", n_real
-      print >> log, prefix, "points per box edge:", i_step_1,i_step_2,i_step_3
-      print >> log, prefix, "number of boxes    :", len(self.starts)
 
   def _generate_boxes(self, ba,bb,bc):
     def regroup(be):
@@ -1138,6 +1136,28 @@ def d_min_from_map(map_data, unit_cell, resolution_factor=1./2.):
     b/ny/resolution_factor,\
     c/nz/resolution_factor
   return max(d1,d2,d3)
+
+def map_to_map_coefficients(m, cs, d_min):
+  fft = fftpack.real_to_complex_3d([i for i in m.all()])
+  map_box = copy(
+    m, flex.grid(fft.m_real()).set_focus(m.focus()))
+  map_box.reshape(flex.grid(fft.m_real()).set_focus(fft.n_real()))
+  map_box = fft.forward(map_box)
+  box_structure_factors = structure_factors.from_map(
+    unit_cell=cs.unit_cell(),
+    space_group_type=cs.space_group().type(),
+    anomalous_flag=False,
+    d_min=d_min,
+    complex_map=map_box,
+    conjugate_flag=True,
+    discard_indices_affected_by_aliasing=True)
+  n = map_box.all()[0] * map_box.all()[1] * map_box.all()[2]
+  map_coeffs = cctbx.miller.set(
+    crystal_symmetry=cs,
+    anomalous_flag=False,
+    indices=box_structure_factors.miller_indices(),
+    ).array(data=box_structure_factors.data()/n)
+  return map_coeffs
 
 def resolution_from_map_and_model(map_data, xray_structure):
   """
