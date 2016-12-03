@@ -3256,24 +3256,43 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       labels=flex.std_string([" "]))
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
-    box_map_coeffs = maptbx.map_to_map_coefficients(
-      m     = self.map_box,
-      d_min = d_min,
-      cs    = self.xray_structure_box.crystal_symmetry())
+    box_map_coeffs = maptbx.map_to_map_coefficients(d_min = d_min)
     fft_map = box_map_coeffs.fft_map(resolution_factor=resolution_factor)
     fft_map.apply_sigma_scaling()
     return fft_map
 
   def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz"):
-    box_map_coeffs = maptbx.map_to_map_coefficients(
-      m     = maptbx.map_box,
-      d_min = d_min,
-      cs    = self.xray_structure_box.crystal_symmetry())
+    box_map_coeffs = self.map_to_map_coefficients(d_min = d_min)
     if(file_name is not None):
       mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
     return box_map_coeffs
+
+  def box_map_coefficients(self, d_min):
+    from scitbx import fftpack
+    fft = fftpack.real_to_complex_3d([i for i in self.map_box.all()])
+    map_box = maptbx.copy(
+      self.map_box, flex.grid(fft.m_real()).set_focus(self.map_box.focus()))
+    map_box.reshape(flex.grid(fft.m_real()).set_focus(fft.n_real()))
+    map_box = fft.forward(map_box)
+    cs = self.xray_structure_box.crystal_symmetry()
+    box_structure_factors = maptbx.structure_factors.from_map(
+      unit_cell=cs.unit_cell(),
+      space_group_type=cs.space_group().type(),
+      anomalous_flag=False,
+      d_min=d_min,
+      complex_map=map_box,
+      conjugate_flag=True,
+      discard_indices_affected_by_aliasing=True)
+    n = map_box.all()[0] * map_box.all()[1] * map_box.all()[2]
+    box_map_coeffs = miller.set(
+      crystal_symmetry=cs,
+      anomalous_flag=False,
+      indices=box_structure_factors.miller_indices(),
+      ).array(data=box_structure_factors.data()/n)
+    return box_map_coeffs
+
 
 class experimental_data_target_and_gradients(object):
   def __init__(self, fmodel, alpha_beta=None):
