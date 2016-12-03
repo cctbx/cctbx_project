@@ -385,6 +385,70 @@ class crystal_gridding_tags(crystal_gridding):
       max_clusters=parameters.max_clusters(),
       min_cubicle_edge=parameters.min_cubicle_edge())
 
+class boxes_by_dimension(object):
+  def __init__(self,
+               n_real,
+               abc,
+               dim,
+               log=None,
+               prefix=""):
+    self.n_real = n_real
+    #
+    step_1 = abc[0]/n_real[0]
+    step_2 = abc[1]/n_real[1]
+    step_3 = abc[2]/n_real[2]
+    i_step_1 = int(dim/step_1)
+    i_step_2 = int(dim/step_2)
+    i_step_3 = int(dim/step_3)
+    #
+    n_boxes = self._generate_boxes(i_step_1,i_step_2,i_step_3)
+    assert n_boxes == len(self.starts)
+    if(log):
+      print >> log, prefix, "n1,n2,n3 (n_real)  :", n_real
+      print >> log, prefix, "points per box edge:", i_step_1,i_step_2,i_step_3
+      print >> log, prefix, "number of boxes    :", len(self.starts)
+
+  def _generate_boxes(self, ba,bb,bc):
+    def regroup(be):
+      maxe = be[len(be)-1][1]
+      step = int(maxe/len(be))
+      result = []
+      for i in xrange(len(be)):
+        if(i==0):
+          l = 0
+          r = step
+        elif(i==len(be)-1):
+          l = i*step
+          r = maxe
+        else:
+          l = i*step
+          r = (i+1)*step
+        result.append([l,r])
+      return result
+    be = []
+    for i, b in enumerate([ba,bb,bc]):
+      be_ = self._box_edges(n_real_1d = self.n_real[i], step=b)
+      be_ = regroup(be_)
+      be.append(be_)
+    self.starts = []
+    self.ends = []
+    for i in be[0]:
+      for j in be[1]:
+        for k in be[2]:
+          self.starts.append([i[0],j[0],k[0]])
+          self.ends.append([i[1],j[1],k[1]])
+    return len(self.starts)
+
+  def _box_edges(self, n_real_1d, step):
+    limits = []
+    for i in range(0, n_real_1d, step): limits.append(i)
+    limits.append(n_real_1d)
+    box_1d = []
+    for i in xrange(len(limits)):
+      if(i==0):               box_1d.append([limits[0],  limits[1]])
+      elif(i!=len(limits)-1): box_1d.append([limits[i],limits[i+1]])
+    return box_1d
+
 class boxes(object):
   """
   Split box defined by n_real into boxes where each box is a fraction of the

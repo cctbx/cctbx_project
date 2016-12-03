@@ -3,14 +3,13 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 08/23/2016
+Last Changed: 06/01/2016
 Description : PRIME Result Plotter module
 '''
 
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-from libtbx import utils as u
 
 class Plotter(object):
   ''' Class with function to plot various PRIME charts (includes Table 1) '''
@@ -43,17 +42,17 @@ class Plotter(object):
     res_last_shell = '{:4.2f} - {:4.2f}' \
                      ''.format(self.info['binned_resolution'][-1][-1],
                                self.info['binned_resolution'][-1][-2])
-    t1_rlabels = [u.to_unicode(u'No. of images'),
-                  u.to_unicode(u'Space Group'),
-                  u.to_unicode(u'Cell dimensions'),
-                  u.to_unicode(u'  a, b, c ({})  '.format(A)),
-                  u.to_unicode(u'  {}, {}, {} ({})    '.format(a, b, g, d)),
-                  u.to_unicode(u'Resolution ({})  '.format(A)),
-                  u.to_unicode(u'Completeness (%)'),
-                  u.to_unicode(u'Multiplicity'),
-                  u.to_unicode(u'I / {}(I) '.format(s)),
-                  u.to_unicode(u'CC{} '.format(h)),
-                  u.to_unicode(u'R_merge')]
+    t1_rlabels = [u'No. of images'.encode('utf-8'),
+                  u'Space Group'.encode('utf-8'),
+                  u'Cell dimensions'.encode('utf-8'),
+                  u'  a, b, c ({})  '.format(A).encode('utf-8'),
+                  u'  {}, {}, {} ({})    '.format(a, b, g, d).encode('utf-8'),
+                  u'Resolution ({})  '.format(A).encode('utf-8'),
+                  u'Completeness (%)'.encode('utf-8'),
+                  u'Multiplicity'.encode('utf-8'),
+                  u'I / {}(I) '.format(s).encode('utf-8'),
+                  u'CC{} '.format(h).encode('utf-8'),
+                  u'R_merge'.encode('utf-8')]
 
     t1_data = [['{}'.format(self.info['n_frames_good'][-1])],
                ['{}'.format(self.info['space_group_info'][

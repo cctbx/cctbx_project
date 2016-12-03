@@ -181,14 +181,14 @@ Using the cctbx SVN repository
 
 To participate in the development of the cctbx project, or to
 get easy access to the most recent changes, it may be useful
-to checkout the cctbx project directly from the SVN repository
-maintained at Sourceforge_. An easy way to get started is::
+to checkout the cctbx project directly from the git repository
+maintained at Github_. An easy way to get started is::
 
-  svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/development/cctbx_svn_getting_started.csh
+  wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/development/cctbx_svn_getting_started.csh
   ./cctbx_svn_getting_started.csh
 
 The script will create a ``sources`` directory with a ``cctbx_project``
-svn working copy checked out from SourceForge, and all other
+repository checked out from Github, and all other
 third-party sources (e.g. boost, scons) taken from the latest nightly
 cctbx build.
 
@@ -216,4 +216,4 @@ Back_
 .. _Boost: http://www.boost.org/
 .. _`boost SVN tree`: http://svn.boost.org/trac/boost/wiki/BoostSubversion
 .. _CCP4: http://www.ccp4.ac.uk/
-.. _SourceForge: http://sourceforge.net/
+.. _Github: https://github.com/cctbx/

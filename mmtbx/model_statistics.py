@@ -126,12 +126,20 @@ class geometry(geometry_no_grm):
     if automatically_use_amber and hasattr(esg, "amber"):
       self.used_amber=True
       amber_parm = restraints_manager.amber_structs.parm
-      self.a, angle_deltas = esg.angle_deviations(sites_cart, amber_parm,
-                                        ignore_hd=ignore_hydrogens,
-                                        get_deltas=True)
-      self.b, bond_deltas = esg.bond_deviations(sites_cart, amber_parm,
-                                        ignore_hd=ignore_hydrogens,
-                                        get_deltas=True)
+      self.a, angle_deltas, angle_extremes = esg.angle_deviations(
+        sites_cart, amber_parm,
+        ignore_hd=ignore_hydrogens,
+        get_deltas=True,
+        get_extremes=True,
+        )
+      self.angle_extremes = angle_extremes
+      self.b, bond_deltas, bond_extremes = esg.bond_deviations(
+        sites_cart, amber_parm,
+        ignore_hd=ignore_hydrogens,
+        get_deltas=True,
+        get_extremes=True,
+        )
+      self.bond_extremes = bond_extremes
       self.a_number = esg.n_angle_proxies(amber_parm,
                                           ignore_hd=ignore_hydrogens)
       self.b_number = esg.n_bond_proxies(amber_parm,
@@ -140,7 +148,6 @@ class geometry(geometry_no_grm):
       self.c_number=0
       self.p_number=0
       self.d_number=0
-
       self.bond_deltas_histogram = \
         flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
       self.angle_deltas_histogram = \
@@ -158,6 +165,10 @@ class geometry(geometry_no_grm):
       return
     self.a = esg.angle_deviations()
     self.b = esg.bond_deviations()
+    self.b_z = esg.bond_deviations_z()
+    self.a_z = esg.angle_deviations_z()
+    self.b_w = esg.bond_deviations_weighted()
+    self.a_w = esg.angle_deviations_weighted()
     self.a_number = esg.get_filtered_n_angle_proxies()
     self.b_number = esg.get_filtered_n_bond_proxies()
     self.c = esg.chirality_deviations()
@@ -210,9 +221,19 @@ class geometry(geometry_no_grm):
       esg.ramachandran_residual_sum)
     del energies_sites, esg # we accumulate this object, so make it clean asap
 
+  def __setattr1__(self, attr, value):
+    print '__setattr__',attr,value
+    if attr=="a_max":
+      assert 0
+    self.__dict__[attr] = value
+
   def show(self, out=None, prefix="", pdb_deposition=False, message = ""):
     if(out is None): out = sys.stdout
-    if(pdb_deposition): prefix = "REMARK   3  "
+    if(pdb_deposition):
+      prefix = "REMARK   3  "
+    else:
+      if hasattr(self, 'bond_extremes'): print >> out, self.bond_extremes
+      if hasattr(self, 'angle_extremes'): print >> out, self.angle_extremes
     print >> out, self.format_basic_geometry_statistics(prefix=prefix)
     print >> out, self.format_molprobity_scores(prefix=prefix)
     out.flush()
@@ -220,7 +241,11 @@ class geometry(geometry_no_grm):
   def _capitalize(self, s):
     return s.capitalize()
 
-  def format_basic_geometry_statistics(self, prefix=""):
+  def format_basic_geometry_statistics(self,
+                                       prefix="",
+                                       include_rmsz=False,
+                                       include_w_rmsd=False,
+                                      ):
     def fmt(f1,f2,d1):
       fmt_str= "%6.3f %7.3f %6d"
       if f1 is None  : return '   -       -       -  '
@@ -242,19 +267,32 @@ class geometry(geometry_no_grm):
 
     if getattr(self, "b_mean", None):
       result += """
-%sDEVIATIONS FROM IDEAL VALUES.
-%s               RMSD     MAX  COUNT
-%s BOND      : %s
-%s ANGLE     : %s
+%(prefix)sDEVIATIONS FROM IDEAL VALUES.
+%(prefix)s               RMSD     MAX  COUNT""" % locals()
+      if include_rmsz:
+        result += "    RMSZ"
+      if include_w_rmsd:
+        result += "  W-RMSD"
+      result += "\n%s BOND      : %s" % (
+        prefix,
+        fmt(self.b_mean, self.b_max, self.b_number))
+      if include_rmsz:
+        result += "  %6.3f" % self.b_z[2]
+      if include_w_rmsd:
+        result += "  %6.3f" % self.b_w[2]
+      result += "\n%s ANGLE     : %s" % (
+        prefix,
+        fmt(self.a_mean, self.a_max, self.a_number))
+      if include_rmsz:
+        result += "  %6.3f" % self.a_z[2]
+      if include_w_rmsd:
+        result += "  %6.3f" % self.a_w[2]
+      result += """
 %s CHIRALITY : %s
 %s PLANARITY : %s
 %s DIHEDRAL  : %s
 %s MIN NONBONDED DISTANCE : %s
 %s"""%(
-       prefix,
-       prefix,
-       prefix, fmt(self.b_mean, self.b_max, self.b_number),
-       prefix, fmt(self.a_mean, self.a_max, self.a_number),
        prefix, fmt(self.c_mean, self.c_max, self.c_number),
        prefix, fmt(self.p_mean, self.p_max, self.p_number),
        prefix, fmt(self.d_mean, self.d_max, self.d_number),

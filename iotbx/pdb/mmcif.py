@@ -548,6 +548,61 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     exptl_method = self.cif_block.get('_exptl.method')
     return exptl_method
 
+  def process_BIOMT_records(self, error_handle=True,eps=1e-4):
+    # this is temporarily work-around. Whole thing for matrices need to be 
+    # rewritten to be able to carry all the info from mmCIF, see
+    # https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies#Anchor-Biol
+    # Therefore massive copy-paste from below process_mtrix_records()
+    from scitbx import matrix
+
+    t_trans = []
+    t_rots = []
+    t_serial_number = []
+    t_coordinates_present = []    
+    ncs_oper = self.cif_block.get('_pdbx_struct_oper_list.id')
+    if ncs_oper is not None:
+      for i, sn in enumerate(ncs_oper):
+        t_serial_number.append((sn, i))
+        t_coordinates_present.append(False) # no way to figure out
+
+        r = [(self.cif_block.get('_pdbx_struct_oper_list.matrix[%s][%s]' %(x,y))[i])
+          for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+        t_rots.append(matrix.sqr(map(float,r)))
+        t = [(self.cif_block.get('_pdbx_struct_oper_list.vector[%s]' %x)[i])
+          for x in '123']
+        t_trans.append(matrix.col(map(float,t)))
+
+    # filter everything for X0 and P here:
+    trans = []
+    rots = []
+    serial_number = []
+    coordinates_present = []   
+    for sn, r, t, cp in zip(t_serial_number, t_rots, t_trans, t_coordinates_present):
+      if sn[0] != "P" and sn[0] != "X0":
+        trans.append(t)
+        rots.append(r)
+        serial_number.append((sn[0], int(sn[0])-1 ))
+        coordinates_present.append(cp)
+    items_order = [i for (_,i) in serial_number]
+    trans = [trans[i] for i in items_order]
+    rots = [rots[i] for i in items_order]
+    coordinates_present = [coordinates_present[i] for i in items_order]
+    serial_number = [j for (j,_) in serial_number]
+    # collect results
+    result = iotbx.pdb.mtrix_and_biomt_records_container()
+    for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
+      if not r.is_r3_rotation_matrix(rms_tolerance=eps):
+        if error_handle:
+          raise Sorry('Rotation matrices are not proper! ')
+        else:
+          print Sorry('Rotation matrices are not proper! ')
+      ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
+      result.add(
+        r=r, t=t,
+        coordinates_present=(cp or ignore_transform),
+        serial_number=sn)
+    return result
+
   def process_mtrix_records(self,error_handle=True,eps=1e-4):
     """
     Read MTRIX records from a pdb file
