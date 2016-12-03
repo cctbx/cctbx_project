@@ -1746,6 +1746,23 @@ class process_command_line_args(object):
     else:
       assert len(command_line_params) == 0
     # Crystal symmetry: validate and finalize consensus object
+    ### Filter nonsense
+    tmp_=[]
+    for cs in crystal_symmetries:
+      ucp = cs[1].unit_cell().parameters()
+      if(abs(1.-ucp[0])<1.e-3 and
+         abs(1.-ucp[1])<1.e-3 and
+         abs(1.-ucp[2])<1.e-3): continue
+      if(abs(1.-ucp[3])<1.e-3 and
+         abs(1.-ucp[4])<1.e-3 and
+         abs(1.-ucp[5])<1.e-3): continue
+      if(abs(0.-ucp[3])<1.e-3 and
+         abs(0.-ucp[4])<1.e-3 and
+         abs(0.-ucp[5])<1.e-3): continue
+      tmp_.append(cs)
+    crystal_symmetries = tmp_[:]
+    del tmp_
+    ###
     if(len(crystal_symmetries)>1):
       assert self.crystal_symmetry is None # make sure it's undefined from start
       cs0, cs0_source = crystal_symmetries[0][1], crystal_symmetries[0][0]
