@@ -1240,7 +1240,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
       # temporary workaround, could be plain text over there instead of
       # expected number of records, see 5l93
       try:
-        temp = int(source_info[-1].split()[3])    
+        temp = int(source_info[-1].split()[3])
       except ValueError:
         temp = 0
       if len(biomt_data)/3.0 != temp:

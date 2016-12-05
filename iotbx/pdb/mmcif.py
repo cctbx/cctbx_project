@@ -549,7 +549,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     return exptl_method
 
   def process_BIOMT_records(self, error_handle=True,eps=1e-4):
-    # this is temporarily work-around. Whole thing for matrices need to be 
+    # this is temporarily work-around. Whole thing for matrices need to be
     # rewritten to be able to carry all the info from mmCIF, see
     # https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/biological-assemblies#Anchor-Biol
     # Therefore massive copy-paste from below process_mtrix_records()
@@ -558,7 +558,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     t_trans = []
     t_rots = []
     t_serial_number = []
-    t_coordinates_present = []    
+    t_coordinates_present = []
     ncs_oper = self.cif_block.get('_pdbx_struct_oper_list.id')
     if ncs_oper is not None:
       for i, sn in enumerate(ncs_oper):
@@ -576,7 +576,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     trans = []
     rots = []
     serial_number = []
-    coordinates_present = []   
+    coordinates_present = []
     for sn, r, t, cp in zip(t_serial_number, t_rots, t_trans, t_coordinates_present):
       if sn[0] != "P" and sn[0] != "X0":
         trans.append(t)
@@ -720,4 +720,3 @@ def extract_f_model_core_constants(cif_block):
     grid_step_factor = grid_step_factor,
     r_work           = r_work,
     r_free           = r_free)
-

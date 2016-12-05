@@ -237,7 +237,7 @@ def run_all(params=None,out=sys.stdout):
   rv_list=[]
   file_list=[]
   for query_file in os.listdir(params.input_files.query_dir):
-    file_name=os.path.join(params.input_files.query_dir,query_file) 
+    file_name=os.path.join(params.input_files.query_dir,query_file)
     if not os.path.isfile(file_name): continue
     local_params=deepcopy(params)
     local_params.input_files.query_dir=None
@@ -264,7 +264,7 @@ def run_all(params=None,out=sys.stdout):
               "     MODEL     --CLOSE-    ---FAR--    FORWARD REVERSE MIXED"+\
               "  CA                   SEQ"
   print >>out,"               RMSD   N    RMSD   N       N       N      N  "+\
-              " SCORE  SEQ MATCH(%)  SCORE"+"\n" 
+              " SCORE  SEQ MATCH(%)  SCORE"+"\n"
 
   results_dict={}
   score_list=[]
@@ -496,7 +496,7 @@ def run(args=None,
   if forward_match_rmsd_list.size():
       id='forward'
       rmsd=forward_match_rmsd_list.min_max_mean().mean**0.5
-      n=forward_match_rmsd_list.size() 
+      n=forward_match_rmsd_list.size()
       rv.add_rmsd(id=id,rmsd=rmsd,n=n)
   if reverse_match_rmsd_list.size():
       id='reverse'
