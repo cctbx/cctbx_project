@@ -21,10 +21,11 @@ class entity (slots_getstate_setstate) :
   molprobity_table_labels = []
 
   def __init__ (self, **kwds) :
-    for name in kwds.keys() :
+    for name in self.__slots__:
+      setattr(self, name, None)
+    for name, value in kwds.iteritems():
       assert (name in self.__slots__), name
-    for name in self.__slots__ :
-      setattr(self, name, kwds.get(name, None))
+      setattr(self, name, value)
 
   @staticmethod
   def header () :
@@ -261,10 +262,12 @@ class atom_base (slots_getstate_setstate) :
     pdb_atom = kwds.get("pdb_atom", None)
     if (pdb_atom is not None) :
       del kwds['pdb_atom']
-    for name in kwds.keys() :
+    for name in self.__slots__:
+      setattr(self, name, None)
+    for name, value in kwds.iteritems():
       assert (name in self.__slots__), name
-    for name in self.__slots__ :
-      setattr(self, name, kwds.get(name, None))
+      setattr(self, name, value)
+
     if (pdb_atom is not None) :
       labels = pdb_atom.fetch_labels()
       self.chain_id = labels.chain_id
