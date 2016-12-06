@@ -14,9 +14,6 @@ from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
-import os
-
-
 class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
   '''A class for reading mini CBF format Pilatus images for 6M SN 100 @ DLS.'''
 
