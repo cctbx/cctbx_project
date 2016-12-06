@@ -120,7 +120,7 @@ def generate_proxies(pdb_hierarchy,
                      geometry_restraints_manager,
                      log,
                      ):
-  if 0:
+  if 1:
     return generate_proxies_from_xray_structure(pdb_hierarchy,
                                                 xray_structure,
                                                 geometry_restraints_manager,

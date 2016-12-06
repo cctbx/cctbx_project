@@ -1,0 +1,315 @@
+import os, sys
+
+test1 = '''
+
+Using electron cloud x-H distances and vdW radii
+
+Using input model H/D atoms...
+
+Bad Clashes >= 0.4 Angstrom:
+ A 489  SER  OG   A 528  LYS  NZ  :-0.801
+ B 356  ARG  NH1  B 357  MET  O   :-0.649
+ A 330  GLN  NE2  A 340  GLN  OE1 :-0.560
+ B  72  ARG  NH2  B 151  GLN  OE1 :-0.550
+ A 139  THR  HB   A 140  PRO  HD2 :-0.547
+ B 334  GLN  O    B 336  GLN  NE2 :-0.538
+ A 206  ARG  HG2  A 206  ARG HH11 :-0.533
+ B 194  GLU  OE1  B 196  GLY  N   :-0.528
+ B 206  ARG  O    B 210  LEU  N   :-0.518
+ A 489  SER  HG   A 493  VAL HG21 :-0.515
+ A 117  SER  OG   A 213  GLY  O   :-0.509
+ A 436  GLY  O    A 461  ARG  NH2 :-0.497
+ A 112  GLY  O    A 114  ALA  N   :-0.496
+ A 474  ASN  O    A 477  THR  OG1 :-0.494
+ A 358  ARG  HG2  A 358  ARG  O   :-0.486
+ A 486  LEU  O    A 528  LYS  NZ  :-0.486
+ A 135  ILE  O    A 138  GLU  HG2 :-0.480
+ A 474  ASN  OD1  A 475  GLN  N   :-0.479
+ A 246  LEU  O    A 307  ARG  NH1 :-0.479
+ A 447  ASN  OD1  A 448  ARG  NH1 :-0.467
+ B  54  ASN  O    B 143  ARG  NH2 :-0.466
+ A 121  ASP  O    A 124  PHE  N   :-0.457
+ A 206  ARG  CG   A 206  ARG HH11 :-0.455
+ A 448  ARG  HD3  A 448  ARG  N   :-0.450
+ A 139  THR  CB   A 140  PRO  HD2 :-0.444
+ B 111  VAL  HA   B 214  LEU HD22 :-0.442
+ B 169  GLU  HB2  B 170  PRO  HD3 :-0.441
+ A 110  ASP  O    A 217  PRO  HD3 :-0.428
+ A   2  ILE  O    A 213  GLY  HA3 :-0.424
+ A 220  LYS  O    A 221  HIS  CB  :-0.420
+ B 114  ALA  HB2  B 214  LEU HD21 :-0.416
+ A 139  THR  O    A 140  PRO  O   :-0.412
+ A 379  SER  CB   A 387  PRO  HD3 :-0.408
+ A 178  ILE HD11  A 201  LYS  HG2 :-0.406
+ A   2  ILE HG22  A   3  SER  N   :-0.406
+ B 363  ASN  ND2  B 405  TYR  OH  :-0.405
+ B 286  THR  O    B 286  THR  OG1 :-0.403
+ A 447  ASN  O    A 451  LYS  N   :-0.403
+ A 358  ARG  H    A 358  ARG  HD3 :-0.402
+clashscore = 2.52
+'''
+test2 = '''
+
+Using electron cloud x-H distances and vdW radii
+
+Using input model H/D atoms...
+
+Bad Clashes >= 0.4 Angstrom:
+ A 102  LYS  HE2  A 237  ASP  HA  :-0.700
+ A 489  SER  OG   A 528  LYS  NZ  :-0.687
+ A 448  ARG  H    A 448  ARG  HD3 :-0.636
+ A 139  THR  HB   A 140  PRO  HD2 :-0.631
+ A 474  ASN  O    A 477  THR  OG1 :-0.631
+ B 356  ARG  NH1  B 357  MET  O   :-0.629
+ B 115  TYR  HB3  B 149  LEU  HB2 :-0.629
+ A 191  SER  HG   A 198  HIS  HD1 :-0.621
+ A 538  ALA  O    A 539  HIS  HB3 :-0.617
+ B 169  GLU  HB2  B 170  PRO  HD3 :-0.599
+ A 178  ILE HD11  A 201  LYS  HG2 :-0.586
+ A  49  LYS  HD3  A  49  LYS  N   :-0.584
+ A  17  ASP  O    A  83  ARG  HD3 :-0.580
+ B 163  SER  O    B 167  ILE HG23 :-0.577
+ B 111  VAL  HA   B 214  LEU HD22 :-0.577
+ A  94  ILE HG22  A 183  TYR  HE2 :-0.574
+ A  42  GLU  HG3  A  49  LYS  HD2 :-0.572
+ B   7  THR HG22  B 119  PRO  HG2 :-0.569
+ A 454  LYS  HA   A 467  VAL  O   :-0.565
+ A 139  THR  CB   A 140  PRO  HD2 :-0.560
+ A 358  ARG  H    A 358  ARG  HD3 :-0.559
+ B  56  TYR  HE2  B 126  LYS  HE3 :-0.557
+ A 330  GLN  NE2  A 340  GLN  OE1 :-0.553
+ A 358  ARG  HG2  A 358  ARG  O   :-0.552
+ B  61  PHE  CE1  B  74  LEU HD23 :-0.551
+ A 206  ARG  HG2  A 206  ARG HH11 :-0.550
+ B  72  ARG  NH2  B 151  GLN  OE1 :-0.549
+ A 170  PRO  HA   A 173  LYS  HZ2 :-0.547
+ A 447  ASN  HB3  A 450  THR  OG1 :-0.545
+ A 129  ALA  HB1  A 143  ARG HH12 :-0.545
+ A  49  LYS  CD   A  49  LYS  H   :-0.544
+ A 241  VAL HG21  A 270  ILE HG21 :-0.542
+ A 486  LEU  O    A 528  LYS  NZ  :-0.542
+ A 149  LEU HD11  A 159  ILE HG21 :-0.539
+ A   2  ILE HG22  A   3  SER  N   :-0.538
+ B 173  LYS  HD2  B 173  LYS  N   :-0.537
+ A 109  LEU HD23  A 216  THR HG21 :-0.537
+ A   7  THR HG22  A 119  PRO  HB2 :-0.536
+ A 491  LEU HD13  A 492  GLU  HG3 :-0.534
+ A 112  GLY  O    A 114  ALA  N   :-0.534
+ A  49  LYS  H    A  49  LYS  HD3 :-0.532
+ A 434  ILE HD13  A 530  LYS  HB3 :-0.531
+ A 246  LEU  O    A 307  ARG  NH1 :-0.531
+ A 448  ARG  HD3  A 448  ARG  N   :-0.527
+ A 447  ASN  O    A 451  LYS  N   :-0.525
+ A 122  GLU  CD   A 122  GLU  H   :-0.525
+ A 100  LEU HD23  A 181  TYR  HE1 :-0.523
+ A 308  GLU  HA   A 308  GLU  OE2 :-0.522
+ B 114  ALA  HB2  B 214  LEU HD21 :-0.522
+ A 448  ARG  HG2  A 448  ARG HH11 :-0.520
+ B 171  PHE  HB2  B 208  HIS  HD2 :-0.518
+ A 503  LEU  HA   A 506  ILE HD12 :-0.517
+ A 312  GLU  HG2  A 313  PRO  HD2 :-0.515
+ A 206  ARG  CG   A 206  ARG HH11 :-0.515
+ A 343  GLN  HG3  A 349  LEU HD11 :-0.514
+ A 317  VAL HG12  A 318  TYR  N   :-0.511
+ A 489  SER  OG   A 493  VAL HG21 :-0.510
+ A 436  GLY  O    A 461  ARG  NH2 :-0.509
+ B  61  PHE  CD1  B 403  THR HG22 :-0.509
+ A 111  VAL HG21  A 160  PHE  CZ  :-0.508
+ A 239  TRP  CZ2  A 316  GLY  HA3 :-0.508
+ A 479  LEU  HB2  A 517  LEU HD13 :-0.504
+ B 138  GLU  HG3  B 139  THR HG22 :-0.500
+ B  98  ALA  O    B 101  LYS  HG2 :-0.500
+ A 518  VAL  O    A 522  ILE HG13 :-0.499
+ B  13  LYS  HE3  B  84  THR  O   :-0.497
+ A 516  GLU  O    A 519  ASN  HB2 :-0.496
+ A  19  PRO  HG3  A  80  LEU  HB2 :-0.496
+ A 440  PHE  CZ   A 489  SER  HB3 :-0.495
+ A 402  TRP  C    A 402  TRP  CD1 :-0.494
+ B 107  THR  HG1  B 198  HIS  HE2 :-0.494
+ A 149  LEU HD21  A 159  ILE HG22 :-0.491
+ A 101  LYS  HE2  A 321  PRO  HG3 :-0.490
+ A 248  GLU  HG3  A 307  ARG  CZ  :-0.488
+ A  68  SER  C    A  70  LYS  H   :-0.486
+ A 406  TRP  CZ3  B 418  ASN  HA  :-0.483
+ B 170  PRO  O    B 174  GLN  HG3 :-0.482
+ A 117  SER  OG   A 213  GLY  O   :-0.482
+ B 274  ILE HD11  B 310  LEU HD21 :-0.479
+ A 477  THR  HG1  A 478  GLU  H   :-0.479
+ A 241  VAL HG21  A 270  ILE HD13 :-0.478
+ A 516  GLU  O    A 520  GLN  HG3 :-0.478
+ B 135  ILE  H    B 135  ILE HD12 :-0.476
+ A 179  VAL HG13  A 181  TYR  CE2 :-0.476
+ B 373  GLN  O    B 377  THR HG23 :-0.475
+ B  27  THR  HB   B  29  GLU  HG2 :-0.475
+ A 118  VAL  HB   A 149  LEU HD22 :-0.474
+ B 169  GLU  HA   B 173  LYS  HZ3 :-0.474
+ A 455  ALA  O    A 484  LEU HD12 :-0.474
+ B 113  ASP  O    B 116  PHE  HD2 :-0.473
+ B  75  VAL HG11  B  77  PHE  CZ  :-0.472
+ B  60  VAL HG12  B  75  VAL HG22 :-0.471
+ A 477  THR  O    A 481  ALA  N   :-0.470
+ A 335  GLY  HA2  A 367  GLN  OE1 :-0.470
+ B  94  ILE HD11  B 181  TYR  HD2 :-0.470
+ B 254  VAL HG21  B 287  LYS  HG3 :-0.469
+ B 245  VAL HG13  B 431  LYS  HB2 :-0.469
+ A 216  THR HG23  A 217  PRO  HD2 :-0.468
+ B 387  PRO  HG2  B 389  PHE  CE1 :-0.467
+ A  88  TRP  CE3  A  88  TRP  HA  :-0.466
+ A  28  GLU  HG3  A  29  GLU  N   :-0.466
+ A 473  THR  O    A 475  GLN  N   :-0.464
+ A 199  ARG  HG3  A 219  LYS  NZ  :-0.462
+ A 100  LEU HD23  A 181  TYR  CE1 :-0.462
+ B 369  THR HG22  B 398  TRP  CH2 :-0.462
+ A 498  ASP  HB2  A 538  ALA  HB2 :-0.460
+ B 277  ARG  O    B 281  LYS  HG3 :-0.460
+ A  53  GLU  HG3  A  53  GLU  O   :-0.459
+ A 257  ILE HD13  A 282  LEU HD23 :-0.458
+ A 219  LYS  HA   A 222  GLN  HG2 :-0.457
+ B 134  SER  CB   B 139  THR HG23 :-0.456
+ B 235  HIS  HB2  B 238  LYS  HG2 :-0.455
+ A 239  TRP  CE2  A 316  GLY  HA3 :-0.455
+ A  79  GLU  CD   A  83  ARG HH12 :-0.454
+ B 266  TRP  HZ3  B 426  TRP  CD1 :-0.453
+ A 115  TYR  O    A 117  SER  N   :-0.453
+ A 517  LEU  HA   A 517  LEU HD23 :-0.453
+ A  13  LYS  HG3  A  84  THR  O   :-0.452
+ B 339  TYR  HH   B 350  LYS  HE3 :-0.452
+ A 149  LEU  HG   A 156  SER  HA  :-0.449
+ A 451  LYS  O    A 471  ASP  N   :-0.449
+ B 267  ALA  HB2  B 426  TRP  CZ3 :-0.449
+ B  77  PHE  CD2  B  80  LEU HD23 :-0.448
+ A 156  SER  HB2  A 157  PRO  HD3 :-0.447
+ B 368  LEU HD13  B 398  TRP  CZ3 :-0.446
+ A 388  LYS  HZ1  A 415  GLU  HB3 :-0.445
+ B  84  THR HG22  B 154  LYS  HE2 :-0.445
+ B 376  THR  O    B 380  ILE HG13 :-0.444
+ A 111  VAL HG22  A 185  ASP  HB3 :-0.444
+ B 319  TYR  OH   B 385  LYS  HD3 :-0.444
+ B  29  GLU  CG   B  30  LYS  N   :-0.443
+ B 129  ALA  HA   B 144  TYR  O   :-0.442
+ A 164  MET  HE1  A 214  LEU HD13 :-0.442
+ A 454  LYS  HZ2  A 468  THR HG23 :-0.440
+ A 188  TYR  O    A 999  GWJ CL   :-0.440
+ A 220  LYS  O    A 221  HIS  HB2 :-0.440
+ A 473  THR HG22  A 475  GLN  H   :-0.438
+ A  46  LYS  HE2  A 116  PHE  HB3 :-0.438
+ A 134  SER  HB3  A 138  GLU  O   :-0.438
+ B 277  ARG  HG2  B 278  GLN  H   :-0.437
+ A 350  LYS  HE3  A 378  GLU  OE1 :-0.437
+ A  41  MET  HG2  A  46  LYS  HZ2 :-0.436
+ B 175  ASN  HB3  B 178  ILE HD12 :-0.436
+ A  56  TYR  O    A 143  ARG  NH2 :-0.436
+ A  32  LYS  HZ3  A 135  ILE HD11 :-0.434
+ A 489  SER  HB2  A 493  VAL  CG2 :-0.433
+ B 120  LEU HD23  B 125  ARG  HG2 :-0.432
+ B 244  ILE HG13  B 426  TRP  CZ2 :-0.432
+ A 473  THR  O    A 474  ASN  C   :-0.432
+ A 456  GLY  HA3  A 466  VAL HG22 :-0.432
+ A 532  TYR  CE2  B 289  LEU HD23 :-0.431
+ A 199  ARG  HG3  A 219  LYS  HZ3 :-0.431
+ A  43  LYS  C    A  45  GLY  H   :-0.431
+ A 108  VAL HG21  A 223  LYS  HG3 :-0.430
+ A 346  PHE  CD2  A 346  PHE  N   :-0.430
+ A 270  ILE  CG2  A 314  VAL HG21 :-0.430
+ A 379  SER  CB   A 387  PRO  HD3 :-0.430
+ A 360  ALA  O    A 361  HIS  HB3 :-0.430
+ B 331  LYS  NZ   B 364  ASP  OD1 :-0.430
+ A 506  ILE HG13  A 533  LEU HD23 :-0.429
+ A 393  ILE  HB   A 423  VAL  CG2 :-0.429
+ A 439  THR HG22  A 441  TYR  CE1 :-0.428
+ B 195  ILE HG23  B 196  GLY  N   :-0.427
+ A 111  VAL HG11  A 164  MET  HE3 :-0.427
+ A 474  ASN  O    A 478  GLU  HG3 :-0.427
+ A 480  GLN  OE1  A 517  LEU HD21 :-0.426
+ A 469  LEU HD11  A 480  GLN  HG2 :-0.426
+ A   8  VAL HG13  B  53  GLU  OE1 :-0.426
+ B   8  VAL HG11  B 159  ILE HG12 :-0.425
+ A 218  ASP  HB3  A 220  LYS  H   :-0.425
+ A 111  VAL HG21  A 160  PHE  HZ  :-0.424
+ B 235  HIS  O    B 238  LYS  HG2 :-0.424
+ A 220  LYS  O    A 221  HIS  CB  :-0.423
+ B  96  HIS  CE1  B 381  VAL  O   :-0.423
+ B 320  ASP  OD2  B 323  LYS  NZ  :-0.423
+ A  27  THR  O    A  31  ILE HG13 :-0.422
+ B  61  PHE  CZ   B  74  LEU  HG  :-0.422
+ A  43  LYS  C    A  45  GLY  N   :-0.421
+ A 255  ASN  O    A 259  LYS  HG2 :-0.421
+ A 225  PRO  HA   A 226  PRO  C   :-0.419
+ B 376  THR  CG2  B 386  THR HG22 :-0.419
+ A   9  PRO  HG2  B  53  GLU  HG3 :-0.419
+ A 121  ASP  OD2  A 123  ASP  HB2 :-0.419
+ A   3  SER  HB3  A   5  ILE HG13 :-0.418
+ B 108  VAL HG22  B 188  TYR  CD2 :-0.418
+ A 505  ILE  O    A 509  GLN  N   :-0.417
+ A  69  THR  O    A  69  THR HG22 :-0.417
+ A 135  ILE  O    A 138  GLU  HG3 :-0.416
+ A 515  SER  OG   A 518  VAL HG23 :-0.416
+ B 270  ILE  O    B 272  PRO  HD3 :-0.415
+ B 193  LEU  N    B 193  LEU HD23 :-0.415
+ A 435  VAL  HA   B 290  THR HG21 :-0.414
+ B 109  LEU  CD1  B 205  LEU HD12 :-0.414
+ A 376  THR  O    A 380  ILE HG12 :-0.413
+ A 491  LEU  CD1  A 492  GLU  HG3 :-0.413
+ B  54  ASN  O    B 143  ARG  NH2 :-0.411
+ B 266  TRP  CZ3  B 426  TRP  CD1 :-0.410
+ A 332  GLN  O    A 336  GLN  HB2 :-0.410
+ A 329  ILE HD12  A 391  LEU HD22 :-0.409
+ B  46  LYS  HE2  B 116  PHE  HD1 :-0.408
+ A 271  TYR  HA   A 272  PRO  HD3 :-0.408
+ A  97  PRO  HA   A 100  LEU  CD1 :-0.408
+ A 100  LEU  O    A 318  TYR  HB3 :-0.407
+ A 324  ASP  O    A 343  GLN  HG2 :-0.407
+ A 486  LEU  CD1  A 521  ILE HG23 :-0.406
+ A 389  PHE  HB2  A 414  TRP  HB3 :-0.405
+ A  43  LYS  HA   A  43  LYS  HD3 :-0.405
+ B  64  LYS  HE2  B  71  TRP  CZ2 :-0.405
+ B  27  THR HG22  B  29  GLU  H   :-0.405
+ B  50  ILE  CG2  B 145  GLN  HG2 :-0.405
+ A 434  ILE  HB   A 437  ALA  HB3 :-0.405
+ A 110  ASP  O    A 217  PRO  HD3 :-0.405
+ B 334  GLN  O    B 336  GLN  NE2 :-0.404
+ B  63  ILE HD13  B  74  LEU HD22 :-0.404
+ A 493  VAL HG12  A 494  ASN  N   :-0.403
+ B 168  LEU  O    B 169  GLU  C   :-0.403
+ B  16  MET  HE2  B  83  ARG  HG2 :-0.403
+ A  57  ASN  HA   A 129  ALA  O   :-0.402
+ A 334  GLN  O    A 356  ARG  HD2 :-0.402
+ A 489  SER  CB   A 493  VAL HG21 :-0.402
+ A 206  ARG  HB3  A 206  ARG  NH1 :-0.402
+ A 199  ARG  HG2  A 199  ARG HH11 :-0.400
+ A 478  GLU  O    A 481  ALA  HB3 :-0.400
+ A 465  LYS  O    A 466  VAL HG23 :-0.400
+clashscore = 14.45
+'''
+def compare_output(o1, o2):
+  matches = {}
+  for line1 in o1.splitlines():
+    if len(line1.split())<9: continue
+    print line1
+    key1 = line1[:35]
+    for line2 in o2.splitlines():
+      key2 = line2[:35]
+      if key1==key2:
+        matches[line1]=line2
+        break
+
+  for line1 in o1.splitlines():
+    if line1 in matches:
+      print '"%s" ~> "%s"' % ( line1,matches[line1])
+    else:
+      print '"%s"' % line1
+  for line2 in o2.splitlines():
+    if line2.find(':-')==-1 and line2.find("clashscore")==-1: continue
+    if line2 in matches.values():
+      pass
+    else:
+      print '%s ~> "%s"' % (' '*43, line2)
+
+
+def run():#model1,model2):
+  compare_output(test1, test2)
+
+if __name__=="__main__":
+  args = sys.argv[1:]
+  del sys.argv[1:]
+  run(*tuple(args))
