@@ -3523,9 +3523,9 @@ class build_all_chain_proxies(linking_mixins):
         "  columns 77-78 of the PDB file."])
     return "\n  ".join(result)
 
-  def extract_secondary_structure (self) :
+  def extract_secondary_structure (self, log=None) :
     if hasattr(self.pdb_inp, "extract_secondary_structure"):
-      return self.pdb_inp.extract_secondary_structure()
+      return self.pdb_inp.extract_secondary_structure(log=log)
     else:
       return None
 

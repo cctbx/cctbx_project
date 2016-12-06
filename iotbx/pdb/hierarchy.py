@@ -1538,6 +1538,20 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       self.atoms().reset_i_seq()
     return n_removed
 
+  def is_ca_only(self):
+    """
+    Determine if hierarchy consists only from CA atoms.
+    Upgrade options:
+      - implement threshold for cases where several residues are present in
+        full;
+      - figure out how to deal with HETATM records of the same chain.
+      - Ignore possible incorrect alignment of atom names.
+    """
+    result = True
+    for model in self.models():
+      result = result and model.is_ca_only()
+    return result
+
 class _(boost.python.injector, ext.model, __hash_eq_mixin):
   """
   Class representing MODEL blocks in a PDB file (or equivalent mmCIF).  There
@@ -1581,6 +1595,20 @@ class _(boost.python.injector, ext.model, __hash_eq_mixin):
 
   def only_atom(self):
     return self.only_atom_group().only_atom()
+
+  def is_ca_only(self):
+    """
+    Determine if model consists only from CA atoms.
+    Upgrade options:
+      - implement threshold for cases where several residues are present in
+        full;
+      - figure out how to deal with HETATM records of the same chain.
+      - Ignore possible incorrect alignment of atom names.
+    """
+    result = True
+    for chain in self.chains():
+      result = result and chain.is_ca_only()
+    return result
 
 class _(boost.python.injector, ext.chain, __hash_eq_mixin):
   """
