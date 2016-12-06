@@ -42,28 +42,6 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
 
     return
 
-  def _goniometer(self):
-    '''Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header, though for miniCBF
-    there are limited options for this.'''
-
-    phi_value = 0.0
-
-    chi_value = 0.0
-
-    omega_value = 0.0
-
-    from scitbx import matrix
-    from scitbx.array_family import flex
-    phi = (1.0, 0.0, 0.0)
-    chi = (0.0, 0.0, 1.0)
-    omega = (-1.0, 0.0, 0.0)
-    axes = flex.vec3_double((phi, chi, omega))
-    angles = flex.double((phi_value, chi_value, omega_value))
-    names = flex.std_string(("GON_PHI", "GON_CHI", "GON_OMEGA"))
-    return self._goniometer_factory.make_multi_axis_goniometer(
-      axes, angles, names, scan_axis=2)
-
   def get_goniometer_shadow_masker(self, goniometer=None):
     if goniometer is None:
       goniometer = self.get_goniometer()
