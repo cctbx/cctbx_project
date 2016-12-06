@@ -13,16 +13,28 @@ $GRAPHS
 $$
 1/resol^2  Nrefl      R-free     FOM       $$
 $$
-0.02       2004       
-0.25       0.89
+0.02       2004       0.25       0.89
 0.04       2084       0.23       0.88
 0.06       2037       0.27       0.83
 0.08       1949       0.28       0.75
 0.1        1783       0.38       *
 $$
 """
+  # Different newline arrangement, otherwise identical
+  loggraph_input = """\
+$TABLE: Resolution shell statistics: $GRAPHS :R-free vs. resolution:A:1,3: :FOM vs. resolution:A:1,4:
+$$
+1/resol^2  Nrefl      """+"""
+R-free     FOM       $$ $$
+0.02       2004       """+"""
+0.25       0.89
+0.04       2084       0.23
+       0.88
+0.06       2037       0.27       0.83
+0.08       1949       0.28       0.75 0.1        1783       0.38       * $$
+"""
   t = data_plots.table_data(None)
-  t.import_loggraph(loggraph1)
+  t.import_loggraph(loggraph_input)
 #  print t.format_loggraph()
 #  print "---"
 #  print loggraph1
