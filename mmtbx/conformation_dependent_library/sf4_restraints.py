@@ -1,4 +1,5 @@
-import os, sys
+from __future__ import division
+import sys
 
 from cctbx.array_family import flex
 from cctbx import geometry_restraints
@@ -120,7 +121,7 @@ def generate_proxies(pdb_hierarchy,
                      geometry_restraints_manager,
                      log,
                      ):
-  if 1:
+  if 0:
     return generate_proxies_from_xray_structure(pdb_hierarchy,
                                                 xray_structure,
                                                 geometry_restraints_manager,
