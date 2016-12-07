@@ -200,23 +200,9 @@ class detector_factory:
     pixel = (cbf_detector.get_inferred_pixel_size(1),
              cbf_detector.get_inferred_pixel_size(2))
 
-    # FIXME can probably simplify the code which follows below by
-    # making proper use of cctbx vector calls - should not be as
-    # complex as it appears to be...
-
     origin = tuple(cbf_detector.get_pixel_coordinates(0, 0))
-    fast = cbf_detector.get_pixel_coordinates(0, 1)
-    slow = cbf_detector.get_pixel_coordinates(1, 0)
-
-    dfast = [fast[j] - origin[j] for j in range(3)]
-    dslow = [slow[j] - origin[j] for j in range(3)]
-
-    lfast = math.sqrt(sum([dfast[j] * dfast[j] for j in range(3)]))
-    lslow = math.sqrt(sum([dslow[j] * dslow[j] for j in range(3)]))
-
-    fast = tuple([dfast[j] / lfast for j in range(3)])
-    slow = tuple([dslow[j] / lslow for j in range(3)])
-
+    fast = cbf_detector.get_detector_axis_fast()
+    slow = cbf_detector.get_detector_axis_slow()
     size = tuple(reversed(cbf_handle.get_image_size(0)))
 
     try:
