@@ -92,7 +92,7 @@ def from_map_map_atom(map_1, map_2, site_cart, unit_cell, radius):
     y=map_2.select(sel).as_1d()).coefficient()
 
 def from_map_map_atoms_optimal_radius(map_1, map_2, sites_cart, unit_cell):
-  radii_coarse = [r/100. for r in range(100,650,50)]
+  radii_coarse = [r/100. for r in range(100,950,50)]
   cc_best = -999
   r_best = None
   for r in radii_coarse:
