@@ -5,7 +5,9 @@ from libtbx.utils import Sorry
 
 master_phil = iotbx.phil.parse("""
 
-  input_files {
+  input_files
+    .style = menu_item auto_align
+  {
 
     map_file = None
       .type = path
@@ -16,7 +18,8 @@ master_phil = iotbx.phil.parse("""
       .type = path
       .help = Optional file with map coefficients
       .short_caption = Map coefficients
-      .style = bold file_type:hkl input_file process_hkl child:fobs:data_labels\
+      .style = bold file_type:hkl input_file process_hkl \
+        child:map_labels:map_coeffs_labels \
         child:space_group:space_group child:unit_cell:unit_cell
 
     map_coeffs_labels = None
@@ -25,12 +28,13 @@ master_phil = iotbx.phil.parse("""
       .help = Optional label specifying which columns of of map coefficients \
           to use
       .short_caption = Map coeffs label
-      .style = bold renderer:draw_fobs_label_widget
-
+      .style = renderer:draw_map_arrays_widget
 
   }
 
-  output_files {
+  output_files
+    .style = menu_item auto_align
+  {
 
     shifted_map_file = shifted_map.ccp4
       .type = path
@@ -38,24 +42,29 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Shifted map file
 
     shifted_sharpened_map_file = shifted_sharpened_map.ccp4
-      .type = path
+      .type = str
       .help = Input map file shifted to new origin and sharpened.
       .short_caption = Shifted sharpened map file
+      .input_size = 400
 
     shifted_sharpened_map_coeffs_file = shifted_sharpened_map_coeffs.mtz
-      .type = path
+      .type = str
       .help = Input map coeffs shifted to new origin and sharpened.
       .short_caption = Shifted sharpened map coeffs file
+      .input_size = 400
 
     output_directory =  None
       .type = path
       .help = Directory where output files are to be written \
                 applied.
       .short_caption = Output directory
+      .style = directory
 
   }
 
-  crystal_info {
+  crystal_info
+    .style = menu_item auto_align
+  {
 
      use_sg_symmetry = False
        .type = bool
@@ -69,7 +78,7 @@ master_phil = iotbx.phil.parse("""
 
      resolution = None
        .type = float
-       .short_caption = resolution
+       .short_caption = Resolution
        .help = Optional nominal resolution of the map.
 
      solvent_content = None
@@ -85,7 +94,9 @@ master_phil = iotbx.phil.parse("""
        .style = hidden
   }
 
-  map_modification {
+  map_modification
+    .style = menu_item auto_align
+  {
 
      b_iso = None
        .type = float
@@ -227,7 +238,9 @@ master_phil = iotbx.phil.parse("""
            adjusted_sa.
   }
 
-   control {
+   control
+     .style = menu_item auto_align
+   {
      verbose = False
         .type = bool
         .help = '''Verbose output'''
@@ -238,6 +251,17 @@ master_phil = iotbx.phil.parse("""
         .help = "Size of resolve to use. "
         .style = hidden
    }
+
+  include scope libtbx.phil.interface.tracking_params
+
+  gui
+    .help = "GUI-specific parameter required for output directory"
+  {
+    output_dir = None
+    .type = path
+    .style = output_dir
+  }
+
 """, process_includes=True)
 master_params = master_phil
 
@@ -377,6 +401,32 @@ def run(args,out=sys.stdout):
     print >>out,"\nWrote sharpened map_coeffs to %s" %(output_map_coeffs_file)
 
   return new_map_data,new_map_coeffs,crystal_symmetry
+
+# =============================================================================
+# GUI-specific bits for running command
+from libtbx import runtime_utils
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    import os
+    from wxGUI2 import utils
+    utils.safe_makedirs(self.output_dir)
+    os.chdir(self.output_dir)
+    result = run(args=self.args, out=sys.stdout)
+    return result
+
+def validate_params(params):
+  if ( (params.input_files.map_coeffs_file is None) and
+       (params.input_files.map_file is None) ):
+    raise Sorry('Please provide a map file.')
+  if ( (params.input_files.map_coeffs_file is not None) and
+       (params.input_files.map_coeffs_labels is None) ):
+    raise Sorry('Please select the label for the map coefficients.')
+  if ( (params.input_files.map_file is not None) and
+       (params.crystal_info.resolution is None) ):
+    raise Sorry('Please provide a resolution limit.')
+  return True
+
+# =============================================================================
 
 if __name__=="__main__":
   run(sys.argv[1:])
