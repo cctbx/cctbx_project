@@ -155,7 +155,7 @@ master_params_str = """\
     .style = hidden
   disable_uc_volume_vs_n_atoms_check = False
     .type = bool
-    .short_caption = Disable check of unit cell volume to be compatible with the \ 
+    .short_caption = Disable check of unit cell volume to be compatible with the \
                      number of atoms
   correct_hydrogens = True
     .type = bool
