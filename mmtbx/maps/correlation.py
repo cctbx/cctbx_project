@@ -96,7 +96,6 @@ def from_map_map_atoms_optimal_radius(map_1, map_2, sites_cart, unit_cell):
   cc_best = -999
   r_best = None
   for r in radii_coarse:
-    print r
     cc = from_map_map_atoms(map_1=map_1, map_2=map_2, sites_cart=sites_cart,
       unit_cell=unit_cell, radius=r)
     if(cc>cc_best):
