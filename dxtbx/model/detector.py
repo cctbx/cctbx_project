@@ -188,53 +188,7 @@ class detector_factory:
     cbf_handle = pycbf.cbf_handle_struct()
     cbf_handle.read_file(cif_file, pycbf.MSG_DIGEST)
 
-    cbf_detector = cbf_handle.construct_detector(0)
-
-    pixel = (cbf_detector.get_inferred_pixel_size(1),
-             cbf_detector.get_inferred_pixel_size(2))
-
-    # FIXME can probably simplify the code which follows below by
-    # making proper use of cctbx vector calls - should not be as
-    # complex as it appears to be...
-
-    origin = tuple(cbf_detector.get_pixel_coordinates(0, 0))
-    fast = cbf_detector.get_pixel_coordinates(0, 1)
-    slow = cbf_detector.get_pixel_coordinates(1, 0)
-
-    dfast = [fast[j] - origin[j] for j in range(3)]
-    dslow = [slow[j] - origin[j] for j in range(3)]
-
-    lfast = math.sqrt(sum([dfast[j] * dfast[j] for j in range(3)]))
-    lslow = math.sqrt(sum([dslow[j] * dslow[j] for j in range(3)]))
-
-    fast = tuple([dfast[j] / lfast for j in range(3)])
-    slow = tuple([dslow[j] / lslow for j in range(3)])
-
-    size = tuple(reversed(cbf_handle.get_image_size(0)))
-
-    try:
-      underload = find_undefined_value(cbf_handle)
-      overload = cbf_handle.get_overload(0) * dxtbx_overload_scale
-      trusted_range = (underload, overload)
-    except: # intentional
-      trusted_range = (0.0, 0.0)
-
-    cbf_detector.__swig_destroy__(cbf_detector)
-    del(cbf_detector)
-
-    # Get the sensor type
-    dtype = detector_factory.sensor(sensor)
-
-    # If the sensor type is PAD then create the detector with a
-    # parallax corrected pixel to millimeter function
-    #if dtype == detector_helper_sensors.SENSOR_PAD:
-      #px_mm = ParallaxCorrectedPxMmStrategy(0.252500934883)
-    #else:
-    px_mm = SimplePxMmStrategy()
-
-    return detector_factory.make_detector(
-              dtype, fast, slow, origin, pixel, size,
-              trusted_range, px_mm)
+    return detector_factory.imgCIF_H(cbf_handle, sensor)
 
   @staticmethod
   def imgCIF_H(cbf_handle, sensor):
