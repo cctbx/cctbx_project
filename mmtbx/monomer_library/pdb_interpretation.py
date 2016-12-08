@@ -2399,7 +2399,7 @@ def _is_C_N_CA_angle(angle):
       return True
   return False
 
-def set_cis_restraints(link_resolution, prev_mm, verbose=1):
+def set_cis_restraints(link_resolution, prev_mm, verbose=False):
   old_angle_value = None
   if link_resolution.chem_link_id in ['CIS', 'PCIS']:
     for angle in prev_mm.lib_link.angle_list:
@@ -2414,17 +2414,16 @@ def set_cis_restraints(link_resolution, prev_mm, verbose=1):
                                                  )
   return old_angle_value
 
-def reset_cis_restraints(prev_mm, old_angle_value):
+def reset_cis_restraints(prev_mm, old_angle_value, verbose=False):
   for angle in prev_mm.lib_link.angle_list:
     if _is_C_N_CA_angle(angle):
       angle.value_angle=old_angle_value
       if verbose:
-        print 'Setting angles %s %s %s %0.2f' % (angle.atom_id_1,
-                                                 angle.atom_id_2,
-                                                 angle.atom_id_3,
-                                                 angle.value_angle,
-                                               )
-  assert 0
+        print 'Resetting angles %s %s %s %0.2f' % (angle.atom_id_1,
+                                                   angle.atom_id_2,
+                                                   angle.atom_id_3,
+                                                   angle.value_angle,
+                                                 )
 
 class build_chain_proxies(object):
 
@@ -2660,7 +2659,7 @@ class build_chain_proxies(object):
             n_unresolved_chain_link_dihedrals \
               += link_resolution.counters.unresolved_non_hydrogen
             link_ids[link_resolution.chem_link_id] += 1
-            old_angle_value = None
+            old_value_angle = None
             if link_resolution.chem_link_id in ['CIS', 'PCIS']:
               old_value_angle = set_cis_restraints(link_resolution, prev_mm)
             link_resolution = add_angle_proxies(
@@ -2673,8 +2672,7 @@ class build_chain_proxies(object):
               broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_angles \
               += link_resolution.counters.unresolved_non_hydrogen
-            if old_value_angle:
-              reset_cis_restraints(prev_mm, old_value_angle)
+            if old_value_angle: reset_cis_restraints(prev_mm, old_value_angle)
             link_resolution = add_chirality_proxies(
               counters=counters(label="link_chirality"),
               m_i=prev_mm,
