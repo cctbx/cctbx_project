@@ -327,7 +327,8 @@ class run(mmtbx.f_model.manager):
         k_mask        = o_kbu_sol.k_mask(),
         k_anisotropic = o_kbu_sol.k_anisotropic())
       # Disable due to rare failures. Technically they should always match. But
-      # since different routines are used tiny disagreements are possible
+      # since different routines are used tiny disagreements are possible.
+      # See examples in : /net/anaconda/raid1/afonine/work/bugs/twin_refinement
       #assert approx_equal(self.r_all(), o_kbu_sol.r(), 1.e-5)
       ##############
       # use apply_back_trace in if below

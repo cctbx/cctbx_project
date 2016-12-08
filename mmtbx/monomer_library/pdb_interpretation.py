@@ -153,6 +153,10 @@ master_params_str = """\
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
     .style = hidden
+  disable_uc_volume_vs_n_atoms_check = False
+    .type = bool
+    .short_caption = Disable check of unit cell volume to be compatible with the \
+                     number of atoms
   correct_hydrogens = True
     .type = bool
     .short_caption = Correct the hydrogen positions trapped in chirals etc
@@ -3110,7 +3114,8 @@ class build_all_chain_proxies(linking_mixins):
     if(self.special_position_settings is not None and
        self.special_position_settings.unit_cell() is not None and
        self.special_position_settings.unit_cell().volume() <
-       flex.sum(self.pdb_inp.atoms().extract_occ())*5):
+       flex.sum(self.pdb_inp.atoms().extract_occ())*5 and
+       self.params.disable_uc_volume_vs_n_atoms_check):
       msg = """Unit cell volume is incompatible with number of atoms.
   Unit cell parameters: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f
   Check CRYST1 record or other sources of crystal symmetry.
@@ -3523,9 +3528,9 @@ class build_all_chain_proxies(linking_mixins):
         "  columns 77-78 of the PDB file."])
     return "\n  ".join(result)
 
-  def extract_secondary_structure (self) :
+  def extract_secondary_structure (self, log=None) :
     if hasattr(self.pdb_inp, "extract_secondary_structure"):
-      return self.pdb_inp.extract_secondary_structure()
+      return self.pdb_inp.extract_secondary_structure(log=log)
     else:
       return None
 

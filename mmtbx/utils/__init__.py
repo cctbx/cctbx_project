@@ -1746,6 +1746,22 @@ class process_command_line_args(object):
     else:
       assert len(command_line_params) == 0
     # Crystal symmetry: validate and finalize consensus object
+    ### Filter nonsense
+    tmp_=[]
+    for cs in crystal_symmetries:
+      ucp = cs[1].unit_cell().parameters()
+      if(abs(1.-ucp[0])<1.e-3 and
+         abs(1.-ucp[1])<1.e-3 and
+         abs(1.-ucp[2])<1.e-3): continue
+      if(abs(1.-ucp[3])<1.e-3 and
+         abs(1.-ucp[4])<1.e-3 and
+         abs(1.-ucp[5])<1.e-3): continue
+      if(abs(0.-ucp[3])<1.e-3 and
+         abs(0.-ucp[4])<1.e-3 and
+         abs(0.-ucp[5])<1.e-3): continue
+      tmp_.append(cs)
+    crystal_symmetries = tmp_[:]
+    ###
     if(len(crystal_symmetries)>1):
       assert self.crystal_symmetry is None # make sure it's undefined from start
       cs0, cs0_source = crystal_symmetries[0][1], crystal_symmetries[0][0]
@@ -3245,6 +3261,14 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     fft_map.apply_sigma_scaling()
     return fft_map
 
+  def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz"):
+    box_map_coeffs = self.box_map_coefficients(d_min = d_min)
+    if(file_name is not None):
+      mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
+      mtz_object = mtz_dataset.mtz_object()
+      mtz_object.write(file_name = file_name)
+    return box_map_coeffs
+
   def box_map_coefficients(self, d_min):
     from scitbx import fftpack
     fft = fftpack.real_to_complex_3d([i for i in self.map_box.all()])
@@ -3269,13 +3293,6 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       ).array(data=box_structure_factors.data()/n)
     return box_map_coeffs
 
-  def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz"):
-    box_map_coeffs = self.box_map_coefficients(d_min = d_min)
-    if(file_name is not None):
-      mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
-      mtz_object = mtz_dataset.mtz_object()
-      mtz_object.write(file_name = file_name)
-    return box_map_coeffs
 
 class experimental_data_target_and_gradients(object):
   def __init__(self, fmodel, alpha_beta=None):

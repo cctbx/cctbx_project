@@ -37,6 +37,7 @@ key_words = {
   "host_scratch_dir" : str,
   "python_script"    : str,
   "parallel_nodes"   : int,
+  'fake_queue'       : bool,
   }
 
 script_file = """
@@ -159,6 +160,12 @@ while (1)
   sleep 3600
 end
 """
+
+def run_sh(cmd):
+  t0=time.time()
+  rc = easy_run.call(cmd)
+  print 'done "%s" in %0.1f' % (cmd.strip(),
+                                time.time()-t0)
 
 def test_easy_qsub():
   def _clean():
@@ -293,6 +300,7 @@ def run(phenix_source=None,
         host_scratch_dir=None,
         python_script=None,
         parallel_nodes=1,
+        fake_queue=False,
         dry_run=False,
         ):
   help = """
@@ -417,7 +425,19 @@ def run(phenix_source=None,
   print '\n  Number of queue jobs',number_of_jobs
   print '  Number of command in each queue job',size_of_chunks
 
-  if parallel_nodes>1:
+  if fake_queue:
+    print '\nCreating fake queue with %s parallel nodes' % parallel_nodes
+    print commands
+    f=file(commands, 'rb')
+    lines = f.readlines()
+    f.close()
+    from multiprocessing import Pool
+    pool = Pool(parallel_nodes)
+    pool.map(run_sh, lines)
+    return None
+
+  elif parallel_nodes>1:
+    assert 0, 'parallel_nodes removed'
     def _cmp_gap(k1, k2):
       if details[k1][1]-details[k1][0]>details[k2][1]-details[k2][0]:
         return -1

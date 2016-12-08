@@ -298,6 +298,23 @@ public:
 namespace mmtbx { namespace bulk_solvent {
 
 //------------------------------------------------------------------------------
+template <typename FloatType>
+FloatType
+scale(af::const_ref< std::complex<FloatType> > const& fo,
+      af::const_ref< std::complex<FloatType> > const& fc)
+{
+    MMTBX_ASSERT(fo.size()==fc.size());
+    FloatType num=0.0;
+    FloatType denum=0.0;
+    for(std::size_t i=0; i < fo.size(); i++) {
+      FloatType fc_abs = std::abs(fc[i]);
+      FloatType fo_abs = std::abs(fo[i]);
+      num   += fo_abs * fc_abs;
+      denum += fc_abs * fc_abs;
+    }
+    return (denum == 0 ? 0 : num/denum);
+};
+
 template <typename FloatType, typename ComplexType>
 FloatType
 scale(af::const_ref<FloatType> const& fo,
@@ -382,6 +399,24 @@ r_factor(
   for(std::size_t i=0; i < fo.size(); i++) {
     num += std::abs(fo[i] - fc[i] * scale);
     denum += fo[i];
+  }
+  if(denum == 0) return 1.e+9;
+  return num/denum;
+};
+
+template <typename FloatType>
+FloatType
+r_factor(
+  af::const_ref< std::complex<FloatType> > const& fo,
+  af::const_ref< std::complex<FloatType> > const& fc,
+  FloatType const& scale)
+{
+  MMTBX_ASSERT(fo.size()==fc.size());
+  FloatType num=0.0;
+  FloatType denum=0.0;
+  for(std::size_t i=0; i < fo.size(); i++) {
+    num += std::abs(std::abs(fo[i]) - std::abs(fc[i]) * scale);
+    denum += std::abs(fo[i]);
   }
   if(denum == 0) return 1.e+9;
   return num/denum;
@@ -1321,6 +1356,48 @@ private:
   scitbx::sym_mat3<FloatType> u_star_best;
   bool updated_;
 };
+
+template <typename FloatType, typename ComplexType>
+ af::shared<ComplexType>
+ complex_f_minus_f_kb_scaled(
+   af::const_ref<ComplexType> const& f1,
+   af::const_ref<ComplexType> const& f2,
+   af::const_ref<FloatType>   const& b_range,
+   af::const_ref<FloatType>   const& ss)
+ {
+   // Compute F1 - scale * exp(-B*s**2/4) * F2
+   MMTBX_ASSERT(f1.size() == f2.size());
+   MMTBX_ASSERT(f1.size() == ss.size());
+   FloatType b_best = 0.0;
+   FloatType scale_best = 0.0;
+   FloatType r_best = 1.e+10;
+   af::shared<ComplexType> result(ss.size());
+   af::shared<ComplexType> f2_scaled(ss.size());
+   for(std::size_t j=0; j < b_range.size(); j++) {
+     FloatType mbs = -b_range[j];
+     for(std::size_t k=0; k < ss.size(); k++) {
+       FloatType kbs = std::exp(mbs * ss[k]);
+       f2_scaled[k] = kbs*f2[k];
+     }
+     FloatType sc = scale(f1, f2_scaled.const_ref());
+     FloatType r = r_factor(f1, f2_scaled.const_ref(), sc);
+     if(r < r_best) {
+       r_best = r;
+       b_best = b_range[j];
+       scale_best = sc;
+     }
+   }
+   for(std::size_t k=0; k < ss.size(); k++) {
+     if(std::abs(scale_best)>1.e-9) {
+       FloatType all_scale = scale_best*std::exp(-1.*b_best*ss[k]);
+       result[k] = f1[k]-all_scale*f2[k];
+     }
+     else {
+       result[k] = 0.;
+     }
+   }
+   return result;
+ };
 
 template <typename FloatType, typename ComplexType>
  af::shared<FloatType>

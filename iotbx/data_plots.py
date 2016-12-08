@@ -170,98 +170,75 @@ class table_data (object) :
     else :
       self.graph_columns.append(columns)
 
-  def import_loggraph (self, loggraph_lines) :
+  def import_loggraph(self, lines):
     """
     Parse CCP4 loggraph format and populate internal data structures.
+    Input may be provided as list of individual lines or as a string.
     """
-    initial_spaces = re.compile("^\s*")
-    trailing_spaces = re.compile("\s*$")
-    trailing_dollars = re.compile("\$\$\.*")
-    trailing_dollars_phaser = re.compile("\$\$ loggraph \$\$.*")
-    graph_lines = None
-    if isinstance(loggraph_lines, str) :
-      lines = loggraph_lines.split("\n")
-    else :
-      lines = loggraph_lines
-    processed_lines = []
-    for raw_line in lines :
-      is_graph_line = False
-      line = raw_line.strip()
-      #line = initial_spaces.sub("", raw_line)
-      if line.startswith("$$") and (not line == "$$") :
-        sublines = re.sub("\$\$", "$$\n", line).split("\n")
-        processed_lines.extend(sublines)
-        #line = re.sub("^\$\$\ *", "", line)
-      else :
-        processed_lines.append(line)
-    sections_passed = 0
-    for line in processed_lines :
-      if line == "" :
-        pass
-      elif line.startswith("$TABLE") :
-        self.title = initial_spaces.sub("", line.split(":")[1])
-        #re.sub("\ *:\ *$", "", line[8:]))
-      elif line.startswith("$GRAPHS") :
-        graph_lines = line[8:]
-        is_graph_line = True
+    if isinstance(lines, list):
+      lines = "\n".join(lines)
+
+    blocks = [ b.strip() for b in lines.split('$$') ]
+
+    # Loggraph format is defined by mandatory 4 blocks, separated by '$$', followed by nothing.
+    # http://www.ccp4.ac.uk/html/loggraphformat.html
+    assert len(blocks) == 5, 'input not in loggraph format (%d blocks found)' % len(blocks)
+    header, columns, comment, data, remainder = blocks
+    assert remainder == '', 'loggraph table has %d bytes following the table end' % len(remainder)
+
+    if '$TABLE' in header:
+      title = re.search('\$TABLE\s*:(.*?)(:|\n|$)', header, re.MULTILINE)
+      if title:
+        self.title = title.group(1).strip()
+
+    graphs = re.search('\$(GRAPHS|SCATTER)[\s\n]*((:[^:\n]*:[^:\n]*:[^:\n]*(:|$)[\s\n]*)*)($|\$)', header, re.MULTILINE)
+    if graphs:
+      if graphs.group(1) == 'GRAPHS':
         self.plot_type = "GRAPH"
-      elif line.startswith("$SCATTER") :
-        graph_lines = line[9:]
-        is_graph_line = True
+      elif graphs.group(1) == 'SCATTER':
         self.plot_type = "SCATTER"
-      elif (graph_lines is not None) and (sections_passed==0) and (line!="$$"):
-        graph_lines += line
-        is_graph_line = True
-      elif sections_passed == 1 :
-        clean_line = trailing_dollars.sub("",
-          trailing_dollars_phaser.sub("", line))
-        if self.column_labels is None :
-          column_labels = clean_line.split()
-          self.column_labels = [ re.sub("_"," ",lbl) for lbl in column_labels ]
-      elif sections_passed == 3 and line[0:2] != "$$" :
-        fields = [ _atof(x) for x in line.split() ]
-        self.add_row(fields)
-      if ("$$" in line) :
-        sections_passed += line.count("$$")
-        if (sections_passed == 1) :
-          if graph_lines is None :
-            graph_lines = line[:-2]
-          elif (not is_graph_line) and (line != "$$") :
-            graph_lines += line[:-2]
-          graph_string = re.sub(":\s*$", "", re.sub("^\s*:", "", graph_lines))
-          fields = graph_string.split(":")
-          i = 0
-          while i < len(fields) :
-            col_strs = fields[i+2].split(",")
-            self.add_graph(name=fields[i],
-                           type=fields[i+1],
-                           columns=[ (_atoi(x_str)-1) for x_str in col_strs ])
-            i += 4
-        elif (sections_passed == 4) :
-          break
-    for i, column in enumerate(self.data) :
-      column_is_ints = []
-      for x in column :
-        if (x is None) or (str(x).lower() in ['nan', 'inf', '-inf']) :
-          column_is_ints.append(None)
-        elif (int(x) == x) :
-          column_is_ints.append(True)
-        else :
-          column_is_ints.append(False)
-      if (not False in column_is_ints) :
-        newcol = []
-        for x in column :
-          if x is None : newcol.append(x)
-          else :         newcol.append(int(x))
-        self.data[i] = newcol
-    if self.column_labels[0] in ["1/d^2","1/d**2","1/resol^2"] :
+      else:
+        raise TypeError('Unknown graph type %s' % graphs.group(1))
+      graphs = graphs.group(2)
+      for graph in re.finditer(':([^:\n]*):([^:\n]*):([^:\n]*)(:|$)', graphs, re.MULTILINE):
+        self.add_graph(name=graph.group(1),
+                       type=graph.group(2),
+                       columns=[ int(col)-1 for col in graph.group(3).split(',') ])
+
+    # Newlines, spaces, tabs etc. are not allowed in column names.
+    # Treat them as separators.
+    columns = re.sub('\s+', ' ', columns).split(' ')
+    data_width = len(columns)
+    self.column_labels = [ lbl.replace('_', ' ') for lbl in columns ]
+    if self.column_labels[0] in ("1/d^2", "1/d**2", "1/resol^2"):
       self.x_is_inverse_d_min = True
 
+    self.data = [[] for x in xrange(data_width)]
+
+    # Now load the data
+    data = re.sub('\s+', ' ', data).split(' ')
+    for entry, datum in enumerate(data):
+      self.data[entry % data_width].append(_tolerant_float(datum))
+
+    # Int-ify integer-like columns
+    # It is unclear to me if this actually serves any purpose.
+    for i, column in enumerate(self.data):
+      column_is_ints = True
+      for x in column:
+        if (x is not None) and \
+           (str(x).lower() not in ('nan', 'inf', '-inf')) and \
+           (x != int(x)):
+          column_is_ints = False
+          break
+      if column_is_ints:
+        self.data[i] = [ x if x is None else int(x) for x in column ]
+
   def add_row (self, row) :
+    '''Unclear if this is used from outside the class'''
     if self.data is None or len(self.data) == 0 :
       self.data = [ [x] for x in row ]
     else :
-      assert len(self.data) == len(row)
+      assert len(self.data) == len(row), row
       for i, value in enumerate(row) :
         self.data[i].append(value)
 
@@ -593,19 +570,11 @@ class graph_data (object) :
 class histogram_data (object) :
   pass
 
-def _atof (fstring) :
-  try :
-    val = string.atof(fstring)
-  except Exception :
-    val = None
-  return val
-
-def _atoi (istring) :
-  try :
-    val = string.atoi(istring)
-  except Exception :
-    val = None
-  return val
+def _tolerant_float(string):
+  try:
+    return float(string)
+  except ValueError:
+    return None
 
 # backwards-atof
 def ftoa (val, format_string='%.6g') :
