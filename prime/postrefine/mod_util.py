@@ -9,7 +9,6 @@ from iotbx import reflection_file_reader
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.mlab as mlab
 from libtbx.utils import Sorry
 from cctbx.uctbx import unit_cell
 
@@ -577,32 +576,6 @@ class intensities_scaler(object):
           miller_array_iso = miller_array_converted_to_intensity.deep_copy()
         else:
           flag_hklisoin_found = False
-    #deflating sigI
-    #new_sigmas = miller_array_merge.sigmas()/3.0
-    #miller_array_merge = miller_array_merge.customized_copy(sigmas=new_sigmas)
-    """
-    miller_array_merge.show_summary()
-    x = miller_array_merge.sigmas().as_numpy_array()
-    mu = np.mean(x)
-    med = np.median(x)
-    sigma = np.std(x)
-    num_bins = 20
-    plt.subplot(211)
-    plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
-    plt.ylabel('Frequencies')
-    plt.title('sigI distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-    x = miller_array_merge.as_amplitude_array().sigmas().as_numpy_array()
-    miller_array_merge.as_amplitude_array().show_summary()
-    mu = np.mean(x)
-    med = np.median(x)
-    sigma = np.std(x)
-    num_bins = 20
-    plt.subplot(212)
-    plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
-    plt.ylabel('Frequencies')
-    plt.title('sigF distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
-    plt.show()
-    """
     #write output files
     if output_mtz_file_prefix != '':
       #write as mtz file
@@ -862,7 +835,6 @@ class intensities_scaler(object):
       sum_refl_complete += len(miller_indices_bin)
       #calculate CCiso
       cc_iso_bin = 0
-      r_iso_bin = 0
       n_refl_cciso_bin = 0
       if flag_hklisoin_found:
         matches_iso = miller.match_multi_indices(
@@ -872,14 +844,7 @@ class intensities_scaler(object):
         I_merge_match_iso = flex.double([I_bin[pair[1]] for pair in matches_iso.pairs()])
         sigI_merge_match_iso = flex.double([sigI_bin[pair[1]] for pair in matches_iso.pairs()])
         n_refl_cciso_bin = len(matches_iso.pairs())
-        if len(matches_iso.pairs()) > 0 :
-          cc_iso_bin = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
-          #calculate r_iso (need to find slope and intercept)
-          from scipy import stats
-          slope, intercept, r_value, p_value, std_err = stats.linregress(I_iso, I_merge_match_iso)
-          r_iso_bin = (np.sum(((I_merge_match_iso - ((slope*I_iso)+intercept))/sigI_merge_match_iso)**2) * \
-            math.sqrt(n_refl_cciso_bin/(max(1, n_refl_cciso_bin-1))))/ \
-            flex.sum((I_merge_match_iso/sigI_merge_match_iso)**2)
+        if len(matches_iso.pairs()) > 0 : cc_iso_bin = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
       #collect txt out
       txt_out += '%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.1f %8.1f %6.2f' \
           %(i, binner_template_asu.bin_d_range(i)[0], binner_template_asu.bin_d_range(i)[1], completeness*100, \
@@ -907,14 +872,8 @@ class intensities_scaler(object):
       I_iso = flex.double([miller_array_iso.data()[pair[0]] for pair in matches_iso.pairs()])
       I_merge_match_iso = flex.double([miller_array_merge.data()[pair[1]] for pair in matches_iso.pairs()])
       sigI_merge_match_iso = flex.double([miller_array_merge.sigmas()[pair[1]] for pair in matches_iso.pairs()])
-      if len(matches_iso.pairs()) > 0 :
-        cc_iso = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
-        n_refl_iso = len(matches_iso.pairs())
-        from scipy import stats
-        slope, intercept, r_value, p_value, std_err = stats.linregress(I_iso, I_merge_match_iso)
-        r_iso = (np.sum(((I_merge_match_iso - ((slope*I_iso)+intercept))/sigI_merge_match_iso)**2) * \
-            math.sqrt(n_refl_cciso_bin/(n_refl_cciso_bin-1)))/ \
-            flex.sum((I_merge_match_iso/sigI_merge_match_iso)**2)
+      n_refl_iso = len(matches_iso.pairs())
+      if n_refl_iso: cc_iso = np.corrcoef(I_merge_match_iso, I_iso)[0,1]
       if iparams.flag_plot:
         plt.scatter(I_iso, I_merge_match_iso,s=10, marker='x', c='r')
         plt.title('CC=%.4g'%(cc_iso))
@@ -997,7 +956,7 @@ class intensities_scaler(object):
           _cc12_n, _cc12_n_astar, _cc12_n_bstar, _cc12_n_cstar)
 
     txt_out += '-------------------------------------------------------------------------------------------------------------------------------\n'
-    txt_out += '       total        %7.2f %7.2f %7.2f %7.2f %10.1f %10.1f %10.1f %10.1f %6.0f %6.0f %6.0f %6.0f\n' \
+    txt_out += '       total         %7.2f %7.2f %7.2f %7.2f %10.1f %10.1f %10.1f %10.1f %6.0f %6.0f %6.0f %6.0f\n' \
           %(cc12*100, cc12_astar*100, cc12_bstar*100, cc12_cstar*100, \
           np.mean(miller_array_merge.data()), np.mean(I_even_astar), np.mean(I_even_bstar), np.mean(I_even_cstar), \
           cn12_n_sum, cc12_n_astar_sum, cc12_n_bstar_sum, cc12_n_cstar_sum)
@@ -1035,20 +994,23 @@ class intensities_scaler(object):
   def plot_stats(self, results, iparams):
     #retrieve stats from results and plot them
     if iparams.flag_plot or iparams.flag_output_verbose:
+      #for plotting set n_bins = 5 to avoid empty bin
+      n_bins_plot = 5
       #get expected f^2
       try:
         from mod_util import mx_handler
         mxh = mx_handler()
         asu_contents = mxh.get_asu_contents(iparams.n_residues)
         observations_as_f = results[0].observations.as_amplitude_array()
-        binner_template_asu = observations_as_f.setup_binner(n_bins=iparams.n_bins)
+        binner_template_asu = observations_as_f.setup_binner(n_bins=n_bins_plot)
         from cctbx import statistics
         wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
         expected_f_sq = wp.expected_f_sq
         mean_stol_sq = wp.mean_stol_sq
       except Exception:
-        expected_f_sq = flex.double([0]*iparams.n_bins)
-        mean_stol_sq = flex.double(range(iparams.n_bins))
+        expected_f_sq = flex.double([0]*n_bins_plot)
+        mean_stol_sq = flex.double(range(n_bins_plot))
+        print "Warning: Wilson plot calculation in plot stats failed."
       #setup list
       G_frame = flex.double()
       B_frame = flex.double()
@@ -1087,20 +1049,14 @@ class intensities_scaler(object):
         SE_all.append(pres.SE)
         R_sq_all.append(pres.R_sq)
         cc_all.append(pres.CC_final)
-        try:
-          #collect <I>
-          pres.observations.setup_binner(n_bins=iparams.n_bins)
-          mean_I_frame.append(flex.double(pres.observations.mean(use_binning=True).data[1:-1]))
-          #collect <I> scaled
-          sin_theta_over_lambda_sq = pres.observations.two_theta(pres.wavelength).sin_theta_over_lambda_sq().data()
-          I_full = flex.double(pres.observations.data()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq))))
-          sigI_full = flex.double(pres.observations.sigmas()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq))))
-          obs_scaled = pres.observations.customized_copy(data=I_full, sigmas=sigI_full)
-          obs_scaled.setup_binner(n_bins=iparams.n_bins)
-          mean_I_scaled_frame.append(flex.double(obs_scaled.mean(use_binning=True).data[1:-1]))
-          #decorate text output
-        except Exception:
-          pass
+        pres.observations.setup_binner(n_bins=n_bins_plot)
+        mean_I_frame.append(flex.double(pres.observations.mean(use_binning=True).data[1:-1]))
+        sin_theta_over_lambda_sq = pres.observations.two_theta(pres.wavelength).sin_theta_over_lambda_sq().data()
+        I_full = flex.double(pres.observations.data()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq))))
+        sigI_full = flex.double(pres.observations.sigmas()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq))))
+        obs_scaled = pres.observations.customized_copy(data=I_full, sigmas=sigI_full)
+        obs_scaled.setup_binner(n_bins=n_bins_plot)
+        mean_I_scaled_frame.append(flex.double(obs_scaled.mean(use_binning=True).data[1:-1]))
         txt_out_verbose += '%8.1f %8.1f %8.1f %8.2f %6.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %8.5f %6.2f %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %6.2f ' \
         %(pres.R_init, pres.R_final, pres.R_xy_init, pres.R_xy_final, pres.G, pres.B, pres.rotx*180/math.pi, pres.roty*180/math.pi, \
         pres.ry, pres.rz, pres.r0, pres.re, pres.voigt_nu, pres.uc_params[0], pres.uc_params[1], pres.uc_params[2], pres.uc_params[3], \
@@ -1138,171 +1094,82 @@ class intensities_scaler(object):
       plt.show()
       plt.subplot(121)
       x = SE_all.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
       num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('SE distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('SE distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(122)
       x = cc_all.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('CC distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('CC distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.show()
       plt.subplot(241)
       x = G_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('G distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('G distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(242)
       x = B_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('B distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('B distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(243)
       x = rotx_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('Delta rot_x distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('Delta rot_x distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(244)
       x = roty_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('Delta rot_y distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('Delta rot_y distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(245)
       x = ry_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('ry distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('ry distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(246)
       x = rz_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('rz distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('rz distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(247)
       x = re_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('re distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('re distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.show()
       plt.subplot(231)
       x = uc_a_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('a distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('a distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(232)
       x = uc_b_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('b distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('b distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(233)
       x = uc_c_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('c distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('c distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(234)
       x = uc_alpha_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('alpha distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('alpha distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(235)
       x = uc_beta_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('beta distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('beta distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.subplot(236)
       x = uc_gamma_frame.as_numpy_array()
-      mu = np.mean(x)
-      med = np.median(x)
-      sigma = np.std(x)
-      num_bins = 10
-      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
-      y = mlab.normpdf(bins, mu, sigma)
-      plt.plot(bins, y, 'r--')
+      plt.hist(x, num_bins, normed=0, facecolor='green', alpha=0.5)
       plt.ylabel('Frequencies')
-      plt.title('gamma distribution\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
+      plt.title('gamma distribution\nmean %5.3f median %5.3f sigma %5.3f' %(np.mean(x), np.median(x), np.std(x)))
       plt.show()
 
 class basis_handler(object):
