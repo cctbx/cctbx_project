@@ -33,14 +33,12 @@ def exercise(pdb_str):
   atoms = pdb_hierarchy.atoms()
 
   riding_h_manager = riding.manager(
-    pdb_hierarchy           = pdb_hierarchy,
+    pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry_restraints)
 
   h_parameterization = riding_h_manager.h_parameterization
 
-  diagnostics = parameterization.diagnostics_parameterization(
-    connectivity_obj   = riding_h_manager.connectivity_obj,
-    h_parameterization = h_parameterization,
+  diagnostics = riding_h_manager.diagnostics(
     sites_cart         = sites_cart,
     threshold          = 0.05)
 

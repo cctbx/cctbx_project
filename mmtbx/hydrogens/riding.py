@@ -3,6 +3,7 @@ from cctbx import geometry_restraints
 from scitbx import matrix
 from mmtbx.hydrogens import connectivity
 from mmtbx.hydrogens import parameterization
+from mmtbx.hydrogens import modify_gradients
 #from time import time
 
 class manager(object):
@@ -25,14 +26,17 @@ class manager(object):
     self.pdb_hierarchy = pdb_hierarchy
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
 
-    self.connectivity_obj = connectivity.determine_H_neighbors(
-      geometry_restraints = geometry_restraints,
-      pdb_hierarchy       = self.pdb_hierarchy)
-    self.h_connectivity = self.connectivity_obj.h_connectivity
-    self.h_parameterization = parameterization.get_h_parameterization(
+    self.connectivity_manager = connectivity.determine_connectivity(
+      pdb_hierarchy       = self.pdb_hierarchy,
+      geometry_restraints = geometry_restraints)
+    self.h_connectivity = self.connectivity_manager.h_connectivity
+    self.double_H = self.connectivity_manager.double_H
+    self.parameterization_manager = parameterization.manager(
       h_connectivity         = self.h_connectivity,
       sites_cart             = sites_cart,
       use_ideal_bonds_angles = use_ideal_bonds_angles)
+    self.h_parameterization = \
+      self.parameterization_manager.determine_parameterization()
 
   def idealize_hydrogens_inplace(self, pdb_hierarchy=None, xray_structure=None):
     """ Doing idealization in place, maybe it is better to return a copy, but
@@ -48,7 +52,7 @@ class manager(object):
     #sites_cart = pdb_hierarchy.atoms().extract_xyz()
     sites_cart = xray_structure.sites_cart()
 
-    for ih in self.h_parameterization.keys():
+    for ih in self.h_parameterization:
       hp = self.h_parameterization[ih]
       rh = matrix.col(sites_cart[ih])
       rh_calc = None
@@ -68,3 +72,20 @@ class manager(object):
     xray_structure.set_sites_cart(sites_cart)
     if pdb_hierarchy is not None:
       pdb_hierarchy.adopt_xray_structure(xray_structure)
+
+  def gradients_reduced(self, grads, sites_cart, hd_selection):
+    modify_gradients.modify_gradients(
+      sites_cart          = sites_cart,
+      h_parameterization  = self.h_parameterization,
+      grads               = grads)
+    grads = grads.select(~hd_selection)
+    return grads
+
+  def diagnostics(self, sites_cart, threshold):
+    diagnostics = parameterization.diagnostics(
+      h_connectivity     = self.h_connectivity,
+      h_parameterization = self.h_parameterization,
+      sites_cart         = sites_cart,
+      threshold          = threshold)
+    return diagnostics
+
