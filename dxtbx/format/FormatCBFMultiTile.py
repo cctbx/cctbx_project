@@ -65,7 +65,11 @@ class FormatCBFMultiTile(FormatCBFFull):
         return False
 
     #check if multiple arrays
-    return cbf_handle.count_elements() > 1
+    try:
+      return cbf_handle.count_elements() > 1
+    except Exception, e:
+      if 'CBFlib Error' in str(e):
+        return False
 
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
