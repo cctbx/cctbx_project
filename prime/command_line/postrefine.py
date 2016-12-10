@@ -11,7 +11,8 @@ from cctbx.array_family import flex
 from prime.command_line.solve_indexing_ambiguity import indexing_ambiguity_handler
 from prime.postrefine import prepare_output, calc_avg_I_cpp, write_output
 from prime.postrefine.mod_mx import mx_handler
-import os, sys, math, glob
+from prime.postrefine.mod_input import read_pickles
+import sys, math
 import numpy as np
 from datetime import datetime, time
 
@@ -35,30 +36,6 @@ def postrefine_by_frame_mproc(args):
   frame_no, frame_file, iparams, miller_array_ref, pres_in, avg_mode = args
   pres = prh.postrefine_by_frame(frame_no, frame_file, iparams, miller_array_ref, pres_in, avg_mode)
   return pres
-
-def read_pickles(data):
-  frame_files = []
-  for p in data:
-    if os.path.isdir(p) == False:
-      if os.path.isfile(p):
-        #check if list-of-pickle text file is given
-        pickle_list_file = open(p,'r')
-        pickle_list = pickle_list_file.read().split("\n")
-      else:
-        # p is a glob
-        pickle_list = glob.glob(p)
-      for pickle_filename in pickle_list:
-        if os.path.isfile(pickle_filename):
-          frame_files.append(pickle_filename)
-    else:
-      for pickle_filename in os.listdir(p):
-        if pickle_filename.endswith('.pickle'):
-          frame_files.append(p+'/'+pickle_filename)
-  #check if pickle_dir is given in input file instead of from cmd arguments.
-  if len(frame_files)==0:
-    print 'No pickle files found.'
-    exit()
-  return frame_files
 
 def scale_frames(frames, frame_files, iparams):
   """scale frames"""

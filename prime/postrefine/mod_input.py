@@ -1,7 +1,17 @@
 from __future__ import division
+
+"""read PRIME input"""
+#Define exceptions
+class ReadInputError(Exception): pass
+class InvalidData(ReadInputError): pass
+class InvalidCrystalSystem(ReadInputError): pass
+class InvalidPixelSize(ReadInputError): pass
+class InvalidRunNo(ReadInputError): pass
+class InvalidNumberOfResidues(ReadInputError): pass
+
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
-import sys, os
+import sys, os, shutil, glob
 
 master_phil = iotbx.phil.parse("""
 data = None
@@ -324,7 +334,7 @@ For feedback, please contact monarin@stanford.edu.
 List of available parameters:
 """
 
-def process_input(argv=None):
+def process_input(argv=None, flag_check_exist=True):
   user_phil = []
   if argv == None:
     master_phil.show()
@@ -348,24 +358,43 @@ def process_input(argv=None):
   #setup phil parameters
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
-  if (len(params.data) == 0):
-    master_phil.show()
-    raise Usage("Use the above list of parameters to generate your input file (.phil). For more information, run prime.postrefine -h.")
+  if not params.data:
+    raise InvalidData, "Error: Data is required. Please specify path to your data folder (data=/path/to/integration/results)."
 
   #check target_crystal_system
   crystal_system_dict = {'Triclinic': 0, 'Monoclinic': 0, 'Orthorhombic': 0, 'Tetragonal': 0, 'Trigonal': 0, 'Hexagonal': 0, 'Cubic':0}
   if params.target_crystal_system is not None:
     if params.target_crystal_system not in crystal_system_dict:
-      raise Sorry("Incorrect target_crystal_system (available options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic).")
+      raise InvalidCrystalSystem, "Error: Invalid input target_crystal_system. Please choose following options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic."
 
   #check n_residues
-  if params.n_residues is None:
-    raise Sorry("We have a new required parameter n_residues. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx).")
+  if not params.n_residues:
+    raise InvalidNumberOfResidues, "Error: Number of residues is required. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx)."
+
+  #check pixel_size
+  if not params.pixel_size_mm:
+    #look in the new integration pickle format (2016-08-05)
+    try:
+      frame_files = read_pickles(params.data)
+      frame_0 = frame_files[0]
+      import cPickle as pickle
+      int_pickle = pickle.load(open(frame_0,"rb"))
+      params.pixel_size_mm = int_pickle['pixel_size']
+      print 'Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)'%(params.pixel_size_mm)
+    except Exception:
+      raise InvalidPixelSize, "Error: Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd, set pixel_size_mm=0.079346)."
 
   #generate run_no folder
-  if os.path.exists(params.run_no):
-    raise Sorry("The run number %s already exists."%params.run_no)
+  if flag_check_exist:
+    if os.path.exists(params.run_no):
+      print "Warning: run number %s already exists."%(params.run_no)
+      run_overwrite = raw_input('Overwrite?: N/Y (Enter for default)')
+      if run_overwrite == 'Y':
+        shutil.rmtree(params.run_no)
+      else:
+        raise InvalidRunNo, "Error: Run number exists. Please specifiy different run no."
 
+  #make result folders
   os.makedirs(params.run_no)
   os.makedirs(params.run_no+'/index_ambiguity')
 
@@ -388,3 +417,26 @@ def process_input(argv=None):
     txt_out += one_output + '\n'
 
   return params, txt_out
+
+def read_pickles(data):
+  frame_files = []
+  for p in data:
+    if os.path.isdir(p) == False:
+      if os.path.isfile(p):
+        #check if list-of-pickle text file is given
+        pickle_list_file = open(p,'r')
+        pickle_list = pickle_list_file.read().split("\n")
+      else:
+        # p is a glob
+        pickle_list = glob.glob(p)
+      for pickle_filename in pickle_list:
+        if os.path.isfile(pickle_filename):
+          frame_files.append(pickle_filename)
+    else:
+      for pickle_filename in os.listdir(p):
+        if pickle_filename.endswith('.pickle'):
+          frame_files.append(p+'/'+pickle_filename)
+  #check if pickle_dir is given in input file instead of from cmd arguments.
+  if not frame_files:
+    raise InvalidData, "Error: no integration results found in the specified data parameter."
+  return frame_files
