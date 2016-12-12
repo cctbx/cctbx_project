@@ -29,6 +29,7 @@ class Script(object):
       usage=usage,
       phil=phil_scope,
       read_experiments=True,
+      check_format=False,
       epilog=help_message
       )
 
