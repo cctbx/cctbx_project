@@ -53,8 +53,7 @@ class indexing_ambiguity_handler(object):
 
   def run(self, args):
     #read inputs
-    from prime.postrefine.mod_input import process_input
-    from prime.command_line.postrefine import read_pickles
+    from prime.postrefine.mod_input import process_input, read_pickles
     iparams, txt_out_input = process_input(args)
     print txt_out_input
     f = open(iparams.run_no+'/log.txt', 'w')

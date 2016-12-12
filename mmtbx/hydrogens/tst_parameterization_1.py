@@ -41,9 +41,7 @@ def exercise():
   h_parameterization = riding_h_manager.h_parameterization
   h_connectivity = riding_h_manager.h_connectivity
 
-  diagnostics = parameterization.diagnostics_parameterization(
-    connectivity_obj   = riding_h_manager.connectivity_obj,
-    h_parameterization = h_parameterization,
+  diagnostics = riding_h_manager.diagnostics(
     sites_cart         = sites_cart,
     threshold          = 0.05)
 

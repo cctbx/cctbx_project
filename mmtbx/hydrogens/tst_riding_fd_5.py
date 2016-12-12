@@ -174,8 +174,8 @@ ATOM      3  OG  SER A   3       9.060  14.298  12.238  1.00  7.60           O
 ANISOU    3  OG  SER A   3      680    955   1251   -244   -164    339       O
 ATOM      4  HB2ASER A   3      10.818  13.578  11.757  0.40  6.41           H
 ATOM      5  HB3ASER A   3      10.081  12.763  12.904  0.40  6.41           H
-ATOM      6 DHB2BSER A   3      10.818  13.578  11.757  0.60  6.41           D
-ATOM      7 DHB3BSER A   3      10.081  12.763  12.904  0.60  6.41           D
+ATOM      6  DB2BSER A   3      10.818  13.578  11.757  0.60  6.41           D
+ATOM      7  DB3BSER A   3      10.081  12.763  12.904  0.60  6.41           D
 """
 
 # 2tetra distorted
@@ -192,8 +192,8 @@ ATOM      3  OG  SER A   3       9.123  14.383  12.193  1.00  7.60           O
 ANISOU    3  OG  SER A   3      680    955   1251   -244   -164    339       O
 ATOM      4  HB2ASER A   3      10.969  13.436  11.739  0.40  6.41           H
 ATOM      5  HB3ASER A   3      10.028  12.954  13.077  0.40  6.41           H
-ATOM      6 DHB2BSER A   3      10.925  13.557  11.772  0.60  6.41           D
-ATOM      7 DHB3BSER A   3      10.287  12.654  12.803  0.60  6.41           D
+ATOM      6  DB2BSER A   3      10.925  13.557  11.772  0.60  6.41           D
+ATOM      7  DB3BSER A   3      10.287  12.654  12.803  0.60  6.41           D
 """
 
 # 3tetra minimized
@@ -211,7 +211,7 @@ ANISOU    3  C   SER A   4      661    588    952   -116    206    135       C
 ATOM      4  CB  SER A   4       6.433  17.910  12.319  1.00  6.41           C
 ANISOU    4  CB  SER A   4      638    591   1207   -162    148    106       C
 ATOM      5  HA ASER A   4       6.513  18.912  14.106  0.55  5.95           H
-ATOM      5 DHA BSER A   4       6.513  18.912  14.106  0.45  5.95           D
+ATOM      5  DA BSER A   4       6.513  18.912  14.106  0.45  5.95           D
 """
 
 # 3tetra distorted
@@ -229,7 +229,7 @@ ANISOU    3  C   SER A   4      661    588    952   -116    206    135       C
 ATOM      4  CB  SER A   4       6.270  18.108  12.379  1.00  6.41           C
 ANISOU    4  CB  SER A   4      638    591   1207   -162    148    106       C
 ATOM      5  HA ASER A   4       6.524  18.724  14.126  0.55  5.95           H
-ATOM      5 DHA BSER A   4       6.513  18.912  14.106  0.45  5.95           H
+ATOM      5  DA BSER A   4       6.513  18.912  14.106  0.45  5.95           H
 """
 
 # alg1b minimized
@@ -322,7 +322,7 @@ pdb_list_name = ['pdb_str_01', 'pdb_str_02', 'pdb_str_03', 'pdb_str_04', 'pdb_st
 def run():
   #for idealize in [True, False]:
   for pdb_str, str_name in zip(pdb_list,pdb_list_name):
-      #print 'pdb_string:', str_name, 'idealize =', idealize
+    #print 'pdb_string:', str_name#, 'idealize =', idealize
     exercise(pdb_str=pdb_str, eps=1.e-4)
 
 

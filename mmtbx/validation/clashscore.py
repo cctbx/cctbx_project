@@ -119,7 +119,8 @@ class clashscore(validation):
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
-        verbose=verbose)
+        verbose=verbose,
+        printable_probe_output=save_probe_unformatted_file)
       if (save_modified_hierarchy) :
         self.pdb_hierarchy = iotbx.pdb.hierarchy.input(
           pdb_string=pcm.h_pdb_string).hierarchy
@@ -198,7 +199,8 @@ class probe_clashscore_manager(object):
                largest_occupancy=10,
                b_factor_cutoff=None,
                use_segids=False,
-               verbose=False):
+               verbose=False,
+               printable_probe_output=None):
     """
     Calculate probe (MolProbity) clashscore
 
@@ -223,6 +225,11 @@ class probe_clashscore_manager(object):
     self.probe_atom_b_factor = None
     if not nuclear:
       self.probe_txt = \
+        'phenix.probe -u -q -mc -het -once -NOVDWOUT "ogt%d not water" "ogt%d" -' % \
+          (ogt, ogt)
+      #The -NOVDWOUT probe run above is faster for clashscore to parse,
+      # the full_probe_txt version below is for printing to file for coot usage
+      self.full_probe_txt = \
         'phenix.probe -u -q -mc -het -once "ogt%d not water" "ogt%d" -' % \
           (ogt, ogt)
       self.probe_atom_txt = \
@@ -233,6 +240,9 @@ class probe_clashscore_manager(object):
             (blt, ogt)
     else: #use nuclear distances
       self.probe_txt = \
+        'phenix.probe -u -q -mc -het -once -NOVDWOUT -nuclear' +\
+          ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
+      self.full_probe_txt = \
         'phenix.probe -u -q -mc -het -once -nuclear' +\
           ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
       self.probe_atom_txt = \
@@ -246,9 +256,9 @@ class probe_clashscore_manager(object):
     if verbose:
       print "\nUsing input model H/D atoms...\n"
     self.h_pdb_string = h_pdb_string
-    self.run_probe_clashscore(self.h_pdb_string)
+    self.run_probe_clashscore(self.h_pdb_string, printable_probe_output)
 
-  def run_probe_clashscore(self, pdb_string):
+  def run_probe_clashscore(self, pdb_string, printable_probe_output=None):
     clash_hash = {}
     hbond_hash = {}
     probe_out = easy_run.fully_buffered(self.probe_txt,
@@ -257,7 +267,10 @@ class probe_clashscore_manager(object):
       raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
-    self.probe_unformatted = "\n".join(probe_unformatted)
+    if printable_probe_output:
+      printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
+        stdin_lines=pdb_string)
+      self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
     for line in probe_unformatted:
       processed=False
       try:
@@ -293,7 +306,6 @@ class probe_clashscore_manager(object):
             else :
               clash_hash[key] = clash_obj
         elif (type == "hb"):
-          # print key
           if (key in hbond_hash) :
             if (gap < hbond_hash[key].overlap):
               hbond_hash[key] = clash_obj
