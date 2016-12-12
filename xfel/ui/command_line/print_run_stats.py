@@ -53,7 +53,7 @@ def run(args):
     try:
       timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
     except Exception, e:
-      print "Coulnd't get run", run_no
+      print "Couldn't get run", run_no
       continue
     n_hit = (n_strong >= params.hit_cutoff).count(True)
     n_indexed = ((average_i_sigi_low > 0) & (n_strong >= params.hit_cutoff)).count(True)

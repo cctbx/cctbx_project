@@ -300,9 +300,12 @@ class ProgressSentinel(Thread):
           else:
             current_rows = self.parent.run_window.status_tab.rows
             if current_rows != {}:
-              bins = cell.bins[
-                     :int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
-              highest_bin = cell.bins[int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+              if cell.isoform._db_dict['name'] in current_rows:
+                bins = cell.bins[
+                       :int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+                highest_bin = cell.bins[int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+              else:
+                assert False, "This isoform is not available yet"
             else:
               bins = cell.bins
               d_mins = [b.d_min for b in bins]
@@ -1189,7 +1192,8 @@ class TrialsTab(BaseTab):
     new_trial = TrialPanel(self.trial_panel,
                            db=self.main.db,
                            trial=trial,
-                           box_label='Trial {}'.format(trial.trial))
+                           box_label='Trial {} {}'.format(trial.trial,
+                             trial.comment[:min(len(trial.comment), 10)] if trial.comment is not None else ""))
     new_trial.chk_active.SetValue(trial.active)
     new_trial.refresh_trial()
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
