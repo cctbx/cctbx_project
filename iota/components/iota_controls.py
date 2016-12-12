@@ -305,11 +305,11 @@ class PHILBox(CtrlBase):
       self.sizer.Add(self.btn_default, pos=(span_counter, 0))
       span_counter += 1
 
-    self.sizer.AddGrowableRow(span_counter)
     if span_counter > 0:
-      self.sizer.AddGrowableCol(1)
       self.sizer.Add(self.ctr, pos=(0, 1), span=(span_counter + 1, 1),
                      flag=wx.EXPAND)
+      self.sizer.AddGrowableCol(1)
     elif span_counter == 0:
-      self.sizer.AddGrowableCol(0)
       self.sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
+      self.sizer.AddGrowableCol(0)
+    self.sizer.AddGrowableRow(span_counter)

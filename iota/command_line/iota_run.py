@@ -55,21 +55,36 @@ class XTermIOTA():
     self.init = InitAll(help_message)
     self.init.run()
 
+    self.full = self.init.args.full
+
   def proc_wrapper(self, input_entry):
     ''' Wrapper for processing function using the image object
     @param input_entry: [image_number, total_images, image_object]
     @return: image object
     '''
-    if self.stage == 'import':
-      if self.init.params.cctbx.selection.select_only.flag_on:
+    try:
+      if self.stage == 'import':
+        if self.init.params.cctbx.selection.select_only.flag_on:
+          img_object = input_entry[2]
+          img_object.import_int_file(self.init)
+        else:
+          img_object = img.SingleImage(input_entry, self.init)
+          img_object.import_image()
+      elif self.stage == 'process':
         img_object = input_entry[2]
-        img_object.import_int_file(self.init)
-      else:
-        img_object = img.SingleImage(input_entry, self.init)
-        img_object.import_image()
-    elif self.stage == 'process':
-      img_object = input_entry[2]
-      img_object.process()
+        img_object.process()
+      elif self.stage == 'all':
+        if self.init.params.cctbx.selection.select_only.flag_on:
+          img_object = input_entry[2]
+          img_object.import_int_file(self.init)
+        else:
+          img_object = img.SingleImage(input_entry, self.init)
+          img_object.import_image()
+          print 'debug: {}'.format(img_object.status)
+        img_object.process()
+    except Exception, e:
+      pass
+
     return img_object
 
   def callback(self, result):
@@ -83,6 +98,29 @@ class XTermIOTA():
       self.prog_count += 1
     else:
       self.gs_prog.finished()
+
+  def run_all(self):
+    ''' Run the full processing in multiprocessing mode '''
+
+    # Determine whether reading in image objects or images, create image list
+    if self.init.params.cctbx.selection.select_only.flag_on:
+      self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for i, j in
+                       enumerate(self.init.gs_img_objects, 1)]
+    else:
+      self.img_list = [[i, len(self.init.input_list) + 1, j] for i, j in
+                       enumerate(self.init.input_list, 1)]
+    cmd.Command.start("Processing {} images".format(len(self.img_list)))
+
+    # Run processing
+    self.prog_count = 0
+    self.gs_prog = cmd.ProgressBar(title='PROCESSING')
+    self.img_objects = parallel_map(iterable=self.img_list,
+                                    func=self.proc_wrapper,
+                                    callback=self.callback,
+                                    processes=self.init.params.n_processors)
+    cmd.Command.end("Processing {} images -- DONE "
+                    "".format(len(self.img_objects)))
+
 
   def run_import(self):
     ''' Import images or image objects '''
@@ -129,6 +167,25 @@ class XTermIOTA():
     analysis.unit_cell_analysis()
     analysis.print_summary()
     analysis.make_prime_input()
+
+  def run_full_proc(self):
+    ''' Run IOTA in full-processing mode (i.e. process image from import to
+    integration; allows real-time tracking of output '''
+
+    # Process images
+    self.stage = 'all'
+    self.run_all()
+
+    # Analysis of integration results
+    final_objects = [i for i in self.img_objects if i.fail == None]
+    if len(final_objects) > 0:
+      self.run_analysis()
+    else:
+      print 'No images successfully integrated!'
+
+    # Exit IOTA
+    misc.iota_exit()
+
 
   def run(self):
     ''' Run IOTA '''
@@ -178,4 +235,7 @@ class XTermIOTA():
 if __name__ == "__main__":
 
   iota = XTermIOTA()
-  iota.run()
+  if iota.full:
+    iota.run_full_proc()
+  else:
+    iota.run()

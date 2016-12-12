@@ -828,7 +828,6 @@ class ProcWindow(wx.Frame):
     self.status_txt.SetLabel('Aborting...')
     self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
 
-
   def run(self):
     # Initialize IOTA parameters and log
     self.init = InitAll(iota_version)
@@ -1253,6 +1252,8 @@ class InputWindow(wx.Panel):
                                  label_size=(120, -1),
                                  ctrl_size=(120, -1),
                                  choices=progs)
+    self.int_box.ctr.SetSelection(0)
+
     vbox.Add(self.int_box,
              flag=wx.LEFT | wx.TOP | wx.RIGHT| wx.EXPAND,
              border=15)
@@ -2340,7 +2341,7 @@ class AnalysisWindow(wx.Dialog):
     an_box_1 = wx.BoxSizer(wx.HORIZONTAL)
     self.an_chk_cluster = wx.CheckBox(self, label='Unit cell clustering',
                                       style=wx.ALIGN_TOP)
-    self.an_chk_cluster.Disable()
+    #self.an_chk_cluster.Disable()
     self.an_txt_cluster = wx.StaticText(self, label='Threshold:')
     self.an_ctr_cluster = wx.TextCtrl(self, size=(100, -1))
     self.an_txt_cluster.Disable()

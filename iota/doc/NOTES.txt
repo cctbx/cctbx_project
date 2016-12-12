@@ -1,11 +1,19 @@
-IOTA v1.0.013 - Clean-up
+IOTA v1.0.014 - Bringing back clustering; bugfixes
 
-1. Simplified and cleaned up polling of integration results
-2. Implemented new unicode functions from libtbx.utils
+Bugfixes:
+
+1. Fixed GUI crash on some Linux systems
+2. Command line "integrate_with" selection is propagated without error in Auto
+Mode
 
 
-Known issue:
+Features:
 
-1. Error re-running after abort:
-
-    TypeError: in method 'PostEvent', expected argument 1 of type 'wxEvtHandler *'
+1. "Full processing" mode on XTerm IOTA: will process one image per core, top
+ to bottom, rather than splitting import and indexing / integration. (GUI
+ already does this.)
+2. PRIME now has a "resolution override" checkbox in Advanced Options; this
+box sets all resolution values to whatever the user enters into the
+"Resolution" boxes. Otherwise, user has to modify resolutions in the script.
+3. Re-introduced unit cell clustering (works only on installations with SciPy
+ for now, automatically off by default)
