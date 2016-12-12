@@ -1141,6 +1141,8 @@ class RunBlockDialog(BaseDialog):
             return 'CxiDs2.0:Cspad.0'
           elif item == "detz_parameter":
             return 580
+          elif item == "format":
+            return "pickle"
           else:
             return None
       block = defaults()
@@ -1207,12 +1209,13 @@ class RunBlockDialog(BaseDialog):
     if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
       image_choices = ['pickle']
     else:
-      image_choices = ['CBF', 'pickle']
+      image_choices = ['cbf','pickle']
     self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
                                       label='Image Format:',
                                       label_size=(100, -1),
                                       ctrl_size=(150, -1),
                                       choices=image_choices)
+    self.img_format.ctr.SetSelection(image_choices.index(block.format))
     self.runlbock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
@@ -1432,6 +1435,7 @@ class RunBlockDialog(BaseDialog):
     rg_dict = dict(startrun=startrun,
                    endrun=endrun,
                    active=True,
+                   format=self.img_format.ctr.GetStringSelection(),
                    config_str=self.config.ctr.GetValue(),
                    extra_phil_str=self.phil.ctr.GetValue(),
                    detector_address=self.address.ctr.GetValue(),
@@ -1510,7 +1514,7 @@ class RunBlockDialog(BaseDialog):
 
   def configure_controls(self):
     sel= self.img_format.ctr.GetString(self.img_format.ctr.GetSelection())
-    if 'CBF' in sel:
+    if 'cbf' in sel:
       self.beam_xyz.X.Disable()
       self.beam_xyz.Y.Disable()
       self.bin_nrg_gain.binning.Disable()
