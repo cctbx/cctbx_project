@@ -79,6 +79,19 @@ class initialize(initialize_base):
         """%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v2: 12/12/16
+      query = "SHOW columns FROM %s_rungroup"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = zip(*columns)[0]
+      if 'format' not in column_names:
+        query = """
+          ALTER TABLE %s_rungroup
+          ADD COLUMN format VARCHAR(45) NOT NULL DEFAULT 'pickle'
+        """%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):
