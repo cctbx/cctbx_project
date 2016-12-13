@@ -33,15 +33,15 @@ class clash (atoms) :
       self.atoms_info[1].id_str()[0:11])
 
   def format_old (self) :
-    return "%s :%.3f" % (self.id_str(), self.overlap)
+    return "%s :%.3f" % (self.id_str(), abs(self.overlap))
 
   def as_string (self) :
     return "%-20s %-20s  %7.3f" % (self.atoms_info[0].id_str(),
-      self.atoms_info[1].id_str(), self.overlap)
+      self.atoms_info[1].id_str(), abs(self.overlap))
 
   def as_table_row_phenix (self) :
     return [ self.atoms_info[0].id_str(), self.atoms_info[1].id_str(),
-             self.overlap ]
+             abs(self.overlap) ]
 
   def __cmp__ (self, other) : # sort in descending order
     return cmp(self.overlap, other.overlap)
