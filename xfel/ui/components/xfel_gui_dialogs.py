@@ -1180,8 +1180,8 @@ class RunBlockDialog(BaseDialog):
     runblock_box = wx.StaticBox(self, label='Options')
     self.runblock_box_sizer = wx.StaticBoxSizer(runblock_box, wx.VERTICAL)
     self.runblock_panel = ScrolledPanel(self, size=(550, 225))
-    self.runlbock_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.runblock_panel.SetSizer(self.runlbock_sizer)
+    self.runblock_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.runblock_panel.SetSizer(self.runblock_sizer)
 
     # Configuration text ctrl (user can put in anything they want)
     self.config = gctr.PHILBox(self.config_panel,
@@ -1216,7 +1216,7 @@ class RunBlockDialog(BaseDialog):
                                       ctrl_size=(150, -1),
                                       choices=image_choices)
     self.img_format.ctr.SetSelection(image_choices.index(block.format))
-    self.runlbock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
+    self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
 
@@ -1244,7 +1244,7 @@ class RunBlockDialog(BaseDialog):
     self.start_stop_sizer.AddMany([(self.runblocks_start),
                                    (self.runblocks_end),
                                    (self.end_type)])
-    self.runlbock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runblock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Detector address
     self.address = gctr.TextButtonCtrl(self.runblock_panel,
@@ -1252,7 +1252,7 @@ class RunBlockDialog(BaseDialog):
                                        label_style='bold',
                                        label_size=(100, -1),
                                        value=block.detector_address)
-    self.runlbock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
 
 
     # Beam XYZ (X, Y - pickle only)
@@ -1264,7 +1264,7 @@ class RunBlockDialog(BaseDialog):
                                     items=[('X', block.beamx),
                                            ('Y', block.beamy),
                                            ('DetZ', block.detz_parameter)])
-    self.runlbock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runblock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Binning, energy, gain mask level
     self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
@@ -1272,7 +1272,7 @@ class RunBlockDialog(BaseDialog):
                                         items=[('binning', block.binning),
                                                ('energy', block.energy),
                                                ('gain_mask_level', block.gain_mask_level)])
-    self.runlbock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Untrusted pixel mask path
     self.untrusted_path = gctr.TextButtonCtrl(self.runblock_panel,
@@ -1281,7 +1281,7 @@ class RunBlockDialog(BaseDialog):
                                               label_size=(100, -1),
                                               big_button=True,
                                               value=str(block.untrusted_pixel_mask_path))
-    self.runlbock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Calibration folder
@@ -1291,7 +1291,7 @@ class RunBlockDialog(BaseDialog):
                                          label_size=(100, -1),
                                          big_button=True,
                                          value=str(block.calib_dir))
-    self.runlbock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Dark average path (pickle only)
@@ -1301,7 +1301,7 @@ class RunBlockDialog(BaseDialog):
                                              label_size=(100, -1),
                                              big_button=True,
                                              value=str(block.dark_avg_path))
-    self.runlbock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Dark stddev path (pickle only)
@@ -1311,7 +1311,7 @@ class RunBlockDialog(BaseDialog):
                                                 label_size=(100, -1),
                                                 big_button=True,
                                                 value=str(block.dark_stddev_path))
-    self.runlbock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Dark map path (pickle only)
@@ -1321,7 +1321,7 @@ class RunBlockDialog(BaseDialog):
                                              label_size=(100, -1),
                                              big_button=True,
                                              value=str(block.gain_map_path))
-    self.runlbock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Comment
@@ -1329,7 +1329,7 @@ class RunBlockDialog(BaseDialog):
                                        label='Comment:',
                                        label_style='normal',
                                        label_size=(100, -1))
-    self.runlbock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
