@@ -106,9 +106,15 @@ def generate_protein_threes(hierarchy,
             threes.start =  True
           if i==len(list_of_threes)-1:
             threes.end = True
+            if len(threes)<3: threes.start=True
           else:
             if len(threes)!=3:
-              pass
+              # to solve strange series of [a], [a,b], [a,b,c] 
+              if threes[0] == list_of_threes[i+1][0]:
+                list_of_threes[i+1].start=threes.start
+                continue
+              threes.start=True
+              threes.end=True
             elif threes[1] != list_of_threes[i+1][0]:
               threes.end = True
               list_of_threes[i+1].start = True
