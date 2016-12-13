@@ -82,7 +82,7 @@ def submit_job(app, job):
     from xfel.command_line.xtc_process import phil_scope
     from iotbx.phil import parse
     trial_params = phil_scope.fetch(parse(phil_str)).extract()
-    image_format = trial_params.format.file_format
+    image_format = trial_params.format.file_format = job.rungroup.format
     assert image_format in ['cbf', 'pickle']
   else:
     image_format = 'pickle'

@@ -247,22 +247,9 @@ extra_dials_phil_str = '''
   }
 '''
 
-db_logging_phil_str = '''
-  experiment_tag = None
-    .type = str
-    .help = Used if using DB logging. This tag is prepended to each db table name.
-  db {
-    host = psdb-user.slac.stanford.edu
-      .type=str
-    name = ""
-      .type = str
-    user = ""
-      .type=str
-    password = ""
-      .type = str
-  }
-'''
-phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_logging_phil_str, process_includes=True)
+from xfel.ui import db_phil_str
+
+phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_phil_str, process_includes=True)
 
 from xfel.command_line.xfel_process import Script as DialsProcessScript
 class InMemScript(DialsProcessScript):
@@ -329,7 +316,7 @@ class InMemScript(DialsProcessScript):
     # Check inputs
     if params.input.experiment is None or \
        params.input.run_num is None or \
-       params.input.address is None:
+       (params.input.address is None and params.format.file_format != 'pickle'):
       raise Usage(self.usage)
 
     if params.format.file_format == "cbf":
