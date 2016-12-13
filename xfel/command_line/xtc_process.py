@@ -693,6 +693,12 @@ class InMemScript(DialsProcessScript):
     else:
       self.params.integration.lookup.mask = tuple([a&b for a, b in zip(mask,self.integration_mask)])
 
+    # Two values from a radial average can be stored by mod_radial_average. If present, retrieve them here
+    key_low = 'cctbx.xfel.radial_average.two_theta_low'
+    key_high = 'cctbx.xfel.radial_average.two_theta_high'
+    tt_low = evt.get(key_low)
+    tt_high = evt.get(key_high)
+
     self.debug_write("spotfind_start")
     try:
       observed = self.find_spots(datablock)
@@ -707,7 +713,7 @@ class InMemScript(DialsProcessScript):
     if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
       print "Not enough spots to index"
       self.debug_write("not_enough_spots_%d"%len(observed), "stop")
-      self.log_frame(None, None, run.run(), len(observed), timestamp)
+      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     self.restore_ranges(cspad_img, self.params)
@@ -734,7 +740,7 @@ class InMemScript(DialsProcessScript):
 
     if not self.params.dispatch.index:
       self.debug_write("strong_shot_%d"%len(observed), "done")
-      self.log_frame(None, None, run.run(), len(observed), timestamp)
+      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     # index and refine
@@ -745,7 +751,7 @@ class InMemScript(DialsProcessScript):
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write("indexing_failed_%d"%len(observed), "stop")
-      self.log_frame(None, None, run.run(), len(observed), timestamp)
+      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     if self.params.dispatch.dump_indexed:
@@ -758,7 +764,7 @@ class InMemScript(DialsProcessScript):
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write("refine_failed_%d"%len(indexed), "fail")
-      self.log_frame(None, None, run.run(), len(observed), timestamp)
+      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     if self.params.dispatch.reindex_strong:
@@ -769,12 +775,12 @@ class InMemScript(DialsProcessScript):
         import traceback; traceback.print_exc()
         print str(e), "event", timestamp
         self.debug_write("reindexstrong_failed_%d"%len(indexed), "fail")
-        self.log_frame(None, None, run.run(), len(observed), timestamp)
+        self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
         return
 
     if not self.params.dispatch.integrate:
       self.debug_write("index_ok_%d"%len(indexed), "done")
-      self.log_frame(None, None, run.run(), len(observed), timestamp)
+      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     # integrate
@@ -785,18 +791,18 @@ class InMemScript(DialsProcessScript):
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write("integrate_failed_%d"%len(indexed), "fail")
-      self.log_frame(None, None, run.run(), len(observed), timestamp)
+      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
-    self.log_frame(experiments, integrated, run.run(), len(observed), timestamp)
+    self.log_frame(experiments, integrated, run.run(), len(observed), timestamp, tt_low, tt_high)
     self.debug_write("integrate_ok_%d"%len(integrated), "done")
 
-  def log_frame(self, experiments, reflections, run, n_strong, timestamp = None):
+  def log_frame(self, experiments, reflections, run, n_strong, timestamp = None, two_theta_low = None, two_theta_high = None):
     if self.params.experiment_tag is None:
       return
     try:
       from xfel.ui.db.dxtbx_db import log_frame
-      log_frame(experiments, reflections, self.params, run, n_strong, timestamp)
+      log_frame(experiments, reflections, self.params, run, n_strong, timestamp, two_theta_low, two_theta_high)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp

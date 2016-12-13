@@ -1143,6 +1143,10 @@ class RunBlockDialog(BaseDialog):
             return 580
           elif item == "format":
             return "pickle"
+          elif item == "two_theta_low":
+            return 12.5 # Defaults are from kapton tape experiments (this is kapton ring)
+          elif item == "two_theta_high":
+            return 22.8 # Defaults are from kapton tape experiments (this is water ring)
           else:
             return None
       block = defaults()
@@ -1273,6 +1277,14 @@ class RunBlockDialog(BaseDialog):
                                                ('energy', block.energy),
                                                ('gain_mask_level', block.gain_mask_level)])
     self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Two theta values for droplet hit finding
+    self.two_thetas = gctr.OptionCtrl(self.runblock_panel,
+                                      ctrl_size=(80, -1),
+                                      items=[('two_theta_low', block.two_theta_low),
+                                             ('two_theta_high', block.two_theta_high)])
+    self.runblock_sizer.Add(self.two_thetas, flag=wx.EXPAND | wx.ALL, border=10)
+
 
     # Untrusted pixel mask path
     self.untrusted_path = gctr.TextButtonCtrl(self.runblock_panel,
@@ -1450,6 +1462,8 @@ class RunBlockDialog(BaseDialog):
                    gain_map_path=self.gain_map_path.ctr.GetValue(),
                    gain_mask_level=self.bin_nrg_gain.gain_mask_level.GetValue(),
                    calib_dir=self.calib_dir.ctr.GetValue(),
+                   two_theta_low=self.two_thetas.two_theta_low.GetValue(),
+                   two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
     for key, value in rg_dict.iteritems():
       if str(value) == 'None' or str(value) == '':
@@ -1502,6 +1516,8 @@ class RunBlockDialog(BaseDialog):
       self.bin_nrg_gain.binning.SetValue(str(last.binning))
       self.bin_nrg_gain.energy.SetValue(str(last.energy))
       self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
+      self.two_thetas.two_theta_low.SetValue(str(last.two_theta_low))
+      self.two_thetas.two_theta_high.SetValue(str(last.two_theta_high))
       self.untrusted_path.ctr.SetValue(str(last.untrusted_pixel_mask_path))
       self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
       self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
@@ -1518,6 +1534,8 @@ class RunBlockDialog(BaseDialog):
       self.beam_xyz.X.Disable()
       self.beam_xyz.Y.Disable()
       self.bin_nrg_gain.binning.Disable()
+      self.two_thetas.two_theta_low.Disable()
+      self.two_thetas.two_theta_high.Disable()
       self.dark_avg_path.Hide()
       self.dark_stddev_path.Hide()
       self.gain_map_path.Hide()
@@ -1526,6 +1544,8 @@ class RunBlockDialog(BaseDialog):
       self.beam_xyz.X.Enable()
       self.beam_xyz.Y.Enable()
       self.bin_nrg_gain.binning.Enable()
+      self.two_thetas.two_theta_low.Enable()
+      self.two_thetas.two_theta_high.Enable()
       self.dark_avg_path.Show()
       self.dark_stddev_path.Show()
       self.gain_map_path.Show()

@@ -85,12 +85,15 @@ class initialize(initialize_base):
       cursor.execute(query)
       columns = cursor.fetchall()
       column_names = zip(*columns)[0]
-      if 'format' not in column_names:
-        query = """
-          ALTER TABLE %s_rungroup
-          ADD COLUMN format VARCHAR(45) NOT NULL DEFAULT 'pickle'
-        """%self.params.experiment_tag
-        cursor.execute(query)
+      for needed_column, column_format in zip(['format', 'two_theta_low', 'two_theta_high'],
+                                              ["VARCHAR(45) NOT NULL DEFAULT 'pickle'",
+                                               "DOUBLE NULL", "DOUBLE NULL"]):
+        if needed_column not in column_names:
+          query = """
+            ALTER TABLE %s_rungroup
+            ADD COLUMN %s %s
+          """%(self.params.experiment_tag, needed_column, column_format)
+          cursor.execute(query)
 
     return tables_ok
 
