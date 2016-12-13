@@ -234,6 +234,105 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     self.detectorbase = PilatusImage(self._image_file)
     self.detectorbase.readHeader() # necessary for LABELIT
 
+  @staticmethod
+  def as_file(detector,beam,gonio,scan,data,path):
+    import pycbf
+    from dxtbx.format.FormatCBFMultiTile import cbf_wrapper
+
+    cbf=cbf_wrapper()
+    cbf_root=os.path.splitext(os.path.basename(path))[0]+".cbf"
+    cbf.new_datablock(os.path.splitext(os.path.basename(path))[0])
+
+    """ Data items in the ARRAY_DATA category are the containers for the array data
+    items described in the category ARRAY_STRUCTURE. """
+    cbf.add_category("array_data",["header_convention","header_contents","data"])
+
+    "also need to add invalid pixels on sensor boundaries"
+
+    panel = detector[0]
+    pixel_xy = panel.get_pixel_size()
+    pixel_x, pixel_y = map(float, pixel_xy)
+    pixel_x_microns = pixel_x*1000
+    pixel_y_microns = pixel_y*1000
+
+    thickness = panel.get_thickness()
+
+    exposure_period = scan.get_exposure_times()[0]
+    phi_start = scan.get_oscillation()[0]
+    osc = scan.get_oscillation()[1]
+
+    # exposure_time = exposure_period+0.00203
+    exposure_time = exposure_period  # simulation is a perfect detector
+
+    tau = 0 # simulation is a perfect detector
+    count_cutoff = 2**20  # not actually sure what this is
+
+    wavelength = beam.get_wavelength()  # get the wavelength in the conventional way
+    energy = 12398.4245/wavelength
+    threshold = energy/2  # presume normal data collection convention
+
+    bad_pixels = 0   # maybe get this from negative pixel values?
+
+    assert len(detector)==1,"only single-panel detectors supported"
+    distance_meters = detector[0].get_distance()/1000
+
+    beam_center = detector[0].get_beam_centre_px(beam.get_s0())
+    ORGX, ORGY = map(float, beam_center)
+
+    cbf.add_row(["PILATUS_1.2", """
+# Detector: PILATUS3 6M, S/N 60-0000
+# 1972-01-01T00:00:00.000
+# Pixel_size %(pixel_x_microns).0fe-6 m x %(pixel_x_microns).0fe-6 m
+# Silicon sensor, thickness %(thickness)f m
+# Exposure_time %(exposure_time)f s
+# Exposure_period %(exposure_period)f s
+# Tau = %(tau)f s
+# Count_cutoff %(count_cutoff)d counts
+# Threshold_setting: %(threshold)d eV
+# Gain_setting: autog (vrf = 1.000)
+# N_excluded_pixels = %(bad_pixels)d
+# Excluded_pixels: badpix_mask.tif
+# Flat_field: (nil)
+# Trim_file: p6m0000_E%(energy)d_T%(threshold)d_vrf_m0p100.bin
+# Image_path: /ramdisk/
+# Wavelength %(wavelength).5f A
+# Detector_distance %(distance_meters).5f m
+# Beam_xy (%(ORGX).2f, %(ORGY).2f) pixels
+# Start_angle %(phi_start).4f deg.
+# Angle_increment %(osc).4f deg.
+# Detector_2theta 0.0000 deg.
+"""%locals()
+])
+
+    binary_id = 1
+    focus = data.focus()
+    data2 = data.copy_to_byte_str()
+    elements = len(data)
+    byteorder = "little_endian"
+    dimfast = focus[1]
+    dimmid = focus[0]
+    dimslow = 1
+    padding = 0
+
+    elsize = 4
+    elsigned = 1
+
+    cbf.set_integerarray_wdims_fs(
+        pycbf.CBF_PACKED,
+        binary_id,
+        data2,
+        elsize,
+        elsigned,
+        elements,
+        byteorder,
+        dimfast,
+        dimmid,
+        dimslow,
+        padding)
+
+    cbf.write_widefile(cbf_root,pycbf.CBF,\
+      pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
+
 if __name__ == '__main__':
 
   import sys

@@ -667,9 +667,6 @@ scitbx::vec2<int> const& lower_right) {
   double extent_in_mm = extent * pixel_size;
   double extent_two_theta = std::atan(extent_in_mm/distance)*180/scitbx::constants::pi;
 
-  std::size_t size_x = data.accessor().focus()[0];
-  std::size_t size_y = data.accessor().focus()[1];
-
   for(std::size_t y = upper_left[1]; y < lower_right[1]; y++) {
     for(std::size_t x = upper_left[0]; x < lower_right[0]; x++) {
       double val = data(x,y);
@@ -678,6 +675,8 @@ scitbx::vec2<int> const& lower_right) {
         double d_in_mm = distance_between_points(point,beam_center) * pixel_size;
         double twotheta = std::atan(d_in_mm/distance)*180/scitbx::constants::pi;
         std::size_t bin = (std::size_t)std::floor(twotheta*extent/extent_two_theta);
+        if (bin >= extent)
+          continue;
         sums[bin] += val;
         sums_sq[bin] += val*val;
         counts[bin]++;

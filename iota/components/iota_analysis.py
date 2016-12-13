@@ -428,95 +428,94 @@ class Analyzer(object):
       uc_table = []
       uc_summary = []
 
-      # if self.params.analysis.run_clustering:
-      #   # run hierarchical clustering analysis
-      #   from xfel.clustering.cluster import Cluster
-      #
-      #   counter = 0
-      #   ucs = Cluster.from_files(self.pickles, use_b=True)
-      #   clusters, _ = ucs.ab_cluster(self.params.analysis.cluster_threshold,
-      #                                log=False, write_file_lists=False,
-      #                                schnell=False, doplot=False)
-      #   uc_table.append("\n\n{:-^80}\n"\
-      #                   "".format(' UNIT CELL ANALYSIS '))
-      #
-      #   # extract clustering info and add to summary output list
-      #   for cluster in clusters:
-      #     sorted_pg_comp = sorted(cluster.pg_composition.items(),
-      #                               key=lambda x: -1 * x[1])
-      #     pg_nums = [pg[1] for pg in sorted_pg_comp]
-      #     cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
-      #
-      #     # write out lists of output pickles that comprise clusters with > 1 members
-      #     if len(cluster.members) > 1:
-      #       counter += 1
-      #
-      #       # Sort clustered images by mosaicity, lowest to highest
-      #       cluster_filenames = [j.path for j in cluster.members]
-      #       clustered_objects = [i for i in self.final_objects if \
-      #                            i.final['final'] in cluster_filenames]
-      #       sorted_cluster = sorted(clustered_objects,
-      #                               key=lambda i: i.final['mos'])
-      #       # Write to file
-      #       if write_files:
-      #         output_file = os.path.join(self.output_dir, "uc_cluster_{}.lst".format(counter))
-      #         for obj in sorted_cluster:
-      #           with open(output_file, 'a') as scf:
-      #             scf.write('{}\n'.format(obj.final['final']))
-      #
-      #         mark_output = os.path.basename(output_file)
-      #       else:
-      #         mark_output = '*'
-      #         output_file = None
-      #     else:
-      #       mark_output = ''
-      #       output_file = None
-      #
-      #     # format and record output
-      #     uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
-      #               "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
-      #               "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   "\
-      #               "{}".format('({})'.format(len(cluster.members)), cons_pg[0],
-      #                                     cluster.medians[0], cluster.stdevs[0],
-      #                                     cluster.medians[1], cluster.stdevs[1],
-      #                                     cluster.medians[2], cluster.stdevs[2],
-      #                                     cluster.medians[3], cluster.stdevs[3],
-      #                                     cluster.medians[4], cluster.stdevs[4],
-      #                                     cluster.medians[5], cluster.stdevs[5],
-      #                                     mark_output)
-      #     uc_table.append(uc_line)
-      #     uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
-      #                output_file, uc_line]
-      #     uc_summary.append(uc_info)
-      # else:
+      if self.params.analysis.run_clustering:
+        # run hierarchical clustering analysis
+        from xfel.clustering.cluster import Cluster
 
-      # generate placeholder average unit cell - TEMPORARY, while we figure out how
-      # to eliminate scipy from cluster module
-      uc_table.append("\n\n{:-^80}\n" \
-                      "".format(' UNIT CELL AVERAGING (no clustering) '))
-      uc_a = [i.final['a'] for i in self.final_objects]
-      uc_b = [i.final['b'] for i in self.final_objects]
-      uc_c = [i.final['c'] for i in self.final_objects]
-      uc_alpha = [i.final['alpha'] for i in self.final_objects]
-      uc_beta = [i.final['beta'] for i in self.final_objects]
-      uc_gamma = [i.final['gamma'] for i in self.final_objects]
-      uc_sg = [i.final['sg'] for i in self.final_objects]
-      cons_pg = Counter(uc_sg).most_common(1)[0][0]
-      uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
-                "{}".format('({})'.format(len(self.final_objects)), cons_pg,
-                            np.median(uc_a), np.std(uc_a),
-                            np.median(uc_b), np.std(uc_b),
-                            np.median(uc_c), np.std(uc_c),
-                            np.median(uc_alpha), np.std(uc_alpha),
-                            np.median(uc_beta), np.std(uc_beta),
-                            np.median(uc_gamma), np.std(uc_gamma), '')
-      unit_cell = (np.median(uc_a), np.median(uc_b), np.median(uc_c),
-                   np.median(uc_alpha), np.median(uc_beta), np.median(uc_gamma))
-      uc_table.append(uc_line)
-      uc_info = [len(self.final_objects), cons_pg, unit_cell, None, uc_line]
-      uc_summary.append(uc_info)
+        counter = 0
+        ucs = Cluster.from_files(self.pickles, use_b=True)
+        clusters, _ = ucs.ab_cluster(self.params.analysis.cluster_threshold,
+                                     log=False, write_file_lists=False,
+                                     schnell=False, doplot=False)
+        uc_table.append("\n\n{:-^80}\n"\
+                        "".format(' UNIT CELL ANALYSIS '))
+
+        # extract clustering info and add to summary output list
+        for cluster in clusters:
+          sorted_pg_comp = sorted(cluster.pg_composition.items(),
+                                    key=lambda x: -1 * x[1])
+          pg_nums = [pg[1] for pg in sorted_pg_comp]
+          cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
+
+          # write out lists of output pickles that comprise clusters with > 1 members
+          if len(cluster.members) > 1:
+            counter += 1
+
+            # Sort clustered images by mosaicity, lowest to highest
+            cluster_filenames = [j.path for j in cluster.members]
+            clustered_objects = [i for i in self.final_objects if \
+                                 i.final['final'] in cluster_filenames]
+            sorted_cluster = sorted(clustered_objects,
+                                    key=lambda i: i.final['mos'])
+            # Write to file
+            if write_files:
+              output_file = os.path.join(self.output_dir, "uc_cluster_{}.lst".format(counter))
+              for obj in sorted_cluster:
+                with open(output_file, 'a') as scf:
+                  scf.write('{}\n'.format(obj.final['final']))
+
+              mark_output = os.path.basename(output_file)
+            else:
+              mark_output = '*'
+              output_file = None
+          else:
+            mark_output = ''
+            output_file = None
+
+          # format and record output
+          uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
+                    "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
+                    "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   "\
+                    "{}".format('({})'.format(len(cluster.members)), cons_pg[0],
+                                          cluster.medians[0], cluster.stdevs[0],
+                                          cluster.medians[1], cluster.stdevs[1],
+                                          cluster.medians[2], cluster.stdevs[2],
+                                          cluster.medians[3], cluster.stdevs[3],
+                                          cluster.medians[4], cluster.stdevs[4],
+                                          cluster.medians[5], cluster.stdevs[5],
+                                          mark_output)
+          uc_table.append(uc_line)
+          uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
+                     output_file, uc_line]
+          uc_summary.append(uc_info)
+      else:
+
+        # generate average unit cell
+        uc_table.append("\n\n{:-^80}\n" \
+                        "".format(' UNIT CELL AVERAGING (no clustering) '))
+        uc_a = [i.final['a'] for i in self.final_objects]
+        uc_b = [i.final['b'] for i in self.final_objects]
+        uc_c = [i.final['c'] for i in self.final_objects]
+        uc_alpha = [i.final['alpha'] for i in self.final_objects]
+        uc_beta = [i.final['beta'] for i in self.final_objects]
+        uc_gamma = [i.final['gamma'] for i in self.final_objects]
+        uc_sg = [i.final['sg'] for i in self.final_objects]
+        cons_pg = Counter(uc_sg).most_common(1)[0][0]
+        uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+                  "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+                  "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
+                  "{}".format('({})'.format(len(self.final_objects)), cons_pg,
+                              np.median(uc_a), np.std(uc_a),
+                              np.median(uc_b), np.std(uc_b),
+                              np.median(uc_c), np.std(uc_c),
+                              np.median(uc_alpha), np.std(uc_alpha),
+                              np.median(uc_beta), np.std(uc_beta),
+                              np.median(uc_gamma), np.std(uc_gamma), '')
+        unit_cell = (np.median(uc_a), np.median(uc_b), np.median(uc_c),
+                     np.median(uc_alpha), np.median(uc_beta), np.median(uc_gamma))
+        uc_table.append(uc_line)
+        uc_info = [len(self.final_objects), cons_pg, unit_cell, None, uc_line]
+        uc_summary.append(uc_info)
 
       uc_table.append('\nMost common unit cell:\n')
 

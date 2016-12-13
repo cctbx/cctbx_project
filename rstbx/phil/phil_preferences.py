@@ -160,9 +160,9 @@ integration {
     .help = to at most one observation, one that is closest.  The legacy code did not include
     .help = this safeguard.  It is expected that True should become the default after a testing period.
   dials_refinement{
-    strategy = *distance wavelength
+    strategy = *distance wavelength fix
       .type = choice
-      .help = either refine the distance or the wavelength for XFEL stills
+      .help = either refine the distance or the wavelength for XFEL stills, or fix them both in place
   }
   absorption_correction
     .multiple = True {
