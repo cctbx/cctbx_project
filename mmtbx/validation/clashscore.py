@@ -310,8 +310,6 @@ class probe_clashscore_manager(object):
 
   def filter_dicts(self, new_clash_hash, new_hbond_hash):
     temp = []
-    # filter and create clash_obj
-    temp = []
     for k,v in new_clash_hash.iteritems():
       if k not in new_hbond_hash:
         temp.append(v.as_clash_obj(self.use_segids))
