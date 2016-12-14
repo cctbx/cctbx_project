@@ -192,6 +192,22 @@ class clashscore(validation):
           result.atoms_info[1].id_str(), result.overlap, result.xyz))
     return data
 
+class probe_line_info_storage(object):
+  def __init__(self, line):
+    self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.min_gap, \
+    self.gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
+    self.score, self.stype, self.ttype, self.x, self.y, self.z, self.sBval, \
+    self.tBval = line.split(":")
+    self.gap = float(self.gap)
+    self.x = float(self.x)
+    self.y = float(self.y)
+    self.z = float(self.z)
+    self.sBval = float(self.sBval)
+    self.tBval = float(self.tBval)
+  def is_similar(self, other):
+    assert isinstance(other, probe_line_info_storage)
+    return (self.srcAtom == other.srcAtom and self.targAtom == other.targAtom)
+
 class probe_clashscore_manager(object):
   def __init__(self,
                h_pdb_string,
@@ -258,49 +274,60 @@ class probe_clashscore_manager(object):
     self.h_pdb_string = h_pdb_string
     self.run_probe_clashscore(self.h_pdb_string, printable_probe_output)
 
+  def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
+    atom1 = decode_atom_string(line_info.srcAtom, self.use_segids)
+    atom2 = decode_atom_string(line_info.targAtom, self.use_segids)
+    if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
+      atoms = [ atom1, atom2 ]
+    else:
+      atoms = [ atom2, atom1 ]
+    clash_obj = clash(
+      atoms_info=atoms,
+      overlap=line_info.gap,
+      probe_type=line_info.type,
+      outlier=abs(line_info.gap) > 0.4,
+      max_b_factor=max(line_info.sBval, line_info.tBval),
+      xyz=(line_info.x,line_info.y,line_info.z))
+    key = clash_obj
+    if (line_info.type == "so" or line_info.type == "bo"):
+      if (line_info.gap <= -0.4):
+        if (key in clash_hash) :
+          if (line_info.gap < clash_hash[key].overlap):
+            clash_hash[key] = clash_obj
+        else :
+          clash_hash[key] = clash_obj
+    elif (line_info.type == "hb"):
+      if (key in hbond_hash) :
+        if (line_info.gap < hbond_hash[key].overlap):
+          hbond_hash[key] = clash_obj
+      else :
+        hbond_hash[key] = clash_obj
+
   def process_raw_probe_output(self, probe_unformatted):
     clash_hash = {}
     hbond_hash = {}
+    previous_line = None
     for line in probe_unformatted:
       processed=False
       try:
-        name, pat, type, srcAtom, targAtom, min_gap, gap, \
-        kissEdge2BullsEye, dot2BE, dot2SC, spike, score, stype, \
-        ttype, x, y, z, sBval, tBval = line.split(":")
-        processed=True
+        line_storage = probe_line_info_storage(line)
       except KeyboardInterrupt: raise
       except ValueError:
-        pass # something else (different from expected) got into output
-      if(processed):
-        atom1 = decode_atom_string(srcAtom, self.use_segids)
-        atom2 = decode_atom_string(targAtom, self.use_segids)
-        if (cmp(srcAtom,targAtom) < 0):
-          atoms = [ atom1, atom2 ]
+        continue # something else (different from expected) got into output
+
+      if previous_line is not None:
+        if line_storage.is_similar(previous_line):
+          # modify previous line to store this one if needed
+          previous_line.gap = min(previous_line.gap, line_storage.gap)
         else:
-          atoms = [ atom2, atom1 ]
-        gap = float(gap)
-        x, y, z = float(x), float(y), float(z)
-        clash_obj = clash(
-          atoms_info=atoms,
-          overlap=gap,
-          probe_type=type,
-          outlier=abs(gap) > 0.4,
-          max_b_factor=max(float(sBval), float(tBval)),
-          xyz=(x,y,z))
-        key = clash_obj
-        if (type == "so" or type == "bo"):
-          if (gap <= -0.4):
-            if (key in clash_hash) :
-              if (gap < clash_hash[key].overlap):
-                clash_hash[key] = clash_obj
-            else :
-              clash_hash[key] = clash_obj
-        elif (type == "hb"):
-          if (key in hbond_hash) :
-            if (gap < hbond_hash[key].overlap):
-              hbond_hash[key] = clash_obj
-          else :
-            hbond_hash[key] = clash_obj
+          # seems like new group of lines, then dump previous and start new
+          # one
+          self.put_group_into_dict(previous_line, clash_hash, hbond_hash)
+          previous_line = line_storage
+      else:
+        previous_line = line_storage
+    self.put_group_into_dict(previous_line, clash_hash, hbond_hash)
+
     #sort the output
     temp = []
     for k in clash_hash.keys():
