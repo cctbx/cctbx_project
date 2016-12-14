@@ -334,7 +334,7 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     elsigned = 1
 
     cbf.set_integerarray_wdims_fs(
-        pycbf.BYTE_OFFSET,
+        pycbf.CBF_BYTE_OFFSET,
         binary_id,
         data2,
         elsize,
