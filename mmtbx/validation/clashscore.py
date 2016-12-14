@@ -340,7 +340,8 @@ class probe_clashscore_manager(object):
           previous_line = line_storage
       else:
         previous_line = line_storage
-    self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+    if previous_line is not None:
+      self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
   def run_probe_clashscore(self, pdb_string, printable_probe_output=None):
