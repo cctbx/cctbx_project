@@ -50,7 +50,7 @@ class TagSet(object):
     self.tags = tags
   def __str__(self):
     if len(self.tags) > 1:
-      return ", ".join([t.name for t in self.tags]) + (' (%s)' % self.mode.upper())
+      return ", ".join([t.name for t in self.tags]) + (' (%s)' % self.mode[0])
     else:
       return ", ".join([t.name for t in self.tags])
 
