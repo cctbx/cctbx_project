@@ -258,19 +258,9 @@ class probe_clashscore_manager(object):
     self.h_pdb_string = h_pdb_string
     self.run_probe_clashscore(self.h_pdb_string, printable_probe_output)
 
-  def run_probe_clashscore(self, pdb_string, printable_probe_output=None):
+  def process_raw_probe_output(self, probe_unformatted):
     clash_hash = {}
     hbond_hash = {}
-    probe_out = easy_run.fully_buffered(self.probe_txt,
-      stdin_lines=pdb_string)
-    if (probe_out.return_code != 0) :
-      raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
-        "\n".join(probe_out.stderr_lines))
-    probe_unformatted = probe_out.stdout_lines
-    if printable_probe_output:
-      printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
-        stdin_lines=pdb_string)
-      self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
     for line in probe_unformatted:
       processed=False
       try:
@@ -316,6 +306,22 @@ class probe_clashscore_manager(object):
     for k in clash_hash.keys():
       if not k in hbond_hash:
         temp.append(clash_hash[k])
+    return temp
+
+  def run_probe_clashscore(self, pdb_string, printable_probe_output=None):
+    probe_out = easy_run.fully_buffered(self.probe_txt,
+      stdin_lines=pdb_string)
+    if (probe_out.return_code != 0) :
+      raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
+        "\n".join(probe_out.stderr_lines))
+    probe_unformatted = probe_out.stdout_lines
+    if printable_probe_output:
+      printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
+        stdin_lines=pdb_string)
+      self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
+
+    temp = self.process_raw_probe_output(probe_unformatted)
+
     self.n_clashes = len(temp)
     if self.b_factor_cutoff is not None:
       clashes_b_cutoff = 0
