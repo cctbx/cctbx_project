@@ -207,6 +207,21 @@ class probe_line_info_storage(object):
   def is_similar(self, other):
     assert isinstance(other, probe_line_info_storage)
     return (self.srcAtom == other.srcAtom and self.targAtom == other.targAtom)
+  def as_clash_obj(self, use_segids):
+    atom1 = decode_atom_string(self.srcAtom,  use_segids)
+    atom2 = decode_atom_string(self.targAtom, use_segids)
+    if (cmp(self.srcAtom, self.targAtom) < 0):
+      atoms = [ atom1, atom2 ]
+    else:
+      atoms = [ atom2, atom1 ]
+    clash_obj = clash(
+      atoms_info=atoms,
+      overlap=self.gap,
+      probe_type=self.type,
+      outlier=abs(self.gap) > 0.4,
+      max_b_factor=max(self.sBval, self.tBval),
+      xyz=(self.x,self.y,self.z))
+    return clash_obj
 
 class probe_clashscore_manager(object):
   def __init__(self,
@@ -275,37 +290,36 @@ class probe_clashscore_manager(object):
     self.run_probe_clashscore(self.h_pdb_string, printable_probe_output)
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
-    atom1 = decode_atom_string(line_info.srcAtom, self.use_segids)
-    atom2 = decode_atom_string(line_info.targAtom, self.use_segids)
+    key = line_info.targAtom+line_info.srcAtom
     if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
-      atoms = [ atom1, atom2 ]
-    else:
-      atoms = [ atom2, atom1 ]
-    clash_obj = clash(
-      atoms_info=atoms,
-      overlap=line_info.gap,
-      probe_type=line_info.type,
-      outlier=abs(line_info.gap) > 0.4,
-      max_b_factor=max(line_info.sBval, line_info.tBval),
-      xyz=(line_info.x,line_info.y,line_info.z))
-    key = clash_obj
+      key = line_info.srcAtom+line_info.targAtom
+
     if (line_info.type == "so" or line_info.type == "bo"):
       if (line_info.gap <= -0.4):
         if (key in clash_hash) :
-          if (line_info.gap < clash_hash[key].overlap):
-            clash_hash[key] = clash_obj
+          if (line_info.gap < clash_hash[key].gap):
+            clash_hash[key] = line_info
         else :
-          clash_hash[key] = clash_obj
+          clash_hash[key] = line_info
     elif (line_info.type == "hb"):
       if (key in hbond_hash) :
-        if (line_info.gap < hbond_hash[key].overlap):
-          hbond_hash[key] = clash_obj
+        if (line_info.gap < hbond_hash[key].gap):
+          hbond_hash[key] = line_info
       else :
-        hbond_hash[key] = clash_obj
+        hbond_hash[key] = line_info
+
+  def filter_dicts(self, new_clash_hash, new_hbond_hash):
+    temp = []
+    # filter and create clash_obj
+    temp = []
+    for k,v in new_clash_hash.iteritems():
+      if k not in new_hbond_hash:
+        temp.append(v.as_clash_obj(self.use_segids))
+    return temp
 
   def process_raw_probe_output(self, probe_unformatted):
-    clash_hash = {}
-    hbond_hash = {}
+    new_clash_hash = {}
+    new_hbond_hash = {}
     previous_line = None
     for line in probe_unformatted:
       processed=False
@@ -322,18 +336,12 @@ class probe_clashscore_manager(object):
         else:
           # seems like new group of lines, then dump previous and start new
           # one
-          self.put_group_into_dict(previous_line, clash_hash, hbond_hash)
+          self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
           previous_line = line_storage
       else:
         previous_line = line_storage
-    self.put_group_into_dict(previous_line, clash_hash, hbond_hash)
-
-    #sort the output
-    temp = []
-    for k in clash_hash.keys():
-      if not k in hbond_hash:
-        temp.append(clash_hash[k])
-    return temp
+    self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+    return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
   def run_probe_clashscore(self, pdb_string, printable_probe_output=None):
     probe_out = easy_run.fully_buffered(self.probe_txt,
