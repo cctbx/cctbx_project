@@ -299,6 +299,9 @@ def get_crystal_symmetry(file_handle):
       if (a.is_complex_array()):
         cs = a.crystal_symmetry()
         break
+    if (cs is None):
+      raise Sorry('No map coefficients found in %s.' %
+                file_handle.file_name)
   if (cs is None):
     raise Sorry('Could not find crystal symmetry in %s.' %
                 file_handle.file_name)
