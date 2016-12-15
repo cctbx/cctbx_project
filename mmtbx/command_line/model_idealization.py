@@ -60,6 +60,9 @@ data_for_map = None
   .type = path
 number_of_refinement_cycles = 3
   .type = int
+debug = False
+  .type = bool
+  .help = Output all intermediate files
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -166,7 +169,7 @@ class model_idealization():
       self.shift_vector = box.shift_vector
 
     # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_h.pdb")
-    if self.shift_vector is not None:
+    if self.shift_vector is not None and self.params.debug:
       write_whole_pdb_file(
           file_name="%s_boxed.pdb" % self.params.output_prefix,
           pdb_hierarchy=self.original_boxed_hierarchy,
@@ -215,7 +218,8 @@ class model_idealization():
         fourier_coefficients=fc)
     fft_map.apply_sigma_scaling()
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
-    fft_map.as_xplor_map(file_name="%s.map" % self.params.output_prefix)
+    if self.params.debug:
+      fft_map.as_xplor_map(file_name="%s.map" % self.params.output_prefix)
 
   def prepare_reference_map_2(self, xrs, pdb_h):
     print >> self.log, "Preparing reference map, method 2"
@@ -239,7 +243,8 @@ class model_idealization():
         fourier_coefficients=fc)
     fft_map.apply_sigma_scaling()
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
-    fft_map.as_xplor_map(file_name="%s_2.map" % self.params.output_prefix)
+    if self.params.debug:
+      fft_map.as_xplor_map(file_name="%s_2.map" % self.params.output_prefix)
 
   def prepare_reference_map_3(self, xrs, pdb_h):
     """ with ramachandran outliers """
@@ -269,7 +274,8 @@ class model_idealization():
         fourier_coefficients=fc)
     fft_map.apply_sigma_scaling()
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
-    fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
+    if self.params.debug:
+      fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
 
   def get_grm(self):
     # first make whole grm using self.whole_pdb_h
@@ -355,7 +361,8 @@ class model_idealization():
       self.master_pdb_h.reset_atom_i_seqs()
 
     if self.using_ncs:
-      self.master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
+      if self.params.debug:
+        self.master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
       self.working_pdb_h = self.master_pdb_h
     else:
       self.working_pdb_h = self.whole_pdb_h
@@ -460,11 +467,11 @@ class model_idealization():
         molprobity_scores=True)
 
     # Write resulting pdb file.
-    self.shift_and_write_result(
-        hierarchy=self.working_pdb_h,
-        fname_suffix="ss_ideal",
-        grm=self.working_grm)
-    # STOP()
+    if self.params.debug:
+      self.shift_and_write_result(
+          hierarchy=self.working_pdb_h,
+          fname_suffix="ss_ideal",
+          grm=self.working_grm)
     self.params.loop_idealization.minimize_whole = not self.using_ncs
     # self.params.loop_idealization.enabled = False
     # self.params.loop_idealization.variant_search_level = 0
@@ -481,10 +488,11 @@ class model_idealization():
         verbose=True)
     self.log.flush()
     # STOP()
-    self.shift_and_write_result(
-        hierarchy=loop_ideal.resulting_pdb_h,
-        fname_suffix="rama_ideal",
-        grm=self.working_grm)
+    if self.params.debug:
+      self.shift_and_write_result(
+          hierarchy=loop_ideal.resulting_pdb_h,
+          fname_suffix="rama_ideal",
+          grm=self.working_grm)
     self.after_loop_idealization = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
@@ -500,9 +508,10 @@ class model_idealization():
       self.log.flush()
       print >> self.log, "Fixing rotamers..."
       self.log.flush()
-      self.shift_and_write_result(
-        hierarchy=fixed_rot_pdb_h,
-        fname_suffix="just_before_rota")
+      if self.params.debug:
+        self.shift_and_write_result(
+          hierarchy=fixed_rot_pdb_h,
+          fname_suffix="just_before_rota")
       fixed_rot_pdb_h = fix_rotamer_outliers(
           pdb_hierarchy=fixed_rot_pdb_h,
           grm=self.working_grm.geometry,
@@ -511,11 +520,11 @@ class model_idealization():
           mon_lib_srv=self.mon_lib_srv,
           rotamer_manager=self.rotamer_manager,
           verbose=True)
-
-    self.shift_and_write_result(
-        hierarchy=fixed_rot_pdb_h,
-        fname_suffix="rota_ideal",
-        grm=self.working_grm)
+    if self.params.debug:
+      self.shift_and_write_result(
+          hierarchy=fixed_rot_pdb_h,
+          fname_suffix="rota_ideal",
+          grm=self.working_grm)
     cs_to_write = self.cs if self.shift_vector is None else None
     self.after_rotamer_fixing = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
@@ -626,11 +635,12 @@ class model_idealization():
       atoms = pdb_h_shifted.atoms()
       sites_cart = atoms.extract_xyz()
       atoms.set_xyz(new_xyz=sites_cart-self.shift_vector)
-    write_whole_pdb_file(
-        file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
-        pdb_hierarchy=hierarchy,
-        crystal_symmetry=self.cs,
-        ss_annotation=self.ann)
+    if self.params.debug:
+      write_whole_pdb_file(
+          file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
+          pdb_hierarchy=hierarchy,
+          crystal_symmetry=self.cs,
+          ss_annotation=self.ann)
     write_whole_pdb_file(
         file_name="%s_%s.pdb" % (self.params.output_prefix, fname_suffix),
         pdb_hierarchy=pdb_h_shifted,
