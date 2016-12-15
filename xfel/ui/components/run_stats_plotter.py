@@ -80,8 +80,8 @@ def get_run_stats(timestamps,
   # indexing and droplet hit rate in a sliding window
   half_idx_rate_window = min(50, int(len(isigi_low)//20))
   half_hq_rate_window = 500
-  low_sel = (isigi_low > 0) & (n_strong >= n_strong_cutoff)
-  high_sel = (isigi_high > 0) & (n_strong >= n_strong_cutoff)
+  low_sel = isigi_low > 1
+  high_sel = isigi_high > 1
   idx_rate = flex.double()
   hq_rate = flex.double()
   drop_hit_rate = flex.double()
@@ -153,7 +153,7 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
   ax2_twin.set_ylim(ymin=0)
   ax2.axis('tight')
   ax2.set_ylabel("blue:% indexed", fontsize=text_ratio)
-  ax2_twin.set_ylabel("green: % droplet", fontsize=text_ratio)
+  ax2_twin.set_ylabel("green: % solvent", fontsize=text_ratio)
   ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=spot_ratio)
   ax3.scatter(t, isigi_high, edgecolors="none", color='orange', s=spot_ratio)
   ax3.set_ylim(ymin=0)
@@ -206,7 +206,7 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
     ax4.text(start_t, .85, "run %d" % run_numbers[idx], fontsize=text_ratio)
     ax4.text(start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio)
     ax4.text(start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio)
-    ax4.text(start_t, .25, "%-3.1f%% drop/%-3.1f%% hit" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio)
+    ax4.text(start_t, .25, "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio)
     ax4.text(start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
       (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio)
     ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)

@@ -927,7 +927,8 @@ class multi_criterion_view (slots_getstate_setstate) :
         if (not chain.is_protein()) and (not chain.is_na()) :
           continue
       for residue_group in chain.residue_groups() :
-        resname = residue_group.atom_groups()[0].resname
+        atom_group = residue_group.atom_groups()[0]
+        resname = atom_group.resname
         if (resname == "HOH") : continue
         combined = residue_multi_criterion(
           chain_id=chain.id,
@@ -937,6 +938,8 @@ class multi_criterion_view (slots_getstate_setstate) :
           altloc="",
           i_seq=i_seq,
           n_confs=len(residue_group.atom_groups()))
+        # set_coordinates_from_hierarchy does not seem to work?
+        combined.xyz = atom_group.atoms().extract_xyz().mean()
         id_str = combined.residue_group_id_str()
         self.residues[id_str] = combined
         i_seq += 1
@@ -993,10 +996,10 @@ class multi_criterion_view (slots_getstate_setstate) :
     else:
       raise Sorry('No residues (usually protein or nucleic acid) are available for generating plots.')
 
-  def display_wx_plots (self) :
+  def display_wx_plots (self, parent=None) :
     import wxtbx.plots.molprobity
     frame = wxtbx.plots.molprobity.multi_criterion_frame(
-      parent=None,
+      parent=parent,
       title="MolProbity multi-criterion plot",
       validation=self)
     frame.Show()

@@ -150,23 +150,23 @@ class PopUpCharts(object):
       seperator = "\n"
     else:
       text_ratio = plot_ratio*3
-      seperator = " "
+      seperator = "\n"
 
     # Initialize figure
     fig = plt.figure(figsize=(xsize, ysize))
-    gsp = GridSpec(4, 3)
-    legend_sub_a = fig.add_subplot(gsp[0])
-    legend_sub_b = fig.add_subplot(gsp[1])
-    legend_sub_c = fig.add_subplot(gsp[2])
-    sub_ab = fig.add_subplot(gsp[3])
-    sub_bc = fig.add_subplot(gsp[4])
-    sub_ca = fig.add_subplot(gsp[5])
-    sub_a = fig.add_subplot(gsp[6])
-    sub_b = fig.add_subplot(gsp[7], sharey=sub_a)
-    sub_c = fig.add_subplot(gsp[8], sharey=sub_a)
-    sub_alpha = fig.add_subplot(gsp[9])
-    sub_beta = fig.add_subplot(gsp[10], sharey=sub_alpha)
-    sub_gamma = fig.add_subplot(gsp[11], sharey=sub_alpha)
+    gsp = GridSpec(3, 4)
+    legend_sub_a = fig.add_subplot(gsp[3])
+    legend_sub_b = fig.add_subplot(gsp[7])
+    legend_sub_c = fig.add_subplot(gsp[11])
+    sub_ba = fig.add_subplot(gsp[0])
+    sub_cb = fig.add_subplot(gsp[1])
+    sub_ac = fig.add_subplot(gsp[2])
+    sub_a = fig.add_subplot(gsp[4])
+    sub_b = fig.add_subplot(gsp[5], sharey=sub_a)
+    sub_c = fig.add_subplot(gsp[6], sharey=sub_a)
+    sub_alpha = fig.add_subplot(gsp[8])
+    sub_beta = fig.add_subplot(gsp[9], sharey=sub_alpha)
+    sub_gamma = fig.add_subplot(gsp[10], sharey=sub_alpha)
     total = 0
     abc_hist_ylim = 0
 
@@ -239,33 +239,33 @@ class PopUpCharts(object):
       sub_a.set_ylim([0, abc_hist_ylim])
 
       if len(info_list) == 1:
-        sub_ab.hist2d(a, b, bins=100)
+        sub_ba.hist2d(a, b, bins=100)
       else:
-        sub_ab.plot(a.as_numpy_array(), b.as_numpy_array(), '.')
-      sub_ab.set_xlabel("a axis").set_fontsize(text_ratio)
-      sub_ab.set_ylabel("b axis").set_fontsize(text_ratio)
-      # plt.setp(sub_ab.get_yticklabels(), visible=False)
+        sub_ba.plot(a.as_numpy_array(), b.as_numpy_array(), '.')
+      sub_ba.set_xlabel("a axis").set_fontsize(text_ratio)
+      sub_ba.set_ylabel("b axis").set_fontsize(text_ratio)
+      # plt.setp(sub_ba.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
-        sub_bc.hist2d(b, c, bins=100)
+        sub_cb.hist2d(b, c, bins=100)
       else:
-        sub_bc.plot(b.as_numpy_array(), c.as_numpy_array(), '.')
-      sub_bc.set_xlabel("b axis").set_fontsize(text_ratio)
-      sub_bc.set_ylabel("c axis").set_fontsize(text_ratio)
-      # plt.setp(sub_bc.get_yticklabels(), visible=False)
+        sub_cb.plot(b.as_numpy_array(), c.as_numpy_array(), '.')
+      sub_cb.set_xlabel("b axis").set_fontsize(text_ratio)
+      sub_cb.set_ylabel("c axis").set_fontsize(text_ratio)
+      # plt.setp(sub_cb.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
-        sub_ca.hist2d(c, a, bins=100)
+        sub_ac.hist2d(c, a, bins=100)
       else:
-        sub_ca.plot(c.as_numpy_array(), a.as_numpy_array(), '.')
-      sub_ca.set_xlabel("c axis").set_fontsize(text_ratio)
-      sub_ca.set_ylabel("a axis").set_fontsize(text_ratio)
-      # plt.setp(sub_ca.get_yticklabels(), visible=False)
+        sub_ac.plot(c.as_numpy_array(), a.as_numpy_array(), '.')
+      sub_ac.set_xlabel("c axis").set_fontsize(text_ratio)
+      sub_ac.set_ylabel("a axis").set_fontsize(text_ratio)
+      # plt.setp(sub_ac.get_yticklabels(), visible=False)
 
       for ax in (sub_a, sub_b, sub_c, sub_alpha, sub_beta, sub_gamma):
         ax.tick_params(axis='both', which='both', left='off', right='off')
         ax.set_yticklabels([])
-      for ax in (sub_ab, sub_bc, sub_ca):
+      for ax in (sub_ba, sub_cb, sub_ac):
         ax.tick_params(axis='both', which='both', bottom='off', top='off', left='off', right='off')
         ax.set_xticklabels([])
         ax.set_yticklabels([])
@@ -297,12 +297,12 @@ class PopUpCharts(object):
     sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     sub_c.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_c.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_ab.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_ab.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_bc.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_bc.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    sub_ca.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    sub_ca.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_ba.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_ba.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_cb.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_cb.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    sub_ac.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    sub_ac.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     sub_beta.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_beta.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     sub_gamma.xaxis.get_major_ticks()[0].label1.set_visible(False)

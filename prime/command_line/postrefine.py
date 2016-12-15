@@ -9,12 +9,13 @@ Description : Main commandline for prime.
 from libtbx.easy_mp import pool_map
 from cctbx.array_family import flex
 from prime.command_line.solve_indexing_ambiguity import indexing_ambiguity_handler
-from prime.postrefine import prepare_output, calc_avg_I_cpp, write_output
 from prime.postrefine.mod_mx import mx_handler
 from prime.postrefine.mod_input import read_pickles
+from prime.postrefine.mod_util import intensities_scaler
 import sys, math
 import numpy as np
 from datetime import datetime, time
+from libtbx.utils import Usage
 
 def determine_mean_I_mproc(args):
   from prime.postrefine import postref_handler
@@ -73,38 +74,22 @@ def scale_frames(frames, frame_files, iparams):
 def merge_frames(pres_set, iparams, avg_mode='average', mtz_out_prefix='mean_scaled'):
   """merge frames using average as the default"""
   miller_array_ref, txt_out = (None,'')
+  intscal = intensities_scaler()
   if pres_set:
-    prep_output = prepare_output(pres_set, iparams, avg_mode)
-    if prep_output is not None:
-      cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort,  I_obs_all_sort, \
-      sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, \
-      sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, pickle_filename_all_sort, txt_prep_out = prep_output
-      calc_average_I_result = calc_avg_I_cpp(cn_group, group_id_list, miller_indices_all_sort,
-          miller_indices_ori_all_sort, I_obs_all_sort,
-          sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort,
-          rs_all_sort, wavelength_all_sort, sin_sq_all_sort,
-          SE_all_sort, avg_mode, iparams, pickle_filename_all_sort)
-      miller_index, I_avg, sigI_avg, stat, I_avg_two_halves_tuple, txt_obs_out, txt_reject_out = calc_average_I_result
-      I_avg_even, I_avg_odd, I_avg_even_h, I_avg_odd_h, I_avg_even_k, I_avg_odd_k, I_avg_even_l, I_avg_odd_l = I_avg_two_halves_tuple
-      txt_out_rejection = txt_reject_out
+    prep_output = intscal.prepare_output(pres_set, iparams, avg_mode)
+    if prep_output:
+      mdh, _, txt_out_rejection  = intscal.calc_avg_I_cpp(prep_output, iparams, avg_mode)
       #selet only indices with non-Inf non-Nan stats
-      s0, s1, s2, s3, s4 = stat
-      selections = flex.bool([False if (math.isnan(_s0) or math.isinf(_s0) or math.isnan(_s1) or math.isinf(_s1)) else True for _s0, _s1  in zip(s0, s1)])
-      stat_all = [[_s0,_s1,_s2,_s3,_s4] for _s0,_s1,_s2,_s3,_s4 in zip(s0.select(selections),s1.select(selections),
-          s2.select(selections), s3.select(selections), s4.select(selections))]
+      selections = flex.bool([False if (math.isnan(r0) or math.isinf(r0) or math.isnan(r1) or math.isinf(r1)) else True for r0, r1  in zip(mdh.r_meas_div, mdh.r_meas_divisor)])
+      mdh.reduce_by_selection(selections)
       with open(iparams.run_no+'/rejections.txt', 'a') as f:
         f.write(txt_out_rejection)
       #merge all good indices
-      miller_array_ref, txt_merge_mean_table = write_output(miller_index.select(selections),
-          I_avg.select(selections), sigI_avg.select(selections),
-          stat_all, (I_avg_even.select(selections), I_avg_odd.select(selections),
-          I_avg_even_h.select(selections), I_avg_odd_h.select(selections),
-          I_avg_even_k.select(selections), I_avg_odd_k.select(selections),
-          I_avg_even_l.select(selections), I_avg_odd_l.select(selections)),
-          iparams, uc_mean, wavelength_mean, iparams.run_no+'/'+mtz_out_prefix, avg_mode)
+      miller_array_ref, txt_merge_mean_table = intscal.write_output(mdh,
+          iparams, iparams.run_no+'/'+mtz_out_prefix, avg_mode)
       print txt_merge_mean_table
-      print txt_prep_out
-      txt_out = txt_merge_mean_table + txt_prep_out
+      print prep_output[-1]
+      txt_out = txt_merge_mean_table + prep_output[-1]
   return miller_array_ref, txt_out
 
 def postrefine_frames(i_iter, frames, frame_files, iparams, pres_set, miller_array_ref, avg_mode):

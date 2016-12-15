@@ -46,3 +46,8 @@ class mx_handler(object):
         else:
           flag_hklisoin_found = False
     return flag_hklisoin_found, miller_array_iso
+
+  def get_resolution_step_for_B(self, iparams):
+    resolution_gap = 7 - iparams.scale.d_min
+    resolution_step = resolution_gap/ iparams.n_bins
+    return resolution_step

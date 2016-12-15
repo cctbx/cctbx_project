@@ -25,10 +25,14 @@ master_phil = libtbx.phil.parse("""
     .type = bool
   output_file = None
     .type = str
+  plot_x_max = None
+    .type = int
   plot_y_max = None
     .type = int
   low_max_two_theta_limit = None
     .type = float
+  normalize = False
+    .type = bool
 """)
 
 def distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
@@ -153,7 +157,13 @@ def run (args):
     logger.write("Maximum 2theta for %s: %f, value: %f\n"%(file_path, max_twotheta, max_result))
 
     if params.verbose:
-      plt.plot(xvals.as_numpy_array(),results.as_numpy_array(),'-')
+      if params.plot_x_max is not None:
+        results = results.select(xvals <= params.plot_x_max)
+        xvals = xvals.select(xvals <= params.plot_x_max)
+      if params.normalize:
+        plt.plot(xvals.as_numpy_array(),(results/flex.max(results)).as_numpy_array(),'-')
+      else:
+        plt.plot(xvals.as_numpy_array(),results.as_numpy_array(),'-')
       plt.xlabel("2 theta")
       plt.ylabel("Avg ADUs")
       if params.plot_y_max is not None:

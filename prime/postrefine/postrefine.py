@@ -2,7 +2,6 @@ from __future__ import division
 from cctbx.array_family import flex
 from cctbx import miller
 import cPickle as pickle
-from mod_util import intensities_scaler
 from mod_leastsqr import leastsqr_handler
 from mod_results import postref_results
 from cctbx.crystal import symmetry
@@ -11,6 +10,7 @@ from scitbx.matrix import sqr
 from cctbx import statistics
 from mod_partiality import partiality_handler
 from mod_lbfgs_partiality import lbfgs_partiality_handler
+from mod_mx import mx_handler
 
 class postref_handler(object):
   """
@@ -360,7 +360,6 @@ class postref_handler(object):
       G = flex.median(observations_original_sel.data())/mean_of_mean_I
     if iparams.flag_apply_b_by_frame:
       try:
-        from mod_util import mx_handler
         mxh = mx_handler()
         asu_contents = mxh.get_asu_contents(iparams.n_residues)
         observations_as_f = observations_non_polar_sel.as_amplitude_array()
@@ -414,49 +413,3 @@ class postref_handler(object):
     txt_scale_frame_by_mean_I += '\n'
     return pres, txt_scale_frame_by_mean_I
 
-def prepare_output(results,
-        iparams,
-        avg_mode):
-  #results is a list of postref_results objects
-  #length of this list equals to number of input frames
-  inten_scaler = intensities_scaler()
-  prep_output = inten_scaler.prepare_output(results, iparams, avg_mode)
-  return prep_output
-
-def calc_avg_I(group_no, miller_index, miller_indices_ori, I, sigI, G, B, p_set, rs_set, wavelength_set,
-               sin_theta_over_lambda_sq, SE, avg_mode, iparams, pickle_filename):
-  #results is a list of postref_results objects
-  #length of this list equals to number of input frames
-  inten_scaler = intensities_scaler()
-  avg_I_result = inten_scaler.calc_avg_I(group_no, miller_index, miller_indices_ori, I, sigI, G, B,
-                     p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
-                     iparams, pickle_filename)
-  return avg_I_result
-
-def calc_avg_I_cpp(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B, \
-        p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams, pickle_filename):
-  #results is a list of postref_results objects
-  #length of this list equals to number of input frames
-  inten_scaler = intensities_scaler()
-  avg_I_result = inten_scaler.calc_avg_I_cpp(group_no, group_id_list, miller_index, \
-                    miller_indices_ori, I, sigI, G, B,
-                    p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
-                    iparams, pickle_filename)
-  return avg_I_result
-
-def write_output(miller_indices_merge, I_merge, sigI_merge, stat_all,
-                   I_two_halves_tuple, iparams, uc_mean, wavelength_mean,
-                   output_mtz_file_prefix, avg_mode):
-  #results is a list of postref_results objects
-  #length of this list equals to number of input frames
-  inten_scaler = intensities_scaler()
-  miller_array_merge, txt_out = inten_scaler.write_output(miller_indices_merge, \
-                                            I_merge, sigI_merge, stat_all, \
-                                            I_two_halves_tuple, iparams, uc_mean, \
-                                            wavelength_mean, output_mtz_file_prefix, avg_mode)
-  return miller_array_merge, txt_out
-
-def read_input(args):
-  from mod_input import process_input
-  iparams, txt_out_input = process_input(args)
-  return iparams, txt_out_input
