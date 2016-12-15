@@ -81,14 +81,13 @@ class determine_connectivity(object):
     # third neighbors
     self.process_a0_angles_and_third_neighbors_without_dihedral()
 
-    # for test printing
     #self.print_stuff()
 
 
   def find_first_neighbors(self):
     """ Find first neighbors by looping through bond proxies
-    Fills in dictionary of 'a0' in object neighbors.
-    keys: i_seq, dist_ideal"""
+    Fills in dictionary of 'a0' in object 'neighbors'.
+    Keys: i_seq, dist_ideal"""
     self.double_H = {}
     self.parents = set()
     for bproxy in self.bond_proxies_simple:
@@ -103,16 +102,16 @@ class determine_connectivity(object):
         # else case should not happen...
         #else:
         #  raise Sorry("Something went wrong in bond proxies")
-      # if neighbor exists, use only first instance
+      # if neighbor exists, use only first one found
       if self.h_connectivity[ih] is not None: continue
-      # find H atoms bound to two parent atoms --> use only first atom found
+      # find H atoms bound to two parent atoms, store info in list 'double_H'
       if (self.fsc0[ih].size() > 1):
         self.double_H[ih] = list(self.fsc0[ih])
       self.h_connectivity[ih] = neighbors(
         ih = ih,
         a0 = {'iseq':i_parent, 'dist_ideal': bproxy.distance_ideal,
           'angles':[]})
-      self.parents.add(i_parent)
+      self.parents.add(i_parent) #list of parent atoms
 
   def find_second_neighbors_raw(self):
     """Get a an array listing all second neighbors for every H atom.
@@ -169,6 +168,7 @@ class determine_connectivity(object):
         self.a0a1_dict[i_parent] = i_a1
 
   def print_stuff(self):
+    """Print information of connectivity for each H atom."""
     names = list(self.atoms.extract_name())
     for neighbors in self.h_connectivity:
       if neighbors is None: continue
@@ -196,6 +196,9 @@ class determine_connectivity(object):
       print '%s %s (%s) , %s (%s) , %s , %s,%s' % output
 
   def determine_a0_angles_and_third_neighbors_without_dihedral(self):
+    """Loop through angle proxies to find angles involving a0 and second
+    neighbors. Find raw list of third neighbors, which don't have dihedral
+    proxies."""
     names = list(self.atoms.extract_name())
     self.parent_angles = [{} for i in range(self.n_atoms)]
     self.third_neighbors_raw = [[] for i in range(self.n_atoms)]
@@ -226,6 +229,7 @@ class determine_connectivity(object):
             self.third_neighbors_raw[i_third].append(i_parent)
 
   def process_a0_angles_and_third_neighbors_without_dihedral(self):
+    """Process raw list of third neighbors withouth ideal dihedral proxy."""
     names = list(self.atoms.extract_name())
     for neighbors in self.h_connectivity:
       if (neighbors is None): continue
@@ -320,11 +324,9 @@ class determine_connectivity(object):
         i_h2 = self.h_connectivity[ih].h2['iseq']
         self.h_connectivity[i_h2].b1 = {'iseq': i_third}
 
-
-
-
-
   def determine_second_neighbors_H(self, second_neighbors_reduced):
+    """Determine if there are H atoms among second neighbors and store them
+    in a list 'second_neighbors_H' """
     second_neighbors_H = []
     for iseq in second_neighbors_reduced:
       if (self.hd_sel[iseq]):
@@ -362,8 +364,7 @@ class determine_connectivity(object):
     Example: [CA-A, N-A, N-B] --> [CA-A, N-B] if occ(N-B) > occ(N-A)"""
     alt_conf_neighbors_temp = []
     alt_conf_neighbors_reduced = []
-    # if there is only one atom in alt conf, it is not necessary to search for
-    # other atoms --> just add to second neighbors
+    # if only one atom in alt conf list, not necessary to search for other atoms
     if (len(alt_conf_neighbors) == 1):
       alt_conf_neighbors_reduced.append(alt_conf_neighbors[0])
     # Go through each atom in dc, get the name and make temporary dictionary
@@ -375,11 +376,10 @@ class determine_connectivity(object):
         if (i_second in alt_conf_neighbors_temp): continue
         name_i_second = self.atoms[i_second].name
         altloc_i_second = self.atoms[i_second].parent().altloc
-        # check that all neighbors are in the same alt conf (otherwise no angle proxy)
+        # check if all neighbors are in the same alt conf (otherwise no angle proxy)
         if alt_conf_neighbors_reduced:
           i_previous = alt_conf_neighbors_reduced[0]
           altloc_previous = self.atoms[i_previous].parent().altloc
-          #print i_second, altloc_i_second, i_previous, altloc_previous
           if (altloc_i_second != altloc_previous):
             alt_conf_neighbors_temp.append(i_second)
             continue
@@ -407,7 +407,7 @@ class determine_connectivity(object):
     self.h_connectivity = [None for i in range(self.n_atoms)]
 
   def count_H(self):
-    """# Check that number H/D atoms in the hd_selection (= in the model) and
+    """# Check if number H/D atoms in the hd_selection (= in the model) and
     in h_connectivity are the same"""
     number_h_1 = 0
     for h_bool in self.hd_sel:
