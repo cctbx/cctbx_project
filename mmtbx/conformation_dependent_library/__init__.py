@@ -59,6 +59,7 @@ def generate_protein_threes(hierarchy,
                             include_non_linked=False,
                             omega_cdl=False,
                             backbone_only=True,
+                            provide_fragments=False,
                             verbose=False,
                             ):
   backbone_asc = hierarchy.atom_selection_cache()
@@ -80,6 +81,7 @@ def generate_protein_threes(hierarchy,
         threes.end=None
         list_of_threes = []
         for residue in conformer.residues():
+          print residue.id_str()
           if verbose:
             if residue.resname not in ["HOH"]:
               print '    residue: resname="%s" resid="%s"' % (
@@ -88,8 +90,19 @@ def generate_protein_threes(hierarchy,
           if get_class(residue.resname) not in ["common_amino_acid"]:
             continue
           if include_non_linked:
-            list.append(threes, residue)
+            list.append(threes, residue) # avoid the automatic rejection
             if len(threes)>3: del threes[0]
+          elif provide_fragments:
+            print threes
+            copy_threes = copy.copy(threes)
+            threes.append(residue)
+            print len(copy_threes), len(threes)
+            if len(copy_threes)==3: pass
+            else:
+              if len(copy_threes)>=len(threes):
+                print 'adding'*10
+                list_of_threes.append(copy_threes)
+                continue
           else:
             threes.append(residue)
           if len(threes)!=3:
@@ -97,18 +110,50 @@ def generate_protein_threes(hierarchy,
               if len(threes)==2:
                 threes.insert(0,None)
               else: continue
-            else: continue
+            else:
+              print 'less than three'
+              continue
           assert len(threes)<=3
+          print 'copy',threes
           list_of_threes.append(copy.copy(threes))
         # per conformer
-        for i, threes in enumerate(list_of_threes):
+        def _overlap_three(lot, i):
+          start = False
+          end = False
           if i==0:
-            threes.start =  True
-          if i==len(list_of_threes)-1:
-            threes.end = True
-          else:
+            start=True
+          if i==len(lot)-1:
+            end=True
+          if len(lot[i])==1: return True, True
+          if not start:
+            t1,t2 = lot[i-1],lot[i]
+            if len(t1)==1: start=True
+            elif t1[1]!=t2[0]: start=True
+          if not end:
+            t1,t2 = lot[i],lot[i+1]
+            if t1[1]!=t2[0]: end=True
+          return start, end
+        for i, threes in enumerate(list_of_threes):
+          print i,threes
+          if i+1<len(list_of_threes):
+            if threes[0]==list_of_threes[i+1][0]:
+              list_of_threes[i+1].start=threes.start
+              print threes, list_of_threes[i+1]
+              print 'continue'
+              continue
+          start, end = _overlap_three(list_of_threes, i)
+          if start or end: print 'start, end',start,end, threes
+          if start: threes.start = True
+          if end: threes.end = True
+          print i, threes
+          if 0:
             if len(threes)!=3:
-              pass
+              # to solve strange series of [a], [a,b], [a,b,c] 
+              if threes[0] == list_of_threes[i+1][0]:
+                list_of_threes[i+1].start=threes.start
+                continue
+              threes.start=True
+              threes.end=True
             elif threes[1] != list_of_threes[i+1][0]:
               threes.end = True
               list_of_threes[i+1].start = True
