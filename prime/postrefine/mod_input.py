@@ -311,6 +311,9 @@ percent_cone_fraction = 5.0
 isoform_name = None
   .type = str
   .help = Use this isoform.
+flag_hush = False
+  .type = bool
+  .help = Set to true to hush all the disc and elaboarated stats. operations.
 """)
 
 txt_help = """**************************************************************************************************

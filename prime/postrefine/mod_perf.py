@@ -11,4 +11,4 @@ class perf_handler():
   def get_elapsed_times(self):
     self.t_en = datetime.now()
     self.t_spent =  self.t_en - self.t_st
-    print self.module_name, self.t_st.strftime("%d/%m/%Y %H:%M:%S"), self.t_en.strftime("%d/%m/%Y %H:%M:%S"), self.t_spent.seconds
+    print self.module_name, self.t_st.strftime("%d/%m/%Y %H:%M:%S"), self.t_en.strftime("%d/%m/%Y %H:%M:%S"), self.t_spent.microseconds
