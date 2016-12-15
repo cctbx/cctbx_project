@@ -159,6 +159,15 @@ class ThreeProteinResidues(list):
         del self[0]
         if len(self)==0: break
 
+  def provide_second_sub_unit_if_unlinked(self):
+    # used if residue is appended using superclass method
+    if not self.are_linked():
+      sub_unit = copy.copy(self) # calls append to delete first sub unit
+      while not self.are_linked():
+        del self[-1]
+      return sub_unit
+    return None
+
   def get_i_seqs(self):
     atoms = {}
     # i-1
