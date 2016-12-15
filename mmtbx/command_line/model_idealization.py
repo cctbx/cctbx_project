@@ -383,7 +383,6 @@ class model_idealization():
       # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
       # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
       self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-    # STOP()
 
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
@@ -413,7 +412,6 @@ class model_idealization():
       # print >> self.log, ann.as_pdb_str()
       print >> self.log, "Filtered SS annotation"
       print >> self.log, self.ann.as_pdb_str()
-      # STOP()
 
     # getting grm with SS restraints
     self.get_grm()
@@ -487,7 +485,6 @@ class model_idealization():
         log=self.log,
         verbose=True)
     self.log.flush()
-    # STOP()
     if self.params.debug:
       self.shift_and_write_result(
           hierarchy=loop_ideal.resulting_pdb_h,
