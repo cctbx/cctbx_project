@@ -39,8 +39,8 @@ ignore_zero_occupancy_atoms = True
   .type=bool
 output {
   file_name_prefix = fem
-    .type = path
-    .style = hidden
+    .type = str
+    .input_size = 400
   column_root_label = FEM
     .type = str
     .input_size = 120
