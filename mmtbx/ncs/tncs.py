@@ -23,7 +23,8 @@ class groups(object):
                pdb_hierarchy,
                crystal_symmetry,
                angular_difference_threshold_deg=5.,
-               sequence_identity_threshold=90.):
+               sequence_identity_threshold=90.,
+               quiet=False):
     h = pdb_hierarchy
     superposition_threshold = 2*sequence_identity_threshold - 100.
     n_atoms_all = h.atoms_size()
@@ -33,7 +34,8 @@ class groups(object):
     h1.append_model(h.models()[0].detached_copy())
     unit_cell = crystal_symmetry.unit_cell()
     result = {}
-    print "Find groups of chains related by translational NCS"
+    if not quiet:
+      print "Find groups of chains related by translational NCS"
     # double loop over chains to find matching pairs related by pure translation
     for c1 in h1.chains():
       c1.parent().remove_chain(c1)
@@ -108,7 +110,7 @@ class groups(object):
     components = connected_component_algorithm.connected_components(g)
     import itertools
     self.ncs_pairs = []
-    largest_tncsnumber = [ 0, "" ]
+    self.largest_tncs_order = [ 0, "", [] ]
     for (i,group) in enumerate(components):
       chains = [g.vertex_label(vertex=v) for v in group]
       fracscats = []
@@ -121,6 +123,7 @@ class groups(object):
       rad = sum(radii)/len(radii)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       n = 1
+      vectors = []
       previous_id = itertools.combinations(chains,2).next()[0].id
       for pair in itertools.combinations(chains,2):
         sup = result[frozenset(pair)][1]
@@ -136,16 +139,23 @@ class groups(object):
         # show tNCS pairs in group
         fmt="group %d chains %s <> %s angle: %4.2f trans.vect.: (%s) fracscat: %5.3f"
         t = ",".join([("%6.3f"%t_).strip() for t_ in sup[1]]).strip()
-        print fmt%(i, pair[0].id, pair[1].id, sup[2], t, fs)
+        if not quiet:
+          print fmt%(i, pair[0].id, pair[1].id, sup[2], t, fs)
         if pair[0].id == previous_id:
           n += 1
+          orthoxyz = unit_cell.orthogonalize( sup[1] )
+          vectors.append(( sup[1], orthoxyz, sup[2] ))
         else:
           previous_id = pair[0].id
           n = 1
-        if n > largest_tncsnumber[0]:
-          largest_tncsnumber[0] = n
-          largest_tncsnumber[1] = previous_id
-    print "largest_tncsnumber= ", str(largest_tncsnumber)
+          vectors = []
+        if n > self.largest_tncs_order[0]:
+          self.largest_tncs_order[0] = n
+          self.largest_tncs_order[1] = previous_id
+          self.largest_tncs_order[2] = vectors
+    if not quiet:
+      print "Largest TNCS order= ", str(self.largest_tncs_order)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
 
