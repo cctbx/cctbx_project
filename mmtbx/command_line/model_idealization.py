@@ -27,6 +27,7 @@ from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
+from iotbx.file_reader import any_file
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -54,6 +55,9 @@ output_prefix = None
   .type = str
 use_map_for_reference = True
   .type = bool
+map_file_name = None
+  .type = path
+  .help = User-provided map that will be used as reference
 reference_map_resolution = 5
   .type = float
 data_for_map = None
@@ -277,6 +281,29 @@ class model_idealization():
     if self.params.debug:
       fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
 
+  def read_user_map(self):
+    print >> self.log, "Processing input CCP4 map file: %s" % self.params.map_file_name
+    if not os.path.isfile(self.params.map_file_name):
+      raise Sorry("Map file is not found")
+    af = any_file(file_name = self.params.map_file_name)
+    map_cs = af.crystal_symmetry()
+    if not af.file_type=="ccp4_map":
+      raise Sorry("Map file is not ccp4 map")
+    ccp4_map = af.file_content
+
+    map_data = ccp4_map.data.as_double()
+    #
+    print >> self.log, "Input map min,max,mean: %7.3f %7.3f %7.3f"%\
+      map_data.as_1d().min_max_mean().as_tuple()
+    map_data = map_data - flex.mean(map_data)
+    sd = map_data.sample_standard_deviation()
+    map_data = map_data/sd
+    print >> self.log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
+      map_data.as_1d().min_max_mean().as_tuple()
+    #
+    ccp4_map.show_summary(prefix="  ")
+    self.reference_map =map_data
+
   def get_grm(self):
     # first make whole grm using self.whole_pdb_h
     params_line = grand_master_phil_str
@@ -380,9 +407,12 @@ class model_idealization():
       self.whole_xrs = self.working_xrs
 
     if self.params.use_map_for_reference:
-      # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-      # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-      self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+      if self.params.map_file_name is not None:
+        self.read_user_map()
+      else:
+        # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+        # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+        self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
 
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
