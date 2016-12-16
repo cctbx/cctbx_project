@@ -93,6 +93,7 @@ class model_idealization():
                pdb_input,
                cif_objects=None,
                map_data = None,
+               crystal_symmetry = None,
                params=None,
                log=sys.stdout,
                verbose=True):
@@ -127,8 +128,7 @@ class model_idealization():
     self.working_pdb_h = None # one to use for fixing (master_pdb_h or working_pdb_h)
 
     # various checks, shifts, trims
-    self.cs = self.pdb_input.crystal_symmetry()
-    self.map_cs = None
+    self.cs = crystal_symmetry
     # check self.cs (copy-paste from secondary_sturcure_restraints)
     corrupted_cs = False
     if self.cs is not None:
@@ -751,7 +751,6 @@ def run(args):
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
-
   map_data = None
   if inputs.ccp4_map is not None:
     print >> log, "Processing input CCP4 map file..."
@@ -769,6 +768,7 @@ def run(args):
       pdb_input=pdb_input,
       cif_objects=inputs.cif_objects,
       map_data = map_data,
+      crystal_symmetry = inputs.crystal_symmetry,
       params=work_params,
       log=log,
       verbose=True)
