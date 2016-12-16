@@ -37,6 +37,9 @@ file_name = None
   .multiple = True
   .short_caption = Model file
   .style = file_type:pdb bold input_file
+map_file_name = None
+  .type = path
+  .help = User-provided map that will be used as reference
 trim_alternative_conformations = False
   .type = bool
   .help = Leave only atoms with empty altloc
@@ -55,9 +58,6 @@ output_prefix = None
   .type = str
 use_map_for_reference = True
   .type = bool
-map_file_name = None
-  .type = path
-  .help = User-provided map that will be used as reference
 reference_map_resolution = 5
   .type = float
 data_for_map = None
@@ -92,6 +92,7 @@ class model_idealization():
   def __init__(self,
                pdb_input,
                cif_objects=None,
+               map_data = None,
                params=None,
                log=sys.stdout,
                verbose=True):
@@ -108,7 +109,7 @@ class model_idealization():
     self.after_loop_idealization = None
     self.after_rotamer_fixing = None
     self.final_model_statistics = None
-    self.reference_map = None
+    self.reference_map = map_data
 
     self.whole_grm = None
     self.master_grm = None
@@ -127,6 +128,7 @@ class model_idealization():
 
     # various checks, shifts, trims
     self.cs = self.pdb_input.crystal_symmetry()
+    self.map_cs = None
     # check self.cs (copy-paste from secondary_sturcure_restraints)
     corrupted_cs = False
     if self.cs is not None:
@@ -281,29 +283,6 @@ class model_idealization():
     if self.params.debug:
       fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
 
-  def read_user_map(self):
-    print >> self.log, "Processing input CCP4 map file: %s" % self.params.map_file_name
-    if not os.path.isfile(self.params.map_file_name):
-      raise Sorry("Map file is not found")
-    af = any_file(file_name = self.params.map_file_name)
-    map_cs = af.crystal_symmetry()
-    if not af.file_type=="ccp4_map":
-      raise Sorry("Map file is not ccp4 map")
-    ccp4_map = af.file_content
-
-    map_data = ccp4_map.data.as_double()
-    #
-    print >> self.log, "Input map min,max,mean: %7.3f %7.3f %7.3f"%\
-      map_data.as_1d().min_max_mean().as_tuple()
-    map_data = map_data - flex.mean(map_data)
-    sd = map_data.sample_standard_deviation()
-    map_data = map_data/sd
-    print >> self.log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
-      map_data.as_1d().min_max_mean().as_tuple()
-    #
-    ccp4_map.show_summary(prefix="  ")
-    self.reference_map =map_data
-
   def get_grm(self):
     # first make whole grm using self.whole_pdb_h
     params_line = grand_master_phil_str
@@ -406,13 +385,10 @@ class model_idealization():
     else:
       self.whole_xrs = self.working_xrs
 
-    if self.params.use_map_for_reference:
-      if self.params.map_file_name is not None:
-        self.read_user_map()
-      else:
-        # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-        # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-        self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+    if self.reference_map is None and self.params.use_map_for_reference:
+      # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+      # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+      self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
 
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
@@ -748,6 +724,8 @@ class model_idealization():
     return result
 
 def run(args):
+
+
   # processing command-line stuff, out of the object
   log = multi_out()
   log.register("stdout", sys.stdout)
@@ -773,9 +751,24 @@ def run(args):
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
+
+  map_data = None
+  if inputs.ccp4_map is not None:
+    print >> log, "Processing input CCP4 map file..."
+    map_data = inputs.ccp4_map.data.as_double()
+    print >> log, "Input map min,max,mean: %7.3f %7.3f %7.3f"%\
+      map_data.as_1d().min_max_mean().as_tuple()
+    map_data = map_data - flex.mean(map_data)
+    sd = map_data.sample_standard_deviation()
+    map_data = map_data/sd
+    print >> log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
+      map_data.as_1d().min_max_mean().as_tuple()
+    inputs.ccp4_map.show_summary(prefix="  ")
+
   mi_object = model_idealization(
       pdb_input=pdb_input,
       cif_objects=inputs.cif_objects,
+      map_data = map_data,
       params=work_params,
       log=log,
       verbose=True)
