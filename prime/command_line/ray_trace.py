@@ -132,7 +132,7 @@ if (__name__ == "__main__"):
         partiality, delta_xy, rs_set, rh_set = ph.calc_partiality_anisotropy_set(\
                                                 crystal_init_orientation.unit_cell(),
                                                 rotx, roty, observations.indices(),
-                                                ry, rz, r0, re, 0.5, two_theta, alpha_angle,
+                                                ry, rz, r0, re, two_theta, alpha_angle,
                                                 lambda_now, crystal_init_orientation,
                                                 spot_pred_x_mm, spot_pred_y_mm,
                                                 detector_distance_mm, "Lorentzian",
@@ -159,7 +159,7 @@ if (__name__ == "__main__"):
           plt.title('Best wavelength=%8.6f (i=%2.0f) res=%6.2f'%(lambda_set[assigned_lambda[i]], assigned_lambda[i], observations.d_spacings().data()[i]))
           plt.show()
           """
-      plt.scatter(off_mid_x_mm, off_mid_y_mm, s=10, c='g', marker='o')
+      #plt.scatter(off_mid_x_mm, off_mid_y_mm, s=10, c='g', marker='o')
       plt.scatter(off_left_x_mm, off_left_y_mm, s=20, c='b', marker='<')
       plt.scatter(off_right_x_mm, off_right_y_mm, s=20, c='r', marker='>')
       plt.xlim([-100,100])

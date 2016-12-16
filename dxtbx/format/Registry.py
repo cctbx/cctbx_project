@@ -57,6 +57,8 @@ class _Registry:
   def get(self):
     '''Get a list of image formats registered here.'''
 
+    self.setup()
+
     return tuple(self._formats)
 
   def find(self, image_file):

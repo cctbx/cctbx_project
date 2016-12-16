@@ -28,7 +28,7 @@ echo ${LD_LIBRARY_PATH}
 # Build cctbx and dials using bootstrap.py
 mkdir -p ${CCTBX_DIR}
 cd ${CCTBX_DIR}
-svn export svn://svn.code.sf.net/p/cctbx/code/trunk/libtbx/auto_build/bootstrap.py
+wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 python bootstrap.py --builder=dials hot update
 
 set n_processor = `python ${CCTBX_SRC}/libtbx/command_line/show_number_of_processors.py`

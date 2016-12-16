@@ -96,13 +96,11 @@ class multimer(object):
     if len(pdb_obj.hierarchy.models()) > 1:
       raise Sorry('Sorry, this feature currently supports on single models ' +
                   'hierarchies')
-
     # Read the relevant transformation matrices
     self.transforms_obj = iotbx.ncs.input(
       hierarchy=pdb_obj.hierarchy,
       transform_info=transform_info,
       exclude_selection=None)
-
     # Calculate ASU (if there are any transforms to apply)
     self.number_of_transforms = len(self.transforms_obj.transform_to_be_used)
     self.assembled_multimer = self.transforms_obj.build_asu_hierarchy(
@@ -155,6 +153,8 @@ class multimer(object):
       self.pdb_output_file_name = self.transform_type + '_' + input_file_name
     else:
       self.pdb_output_file_name = pdb_output_file_name
+    if self.pdb_output_file_name[-4:] == '.cif':
+      self.pdb_output_file_name = self.pdb_output_file_name[:-4]+".pdb"
     # we need to add crystal symmetry to the new file since it is
     # sometimes needed when calculating the R-work factor (r_factor_calc.py)
     if not crystal_symmetry and os.path.isfile(self.pdb_input_file_name):

@@ -33,15 +33,15 @@ class clash (atoms) :
       self.atoms_info[1].id_str()[0:11])
 
   def format_old (self) :
-    return "%s :%.3f" % (self.id_str(), self.overlap)
+    return "%s :%.3f" % (self.id_str(), abs(self.overlap))
 
   def as_string (self) :
     return "%-20s %-20s  %7.3f" % (self.atoms_info[0].id_str(),
-      self.atoms_info[1].id_str(), self.overlap)
+      self.atoms_info[1].id_str(), abs(self.overlap))
 
   def as_table_row_phenix (self) :
     return [ self.atoms_info[0].id_str(), self.atoms_info[1].id_str(),
-             self.overlap ]
+             abs(self.overlap) ]
 
   def __cmp__ (self, other) : # sort in descending order
     return cmp(self.overlap, other.overlap)
@@ -119,7 +119,8 @@ class clashscore(validation):
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
-        verbose=verbose)
+        verbose=verbose,
+        printable_probe_output=save_probe_unformatted_file)
       if (save_modified_hierarchy) :
         self.pdb_hierarchy = iotbx.pdb.hierarchy.input(
           pdb_string=pcm.h_pdb_string).hierarchy
@@ -191,6 +192,37 @@ class clashscore(validation):
           result.atoms_info[1].id_str(), result.overlap, result.xyz))
     return data
 
+class probe_line_info_storage(object):
+  def __init__(self, line):
+    self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.min_gap, \
+    self.gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
+    self.score, self.stype, self.ttype, self.x, self.y, self.z, self.sBval, \
+    self.tBval = line.split(":")
+    self.gap = float(self.gap)
+    self.x = float(self.x)
+    self.y = float(self.y)
+    self.z = float(self.z)
+    self.sBval = float(self.sBval)
+    self.tBval = float(self.tBval)
+  def is_similar(self, other):
+    assert isinstance(other, probe_line_info_storage)
+    return (self.srcAtom == other.srcAtom and self.targAtom == other.targAtom)
+  def as_clash_obj(self, use_segids):
+    atom1 = decode_atom_string(self.srcAtom,  use_segids)
+    atom2 = decode_atom_string(self.targAtom, use_segids)
+    if (cmp(self.srcAtom, self.targAtom) < 0):
+      atoms = [ atom1, atom2 ]
+    else:
+      atoms = [ atom2, atom1 ]
+    clash_obj = clash(
+      atoms_info=atoms,
+      overlap=self.gap,
+      probe_type=self.type,
+      outlier=abs(self.gap) > 0.4,
+      max_b_factor=max(self.sBval, self.tBval),
+      xyz=(self.x,self.y,self.z))
+    return clash_obj
+
 class probe_clashscore_manager(object):
   def __init__(self,
                h_pdb_string,
@@ -198,7 +230,8 @@ class probe_clashscore_manager(object):
                largest_occupancy=10,
                b_factor_cutoff=None,
                use_segids=False,
-               verbose=False):
+               verbose=False,
+               printable_probe_output=None):
     """
     Calculate probe (MolProbity) clashscore
 
@@ -223,6 +256,11 @@ class probe_clashscore_manager(object):
     self.probe_atom_b_factor = None
     if not nuclear:
       self.probe_txt = \
+        'phenix.probe -u -q -mc -het -once -NOVDWOUT "ogt%d not water" "ogt%d" -' % \
+          (ogt, ogt)
+      #The -NOVDWOUT probe run above is faster for clashscore to parse,
+      # the full_probe_txt version below is for printing to file for coot usage
+      self.full_probe_txt = \
         'phenix.probe -u -q -mc -het -once "ogt%d not water" "ogt%d" -' % \
           (ogt, ogt)
       self.probe_atom_txt = \
@@ -233,6 +271,9 @@ class probe_clashscore_manager(object):
             (blt, ogt)
     else: #use nuclear distances
       self.probe_txt = \
+        'phenix.probe -u -q -mc -het -once -NOVDWOUT -nuclear' +\
+          ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
+      self.full_probe_txt = \
         'phenix.probe -u -q -mc -het -once -nuclear' +\
           ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
       self.probe_atom_txt = \
@@ -246,64 +287,75 @@ class probe_clashscore_manager(object):
     if verbose:
       print "\nUsing input model H/D atoms...\n"
     self.h_pdb_string = h_pdb_string
-    self.run_probe_clashscore(self.h_pdb_string)
+    self.run_probe_clashscore(self.h_pdb_string, printable_probe_output)
 
-  def run_probe_clashscore(self, pdb_string):
-    clash_hash = {}
-    hbond_hash = {}
+  def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
+    key = line_info.targAtom+line_info.srcAtom
+    if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
+      key = line_info.srcAtom+line_info.targAtom
+
+    if (line_info.type == "so" or line_info.type == "bo"):
+      if (line_info.gap <= -0.4):
+        if (key in clash_hash) :
+          if (line_info.gap < clash_hash[key].gap):
+            clash_hash[key] = line_info
+        else :
+          clash_hash[key] = line_info
+    elif (line_info.type == "hb"):
+      if (key in hbond_hash) :
+        if (line_info.gap < hbond_hash[key].gap):
+          hbond_hash[key] = line_info
+      else :
+        hbond_hash[key] = line_info
+
+  def filter_dicts(self, new_clash_hash, new_hbond_hash):
+    temp = []
+    for k,v in new_clash_hash.iteritems():
+      if k not in new_hbond_hash:
+        temp.append(v.as_clash_obj(self.use_segids))
+    return temp
+
+  def process_raw_probe_output(self, probe_unformatted):
+    new_clash_hash = {}
+    new_hbond_hash = {}
+    previous_line = None
+    for line in probe_unformatted:
+      processed=False
+      try:
+        line_storage = probe_line_info_storage(line)
+      except KeyboardInterrupt: raise
+      except ValueError:
+        continue # something else (different from expected) got into output
+
+      if previous_line is not None:
+        if line_storage.is_similar(previous_line):
+          # modify previous line to store this one if needed
+          previous_line.gap = min(previous_line.gap, line_storage.gap)
+        else:
+          # seems like new group of lines, then dump previous and start new
+          # one
+          self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+          previous_line = line_storage
+      else:
+        previous_line = line_storage
+    if previous_line is not None:
+      self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+    return self.filter_dicts(new_clash_hash, new_hbond_hash)
+
+  def run_probe_clashscore(self, pdb_string, printable_probe_output=None):
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
     if (probe_out.return_code != 0) :
       raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
-    self.probe_unformatted = "\n".join(probe_unformatted)
-    for line in probe_unformatted:
-      processed=False
-      try:
-        name, pat, type, srcAtom, targAtom, min_gap, gap, \
-        kissEdge2BullsEye, dot2BE, dot2SC, spike, score, stype, \
-        ttype, x, y, z, sBval, tBval = line.split(":")
-        processed=True
-      except KeyboardInterrupt: raise
-      except ValueError:
-        pass # something else (different from expected) got into output
-      if(processed):
-        atom1 = decode_atom_string(srcAtom, self.use_segids)
-        atom2 = decode_atom_string(targAtom, self.use_segids)
-        if (cmp(srcAtom,targAtom) < 0):
-          atoms = [ atom1, atom2 ]
-        else:
-          atoms = [ atom2, atom1 ]
-        gap = float(gap)
-        x, y, z = float(x), float(y), float(z)
-        clash_obj = clash(
-          atoms_info=atoms,
-          overlap=gap,
-          probe_type=type,
-          outlier=abs(gap) > 0.4,
-          max_b_factor=max(float(sBval), float(tBval)),
-          xyz=(x,y,z))
-        key = clash_obj
-        if (type == "so" or type == "bo"):
-          if (gap <= -0.4):
-            if (key in clash_hash) :
-              if (gap < clash_hash[key].overlap):
-                clash_hash[key] = clash_obj
-            else :
-              clash_hash[key] = clash_obj
-        elif (type == "hb"):
-          # print key
-          if (key in hbond_hash) :
-            if (gap < hbond_hash[key].overlap):
-              hbond_hash[key] = clash_obj
-          else :
-            hbond_hash[key] = clash_obj
-    #sort the output
-    temp = []
-    for k in clash_hash.keys():
-      if not k in hbond_hash:
-        temp.append(clash_hash[k])
+    if printable_probe_output:
+      printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
+        stdin_lines=pdb_string)
+      self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
+
+    temp = self.process_raw_probe_output(probe_unformatted)
+
     self.n_clashes = len(temp)
     if self.b_factor_cutoff is not None:
       clashes_b_cutoff = 0

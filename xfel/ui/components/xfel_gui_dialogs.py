@@ -1141,6 +1141,12 @@ class RunBlockDialog(BaseDialog):
             return 'CxiDs2.0:Cspad.0'
           elif item == "detz_parameter":
             return 580
+          elif item == "format":
+            return "pickle"
+          elif item == "two_theta_low":
+            return 12.5 # Defaults are from kapton tape experiments (this is kapton ring)
+          elif item == "two_theta_high":
+            return 22.8 # Defaults are from kapton tape experiments (this is water ring)
           else:
             return None
       block = defaults()
@@ -1178,8 +1184,8 @@ class RunBlockDialog(BaseDialog):
     runblock_box = wx.StaticBox(self, label='Options')
     self.runblock_box_sizer = wx.StaticBoxSizer(runblock_box, wx.VERTICAL)
     self.runblock_panel = ScrolledPanel(self, size=(550, 225))
-    self.runlbock_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.runblock_panel.SetSizer(self.runlbock_sizer)
+    self.runblock_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.runblock_panel.SetSizer(self.runblock_sizer)
 
     # Configuration text ctrl (user can put in anything they want)
     self.config = gctr.PHILBox(self.config_panel,
@@ -1207,13 +1213,14 @@ class RunBlockDialog(BaseDialog):
     if self.parent.trial.app.params.dispatcher == "cxi.xtc_process":
       image_choices = ['pickle']
     else:
-      image_choices = ['CBF', 'pickle']
+      image_choices = ['cbf','pickle']
     self.img_format = gctr.ChoiceCtrl(self.runblock_panel,
                                       label='Image Format:',
                                       label_size=(100, -1),
                                       ctrl_size=(150, -1),
                                       choices=image_choices)
-    self.runlbock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
+    self.img_format.ctr.SetSelection(image_choices.index(block.format))
+    self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
 
@@ -1241,7 +1248,7 @@ class RunBlockDialog(BaseDialog):
     self.start_stop_sizer.AddMany([(self.runblocks_start),
                                    (self.runblocks_end),
                                    (self.end_type)])
-    self.runlbock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runblock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Detector address
     self.address = gctr.TextButtonCtrl(self.runblock_panel,
@@ -1249,7 +1256,7 @@ class RunBlockDialog(BaseDialog):
                                        label_style='bold',
                                        label_size=(100, -1),
                                        value=block.detector_address)
-    self.runlbock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runblock_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
 
 
     # Beam XYZ (X, Y - pickle only)
@@ -1261,7 +1268,7 @@ class RunBlockDialog(BaseDialog):
                                     items=[('X', block.beamx),
                                            ('Y', block.beamy),
                                            ('DetZ', block.detz_parameter)])
-    self.runlbock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runblock_sizer.Add(self.beam_xyz, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Binning, energy, gain mask level
     self.bin_nrg_gain = gctr.OptionCtrl(self.runblock_panel,
@@ -1269,7 +1276,15 @@ class RunBlockDialog(BaseDialog):
                                         items=[('binning', block.binning),
                                                ('energy', block.energy),
                                                ('gain_mask_level', block.gain_mask_level)])
-    self.runlbock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+    self.runblock_sizer.Add(self.bin_nrg_gain, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Two theta values for droplet hit finding
+    self.two_thetas = gctr.OptionCtrl(self.runblock_panel,
+                                      ctrl_size=(80, -1),
+                                      items=[('two_theta_low', block.two_theta_low),
+                                             ('two_theta_high', block.two_theta_high)])
+    self.runblock_sizer.Add(self.two_thetas, flag=wx.EXPAND | wx.ALL, border=10)
+
 
     # Untrusted pixel mask path
     self.untrusted_path = gctr.TextButtonCtrl(self.runblock_panel,
@@ -1278,7 +1293,7 @@ class RunBlockDialog(BaseDialog):
                                               label_size=(100, -1),
                                               big_button=True,
                                               value=str(block.untrusted_pixel_mask_path))
-    self.runlbock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.untrusted_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Calibration folder
@@ -1288,7 +1303,7 @@ class RunBlockDialog(BaseDialog):
                                          label_size=(100, -1),
                                          big_button=True,
                                          value=str(block.calib_dir))
-    self.runlbock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Dark average path (pickle only)
@@ -1298,7 +1313,7 @@ class RunBlockDialog(BaseDialog):
                                              label_size=(100, -1),
                                              big_button=True,
                                              value=str(block.dark_avg_path))
-    self.runlbock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.dark_avg_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Dark stddev path (pickle only)
@@ -1308,7 +1323,7 @@ class RunBlockDialog(BaseDialog):
                                                 label_size=(100, -1),
                                                 big_button=True,
                                                 value=str(block.dark_stddev_path))
-    self.runlbock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.dark_stddev_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Dark map path (pickle only)
@@ -1318,7 +1333,7 @@ class RunBlockDialog(BaseDialog):
                                              label_size=(100, -1),
                                              big_button=True,
                                              value=str(block.gain_map_path))
-    self.runlbock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.gain_map_path, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     # Comment
@@ -1326,7 +1341,7 @@ class RunBlockDialog(BaseDialog):
                                        label='Comment:',
                                        label_style='normal',
                                        label_size=(100, -1))
-    self.runlbock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
+    self.runblock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
     self.main_sizer.Add(self.phil_panel, flag=wx.EXPAND | wx.ALL, border=10)
@@ -1432,6 +1447,7 @@ class RunBlockDialog(BaseDialog):
     rg_dict = dict(startrun=startrun,
                    endrun=endrun,
                    active=True,
+                   format=self.img_format.ctr.GetStringSelection(),
                    config_str=self.config.ctr.GetValue(),
                    extra_phil_str=self.phil.ctr.GetValue(),
                    detector_address=self.address.ctr.GetValue(),
@@ -1446,6 +1462,8 @@ class RunBlockDialog(BaseDialog):
                    gain_map_path=self.gain_map_path.ctr.GetValue(),
                    gain_mask_level=self.bin_nrg_gain.gain_mask_level.GetValue(),
                    calib_dir=self.calib_dir.ctr.GetValue(),
+                   two_theta_low=self.two_thetas.two_theta_low.GetValue(),
+                   two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
     for key, value in rg_dict.iteritems():
       if str(value) == 'None' or str(value) == '':
@@ -1498,6 +1516,8 @@ class RunBlockDialog(BaseDialog):
       self.bin_nrg_gain.binning.SetValue(str(last.binning))
       self.bin_nrg_gain.energy.SetValue(str(last.energy))
       self.bin_nrg_gain.gain_mask_level.SetValue(str(last.gain_mask_level))
+      self.two_thetas.two_theta_low.SetValue(str(last.two_theta_low))
+      self.two_thetas.two_theta_high.SetValue(str(last.two_theta_high))
       self.untrusted_path.ctr.SetValue(str(last.untrusted_pixel_mask_path))
       self.dark_avg_path.ctr.SetValue(str(last.dark_avg_path))
       self.dark_stddev_path.ctr.SetValue(str(last.dark_stddev_path))
@@ -1510,10 +1530,12 @@ class RunBlockDialog(BaseDialog):
 
   def configure_controls(self):
     sel= self.img_format.ctr.GetString(self.img_format.ctr.GetSelection())
-    if 'CBF' in sel:
+    if 'cbf' in sel:
       self.beam_xyz.X.Disable()
       self.beam_xyz.Y.Disable()
       self.bin_nrg_gain.binning.Disable()
+      self.two_thetas.two_theta_low.Disable()
+      self.two_thetas.two_theta_high.Disable()
       self.dark_avg_path.Hide()
       self.dark_stddev_path.Hide()
       self.gain_map_path.Hide()
@@ -1522,6 +1544,8 @@ class RunBlockDialog(BaseDialog):
       self.beam_xyz.X.Enable()
       self.beam_xyz.Y.Enable()
       self.bin_nrg_gain.binning.Enable()
+      self.two_thetas.two_theta_low.Enable()
+      self.two_thetas.two_theta_high.Enable()
       self.dark_avg_path.Show()
       self.dark_stddev_path.Show()
       self.gain_map_path.Show()

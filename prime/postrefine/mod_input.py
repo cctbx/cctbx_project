@@ -246,9 +246,6 @@ flag_plot = False
 flag_plot_expert = False
   .type = bool
   .help = Expert plots.
-flag_force_no_postrefine = False
-  .type = bool
-  .help = Set to True to output only the mean-intensity scaled merged.
 n_postref_cycle = 3
   .type = int
   .help = No. of cycles for post-refinement.
@@ -314,22 +311,9 @@ percent_cone_fraction = 5.0
 isoform_name = None
   .type = str
   .help = Use this isoform.
-timeout_seconds = 300
-  .type = int
-  .help = Time limits used for multiprocessing.
-queue
-  .help = "Parameters used for submitting jobs to queuing system."
-{
-  mode = None
-    .type = str
-    .help = Queing system type. Only bsub is available now.
-  qname = psanaq
-    .type = str
-    .help = For system with queue name, specify your queue name here. For LCLS users, primary queue is the default value while high priority queue at NEH and FEH are psnehhiprioq and psfehhiprioq.
-  n_nodes = 10
-    .type = int
-    .help = No. of nodes used.
-}
+flag_hush = False
+  .type = bool
+  .help = Set to true to hush all the disc and elaboarated stats. operations.
 """)
 
 txt_help = """**************************************************************************************************
@@ -354,24 +338,27 @@ List of available parameters:
 """
 
 def process_input(argv=None, flag_check_exist=True):
-  if argv == None:
-    argv = sys.argv[1:]
   user_phil = []
-  for arg in argv:
-    if os.path.isfile(arg):
-      user_phil.append(iotbx.phil.parse(open(arg).read()))
-    elif (os.path.isdir(arg)) :
-      user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
-    else :
-      if arg == '--help' or arg == '-h':
-        print txt_help
-        master_phil.show(attributes_level=1)
-        exit()
-      try:
-        user_phil.append(iotbx.phil.parse(arg))
-      except RuntimeError, e :
-        raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
-
+  if argv == None:
+    master_phil.show()
+    raise Usage("Use the above list of parameters to generate your input file (.phil). For more information, run prime.postrefine -h.")
+  else:
+    for arg in argv:
+      if os.path.isfile(arg):
+        user_phil.append(iotbx.phil.parse(open(arg).read()))
+      elif (os.path.isdir(arg)) :
+        user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
+      else :
+        if arg == '--help' or arg == '-h':
+          print txt_help
+          master_phil.show(attributes_level=1)
+          raise Usage("Run prime.run to generate a list of initial parameters.")
+        else:
+          try:
+            user_phil.append(iotbx.phil.parse(arg))
+          except RuntimeError, e :
+            raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
+  #setup phil parameters
   working_phil = master_phil.fetch(sources=user_phil)
   params = working_phil.extract()
   if not params.data:
@@ -410,13 +397,10 @@ def process_input(argv=None, flag_check_exist=True):
       else:
         raise InvalidRunNo, "Error: Run number exists. Please specifiy different run no."
 
-    #make folders
-    os.makedirs(params.run_no+'/pickles')
-    os.makedirs(params.run_no+'/inputs')
-    os.makedirs(params.run_no+'/mtz')
-    os.makedirs(params.run_no+'/hist')
-    os.makedirs(params.run_no+'/qout')
-    os.makedirs(params.run_no+'/index_ambiguity')
+  #make result folders
+  os.makedirs(params.run_no)
+  os.makedirs(params.run_no+'/index_ambiguity')
+
   #capture input read out by phil
   from cStringIO import StringIO
   class Capturing(list):
@@ -434,6 +418,7 @@ def process_input(argv=None, flag_check_exist=True):
   txt_out = 'prime.postrefine input:\n'
   for one_output in output:
     txt_out += one_output + '\n'
+
   return params, txt_out
 
 def read_pickles(data):

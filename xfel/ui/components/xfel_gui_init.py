@@ -50,7 +50,7 @@ class TagSet(object):
     self.tags = tags
   def __str__(self):
     if len(self.tags) > 1:
-      return ", ".join([t.name for t in self.tags]) + (' (%s)' % self.mode.upper())
+      return ", ".join([t.name for t in self.tags]) + (' (%s)' % self.mode[0])
     else:
       return ", ".join([t.name for t in self.tags])
 
@@ -300,9 +300,12 @@ class ProgressSentinel(Thread):
           else:
             current_rows = self.parent.run_window.status_tab.rows
             if current_rows != {}:
-              bins = cell.bins[
-                     :int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
-              highest_bin = cell.bins[int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+              if cell.isoform._db_dict['name'] in current_rows:
+                bins = cell.bins[
+                       :int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+                highest_bin = cell.bins[int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+              else:
+                assert False, "This isoform is not available yet"
             else:
               bins = cell.bins
               d_mins = [b.d_min for b in bins]
@@ -1189,7 +1192,8 @@ class TrialsTab(BaseTab):
     new_trial = TrialPanel(self.trial_panel,
                            db=self.main.db,
                            trial=trial,
-                           box_label='Trial {}'.format(trial.trial))
+                           box_label='Trial {} {}'.format(trial.trial,
+                             trial.comment[:min(len(trial.comment), 10)] if trial.comment is not None else ""))
     new_trial.chk_active.SetValue(trial.active)
     new_trial.refresh_trial()
     self.trial_sizer.Add(new_trial, flag=wx.EXPAND | wx.ALL, border=10)
@@ -2298,11 +2302,11 @@ class MergeTab(BaseTab):
     if self.main.params.dispatcher == "cxi.xtc_process":
       backend = "LABELIT"
       integration_dir = "integration"
-    elif self.main.params.dispatcher == "cxi.xfel.xtc_process":
+    elif self.main.params.dispatcher == "cctbx.xfel.xtc_process":
       backend = "DIALS"
       integration_dir = "out"
     else:
-      assert False
+      assert False, "unrecognized backend with dispatcher %s" % self.main.params.dispatcher
     for rb in self.trial.rungroups:
       for run in rb.runs:
         if run.run not in run_numbers:

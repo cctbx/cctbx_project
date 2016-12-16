@@ -206,6 +206,7 @@ def run (args,
       if (cmdline.pdb_hierarchy.models_size() == 1) :
         assert (probe_file is not None)
         import mmtbx.kinemage.validation
+        cmdline.pdb_hierarchy.atoms().reset_i_seq()
         kin_file = "%s.kin" % params.output.prefix
         kin_out = \
           mmtbx.kinemage.validation.export_molprobity_result_as_kinemage(

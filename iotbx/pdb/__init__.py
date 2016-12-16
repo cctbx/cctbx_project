@@ -1066,11 +1066,11 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         result.append(line)
     return result
 
-  def extract_secondary_structure (self) :
+  def extract_secondary_structure (self, log=None) :
     from iotbx.pdb import secondary_structure
     records = self.secondary_structure_section()
     if records.size() != 0 :
-      return secondary_structure.annotation.from_records(records)
+      return secondary_structure.annotation.from_records(records, log)
     return None
 
   def extract_LINK_records(self):
@@ -1237,8 +1237,13 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
           "Improper or missing set of PDB BIOMAT records. Data length = %s" % \
           str(len(biomt_data)))
       # test that the length of the data match the serial number, that there are no missing records
-      temp = int(source_info[-1].split()[3])    # expected number of records
-      if len(biomt_data)/3.0 != int(source_info[-1].split()[3]):
+      # temporary workaround, could be plain text over there instead of
+      # expected number of records, see 5l93
+      try:
+        temp = int(source_info[-1].split()[3])
+      except ValueError:
+        temp = 0
+      if len(biomt_data)/3.0 != temp:
         raise RuntimeError(
           "Missing record sets in PDB BIOMAT records \n" + \
           "Actual number of BIOMT matrices: {} \n".format(len(biomt_data)/3.0)+\
@@ -1995,6 +2000,8 @@ def format_MTRIX_pdb_string(rotation_matrices, translation_vectors,
   return "\n".join(lines)
 
 def mtrix_and_biomt_records_container():
+  # this is for extracting class contains the matrices because the class
+  # definition was injected to C++ class for unclear reason.
   return  _._mtrix_and_biomt_records_container()
 
 def write_whole_pdb_file(

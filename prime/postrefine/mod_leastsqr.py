@@ -109,20 +109,7 @@ class leastsqr_handler(object):
     if pres_in is not None:
       G, B, b0 = pres_in.G, pres_in.B, pres_in.B
     else:
-      G = flex.median(I_o_true)/flex.median(I_r_true)
-      B,b0 = (0,0)
-      if iparams.flag_apply_b_by_frame:
-        try:
-          from mod_util import mx_handler
-          mxh = mx_handler()
-          asu_contents = mxh.get_asu_contents(iparams.n_residues)
-          observations_as_f = observations_original_sel.as_amplitude_array()
-          binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
-          wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
-          G = wp.wilson_intensity_scale_factor*1e3
-          B = wp.wilson_b
-        except Exception:
-          pass
+      G,B,b0 = (1,0,0)
     refine_mode = 'scale_factor'
     xinp = flex.double([G,B])
     args = (I_r_true, observations_original_sel, wavelength, alpha_angle_sel,
@@ -454,7 +441,7 @@ class leastsqr_handler(object):
     R_final = math.sqrt(flex.sum(err_final**2))
     R_xy_init = math.sqrt(flex.sum(delta_xy_init**2))
     R_xy_final = math.sqrt(flex.sum(delta_xy_fin**2))
-    if R_init < R_final or re > (iparams.gamma_e * 10):
+    if R_init < R_final or re > (iparams.gamma_e * 3):
       CC_final = CC_init
       R_final = R_init
       R_xy_final = R_xy_init

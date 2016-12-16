@@ -22,8 +22,8 @@ def run(args):
     sliced = raw[:i] + "\n" + raw[j:]
     cif = iotbx.cif.fast_reader(input_string=sliced)
     model = cif.model()
-    im1 = model["image_1"]
-    print im1["_array_data.data"]
+    for k, v in model.iteritems():
+      print v["_array_data.data"]
     if (cif_dic is not None):
       model.validate(cif_dic)
 

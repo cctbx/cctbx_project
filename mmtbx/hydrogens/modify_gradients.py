@@ -42,7 +42,7 @@ class modify_gradients(object):
                grads):
     adopt_init_args(self, locals())
 
-    for ih in self.h_parameterization.keys():
+    for ih in self.h_parameterization:
       hp = self.h_parameterization[ih]
       if(hp.htype == 'unk'):
         continue

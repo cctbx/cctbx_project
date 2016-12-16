@@ -428,8 +428,8 @@ class PRIMEInputWindow(wx.Panel):
     advanced.phil.ctr.SetValue(self.phil_string)
 
     # Set values to default parameters
-    advanced.res.high.SetValue('{:4.2f}'.format(self.pparams.scale.d_max))
-    advanced.res.low.SetValue('{:4.2f}'.format(self.pparams.scale.d_min))
+    advanced.res.high.SetValue('{:4.2f}'.format(self.pparams.postref.allparams.d_max))
+    advanced.res.low.SetValue('{:4.2f}'.format(self.pparams.postref.allparams.d_min))
     advanced.sg.spacegroup.SetValue(str(self.pparams.target_space_group))
     if str(self.pparams.target_unit_cell).lower() != 'none':
       uc = ' '.join(list(map(str, self.pparams.target_unit_cell.parameters())))
@@ -449,24 +449,21 @@ class PRIMEInputWindow(wx.Panel):
       self.pparams = master_phil.fetch(sources=[new_phil]).extract()
 
       # Param controls will override the PHIL string (clunky, but for now)
-      self.pparams.scale.d_max = float(advanced.res.high.GetValue())
-      self.pparams.scale.d_min = float(advanced.res.low.GetValue())
-      self.pparams.merge.d_max = float(advanced.res.high.GetValue())
-      self.pparams.merge.d_min = float(advanced.res.low.GetValue())
-      self.pparams.postref.scale.d_max = float(advanced.res.high.GetValue())
-      self.pparams.postref.scale.d_min = float(advanced.res.low.GetValue())
-      self.pparams.postref.crystal_orientation.d_max = \
-        float(advanced.res.high.GetValue())
-      self.pparams.postref.crystal_orientation.d_min = \
-        float(advanced.res.low.GetValue())
-      self.pparams.postref.reflecting_range.d_max = \
-        float(advanced.res.high.GetValue())
-      self.pparams.postref.reflecting_range.d_min = \
-        float(advanced.res.low.GetValue())
-      self.pparams.postref.unit_cell.d_max = float(advanced.res.high.GetValue())
-      self.pparams.postref.unit_cell.d_min = float(advanced.res.low.GetValue())
-      self.pparams.postref.allparams.d_max = float(advanced.res.high.GetValue())
-      self.pparams.postref.allparams.d_min = float(advanced.res.low.GetValue())
+      if advanced.res_override.GetValue():
+          self.pparams.scale.d_max = float(advanced.res.high.GetValue())
+          self.pparams.scale.d_min = float(advanced.res.low.GetValue())
+          self.pparams.merge.d_max = float(advanced.res.high.GetValue())
+          self.pparams.merge.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.scale.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.scale.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.crystal_orientation.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.crystal_orientation.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.reflecting_range.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.reflecting_range.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.unit_cell.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.unit_cell.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.allparams.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.allparams.d_min = float(advanced.res.low.GetValue())
       self.pparams.target_space_group = advanced.sg.spacegroup.GetValue()
       if advanced.uc.unit_cell.GetValue().lower() != 'none':
         uc = str_split(advanced.uc.unit_cell.GetValue())
@@ -531,6 +528,7 @@ class PRIMEAdvancedOptions(wx.Dialog):
     opt_box_sizer = wx.StaticBoxSizer(opt_box, wx.VERTICAL)
 
     # Resolution
+    self.res_override = wx.CheckBox(self, label='Resolution override')
     self.res = ct.OptionCtrl(self,
                              label='Resolution: ',
                              label_size=(120, -1),
@@ -538,6 +536,8 @@ class PRIMEAdvancedOptions(wx.Dialog):
                              ctrl_size=wx.DefaultSize,
                              items=[('high', 50),
                                     ('low', 1.5)])
+    opt_box_sizer.Add(self.res_override, flag=wx.RIGHT | wx.LEFT | wx.TOP,
+                      border=10)
     opt_box_sizer.Add(self.res, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Target space group

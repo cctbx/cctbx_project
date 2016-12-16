@@ -240,6 +240,14 @@ namespace {
          double                  const&)) ksol_bsol_grid_search);
    ;
 
+   def("complex_f_minus_f_kb_scaled",
+      (af::shared<std::complex<double> >(*)
+        (af::const_ref<std::complex<double> > const&,
+         af::const_ref<std::complex<double> > const&,
+         af::const_ref<double>   const&,
+         af::const_ref<double>   const&)) complex_f_minus_f_kb_scaled);
+   ;
+
    def("set_k_mask_to_cubic_polynom",
       (af::shared<double>(*)
         (af::const_ref<double> const& ss,

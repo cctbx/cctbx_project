@@ -79,6 +79,22 @@ class initialize(initialize_base):
         """%self.params.experiment_tag
         cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v2: 12/12/16
+      query = "SHOW columns FROM %s_rungroup"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = zip(*columns)[0]
+      for needed_column, column_format in zip(['format', 'two_theta_low', 'two_theta_high'],
+                                              ["VARCHAR(45) NOT NULL DEFAULT 'pickle'",
+                                               "DOUBLE NULL", "DOUBLE NULL"]):
+        if needed_column not in column_names:
+          query = """
+            ALTER TABLE %s_rungroup
+            ADD COLUMN %s %s
+          """%(self.params.experiment_tag, needed_column, column_format)
+          cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):

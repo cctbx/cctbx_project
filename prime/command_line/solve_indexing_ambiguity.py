@@ -1,19 +1,15 @@
 from __future__ import division
-# LIBTBX_SET_DISPATCHER_NAME prime.solve_indexing_ambiguity
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 8/15/2016
 Description : Command line for solving indexing ambiguity
 '''
-import os, sys
 import numpy as np
 from libtbx.easy_mp import pool_map
 from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler
 import cPickle as pickle
 from prime.index_ambiguity.mod_kmeans import kmeans_handler
 from prime.postrefine.mod_mx import mx_handler
-from prime.command_line.genref import genref_handler
-from prime.command_line.merge import merge_handler
 import random
 
 def solve_with_mtz_mproc(args):
@@ -210,43 +206,30 @@ class indexing_ambiguity_handler(object):
     if n_frames > iparams.indexing_ambiguity.n_selected_frames:
       print "Breaking the indexing ambiguity for the remaining images."
       old_iparams_data = iparams.data[:]
-      iparams.data = [sample_fname]
       iparams.indexing_ambiguity.index_basis_in = sol_fname
-      grh = genref_handler()
-      grh.run_by_params(iparams)
-      mh = merge_handler()
-      mh.run_by_params(iparams)
-      DIR = iparams.run_no+'/mtz/'
-      file_no_list = [int(fname.split('.')[0]) for fname in os.listdir(DIR)]
-      if len(file_no_list) > 0:
-        hklref_indamb = DIR + str(max(file_no_list)) + '.mtz'
-        print "Bootstrap reference reflection set:", hklref_indamb
-        #setup a list of remaining frames
-        frame_files_remain = []
-        for frame in frame_files:
-          if frame not in sol_pickle:
-            frame_files_remain.append(frame)
-        #determine index basis
-        mxh = mx_handler()
-        flag_ref_found, miller_array_ref = mxh.get_miller_array_from_reflection_file(hklref_indamb)
-        frames = [(i, frame_files_remain[i], iparams, miller_array_ref) for i in range(len(frame_files_remain))]
-        cc_results = pool_map(
+      #generate a reference set from solved frames
+      with open(sample_fname) as f:
+        frame_files_processed = f.read().split('\n')[:-1]
+      from prime.command_line.postrefine import scale_frames, merge_frames
+      scaled_pres_set = scale_frames(range(len(frame_files_processed)), frame_files_processed, iparams)
+      miller_array_ref, txt_merge_out = merge_frames(scaled_pres_set, iparams, mtz_out_prefix='index_ambiguity/ref')
+      #setup a list of remaining frames
+      frame_files_remain = [frame for frame in frame_files if frame not in sol_pickle]
+      frames = [(i, frame_files_remain[i], iparams, miller_array_ref) for i in range(len(frame_files_remain))]
+      cc_results = pool_map(
           iterable=frames,
           func=solve_with_mtz_mproc,
           processes=iparams.n_processors)
-        for result in cc_results:
-          pickle_filename, index_basis = result
-          sol_pickle[pickle_filename] = index_basis
+      for result in cc_results:
+        pickle_filename, index_basis = result
+        sol_pickle[pickle_filename] = index_basis
       iparams.data = old_iparams_data[:]
     #write out solution pickle
     pickle.dump(sol_pickle, open(sol_fname,"wb"))
     #write out text output
     txt_out = "Solving indexing ambiguity complete. Solution file saved to "+sol_fname+"\n"
-    f = open(iparams.run_no+'/log.txt', 'a')
-    f.write(txt_out)
-    f.close()
+    txt_out += "Reference set used to solve the indexing ambiguity problem:\n"+txt_merge_out
+    with open(iparams.run_no+'/log.txt', 'a') as f:
+      f.write(txt_out)
     return sol_fname, iparams
 
-if __name__=="__main__":
-  idah = indexing_ambiguity_handler()
-  idah.run(sys.argv[:1])

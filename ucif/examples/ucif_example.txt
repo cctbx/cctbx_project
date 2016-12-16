@@ -98,8 +98,8 @@ were any lexing or parsing errors::
 
 The example parser can be compiled from scratch with just a few simple commands::
 
-  svn co svn://svn.code.sf.net/p/cctbx/code/trunk/ucif ucif
-  cd ucif
+  git clone https://github.com/cctbx/cctbx_project.git
+  cd cctbx_project/ucif
   sh build_cif_parser.sh
   ./cif_parser myfile.cif
 

@@ -17,6 +17,7 @@ import sys, os
 import scitbx.math
 from cctbx import adptbx
 from libtbx import group_args
+from scitbx import fftpack
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -384,6 +385,66 @@ class crystal_gridding_tags(crystal_gridding):
       min_cross_distance=parameters.min_cross_distance(),
       max_clusters=parameters.max_clusters(),
       min_cubicle_edge=parameters.min_cubicle_edge())
+
+class boxes_by_dimension(object):
+  def __init__(self,
+               n_real,
+               abc,
+               dim,
+               log=None,
+               prefix=""):
+    self.n_real = n_real
+    #
+    step_1 = abc[0]/n_real[0] # step size along edge
+    step_2 = abc[1]/n_real[1] # step size along edge
+    step_3 = abc[2]/n_real[2] # step size along edge
+    i_step_1 = int(dim/step_1) # points per box edge
+    i_step_2 = int(dim/step_2) # points per box edge
+    i_step_3 = int(dim/step_3) # points per box edge
+    #
+    n_boxes = self._generate_boxes(i_step_1,i_step_2,i_step_3)
+    assert n_boxes == len(self.starts)
+
+  def _generate_boxes(self, ba,bb,bc):
+    def regroup(be):
+      maxe = be[len(be)-1][1]
+      step = int(maxe/len(be))
+      result = []
+      for i in xrange(len(be)):
+        if(i==0):
+          l = 0
+          r = step
+        elif(i==len(be)-1):
+          l = i*step
+          r = maxe
+        else:
+          l = i*step
+          r = (i+1)*step
+        result.append([l,r])
+      return result
+    be = []
+    for i, b in enumerate([ba,bb,bc]):
+      be_ = self._box_edges(n_real_1d = self.n_real[i], step=b)
+      be_ = regroup(be_)
+      be.append(be_)
+    self.starts = []
+    self.ends = []
+    for i in be[0]:
+      for j in be[1]:
+        for k in be[2]:
+          self.starts.append([i[0],j[0],k[0]])
+          self.ends.append([i[1],j[1],k[1]])
+    return len(self.starts)
+
+  def _box_edges(self, n_real_1d, step):
+    limits = []
+    for i in range(0, n_real_1d, step): limits.append(i)
+    limits.append(n_real_1d)
+    box_1d = []
+    for i in xrange(len(limits)):
+      if(i==0):               box_1d.append([limits[0],  limits[1]])
+      elif(i!=len(limits)-1): box_1d.append([limits[i],limits[i+1]])
+    return box_1d
 
 class boxes(object):
   """
@@ -1074,6 +1135,29 @@ def d_min_from_map(map_data, unit_cell, resolution_factor=1./2.):
     b/ny/resolution_factor,\
     c/nz/resolution_factor
   return max(d1,d2,d3)
+
+def map_to_map_coefficients(m, cs, d_min):
+  import cctbx.miller
+  fft = fftpack.real_to_complex_3d([i for i in m.all()])
+  map_box = copy(
+    m, flex.grid(fft.m_real()).set_focus(m.focus()))
+  map_box.reshape(flex.grid(fft.m_real()).set_focus(fft.n_real()))
+  map_box = fft.forward(map_box)
+  box_structure_factors = structure_factors.from_map(
+    unit_cell=cs.unit_cell(),
+    space_group_type=cs.space_group().type(),
+    anomalous_flag=False,
+    d_min=d_min,
+    complex_map=map_box,
+    conjugate_flag=True,
+    discard_indices_affected_by_aliasing=True)
+  n = map_box.all()[0] * map_box.all()[1] * map_box.all()[2]
+  map_coeffs = cctbx.miller.set(
+    crystal_symmetry=cs,
+    anomalous_flag=False,
+    indices=box_structure_factors.miller_indices(),
+    ).array(data=box_structure_factors.data()/n)
+  return map_coeffs
 
 def resolution_from_map_and_model(map_data, xray_structure):
   """

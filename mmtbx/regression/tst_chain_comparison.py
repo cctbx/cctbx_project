@@ -225,18 +225,28 @@ def tst_01():
   f=StringIO()
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
-
   expected_text="""
 Residues matching in forward direction:     16  RMSD:   1.45
 Residues matching in reverse direction:     31  RMSD:   1.40
 Residues near but not matching one-to-one:  12  RMSD:   1.87
-Residues far from target:                    2  RMSD:   2.04
+
+All residues near target:                   59  RMSD:   1.52 Seq match (%):  6.8
+Residues far from target:                    2  RMSD:   4.27
 """
 
-  found_text="\n".join(f.getvalue().splitlines()[-4:])
+  found_text="\n".join(f.getvalue().splitlines()[-6:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
     raise AssertionError, "FAILED"
+  from libtbx.test_utils import approx_equal
+  print r.get_values("forward")
+  assert approx_equal(r.get_values("forward"),(1.4473857036049544, 16))
+  print r.get_values("reverse")
+  assert approx_equal(r.get_values("reverse"),(1.3969610738798282, 31))
+  print r.get_values("close")
+  assert approx_equal(r.get_values("close"),(1.5184018499613678, 59))
+  print r.get_values("all_far")
+  assert approx_equal(r.get_values("all_far"),(0,0))
   print "OK"
 
 
