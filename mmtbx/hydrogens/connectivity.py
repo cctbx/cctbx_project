@@ -50,14 +50,15 @@ class determine_connectivity(object):
     self.dihedral_proxies = self.geometry_restraints.dihedral_proxies # this should be function in GRM, like previous
     self.fsc0 = \
       self.geometry_restraints.shell_sym_tables[0].full_simple_connectivity()
-    self.n_atoms = self.atoms.size()
+    self.n_atoms = self.pdb_hierarchy.atoms_size()
     self.hd_sel = self.hd_selection()
-    self.h_connectivity = []
-
+    # self.h_connectivity = [None for i in range(self.n_atoms)]
+    # ~7 times faster:
+    self.h_connectivity = [None]*self.n_atoms
     self.names = list(self.atoms.extract_name())
 
     # 1. make empty list for h_connectivity
-    self.initialize_connectivity()
+    # self.initialize_connectivity() - one liner used once is a bit excessive
 
     # 2. find parent atoms and ideal A0-H bond distances
     self.find_first_neighbors()
@@ -169,27 +170,26 @@ class determine_connectivity(object):
 
   def print_stuff(self):
     """Print information of connectivity for each H atom."""
-    names = list(self.atoms.extract_name())
     for neighbors in self.h_connectivity:
       if neighbors is None: continue
       ih = neighbors.ih
       labels = self.atoms[ih].fetch_labels()
       i_a0 = neighbors.a0['iseq']
       i_a1 = neighbors.a1['iseq']
-      string = names[i_a1]+'('+str(i_a1)+')'
+      string = self.names[i_a1]+'('+str(i_a1)+')'
       if 'iseq' in neighbors.a2:
         i_a2 = neighbors.a2['iseq']
-        string = string + names[i_a2]
+        string = string + self.names[i_a2]
       if 'iseq' in neighbors.a3:
-        string = string + names[neighbors.a3['iseq']]
-      output = (names[ih], ih, labels.resseq.strip(), names[i_a0], i_a0, string)
+        string = string + self.names[neighbors.a3['iseq']]
+      output = (self.names[ih], ih, labels.resseq.strip(), self.names[i_a0], i_a0, string)
       stringh = ''
       if 'iseq' in neighbors.h1:
-        stringh = stringh + names[neighbors.h1['iseq']]
+        stringh = stringh + self.names[neighbors.h1['iseq']]
       if 'iseq' in neighbors.h2:
-        stringh = stringh + names[neighbors.h2['iseq']]
+        stringh = stringh + self.names[neighbors.h2['iseq']]
       if 'iseq' in neighbors.b1:
-        stringb1 = names[neighbors.b1['iseq']]
+        stringb1 = self.names[neighbors.b1['iseq']]
       else:
         stringb1 = 'n/a'
       output = output + (stringh,) + (stringb1,)#+ (self.third_neighbors_raw[i_a0],)
@@ -199,7 +199,6 @@ class determine_connectivity(object):
     """Loop through angle proxies to find angles involving a0 and second
     neighbors. Find raw list of third neighbors, which don't have dihedral
     proxies."""
-    names = list(self.atoms.extract_name())
     self.parent_angles = [{} for i in range(self.n_atoms)]
     self.third_neighbors_raw = [[] for i in range(self.n_atoms)]
     for ap in self.angle_proxies:
@@ -230,7 +229,6 @@ class determine_connectivity(object):
 
   def process_a0_angles_and_third_neighbors_without_dihedral(self):
     """Process raw list of third neighbors withouth ideal dihedral proxy."""
-    names = list(self.atoms.extract_name())
     for neighbors in self.h_connectivity:
       if (neighbors is None): continue
       ih = neighbors.ih
@@ -333,7 +331,7 @@ class determine_connectivity(object):
         second_neighbors_H.append(iseq)
     return second_neighbors_H
 
-  def  assign_second_neighbors(
+  def assign_second_neighbors(
           self, ih, i_parent, neighbors_list, neighbors_list_H):
     """With the information of second neighbors, fill in the dictionaries for
     each atom (a1, a2, a3, according to which is present)."""
@@ -399,19 +397,20 @@ class determine_connectivity(object):
     return alt_conf_neighbors_reduced
 
 
-  def initialize_connectivity(self):
-    """Get a an array for all scatterers of the structure.
-    :returns: an array containing None for every atom
-    :rtype: []
-    """
-    self.h_connectivity = [None for i in range(self.n_atoms)]
+  # def initialize_connectivity(self):
+  #   """Get a an array for all scatterers of the structure.
+  #   :returns: an array containing None for every atom
+  #   :rtype: []
+  #   """
+  #   self.h_connectivity = [None for i in range(self.n_atoms)]
 
   def count_H(self):
     """# Check if number H/D atoms in the hd_selection (= in the model) and
     in h_connectivity are the same"""
     number_h_1 = 0
     for h_bool in self.hd_sel:
-      if h_bool: number_h_1 = number_h_1 + 1
+      # what about short notation to look nicer?:
+      if h_bool: number_h_1 += 1
     number_h_2 = 0
     for item in self.h_connectivity:
       if item: number_h_2 = number_h_2 + 1
@@ -422,19 +421,27 @@ class determine_connectivity(object):
     :returns: an array to select all H and D scatterers of the structure
     :rtype: boolean[]
     """
+    # looked very much like copy-paste from xray structure
+    # (cctbx_project/cctbx/xray/structure.py) - which is fine, but
+    # As a general function it should reside in
+    # cctbx_project/iotbx/pdb/hierarchy.py as pdb_hierarchy method
+    # Surprisingly, append() here works bit faster than making the correct
+    # size array and access by elements...
+
     result = flex.bool()
     for atom in (self.pdb_hierarchy.atoms()):
-      if atom.element_is_hydrogen(): result.append(True)
-      else: result.append(False)
+      result.append(atom.element_is_hydrogen())
     return result
 
-  def is_same_element(iseq1, iseq2, atoms):
-    """Get a boolean if atom iseq1 and iseq2 have the same element.
-    :returns: a boolean value
-    :rtype: boolean
-    """
-    if (atoms[iseq1].element == atoms[iseq2].element):
-      result = True
-    else:
-      result =False
-    return result
+  # This function is not used anywhere, probably this is the reason it
+  # does not generate syntax error (missing self)
+  # def is_same_element(iseq1, iseq2, atoms):
+  #   """Get a boolean if atom iseq1 and iseq2 have the same element.
+  #   :returns: a boolean value
+  #   :rtype: boolean
+  #   """
+  #   if (atoms[iseq1].element == atoms[iseq2].element):
+  #     result = True
+  #   else:
+  #     result =False
+  #   return result
