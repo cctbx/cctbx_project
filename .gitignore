@@ -11,6 +11,7 @@
 
 # For git commit notifications and versioning
 .git-notifier*
+git-notifier.log
 .gitversion
 
 # Ignores copied over from subversion:
