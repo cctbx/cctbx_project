@@ -139,6 +139,7 @@ def submit_job(app, job):
 
   if backend == 'dials':
     if trial_params.format.file_format == "cbf":
+      trial_params.input.address = job.rungroup.detector_address
       trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
       trial_params.format.cbf.override_energy = job.rungroup.energy
       trial_params.format.cbf.invalid_pixel_mask = job.rungroup.untrusted_pixel_mask_path
