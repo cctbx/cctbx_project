@@ -448,8 +448,9 @@ class model_idealization():
           reference_map=self.reference_map)
       # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_h_1.pdb")
     else:
-      self.params.ss_idealization.file_name_before_regularization = \
-          "%s_ss_before_reg.pdb" % self.params.output_prefix
+      if self.params.debug:
+        self.params.ss_idealization.file_name_before_regularization = \
+            "%s_ss_before_reg.pdb" % self.params.output_prefix
       ssb.substitute_ss(
           real_h=self.working_pdb_h,
           xray_structure=self.working_xrs,
