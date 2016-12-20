@@ -917,7 +917,7 @@ class scaling_manager (intensity_data) :
     @return a tuple with an array of selections for each bin and an array of median
     intensity values for each bin.
     """
-    print >> out, "Computing intensity bins.",
+    print >> self.log, "Computing intensity bins.",
     all_mean_Is = flex.double()
     only_means = flex.double()
     for hkl_id in xrange(self.n_refl):
@@ -930,7 +930,7 @@ class scaling_manager (intensity_data) :
       only_means.append(meanI)
       all_mean_Is.extend(flex.double([meanI]*n))
     step = (flex.max(only_means)-flex.min(only_means))/n_bins
-    print >> out, "Bin size:", step
+    print >> self.log, "Bin size:", step
 
     sels = []
     binned_intensities = []
@@ -942,7 +942,7 @@ class scaling_manager (intensity_data) :
       binned_intensities.append((step/2 + step*i)+min(only_means))
 
     #for i, (sel, intensity) in enumerate(zip(sels, binned_intensities)):
-    #  print >> out, "Bin %02d, number of observations: % 10d, midpoint intensity: %f"%(i, sel.count(True), intensity)
+    #  print >> self.log, "Bin %02d, number of observations: % 10d, midpoint intensity: %f"%(i, sel.count(True), intensity)
 
     return sels, binned_intensities
 
@@ -950,11 +950,11 @@ class scaling_manager (intensity_data) :
     """
     Adjust sigmas according to Evans, 2011 Acta D and Evans and Murshudov, 2013 Acta D
     """
-    print >> out, "Starting scale_errors"
-    print >> out, "Computing initial estimates of sdfac, sdb and sdadd"
+    print >> self.log, "Starting scale_errors"
+    print >> self.log, "Computing initial estimates of sdfac, sdb and sdadd"
     sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
 
-    print >> out, "Initial estimates:", sdfac, sdb, sdadd
+    print >> self.log, "Initial estimates:", sdfac, sdb, sdadd
 
     from xfel import compute_normalized_deviations, apply_sd_error_params
     from scitbx.simplex import simplex_opt
@@ -1003,22 +1003,22 @@ class scaling_manager (intensity_data) :
           # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
           f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
 
-        print >> out, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+        print >> self.log, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
         return f
 
-    print >> out, "Refining error correction parameters sdfac, sdb, and sdadd"
+    print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
     minimizer = simplex_minimizer(sdfac, sdb, sdadd, self.ISIGI, self.miller_set.indices(), sels)
     sdfac, sdb, sdadd = minimizer.x
-    print >> out, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
+    print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
 
-    print >> out, "Applying sdfac/sdb/sdadd 1"
+    print >> self.log, "Applying sdfac/sdb/sdadd 1"
     self.ISIGI = apply_sd_error_params(self.ISIGI, sdfac, sdb, sdadd)
 
     self.summed_weight= flex.double(self.n_refl, 0.)
     self.summed_wt_I  = flex.double(self.n_refl, 0.)
 
-    print >> out, "Applying sdfac/sdb/sdadd 2"
+    print >> self.log, "Applying sdfac/sdb/sdadd 2"
     for hkl_id in xrange(self.n_refl):
       hkl = self.miller_set.indices()[hkl_id]
       if hkl not in self.ISIGI: continue
@@ -1034,7 +1034,7 @@ class scaling_manager (intensity_data) :
 
     if False:
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
-      print >> out, "Validating"
+      print >> self.log, "Validating"
       all_sigmas_normalized = compute_normalized_deviations(self.ISIGI, self.miller_set.indices())
       binned_rms_normalized_sigmas = []
 
@@ -1048,7 +1048,7 @@ class scaling_manager (intensity_data) :
   def errors_from_residuals(self):
     """
     """
-    print >> out, "Computing error estimates from sample residuals"
+    print >> self.log, "Computing error estimates from sample residuals"
     self.summed_weight= flex.double(self.n_refl, 0.)
     self.summed_wt_I  = flex.double(self.n_refl, 0.)
 
@@ -1066,7 +1066,7 @@ class scaling_manager (intensity_data) :
         Intensity = self.ISIGI[hkl][i][0] # scaled intensity
         self.summed_wt_I[hkl_id] += Intensity / variance
         self.summed_weight[hkl_id] += 1 / variance
-    print >> out, "Done computing error estimates"
+    print >> self.log, "Done computing error estimates"
 
 
   def finalize_and_save_data (self) :
@@ -1621,7 +1621,7 @@ def consistent_set_and_model(work_params,i_model=None):
 #-----------------------------------------------------------------------
 def run(args):
   if ("--help" in args) :
-    iotbx.phil.parse(master_phil).show()
+    iotbx.phil.parse(master_phil).show(attributes_level=2)
     return
   phil = iotbx.phil.process_command_line(args=args, master_string=master_phil).show()
   work_params = phil.work.extract()
