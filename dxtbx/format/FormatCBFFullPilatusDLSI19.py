@@ -22,6 +22,8 @@ class FormatCBFFullPilatusDLSI19(FormatCBFFullPilatus):
     '''Check to see if this looks like an CBF format image, i.e. we can
     make sense of it.'''
 
+    return False
+
     header = FormatCBFFullPilatus.get_cbf_header(image_file)
 
     for record in header.split('\n'):
