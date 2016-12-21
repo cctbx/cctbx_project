@@ -1334,13 +1334,69 @@ class sharpening_info:
             params.map_modification.resolution_dependent_b
 
       return self
-  def show_summary(self,out=sys.stdout):
-    print >>out,"Summary of sharpening info:"
-    for x in dir(self):
-      if x.startswith("__"): continue
-      if type(getattr(self,x)) in [type('a'),type(1),type(1.),type([]),
-        type((1,2,))]:
-        print >>out,"%s : %s" %(x,getattr(self,x))
+  def show_summary(self,verbose=False,out=sys.stdout):
+    method_summary_dict={
+       'b_iso':"Overall b_iso sharpening",
+       'b_iso_to_d_cut':"b_iso sharpening to high_resolution cutoff",
+       'resolution_dependent':"Resolution-dependent sharpening",
+       'no_sharpening':"No sharpening",
+       None:"No sharpening",
+        }
+   
+    target_summary_dict={
+       'adjusted_sa':"Adjusted surface area",
+       'kurtosis':"Map kurtosis",
+      }
+    print >>out,"\nSummary of sharpening:\n"
+
+    print >>out,"Sharpening method used:         %s\n" %(
+       method_summary_dict.get(self.sharpening_method))
+
+    if self.sharpening_method=="b_iso":
+      if self.b_sharpen is not None:
+        print >>out,"Overall b_sharpen applied:      %7.2f A**2" %(
+          self.b_sharpen)
+      if self.b_iso is not None:
+        print >>out,"Final b_iso obtained:           %7.2f A**2" %(self.b_iso)
+    elif self.sharpening_method=="b_iso_to_d_cut":
+      if self.b_sharpen is not None:
+        print >>out,"Overall b_sharpen applied:      %7.2f A**2" %(
+          self.b_sharpen)
+      print >>out,"High-resolution cutoff:         %7.2f A" %(self.d_cut)
+    elif self.sharpening_method=="resolution_dependent":
+      print >>out,"Resolution-dependent b values (%7.2f,%7.2f,%7.2f)\n" %(
+        tuple(self.resolution_dependent_b))
+
+      print >>out,"Effective b_iso vs resolution obtained:"
+      from cctbx.maptbx.refine_sharpening import get_effective_b_values  
+      d_min_values,b_values=get_effective_b_values(
+        self.d_min,self.resolution_dependent_b,self.d_cut)
+      print >>out,"                                Resolution  Effective B-iso"
+      print >>out,"                                    (A)         (A**2)"
+      for dd,b in zip(d_min_values,b_values):
+        print >>out,"                                 %7.1f       %7.2f " %(
+         dd,b)
+
+    if self.sharpening_method in ["b_iso_to_d_cut"] and \
+      self.k_sharpen and self.d_cut:
+        print >>out,"Transition from sharpening"
+        print >>out,"   to not sharpening (k_sharpen):%7.2f " %(self.k_sharpen)
+
+    print >>out,"\nSharpening target used:         %s" %(
+       target_summary_dict.get(self.sharpening_target))
+    if self.adjusted_sa is not None:
+      print >>out,"Final adjusted map surface area:  %7.2f" %(self.adjusted_sa)
+    if self.kurtosis is not None:
+      print >>out,"Final map kurtosis:               %7.2f" %(self.kurtosis)
+
+    print >>out
+
+    if verbose:
+      for x in dir(self):
+        if x.startswith("__"): continue
+        if type(getattr(self,x)) in [type('a'),type(1),type(1.),type([]),
+          type((1,2,))]:
+          print >>out,"%s : %s" %(x,getattr(self,x))
 
   def get_effective_b_iso(self,map_data=None,out=sys.stdout):
     b_iso,map_coeffs,f_array,phases=\
@@ -1372,6 +1428,17 @@ class sharpening_info:
        return True
     else:
        return False
+
+  def as_map_coeffs(self,out=sys.stdout):
+    return get_f_phases_from_map(map_data=self.map_data,
+       crystal_symmetry=self.crystal_symmetry,
+       d_min=self.d_min,
+       d_min_ratio=self.d_min_ratio,
+       return_as_map_coeffs=True,
+       out=out)
+
+  def as_map_data(self):
+    return self.map_data
 
 class ncs_group_object:
   def __init__(self,
@@ -1455,6 +1522,7 @@ def get_map_object(file_name=None,out=sys.stdout):
   print >>out,"IS PADDED: ",m.data.is_padded()
 
   map_data=m.data
+  acc=map_data.accessor()
   shift_needed = not \
      (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
       map_data.is_0_based())
@@ -1476,8 +1544,8 @@ def get_map_object(file_name=None,out=sys.stdout):
         " The file %s has the origin of %s" %(file_name,str(map_data.origin())))
     offset=e-g
     if offset < 0 or offset > 1:
-      raise Sorry("Sorry the extent of CCP4 style maps must be the same or "+
-       "one more \nthan the grid.  "+
+      raise Sorry("Sorry the extent of CCP4 style maps must be the same as "+
+       "the grid or 1 grid point larger than the grid.  "+
        "The file %s has a grid of %s and extent of %s" %(
        file_name,str(m.unit_cell_grid),str(map_data.all())))
     if offset: need_offset=True
@@ -1488,7 +1556,15 @@ def get_map_object(file_name=None,out=sys.stdout):
        "one more \nthan the grid, and all must be the same or all one more.  "+
        "\nThe file %s has a grid of %s and extent of %s" %(
        file_name,str(m.unit_cell_grid),str(map_data.all())))
+    if origin_frac!=(0.,0.,0.):  # this was a shifted map...we can't do this
+      raise Sorry("Sorry if a CCP4 map has an origin other than (0,0,0) "+
+        "the extent \nof the map must be the same as the grid for "+
+        "segment_and_split_map routines."+
+       "The file %s has a grid of %s and extent of %s" %(
+       file_name,str(m.unit_cell_grid),str(map_data.all())))
+    if offset: need_offset=True
     map=map_data[:-1,:-1,:-1]
+    acc=map.accessor()
   else:
     map=map_data
 
@@ -1508,7 +1584,7 @@ def get_map_object(file_name=None,out=sys.stdout):
   crystal_symmetry.show_summary(f=out)
   space_group=crystal_symmetry.space_group()
 
-  return map,space_group,unit_cell,crystal_symmetry,origin_frac
+  return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc
 
 def write_ccp4_map(crystal_symmetry, file_name, map_data):
   iotbx.ccp4_map.write_ccp4_map(
@@ -5396,15 +5472,7 @@ def auto_sharpen_map_or_map_coeffs(
     si.sharpen_and_score_map(map_data=map,
           out=out).show_score(out=out)
     si.show_summary(out=out)
-    if return_as_map:
-      return si.map_data
-    else:  # return as map_coeffs
-      return get_f_phases_from_map(map_data=si.map_data,
-       crystal_symmetry=si.crystal_symmetry,
-       d_min=si.d_min,
-       d_min_ratio=si.d_min_ratio,
-       return_as_map_coeffs=True,
-       out=out)
+    return si 
 
 def run_auto_sharpen(
       si=None,
