@@ -64,6 +64,9 @@ data_for_map = None
   .type = path
 number_of_refinement_cycles = 3
   .type = int
+ignore_ncs = False
+  .type = bool
+  .help = Don't use NCS even if it is present in model.
 debug = False
   .type = bool
   .help = Output all intermediate files
@@ -298,6 +301,8 @@ class model_idealization():
     params.pdb_interpretation.peptide_link.apply_peptide_plane = True
     params.pdb_interpretation.ncs_search.enabled = True
     params.pdb_interpretation.restraints_library.rdl = True
+    if self.params.ignore_ncs:
+      params.pdb_interpretation.ncs_search.enabled = False
     processed_pdb_files_srv = mmtbx.utils.\
         process_pdb_file_srv(
             crystal_symmetry= self.whole_xrs.crystal_symmetry(),
@@ -341,30 +346,31 @@ class model_idealization():
 
   def run(self):
     t_0 = time()
-
-    ncs_obj = iotbx.ncs.input(
-        hierarchy=self.whole_pdb_h,
-        chain_max_rmsd=4.0,
-        chain_similarity_threshold=0.99,
-        residue_match_radius=999.0)
-    print >> self.log, "Found NCS groups:"
-    ncs_obj.show(format='phil', log=self.log)
-    ncs_restr_group_list = ncs_obj.get_ncs_restraints_group_list(
-        raise_sorry=False)
     self.using_ncs = False
-    total_ncs_selected_atoms = 0
-    master_sel = flex.size_t([])
-    filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
-        self.whole_pdb_h, ncs_restr_group_list)
-    if len(filtered_ncs_restr_group_list) > 0:
-      self.using_ncs = True
-      master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
-      for ncs_gr in filtered_ncs_restr_group_list:
-        for copy in ncs_gr.copies:
-          master_sel.set_selected(copy.iselection, False)
-      self.master_pdb_h = self.whole_pdb_h.select(master_sel)
-      self.master_sel=master_sel
-      self.master_pdb_h.reset_atom_i_seqs()
+    filtered_ncs_restr_group_list = []
+    if not self.params.ignore_ncs:
+      ncs_obj = iotbx.ncs.input(
+          hierarchy=self.whole_pdb_h,
+          chain_max_rmsd=4.0,
+          chain_similarity_threshold=0.99,
+          residue_match_radius=999.0)
+      print >> self.log, "Found NCS groups:"
+      ncs_obj.show(format='phil', log=self.log)
+      ncs_restr_group_list = ncs_obj.get_ncs_restraints_group_list(
+          raise_sorry=False)
+      total_ncs_selected_atoms = 0
+      master_sel = flex.size_t([])
+      filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
+          self.whole_pdb_h, ncs_restr_group_list)
+      if len(filtered_ncs_restr_group_list) > 0:
+        self.using_ncs = True
+        master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
+        for ncs_gr in filtered_ncs_restr_group_list:
+          for copy in ncs_gr.copies:
+            master_sel.set_selected(copy.iselection, False)
+        self.master_pdb_h = self.whole_pdb_h.select(master_sel)
+        self.master_sel=master_sel
+        self.master_pdb_h.reset_atom_i_seqs()
 
     if self.using_ncs:
       if self.params.debug:
