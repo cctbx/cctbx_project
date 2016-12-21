@@ -37,7 +37,7 @@ master_phil = iotbx.phil.parse("""
   {
 
     shifted_map_file = shifted_map.ccp4
-      .type = str 
+      .type = str
       .help = Input map file shifted to new origin.
       .short_caption = Shifted map file
 
@@ -359,7 +359,7 @@ def run(args,out=sys.stdout):
 
   map_data,crystal_symmetry,acc=get_map(params=params,out=out)
 
-  # NOTE: map_data is now relative to origin at (0,0,0). 
+  # NOTE: map_data is now relative to origin at (0,0,0).
   # Use map_data.reshape(acc) to put it back where it was if acc is not None
 
 
@@ -438,7 +438,7 @@ def run(args,out=sys.stdout):
     print >>out,"\nWrote sharpened map_coeffs (origin at 0,0,0)\n to %s\n" %(
        output_map_coeffs_file)
 
-  return new_map_data,new_map_coeffs,crystal_symmetry
+  return new_map_data,new_map_coeffs,crystal_symmetry,si
 
 # =============================================================================
 # GUI-specific bits for running command
