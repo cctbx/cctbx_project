@@ -143,6 +143,9 @@ class ThreeProteinResidues(list):
         else: bond=False
       else:
         bond=self.bond_params_table.lookup(c.i_seq, n.i_seq)
+        if not bond:
+          # needed for situations where atoms are added and the i_seq is updated
+          if distance2(n,c)<4: bond=True
       if not bond:
         break
     else:
