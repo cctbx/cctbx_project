@@ -31,6 +31,10 @@ def exercise () :
   import iotbx.pdb.hierarchy
   generate_inputs()
   params = master_phil().extract()
+  params.torsion_search.chi_increment_degrees=90 # Does not make sense but lets
+                                                 # test to run quick. With
+                                                 # default value test never
+                                                 # finishes.
   mon_lib_srv = server.server()
   pdb_in = iotbx.pdb.hierarchy.input(file_name="shear_frag_single.pdb")
   hierarchy = pdb_in.hierarchy
@@ -54,7 +58,7 @@ def exercise () :
       primary_conf = atom_groups[0]
       out = StringIO()
       confs = []
-      for conf in conformer_generation.generate_single_residue_confs(
+      tmp = list(conformer_generation.generate_single_residue_confs(
         atom_group=primary_conf,
         sites_cart=sites_cart.deep_copy(),
         mon_lib_srv=mon_lib_srv,
@@ -63,7 +67,8 @@ def exercise () :
         next_residue=next_res,
         next_next_residue=next_next_res,
         backrub=False,
-        shear=True) :
+        shear=True))
+      for conf in tmp :
           conf.show_summary(out=out)
           confs.append(conf)
       prev_res = primary_conf
