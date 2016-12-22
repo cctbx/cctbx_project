@@ -31,13 +31,12 @@ def exercise():
   atoms = pdb_hierarchy.atoms()
 
   riding_h_manager = riding.manager(
-    pdb_hierarchy           = pdb_hierarchy,
+    pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry_restraints)
 
   h_parameterization = riding_h_manager.h_parameterization
-  diagnostics = parameterization.diagnostics_parameterization(
-    connectivity_obj   = riding_h_manager.connectivity_obj,
-    h_parameterization = h_parameterization,
+
+  diagnostics = riding_h_manager.diagnostics(
     sites_cart         = sites_cart,
     threshold          = 0.05)
 
@@ -309,11 +308,11 @@ END
 type_list_known = ['2tetra', '2tetra', 'alg1b', '3neigbs', '2tetra',
   'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', '3neigbs', 'alg1b', '3neigbs',
   'alg1b', '2tetra', '2tetra', '2tetra', '2tetra', 'flat_2neigbs',
-  'flat_2neigbs', '2tetra', '2tetra', 'alg1b', 'alg1b', '3neigbs', '2tetra',
-  '2tetra', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs', 'flat_2neigbs',
-  '2tetra', 'alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra',
-  'alg1b', '2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs', 'prop', 'prop',
-  'prop', 'prop', 'prop', 'prop', 'flat_2neigbs', '3neigbs', 'prop']
+  'flat_2neigbs', '2tetra', '2tetra', 'alg1b', 'alg1b', 'alg1b', '3neigbs',
+  '2tetra', '2tetra', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs', '2tetra',
+  'alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
+  '2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs', 'prop', 'prop', 'prop',
+  'prop', 'prop', 'prop', 'prop', '3neigbs', 'prop']
 
 if (__name__ == "__main__"):
   t0 = time.time()

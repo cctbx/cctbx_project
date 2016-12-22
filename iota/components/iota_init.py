@@ -32,8 +32,12 @@ def parse_command_args(iver, help_message):
             help = 'Prints version info of IOTA')
   parser.add_argument('-l', '--list', action = 'store_true',
             help = 'Output a file (input.lst) with input image paths and stop')
+  parser.add_argument('-w', '--watch', action = 'store_true',
+            help = 'Run IOTA in watch mode - check for new images')
   parser.add_argument('-c', '--convert', action = 'store_true',
             help = 'Convert raw images to pickles and stop')
+  parser.add_argument('-f', '--full', action = 'store_true',
+            help = 'Run IOTA in "full-processing" mode (advanced)')
   parser.add_argument('-d', '--default', action = 'store_true',
             help = 'Generate default settings files and stop')
   parser.add_argument('-p', '--prefix', type=str, default="Auto",

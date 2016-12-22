@@ -4695,9 +4695,7 @@ class array(set):
           n_trials=n_trials, return_n_refl=return_n_refl))
     return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
-  def cc_one_half_sigma_tau(self, use_binning=False, anomalous_flag=False,
-                            use_internal_variance=True,
-                            return_n_refl=False):
+  def cc_one_half_sigma_tau(self, use_binning=False, return_n_refl=False):
     """
     Calculation of CC1/2 by the 'sigma-tau' method, avoiding the random
     assignment into half-datasets of the above method.
@@ -4710,14 +4708,20 @@ class array(set):
     """
     assert self.is_xray_intensity_array()
     if (not use_binning):
-      merged = self.merge_equivalents(
-        use_internal_variance=use_internal_variance).array()
+      # set the sigmas to 1, and calculate the mean intensities and internal variances
+      intensities_copy = self.customized_copy(
+        sigmas=flex.double(self.size(), 1))
+      merging_internal = intensities_copy.merge_equivalents(
+        use_internal_variance=True)
+      merged = merging_internal.array()
       if merged.size() == 1:
         cc_one_half = 0
       else:
+        internal_sigmas = merging_internal.array().sigmas()
+        internal_variances = flex.pow2(internal_sigmas)
         mav = flex.mean_and_variance(merged.data())
         var_y = mav.unweighted_sample_variance()
-        var_e = flex.mean(flex.pow2(self.sigmas()))
+        var_e = 2 * flex.mean(internal_variances)
         cc_one_half = (var_y - 0.5 * var_e)/(var_y + 0.5 * var_e)
       if return_n_refl:
         return cc_one_half, merged.size()
@@ -4730,8 +4734,7 @@ class array(set):
       if (bin_array.size() == 0) :
         data.append(None)
       else :
-        data.append(bin_array.cc_one_half_sigma_tau(
-          use_internal_variance=use_internal_variance, return_n_refl=return_n_refl))
+        data.append(bin_array.cc_one_half_sigma_tau(return_n_refl=return_n_refl))
     return binned_data(binner=self.binner(), data=data, data_fmt="%6.3f")
 
   def half_dataset_anomalous_correlation (self, use_binning=False, return_n_pairs=False) :

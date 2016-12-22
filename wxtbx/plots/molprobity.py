@@ -319,13 +319,18 @@ class multi_criterion_plot (wxtbx.plots.plot_container,
     if xdata is None or ydata is None :
       return False
     idx = int(floor(xdata))
+    selection_string = None
+    xyz = None
     try :
       residue = self._current_bin.get_selected(idx)
+      selection_string = residue.id_str()
+      xyz = residue.xyz
     except IndexError :
       pass
     else :
-      pass #self.parent.zoom_callback(selection_string=selection_string,
-      #  xyz=xyz)
+      if ( (selection_string is not None) and (xyz is not None) ):
+        self.parent.zoom_callback(selection_string=selection_string,
+                                  xyz=xyz)
 
 class multi_criterion_frame (wxtbx.plots.plot_frame) :
   show_controls_default = True
@@ -370,5 +375,6 @@ class multi_criterion_frame (wxtbx.plots.plot_frame) :
     bin = self.range_choice.GetSelection()
     self.plot_panel.plot_range(bin)
 
-  def zoom_callback (self, *args, **kwds) :
-    pass
+  def zoom_callback (self, **kwds) :
+    if getattr(self.GetParent(), "main_window", None) is not None :
+      self.GetParent().main_window.show_gfx_selection(**kwds)

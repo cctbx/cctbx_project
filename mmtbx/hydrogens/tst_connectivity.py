@@ -64,36 +64,38 @@ def exercise():
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
   riding_h_manager = riding.manager(
-    pdb_hierarchy           = pdb_hierarchy,
+    pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry_restraints)
   h_connectivity = riding_h_manager.h_connectivity
 
+# get bonds stored in connectivity
   bond_list = {}
   angle_list = {}
-  third_nb_list = {}
-  for ih in h_connectivity.keys():
-    a0 = (h_connectivity[ih][0])
-    bond_list[ih]=[a0.iseq, a0.dist_ideal]
-    for atom in h_connectivity[ih][1]+h_connectivity[ih][2]:
-      helper = tuple(sorted([ih, a0.iseq, atom.iseq]))
-      angle_list[helper]=atom.angle_ideal
-    if(len(h_connectivity[ih])==4):
-      third_nb_list[ih]=[]
-      for third in h_connectivity[ih][3]:
-        third_nb_list[ih].append(third.iseq)
-
-#-----------------------------------------------------------------------------
-# This is useful to keep for debugging: human readable output of connectivity
-#-----------------------------------------------------------------------------
-#  for ih in connectivity.keys():
-#    if(len(connectivity[ih])==3):
-#      string = (" ".join([names[p.iseq] for p in connectivity[ih][2]]))
-#    else:
-#      string = 'n/a'
-#    print  names[ih],': ', names[(connectivity[ih][0][0]).iseq], \
-#      ',', (" ".join([names[p.iseq] for p in connectivity[ih][1]])), \
-#      ',', string
-#-----------------------------------------------------------------------------
+  for neighbors in h_connectivity:
+    if (neighbors is None): continue
+    ih = neighbors.ih
+    a0 = neighbors.a0
+    i_a0 = a0['iseq']
+    a1 = neighbors.a1
+    i_a1 = a1['iseq']
+    bond_list[ih] = [i_a0, a0['dist_ideal']]
+    selected_atoms = tuple(sorted([ih, i_a0, i_a1]))
+    angle_list[selected_atoms] = a1['angle_ideal']
+    if neighbors.a2:
+      a2 = neighbors.a2
+      selected_atoms2 = tuple(sorted([ih, i_a0, a2['iseq']]))
+      angle_list[selected_atoms2] = a2['angle_ideal']
+    if neighbors.a3:
+      a3 = neighbors.a3
+      selected_atoms3 = tuple(sorted([ih, i_a0, a3['iseq']]))
+      angle_list[selected_atoms3] = a3['angle_ideal']
+    if neighbors.h1:
+      h1 = neighbors.h1
+      selected_atoms4 = tuple(sorted([ih, i_a0, h1['iseq']]))
+      angle_list[selected_atoms4] =h1['angle_ideal']
+    if neighbors.b1:
+      i_b1 = neighbors.b1['iseq']
+      third_nb_dict = {ih: i_b1}
 
 # determine bonds from pdb_str
   model = mmtbx.model.manager(
@@ -107,8 +109,9 @@ def exercise():
 # List of angle restraints
   angles = [
     (4, 1, 12),
-    (2, 1, 12),
+
     (0, 1, 12),
+    (2, 1, 12),
     (13, 4, 14),
     (5, 4, 14),
     (5, 4, 13),
@@ -127,14 +130,14 @@ def exercise():
   angle_ctrl = {}
   for ap in angle_proxies:
     if(ap.i_seqs in angles):
-      angle_ctrl[tuple(sorted(list(ap.i_seqs)))]=ap.angle_ideal
+      angle_ctrl[tuple(sorted(list(ap.i_seqs)))] = ap.angle_ideal
 
 # HH needs also third neighbors:
-  third_nb_ctrl = {19: [8, 9]}
+  third_nb_ctrl = {19: 8}
 
   assert (bond_list == bond_ctrl), '1-2 neighbors and distance_ideal are wrong'
   assert (angle_list == angle_ctrl), '1-3 neighbors and angle_ideal are wrong'
-  assert (third_nb_list == third_nb_ctrl), '1-4 neighbors are wrong'
+  assert (third_nb_dict == third_nb_ctrl), '1-4 neighbors are wrong'
 
 if (__name__ == "__main__"):
   t0 = time.time()

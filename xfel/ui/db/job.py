@@ -82,7 +82,7 @@ def submit_job(app, job):
     from xfel.command_line.xtc_process import phil_scope
     from iotbx.phil import parse
     trial_params = phil_scope.fetch(parse(phil_str)).extract()
-    image_format = trial_params.format.file_format
+    image_format = trial_params.format.file_format = job.rungroup.format
     assert image_format in ['cbf', 'pickle']
   else:
     image_format = 'pickle'
@@ -108,8 +108,8 @@ def submit_job(app, job):
     beamy                     = job.rungroup.beamy,
     energy                    = job.rungroup.energy,
     binning                   = job.rungroup.binning,
-    two_theta_low             = 12.5, # FIXME
-    two_theta_high            = 22.8, # FIXME
+    two_theta_low             = job.rungroup.two_theta_low,
+    two_theta_high            = job.rungroup.two_theta_high,
     # Generally for job submission
     dry_run                   = app.params.dry_run,
     dispatcher                = app.params.dispatcher,
@@ -139,6 +139,7 @@ def submit_job(app, job):
 
   if backend == 'dials':
     if trial_params.format.file_format == "cbf":
+      trial_params.input.address = job.rungroup.detector_address
       trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
       trial_params.format.cbf.override_energy = job.rungroup.energy
       trial_params.format.cbf.invalid_pixel_mask = job.rungroup.untrusted_pixel_mask_path
@@ -172,6 +173,7 @@ def submit_job(app, job):
       modules.insert(0, 'my_ana_pkg.mod_radial_average')
       modules.extend(['my_ana_pkg.mod_hitfind:index','my_ana_pkg.mod_dump:index'])
     elif image_format == 'pickle':
+      modules.insert(0, 'my_ana_pkg.mod_radial_average')
       modules.extend(['my_ana_pkg.mod_image_dict'])
     if app.params.dump_shots:
       modules.insert(0, 'my_ana_pkg.mod_dump:shot')

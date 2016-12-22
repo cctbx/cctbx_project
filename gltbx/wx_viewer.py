@@ -12,7 +12,10 @@ import gltbx.images
 from scitbx.array_family import flex
 import scitbx.math
 from scitbx import matrix
-import wx
+try:
+  import wx
+except ImportError, e:
+  exit() # To pass through the "make" step (dials.geometry_viewer), for graphics-free HPC build
 import wx.glcanvas
 import math
 import time

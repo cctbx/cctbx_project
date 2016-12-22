@@ -25,10 +25,14 @@ master_phil = libtbx.phil.parse("""
     .type = bool
   output_file = None
     .type = str
+  plot_x_max = None
+    .type = int
   plot_y_max = None
     .type = int
   low_max_two_theta_limit = None
     .type = float
+  normalize = False
+    .type = bool
 """)
 
 def distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
@@ -66,6 +70,12 @@ def run (args):
   else:
     logger = open(params.output_file, 'w')
     logger.write("%s "%params.output_file)
+
+  if params.verbose:
+    from matplotlib import pyplot as plt
+    import numpy as np
+    colormap = plt.cm.gist_ncar
+    plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(params.file_path))])
 
   # Iterate over each file provided
   for file_path in params.file_path:
@@ -147,15 +157,21 @@ def run (args):
     logger.write("Maximum 2theta for %s: %f, value: %f\n"%(file_path, max_twotheta, max_result))
 
     if params.verbose:
-      from pylab import plot, show, xlabel, ylabel, ylim
-      plot(xvals.as_numpy_array(),results.as_numpy_array(),'-')
-      xlabel("2 theta")
-      ylabel("Avg ADUs")
+      if params.plot_x_max is not None:
+        results = results.select(xvals <= params.plot_x_max)
+        xvals = xvals.select(xvals <= params.plot_x_max)
+      if params.normalize:
+        plt.plot(xvals.as_numpy_array(),(results/flex.max(results)).as_numpy_array(),'-')
+      else:
+        plt.plot(xvals.as_numpy_array(),results.as_numpy_array(),'-')
+      plt.xlabel("2 theta")
+      plt.ylabel("Avg ADUs")
       if params.plot_y_max is not None:
-        ylim(0, params.plot_y_max)
+        plt.ylim(0, params.plot_y_max)
 
   if params.verbose:
-    show()
+    plt.legend([os.path.basename(os.path.splitext(f)[0]) for f in params.file_path], ncol=2)
+    plt.show()
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

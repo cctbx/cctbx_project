@@ -410,6 +410,9 @@ class integrate_one_frame(IntegrationMetaProcedure):
     elif self.horizons_phil.integration.dials_refinement.strategy=="wavelength":
       params.refinement.parameterisation.beam.fix="in_spindle_plane,out_spindle_plane"
       params.refinement.parameterisation.detector.fix_list=["Dist","Tau1"] # fix detector rotz and distance
+    elif self.horizons_phil.integration.dials_refinement.strategy=="fix":
+      params.refinement.parameterisation.beam.fix="all"
+      params.refinement.parameterisation.detector.fix_list=["Dist","Tau1"] # fix detector rotz and distance
     if isoform is not None:
       params.refinement.reflections.outlier.algorithm="null"
       params.refinement.parameterisation.crystal.fix="cell"

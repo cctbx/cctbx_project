@@ -648,8 +648,8 @@ class libsvm_module(SourceModule):
 class cctbx_module(SourceModule):
   module = 'cctbx_project'
   anonymous = ['git',
-               'https://github.com/cctbx/cctbx_project.git',
                'git@github.com:cctbx/cctbx_project.git',
+               'https://github.com/cctbx/cctbx_project.git',
                'https://github.com/cctbx/cctbx_project/archive/master.zip']
 
 class cbflib_module(SourceModule):

@@ -633,6 +633,76 @@ def parallel_map (
   return results
 
 
+
+
+def multi_core_run( myfunction, argstuples, nproc ):
+  """
+  Run a function on many cpu cores using multiprocessing.
+  Adapted from example in Computational Crystallography Newsletter (2013). 4, p21.
+
+  myfunction: the name of the function to be parallelised,
+  argstuples: a list of tuples of function arguments,
+  nproc: the number of cores to run on
+
+  Output is an iterator where each element contains:
+  the tuple of arguments,
+  the result,
+  an error message if myfunction crashed
+
+  Example:
+
+  from libtbx import easy_mp
+  argstuples = [(args1a, args2a), (args1b, args2b), (args1c, args2c) ]
+
+  for i, parmres in enumerate(easy_mp.multi_core_run( RunMyJob, argstuples, nproc)):
+    GatherResults( parmres )
+
+  """
+  from libtbx.utils import Sorry
+  from libtbx.queuing_system_utils import scheduling
+  import multiprocessing
+
+  qman = multiprocessing.Manager()
+  manager = scheduling.Manager(
+    units = [
+    scheduling.ExecutionUnit(
+        factory = multiprocessing.Process,
+        processor = scheduling.RetrieveProcessor( queue = qman.Queue() ),
+        )
+    for i in range(nproc)
+    ]
+  )
+
+  pf = scheduling.ParallelForIterator(
+    calculations = (
+          (
+            myfunction,
+            argstuple,
+            {},
+          )
+         for argstuple in argstuples
+    ),
+      manager = manager,
+  )
+
+  for ( params, result ) in scheduling.FinishingOrder( parallel_for = pf ):
+    # params[0] is the function name. params[1] is the tuple of function arguments
+    from libtbx import introspection
+    import StringIO
+    res = None
+    errstr = StringIO.StringIO()
+
+    try:
+      res = result()
+    except Exception, e:
+      introspection.show_stack( out = errstr )
+
+    parmres = ( params[1], res, errstr.getvalue() )
+    yield parmres
+
+
+
+
 #  -------  SIMPLE INTERFACE TO MULTIPROCESSING -------------
 
 #  For example of use, see phenix_regression/libtbx/tst_easy_mp.py

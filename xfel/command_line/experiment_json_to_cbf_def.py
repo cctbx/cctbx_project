@@ -21,7 +21,8 @@ class Script(object):
     # Create the parser
     self.parser = OptionParser(
       phil = phil_scope,
-      read_experiments = True)
+      read_experiments = True,
+      check_format = False)
 
   def run(self):
     params, options = self.parser.parse_args(show_diff_phil=True)

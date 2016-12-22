@@ -177,7 +177,7 @@ class find_outliers:
     if verbose: print ", ".join(["=".join([str(i[0]),"%d"%i[1]]) for i in spotclasses.items()]),
     totalsp = sum([spotclasses.values()[iidx] for iidx in xrange(len(spotclasses))])
     if verbose: print "Total=%d"%(totalsp),"# observed spots",len(self.observed_spots)
-    assert totalsp == len(self.observed_spots)
+    assert totalsp == len(self.observed_spots), "Some spot pairs have the same predicted-observed distances. Do you have duplicated images?"
 
     self.x = flex.double(len(self.dr))
     for i in xrange(len(self.x)):

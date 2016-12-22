@@ -105,6 +105,25 @@ def get_amplitudes(args):
   return array
 
 
+def get_effective_b_values(d_min,resolution_dependent_b,d_cut):
+  # Return effective b values at sthol2_1 2 and 3
+  # see adjust_amplitudes_linear below
+
+  sthol2_2=0.25/d_cut**2
+  sthol2_1=sthol2_2*0.5
+  sthol2_3=0.25/d_min**2
+  b1=resolution_dependent_b[0]
+  b2=resolution_dependent_b[1]
+  b3=resolution_dependent_b[2]
+
+  b3_use=b3+b2
+
+  res_1=(0.25/sthol2_1)**0.5
+  res_2=(0.25/sthol2_2)**0.5
+  res_3=(0.25/sthol2_3)**0.5
+
+  return [res_1,res_2,res_3],[b1,b2,b3_use]
+
 def adjust_amplitudes_linear(f_array,b1,b2,b3,d_cut=None):
   # do something to the amplitudes.
   #   b1=delta_b at midway between d=inf and d=d_cut,b2 at d_cut,
@@ -118,6 +137,7 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,d_cut=None):
   scale_array=flex.double()
   import math
   d_min=f_array.d_min()
+  if d_cut is None: d_cut=d_min
 
   sthol2_2=0.25/d_cut**2
   sthol2_1=sthol2_2*0.5

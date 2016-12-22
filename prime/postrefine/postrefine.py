@@ -2,7 +2,6 @@ from __future__ import division
 from cctbx.array_family import flex
 from cctbx import miller
 import cPickle as pickle
-from mod_util import intensities_scaler
 from mod_leastsqr import leastsqr_handler
 from mod_results import postref_results
 from cctbx.crystal import symmetry
@@ -11,6 +10,7 @@ from scitbx.matrix import sqr
 from cctbx import statistics
 from mod_partiality import partiality_handler
 from mod_lbfgs_partiality import lbfgs_partiality_handler
+from mod_mx import mx_handler
 
 class postref_handler(object):
   """
@@ -175,88 +175,17 @@ class postref_handler(object):
     inputs = observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm
     return inputs, 'OK'
 
-  def determine_polar(self, observations_original, iparams, pickle_filename, pres=None):
-    """
-    Determine polarity based on input data.
-    The function still needs isomorphous reference so, if flag_polar is True,
-    miller_array_iso must be supplied in input file.
-    """
-    if iparams.indexing_ambiguity.flag_on == False:
-      return 'h,k,l', 0 , 0
-    cc_asu = 0
-    cc_rev = 0
-    if iparams.indexing_ambiguity.index_basis_in is not None:
-      if iparams.indexing_ambiguity.index_basis_in.endswith('mtz'):
-        #use reference mtz file to determine polarity
-        from iotbx import reflection_file_reader
-        reflection_file_polar = reflection_file_reader.any_reflection_file(iparams.indexing_ambiguity.index_basis_in)
-        miller_arrays_polar=reflection_file_polar.as_miller_arrays()
-        miller_array_polar = miller_arrays_polar[0]
-        miller_array_polar = miller_array_polar.resolution_filter(d_min=iparams.indexing_ambiguity.d_min, d_max=iparams.indexing_ambiguity.d_max)
-        #for post-refinement, apply the scale factors and partiality first
-        if pres is not None:
-          #observations_original = pres.observations_original.deep_copy()
-          two_theta = observations_original.two_theta(wavelength=pres.wavelength).data()
-          alpha_angle = flex.double([0]*len(observations_original.indices()))
-          spot_pred_x_mm = flex.double([0]*len(observations_original.indices()))
-          spot_pred_y_mm = flex.double([0]*len(observations_original.indices()))
-          detector_distance_mm = pres.detector_distance_mm
-          ph = partiality_handler()
-          partiality, dummy, dummy, dummy = ph.calc_partiality_anisotropy_set(pres.unit_cell, 0, 0,
-                                                                 observations_original.indices(),
-                                                                 pres.ry, pres.rz, pres.r0, pres.re,
-                                                                 two_theta, alpha_angle, pres.wavelength, pres.crystal_orientation,
-                                                                 spot_pred_x_mm, spot_pred_y_mm,
-                                                                 detector_distance_mm,
-                                                                 iparams.partiality_model,
-                                                                 iparams.flag_beam_divergence)
-          #partiality = pres.partiality
-          sin_theta_over_lambda_sq = observations_original.two_theta(pres.wavelength).sin_theta_over_lambda_sq().data()
-          I_full = flex.double(observations_original.data()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq)) * partiality))
-          sigI_full = flex.double(observations_original.sigmas()/(pres.G * flex.exp(flex.double(-2*pres.B*sin_theta_over_lambda_sq)) * partiality))
-          observations_original = observations_original.customized_copy(data=I_full, sigmas=sigI_full)
-        observations_asu = observations_original.map_to_asu()
-        observations_rev = self.get_observations_non_polar(observations_original, iparams.indexing_ambiguity.assigned_basis)
-        matches = miller.match_multi_indices(
-                    miller_indices_unique=miller_array_polar.indices(),
-                    miller_indices=observations_asu.indices())
-        I_ref_match = flex.double([miller_array_polar.data()[pair[0]] for pair in matches.pairs()])
-        I_obs_match = flex.double([observations_asu.data()[pair[1]] for pair in matches.pairs()])
-        cc_asu = flex.linear_correlation(I_ref_match, I_obs_match).coefficient()
-        n_refl_asu = len(matches.pairs())
-        matches = miller.match_multi_indices(
-                    miller_indices_unique=miller_array_polar.indices(),
-                    miller_indices=observations_rev.indices())
-        I_ref_match = flex.double([miller_array_polar.data()[pair[0]] for pair in matches.pairs()])
-        I_obs_match = flex.double([observations_rev.data()[pair[1]] for pair in matches.pairs()])
-        cc_rev = flex.linear_correlation(I_ref_match, I_obs_match).coefficient()
-        n_refl_rev = len(matches.pairs())
-        polar_hkl = 'h,k,l'
-        if cc_rev > (cc_asu*1.01):
-          polar_hkl = iparams.indexing_ambiguity.assigned_basis
-      else:
-        #use basis in the given input file
-        polar_hkl = 'h,k,l'
-        basis_pickle = pickle.load(open(iparams.indexing_ambiguity.index_basis_in,"rb"))
-        if pickle_filename in basis_pickle:
-          polar_hkl = basis_pickle[pickle_filename]
-    else:
-      #set default polar_hkl to h,k,l
-      polar_hkl = 'h,k,l'
-    return polar_hkl, cc_asu, cc_rev
-
-  def get_observations_non_polar(self, observations_original, polar_hkl):
+  def get_observations_non_polar(self, observations_original, pickle_filename, iparams):
     #return observations with correct polarity
-    observations_asu = observations_original.map_to_asu()
-    assert len(observations_original.indices())==len(observations_asu.indices()), 'No. of original and asymmetric-unit indices are not equal %6.0f, %6.0f'%(len(observations_original.indices()), len(observations_asu.indices()))
-    if polar_hkl == 'h,k,l':
-      return observations_asu
-    else:
-      from cctbx import sgtbx
-      cb_op = sgtbx.change_of_basis_op(polar_hkl)
-      observations_rev = observations_asu.change_basis(cb_op).map_to_asu()
-      assert len(observations_original.indices())==len(observations_rev.indices()), 'No. of original and inversed asymmetric-unit indices are not equal %6.0f, %6.0f'%(len(observations_original.indices()), len(observations_rev.indices()))
-      return observations_rev
+    if iparams.indexing_ambiguity.index_basis_in is None:
+      return observations_original.map_to_asu(), 'h,k,l'
+    ind_pickle = pickle.load(open(iparams.indexing_ambiguity.index_basis_in, "rb"))
+    if pickle_filename not in ind_pickle:
+      return observations_original.map_to_asu(), 'Not Found'
+    from cctbx import sgtbx
+    cb_op = sgtbx.change_of_basis_op(ind_pickle[pickle_filename])
+    observations_alt = observations_original.map_to_asu().change_basis(cb_op).map_to_asu()
+    return observations_alt, ind_pickle[pickle_filename]
 
   def postrefine_by_frame(self, frame_no, pickle_filename, iparams, miller_array_ref, pres_in, avg_mode):
     #1. Prepare data
@@ -272,11 +201,8 @@ class postref_handler(object):
     else:
       txt_exception += txt_organize_input + '\n'
       return None, txt_exception
-    #2. Determine polarity - always do this even if flag_polar = False
-    #the function will take care of it.
-    polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, iparams, pickle_filename, pres=pres_in)
-    #3. Select data for post-refinement (only select indices that are common with the reference set
-    observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
+    #2. Select data for post-refinement (only select indices that are common with the reference set
+    observations_non_polar, index_basis_name = self.get_observations_non_polar(observations_original, pickle_filename, iparams)
     matches = miller.match_multi_indices(
                   miller_indices_unique=miller_array_ref.indices(),
                   miller_indices=observations_non_polar.indices())
@@ -317,7 +243,7 @@ class postref_handler(object):
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
-    observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
+    observations_non_polar, index_basis_name = self.get_observations_non_polar(observations_original, pickle_filename, iparams)
     from cctbx.uctbx import unit_cell
     uc_fin = unit_cell((a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin))
     if pres_in is not None:
@@ -366,15 +292,10 @@ class postref_handler(object):
             wavelength=wavelength,
             crystal_orientation=crystal_fin_orientation,
             detector_distance_mm=detector_distance_mm)
-    r_change, r_xy_change, cc_change, cc_iso_change = (0,0,0,0)
-    try:
-      r_change = ((pres.R_final - pres.R_init)/pres.R_init)*100
-      r_xy_change = ((pres.R_xy_final - pres.R_xy_init)/pres.R_xy_init)*100
-      cc_change = ((pres.CC_final - pres.CC_init)/pres.CC_init)*100
-      cc_iso_change = ((pres.CC_iso_final - pres.CC_iso_init)/pres.CC_iso_init)*100
-    except Exception:
-      pass
-    txt_postref= ' {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} R:{3:8.2f}% RXY:{4:8.2f}% CC:{5:6.2f}% CCISO:{6:6.2f}% G:{7:10.3e} B:{8:7.1f} CELL:{9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f} {13:6.2f} {14:6.2f}'.format(img_filename_only+' ('+polar_hkl+')', observations_original_sel.d_min(), len(observations_original_sel.data()), r_change, r_xy_change, cc_change, cc_iso_change, pres.G, pres.B, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin)
+    r_change = ((pres.R_final - pres.R_init)/pres.R_init)*100
+    r_xy_change = ((pres.R_xy_final - pres.R_xy_init)/pres.R_xy_init)*100
+    cc_change = ((pres.CC_final - pres.CC_init)/pres.CC_init)*100
+    txt_postref= '{0:40} => RES:{1:5.2f} NREFL:{2:5d} R:{3:6.1f}% RXY:{4:5.1f}% CC:{5:5.1f}% G:{6:5.1f} B:{7:5.1f} CELL:{8:6.1f}{9:6.1f} {10:6.1f} {11:5.1f} {12:5.1f} {13:5.1f}'.format(img_filename_only+' ('+index_basis_name+')', observations_original_sel.d_min(), len(observations_original_sel.data()), r_change, r_xy_change, cc_change, pres.G, pres.B, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin)
     print txt_postref
     txt_postref += '\n'
     return pres, txt_postref
@@ -426,11 +347,8 @@ class postref_handler(object):
     alpha_angle_sel = alpha_angle_sel.select(i_sel_sigmas)
     spot_pred_x_mm_sel = spot_pred_x_mm_sel.select(i_sel_sigmas)
     spot_pred_y_mm_sel = spot_pred_y_mm_sel.select(i_sel_sigmas)
-    polar_hkl, cc_iso_raw_asu, cc_iso_raw_rev = self.determine_polar(observations_original, \
-        iparams, pickle_filename)
-    observations_non_polar_sel = self.get_observations_non_polar(observations_original_sel, \
-        polar_hkl)
-    observations_non_polar = self.get_observations_non_polar(observations_original, polar_hkl)
+    observations_non_polar_sel, index_basis_name = self.get_observations_non_polar(observations_original_sel, pickle_filename, iparams)
+    observations_non_polar, index_basis_name = self.get_observations_non_polar(observations_original, pickle_filename, iparams)
     uc_params = observations_original.unit_cell().parameters()
     ph = partiality_handler()
     r0 = ph.calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
@@ -442,7 +360,6 @@ class postref_handler(object):
       G = flex.median(observations_original_sel.data())/mean_of_mean_I
     if iparams.flag_apply_b_by_frame:
       try:
-        from mod_util import mx_handler
         mxh = mx_handler()
         asu_contents = mxh.get_asu_contents(iparams.n_residues)
         observations_as_f = observations_non_polar_sel.as_amplitude_array()
@@ -491,54 +408,8 @@ class postref_handler(object):
             wavelength=wavelength,
             crystal_orientation=crystal_init_orientation,
             detector_distance_mm=detector_distance_mm)
-    txt_scale_frame_by_mean_I = ' {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} G:{3:10.3e} B:{4:7.1f} CELL:{5:6.2f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f}'.format(img_filename_only+' ('+polar_hkl+')', observations_original.d_min(), len(observations_original_sel.data()), G, B, uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])
+    txt_scale_frame_by_mean_I = ' {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} G:{3:10.3e} B:{4:7.1f} CELL:{5:6.2f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f}'.format(img_filename_only+' ('+index_basis_name+')', observations_original.d_min(), len(observations_original_sel.data()), G, B, uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5])
     print txt_scale_frame_by_mean_I
     txt_scale_frame_by_mean_I += '\n'
     return pres, txt_scale_frame_by_mean_I
 
-def prepare_output(results,
-        iparams,
-        avg_mode):
-  #results is a list of postref_results objects
-  #length of this list equals to number of input frames
-  inten_scaler = intensities_scaler()
-  prep_output = inten_scaler.prepare_output(results, iparams, avg_mode)
-  return prep_output
-
-def calc_avg_I(group_no, miller_index, miller_indices_ori, I, sigI, G, B, p_set, rs_set, wavelength_set,
-               sin_theta_over_lambda_sq, SE, avg_mode, iparams, pickle_filename):
-  #results is a list of postref_results objects
-  #length of this list equals to number of input frames
-  inten_scaler = intensities_scaler()
-  avg_I_result = inten_scaler.calc_avg_I(group_no, miller_index, miller_indices_ori, I, sigI, G, B,
-                     p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
-                     iparams, pickle_filename)
-  return avg_I_result
-
-def calc_avg_I_cpp(group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B, \
-        p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode, iparams, pickle_filename):
-  #results is a list of postref_results objects
-  #length of this list equals to number of input frames
-  inten_scaler = intensities_scaler()
-  avg_I_result = inten_scaler.calc_avg_I_cpp(group_no, group_id_list, miller_index, \
-                    miller_indices_ori, I, sigI, G, B,
-                    p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, avg_mode,
-                    iparams, pickle_filename)
-  return avg_I_result
-
-def write_output(miller_indices_merge, I_merge, sigI_merge, stat_all,
-                   I_two_halves_tuple, iparams, uc_mean, wavelength_mean,
-                   output_mtz_file_prefix, avg_mode):
-  #results is a list of postref_results objects
-  #length of this list equals to number of input frames
-  inten_scaler = intensities_scaler()
-  miller_array_merge, txt_out = inten_scaler.write_output(miller_indices_merge, \
-                                            I_merge, sigI_merge, stat_all, \
-                                            I_two_halves_tuple, iparams, uc_mean, \
-                                            wavelength_mean, output_mtz_file_prefix, avg_mode)
-  return miller_array_merge, txt_out
-
-def read_input(args):
-  from mod_input import process_input
-  iparams, txt_out_input = process_input(args)
-  return iparams, txt_out_input

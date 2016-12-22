@@ -27,6 +27,7 @@ from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
+from iotbx.file_reader import any_file
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -36,6 +37,9 @@ file_name = None
   .multiple = True
   .short_caption = Model file
   .style = file_type:pdb bold input_file
+map_file_name = None
+  .type = path
+  .help = User-provided map that will be used as reference
 trim_alternative_conformations = False
   .type = bool
   .help = Leave only atoms with empty altloc
@@ -60,6 +64,12 @@ data_for_map = None
   .type = path
 number_of_refinement_cycles = 3
   .type = int
+ignore_ncs = False
+  .type = bool
+  .help = Don't use NCS even if it is present in model.
+debug = False
+  .type = bool
+  .help = Output all intermediate files
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -85,6 +95,8 @@ class model_idealization():
   def __init__(self,
                pdb_input,
                cif_objects=None,
+               map_data = None,
+               crystal_symmetry = None,
                params=None,
                log=sys.stdout,
                verbose=True):
@@ -101,7 +113,7 @@ class model_idealization():
     self.after_loop_idealization = None
     self.after_rotamer_fixing = None
     self.final_model_statistics = None
-    self.reference_map = None
+    self.reference_map = map_data
 
     self.whole_grm = None
     self.master_grm = None
@@ -119,7 +131,7 @@ class model_idealization():
     self.working_pdb_h = None # one to use for fixing (master_pdb_h or working_pdb_h)
 
     # various checks, shifts, trims
-    self.cs = self.pdb_input.crystal_symmetry()
+    self.cs = crystal_symmetry
     # check self.cs (copy-paste from secondary_sturcure_restraints)
     corrupted_cs = False
     if self.cs is not None:
@@ -166,7 +178,7 @@ class model_idealization():
       self.shift_vector = box.shift_vector
 
     # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_h.pdb")
-    if self.shift_vector is not None:
+    if self.shift_vector is not None and self.params.debug:
       write_whole_pdb_file(
           file_name="%s_boxed.pdb" % self.params.output_prefix,
           pdb_hierarchy=self.original_boxed_hierarchy,
@@ -215,7 +227,8 @@ class model_idealization():
         fourier_coefficients=fc)
     fft_map.apply_sigma_scaling()
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
-    fft_map.as_xplor_map(file_name="%s.map" % self.params.output_prefix)
+    if self.params.debug:
+      fft_map.as_xplor_map(file_name="%s.map" % self.params.output_prefix)
 
   def prepare_reference_map_2(self, xrs, pdb_h):
     print >> self.log, "Preparing reference map, method 2"
@@ -239,7 +252,8 @@ class model_idealization():
         fourier_coefficients=fc)
     fft_map.apply_sigma_scaling()
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
-    fft_map.as_xplor_map(file_name="%s_2.map" % self.params.output_prefix)
+    if self.params.debug:
+      fft_map.as_xplor_map(file_name="%s_2.map" % self.params.output_prefix)
 
   def prepare_reference_map_3(self, xrs, pdb_h):
     """ with ramachandran outliers """
@@ -269,7 +283,8 @@ class model_idealization():
         fourier_coefficients=fc)
     fft_map.apply_sigma_scaling()
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
-    fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
+    if self.params.debug:
+      fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
 
   def get_grm(self):
     # first make whole grm using self.whole_pdb_h
@@ -286,6 +301,8 @@ class model_idealization():
     params.pdb_interpretation.peptide_link.apply_peptide_plane = True
     params.pdb_interpretation.ncs_search.enabled = True
     params.pdb_interpretation.restraints_library.rdl = True
+    if self.params.ignore_ncs:
+      params.pdb_interpretation.ncs_search.enabled = False
     processed_pdb_files_srv = mmtbx.utils.\
         process_pdb_file_srv(
             crystal_symmetry= self.whole_xrs.crystal_symmetry(),
@@ -329,33 +346,35 @@ class model_idealization():
 
   def run(self):
     t_0 = time()
-
-    ncs_obj = iotbx.ncs.input(
-        hierarchy=self.whole_pdb_h,
-        chain_max_rmsd=4.0,
-        chain_similarity_threshold=0.99,
-        residue_match_radius=999.0)
-    print >> self.log, "Found NCS groups:"
-    ncs_obj.show(format='phil', log=self.log)
-    ncs_restr_group_list = ncs_obj.get_ncs_restraints_group_list(
-        raise_sorry=False)
     self.using_ncs = False
-    total_ncs_selected_atoms = 0
-    master_sel = flex.size_t([])
-    filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
-        self.whole_pdb_h, ncs_restr_group_list)
-    if len(filtered_ncs_restr_group_list) > 0:
-      self.using_ncs = True
-      master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
-      for ncs_gr in filtered_ncs_restr_group_list:
-        for copy in ncs_gr.copies:
-          master_sel.set_selected(copy.iselection, False)
-      self.master_pdb_h = self.whole_pdb_h.select(master_sel)
-      self.master_sel=master_sel
-      self.master_pdb_h.reset_atom_i_seqs()
+    filtered_ncs_restr_group_list = []
+    if not self.params.ignore_ncs:
+      ncs_obj = iotbx.ncs.input(
+          hierarchy=self.whole_pdb_h,
+          chain_max_rmsd=4.0,
+          chain_similarity_threshold=0.99,
+          residue_match_radius=999.0)
+      print >> self.log, "Found NCS groups:"
+      ncs_obj.show(format='phil', log=self.log)
+      ncs_restr_group_list = ncs_obj.get_ncs_restraints_group_list(
+          raise_sorry=False)
+      total_ncs_selected_atoms = 0
+      master_sel = flex.size_t([])
+      filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
+          self.whole_pdb_h, ncs_restr_group_list)
+      if len(filtered_ncs_restr_group_list) > 0:
+        self.using_ncs = True
+        master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
+        for ncs_gr in filtered_ncs_restr_group_list:
+          for copy in ncs_gr.copies:
+            master_sel.set_selected(copy.iselection, False)
+        self.master_pdb_h = self.whole_pdb_h.select(master_sel)
+        self.master_sel=master_sel
+        self.master_pdb_h.reset_atom_i_seqs()
 
     if self.using_ncs:
-      self.master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
+      if self.params.debug:
+        self.master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
       self.working_pdb_h = self.master_pdb_h
     else:
       self.working_pdb_h = self.whole_pdb_h
@@ -372,11 +391,10 @@ class model_idealization():
     else:
       self.whole_xrs = self.working_xrs
 
-    if self.params.use_map_for_reference:
+    if self.reference_map is None and self.params.use_map_for_reference:
       # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
       # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
       self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-    # STOP()
 
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
@@ -406,7 +424,6 @@ class model_idealization():
       # print >> self.log, ann.as_pdb_str()
       print >> self.log, "Filtered SS annotation"
       print >> self.log, self.ann.as_pdb_str()
-      # STOP()
 
     # getting grm with SS restraints
     self.get_grm()
@@ -437,8 +454,9 @@ class model_idealization():
           reference_map=self.reference_map)
       # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_h_1.pdb")
     else:
-      self.params.ss_idealization.file_name_before_regularization = \
-          "%s_ss_before_reg.pdb" % self.params.output_prefix
+      if self.params.debug:
+        self.params.ss_idealization.file_name_before_regularization = \
+            "%s_ss_before_reg.pdb" % self.params.output_prefix
       ssb.substitute_ss(
           real_h=self.working_pdb_h,
           xray_structure=self.working_xrs,
@@ -460,11 +478,11 @@ class model_idealization():
         molprobity_scores=True)
 
     # Write resulting pdb file.
-    self.shift_and_write_result(
-        hierarchy=self.working_pdb_h,
-        fname_suffix="ss_ideal",
-        grm=self.working_grm)
-    # STOP()
+    if self.params.debug:
+      self.shift_and_write_result(
+          hierarchy=self.working_pdb_h,
+          fname_suffix="ss_ideal",
+          grm=self.working_grm)
     self.params.loop_idealization.minimize_whole = not self.using_ncs
     # self.params.loop_idealization.enabled = False
     # self.params.loop_idealization.variant_search_level = 0
@@ -480,11 +498,11 @@ class model_idealization():
         log=self.log,
         verbose=True)
     self.log.flush()
-    # STOP()
-    self.shift_and_write_result(
-        hierarchy=loop_ideal.resulting_pdb_h,
-        fname_suffix="rama_ideal",
-        grm=self.working_grm)
+    if self.params.debug:
+      self.shift_and_write_result(
+          hierarchy=loop_ideal.resulting_pdb_h,
+          fname_suffix="rama_ideal",
+          grm=self.working_grm)
     self.after_loop_idealization = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
@@ -500,9 +518,10 @@ class model_idealization():
       self.log.flush()
       print >> self.log, "Fixing rotamers..."
       self.log.flush()
-      self.shift_and_write_result(
-        hierarchy=fixed_rot_pdb_h,
-        fname_suffix="just_before_rota")
+      if self.params.debug:
+        self.shift_and_write_result(
+          hierarchy=fixed_rot_pdb_h,
+          fname_suffix="just_before_rota")
       fixed_rot_pdb_h = fix_rotamer_outliers(
           pdb_hierarchy=fixed_rot_pdb_h,
           grm=self.working_grm.geometry,
@@ -511,11 +530,11 @@ class model_idealization():
           mon_lib_srv=self.mon_lib_srv,
           rotamer_manager=self.rotamer_manager,
           verbose=True)
-
-    self.shift_and_write_result(
-        hierarchy=fixed_rot_pdb_h,
-        fname_suffix="rota_ideal",
-        grm=self.working_grm)
+    if self.params.debug:
+      self.shift_and_write_result(
+          hierarchy=fixed_rot_pdb_h,
+          fname_suffix="rota_ideal",
+          grm=self.working_grm)
     cs_to_write = self.cs if self.shift_vector is None else None
     self.after_rotamer_fixing = geometry_no_grm(
         pdb_hierarchy=iotbx.pdb.input(
@@ -626,11 +645,12 @@ class model_idealization():
       atoms = pdb_h_shifted.atoms()
       sites_cart = atoms.extract_xyz()
       atoms.set_xyz(new_xyz=sites_cart-self.shift_vector)
-    write_whole_pdb_file(
-        file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
-        pdb_hierarchy=hierarchy,
-        crystal_symmetry=self.cs,
-        ss_annotation=self.ann)
+    if self.params.debug:
+      write_whole_pdb_file(
+          file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
+          pdb_hierarchy=hierarchy,
+          crystal_symmetry=self.cs,
+          ss_annotation=self.ann)
     write_whole_pdb_file(
         file_name="%s_%s.pdb" % (self.params.output_prefix, fname_suffix),
         pdb_hierarchy=pdb_h_shifted,
@@ -711,6 +731,8 @@ class model_idealization():
     return result
 
 def run(args):
+
+
   # processing command-line stuff, out of the object
   log = multi_out()
   log.register("stdout", sys.stdout)
@@ -736,9 +758,24 @@ def run(args):
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
+  map_data = None
+  if inputs.ccp4_map is not None:
+    print >> log, "Processing input CCP4 map file..."
+    map_data = inputs.ccp4_map.data.as_double()
+    print >> log, "Input map min,max,mean: %7.3f %7.3f %7.3f"%\
+      map_data.as_1d().min_max_mean().as_tuple()
+    map_data = map_data - flex.mean(map_data)
+    sd = map_data.sample_standard_deviation()
+    map_data = map_data/sd
+    print >> log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
+      map_data.as_1d().min_max_mean().as_tuple()
+    inputs.ccp4_map.show_summary(prefix="  ")
+
   mi_object = model_idealization(
       pdb_input=pdb_input,
       cif_objects=inputs.cif_objects,
+      map_data = map_data,
+      crystal_symmetry = inputs.crystal_symmetry,
       params=work_params,
       log=log,
       verbose=True)

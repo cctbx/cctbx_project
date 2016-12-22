@@ -281,8 +281,7 @@ class merging_stats (object) :
       self.cc_one_half, self.cc_one_half_n_refl = cctbx.miller.compute_cc_one_half(
         unmerged=array, return_n_refl=True)
       self.cc_one_half_sigma_tau, self.cc_one_half_sigma_tau_n_refl = \
-        array.cc_one_half_sigma_tau(
-          use_internal_variance=use_internal_variance, return_n_refl=True)
+        array.cc_one_half_sigma_tau(return_n_refl=True)
       if cc_one_half_significance_level is not None:
         def compute_cc_significance(r, n, p):
           # https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Testing_using_Student.27s_t-distribution

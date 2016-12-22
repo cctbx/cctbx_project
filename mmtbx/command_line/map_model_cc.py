@@ -94,23 +94,23 @@ def run(args, log=sys.stdout):
     map_data       = map_data,
     d_min          = d_min)
   broadcast(m="Map-model CC:", log=log)
-  print >> log, "Overall:"
-  # entire box
-  print >> log, "         box: %6.4f"%cc_calculator.cc()
-  # all atoms
-  print >> log, "around atoms: %6.4f"%cc_calculator.cc(
-    selection=flex.bool(xrs.scatterers().size(),True))
-  # per chain
-  print >> log, "Per chain:"
-  for chain in h.chains():
-    print >> log, "  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
-      selection=chain.atoms().extract_i_seq()))
   # per residue
   print >> log, "Per residue:"
   for rg in h.residue_groups():
     cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
     print >> log, "  chain id: %s resid %s: %6.4f"%(
       rg.parent().id, rg.resid(), cc)
+  # per chain
+  print >> log, "Per chain:"
+  for chain in h.chains():
+    print >> log, "  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
+      selection=chain.atoms().extract_i_seq()))
+  print >> log, "Overall:"
+  # entire box
+  print >> log, "         box: %6.4f"%cc_calculator.cc()
+  # all atoms
+  print >> log, "around atoms: %6.4f"%cc_calculator.cc(
+    selection=flex.bool(xrs.scatterers().size(),True))
   #
 
 if (__name__ == "__main__"):

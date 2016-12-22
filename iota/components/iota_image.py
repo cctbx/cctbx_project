@@ -138,6 +138,7 @@ class SingleImage(object):
       with misc.Capturing() as junk_output:
         loaded_img = dxtbx.load(self.raw_img)
     except IOError, e:
+      print e
       loaded_img = None
       pass
 
@@ -229,7 +230,6 @@ class SingleImage(object):
         self.gain = 1.0
     else:
       self.gain = 1.0
-
 
     return data, img_type
 
@@ -370,6 +370,7 @@ class SingleImage(object):
     # Load image
     img_data, img_type = self.load_image()
     self.status = 'loaded'
+
 
     if img_data is None:
       self.log_info.append('\n{:-^100}\n'.format(self.raw_img))

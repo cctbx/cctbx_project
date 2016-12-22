@@ -486,8 +486,8 @@ class minimize_wrapper_with_map():
       from mmtbx.rotamer.rotamer_eval import RotamerEval
       rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
 
-    self.pdb_h.write_pdb_file(file_name="rsr_before_rot_fix.pdb",
-        crystal_symmetry=self.xrs.crystal_symmetry())
+    # self.pdb_h.write_pdb_file(file_name="rsr_before_rot_fix.pdb",
+    #     crystal_symmetry=self.xrs.crystal_symmetry())
     # STOP()
 
     selection_real_space = xrs.backbone_selection()
@@ -506,8 +506,8 @@ class minimize_wrapper_with_map():
         mon_lib_srv        = mon_lib_srv,
         rotamer_manager    = rotamer_manager)
       self.xrs = self.pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
-      self.pdb_h.write_pdb_file(file_name="rsr_after_rot_fix.pdb",
-          crystal_symmetry=self.xrs.crystal_symmetry())
+      # self.pdb_h.write_pdb_file(file_name="rsr_after_rot_fix.pdb",
+      #     crystal_symmetry=self.xrs.crystal_symmetry())
       # if True:
       if ncs_restraints_group_list is None or len(ncs_restraints_group_list)==0:
         #No NCS
@@ -608,4 +608,4 @@ class minimize_wrapper_with_map():
 
 
     # print >> log, "pdb_h", self.pdb_h.atoms_size()
-    self.pdb_h.write_pdb_file("after_map_min.pdb")
+    # self.pdb_h.write_pdb_file("after_map_min.pdb")

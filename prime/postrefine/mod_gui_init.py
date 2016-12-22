@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 06/01/2016
+Last Changed: 08/23/2016
 Description : PRIME GUI Initialization module
 '''
 
@@ -14,6 +14,8 @@ from threading import Thread
 from cctbx.uctbx import unit_cell
 from libtbx import easy_run
 from libtbx import easy_pickle as ep
+from libtbx.utils import to_str
+import iotbx.phil as ip
 import numpy as np
 
 import matplotlib.gridspec as gridspec
@@ -68,7 +70,11 @@ class PRIMEWindow(wx.Frame):
                                                  bitmap=wx.Bitmap('{}/32x32/exit.png'.format(icons)),
                                                  shortHelp='Quit',
                                                  longHelp='Exit PRIME')
-
+    self.tb_btn_prefs = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                  label='Preferences',
+                                                  bitmap=wx.Bitmap('{}/32x32/config.png'.format(icons)),
+                                                  shortHelp='Preferences',
+                                                  longHelp='PRIME Preferences')
     self.toolbar.AddSeparator()
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
@@ -99,7 +105,6 @@ class PRIMEWindow(wx.Frame):
 
     # Instantiate windows
     self.input_window = PRIMEInputWindow(self, phil)
-    #self.pparams = self.input_window.pparams
 
     # Single input window
     main_box.Add(self.input_window, flag=wx.ALL | wx.EXPAND, border=10)
@@ -112,6 +117,7 @@ class PRIMEWindow(wx.Frame):
 
     # Toolbar button bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
+    self.Bind(wx.EVT_TOOL, self.onPreferences, self.tb_btn_prefs)
     self.Bind(wx.EVT_BUTTON, self.onInput,
               self.input_window.inp_box.btn_browse)
     self.Bind(wx.EVT_TEXT, self.onInput, self.input_window.inp_box.ctr)
@@ -136,6 +142,19 @@ class PRIMEWindow(wx.Frame):
     info.AddDeveloper('Monarin Uervirojnangkoorn')
     info.AddDeveloper('Axel Brunger')
     wx.AboutBox(info)
+
+  def onPreferences(self, e):
+    self.pparams = self.input_window.pparams
+    dlg = PRIMEPreferences(self)
+    dlg.set_choices(method=self.pparams.queue.mode,
+                          queue=self.pparams.queue.qname)
+
+    if dlg.ShowModal() == wx.ID_OK:
+      if dlg.method == 'multiprocessing':
+        self.pparams.queue.mode = None
+      else:
+        self.pparams.queue.mode = dlg.method
+      self.pparams.queue.qname = dlg.queue
 
   def onInput(self, e):
     if self.input_window.inp_box.ctr.GetValue() != '':
@@ -235,12 +254,14 @@ class PRIMEWindow(wx.Frame):
 
   def load_script(self, out_dir):
     ''' Loads PRIME script '''
-    import iotbx.phil as ip
-
     script = os.path.join(out_dir, self.prime_filename)
-    user_phil = ip.parse(open(script).read())
+    with open(script, 'r') as sf:
+      phil_string = sf.read()
+
+    user_phil = ip.parse(phil_string)
     self.pparams = master_phil.fetch(sources=[user_phil]).extract()
     self.input_window.pparams = self.pparams
+    self.input_window.phil_string = phil_string
 
     self.input_window.inp_box.ctr.SetValue(str(self.pparams.data[0]))
     current_dir = os.path.dirname(self.pparams.run_no)
@@ -271,11 +292,7 @@ class PRIMEInputWindow(wx.Panel):
     self.parent = parent
     super(PRIMEInputWindow, self).__init__(self.parent)
 
-    #Generate default parameters
-    if phil is not None:
-      self.pparams = master_phil.format(python_object=phil).extract()
-    else:
-      self.pparams = master_phil.extract()
+    self.regenerate_params(phil)
 
     main_box = wx.StaticBox(self, label='Main Settings')
     vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
@@ -404,12 +421,15 @@ class PRIMEInputWindow(wx.Panel):
   def onAdvancedOptions(self, e):
     advanced = PRIMEAdvancedOptions(self,
                                title='Advanced PRIME Options',
-                               style=wx.DEFAULT_DIALOG_STYLE)
+                               style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     advanced.Fit()
 
+    # Populate the PHIL textbox
+    advanced.phil.ctr.SetValue(self.phil_string)
+
     # Set values to default parameters
-    advanced.res.high.SetValue('{:4.2f}'.format(self.pparams.scale.d_max))
-    advanced.res.low.SetValue('{:4.2f}'.format(self.pparams.scale.d_min))
+    advanced.res.high.SetValue('{:4.2f}'.format(self.pparams.postref.allparams.d_max))
+    advanced.res.low.SetValue('{:4.2f}'.format(self.pparams.postref.allparams.d_min))
     advanced.sg.spacegroup.SetValue(str(self.pparams.target_space_group))
     if str(self.pparams.target_unit_cell).lower() != 'none':
       uc = ' '.join(list(map(str, self.pparams.target_unit_cell.parameters())))
@@ -423,22 +443,27 @@ class PRIMEInputWindow(wx.Panel):
     advanced.cycles.ctr.SetValue(int(self.pparams.n_postref_cycle))
 
     if advanced.ShowModal() == wx.ID_OK:
-      self.pparams.scale.d_max = float(advanced.res.high.GetValue())
-      self.pparams.scale.d_min = float(advanced.res.low.GetValue())
-      self.pparams.postref.scale.d_max = float(advanced.res.high.GetValue())
-      self.pparams.postref.scale.d_min = float(advanced.res.low.GetValue())
-      self.pparams.postref.crystal_orientation.d_max = \
-        float(advanced.res.high.GetValue())
-      self.pparams.postref.crystal_orientation.d_min = \
-        float(advanced.res.low.GetValue())
-      self.pparams.postref.reflecting_range.d_max = \
-        float(advanced.res.high.GetValue())
-      self.pparams.postref.reflecting_range.d_min = \
-        float(advanced.res.low.GetValue())
-      self.pparams.postref.unit_cell.d_max = float(advanced.res.high.GetValue())
-      self.pparams.postref.unit_cell.d_min = float(advanced.res.low.GetValue())
-      self.pparams.postref.allparams.d_max = float(advanced.res.high.GetValue())
-      self.pparams.postref.allparams.d_min = float(advanced.res.low.GetValue())
+      # Read PHIL string from window, convert to params
+      self.phil_string = advanced.phil.ctr.GetValue()
+      new_phil = ip.parse(self.phil_string)
+      self.pparams = master_phil.fetch(sources=[new_phil]).extract()
+
+      # Param controls will override the PHIL string (clunky, but for now)
+      if advanced.res_override.GetValue():
+          self.pparams.scale.d_max = float(advanced.res.high.GetValue())
+          self.pparams.scale.d_min = float(advanced.res.low.GetValue())
+          self.pparams.merge.d_max = float(advanced.res.high.GetValue())
+          self.pparams.merge.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.scale.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.scale.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.crystal_orientation.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.crystal_orientation.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.reflecting_range.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.reflecting_range.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.unit_cell.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.unit_cell.d_min = float(advanced.res.low.GetValue())
+          self.pparams.postref.allparams.d_max = float(advanced.res.high.GetValue())
+          self.pparams.postref.allparams.d_min = float(advanced.res.low.GetValue())
       self.pparams.target_space_group = advanced.sg.spacegroup.GetValue()
       if advanced.uc.unit_cell.GetValue().lower() != 'none':
         uc = str_split(advanced.uc.unit_cell.GetValue())
@@ -457,9 +482,25 @@ class PRIMEInputWindow(wx.Panel):
         self.pparams.pixel_size_mm = None
       self.pparams.n_postref_cycle = int(advanced.cycles.ctr.GetValue())
 
+      self.regenerate_params(self.pparams)
 
     advanced.Destroy()
     e.Skip()
+
+  def regenerate_params(self, phil=None):
+
+    if phil is not None:
+      current_phil = master_phil.format(python_object=phil)
+    else:
+      current_phil = master_phil
+
+    # Generate Python object and text of parameters
+    self.pparams = current_phil.extract()
+    with misc.Capturing() as txt_output:
+      current_phil.show()
+    self.phil_string = ''
+    for one_output in txt_output:
+      self.phil_string += one_output + '\n'
 
 
 class PRIMEAdvancedOptions(wx.Dialog):
@@ -470,17 +511,34 @@ class PRIMEAdvancedOptions(wx.Dialog):
 
     main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    main_box = wx.StaticBox(self, label='Advanced PRIME Options')
-    vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
+    phil_box = wx.StaticBox(self, label='PRIME Input')
+    phil_box_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
+
+    # Target file input
+    self.phil = ct.PHILBox(self,
+                           btn_import=False,
+                           btn_export=False,
+                           btn_default=False,
+                           ctr_size=(500, 300),
+                           ctr_value='')
+    phil_box_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # PRIME Options (there is some redundancy with the PHIL textbox)
+    opt_box = wx.StaticBox(self, label='Advanced Options')
+    opt_box_sizer = wx.StaticBoxSizer(opt_box, wx.VERTICAL)
 
     # Resolution
+    self.res_override = wx.CheckBox(self, label='Resolution override')
     self.res = ct.OptionCtrl(self,
                              label='Resolution: ',
                              label_size=(120, -1),
                              label_style='normal',
-                             ctrl_size=(60, -1),
-                             items={'high':50, 'low':1.5})
-    vbox.Add(self.res, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+                             ctrl_size=wx.DefaultSize,
+                             items=[('high', 50),
+                                    ('low', 1.5)])
+    opt_box_sizer.Add(self.res_override, flag=wx.RIGHT | wx.LEFT | wx.TOP,
+                      border=10)
+    opt_box_sizer.Add(self.res, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Target space group
     self.sg = ct.OptionCtrl(self,
@@ -488,8 +546,8 @@ class PRIMEAdvancedOptions(wx.Dialog):
                             label_size=(120, -1),
                             label_style='normal',
                             ctrl_size=(100, -1),
-                            items={'spacegroup':'P212121'})
-    vbox.Add(self.sg, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+                            items=[('spacegroup','P212121')])
+    opt_box_sizer.Add(self.sg, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Target unit cell
     self.uc = ct.OptionCtrl(self,
@@ -497,15 +555,15 @@ class PRIMEAdvancedOptions(wx.Dialog):
                             label_size=(120, -1),
                             label_style='normal',
                             ctrl_size=(300, -1),
-                            items={'unit_cell':'72 120 134 90 90 90'})
+                            items=[('unit_cell', '72 120 134 90 90 90')])
     self.uc_override = wx.CheckBox(self,
                                    label='Unit cell override')
     self.uc_override.SetValue(False)
     self.anom = wx.CheckBox(self, label='Anomalous')
     self.anom.SetValue(False)
-    vbox.Add(self.uc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
-    vbox.Add(self.uc_override, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
-    vbox.Add(self.anom, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.uc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.uc_override, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.anom, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # CC cutoff
     self.cc = ct.OptionCtrl(self,
@@ -513,8 +571,8 @@ class PRIMEAdvancedOptions(wx.Dialog):
                             label_size=(120, -1),
                             label_style='normal',
                             ctrl_size=(100, -1),
-                            items={'cc_cutoff':0.25})
-    vbox.Add(self.cc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+                            items=[('cc_cutoff', 0.25)])
+    opt_box_sizer.Add(self.cc, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Pixel size
     self.pix = ct.OptionCtrl(self,
@@ -522,19 +580,20 @@ class PRIMEAdvancedOptions(wx.Dialog):
                              label_size=(120, -1),
                              label_style='normal',
                              ctrl_size=(100, -1),
-                             items={'pixel_size':0.172})
-    vbox.Add(self.pix, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+                             items=[('pixel_size', 0.172)])
+    opt_box_sizer.Add(self.pix, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     self.cycles = ct.SpinCtrl(self,
                               label='No. of Cycles:',
                               label_size=(120, -1),
                               label_style='normal',
                               ctrl_size=(60, -1))
-    vbox.Add(self.cycles, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    opt_box_sizer.Add(self.cycles, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
 
     # Dialog controls
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    main_sizer.Add(vbox, flag=wx.ALL, border=15)
+    main_sizer.Add(phil_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    main_sizer.Add(opt_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
     main_sizer.Add(dialog_box,
                    flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=15)
@@ -571,13 +630,13 @@ class PRIMEThread(Thread):
     if os.path.isfile(self.out_file):
       os.remove(self.out_file)
     if self.command is None:
-      cmd = 'prime.postrefine {} > {}'.format(self.prime_file, self.out_file)
+      cmd = 'prime.run {}'.format(self.prime_file, self.out_file)
     else:
       cmd = self.command
 
     easy_run.fully_buffered(cmd, join_stdout_stderr=True)
-    evt = AllDone(tp_EVT_ALLDONE, -1)
-    wx.PostEvent(self.parent, evt)
+    #evt = AllDone(tp_EVT_ALLDONE, -1)
+    #wx.PostEvent(self.parent, evt)
 
 # ----------------------------  Processing Window ---------------------------  #
 
@@ -822,9 +881,9 @@ class SummaryTab(wx.Panel):
     if save_dlg.ShowModal() == wx.ID_OK:
       with open(save_dlg.GetPath(), 'a') as tb1_file:
        for i in range(len(self.tb1_data)):
-          line = u'{:<25} {:<40}\n'.format(self.tb1_labels[i].decode('utf-8'),
-                                           self.tb1_data[i][0]).encode('utf-8')
-          tb1_file.write(line)
+          line = u'{:<25} {:<40}\n'.format(self.tb1_labels[i],
+                                           self.tb1_data[i][0])
+          tb1_file.write(to_str(line))
 
 class PRIMERunWindow(wx.Frame):
   ''' New frame that will show processing info '''
@@ -837,12 +896,13 @@ class PRIMERunWindow(wx.Frame):
     self.logtext = ''
     self.pparams = params
     self.prime_file = prime_file
-    self.out_file = out_file
+    self.out_file = os.path.join(self.pparams.run_no, 'log.txt')
     self.bookmark = 0
     self.prev_pids = []
     self.aborted = False
     self.command=command
     self.mp_method = mp_method
+    self.current_cycle = -1
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -961,9 +1021,10 @@ class PRIMERunWindow(wx.Frame):
       info = ep.load(stat_file)
     else:
       info = {}
-    total_cycles = self.pparams.n_postref_cycle
+
     if 'binned_resolution' in info:
-      self.graph_tab.draw_plots(info, total_cycles)
+      self.graph_tab.draw_plots(info, self.pparams.n_postref_cycle)
+      self.current_cycle = len(info['total_cc12']) - 1
 
   def plot_final_results(self):
     ''' Plot final results '''
@@ -990,16 +1051,15 @@ class PRIMERunWindow(wx.Frame):
   def onTimer(self, e):
 
     # Inspect output and update gauge
-    mtzs = [i for i in os.listdir(self.pparams.run_no) if
-            ('cycle' in i and i.endswith('mtz'))]
     self.gauge_prime.Show()
-    self.gauge_prime.SetValue(len(mtzs))
-    if len(mtzs) == 0:
+    if self.current_cycle == -1:
       self.sb.SetStatusText(('Merging...'), 1)
+      self.gauge_prime.SetValue(0)
     else:
       self.sb.SetStatusText('Macrocycle {} of {} completed...' \
-                            ''.format(len(mtzs),
+                            ''.format(self.current_cycle,
                                       self.pparams.n_postref_cycle), 1)
+      self.gauge_prime.SetValue(self.current_cycle)
 
     # Plot runtime results
     self.plot_runtime_results()
@@ -1007,13 +1067,16 @@ class PRIMERunWindow(wx.Frame):
     # Update log
     self.display_log()
 
+    # Sense end of cycle
+    if self.current_cycle >= self.pparams.n_postref_cycle:
+      self.final_step()
+
 
   def onFinishedProcess(self, e):
     self.final_step()
 
 
   def final_step(self):
-    self.timer.Stop()
     font = self.status_txt.GetFont()
     font.SetWeight(wx.BOLD)
 
@@ -1037,3 +1100,111 @@ class PRIMERunWindow(wx.Frame):
     self.display_log()
     self.gauge_prime.Hide()
     self.prime_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+    self.timer.Stop()
+
+# ---------------------------------  Dialogs --------------------------------  #
+
+class PRIMEPreferences(wx.Dialog):
+  def __init__(self, *args, **kwargs):
+    super(PRIMEPreferences, self).__init__(*args, **kwargs)
+
+    self.method = None
+    self.queue = None
+    main_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    main_box = wx.StaticBox(self, label='IOTA Preferences')
+    vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
+
+    self.SetSizer(main_sizer)
+
+    q_choices = ['psanaq', 'psnehq', 'psfehq'] + ['custom']
+    self.queues = ct.ChoiceCtrl(self,
+                                label='Queue:',
+                                label_size=(120, -1),
+                                label_style='bold',
+                                ctrl_size=wx.DefaultSize,
+                                choices=q_choices)
+    vbox.Add(self.queues, flag=wx.ALL, border=10)
+
+    self.custom_queue = ct.OptionCtrl(self,
+                                      items=[('cqueue', '')],
+                                      label='Custom Queue:',
+                                      label_size=(120, -1),
+                                      label_style='normal',
+                                      ctrl_size=(150, -1))
+    self.custom_queue.Disable()
+    vbox.Add(self.custom_queue, flag=wx.ALL, border=10)
+
+    mp_choices = ['multiprocessing', 'bsub']
+    self.mp_methods = ct.ChoiceCtrl(self,
+                                    label='Method:',
+                                    label_size=(120, -1),
+                                    label_style='bold',
+                                    ctrl_size=wx.DefaultSize,
+                                    choices=mp_choices)
+    vbox.Add(self.mp_methods, flag=wx.ALL, border=10)
+
+    main_sizer.Add(vbox, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    main_sizer.Add(dialog_box,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    self.Bind(wx.EVT_CHOICE, self.onQueue, self.queues.ctr)
+    self.Bind(wx.EVT_CHOICE, self.onMethod, self.mp_methods.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def set_choices(self, method, queue):
+    # Set queue to default value
+    if queue is None:
+      queue = 'None'
+    inp_queue = self.queues.ctr.FindString(queue)
+    if inp_queue != wx.NOT_FOUND:
+      self.queues.ctr.SetSelection(inp_queue)
+    else:
+      self.custom_queue.Enable()
+      self.custom_queue.cqueue.SetValue(queue)
+
+    # Set method to default value
+    print "method: ", method
+    inp_method = self.mp_methods.ctr.FindString(str(method))
+    if inp_method != wx.NOT_FOUND:
+      self.mp_methods.ctr.SetSelection(inp_method)
+
+    self.check_method()
+
+  def onMethod(self, e):
+    self.check_method()
+
+  def check_method(self):
+    choice = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
+    if choice == 'multiprocessing':
+      self.queues.Disable()
+      self.custom_queue.Disable()
+    else:
+      self.queues.Enable()
+      queue = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+      if queue == 'custom':
+        self.custom_queue.Enable()
+
+  def onQueue(self, e):
+    choice = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+    if choice == 'custom':
+      self.custom_queue.Enable()
+    else:
+      self.custom_queue.Disable()
+
+  def onOK(self, e):
+    self.method = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
+    queue_selection = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
+    if queue_selection == 'custom':
+      if self.custom_queue.cqueue.GetValue() == '':
+        wx.MessageBox('Please choose or enter a queue', wx.OK)
+      else:
+        self.queue = self.custom_queue.cqueue.GetValue()
+        e.Skip()
+    else:
+      self.queue = queue_selection
+      e.Skip()

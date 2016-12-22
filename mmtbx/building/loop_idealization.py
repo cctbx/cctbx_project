@@ -95,13 +95,10 @@ class loop_idealization():
       print >> log, "Need to have both map and symmetry info. Not using map."
       self.reference_map = None
 
-
-
     berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
     self.berkeley_p_before_minimization_rama_outliers = \
         berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
 
-    # self.berkeley_p_before_minimization_rama_outliers = None
     self.berkeley_p_after_minimiaztion_rama_outliers = self.berkeley_p_before_minimization_rama_outliers
     self.ref_exclusion_selection = ""
     number_of_ccd_trials = 0
@@ -258,9 +255,6 @@ class loop_idealization():
       outp = utils.list_rama_outliers_h(new_h, self.r)
       print >> self.log, outp
       self.log.flush()
-      # fn = "%s_after_loop_%d.pdb" % (self.params.output_prefix, out_i)
-      # print >> self.log, "  writing file %s" % fn
-      # new_h.write_pdb_file(file_name=fn)
       working_h = new_h
       out_i += 1
     return list_of_reference_exclusion, new_h

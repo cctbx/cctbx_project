@@ -29,7 +29,7 @@ class PubMedDirective(Directive):
     handle = Entrez.efetch(
       db="pubmed",id=PMID, # must be a quoted string of comma-separated PMIDs
       retmode="xml")
-    XML = Entrez.read(handle)
+    XML = Entrez.read(handle)['PubmedArticle']
 
     text = []
 
