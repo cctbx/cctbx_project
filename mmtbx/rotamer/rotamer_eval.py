@@ -61,7 +61,7 @@ def mon_lib_query(residue, mon_lib_srv):
   if (get_func is not None): return get_func(comp_id=residue)
   return mon_lib_srv.get_comp_comp_id_direct(comp_id=residue)
 
-def eval_residue_completeness (residue, mon_lib_srv, ignore_hydrogens=True) :
+def eval_residue_completeness (residue, mon_lib_srv, ignore_hydrogens=True):
   atom_list = []
   for atom in residue.atoms():
     atom_list.append(atom.name.strip().upper())
@@ -69,8 +69,8 @@ def eval_residue_completeness (residue, mon_lib_srv, ignore_hydrogens=True) :
   reference_list = []
   if(not ignore_hydrogens):
     for at in mlq.atom_dict():
-      reference_list.append(atom.strip().upper())
-  elif (mlq is not None) :
+      reference_list.append(at)#(atom.name.strip().upper())
+  elif(mlq is not None):
     for non in mlq.non_hydrogen_atoms():
       reference_list.append(non.atom_id.strip().upper())
   missing=[]

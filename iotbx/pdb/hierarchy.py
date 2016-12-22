@@ -2618,67 +2618,70 @@ def increment_label_asym_id(asym_id):
         asym_id[i] = ascii_uppercase[j+1]
         return "".join(asym_id)
 
-def substitute_atom_group (
+def substitute_atom_group(
     current_group,
-    new_group,
-    backbone_only=True,
-    exclude_hydrogens=False,
-    ignore_b_factors=False,
-    is_amino_acid=Auto,
-    log=None) :
+    new_group):
   """
-  Substitute the sidechain atoms from one residue for another, using
+  Substitute sidechain atoms from one residue for another, using
   least-squares superposition to align the backbone atoms.
+  Limited functionality:
+    1) Amino-acids only, 2) side chain atoms only.
   """
-  if (log is None) : log = null_out()
   from iotbx.pdb import common_residue_names_get_class
   from scitbx.math import superpose
   new_atoms = new_group.detached_copy().atoms()
   selection_fixed = flex.size_t()
   selection_moving = flex.size_t()
   res_class = common_residue_names_get_class(current_group.resname)
-  if (is_amino_acid is Auto) :
-    is_amino_acid = (res_class == "common_amino_acid")
-  # TODO nucleic acids?
-  backbone_atoms = [" CA ", " C  ", " N  ", " CB "]
+  if(res_class != "common_amino_acid"):
+    raise Sorry("Only common amino-acid residues supported.")
+  aa_backbone_atoms_1 = [" CA ", " C  ", " N  ", " O  "]
+  aa_backbone_atoms_2 = [" CA ", " C  ", " N  ", " CB "]
+  aa_backbone_atoms_1.sort()
+  aa_backbone_atoms_2.sort()
+  #
+  def get_bb_atoms(current_group, aa_backbone_atoms):
+    result = []
+    for atom in current_group.atoms():
+      if(atom.name in aa_backbone_atoms_1):
+        result.append(atom.name)
+    result.sort()
+    return result
+  aa_backbone_atoms_current = get_bb_atoms(current_group, aa_backbone_atoms_1)
+  aa_backbone_atoms_new     = get_bb_atoms(new_group, aa_backbone_atoms_1)
+  if(aa_backbone_atoms_current != aa_backbone_atoms_1 or
+     aa_backbone_atoms_new     != aa_backbone_atoms_1):
+    raise Sorry("Main chain must be complete.")
+  #
   for i_seq, atom in enumerate(current_group.atoms()) :
-    if (atom.element == " H") and (exclude_hydrogens) :
-      continue
-    if (is_amino_acid and backbone_only) :
-      if (not atom.name in backbone_atoms) :
-        continue
-    for j_seq, other_atom in enumerate(new_group.atoms()) :
-      if (atom.name == other_atom.name) :
+    if(not atom.name in aa_backbone_atoms_2): continue
+    for j_seq, other_atom in enumerate(new_group.atoms()):
+      if(atom.name == other_atom.name):
         selection_fixed.append(i_seq)
         selection_moving.append(j_seq)
   sites_fixed = current_group.atoms().extract_xyz().select(selection_fixed)
   sites_moving = new_atoms.extract_xyz().select(selection_moving)
-  assert (len(sites_fixed) == len(sites_moving))
+  assert sites_fixed.size() == sites_moving.size()
   lsq_fit = superpose.least_squares_fit(
-    reference_sites=sites_fixed,
-    other_sites=sites_moving)
+    reference_sites = sites_fixed,
+    other_sites     = sites_moving)
   sites_new = new_atoms.extract_xyz()
   sites_new = lsq_fit.r.elems * sites_new + lsq_fit.t.elems
   new_atoms.set_xyz(sites_new)
-  keep_atoms = []
-  if (is_amino_acid and backbone_only) :
-    keep_atoms = backbone_atoms + [" O  "] # XXX definitely keep peptide O!
   atom_b_iso = {}
-  max_b = flex.max(current_group.atoms().extract_b())
-  for atom in current_group.atoms() :
-    if (not atom.name in keep_atoms) :
+  atom_occ = {}
+  mean_b = flex.mean(current_group.atoms().extract_b())
+  for atom in current_group.atoms():
+    if(not atom.name in aa_backbone_atoms_1):
       current_group.remove_atom(atom)
       atom_b_iso[atom.name] = atom.b
-  for atom in new_atoms :
-    if ((not atom.name in keep_atoms) and
-        ((atom.element != "H ") or (not exclude_hydrogens))) :
-      if (not ignore_b_factors) :
-        # XXX a more sophisticated approach would probably be helpful here,
-        # but this seems safer than using B-factors of unknown origin
-        if (atom.name in atom_b_iso) :
-          atom.b = atom_b_iso[atom.name]
-        else :
-          atom.b = max_b
+      atom_occ[atom.name] = atom.occ
+  for atom in new_atoms:
+    if(not atom.name in aa_backbone_atoms_1):
+      if(atom.name in atom_b_iso): atom.b = atom_b_iso[atom.name]
+      else:                        atom.b = mean_b
+      if(atom.name in atom_occ): atom.occ = atom_occ[atom.name]
+      else:                      atom.occ = 1.
       current_group.append_atom(atom)
   current_group.resname = new_group.resname
   return current_group

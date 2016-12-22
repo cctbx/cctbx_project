@@ -774,10 +774,10 @@ def generate_sidechain_clusters (residue, mon_lib_srv) :
   if(axes_and_atoms_aa_specific is not None):
     for i_aa, aa in enumerate(axes_and_atoms_aa_specific):
       n_heavy = 0
-      for i_seq in aa[1] :
-        if (atoms[i_seq].element.strip() != "H") :
-          n_heavy += 1
-      if (n_heavy == 0) : continue
+      #for i_seq in aa[1] :
+      #  if (atoms[i_seq].element.strip() != "H") :
+      #    n_heavy += 1
+      #if (n_heavy == 0) : continue
       if(i_aa == len(axes_and_atoms_aa_specific)-1):
         result.append(mmtbx.refinement.real_space.cluster(
           axis=aa[0],
