@@ -53,7 +53,7 @@ def run(args, log=sys.stdout):
   if(len(file_names) != 1): raise Sorry("PDB file has to given.")
   pi = iotbx.pdb.input(file_name = file_names[0])
   h = pi.construct_hierarchy()
-  xrs = pi.xray_structure_simple(crystal_symmetry=inputs.crystal_symmetry)
+  xrs = h.extract_xray_structure(crystal_symmetry=inputs.crystal_symmetry)
   xrs.scattering_type_registry(table = params.scattering_table)
   xrs.show_summary(f=log, prefix="  ")
   # map
