@@ -175,6 +175,7 @@ def extend_residue(
 def extend_protein_model(
     pdb_hierarchy,
     mon_lib_srv,
+    add_hydrogens=None,
     selection=None):
   """
   Rebuild a sidechain by substituting an ideal amino acid and rotating the
@@ -205,7 +206,9 @@ def extend_protein_model(
   for residue in partial_sidechains:
     residue_elements = [e.strip() for e in residue.atoms().extract_element()]
     res_key = residue.resname.lower()
-    if("H" in residue_elements): res_key += "_h"
+    if(add_hydrogens is None):
+      if("H" in residue_elements): res_key += "_h"
+    if(add_hydrogens is True): res_key += "_h"
     target_atom_group = ideal_dict[res_key].only_model().only_chain().\
       only_residue_group().only_atom_group()
     new_residue = extend_residue(
