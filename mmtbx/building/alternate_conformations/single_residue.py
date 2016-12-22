@@ -177,12 +177,12 @@ class rebuild_residue (object) :
     # the original atom ordering for the central residue is preserved, which
     # allows us to use the pre-existing geometry restraints instead of
     # re-calculating them every time this function is called.
+    target_atom_group = self.ideal_dict[atom_group.resname.lower()].\
+      only_model().only_chain().only_residue_group().only_atom_group()
     new_atom_group_base = extend_sidechains.extend_residue(
       residue=atom_group,
-      ideal_dict=self.ideal_dict,
-      hydrogens=False,
-      mon_lib_srv=self.mon_lib_srv,
-      match_conformation=True)
+      target_atom_group = target_atom_group,
+      mon_lib_srv=self.mon_lib_srv)
     new_atom_group = iotbx.pdb.hierarchy.atom_group(resname=atom_group.resname)
     for atom in atom_group_start.atoms() :
       for new_atom in new_atom_group_base.atoms() :

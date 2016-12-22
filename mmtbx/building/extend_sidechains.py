@@ -5,6 +5,7 @@ from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 from libtbx import Auto
 import sys
+import mmtbx.monomer_library
 
 master_params = """
 selection = None
@@ -380,10 +381,8 @@ class extend_and_refine (object) :
     n_atoms_start = xray_structure.sites_cart().size()
     self.n_extended = extend_protein_model(
       pdb_hierarchy=pdb_hierarchy,
-      hydrogens=params.build_hydrogens,
-      max_atoms_missing=params.max_atoms_missing,
-      prefilter_callback=prefilter_callback,
-      log=out)
+      add_hydrogens=params.build_hydrogens,
+      mon_lib_srv = mmtbx.monomer_library.server.server())
     print >> out, "  %d sidechains extended." % self.n_extended
     if (self.n_extended > 0) and (not params.skip_rsr) :
       pdb_hierarchy, xray_structure = refit_residues(

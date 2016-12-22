@@ -7,6 +7,7 @@ import os.path
 def exercise_model_only () :
   from mmtbx.building import extend_sidechains
   import iotbx.pdb.hierarchy
+  import mmtbx.monomer_library
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string="""
 ATOM     65  N   LYS A   7       6.033   4.704   1.582  1.00 17.49           N
 ATOM     66  CA  LYS A   7       5.159   5.427   2.499  1.00 18.23           C
@@ -19,18 +20,17 @@ ATOM     72  CE  LYS A   7       2.976   6.471  -1.165  1.00 48.81           C
 """)
   extend_sidechains.extend_protein_model(
     pdb_hierarchy=pdb_in.hierarchy,
-    modify_segids=False,
-    log=null_out())
+    mon_lib_srv=mmtbx.monomer_library.server.server())
   assert (pdb_in.hierarchy.as_pdb_string() == """\
 ATOM      1  N   LYS A   7       6.033   4.704   1.582  1.00 17.49           N
 ATOM      2  CA  LYS A   7       5.159   5.427   2.499  1.00 18.23           C
 ATOM      3  C   LYS A   7       4.673   4.437   3.507  1.00 14.78           C
 ATOM      4  O   LYS A   7       4.777   3.208   3.297  1.00 15.83           O
-ATOM      5  CB  LYS A   7       3.959   6.057   1.760  1.00 23.56           C
-ATOM      6  CG  LYS A   7       4.368   7.206   0.851  1.00 33.58           C
-ATOM      7  CD  LYS A   7       3.242   7.559  -0.108  1.00 41.39           C
-ATOM      8  CE  LYS A   7       3.009   6.453  -1.124  1.00 48.81           C
-ATOM      9  NZ  LYS A   7       1.909   6.785  -2.070  1.00 48.81           N
+ATOM      5  CB  LYS A   7       3.980   6.048   1.757  1.00 23.56           C
+ATOM      6  CG  LYS A   7       4.366   7.205   0.850  1.00 33.58           C
+ATOM      7  CD  LYS A   7       3.241   7.559  -0.109  1.00 41.39           C
+ATOM      8  CE  LYS A   7       3.011   6.457  -1.129  1.00 48.81           C
+ATOM      9  NZ  LYS A   7       1.911   6.790  -2.075  1.00 26.71           N
 TER
 """)
 
@@ -60,7 +60,7 @@ def exercise_cmdline () :
   extend_sidechains.run(
     args=[pdb_file, mtz_file, "output_model=%s" % pdb_out],
     out=out)
-  assert ("1 sidechains extended." in out.getvalue())
+  assert ("7 sidechains extended." in out.getvalue()), out.getvalue()
   from mmtbx.validation import rotalyze
   pdb_new = iotbx.pdb.hierarchy.input(file_name=pdb_out)
   r1 = rotalyze.rotalyze(pdb_hierarchy=pdb_in.hierarchy, outliers_only=False)
@@ -74,7 +74,7 @@ def exercise_cmdline () :
   extend_sidechains.run(
     args=[pdb_file, mtz_file, seq_file, "output_model=%s" % pdb_out],
     out=out)
-  assert ("2 sidechains extended." in out.getvalue())
+  assert ("7 sidechains extended." in out.getvalue())
 
 def exercise_correct_sequence () :
   from mmtbx.building import extend_sidechains
