@@ -1702,6 +1702,11 @@ class PhenixBuilder(CCIBuilder):
     #self.add_test_command('phenix_regression.wizards.test_all_parallel',
     #                      name="test wizards",
     #                     )
+    self.add_test_command(
+      'phenix_regression.wizards.test_command_line_resolve_memory',
+      args = ['test_resolve_ncs_memory'],
+      name="test wizards",
+    )
     run_dials_tests=True
     if self.isPlatformWindows():
       if 'dials' in windows_remove_list:
