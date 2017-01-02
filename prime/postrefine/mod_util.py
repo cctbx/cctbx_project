@@ -1,23 +1,18 @@
 from __future__ import division
 from cctbx.uctbx import unit_cell
-from cctbx import miller
-from cctbx import crystal
+from cctbx import miller, crystal, statistics
 from cctbx.array_family import flex
 from iotbx import mtz
-import math
+from libtbx.utils import Sorry
+import math, os
 import numpy as np
 import matplotlib.pyplot as plt
-from libtbx.utils import Sorry
-from cctbx.uctbx import unit_cell
 from copy import deepcopy
+import cPickle as pickle
+from collections import Counter
 from mod_merge_data import merge_data_handler
 from mod_mx import mx_handler
-import cPickle as pickle
-import os
-from collections import Counter
 from mod_leastsqr import good_unit_cell
-from prime.postrefine.mod_mx import mx_handler
-from cctbx import statistics
 
 class intensities_scaler(object):
   """
@@ -151,7 +146,7 @@ class intensities_scaler(object):
               cn_bad_frame_G += 1
         if flag_pres_ok:
           if re_std > 0:
-            if abs(pres.re-re_med)/(math.sqrt(re_med)) > std_filter:
+            if abs(pres.re-re_med)/re_std > std_filter:
               flag_pres_ok = False
               cn_bad_frame_re += 1
         if flag_pres_ok and not good_unit_cell(pres.uc_params, iparams, iparams.merge.uc_tolerance):
@@ -316,7 +311,7 @@ class intensities_scaler(object):
     wavelength_mean = mdh.wavelength_mean
     #output mtz file and report binning stat
     miller_set_merge = crystal.symmetry(
-          unit_cell=unit_cell((uc_mean[0],uc_mean[1],uc_mean[2],uc_mean[3],uc_mean[4],uc_mean[5])),
+          unit_cell=unit_cell(tuple(uc_mean)),
           space_group_symbol=iparams.target_space_group
         ).build_miller_set(
           anomalous_flag=target_anomalous_flag,
