@@ -800,7 +800,7 @@ def substitute_ss(real_h,
         refine_ncs_operators=False,
         number_of_cycles=processed_params.n_macro,
         log=log)
-    real_h.write_pdb_file("after_ss_map_min.pdb")
+    # real_h.write_pdb_file("after_ss_map_min.pdb")
 
   log.write(" Done\n")
   log.flush()
