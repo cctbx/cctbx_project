@@ -79,7 +79,8 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
   return result
 
 # Refactoring idea: combine these two functions
-def get_all_starting_conformations(moving_h, change_radius, direction_forward=True, cutoff=50, log=null_out()):
+def get_all_starting_conformations(moving_h, change_radius,
+    direction_forward=True, cutoff=50, log=null_out()):
   variants = []
   r = rama_eval()
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)

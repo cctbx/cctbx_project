@@ -13,10 +13,14 @@ from mmtbx.secondary_structure.build import side_chain_placement, \
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from cctbx import maptbx
 from scitbx.array_family import flex
+from cStringIO import StringIO
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
+
+from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
+
 
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 
@@ -266,8 +270,8 @@ class loop_idealization():
     adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0}
     # adaptive_mc_rmsd = {1:2.5, 2:3.0, 3:3.5}
     ss_multiplier = 1
-    # if contains_ss_element:
-    #   ss_multiplier = 0.2
+    if contains_ss_element:
+      ss_multiplier = 0.4
     if (mc_rmsd < adaptive_mc_rmsd[ccd_radius]*ss_multiplier and anchor_rmsd < 0.3):
       return True
     elif ccd_radius == 3 and change_all_angles and change_radius == 2:
@@ -350,7 +354,8 @@ class loop_idealization():
               n_following=ccd_radius,
               n_previous=ccd_radius,
               ss_annotation=ss_annotation,
-              direction_forward=direction_forward)
+              direction_forward=direction_forward,
+              log=self.log)
       # print "moving_ref_atoms_iseqs", moving_ref_atoms_iseqs
       moving_h_set = None
       if change_all:
@@ -372,6 +377,7 @@ class loop_idealization():
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
         # or there's a bug in get_starting_conformations
+        print >> self.log, "outlier was fixed before somehow"
         return original_pdb_h
 
       for i, h in enumerate(moving_h_set):
@@ -420,7 +426,8 @@ class loop_idealization():
             center_resnum=out_res_num,
             n_following=ccd_radius,
             n_previous=ccd_radius,
-            include_intermediate=True)
+            include_intermediate=True,
+            avoid_ss_annot=ss_annotation)
         place_side_chains(moved_with_side_chains_h, original_pdb_h,
             self.rotamer_manager, placing_range)
         # moved_with_side_chains_h.write_pdb_file(
@@ -556,7 +563,7 @@ def place_side_chains(hierarchy, original_h,
         if (atom.name not in gly_atom_names):
           ag.remove_atom(atom=atom)
       # get ag from original hierarchy
-      orig_ag = original_h.select(asc.selection("resseq %d" % rg.resseq_as_int())
+      orig_ag = original_h.select(asc.selection("resseq %s" % rg.resseq)
           ).models()[0].chains()[0].residue_groups()[0].atom_groups()[0]
       # get ideal
       # ideal_ag = ideal_res_dict[ag.resname.lower()].models()[0].chains()[0].\
@@ -564,8 +571,32 @@ def place_side_chains(hierarchy, original_h,
       # print "got to placement"
       side_chain_placement(ag, orig_ag, rotamer_manager)
 
+def get_loop_borders(pdb_hierarchy, center_resnum, ss_annot):
+  """ get loop resum beginning and end around center_resnum"""
+  f_start_res_num =-9999
+  f_end_res_num = 9999999
+  if ss_annot is not None:
+    for elem in ss_annot.simple_elements():
+      if f_start_res_num < elem.get_end_resseq_as_int() <= hy36decode(4, center_resnum):
+        # print "  cutting..."
+        f_start_res_num = elem.get_end_resseq_as_int()
+      if hy36decode(4, center_resnum) <= elem.get_start_resseq_as_int() < f_end_res_num:
+        # print "  cutting..."
+        f_end_res_num = elem.get_start_resseq_as_int()
+  loop_length = f_end_res_num - f_start_res_num
+  return f_start_res_num, f_end_res_num
+
+
 def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
-    include_intermediate=False):
+    include_intermediate=False, avoid_ss_annot=None):
+  """
+  Warning, this function most likely won't work properly with insertion codes
+  """
+  working_ss_annot = None
+  if avoid_ss_annot is not None:
+    working_ss_annot = avoid_ss_annot.deep_copy()
+    working_ss_annot.remove_empty_annotations(
+        hierarchy=pdb_hierarchy)
   residue_list = list(
       pdb_hierarchy.only_model().only_chain().only_conformer().residues())
   center_index = None
@@ -573,11 +604,33 @@ def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
     if residue_list[i].resseq == center_resnum:
       center_index = i
       break
-  # print "start/end resids", residue_list[i-n_previous].resseq, residue_list[i+n_following].resseq
-  # print "center i, len", center_index, len(residue_list)
   if not include_intermediate:
-    return residue_list[max(0,center_index-n_previous)].resseq, \
-        residue_list[min(len(residue_list)-1,center_index+n_following)].resseq
+    # return residue_list[max(0,center_index-n_previous)].resseq, \
+    #     residue_list[min(len(residue_list)-1,center_index+n_following)].resseq
+
+    start_res_num = residue_list[max(0,center_index-n_previous)].resseq_as_int()
+    end_res_num = residue_list[min(len(residue_list)-1,center_index+n_following)].resseq_as_int()
+    srn, ern = get_loop_borders(pdb_hierarchy, center_resnum, working_ss_annot)
+    # srn, ern = -9999, 9999999
+    # So now we have borders of the loop: srn, ern, center_resnum,
+    # n_following, n_previous.
+    # We combine the above knowledge to adjust the borders keeping the same
+    # loop size
+    # adjst beginning
+    if srn > start_res_num:
+      end_res_num += srn - start_res_num
+      start_res_num = srn
+    # adjust end
+    if ern < end_res_num:
+      end_res_num = ern
+    f_start_res_num = start_res_num
+    f_end_res_num = end_res_num
+
+    if f_end_res_num == hy36decode(4, center_resnum):
+      f_end_res_num += 1
+    if f_start_res_num == hy36decode(4,center_resnum):
+      f_end_res_num -= 1
+    return hy36encode(4, f_start_res_num), hy36encode(4, f_end_res_num)
   else:
     res = []
     for i in range(max(0,center_index-n_previous),
@@ -586,15 +639,20 @@ def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
     return res
 
 def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
-    ss_annotation=None, direction_forward=True):
+    ss_annotation=None, direction_forward=True, log=None):
   # limitation: only one  chain in pdb_hierarchy!!!
+  if log is None:
+    log = StringIO()
   original_pdb_h = pdb_hierarchy.deep_copy()
-  start_res_num, end_res_num = get_res_nums_around(
-      pdb_hierarchy, out_res_num, n_following, n_previous)
+  # print >> log, "  out_res_num, n_following, n_previous", out_res_num, n_following, n_previous
+  start_res_num, end_res_num = get_res_nums_around(pdb_hierarchy, out_res_num,
+      n_following, n_previous, include_intermediate=False, avoid_ss_annot=ss_annotation)
+  # print >> log, "  start_res_num, end_res_num", start_res_num, end_res_num
   xrs = original_pdb_h.extract_xray_structure()
   truncate_to_poly_gly(pdb_hierarchy, start_res_num, end_res_num)
   cache = pdb_hierarchy.atom_selection_cache()
-  # print "selectioin:", "resid %d through %d" % (start_res_num, end_res_num)
+  # print "POSSIBLE ERROR:", "selectioin:", "(name N or name CA or name C or name O) and resid %s through %s" % (
+  #         start_res_num, end_res_num)
   m_selection = cache.iselection(
       "(name N or name CA or name C or name O) and resid %s through %s" % (
           start_res_num, end_res_num))
@@ -609,8 +667,8 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
     intersect = flex.size_t(sorted(list(set(ss_selection) & set(m_selection))))
     if intersect.size > 0:
       intersect_h = pdb_hierarchy.select(intersect)
-      print "Hitting SS element"
-      print intersect_h.as_pdb_string()
+      print >> log, "Hitting SS element"
+      print >> log, intersect_h.as_pdb_string()
       contains_ss_element = True
       # assert 0, "hitting SS element!"
 
