@@ -121,18 +121,20 @@ class PopUpCharts(object):
     self.plt=plt
     self.interactive = interactive
 
-  def reject_outliers(self, data):
+  def reject_outliers(self, data, iqr = 1.5):
+    outliers = flex.bool(len(data), False)
+    if iqr is None:
+      return outliers
     from scitbx.math import five_number_summary
     min_x, q1_x, med_x, q3_x, max_x = five_number_summary(data)
     #print "Five number summary: min %.1f, q1 %.1f, med %.1f, q3 %.1f, max %.1f"%(min_x, q1_x, med_x, q3_x, max_x)
     iqr_x = q3_x - q1_x
-    cut_x = 1.5 * iqr_x
-    outliers = flex.bool(len(data), False)
+    cut_x = iqr * iqr_x
     outliers.set_selected(data > q3_x + cut_x, True)
     outliers.set_selected(data < q1_x - cut_x, True)
     return outliers
 
-  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False):
+  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr = 1.5):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
@@ -141,6 +143,7 @@ class PopUpCharts(object):
     @param xsize if class initialized with not interacive, this is the x size of the
     plot to save in inches
     @param ysize as xsize
+    @param iqr Inter-quartile range for rejecting outliers
     @return if not interactive, returns the path of the saved image, otherwise None
     """
 
@@ -187,7 +190,7 @@ class PopUpCharts(object):
 
       accepted = flex.bool(len(a), True)
       for d in [a, b, c, alpha, beta, gamma]:
-        outliers = self.reject_outliers(d)
+        outliers = self.reject_outliers(d, iqr)
         accepted &= ~outliers
 
       a = a.select(accepted)
@@ -333,7 +336,7 @@ class PopUpCharts(object):
       plt.close(fig)
       return "ucell_tmp.png"
 
-  def plot_uc_3Dplot(self, info):
+  def plot_uc_3Dplot(self, info, iqr = 1.5):
     assert self.interactive
 
     import numpy as np
@@ -351,7 +354,7 @@ class PopUpCharts(object):
 
     accepted = flex.bool(n_total, True)
     for d in [a, b, c, alpha, beta, gamma]:
-      outliers = self.reject_outliers(d)
+      outliers = self.reject_outliers(d, iqr)
       accepted &= ~outliers
 
     a = a.select(accepted)
