@@ -13,6 +13,7 @@ from threading import Thread
 
 import math
 import numpy as np
+import time
 
 import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
@@ -26,6 +27,7 @@ from libtbx.utils import to_unicode
 from cctbx.uctbx import unit_cell
 
 from iota.components.iota_analysis import Analyzer, Plotter
+from iota.components.iota_utils import GenerateInput
 import iota.components.iota_input as inp
 import iota.components.iota_misc as misc
 import iota.components.iota_image as img
@@ -136,6 +138,7 @@ class ProcThread(Thread):
 
 # -------------------------------- Main Window ------------------------------- #
 
+# noinspection PyInterpreter
 class MainWindow(wx.Frame):
   ''' Frame housing the entire app; all windows open from this one '''
 
@@ -177,16 +180,6 @@ class MainWindow(wx.Frame):
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=wx.Bitmap('{}/32x32/run.png'.format(icons)),
                                                 shortHelp='Run', longHelp='Run all stages of refinement')
-    self.tb_btn_imglist = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                    label='Write Image List',
-                                                    bitmap=wx.Bitmap('{}/32x32/list.png'.format(icons)),
-                                                    shortHelp='Write Image List',
-                                                    longHelp='Collect list of raw images and output to file')
-    self.tb_btn_convert = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                    label='Convert Images',
-                                                    bitmap=wx.Bitmap('{}/32x32/convert.png'.format(icons)),
-                                                    shortHelp='Convert Image Files',
-                                                    longHelp='Convert raw images to image pickle format')
 
     # Buttons for post-processing programs (separate windows)
     self.toolbar.AddSeparator()
@@ -214,8 +207,6 @@ class MainWindow(wx.Frame):
 
     # These buttons will be disabled until input path is provided
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
-    self.toolbar.EnableTool(self.tb_btn_imglist.GetId(), False)
-    self.toolbar.EnableTool(self.tb_btn_convert.GetId(), False)
     self.toolbar.Realize()
 
     # Instantiate windows
@@ -235,8 +226,6 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_BUTTON, self.onInput, self.input_window.inp_box.btn_browse)
     self.Bind(wx.EVT_TEXT, self.onInput, self.input_window.inp_box.ctr)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
-    self.Bind(wx.EVT_TOOL, self.onWriteImageList, self.tb_btn_imglist)
-    self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_convert)
     self.Bind(wx.EVT_TOOL, self.onPRIME, self.tb_btn_prime)
 
     # Menubar button bindings
@@ -247,11 +236,17 @@ class MainWindow(wx.Frame):
   def onPreferences(self, e):
     dlg = IOTAPreferences(self)
     dlg.set_choices(method=self.gparams.mp_method,
-                          queue=self.gparams.mp_queue)
+                    queue=self.gparams.mp_queue,
+                    monitor_mode=self.gparams.advanced.monitor_mode,
+                    timeout=self.gparams.advanced.monitor_mode_timeout,
+                    to_length=self.gparams.advanced.monitor_mode_timeout_length)
 
     if dlg.ShowModal() == wx.ID_OK:
       self.gparams.mp_method = dlg.method
       self.gparams.mp_queue = dlg.queue
+      self.gparams.advanced.monitor_mode = dlg.monitor_mode
+      self.gparams.advanced.monitor_mode_timeout = dlg.mm_timeout
+      self.gparams.advanced.monitor_mode_timeout_length = dlg.mm_timeout_len
 
   def init_settings(self):
     # Grab params from main window class
@@ -286,25 +281,20 @@ class MainWindow(wx.Frame):
 
   def onInput(self, e):
     if self.input_window.inp_box.ctr.GetValue() != '':
-      self.toolbar.EnableTool(self.tb_btn_imglist.GetId(), True)
-      self.toolbar.EnableTool(self.tb_btn_convert.GetId(), True)
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
     else:
-      self.toolbar.EnableTool(self.tb_btn_imglist.GetId(), False)
-      self.toolbar.EnableTool(self.tb_btn_convert.GetId(), False)
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
 
   def onRun(self, e):
     # Run full processing
-    if e.GetId() == self.tb_btn_convert.GetId():
-      self.gparams.image_conversion.convert_only = True
-      title = 'Image Conversion'
-    elif e.GetId() == self.tb_btn_test.GetId():
-      self.gparams.advanced.experimental = True
+
+    if e.GetId() == self.tb_btn_test.GetId():  # Not testing right now
+      self.init_settings()
       title = 'Test'
     else:
+      self.init_settings()
       title = 'Image Processing'
-    self.init_settings()
+
     self.proc_window = ProcWindow(self, -1, title=title,
                                   target_phil=self.target_phil,
                                   params=self.gparams)
@@ -398,30 +388,10 @@ class MainWindow(wx.Frame):
       elif str(self.gparams.advanced.integrate_with).lower() == 'dials':
         self.input_window.int_box.ctr.SetSelection(1)
 
-  def onWriteImageList(self, e):
-    img_list_dlg = wx.FileDialog(self,
-                                 message="Save List of Images",
-                                 defaultDir=os.curdir,
-                                 defaultFile="*.lst",
-                                 wildcard="*",
-                                 style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
-                                 )
-
-    if img_list_dlg.ShowModal() == wx.ID_OK:
-      self.init_settings()
-      self.init = InitAll(iota_version)
-      good_init = self.init.run(self.gparams,
-                                target_phil=self.target_phil,
-                                list_file = img_list_dlg.GetPath())
-
-      if good_init:
-        wx.MessageBox('List of images saved in {}'.format(img_list_dlg.GetPath()),
-                      'Info', wx.OK | wx.ICON_INFORMATION)
-
   def onPRIME(self, e):
     from prime.postrefine.mod_gui_init import PRIMEWindow
-    prefix = self.input_window.prime_ctr_prefix.GetValue()
-    self.prime_window = PRIMEWindow(self, -1, title='PRIME', prefix=prefix)
+    #prefix = self.input_window.prime_ctr_prefix.GetValue()
+    self.prime_window = PRIMEWindow(self, -1, title='PRIME', prefix='prime')
     self.prime_window.SetMinSize(self.prime_window.GetEffectiveMinSize())
     self.prime_window.Show(True)
 
@@ -734,7 +704,10 @@ class SummaryTab(wx.Panel):
 class ProcWindow(wx.Frame):
   ''' New frame that will show processing info '''
 
-  def __init__(self, parent, id, title, params, target_phil=None, test=False):
+  def __init__(self, parent, id, title,
+               params,
+               target_phil=None,
+               test=False):
     wx.Frame.__init__(self, parent, id, title, size=(800, 900),
                       style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER)
 
@@ -745,6 +718,9 @@ class ProcWindow(wx.Frame):
     self.bookmark = 0
     self.gparams = params
     self.target_phil = target_phil
+    self.monitor_mode = False
+    self.monitor_mode_timeout = None
+    self.timeout_start = None
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -754,6 +730,16 @@ class ProcWindow(wx.Frame):
     self.tb_btn_abort = self.proc_toolbar.AddLabelTool(wx.ID_ANY, label='Abort',
                                                 bitmap=wx.Bitmap('{}/32x32/stop.png'.format(icons)),
                                                 shortHelp='Abort')
+    self.proc_toolbar.AddSeparator()
+    self.tb_btn_monitor = self.proc_toolbar.AddCheckLabelTool(wx.ID_ANY,
+                                                label='Monitor',
+                                                bitmap=wx.Bitmap('{}/32x32/watch.png'.format(icons)),
+                                                shortHelp='Monitor Mode')
+    self.tb_btn_timeout = self.proc_toolbar.AddCheckLabelTool(wx.ID_ANY,
+                                                label='Timeout',
+                                                bitmap=wx.Bitmap('{}/32x32/timeout.png'.format(icons)),
+                                                shortHelp='Monitor Mode Timeout')
+    self.proc_toolbar.EnableTool(self.tb_btn_timeout.GetId(), False)
     self.proc_toolbar.Realize()
 
     # Status box
@@ -806,20 +792,54 @@ class ProcWindow(wx.Frame):
 
     # Button bindings
     self.Bind(wx.EVT_TOOL, self.onAbort, self.tb_btn_abort)
+    self.Bind(wx.EVT_TOOL, self.onWatch, self.tb_btn_monitor)
+    self.Bind(wx.EVT_TOOL, self.onTimeout, self.tb_btn_timeout)
 
-    if not self.gparams.advanced.experimental:
-      self.run()
-    else:
-      self.summary_tab = SummaryTab(self.proc_nb)
-      self.proc_nb.AddPage(self.summary_tab, 'Summary')
-      self.good_to_go = True
+    # Determine if monitor mode was previously selected
+    if self.gparams.advanced.monitor_mode:
+      self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), True)
+      self.proc_toolbar.EnableTool(self.tb_btn_timeout.GetId(), True)
+      self.monitor_mode = True
+      if self.gparams.advanced.monitor_mode_timeout:
+        self.proc_toolbar.ToggleTool(self.tb_btn_timeout.GetId(), True)
+        if self.gparams.advanced.monitor_mode_timeout_length is None:
+          self.monitor_mode_timeout = 30
+        else:
+          self.monitor_mode_timeout = self.gparams.advanced.monitor_mode_timeout_length
 
+    self.run()
+    # if not self.gparams.advanced.experimental:
+    #   self.run()
+    # else:
+    #   self.summary_tab = SummaryTab(self.proc_nb)
+    #   self.proc_nb.AddPage(self.summary_tab, 'Summary')
+    #   self.good_to_go = True
+
+  def onWatch(self, e):
+    if self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
+      self.monitor_mode = True
+      self.proc_toolbar.EnableTool(self.tb_btn_timeout.GetId(), True)
+    elif not self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
+      self.monitor_mode = False
+      self.proc_toolbar.EnableTool(self.tb_btn_timeout.GetId(), False)
+      self.proc_toolbar.ToggleTool(self.tb_btn_timeout.GetId(), False)
+      self.monitor_mode_timeout = None
+
+  def onTimeout(self, e):
+    if self.proc_toolbar.GetToolState(self.tb_btn_timeout.GetId()):
+      timeout_dlg = WatchModeTimeOut(self)
+      if timeout_dlg.ShowModal() == wx.ID_OK:
+        self.monitor_mode_timeout = timeout_dlg.timeout_length
+      else:
+        self.monitor_mode_timeout = None
+    elif not self.proc_toolbar.GetToolState(self.tb_btn_timeout.GetId()):
+      self.monitor_mode_timeout = None
 
   def onStatusBarResize(self, e):
     rect = self.sb.GetFieldRect(0)
     self.gauge_process.SetPosition((rect.x + 2, rect.y + 2))
     self.gauge_process.SetSize((rect.width - 4, rect.height - 4))
-
+    self.Refresh()
 
   def onAbort(self, e):
     with open(self.tmp_abort_file, 'w') as af:
@@ -849,26 +869,41 @@ class ProcWindow(wx.Frame):
       self.good_to_go = False
 
 
-  def process_images(self):
+  def process_images(self, new_img = None):
     ''' One-fell-swoop importing / triaging / integration of images '''
 
     if self.init.params.cctbx.selection.select_only.flag_on:
       self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for i, j in enumerate(self.init.gs_img_objects, 1)]
+      iterable = self.img_list
       type = 'object'
+      self.status_txt.SetForegroundColour('black')
+      self.status_txt.SetLabel('Re-running selection...')
     else:
-      self.img_list = [[i, len(self.init.input_list) + 1, j] for i, j in enumerate(self.init.input_list, 1)]
       type = 'image'
+      if new_img == None:
+        self.img_list = [[i, len(self.init.input_list) + 1, j] for i, j in enumerate(self.init.input_list, 1)]
+        iterable = self.img_list
+        self.status_summary = [0] * len(self.img_list)
+        self.nref_list = [0] * len(self.img_list)
+        self.nref_xaxis = [i[0] for i in self.img_list]
+        self.res_list = [0] * len(self.img_list)
+        self.status_txt.SetForegroundColour('black')
+        self.status_txt.SetLabel('Processing {} images...'
+                                 ''.format(len(self.img_list)))
+      else:
+        self.img_list.extend(new_img)
+        iterable = new_img
+        self.status_summary.extend([0] * len(new_img))
+        self.nref_list.extend([0] * len(new_img))
+        self.nref_xaxis.extend([i[0] for i in new_img])
+        self.res_list.extend([0] * len(new_img))
+        self.status_txt.SetForegroundColour('black')
+        self.status_txt.SetLabel('Processing additional {} images ({} total)...'
+                                 ''.format(len(new_img), len(self.img_list)))
+        self.plot_integration()
 
     self.gauge_process.SetRange(len(self.img_list))
-    self.status_summary = [0] * len(self.img_list)
-    self.nref_list = [0] * len(self.img_list)
-    self.nref_xaxis = [i[0] for i in self.img_list]
-    self.res_list = [0] * len(self.img_list)
-
-    self.status_txt.SetForegroundColour('black')
-    self.status_txt.SetLabel('Processing...')
-
-    img_process = ProcThread(self, self.init, self.img_list, input_type=type)
+    img_process = ProcThread(self, self.init, iterable, input_type=type)
     img_process.start()
 
 
@@ -921,7 +956,9 @@ class ProcWindow(wx.Frame):
         self.summary_tab.spa_std.SetLabel("{:4.2f}".format(np.std(analysis.a)))
 
       # Dataset information
+      analysis.print_results()
       pg, uc = analysis.unit_cell_analysis()
+
       self.summary_tab.pg_txt.SetLabel(str(pg))
       unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
       self.summary_tab.uc_txt.SetLabel(unit_cell)
@@ -1168,12 +1205,6 @@ class ProcWindow(wx.Frame):
         self.nref_list[obj.img_index - 1] = obj.final['strong']
         self.res_list[obj.img_index - 1] = obj.final['res']
 
-    end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
-
-    if os.path.isfile(end_filename):
-      self.img_objects = self.finished_objects
-      self.finish_process()
-
     if len(self.finished_objects) > self.obj_counter:
       self.plot_integration()
       self.obj_counter = len(self.finished_objects)
@@ -1199,8 +1230,30 @@ class ProcWindow(wx.Frame):
 
     # Check if all images have been looked at; if yes, finish process
     if self.obj_counter >= len(self.img_list):
-      self.finish_process()
 
+      # Check if monitor mode is set
+      if self.monitor_mode:
+        self.status_txt.SetLabel('Checking for new images...')
+        ginp = GenerateInput()
+        input_entries = [i for i in self.gparams.input if i != None]
+        ext_file_list = ginp.make_input_list(input_entries)
+        old_file_list = [i[2] for i in self.img_list]
+        new_file_list = [i for i in ext_file_list if i not in old_file_list]
+        new_img = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
+          new_file_list, len(old_file_list) + 1)]
+        if len(new_img) > 0:
+          self.status_txt.SetLabel('Found {} new images!'.format(len(new_img)))
+          self.process_images(new_img=new_img)
+        else:
+          if self.monitor_mode_timeout != None:
+            if self.timeout_start is None:
+              self.timeout_start = time.time()
+            else:
+              interval = time.time() - self.timeout_start
+              if interval >= self.monitor_mode_timeout:
+                self.finish_process()
+      else:
+        self.finish_process()
 
   def onFinishedProcess(self, e):
     pass
@@ -1222,6 +1275,10 @@ class ProcWindow(wx.Frame):
       self.final_objects = [i for i in self.finished_objects if i.fail == None]
       self.gauge_process.Hide()
       self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+      self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
+      self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
+      self.proc_toolbar.EnableTool(self.tb_btn_timeout.GetId(), False)
+      self.proc_toolbar.ToggleTool(self.tb_btn_timeout.GetId(), False)
       self.sb.SetStatusText('{} of {} images successfully integrated'\
                             ''.format(len(self.final_objects), len(self.img_list)), 1)
       if len(self.final_objects) > 0:
@@ -1316,6 +1373,7 @@ class InputWindow(wx.Panel):
     vbox.Add(opt_box, flag=wx.ALL, border=10)
 
     self.SetSizer(vbox)
+    self.Fit()
 
     # Button bindings
     self.inp_box.btn_browse.Bind(wx.EVT_BUTTON, self.onInputBrowse)
@@ -1684,9 +1742,9 @@ class ImportWindow(wx.Dialog):
     self.mod_stl = wx.StaticLine(self, size=(550, -1))
     # mod_box_1.Add(self.mod_txt_title, flag=wx.LEFT, border=5)
     # mod_box_1.Add((10, -1))
-    mod_box_1.Add(self.mod_stl, flag=wx.ALIGN_BOTTOM)
+    mod_box_1.Add(self.mod_stl, flag=wx.ALIGN_BOTTOM | wx.EXPAND)
     vbox.Add((-1, 10))
-    vbox.Add(mod_box_1, flag=wx.RIGHT | wx.LEFT | wx.TOP | wx.BOTTOM, border=10)
+    vbox.Add(mod_box_1, flag=wx.ALL | wx.EXPAND, border=10)
 
     # Image modification options
     conv_box_2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -1703,7 +1761,7 @@ class ImportWindow(wx.Dialog):
     conv_box_2.Add(self.mod_rb3_square, flag=wx.LEFT, border=5)
     self.mod_txt_beamstop = wx.StaticText(self,
                                           label='Beamstop shadow threshold:')
-    self.mod_ctr_beamstop = wx.TextCtrl(self, size=(40, -1))
+    self.mod_ctr_beamstop = wx.TextCtrl(self, size=(80, -1))
     conv_box_2.Add(self.mod_txt_beamstop, flag=wx.LEFT, border=25)
     conv_box_2.Add(self.mod_ctr_beamstop, flag=wx.LEFT, border=5)
     vbox.Add(conv_box_2, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
@@ -1717,10 +1775,10 @@ class ImportWindow(wx.Dialog):
     conv_box_3.Add(self.mod_txt_mm1, flag=wx.LEFT, border=1)
     self.mod_txt_beamxy = wx.StaticText(self, label='Direct beam')
     self.mod_txt_beamx = wx.StaticText(self, label='X =')
-    self.mod_txt_mm2 = wx.StaticText(self, label='mm, ')
+    self.mod_txt_mm2 = wx.StaticText(self, label='pixels, ')
     self.mod_ctr_beamx = wx.TextCtrl(self, size=(50, -1))
     self.mod_txt_beamy = wx.StaticText(self, label='Y =')
-    self.mod_txt_mm3 = wx.StaticText(self, label='mm')
+    self.mod_txt_mm3 = wx.StaticText(self, label='pixels')
     self.mod_ctr_beamy = wx.TextCtrl(self, size=(50, -1))
     conv_box_3.Add(self.mod_txt_beamxy, flag=wx.LEFT, border=35)
     conv_box_3.Add(self.mod_txt_beamx, flag=wx.LEFT, border=5)
@@ -1738,9 +1796,10 @@ class ImportWindow(wx.Dialog):
     self.trg_stl = wx.StaticLine(self, size=(550, -1))
     # trg_box.Add(self.trg_txt_title, flag=wx.LEFT, border=5)
     # trg_box.Add((10, -1))
-    trg_box.Add(self.trg_stl, flag=wx.ALIGN_BOTTOM)
+    trg_box.Add(self.trg_stl, flag=wx.ALIGN_BOTTOM | wx.EXPAND)
     vbox.Add((-1, 10))
-    vbox.Add(trg_box, flag=wx.RIGHT | wx.LEFT | wx.TOP | wx.BOTTOM, border=10)
+    vbox.Add(trg_box, flag=wx.ALL | wx.EXPAND,
+             border=10)
 
     # Image triage options
     conv_box_4 = wx.BoxSizer(wx.HORIZONTAL)
@@ -1761,6 +1820,7 @@ class ImportWindow(wx.Dialog):
     conv_box_4.Add(self.trg_txt_bragg, flag=wx.LEFT, border=15)
     conv_box_4.Add(self.trg_ctr_bragg, flag=wx.LEFT | wx.ALIGN_TOP, border=5)
     vbox.Add(conv_box_4, flag=wx.RIGHT | wx.LEFT | wx.TOP, border=10)
+    vbox.Add((-1, 10))
 
     # Triage grid search box
     conv_box_5 = wx.BoxSizer(wx.HORIZONTAL)
@@ -1807,9 +1867,9 @@ class ImportWindow(wx.Dialog):
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-    main_sizer.Add(vbox, flag=wx.ALL, border=15)
+    main_sizer.Add(vbox, flag=wx.ALL | wx.EXPAND, border=15)
     main_sizer.Add(dialog_box,
-                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
 
     self.SetSizer(main_sizer)
@@ -2393,29 +2453,11 @@ class IOTAPreferences(wx.Dialog):
     self.method = None
     self.queue = None
     main_sizer = wx.BoxSizer(wx.VERTICAL)
-
-    main_box = wx.StaticBox(self, label='IOTA Preferences')
-    vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
-
     self.SetSizer(main_sizer)
 
-    q_choices = ['psanaq', 'psnehq', 'psfehq'] + ['custom']
-    self.queues = ct.ChoiceCtrl(self,
-                                label='Queue:',
-                                label_size=(120, -1),
-                                label_style='bold',
-                                ctrl_size=wx.DefaultSize,
-                                choices=q_choices)
-    vbox.Add(self.queues, flag=wx.ALL, border=10)
-
-    self.custom_queue = ct.OptionCtrl(self,
-                                      items=[('cqueue', '')],
-                                      label='Custom Queue:',
-                                      label_size=(120, -1),
-                                      label_style='normal',
-                                      ctrl_size=(150, -1))
-    # self.custom_queue.Disable()
-    vbox.Add(self.custom_queue, flag=wx.ALL, border=10)
+    # Queue Preferences
+    queue_box = wx.StaticBox(self, label='Multiprocessing Preferences')
+    queue_sizer = wx.StaticBoxSizer(queue_box, wx.VERTICAL)
 
     mp_choices = ['multiprocessing', 'lsf']
     self.mp_methods = ct.ChoiceCtrl(self,
@@ -2424,9 +2466,55 @@ class IOTAPreferences(wx.Dialog):
                                     label_style='bold',
                                     ctrl_size=wx.DefaultSize,
                                     choices=mp_choices)
-    vbox.Add(self.mp_methods, flag=wx.ALL, border=10)
+    queue_sizer.Add(self.mp_methods, flag=wx.ALL,border=10)
 
-    main_sizer.Add(vbox, flag=wx.EXPAND | wx.ALL, border=10)
+    q_choices = ['psanaq', 'psnehq', 'psfehq'] + ['custom']
+    self.queues = ct.ChoiceCtrl(self,
+                                label='Queue:',
+                                label_size=(120, -1),
+                                label_style='bold',
+                                ctrl_size=wx.DefaultSize,
+                                choices=q_choices)
+    queue_sizer.Add(self.queues, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
+                    border=10)
+
+    self.custom_queue = ct.OptionCtrl(self,
+                                      items=[('cqueue', '')],
+                                      label='Custom Queue:',
+                                      label_size=(120, -1),
+                                      label_style='normal',
+                                      ctrl_size=(150, -1))
+    # self.custom_queue.Disable()
+    queue_sizer.Add(self.custom_queue, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
+                    border=10)
+
+
+
+    # Monitor Mode Preferences
+    proc_box = wx.StaticBox(self, label='Monitor Mode Preferences')
+    proc_sizer = wx.StaticBoxSizer(proc_box, wx.VERTICAL)
+
+    self.chk_cont_mode = wx.CheckBox(self, label='Process in Monitor Mode')
+    self.chk_cont_mode.SetValue(False)
+    self.chk_mm_timeout = wx.CheckBox(self, label='Monitor Mode Timeout')
+    self.chk_mm_timeout.SetValue(False)
+    self.opt_timeout = ct.OptionCtrl(self,
+                                     items=[('timeout', '')],
+                                     label='Timeout (sec):',
+                                     label_size=(120, -1),
+                                     label_style='normal',
+                                     ctrl_size=(150, -1))
+    self.chk_mm_timeout.Disable()
+    self.opt_timeout.Disable()
+
+    proc_sizer.Add(self.chk_cont_mode, flag=wx.ALL, border=10)
+    proc_sizer.Add(self.chk_mm_timeout, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
+                   border=10)
+    proc_sizer.Add(self.opt_timeout, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
+                   border=10)
+
+    main_sizer.Add(queue_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+    main_sizer.Add(proc_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -2437,8 +2525,17 @@ class IOTAPreferences(wx.Dialog):
     self.Bind(wx.EVT_CHOICE, self.onQueue, self.queues.ctr)
     self.Bind(wx.EVT_CHOICE, self.onMethod, self.mp_methods.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    self.Bind(wx.EVT_CHECKBOX, self.onMonitor, self.chk_cont_mode)
+    self.Bind(wx.EVT_CHECKBOX, self.onTimeout, self.chk_mm_timeout)
 
-  def set_choices(self, method, queue):
+    self.Fit()
+
+  def set_choices(self,
+                  method,
+                  queue,
+                  monitor_mode,
+                  timeout,
+                  to_length):
     # Set queue to default value
     if queue is None:
       queue = 'None'
@@ -2453,8 +2550,16 @@ class IOTAPreferences(wx.Dialog):
     inp_method = self.mp_methods.ctr.FindString(method)
     if inp_method != wx.NOT_FOUND:
       self.mp_methods.ctr.SetSelection(inp_method)
-
     self.check_method()
+
+    # Set Minotir Mode values
+    if monitor_mode:
+      self.chk_cont_mode.SetValue(True)
+      self.chk_mm_timeout.Enable()
+      if timeout:
+        self.chk_mm_timeout.SetValue(True)
+        self.opt_timeout.Enable()
+        self.opt_timeout.timeout.SetValue(str(to_length))
 
   def onMethod(self, e):
     self.check_method()
@@ -2477,7 +2582,33 @@ class IOTAPreferences(wx.Dialog):
     else:
       self.custom_queue.Disable()
 
+  def onMonitor(self, e):
+    if self.chk_cont_mode.GetValue():
+      self.chk_mm_timeout.Enable()
+    else:
+      self.chk_mm_timeout.Disable()
+      self.chk_mm_timeout.SetValue(False)
+      self.opt_timeout.Disable()
+      self.opt_timeout.timeout.SetValue('')
+
+  def onTimeout(self, e):
+    if self.chk_mm_timeout.GetValue():
+      self.opt_timeout.Enable()
+      self.opt_timeout.timeout.SetValue('30')
+    else:
+      self.opt_timeout.Disable()
+      self.opt_timeout.timeout.SetValue('')
+
   def onOK(self, e):
+    # Get continous mode settings
+    self.monitor_mode = self.chk_cont_mode.GetValue()
+    self.mm_timeout = self.chk_mm_timeout.GetValue()
+
+    if self.opt_timeout.timeout.GetValue() == '':
+      self.mm_timeout_len = 0
+    else:
+      self.mm_timeout_len = int(self.opt_timeout.timeout.GetValue())
+
     self.method = self.mp_methods.ctr.GetString(self.mp_methods.ctr.GetSelection())
     queue_selection = self.queues.ctr.GetString(self.queues.ctr.GetSelection())
     if queue_selection == 'custom':
@@ -2489,6 +2620,66 @@ class IOTAPreferences(wx.Dialog):
     else:
       self.queue = queue_selection
       e.Skip()
+
+class WatchModeTimeOut(wx.Dialog):
+  def __init__(self, *args, **kwargs):
+    super(WatchModeTimeOut, self).__init__(*args, **kwargs)
+
+    self.timeout_length = None
+    main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(main_sizer)
+
+    option_box = wx.StaticBox(self, label='Timeout Options')
+    option_sizer = wx.StaticBoxSizer(option_box, wx.VERTICAL)
+
+    rb_sizer = wx.FlexGridSizer(4, 3, 10, 5)
+    self.rb_30sec = wx.RadioButton(self, label='30 seconds', style=wx.RB_GROUP)
+    self.rb_60sec = wx.RadioButton(self, label='60 seconds')
+    self.rb_90sec = wx.RadioButton(self, label='90 seconds')
+    self.rb_custom = wx.RadioButton(self, label='Custom: ')
+    self.opt_custom = wx.TextCtrl(self, size=(100, -1))
+    self.opt_custom.Disable()
+    self.txt_custom = wx.StaticText(self, label='seconds')
+    self.txt_custom.Disable()
+
+    rb_sizer.AddMany([self.rb_30sec, (0, 0), (0, 0),
+                     self.rb_60sec, (0, 0), (0, 0),
+                     self.rb_90sec, (0, 0), (0, 0),
+                     self.rb_custom, self.opt_custom, self.txt_custom])
+    option_sizer.Add(rb_sizer, flag=wx.ALL | wx.EXPAND, border=10)
+    main_sizer.Add(option_sizer, flag=wx.ALL | wx.EXPAND)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    main_sizer.Add(dialog_box,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    self.rb_30sec.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb_60sec.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb_90sec.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb_custom.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+
+  def onCustom(self, e):
+    if self.rb_custom.GetValue():
+      self.txt_custom.Enable()
+      self.opt_custom.Enable()
+      self.opt_custom.SetValue('120')
+    else:
+      self.txt_custom.Disable()
+      self.opt_custom.Disable()
+      self.opt_custom.SetValue('')
+
+  def onOK(self, e):
+    if self.rb_30sec.GetValue():
+      self.timeout_length = 30
+    elif self.rb_60sec.GetValue():
+      self.timeout_length = 60
+    elif self.rb_90sec.GetValue():
+      self.timeout_length = 90
+    elif self.rb_custom.GetValue():
+      self.timeout_length = int(self.opt_custom.GetValue())
+    e.Skip()
 
 # ------------------------------ Initialization  ----------------------------- #
 

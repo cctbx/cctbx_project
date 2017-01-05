@@ -1,19 +1,13 @@
-IOTA v1.0.014 - Bringing back clustering; bugfixes
-
-Bugfixes:
-
-1. Fixed GUI crash on some Linux systems
-2. Command line "integrate_with" selection is propagated without error in Auto
-Mode
-
+IOTA v1.0.015 - Monitor Mode
 
 Features:
 
-1. "Full processing" mode on XTerm IOTA: will process one image per core, top
- to bottom, rather than splitting import and indexing / integration. (GUI
- already does this.)
-2. PRIME now has a "resolution override" checkbox in Advanced Options; this
-box sets all resolution values to whatever the user enters into the
-"Resolution" boxes. Otherwise, user has to modify resolutions in the script.
-3. Re-introduced unit cell clustering (works only on installations with SciPy
- for now, automatically off by default)
+1. Monitor mode: when toggled, IOTA will wait for new images to appear in
+the indicated input folder (or subfolders of that) and then process them.
+2. New "Preferences" (GUI-only) allow to pre-select monitor mode and to
+set a time-out timer.
+3. Also added "Monitor" and "Timeout" buttons in the processing window,
+allowing user to toggle those options on and off. A separate dialog pops up
+when "Timeout" is toggled, presenting some timeout options.
+
+(This feature has not yet been tested with live data collection.)
