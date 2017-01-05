@@ -792,7 +792,7 @@ class ProcWindow(wx.Frame):
 
     # Button bindings
     self.Bind(wx.EVT_TOOL, self.onAbort, self.tb_btn_abort)
-    self.Bind(wx.EVT_TOOL, self.onWatch, self.tb_btn_monitor)
+    self.Bind(wx.EVT_TOOL, self.onMonitor, self.tb_btn_monitor)
     self.Bind(wx.EVT_TOOL, self.onTimeout, self.tb_btn_timeout)
 
     # Determine if monitor mode was previously selected
@@ -815,7 +815,7 @@ class ProcWindow(wx.Frame):
     #   self.proc_nb.AddPage(self.summary_tab, 'Summary')
     #   self.good_to_go = True
 
-  def onWatch(self, e):
+  def onMonitor(self, e):
     if self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
       self.monitor_mode = True
       self.proc_toolbar.EnableTool(self.tb_btn_timeout.GetId(), True)
@@ -834,6 +834,7 @@ class ProcWindow(wx.Frame):
         self.monitor_mode_timeout = None
     elif not self.proc_toolbar.GetToolState(self.tb_btn_timeout.GetId()):
       self.monitor_mode_timeout = None
+    print 'DEBUG: Timeout set for {}'.format(self.monitor_mode_timeout)
 
   def onStatusBarResize(self, e):
     rect = self.sb.GetFieldRect(0)
@@ -1250,6 +1251,8 @@ class ProcWindow(wx.Frame):
               self.timeout_start = time.time()
             else:
               interval = time.time() - self.timeout_start
+              print 'DEBUG: Timeout interval at {:f4.2} sec' \
+                    ''.format(str(interval))
               if interval >= self.monitor_mode_timeout:
                 self.finish_process()
       else:
@@ -2659,8 +2662,10 @@ class WatchModeTimeOut(wx.Dialog):
     self.rb_60sec.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
     self.rb_90sec.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
     self.rb_custom.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onCustom(self, e):
+    print 'Radio buttons clicked!'
     if self.rb_custom.GetValue():
       self.txt_custom.Enable()
       self.opt_custom.Enable()
@@ -2679,6 +2684,7 @@ class WatchModeTimeOut(wx.Dialog):
       self.timeout_length = 90
     elif self.rb_custom.GetValue():
       self.timeout_length = int(self.opt_custom.GetValue())
+    print 'DEBUG: Timeout dialog, timeout set for {}'.format(self.timeout_length)
     e.Skip()
 
 # ------------------------------ Initialization  ----------------------------- #
