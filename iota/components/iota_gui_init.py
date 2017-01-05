@@ -834,7 +834,6 @@ class ProcWindow(wx.Frame):
         self.monitor_mode_timeout = None
     elif not self.proc_toolbar.GetToolState(self.tb_btn_timeout.GetId()):
       self.monitor_mode_timeout = None
-    print 'DEBUG: Timeout set for {}'.format(self.monitor_mode_timeout)
 
   def onStatusBarResize(self, e):
     rect = self.sb.GetFieldRect(0)
@@ -1244,6 +1243,7 @@ class ProcWindow(wx.Frame):
           new_file_list, len(old_file_list) + 1)]
         if len(new_img) > 0:
           self.status_txt.SetLabel('Found {} new images!'.format(len(new_img)))
+          self.timeout_start = None
           self.process_images(new_img=new_img)
         else:
           if self.monitor_mode_timeout != None:
@@ -1251,10 +1251,13 @@ class ProcWindow(wx.Frame):
               self.timeout_start = time.time()
             else:
               interval = time.time() - self.timeout_start
-              print 'DEBUG: Timeout interval at {:f4.2} sec' \
-                    ''.format(str(interval))
               if interval >= self.monitor_mode_timeout:
+                self.status_txt.SetLabel('Timed out. Finishing...')
                 self.finish_process()
+              else:
+                timeout_msg = 'No images found! Timing out in {} seconds' \
+                            ''.format(int(self.monitor_mode_timeout - interval))
+                self.status_txt.SetLabel(timeout_msg)
       else:
         self.finish_process()
 
@@ -2665,7 +2668,6 @@ class WatchModeTimeOut(wx.Dialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onCustom(self, e):
-    print 'Radio buttons clicked!'
     if self.rb_custom.GetValue():
       self.txt_custom.Enable()
       self.opt_custom.Enable()
@@ -2684,7 +2686,6 @@ class WatchModeTimeOut(wx.Dialog):
       self.timeout_length = 90
     elif self.rb_custom.GetValue():
       self.timeout_length = int(self.opt_custom.GetValue())
-    print 'DEBUG: Timeout dialog, timeout set for {}'.format(self.timeout_length)
     e.Skip()
 
 # ------------------------------ Initialization  ----------------------------- #
