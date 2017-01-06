@@ -594,6 +594,13 @@ class annotation(structure_base):
   def deep_copy(self):
     return copy.deepcopy(self)
 
+  def simple_elements(self):
+    """ helices and strands"""
+    all_elem_list = self.helices
+    for sh in self.sheets:
+      all_elem_list += sh.strands
+    return all_elem_list
+
   def remove_empty_annotations(self, hierarchy, asc=None):
     # returns annotation of deleted helices and sheets
     if asc is None:
