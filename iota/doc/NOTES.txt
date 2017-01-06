@@ -1,13 +1,11 @@
-IOTA v1.0.015 - Monitor Mode
+IOTA v1.0.016 - Further GUI Updates
 
 Features:
 
-1. Monitor mode: when toggled, IOTA will wait for new images to appear in
-the indicated input folder (or subfolders of that) and then process them.
-2. New "Preferences" (GUI-only) allow to pre-select monitor mode and to
-set a time-out timer.
-3. Also added "Monitor" and "Timeout" buttons in the processing window,
-allowing user to toggle those options on and off. A separate dialog pops up
-when "Timeout" is toggled, presenting some timeout options.
+1. Updated monitor mode: files updated via a separate thread to make the
+process less jerky when lots of images are generated rapidly
+2. Restart button can pick up where aborted while run window is up
 
-(This feature has not yet been tested with live data collection.)
+Bugfixes:
+
+1. Suppressed annoying numpy "mean of empty slice" runtime warning

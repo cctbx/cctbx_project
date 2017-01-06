@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 12/19/2016
+Last Changed: 01/06/2017
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -51,6 +51,7 @@ class GenerateInput():
             input_list.append(os.path.join(root, filename))
 
     return input_list
+
 
   def is_text(self, filename):
     '''Determines whether the file is text or binary '''

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 08/23/2016
+Last Changed: 01/06/2017
 Description : IOTA GUI Initialization module
 '''
 
@@ -14,6 +14,7 @@ from threading import Thread
 import math
 import numpy as np
 import time
+import warnings
 
 import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
@@ -62,6 +63,17 @@ icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 # Set up events for finishing one cycle and for finishing all cycles
 tp_EVT_ALLDONE = wx.NewEventType()
 EVT_ALLDONE = wx.PyEventBinder(tp_EVT_ALLDONE, 1)
+
+tp_EVT_IMGDONE = wx.NewEventType()
+EVT_IMGDONE = wx.PyEventBinder(tp_EVT_IMGDONE, 1)
+
+class ImageFinderAllDone(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, image_list=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.image_list = image_list
+  def GetValue(self):
+    return self.image_list
 
 class AllDone(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
@@ -135,6 +147,38 @@ class ProcThread(Thread):
     proc_image_instance = ProcessImage(self.init, input_entry, self.type)
     proc_image = proc_image_instance.run()
     return proc_image
+
+class ImageFinderThread(Thread):
+  ''' Worker thread generated to poll filesystem on timer. Will check to see
+  if any new images have been found. Put on a thread to run in background '''
+  def __init__(self,
+               parent,
+               image_path,
+               image_list):
+    Thread.__init__(self)
+    self.parent = parent
+    self.image_path = image_path
+    self.image_list = image_list
+
+  def run(self):
+    # Poll filesystem and determine which files are new (if any)
+    ginp = GenerateInput()
+    input_entries = [i for i in self.image_path if i != None]
+    ext_file_list = ginp.make_input_list(input_entries)
+    old_file_list = [i[2] for i in self.image_list]
+    new_file_list = [i for i in ext_file_list if i not in old_file_list]
+
+    # Test if file is an image pickle or raw image (may be slow!)
+    tested_file_list = [i for i in new_file_list if ginp.get_file_type(i) !=
+                        'not image']
+
+    # Generate list of new images
+    new_img = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
+      tested_file_list, len(old_file_list) + 1)]
+
+    evt = ImageFinderAllDone(tp_EVT_IMGDONE, -1, image_list=new_img)
+    wx.PostEvent(self.parent, evt)
+
 
 # -------------------------------- Main Window ------------------------------- #
 
@@ -718,9 +762,12 @@ class ProcWindow(wx.Frame):
     self.bookmark = 0
     self.gparams = params
     self.target_phil = target_phil
+    self.state = 'process'
     self.monitor_mode = False
     self.monitor_mode_timeout = None
     self.timeout_start = None
+    self.new_images = []
+    self.find_new_images = True
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -730,6 +777,11 @@ class ProcWindow(wx.Frame):
     self.tb_btn_abort = self.proc_toolbar.AddLabelTool(wx.ID_ANY, label='Abort',
                                                 bitmap=wx.Bitmap('{}/32x32/stop.png'.format(icons)),
                                                 shortHelp='Abort')
+    self.tb_btn_resume = self.proc_toolbar.AddLabelTool(wx.ID_ANY,
+                                                        label='Resume',
+                                                        bitmap=wx.Bitmap('{}/32x32/restart.png'.format(icons)),
+                                                        shortHelp='Resume aborted run')
+    self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), False)
     self.proc_toolbar.AddSeparator()
     self.tb_btn_monitor = self.proc_toolbar.AddCheckLabelTool(wx.ID_ANY,
                                                 label='Monitor',
@@ -787,11 +839,13 @@ class ProcWindow(wx.Frame):
 
     # Event bindings
     self.Bind(EVT_ALLDONE, self.onFinishedProcess)
+    self.Bind(EVT_IMGDONE, self.onFinishedImageFinder)
     self.sb.Bind(wx.EVT_SIZE, self.onStatusBarResize)
     self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
 
     # Button bindings
     self.Bind(wx.EVT_TOOL, self.onAbort, self.tb_btn_abort)
+    self.Bind(wx.EVT_TOOL, self.onResume, self.tb_btn_resume)
     self.Bind(wx.EVT_TOOL, self.onMonitor, self.tb_btn_monitor)
     self.Bind(wx.EVT_TOOL, self.onTimeout, self.tb_btn_timeout)
 
@@ -848,6 +902,51 @@ class ProcWindow(wx.Frame):
     self.status_txt.SetLabel('Aborting...')
     self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
 
+  def onResume(self, e):
+    """ Restarts an aborted run if the processing window is still open.
+    Basically goes through self.finished_objects, extracts the raw image
+    names and regenerates the self.img_list to only have those image paths;
+    then finds any 'new' images (which includes unprocessed images as well as
+    any images that may have been added during the abort pause) and runs
+    processing """
+
+    # Remove abort signal file
+    os.remove(self.tmp_abort_file)
+
+    # Re-generate new image info to include un-processed images
+    ginp = GenerateInput()
+    input_entries = [i for i in self.gparams.input if i != None]
+    ext_file_list = ginp.make_input_list(input_entries)
+    old_file_list = [i.raw_img for i in self.finished_objects]
+    new_file_list = [i for i in ext_file_list if i not in old_file_list]
+
+    # Generate list of new images
+    self.new_images = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
+      new_file_list, len(old_file_list) + 1)]
+
+    # Reset self.img_list to only processed images
+    self.img_list = [[i, len(ext_file_list) + 1, j] for i, j in
+                     enumerate(old_file_list, 1)]
+
+    # # Re-initialize monitor mode
+    # if self.monitor_mode:
+    #   self.new_images = []
+    #   self.find_new_images = True
+    #   if self.monitor_mode_timeout:
+    #     self.timeout_start = None
+
+    # Reset toolbar buttons
+    self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), True)
+    self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), False)
+    self.proc_toolbar.EnableTool(self.tb_btn_timeout.GetId(), True)
+    self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), True)
+
+    # Run processing, etc.
+    self.state = 'resume'
+    self.process_images()
+    self.timer.Start(5000)
+
+
   def run(self):
     # Initialize IOTA parameters and log
     self.init = InitAll(iota_version)
@@ -869,38 +968,53 @@ class ProcWindow(wx.Frame):
       self.good_to_go = False
 
 
-  def process_images(self, new_img = None):
+  def process_images(self):
     ''' One-fell-swoop importing / triaging / integration of images '''
+
+    # Set font properties for status window
+    font = self.sb.GetFont()
+    font.SetWeight(wx.NORMAL)
+    self.status_txt.SetFont(font)
+    self.status_txt.SetForegroundColour('black')
 
     if self.init.params.cctbx.selection.select_only.flag_on:
       self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for i, j in enumerate(self.init.gs_img_objects, 1)]
       iterable = self.img_list
       type = 'object'
-      self.status_txt.SetForegroundColour('black')
       self.status_txt.SetLabel('Re-running selection...')
     else:
       type = 'image'
-      if new_img == None:
+      if self.state == 'process':
         self.img_list = [[i, len(self.init.input_list) + 1, j] for i, j in enumerate(self.init.input_list, 1)]
         iterable = self.img_list
         self.status_summary = [0] * len(self.img_list)
         self.nref_list = [0] * len(self.img_list)
         self.nref_xaxis = [i[0] for i in self.img_list]
         self.res_list = [0] * len(self.img_list)
-        self.status_txt.SetForegroundColour('black')
         self.status_txt.SetLabel('Processing {} images...'
                                  ''.format(len(self.img_list)))
-      else:
-        self.img_list.extend(new_img)
-        iterable = new_img
-        self.status_summary.extend([0] * len(new_img))
-        self.nref_list.extend([0] * len(new_img))
-        self.nref_xaxis.extend([i[0] for i in new_img])
-        self.res_list.extend([0] * len(new_img))
+      elif self.state == 'new images':
+        iterable = self.new_images
+        self.img_list.extend(self.new_images)
+        self.new_images = []
+        self.status_summary.extend([0] * len(iterable))
+        self.nref_list.extend([0] * len(iterable))
+        self.nref_xaxis.extend([i[0] for i in iterable])
+        self.res_list.extend([0] * len(iterable))
         self.status_txt.SetForegroundColour('black')
         self.status_txt.SetLabel('Processing additional {} images ({} total)...'
-                                 ''.format(len(new_img), len(self.img_list)))
+                                 ''.format(len(iterable), len(self.img_list)))
         self.plot_integration()
+      elif self.state == 'resume':
+        iterable = self.new_images
+        self.img_list.extend(self.new_images)
+        self.new_images = []
+        self.status_summary = [0] * len(self.img_list)
+        self.nref_list = [0] * len(self.img_list)
+        self.nref_xaxis = [i[0] for i in self.img_list]
+        self.res_list = [0] * len(self.img_list)
+        self.status_txt.SetLabel('Processing {} remaining images ({} total)...'
+                                 ''.format(len(iterable), len(self.img_list)))
 
     self.gauge_process.SetRange(len(self.img_list))
     img_process = ProcThread(self, self.init, iterable, input_type=type)
@@ -966,9 +1080,14 @@ class ProcWindow(wx.Frame):
                                 np.mean(analysis.hres),
                                 u'\u212B'))
       self.summary_tab.rs_txt.SetLabel(res)
-      beamX, beamY = plot.calculate_beam_xy()[:2]
-      beamXY = "X = {:4.1f} mm, Y = {:4.1f} mm" \
-               "".format(np.median(beamX), np.median(beamY))
+
+      with warnings.catch_warnings():
+        # To catch any 'mean of empty slice' runtime warnings
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        beamX, beamY = plot.calculate_beam_xy()[:2]
+        beamXY = "X = {:4.1f} mm, Y = {:4.1f} mm" \
+                 "".format(np.median(beamX), np.median(beamY))
+
       self.summary_tab.xy_txt.SetLabel(beamXY)
 
       # Summary
@@ -1228,23 +1347,20 @@ class ProcWindow(wx.Frame):
     # Update log
     self.display_log()
 
+    # Run an instance of new image finder on a separate thread
+    if self.find_new_images:
+      self.find_new_images = False
+      ext_image_list = self.img_list + self.new_images
+      img_finder = ImageFinderThread(self, self.gparams.input, ext_image_list)
+      img_finder.start()
+
     # Check if all images have been looked at; if yes, finish process
     if self.obj_counter >= len(self.img_list):
-
-      # Check if monitor mode is set
       if self.monitor_mode:
-        self.status_txt.SetLabel('Checking for new images...')
-        ginp = GenerateInput()
-        input_entries = [i for i in self.gparams.input if i != None]
-        ext_file_list = ginp.make_input_list(input_entries)
-        old_file_list = [i[2] for i in self.img_list]
-        new_file_list = [i for i in ext_file_list if i not in old_file_list]
-        new_img = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
-          new_file_list, len(old_file_list) + 1)]
-        if len(new_img) > 0:
-          self.status_txt.SetLabel('Found {} new images!'.format(len(new_img)))
+        if len(self.new_images) > 0:
           self.timeout_start = None
-          self.process_images(new_img=new_img)
+          self.state = 'new images'
+          self.process_images()
         else:
           if self.monitor_mode_timeout != None:
             if self.timeout_start is None:
@@ -1267,6 +1383,10 @@ class ProcWindow(wx.Frame):
     #   self.img_objects = e.GetValue()
     #   self.finish_process()
 
+  def onFinishedImageFinder(self, e):
+    self.new_images = self.new_images + e.GetValue()
+    self.find_new_images = True
+
   def finish_process(self):
     if os.path.isfile(self.tmp_abort_file):
       self.gauge_process.Hide()
@@ -1276,6 +1396,7 @@ class ProcWindow(wx.Frame):
       self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('ABORTED BY USER')
       self.timer.Stop()
+      self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
       return
     else:
       self.final_objects = [i for i in self.finished_objects if i.fail == None]

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 08/16/2015
+Last Changed: 01/06/2017
 Description : Module with miscellaneous useful functions and classes
 '''
 
@@ -12,7 +12,7 @@ import sys
 from cStringIO import StringIO
 
 from datetime import datetime
-iota_version = '1.0.015'
+iota_version = '1.0.016'
 now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
 
 # For GUI
