@@ -9,11 +9,14 @@ class TestMultiFileState(object):
     import libtbx.load_env
     import os
 
+    if not libtbx.env.has_module("dials"):
+      print "Skipping test: dials not present"
+      exit(0)
     try:
       dials_regression = libtbx.env.dist_path('dials_regression')
     except KeyError, e:
       print 'FAIL: dials_regression not configured'
-      exit(0)
+      exit(1)
 
     path = os.path.join(dials_regression, 'centroid_test_data')
 

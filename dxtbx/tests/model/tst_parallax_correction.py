@@ -6,11 +6,14 @@ class Test(object):
   def __init__(self):
     import os
     import libtbx.load_env
+    if not libtbx.env.has_module("dials"):
+      print "Skipping test: dials not present"
+      exit(0)
     try:
       dials_regression = libtbx.env.dist_path('dials_regression')
     except KeyError, e:
       print 'FAIL: dials_regression not configured'
-      exit(0)
+      exit(1)
 
     filename = os.path.join(dials_regression, 'image_examples', 'XDS',
         'XPARM.XDS')
