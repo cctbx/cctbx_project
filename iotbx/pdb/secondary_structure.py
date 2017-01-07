@@ -596,7 +596,8 @@ class annotation(structure_base):
 
   def simple_elements(self):
     """ helices and strands"""
-    all_elem_list = self.helices
+    all_elem_list = []
+    all_elem_list += self.helices
     for sh in self.sheets:
       all_elem_list += sh.strands
     return all_elem_list

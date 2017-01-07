@@ -1440,6 +1440,7 @@ SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
       n_st += 1
   assert n_h == 2
   assert n_st == 4
+  s = ann.as_pdb_str()
 
 if (__name__ == "__main__"):
   t0 = time.time()
