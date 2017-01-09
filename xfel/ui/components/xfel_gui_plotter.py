@@ -204,11 +204,11 @@ class PopUpCharts(object):
 
       nbins = int(np.sqrt(len(a))) * 2
 
-      n_str = "N: %d"%len(a)
+      n_str = "N: %d "%len(a)
       varstr = "%.1f +/- %.1f"%(flex.mean(a),
                                 flex.mean_and_variance(a).unweighted_sample_standard_deviation())
       if len(legend) > 0:
-        a_legend = n_str + " " + legend + seperator + varstr
+        a_legend = n_str + legend + seperator + varstr
       else:
         a_legend = n_str + varstr
       a_hist = sub_a.hist(a, nbins, normed=False,
