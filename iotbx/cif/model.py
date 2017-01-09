@@ -652,6 +652,7 @@ class loop(DictMixin):
     return s.getvalue()
 
   def iterrows(self):
+    """ Warning! Still super-slow! """
     keys = self.keys()
     s_values = self.values()
     range_len_self = range(len(self))
