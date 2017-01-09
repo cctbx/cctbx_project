@@ -1,22 +1,12 @@
 from __future__ import division
+import libtbx.load_env
+import os
 
 class TestMultiFileState(object):
 
-  def __init__(self):
-    pass
-
   def get_filenames(self):
-    import libtbx.load_env
-    import os
 
-    if not libtbx.env.has_module("dials"):
-      print "Skipping test: dials not present"
-      exit(0)
-    try:
-      dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
-      exit(1)
+    dials_regression = libtbx.env.dist_path('dials_regression')
 
     path = os.path.join(dials_regression, 'centroid_test_data')
 
@@ -56,9 +46,6 @@ class TestMultiFileState(object):
 
 
 class TestSweepFileList(object):
-  def __init__(self):
-    pass
-
   def run(self):
     from dxtbx.imageset import SweepFileList
 
@@ -185,20 +172,9 @@ class TestSweepFileList(object):
 
 
 class TestMultiFileReader(object):
-
-  def __init__(self):
-    pass
-
   def normal_file_list(self):
-    import libtbx.load_env
-    import os
 
-    try:
-      dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
-      return
-
+    dials_regression = libtbx.env.dist_path('dials_regression')
     path = os.path.join(dials_regression, 'centroid_test_data')
 
     # Non-sequential Filenames and image indices
@@ -210,8 +186,6 @@ class TestMultiFileReader(object):
     return filenames
 
   def sweep_file_list(self):
-    import libtbx.load_env
-    import os
     from dxtbx.imageset import SweepFileList
 
     try:
@@ -335,20 +309,9 @@ class TestMultiFileReader(object):
 
 
 class TestImageSet(object):
-
-  def __init__(self):
-    pass
-
   def get_file_list(self):
-    import libtbx.load_env
-    import os
 
-    try:
-      dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
-      return
-
+    dials_regression = libtbx.env.dist_path('dials_regression')
     path = os.path.join(dials_regression, 'centroid_test_data')
 
     # Non-sequential Filenames and image indices
@@ -510,21 +473,10 @@ class TestImageSet(object):
 
 
 class TestImageSweep(object):
-
-  def __init__(self):
-    pass
-
   def get_file_list(self):
-    import libtbx.load_env
-    import os
     from dxtbx.imageset import SweepFileList
 
-    try:
-      dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
-      return
-
+    dials_regression = libtbx.env.dist_path('dials_regression')
     path = os.path.join(dials_regression, 'centroid_test_data')
 
     # Non-sequential Filenames and image indices
@@ -751,20 +703,9 @@ class TestImageSweep(object):
 
 
 class TestImageSetFactory(object):
-
-  def __init__(self):
-    pass
-
   def get_file_list(self):
-    import libtbx.load_env
-    import os
 
-    try:
-      dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
-      return
-
+    dials_regression = libtbx.env.dist_path('dials_regression')
     path = os.path.join(dials_regression, 'centroid_test_data')
 
     # Non-sequential Filenames and image indices
@@ -790,15 +731,7 @@ class TestImageSetFactory(object):
 class TestPickleImageset(object):
 
   def __init__(self):
-    import libtbx.load_env
-    import os
-
-    try:
-      dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
-      return
-
+    dials_regression = libtbx.env.dist_path('dials_regression')
     path = os.path.join(dials_regression, 'centroid_test_data')
 
     # Non-sequential Filenames and image indices
@@ -944,10 +877,6 @@ class TestNullReader(object):
 
 
 class TestRunner(object):
-
-  def __init__(self):
-    pass
-
   def run(self):
 
     # Test the multi file state object
@@ -982,5 +911,10 @@ class TestRunner(object):
     test.run()
 
 if __name__ == '__main__':
-  runner = TestRunner()
-  runner.run()
+  if not libtbx.env.has_module("dials"):
+    print "Skipping test: dials not present"
+  elif not libtbx.env.has_module("dials_regression"):
+    print "Skipping test: dials_regression not present"
+  else:
+    runner = TestRunner()
+    runner.run()
