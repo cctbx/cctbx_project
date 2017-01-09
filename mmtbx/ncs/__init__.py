@@ -1,7 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
 from scitbx.math import superpose
-import iotbx.pdb
 import scitbx.matrix
 
 class asu_ncs_converter(object):
@@ -91,7 +90,8 @@ class asu_ncs_converter(object):
     assert mode in ["asu", "ncs"]
     of = open(file_name, "w")
     if(mode=="ncs"):
-      print >> of, iotbx.pdb.format_MTRIX_pdb_string(
+      import iotbx.mtrix_biomt
+      print >> of, iotbx.mtrix_biomt.format_MTRIX_pdb_string(
         rotation_matrices   = self.back_rotation_matrices,
         translation_vectors = self.back_translation_vectors)
       print >> of, self.ph_first_chain.as_pdb_string(

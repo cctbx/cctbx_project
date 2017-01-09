@@ -176,6 +176,8 @@ class cache(slots_getstate_setstate):
     "single_atom_residue",
     "water",
     "hetero",
+    "backbone",
+    "sidechain",
     "special_position_settings"]
 
   def __init__(self, root, wildcard_escape_char='\\',
@@ -189,6 +191,8 @@ class cache(slots_getstate_setstate):
     self.nucleotide = None
     self.water = None
     self.hetero = None
+    self.backbone = None
+    self.sidechain = None
     self.special_position_settings = special_position_settings
 
   def get_name(self, pattern):

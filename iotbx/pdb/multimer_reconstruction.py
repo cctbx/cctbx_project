@@ -74,12 +74,10 @@ class multimer(object):
       pdb_inp = pdb.input(lines=pdb_str, source_info=None)
     if reconstruction_type == 'ba':
       transform_info = pdb_inp.process_BIOMT_records(
-        error_handle=error_handle,
         eps=eps)
       self.transform_type = 'biological_assembly'
     elif reconstruction_type == 'cau':
-      transform_info = pdb_inp.process_mtrix_records(
-        error_handle=error_handle,
+      transform_info = pdb_inp.process_MTRIX_records(
         eps=eps)
       self.transform_type = 'crystall_asymmetric_unit'
     else:
@@ -87,9 +85,6 @@ class multimer(object):
                   'Reconstruction type can be: \n' + \
                   "'ba': biological assembly \n" + \
                   "'cau': crystallographic asymmetric unit \n")
-    if (transform_info.as_pdb_string() == '' or
-        transform_info.contains_only_identity_matrices()):
-      raise Sorry('Sorry, no transform info of appropriate type was found.')
     if not ncs_only(transform_info):
       raise Sorry("Copies are already present in the file")
     transform_info = insure_identity_is_in_transform_info(transform_info)

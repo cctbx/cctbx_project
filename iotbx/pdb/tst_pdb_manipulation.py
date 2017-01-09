@@ -175,7 +175,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transform_info = pdb_inp.process_mtrix_records()
+    transform_info = pdb_inp.process_MTRIX_records()
     transforms_obj = ncs.input(
       transform_info=transform_info,
       hierarchy=pdb_inp.construct_hierarchy())
@@ -224,7 +224,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     """
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transform_info = pdb_inp.process_mtrix_records()
+    transform_info = pdb_inp.process_MTRIX_records()
     transforms_obj = iotbx.ncs.input(
       transform_info=transform_info,
       hierarchy=pdb_inp.construct_hierarchy(),
@@ -278,7 +278,7 @@ class TestMultimerReconstruction(unittest.TestCase):
       pdb_str=pdb_test_data2,
       reconstruction_type='cau')
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
-    t_i = pdb_inp.process_mtrix_records()
+    t_i = pdb_inp.process_MTRIX_records()
     pdb_h = pdb_inp.construct_hierarchy()
     trans_obj = ncs.input(
         hierarchy=pdb_h,
@@ -332,7 +332,7 @@ class TestMultimerReconstruction(unittest.TestCase):
     # transforms_obj = iotbx.ncs.input()
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     pdb_obj = pdb.hierarchy.input(pdb_string=pdb_test_data2)
-    transform_info = pdb_inp.process_mtrix_records()
+    transform_info = pdb_inp.process_MTRIX_records()
     transforms_obj = iotbx.ncs.input(
       # transform_info=transform_info,
       # pdb_hierarchy_inp=pdb_obj,
@@ -370,7 +370,7 @@ class TestMultimerReconstruction(unittest.TestCase):
       if method == 'ba':
         rec = pdb_inp.process_BIOMT_records()
       else:
-        rec = pdb_inp.process_mtrix_records()
+        rec = pdb_inp.process_MTRIX_records()
       r1 = rec.r[1]
       r2 = rec.r[2]
       t1 = rec.t[1]
@@ -874,7 +874,7 @@ def test_identity_tranform_insertion():
   """
   for pdb_str in [pdb_test_data5,pdb_test_data6]:
     pdb_inp = pdb.input(source_info=None, lines=pdb_str)
-    t_i=pdb_inp.process_mtrix_records()
+    t_i=pdb_inp.process_MTRIX_records()
     pdb_h = pdb_inp.construct_hierarchy()
     ncs_inp = ncs.input(
         hierarchy=pdb_h,
@@ -919,9 +919,6 @@ def run_selected_tests():
 if __name__=='__main__':
   exercise_ss_multiplication()
   test_identity_tranform_insertion()
-  test_ignoring_mtrix_rec()
-  # use for individual tests
-  # unittest.TextTestRunner(verbosity=2).run(run_selected_tests())
-
+  #test_ignoring_mtrix_rec()
   # Use to run all tests
   unittest.main(verbosity=0)

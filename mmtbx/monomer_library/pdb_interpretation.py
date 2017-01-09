@@ -271,27 +271,6 @@ master_params_str = """\
     .type = bool
     .short_caption = Use the nuclear distances for X-H/D
     .help = Use neutron X-H distances (which are longer than X-ray ones)
-  resolution_dependent_restraints
-    .short_caption = Load restraints based on resolution range
-    .style = box auto_align
-  {
-    load = False
-      .type = bool
-      .short_caption = Load restraints based on resolution range
-    resolution = Auto
-      .type = float
-      .short_caption = Resolution to use where determining resolution range
-    resolution_range = high *med low
-      .type = choice
-    high_resolution_range_limit = 1.5
-      .type = float
-      .short_caption = Resolutions better than limit load "high" resolution \
-                       restraints
-    low_resolution_range_limit = 3.0
-      .type = float
-      .short_caption = Resolutions worse than limit load "low" resolution \
-                       restraints
-  }
   apply_cis_trans_specification
     .optional = True
     .multiple = True
@@ -1077,9 +1056,7 @@ class monomer_mapping(slots_getstate_setstate):
         pdb_residue,
         next_pdb_residue,
         chainid,
-        resolution_range=None,
-        specific_residue_restraints=None,
-               ):
+        specific_residue_restraints=None):
     self.chainid = chainid
     self.pdb_atoms = pdb_atoms
     self.mon_lib_srv = mon_lib_srv
@@ -1096,9 +1073,7 @@ class monomer_mapping(slots_getstate_setstate):
           atom_names=self.atom_names_given,
           translate_cns_dna_rna_residue_names
             =translate_cns_dna_rna_residue_names,
-          resolution_range=resolution_range,
-          specific_residue_restraints=specific_residue_restraints,
-      )
+          specific_residue_restraints=specific_residue_restraints)
     if (self.atom_name_interpretation is None):
       self.mon_lib_names = None
     else:
@@ -1795,16 +1770,6 @@ def get_restraints_loading_flags(params):
   rc = {}
   if params:
     rc["use_neutron_distances"] = params.use_neutron_distances
-    rdr = params.resolution_dependent_restraints
-    if rdr.load:
-      rc["resolution_dependent_restraints"] = "med"
-      if params.resolution_dependent_restraints.resolution!=Auto:
-        if rdr.resolution<=rdr.high_resolution_range_limit:
-          rc["resolution_dependent_restraints"] = "high"
-        elif rdr.resolution>rdr.low_resolution_range_limit:
-          rc["resolution_dependent_restraints"] = "low"
-      else:
-        rc["resolution_dependent_restraints"] = rdr.resolution_range
   return rc
 
 def evaluate_registry_process_result(
@@ -2499,11 +2464,7 @@ class build_chain_proxies(object):
         pdb_residue=residue,
         next_pdb_residue=_get_next_residue(),
         chainid=residue.parent().parent().id,
-        resolution_range=restraints_loading_flags.get(
-          "resolution_dependent_restraints", None),
-        specific_residue_restraints=specific_residue_restraints,
-        )
-
+        specific_residue_restraints=specific_residue_restraints)
       if mm.monomer and mm.monomer.cif_object:
         if specific_residue_restraints:
           self.cif["comp_specific_%s" % residue.resname.strip()] = mm.monomer.cif_object
@@ -3115,7 +3076,7 @@ class build_all_chain_proxies(linking_mixins):
        self.special_position_settings.unit_cell() is not None and
        self.special_position_settings.unit_cell().volume() <
        flex.sum(self.pdb_inp.atoms().extract_occ())*5 and
-       self.params.disable_uc_volume_vs_n_atoms_check):
+       not self.params.disable_uc_volume_vs_n_atoms_check):
       msg = """Unit cell volume is incompatible with number of atoms.
   Unit cell parameters: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f
   Check CRYST1 record or other sources of crystal symmetry.
@@ -5358,9 +5319,7 @@ class process(object):
         max_atoms=None,
         log=None,
         carbohydrate_callback=None,
-        #use_neutron_distances=False,
-        restraints_loading_flags=None,
-        ):
+        restraints_loading_flags=None):
     self.mon_lib_srv = mon_lib_srv
     self.ener_lib = ener_lib
     self.log = log
@@ -5387,9 +5346,7 @@ class process(object):
       max_atoms=max_atoms,
       log=log,
       carbohydrate_callback=carbohydrate_callback,
-      #use_neutron_distances=use_neutron_distances,
-      restraints_loading_flags=restraints_loading_flags,
-      )
+      restraints_loading_flags=restraints_loading_flags)
     if (log is not None
         and self.all_chain_proxies.time_building_chain_proxies is not None):
       print >> log, \

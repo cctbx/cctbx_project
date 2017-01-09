@@ -24,7 +24,6 @@ def load_mon_lib_file(mon_lib_path,
 
 def find_mon_lib_file(env_vars=mon_lib_env_vars,
                       relative_path_components=[],
-                      resolution_range="med",
                       ):
   result = load_mon_lib_file(
     mon_lib_path=os.environ.get(env_vars[0], None),
@@ -53,7 +52,6 @@ class mon_lib_cif_loader(object):
                path=None,
                relative_path_components=[],
                strict=False,
-               resolution_range="med",
                ):
     self.path = path
     if (self.path is None):
@@ -495,7 +493,6 @@ class server(process_cif_mixin):
 
   def get_comp_comp_id_direct(self,
                               comp_id,
-                              resolution_range=None, # "low *med high"
                               pH_range=None, # low *neutral high
                               specific_residue_restraints=None,
                              ):
@@ -537,16 +534,6 @@ class server(process_cif_mixin):
             cif_name = "data_%s.cif" % (trial_comp_id)
             if (i_pass == 0):
               file_names = [os.path.join(dir_name, cif_name)]
-              if resolution_range is not None:
-                if resolution_range in ["med"]: rr = ""
-                elif resolution_range in ["low", "high"]:
-                  rr = "_resolution_%s" % resolution_range
-                else:
-                  assert 0, "unknown resolution range : %s" % resolution_range
-                rr_cif_name = "data_%s%s.cif" % (trial_comp_id, rr)
-                file_names = [os.path.join(dir_name, rr_cif_name),
-                              os.path.join(dir_name, cif_name),
-                            ]
               for file_name in file_names:
                 if (os.path.isfile(file_name)):
                   return file_name
@@ -619,7 +606,6 @@ class server(process_cif_mixin):
         residue_name,
         atom_names,
         translate_cns_dna_rna_residue_names=None,
-        resolution_range=None,
         specific_residue_restraints=None,
         ):
     # not sure this works with specific_residue_restraints
@@ -637,7 +623,6 @@ class server(process_cif_mixin):
     return (
       self.get_comp_comp_id_direct(
         comp_id=rnpani.work_residue_name,
-        resolution_range=resolution_range,
         specific_residue_restraints=specific_residue_restraints,
         ),
       rnpani.atom_name_interpretation,

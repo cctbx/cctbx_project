@@ -1265,7 +1265,8 @@ class input(object):
     Used for testing
     """
     assert  self.number_of_ncs_groups < 2
-    result = iotbx.pdb.mtrix_and_biomt_records_container()
+    import iotbx.mtrix_biomt
+    result = iotbx.mtrix_biomt.container()
     tr_dict = self.ncs_transform
     tr_sorted = sorted(tr_dict,key=lambda k:tr_dict[k].serial_num)
     for key in tr_sorted:
