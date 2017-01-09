@@ -2162,49 +2162,45 @@ class pdb_sheet(structure_base):
     registrations = []
     number_of_strands = 0
     # counting number of strands
-    for row in struct_sheet_range_loop.iterrows():
-      if row['_struct_sheet_range.sheet_id'] == sheet_id:
-        number_of_strands += 1
+    number_of_strands = struct_sheet_range_loop['_struct_sheet_range.sheet_id'].\
+        count(sheet_id)
     for i in range(1, number_of_strands+1):
+      f_rows = struct_sheet_range_loop.find_row(kv_dict={
+          '_struct_sheet_range.sheet_id' : sheet_id,
+          '_struct_sheet_range.id' : str(i),
+        })
       if i == 1:
         # the first strand, no sense, no hbond
-        res_range = None
-        for row in struct_sheet_range_loop.iterrows():
-          if (row['_struct_sheet_range.sheet_id'] == sheet_id and
-              int(row['_struct_sheet_range.id']) == i):
-            res_range = row
-            break
-        if res_range is None:
+        if len(f_rows) != 1:
           raise Sorry("Error in sheet definitions")
-        strands.append(pdb_strand.from_cif_dict(res_range, 0))
+        strands.append(pdb_strand.from_cif_dict(f_rows[0], 0))
         registrations.append(None)
       else:
         # all the rest
         res_range = None
         registration = None
         sense = None
-        for row in struct_sheet_range_loop.iterrows():
-          if (row['_struct_sheet_range.sheet_id'] == sheet_id and
-              int(row['_struct_sheet_range.id']) == i):
-            res_range = row
-            break
-        for row in struct_sheet_order_loop.iterrows():
-          if (row['_struct_sheet_order.sheet_id'] == sheet_id and
-              int(row['_struct_sheet_order.range_id_1']) == i-1 and
-              int(row['_struct_sheet_order.range_id_2']) == i):
-            str_sense = row.get('_struct_sheet_order.sense', '.')
-            sense = 0
-            if str_sense == 'parallel':
-              sense = 1
-            elif str_sense == 'anti-parallel':
-              sense = -1
-            break
-        for row in struct_sheet_hbond_loop.iterrows():
-          if (row['_pdbx_struct_sheet_hbond.sheet_id'] == sheet_id and
-              int(row['_pdbx_struct_sheet_hbond.range_id_1']) == i-1 and
-              int(row['_pdbx_struct_sheet_hbond.range_id_2']) == i):
-            registration = row
-            break
+        if len(f_rows) == 1:
+          res_range = f_rows[0]
+        sense_rows = struct_sheet_order_loop.find_row(kv_dict = {
+            '_struct_sheet_order.sheet_id':sheet_id,
+            '_struct_sheet_order.range_id_1':str(i-1),
+            '_struct_sheet_order.range_id_2':str(i)
+          })
+        if len(sense_rows) >= 1:
+          sense = 0
+          str_sense = sense_rows[0].get('_struct_sheet_order.sense', '.')
+          if str_sense == 'parallel':
+            sense = 1
+          elif str_sense == 'anti-parallel':
+            sense = -1
+        registration_rows = struct_sheet_hbond_loop.find_row(kv_dict = {
+              '_pdbx_struct_sheet_hbond.sheet_id':sheet_id,
+              '_pdbx_struct_sheet_hbond.range_id_1':str(i-1),
+              '_pdbx_struct_sheet_hbond.range_id_2':str(i)
+          })
+        if len(registration_rows) >= 1:
+          registration = registration_rows[0]
         if (res_range is not None and
             registration is not None and sense is not None):
           strands.append(pdb_strand.from_cif_dict(res_range, sense))

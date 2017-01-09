@@ -523,10 +523,7 @@ class loop(DictMixin):
     return size
 
   def n_rows(self):
-    size = 0
-    for column in self.values():
-      size = max(size, len(column))
-    return size
+    return self.size()
 
   def n_columns(self):
     return len(self.keys())
@@ -657,8 +654,26 @@ class loop(DictMixin):
   def iterrows(self):
     keys = self.keys()
     s_values = self.values()
+    range_len_self = range(len(self))
     for j in range(self.size()):
-      yield OrderedDict(zip(keys, [s_values[i][j] for i in range(len(self))]))
+      yield OrderedDict(zip(keys, [s_values[i][j] for i in range_len_self]))
+
+  def find_row(self, kv_dict):
+    self_keys = self.keys()
+    for k in kv_dict.keys():
+      assert k in self_keys
+    result = []
+    s_values = self.values()
+    range_len_self = range(len(self))
+    for i in range(self.size()):
+      goodrow = True
+      for k, v in kv_dict.iteritems():
+        if self[k][i] != v:
+          goodrow = False
+          break
+      if goodrow:
+        result.append(OrderedDict(zip(self_keys, [s_values[j][i] for j in range_len_self])))
+    return result
 
   def sort(self, key=None, reverse=False):
     self._columns = OrderedDict(
