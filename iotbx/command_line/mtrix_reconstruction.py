@@ -3,6 +3,7 @@ from __future__ import division
 
 import sys, os
 import iotbx.pdb
+import iotbx.cif
 
 def run(args):
   """
@@ -15,10 +16,21 @@ def run(args):
     print mtrix_reconstruction.__doc__
   file_name = args[0]
   pdb_inp = iotbx.pdb.input(file_name=file_name)
+  input_file_is_cif = isinstance(pdb_inp, iotbx.pdb.mmcif.cif_input)
   h = pdb_inp.construct_hierarchy_MTRIX_expanded()
-  ofn = "%s_MTRIX_expanded.pdb"%os.path.splitext(os.path.basename(file_name))[0]
+  if(input_file_is_cif):
+    ext=".cif"
+    wff = iotbx.cif.write_whole_cif_file
+  else:
+    ext=".pdb"
+    wff = iotbx.pdb.write_whole_pdb_file
+  ofn = "%s_MTRIX_expanded%s"%(
+    os.path.splitext(os.path.basename(file_name))[0], ext)
   print "Writing result to %s file."%ofn
-  h.write_pdb_file(file_name=ofn)
+  wff(
+    file_name        = ofn,
+    pdb_hierarchy    = h,
+    crystal_symmetry = pdb_inp.crystal_symmetry())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

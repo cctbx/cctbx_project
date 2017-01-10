@@ -12,6 +12,7 @@ from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
+import iotbx.mtrix_biomt
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 
@@ -603,7 +604,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         serial_number=sn)
     return result
 
-  def process_mtrix_records(self,error_handle=True,eps=1e-4):
+  def process_MTRIX_records(self,error_handle=True,eps=1e-4):
     """
     Read MTRIX records from a pdb file
 
@@ -662,12 +663,30 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         serial_number=sn)
     return result
 
+  def _expand_hierarchy_helper(self, mtrix_biomt_container):
+    # XXX SEVERE DUPLICATION FROM iotbx/pdb/__init__.py
+    mtrix_biomt_container.validate()
+    h = self.construct_hierarchy()
+    if(len(mtrix_biomt_container.r)==0): return h
+    return h.apply_rotation_translation(
+      rot_matrices = mtrix_biomt_container.r,
+      trans_vectors = mtrix_biomt_container.t)
+
+  def construct_hierarchy_MTRIX_expanded(self):
+    # XXX SEVERE DUPLICATION FROM iotbx/pdb/__init__.py
+    return self._expand_hierarchy_helper(
+      mtrix_biomt_container = self.process_MTRIX_records())
+
+  def construct_hierarchy_BIOMT_expanded(self):
+    # XXX SEVERE DUPLICATION FROM iotbx/pdb/__init__.py
+    return self._expand_hierarchy_helper(
+      mtrix_biomt_container = self.process_BIOMT_records())
+
 def _float_or_None(value):
   if value is not None:
     if value == '?' or value == '.':
       return None
     return float(value)
-
 
 class _cif_get_r_rfree_sigma_object(object):
   def __init__(self, cif_block, file_name):
