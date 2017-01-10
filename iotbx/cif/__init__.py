@@ -446,7 +446,7 @@ def write_whole_cif_file(
     additional_blocks=[],
     atoms_reset_serial_first_value=None,
     cif_block_name='default',
-    align_columns=True):
+    align_columns=False):
   # massive copy-paste from iotbx/pdb/__init__.py: write_whole_pdb_file
   assert [file_name, output_file].count(None) == 1
   assert [processed_pdb_file, ss_annotation].count(None) >= 1
@@ -490,7 +490,6 @@ def write_whole_cif_file(
       processed_pdb_file.all_chain_proxies.cif is not None):
     cif.update(processed_pdb_file.all_chain_proxies.cif)
   cif.show(out=out,align_columns=align_columns)
-  # print >> out, cif
 
   if file_name is not None:
     out.close()
