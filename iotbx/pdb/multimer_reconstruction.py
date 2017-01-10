@@ -105,7 +105,7 @@ class multimer(object):
     self.new_annotation = None
     if annot is not None:
       annot.multiply_to_asu(
-          ncs_copies_chain_names=self.transforms_obj.ncs_copies_chains_names,
+          # ncs_copies_chain_names=self.transforms_obj.ncs_copies_chains_names,
           n_copies=self.number_of_transforms)
       self.new_annotation = annot
 
