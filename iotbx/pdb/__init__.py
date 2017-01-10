@@ -776,6 +776,33 @@ input_sections = (
 
 class pdb_input_mixin(object):
 
+  def _expand_hierarchy_helper(self, mtrix_biomt_container):
+    mtrix_biomt_container.validate()
+    h = self.construct_hierarchy()
+    if(len(mtrix_biomt_container.r)==0): return h
+    return h.apply_rotation_translation(
+      rot_matrices = mtrix_biomt_container.r,
+      trans_vectors = mtrix_biomt_container.t)
+
+  def construct_hierarchy_MTRIX_expanded(self):
+    return self._expand_hierarchy_helper(
+      mtrix_biomt_container = self.process_MTRIX_records())
+
+  def construct_hierarchy_BIOMT_expanded(self):
+    return self._expand_hierarchy_helper(
+      mtrix_biomt_container = self.process_BIOMT_records())
+
+  def construct_ss_annotation_expanded(self, exp_type='mtrix'):
+    exp_container = None
+    if exp_type == 'mtrix':
+      exp_container = self.process_MTRIX_records()
+    elif exp_type == 'biomt':
+      exp_container = self.process_BIOMT_records()
+    ss_ann = self.extract_secondary_structure()
+    if exp_container is not None and ss_ann is not None:
+      ss_ann.multiply_to_asu(n_copies=len(exp_container.r)-1)
+    return ss_ann
+
   def special_position_settings(self,
         special_position_settings=None,
         weak_symmetry=False,
@@ -1179,22 +1206,6 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     return iotbx.mtrix_biomt.process_MTRIX_records(
       lines=self.crystallographic_section(),
       eps=eps)
-
-  def _expand_hierarchy_helper(self, mtrix_biomt_container):
-    mtrix_biomt_container.validate()
-    h = self.construct_hierarchy()
-    if(len(mtrix_biomt_container.r)==0): return h
-    return h.apply_rotation_translation(
-      rot_matrices = mtrix_biomt_container.r,
-      trans_vectors = mtrix_biomt_container.t)
-
-  def construct_hierarchy_MTRIX_expanded(self):
-    return self._expand_hierarchy_helper(
-      mtrix_biomt_container = self.process_MTRIX_records())
-
-  def construct_hierarchy_BIOMT_expanded(self):
-    return self._expand_hierarchy_helper(
-      mtrix_biomt_container = self.process_BIOMT_records())
 
   def get_r_rfree_sigma(self, file_name=None):
     from iotbx.pdb import extract_rfactors_resolutions_sigma

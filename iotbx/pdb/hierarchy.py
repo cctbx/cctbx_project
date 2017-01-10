@@ -2414,11 +2414,15 @@ class show_summary(input):
         level_id=level_id,
         level_id_exception=level_id_exception)
 
-def append_chain_id_suffixes(roots, suffixes=Auto):
+def suffixes_for_chain_ids(suffixes=Auto):
   if (suffixes is Auto):
     suffixes="123456789" \
              "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
              "abcdefghijklmnopqrstuvwxyz"
+  return suffixes
+
+def append_chain_id_suffixes(roots, suffixes=Auto):
+  suffixes = suffixes_for_chain_ids(suffixes=suffixes)
   assert len(roots) <= len(suffixes)
   for root,suffix in zip(roots, suffixes):
     for model in root.models():

@@ -19,6 +19,7 @@ def run(args):
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   input_file_is_cif = isinstance(pdb_inp, iotbx.pdb.mmcif.cif_input)
   h = pdb_inp.construct_hierarchy_MTRIX_expanded()
+  ss_annot = pdb_inp.construct_ss_annotation_expanded(exp_type='mtrix')
   if(input_file_is_cif):
     ext=".cif"
     wff = iotbx.cif.write_whole_cif_file
@@ -31,7 +32,8 @@ def run(args):
   wff(
     file_name        = ofn,
     pdb_hierarchy    = h,
-    crystal_symmetry = pdb_inp.crystal_symmetry())
+    crystal_symmetry = pdb_inp.crystal_symmetry(),
+    ss_annotation    = ss_annot)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

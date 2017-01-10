@@ -663,25 +663,6 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         serial_number=sn)
     return result
 
-  def _expand_hierarchy_helper(self, mtrix_biomt_container):
-    # XXX SEVERE DUPLICATION FROM iotbx/pdb/__init__.py
-    mtrix_biomt_container.validate()
-    h = self.construct_hierarchy()
-    if(len(mtrix_biomt_container.r)==0): return h
-    return h.apply_rotation_translation(
-      rot_matrices = mtrix_biomt_container.r,
-      trans_vectors = mtrix_biomt_container.t)
-
-  def construct_hierarchy_MTRIX_expanded(self):
-    # XXX SEVERE DUPLICATION FROM iotbx/pdb/__init__.py
-    return self._expand_hierarchy_helper(
-      mtrix_biomt_container = self.process_MTRIX_records())
-
-  def construct_hierarchy_BIOMT_expanded(self):
-    # XXX SEVERE DUPLICATION FROM iotbx/pdb/__init__.py
-    return self._expand_hierarchy_helper(
-      mtrix_biomt_container = self.process_BIOMT_records())
-
 def _float_or_None(value):
   if value is not None:
     if value == '?' or value == '.':

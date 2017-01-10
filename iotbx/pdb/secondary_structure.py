@@ -721,16 +721,21 @@ class annotation(structure_base):
       h.set_new_serial(serial=i+1, adopt_as_id=True)
     self.helices=new_helices
 
-  def multiply_to_asu(self, ncs_copies_chain_names, n_copies):
-    from iotbx.ncs import format_num_as_str
+  def multiply_to_asu(self, n_copies):
+    # from iotbx.ncs import format_num_as_str
     # ncs_copies_chain_names = {'chain B_022':'CD' ...}
-    def make_key(chain_id, n):
-      return "chain %s_%s" % (chain_id, format_num_as_str(n))
+    # def make_key(chain_id, n):
+    #   return "chain %s_%s" % (chain_id, format_num_as_str(n))
+    # def get_new_chain_id(old_chain_id, n_copy):
+    #   new_chain_id = ncs_copies_chain_names.get(
+    #       make_key(old_chain_id,n_copy), None)
+    #   if new_chain_id is None:
+    #     raise Sorry("Something went wrong in mulitplying HELIX/SHEET records")
+    #   return new_chain_id
+    from iotbx.pdb.hierarchy import suffixes_for_chain_ids
     def get_new_chain_id(old_chain_id, n_copy):
-      new_chain_id = ncs_copies_chain_names.get(
-          make_key(old_chain_id,n_copy), None)
-      if new_chain_id is None:
-        raise Sorry("Something went wrong in mulitplying HELIX/SHEET records")
+      assert len(old_chain_id) == 1
+      new_chain_id = old_chain_id+suffixes_for_chain_ids()[n_copy-1]
       return new_chain_id
     new_helices = []
     new_sheets = []
