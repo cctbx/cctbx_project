@@ -1,5 +1,6 @@
 from __future__ import division
 from libtbx import easy_run
+import iotbx.pdb
 
 pdb_str_0 = """\
 REMARK 350   BIOMT1   1  1.000000 -0.000000  0.000000        0.00000
@@ -205,7 +206,12 @@ def exercise_00(file_name="tst_mtrix_biomt_cmdl_00.pdb"):
   of = open(file_name,"w")
   print >> of, pdb_str_0
   of.close()
-  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  easy_run.call("phenix.pdb.biomt_reconstruction %s"%file_name)
+  pdb_inp = iotbx.pdb.input(
+    file_name="tst_mtrix_biomt_cmdl_00_BIOMT_expanded.pdb")
+  a = pdb_inp.extract_secondary_structure()
+  assert a.get_n_helices() == 27
+  assert a.get_n_sheets() == 0
 
 if(__name__=='__main__'):
   exercise_00()
