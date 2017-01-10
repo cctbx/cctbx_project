@@ -656,8 +656,8 @@ class loop(DictMixin):
     keys = self.keys()
     s_values = self.values()
     range_len_self = range(len(self))
-    for j in range(self.size()):
-      yield OrderedDict(zip(keys, [s_values[i][j] for i in range_len_self]))
+    for j in xrange(self.size()):
+      yield OrderedDict(zip(keys, (s_values[i][j] for i in range_len_self)))
 
   def find_row(self, kv_dict):
     self_keys = self.keys()
