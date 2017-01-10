@@ -85,6 +85,7 @@ tst_list = (
   "$D/scalepack/tst_no_merge_original_index.py",
   "$D/regression/tst_export_scalepack_unmerged.py",
   ["$D/dsn6/tst.py", "P31"],
+  "$D/regression/ncs/tst_ncs.py",
   "$D/regression/ncs/tst_ncs_groups_preprocessing.py",
   "$D/regression/ncs/tst_ncs_input.py",
   "$D/regression/ncs/tst_ncs_user_selections.py",
