@@ -13,7 +13,8 @@ def run(args):
     phenix.pdb.biomt_reconstruction model.cif
   """
   if(len(args)==0 or "--help" in args or "-h" in args):
-    print mtrix_reconstruction.__doc__
+    print run.__doc__
+    return
   file_name = args[0]
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   input_file_is_cif = isinstance(pdb_inp, iotbx.pdb.mmcif.cif_input)
