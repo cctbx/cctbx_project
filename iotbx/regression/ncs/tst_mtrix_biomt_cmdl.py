@@ -1,4 +1,5 @@
 from __future__ import division
+import libtbx
 from libtbx import easy_run
 import iotbx.pdb
 from scitbx.array_family import flex
@@ -576,7 +577,10 @@ def exercise_03(file_name="tst_mtrix_biomt_cmdl_03.cif"):
   assert pdb_inp2.crystal_symmetry().unit_cell() is not None
 
 if(__name__=='__main__'):
-  exercise_00()
-  exercise_01()
-  exercise_02()
-  exercise_03()
+  if libtbx.env.has_module("phenix"):
+    exercise_00()
+    exercise_01()
+    exercise_02()
+    exercise_03()
+  else:
+    print "Skipping tests: phenix not found"
