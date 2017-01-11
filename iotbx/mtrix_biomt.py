@@ -50,6 +50,10 @@ class container(object):
       lines.append(fmt3%(int(sn_), r_[6],r_[7],r_[8], t_[2]))
     return "\n".join(lines)
 
+  def is_empty(self):
+    return len(self.r) == 0
+
+
 def process_BIOMT_records(lines, eps=1e-4):
   '''(pdb_data,boolean,float) -> group of lists
   extract REMARK 350 BIOMT information, information that provides rotation matrices

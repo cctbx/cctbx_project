@@ -800,7 +800,8 @@ class pdb_input_mixin(object):
     elif exp_type == 'biomt':
       exp_container = self.process_BIOMT_records()
     ss_ann = self.extract_secondary_structure()
-    if exp_container is not None and ss_ann is not None:
+    if (exp_container is not None and ss_ann is not None and
+        not exp_container.is_empty()):
       ss_ann.multiply_to_asu(n_copies=len(exp_container.r)-1)
     return ss_ann
 
