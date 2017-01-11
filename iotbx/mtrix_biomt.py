@@ -21,14 +21,12 @@ class container(object):
     for r in self.r:
       if(not r.is_r3_rotation_matrix(rms_tolerance=1.e-4)):
         raise Sorry("Rotation matrix is not proper!")
-    #
     present = False
     for (r,t,n,cp) in zip(self.r,self.t,self.serial_number,
                             self.coordinates_present):
       if(not (r.is_r3_identity_matrix() and t.is_col_zero())):
         present = present or cp
-    if(present):
-      raise Sorry("Copies are already present in the file")
+    return present
 
   def as_pdb_string(self):
     return format_MTRIX_pdb_string(

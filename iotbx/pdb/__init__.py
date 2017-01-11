@@ -776,10 +776,11 @@ input_sections = (
 
 class pdb_input_mixin(object):
 
-  def _expand_hierarchy_helper(self, mtrix_biomt_container):
-    mtrix_biomt_container.validate()
-    h = self.construct_hierarchy()
-    if(len(mtrix_biomt_container.r)==0): return h
+  def _expand_hierarchy_helper(self, mtrix_biomt_container, h=None):
+    present = mtrix_biomt_container.validate()
+    if(h is None):
+      h = self.construct_hierarchy()
+    if(len(mtrix_biomt_container.r)==0 or present): return h
     return h.apply_rotation_translation(
       rot_matrices = mtrix_biomt_container.r,
       trans_vectors = mtrix_biomt_container.t)

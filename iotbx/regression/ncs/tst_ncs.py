@@ -466,16 +466,13 @@ def exercise_07():
 
 def exercise_08():
   """
-  Test raising Sorry for MTRIX record when copies already present in file
+  Test for MTRIX record when copies already present in file
   """
   pdb_inp = pdb.input(source_info=None, lines=pdb_str_8)
-  happened = False
-  try:
-    h = pdb_inp.construct_hierarchy_MTRIX_expanded()
-  except Exception as e:
-    assert e.message == "Copies are already present in the file"
-    happened=True
-  assert happened
+  h = pdb_inp.construct_hierarchy_MTRIX_expanded()
+  assert approx_equal(
+    pdb_inp.atoms().extract_xyz(),
+          h.atoms().extract_xyz())
 
 if(__name__=='__main__'):
   exercise_00()
