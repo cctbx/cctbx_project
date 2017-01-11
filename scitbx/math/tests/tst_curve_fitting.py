@@ -154,9 +154,31 @@ def exercise_skew_normal_fit():
     [starting_f], x_obs, y_obs, termination_params=termination_params)
   assert approx_equal(fit.functions[0].params, f.params)
 
+def exercise_tanh_fit():
+  # Curve fitting as used by Aimless for fitting CC1/2 plot:
 
+  #   Curve fitting as suggested by Ed Pozharski to a tanh function
+  #   of the form (1/2)(1 - tanh(z)) where z = (s - d0)/r,
+  #   s = 1/d^2, d0 is the value of s at the half-falloff value, and r controls
+  #   the steepness of falloff
+
+  d = flex.double(
+    [2.71, 2.15, 1.88, 1.71, 1.59, 1.49, 1.42, 1.36, 1.31, 1.26])
+  x_obs = 1/d**2
+  y_obs = flex.double(
+    [0.999, 0.996, 0.993, 0.984, 0.972, 0.948, 0.910, 0.833, 0.732, 0.685])
+  fit = curve_fitting.tanh_fit(x_obs, y_obs, r=1, s0=1)
+
+  r, s0 = fit.params
+  f = curve_fitting.tanh(r, s0)
+  y_calc = flex.double(f(x_obs))
+
+  residual = flex.sum(flex.pow2(y_obs-y_calc))
+  assert approx_equal(residual, 0.0023272873437026106)
+  assert approx_equal(fit.params, (0.17930695756689238, 0.6901032957705017))
 
 def run():
+  exercise_tanh_fit()
   exercise_skew_normal_fit()
   exercise_polynomial_fit()
   exercise_gaussian_fit()
