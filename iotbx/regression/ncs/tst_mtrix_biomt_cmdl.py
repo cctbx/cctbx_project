@@ -1,6 +1,8 @@
 from __future__ import division
 from libtbx import easy_run
 import iotbx.pdb
+from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal
 
 pdb_str_0 = """\
 REMARK 350   BIOMT1   1  1.000000 -0.000000  0.000000        0.00000
@@ -199,6 +201,307 @@ ATOM   4640  OH  TYR C 159      68.888  47.260 109.362 16.00 16.00           O
 END
 """
 
+pdb_str_1="""
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.496590 -0.643597  0.582393        0.00000
+MTRIX2   2  0.867925  0.376088 -0.324443        0.00000
+MTRIX3   2 -0.010221  0.666588  0.745356        0.00000
+MTRIX1   3 -0.317946 -0.173437  0.932111        0.00000
+MTRIX2   3  0.760735 -0.633422  0.141629        0.00000
+MTRIX3   3  0.565855  0.754120  0.333333        0.00000
+CRYST1   11.101   13.080   14.163  90.00  90.00  90.00 P 1
+SCALE1      0.090082  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.076453  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.070607        0.00000
+ATOM      1  N   THR A   1       5.111   8.080   7.645  1.00 20.00           N
+ATOM      2  CA  THR A   2       5.000   6.722   7.125  1.00 20.00           C
+ATOM      3  C   THR A   3       5.075   5.694   8.249  1.00 20.00           C
+TER
+ATOM      4  O   THR B   4       5.890   5.818   9.163  1.00 20.00           O
+ATOM      5  CB  THR B   5       6.101   6.421   6.092  1.00 20.00           C
+TER
+ATOM      6  OG1 THR A   6       6.001   7.343   5.000  1.00 20.00           O
+ATOM      7  CG2 THR A   7       5.964   5.000   5.565  1.00 20.00           C
+TER
+END
+"""
+
+pdb_str_1a="""
+CRYST1   11.101   13.080   14.163  90.00  90.00  90.00 P 1
+SCALE1      0.090082  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.076453  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.070607        0.00000
+ATOM      1  N   THRA1   1       5.111   8.080   7.645  1.00 20.00           N
+ATOM      2  CA  THRA1   2       5.000   6.722   7.125  1.00 20.00           C
+ATOM      3  C   THRA1   3       5.075   5.694   8.249  1.00 20.00           C
+TER
+ATOM      4  O   THRB1   4       5.890   5.818   9.163  1.00 20.00           O
+ATOM      5  CB  THRB1   5       6.101   6.421   6.092  1.00 20.00           C
+TER
+ATOM      6  OG1 THRA1   6       6.001   7.343   5.000  1.00 20.00           O
+ATOM      7  CG2 THRA1   7       5.964   5.000   5.565  1.00 20.00           C
+TER
+ATOM      1  N   THRA2   1       1.790   4.994  11.032  1.00 20.00           N
+ATOM      2  CA  THRA2   2       2.306   4.556   9.740  1.00 20.00           C
+ATOM      3  C   THRA2   3       3.660   3.870   9.892  1.00 20.00           C
+TER
+ATOM      4  O   THRB2   4       4.517   4.327  10.648  1.00 20.00           O
+ATOM      5  CB  THRB2   5       2.445   5.734   8.759  1.00 20.00           C
+TER
+ATOM      6  OG1 THRA2   6       1.166   6.348   8.560  1.00 20.00           O
+ATOM      7  CG2 THRA2   7       2.985   5.251   7.420  1.00 20.00           C
+TER
+ATOM      1  N   THRA3   1       4.100  -0.147  11.534  1.00 20.00           N
+ATOM      2  CA  THRA3   2       3.886   0.555  10.273  1.00 20.00           C
+ATOM      3  C   THRA3   3       5.088   1.422   9.915  1.00 20.00           C
+TER
+ATOM      4  O   THRB3   4       5.659   2.093  10.775  1.00 20.00           O
+ATOM      5  CB  THRB3   5       2.625   1.437  10.325  1.00 20.00           C
+TER
+ATOM      6  OG1 THRA3   6       1.479   0.622  10.600  1.00 20.00           O
+ATOM      7  CG2 THRA3   7       2.424   2.158   9.000  1.00 20.00           C
+TER
+END
+"""
+
+pdb_str_2="""
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.496590 -0.643597  0.582393        0.00000
+MTRIX2   2  0.867925  0.376088 -0.324443        0.00000
+MTRIX3   2 -0.010221  0.666588  0.745356        0.00000
+MTRIX1   3 -0.317946 -0.173437  0.932111        0.00000
+MTRIX2   3  0.760735 -0.633422  0.141629        0.00000
+MTRIX3   3  0.565855  0.754120  0.333333        0.00000
+ATOM      1  N   THR A   1       5.111   8.080   7.645  1.00 20.00           N
+ATOM      2  CA  THR A   2       5.000   6.722   7.125  1.00 20.00           C
+ATOM      3  C   THR A   3       5.075   5.694   8.249  1.00 20.00           C
+TER
+ATOM      4  O   THR B   4       5.890   5.818   9.163  1.00 20.00           O
+ATOM      5  CB  THR B   5       6.101   6.421   6.092  1.00 20.00           C
+TER
+ATOM      6  OG1 THR A   6       6.001   7.343   5.000  1.00 20.00           O
+ATOM      7  CG2 THR A   7       5.964   5.000   5.565  1.00 20.00           C
+TER
+END
+"""
+
+pdb_str_2a="""
+ATOM      1  N   THRA1   1       5.111   8.080   7.645  1.00 20.00           N
+ATOM      2  CA  THRA1   2       5.000   6.722   7.125  1.00 20.00           C
+ATOM      3  C   THRA1   3       5.075   5.694   8.249  1.00 20.00           C
+TER
+ATOM      4  O   THRB1   4       5.890   5.818   9.163  1.00 20.00           O
+ATOM      5  CB  THRB1   5       6.101   6.421   6.092  1.00 20.00           C
+TER
+ATOM      6  OG1 THRA1   6       6.001   7.343   5.000  1.00 20.00           O
+ATOM      7  CG2 THRA1   7       5.964   5.000   5.565  1.00 20.00           C
+TER
+ATOM      1  N   THRA2   1       1.790   4.994  11.032  1.00 20.00           N
+ATOM      2  CA  THRA2   2       2.306   4.556   9.740  1.00 20.00           C
+ATOM      3  C   THRA2   3       3.660   3.870   9.892  1.00 20.00           C
+TER
+ATOM      4  O   THRB2   4       4.517   4.327  10.648  1.00 20.00           O
+ATOM      5  CB  THRB2   5       2.445   5.734   8.759  1.00 20.00           C
+TER
+ATOM      6  OG1 THRA2   6       1.166   6.348   8.560  1.00 20.00           O
+ATOM      7  CG2 THRA2   7       2.985   5.251   7.420  1.00 20.00           C
+TER
+ATOM      1  N   THRA3   1       4.100  -0.147  11.534  1.00 20.00           N
+ATOM      2  CA  THRA3   2       3.886   0.555  10.273  1.00 20.00           C
+ATOM      3  C   THRA3   3       5.088   1.422   9.915  1.00 20.00           C
+TER
+ATOM      4  O   THRB3   4       5.659   2.093  10.775  1.00 20.00           O
+ATOM      5  CB  THRB3   5       2.625   1.437  10.325  1.00 20.00           C
+TER
+ATOM      6  OG1 THRA3   6       1.479   0.622  10.600  1.00 20.00           O
+ATOM      7  CG2 THRA3   7       2.424   2.158   9.000  1.00 20.00           C
+TER
+END
+"""
+
+pdb_str_3="""
+data_1A37
+#
+loop_
+_database_PDB_rev_record.rev_num
+_database_PDB_rev_record.type
+_database_PDB_rev_record.details
+2 SOURCE ?
+2 COMPND ?
+2 REMARK ?
+2 SEQRES ?
+2 KEYWDS ?
+2 HEADER ?
+3 VERSN  ?
+4 MTRIX1 ?
+4 MTRIX2 ?
+4 MTRIX3 ?
+#
+_cell.entry_id           1A37
+_cell.length_a           94.730
+_cell.length_b           94.730
+_cell.length_c           250.870
+_cell.angle_alpha        90.00
+_cell.angle_beta         90.00
+_cell.angle_gamma        120.00
+_cell.Z_PDB              12
+#
+_symmetry.entry_id                         1A37
+_symmetry.space_group_name_H-M             'P 65'
+_symmetry.pdbx_full_space_group_name_H-M   ?
+_symmetry.cell_setting                     ?
+_symmetry.Int_Tables_number                ?
+_symmetry.space_group_name_Hall            ?
+#
+loop_
+_struct_ncs_oper.id
+_struct_ncs_oper.code
+_struct_ncs_oper.details
+_struct_ncs_oper.matrix[1][1]
+_struct_ncs_oper.matrix[1][2]
+_struct_ncs_oper.matrix[1][3]
+_struct_ncs_oper.matrix[2][1]
+_struct_ncs_oper.matrix[2][2]
+_struct_ncs_oper.matrix[2][3]
+_struct_ncs_oper.matrix[3][1]
+_struct_ncs_oper.matrix[3][2]
+_struct_ncs_oper.matrix[3][3]
+_struct_ncs_oper.vector[1]
+_struct_ncs_oper.vector[2]
+_struct_ncs_oper.vector[3]
+1 given    ? 1.000000  0.000000 0.000000  0.000000  1.000000  0.000000  0.000000  0.000000  1.000000 0.00000  0.00000  0.00000
+2 generate ? -0.997443 0.000760 -0.071468 -0.000162 -0.999965 -0.008376 -0.071472 -0.008343 0.997408 59.52120 80.32820 2.38680
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.Cartn_x_esd
+_atom_site.Cartn_y_esd
+_atom_site.Cartn_z_esd
+_atom_site.occupancy_esd
+_atom_site.B_iso_or_equiv_esd
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1    N N   . MET A 1 1   ? 10.710 38.460 14.825  1.00 89.21  ? ? ? ? ? ? 1   MET A N   1
+ATOM 2    C CA  . MET A 1 1   ? 11.257 39.553 13.961  1.00 89.21  ? ? ? ? ? ? 1   MET A CA  1
+ATOM 3    C C   . MET A 1 1   ? 11.385 40.985 14.516  1.00 89.21  ? ? ? ? ? ? 1   MET A C   1
+ATOM 4    O O   . MET A 1 1   ? 12.376 41.648 14.218  1.00 89.21  ? ? ? ? ? ? 1   MET A O   1
+ATOM 5    C CB  . MET A 1 1   ? 10.514 39.584 12.633  1.00 72.05  ? ? ? ? ? ? 1   MET A CB  1
+ATOM 6    C CG  . MET A 1 1   ? 11.115 38.664 11.596  1.00 72.05  ? ? ? ? ? ? 1   MET A CG  1
+ATOM 7    S SD  . MET A 1 1   ? 12.048 39.609 10.386  1.00 72.05  ? ? ? ? ? ? 1   MET A SD  1
+ATOM 8    C CE  . MET A 1 1   ? 13.456 40.084 11.391  1.00 72.05  ? ? ? ? ? ? 1   MET A CE  1
+ATOM 9    N N   . ASP A 1 2   ? 10.381 41.467 15.263  1.00 81.99  ? ? ? ? ? ? 2   ASP A N   1
+ATOM 10   C CA  . ASP A 1 2   ? 10.350 42.822 15.886  1.00 81.99  ? ? ? ? ? ? 2   ASP A CA  1
+ATOM 11   C C   . ASP A 1 2   ? 10.651 44.060 15.038  1.00 81.99  ? ? ? ? ? ? 2   ASP A C   1
+ATOM 12   O O   . ASP A 1 2   ? 11.725 44.645 15.140  1.00 81.99  ? ? ? ? ? ? 2   ASP A O   1
+ATOM 13   C CB  . ASP A 1 2   ? 11.208 42.882 17.167  1.00 70.41  ? ? ? ? ? ? 2   ASP A CB  1
+ATOM 14   C CG  . ASP A 1 2   ? 11.000 44.178 17.963  1.00 70.41  ? ? ? ? ? ? 2   ASP A CG  1
+ATOM 15   O OD1 . ASP A 1 2   ? 10.015 44.907 17.702  1.00 70.41  ? ? ? ? ? ? 2   ASP A OD1 1
+ATOM 16   O OD2 . ASP A 1 2   ? 11.821 44.453 18.866  1.00 70.41  ? ? ? ? ? ? 2   ASP A OD2 1
+#
+"""
+
+pdb_str_3a="""
+data_default
+_cell.angle_beta                  90.000
+_cell.angle_gamma                 120.000
+_cell.length_b                    94.730
+_cell.length_c                    250.870
+_cell.angle_alpha                 90.000
+_cell.volume                      1949640.043
+_cell.length_a                    94.730
+_space_group.crystal_system       hexagonal
+_space_group.name_H-M_alt         'P 65'
+_space_group.IT_number            170
+_space_group.name_Hall            ' P 65'
+_symmetry.space_group_name_H-M    'P 65'
+_symmetry.Int_Tables_number       170
+_symmetry.space_group_name_Hall   ' P 65'
+loop_
+  _space_group_symop.id
+  _space_group_symop.operation_xyz
+   1 x,y,z
+   2 x-y,x,z+5/6
+   3 y,-x+y,z+1/6
+   4 -y,x-y,z+2/3
+   5 -x+y,-x,z+1/3
+   6 -x,-y,z+1/2
+
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+   ATOM 1 N . MET A1 1 ? 10.71000 38.46000 14.82500 1.000 89.21000 N ? A ? 1 1
+   ATOM 2 CA . MET A1 1 ? 11.25700 39.55300 13.96100 1.000 89.21000 C ? A ? 1 1
+   ATOM 3 C . MET A1 1 ? 11.38500 40.98500 14.51600 1.000 89.21000 C ? A ? 1 1
+   ATOM 4 O . MET A1 1 ? 12.37600 41.64800 14.21800 1.000 89.21000 O ? A ? 1 1
+   ATOM 5 CB . MET A1 1 ? 10.51400 39.58400 12.63300 1.000 72.05000 C ? A ? 1 1
+   ATOM 6 CG . MET A1 1 ? 11.11500 38.66400 11.59600 1.000 72.05000 C ? A ? 1 1
+   ATOM 7 SD . MET A1 1 ? 12.04800 39.60900 10.38600 1.000 72.05000 S ? A ? 1 1
+   ATOM 8 CE . MET A1 1 ? 13.45600 40.08400 11.39100 1.000 72.05000 C ? A ? 1 1
+   ATOM 9 N . ASP A1 2 ? 10.38100 41.46700 15.26300 1.000 81.99000 N ? A ? 2 1
+   ATOM 10 CA . ASP A1 2 ? 10.35000 42.82200 15.88600 1.000 81.99000 C ? A ? 2 1
+   ATOM 11 C . ASP A1 2 ? 10.65100 44.06000 15.03800 1.000 81.99000 C ? A ? 2 1
+   ATOM 12 O . ASP A1 2 ? 11.72500 44.64500 15.14000 1.000 81.99000 O ? A ? 2 1
+   ATOM 13 CB . ASP A1 2 ? 11.20800 42.88200 17.16700 1.000 70.41000 C ? A ? 2 1
+   ATOM 14 CG . ASP A1 2 ? 11.00000 44.17800 17.96300 1.000 70.41000 C ? A ? 2 1
+   ATOM 15 OD1 . ASP A1 2 ? 10.01500 44.90700 17.70200 1.000 70.41000 O ? A ? 2 1
+   ATOM 16 OD2 . ASP A1 2 ? 11.82100 44.45300 18.86600 1.000 70.41000 O ? A ? 2 1
+   ATOM 1 N . MET A2 1 ? 47.80830 41.74364 16.08704 1.000 89.21000 N ? B ? 3 1
+   ATOM 2 CA . MET A2 1 ? 47.32528 40.65782 15.17706 1.000 89.21000 C ? B ? 3 1
+   ATOM 3 C . MET A2 1 ? 47.15903 39.22120 15.70953 1.000 89.21000 C ? B ? 3 1
+   ATOM 4 O . MET A2 1 ? 46.19237 38.56056 15.33594 1.000 89.21000 O ? B ? 3 1
+   ATOM 5 CB . MET A2 1 ? 48.16131 40.63807 13.90535 1.000 72.05000 C ? B ? 3 1
+   ATOM 6 CG . MET A2 1 ? 47.63526 41.56662 12.83576 1.000 72.05000 C ? B ? 3 1
+   ATOM 7 SD . MET A2 1 ? 46.79184 40.63164 11.55433 1.000 72.05000 S ? B ? 3 1
+   ATOM 8 CE . MET A2 1 ? 45.31598 40.14801 12.45213 1.000 72.05000 C ? B ? 3 1
+   ATOM 9 N . ASP A2 2 ? 48.10744 38.73313 16.52233 1.000 81.99000 N ? B ? 4 1
+   ATOM 10 CA . ASP A2 2 ? 48.09487 37.37296 17.13462 1.000 81.99000 C ? B ? 4 1
+   ATOM 11 C . ASP A2 2 ? 47.85618 36.14206 16.25698 1.000 81.99000 C ? B ? 4 1
+   ATOM 12 O . ASP A2 2 ? 46.77809 35.55605 16.27707 1.000 81.99000 O ? B ? 4 1
+   ATOM 13 CB . ASP A2 2 ? 47.14756 37.30209 18.35048 1.000 70.41000 C ? B ? 4 1
+   ATOM 14 CG . ASP A2 2 ? 47.29912 35.99951 19.14847 1.000 70.41000 C ? B ? 4 1
+   ATOM 15 OD1 . ASP A2 2 ? 48.30081 35.27288 18.95247 1.000 70.41000 O ? B ? 4 1
+   ATOM 16 OD2 . ASP A2 2 ? 46.41590 35.71682 19.98816 1.000 70.41000 O ? B ? 4 1
+"""
+
 def exercise_00(file_name="tst_mtrix_biomt_cmdl_00.pdb"):
   """
   Make sure SS gets populated by BIOMT
@@ -213,5 +516,67 @@ def exercise_00(file_name="tst_mtrix_biomt_cmdl_00.pdb"):
   assert a.get_n_helices() == 27
   assert a.get_n_sheets() == 0
 
+def exercise_01(file_name="tst_mtrix_biomt_cmdl_01.pdb"):
+  """
+  Use MTRIX.
+  """
+  of = open(file_name,"w")
+  print >> of, pdb_str_1
+  of.close()
+  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  pdb_inp1 = iotbx.pdb.input(
+    file_name="tst_mtrix_biomt_cmdl_01_MTRIX_expanded.pdb")
+  pdb_inp2 = iotbx.pdb.input(source_info=None, lines=pdb_str_1a)
+  dist = flex.sqrt((
+    pdb_inp1.atoms().extract_xyz() - pdb_inp2.atoms().extract_xyz()).dot())
+  assert approx_equal(dist.min_max_mean().as_tuple(), [0,0,0])
+  assert pdb_inp1.crystal_symmetry().is_similar_symmetry(
+         pdb_inp2.crystal_symmetry())
+  assert pdb_inp1.crystal_symmetry() is not None
+  assert pdb_inp2.crystal_symmetry() is not None
+  assert pdb_inp1.crystal_symmetry().unit_cell() is not None
+  assert pdb_inp2.crystal_symmetry().unit_cell() is not None
+
+def exercise_02(file_name="tst_mtrix_biomt_cmdl_02.pdb"):
+  """
+  Make sure it's not going to make up CRYST1.
+  """
+  of = open(file_name,"w")
+  print >> of, pdb_str_2
+  of.close()
+  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  pdb_inp1 = iotbx.pdb.input(
+    file_name="tst_mtrix_biomt_cmdl_02_MTRIX_expanded.pdb")
+  pdb_inp2 = iotbx.pdb.input(source_info=None, lines=pdb_str_2a)
+  dist = flex.sqrt((
+    pdb_inp1.atoms().extract_xyz() - pdb_inp2.atoms().extract_xyz()).dot())
+  assert approx_equal(dist.min_max_mean().as_tuple(), [0,0,0])
+  assert [pdb_inp1.crystal_symmetry(),
+          pdb_inp2.crystal_symmetry()].count(None)==2
+
+def exercise_03(file_name="tst_mtrix_biomt_cmdl_03.cif"):
+  """
+  Handle mmCIF.
+  """
+  of = open(file_name,"w")
+  print >> of, pdb_str_3
+  of.close()
+  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  pdb_inp1 = iotbx.pdb.input(
+    file_name="tst_mtrix_biomt_cmdl_03_MTRIX_expanded.cif")
+  pdb_inp2 = iotbx.pdb.input(source_info=None, lines=pdb_str_3a)
+  dist = flex.sqrt((
+    pdb_inp1.atoms().extract_xyz() - pdb_inp2.atoms().extract_xyz()).dot())
+  assert approx_equal(dist.min_max_mean().as_tuple(), [0,0,0])
+  assert pdb_inp1.crystal_symmetry().is_similar_symmetry(
+         pdb_inp2.crystal_symmetry())
+  assert pdb_inp1.crystal_symmetry() is not None
+  assert pdb_inp2.crystal_symmetry() is not None
+  assert pdb_inp1.crystal_symmetry().unit_cell() is not None
+  assert pdb_inp2.crystal_symmetry().unit_cell() is not None
+
 if(__name__=='__main__'):
   exercise_00()
+  exercise_01()
+  exercise_02()
+  exercise_03()
