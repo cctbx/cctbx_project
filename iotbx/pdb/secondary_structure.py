@@ -737,7 +737,7 @@ class annotation(structure_base):
       assert len(old_chain_id) == 1
       new_chain_id = old_chain_id+suffixes_for_chain_ids()[n_copy-1]
       return new_chain_id
-    if n_copy <= 1:
+    if n_copies <= 1:
       return
     new_helices = []
     new_sheets = []
