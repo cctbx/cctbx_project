@@ -36,6 +36,8 @@ REMARK 350   BIOMT3   9 -0.500000  0.309017  0.809017        0.00000
 HELIX    1   1 PRO A   28  LEU A   33  1                                   6
 HELIX    7   7 ASP B   74  ALA B   79  1                                   6
 HELIX   12  12 LYS C  151  TYR C  159  1                                   9
+SHEET    1   A 2 PRO A  28  LEU A  33  0
+SHEET    2   A 2 ASP B  74  ALA B  79 -1  O  ASP B  74   N  PRO A  28
 CRYST1    0.000    0.000    0.000  90.00  90.00  90.00 P 1           1
 ATOM     62  N   PRO A  28      33.884  22.417 110.984 14.01 14.01           N
 ATOM     63  CA  PRO A  28      34.083  23.080 112.268 12.01 12.01           C
@@ -324,6 +326,32 @@ TER
 END
 """
 
+pdb_str_2b="""
+HELIX    1   1 THR A    1  THR A    2  1                                   6
+SHEET    1   A 2 THR A   1  THR A   3  0
+SHEET    2   A 2 THR B   4  THR B   5 -1  O  THR B   4   N  THR A   2
+MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
+MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
+MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
+MTRIX1   2  0.496590 -0.643597  0.582393        0.00000
+MTRIX2   2  0.867925  0.376088 -0.324443        0.00000
+MTRIX3   2 -0.010221  0.666588  0.745356        0.00000
+MTRIX1   3 -0.317946 -0.173437  0.932111        0.00000
+MTRIX2   3  0.760735 -0.633422  0.141629        0.00000
+MTRIX3   3  0.565855  0.754120  0.333333        0.00000
+ATOM      1  N   THR A   1       5.111   8.080   7.645  1.00 20.00           N
+ATOM      2  CA  THR A   2       5.000   6.722   7.125  1.00 20.00           C
+ATOM      3  C   THR A   3       5.075   5.694   8.249  1.00 20.00           C
+TER
+ATOM      4  O   THR B   4       5.890   5.818   9.163  1.00 20.00           O
+ATOM      5  CB  THR B   5       6.101   6.421   6.092  1.00 20.00           C
+TER
+ATOM      6  OG1 THR A   6       6.001   7.343   5.000  1.00 20.00           O
+ATOM      7  CG2 THR A   7       5.964   5.000   5.565  1.00 20.00           C
+TER
+END
+"""
+
 pdb_str_3="""
 data_1A37
 #
@@ -503,19 +531,130 @@ loop_
    ATOM 16 OD2 . ASP A2 2 ? 46.41590 35.71682 19.98816 1.000 70.41000 O ? B ? 4 1
 """
 
-def exercise_00(file_name="tst_mtrix_biomt_cmdl_00.pdb"):
+def exercise_000(file_name="tst_mtrix_biomt_cmdl_000.pdb"):
   """
   Make sure SS gets populated by BIOMT
+  """
+
+  of = open(file_name,"w")
+  print >> of, pdb_str_0
+  of.close()
+  # template when pdb_as_cif will handle BIOMT records as well...
+  # easy_run.call("phenix.pdb_as_cif %s"%file_name)
+  # for file_type in ['pdb', 'cif']:
+  for file_type in ['pdb']:
+    print "file_type:", file_type
+    easy_run.call("phenix.pdb.biomt_reconstruction %s.%s" % (file_name[:-4], file_type))
+    pdb_inp = iotbx.pdb.input(
+      file_name="%s_BIOMT_expanded.%s" % (file_name[:-4], file_type))
+    a = pdb_inp.extract_secondary_structure()
+    assert a.get_n_helices() == 27
+    assert a.get_n_sheets() == 9, "%d" % a.get_n_sheets()
+    # checking chain ids. If this part is failing, then something is changed in
+    # chain expanding which made chain ids in hierarchy.py:join_roots()
+    # not compatible with those used in secondary_structure.py:multiply_to_asu
+    chain_ids = [h.start_chain_id for h in a.helices]
+    assert chain_ids == ['A1', 'B1', 'C1', 'A2', 'B2', 'C2',
+        'A3', 'B3', 'C3', 'A4', 'B4', 'C4',
+        'A5', 'B5', 'C5', 'A6', 'B6', 'C6',
+        'A7', 'B7', 'C7', 'A8', 'B8', 'C8', 'A9', 'B9', 'C9'], chain_ids
+    # checking sheets
+    for i, sh in enumerate(a.sheets):
+      assert sh.n_strands == 2
+      assert sh.registrations[0] == None
+      assert sh.registrations[1].cur_chain_id == 'B%d' % (i+1)
+      assert sh.registrations[1].prev_chain_id == 'A%d' % (i+1)
+      assert sh.strands[0].start_chain_id == 'A%d' % (i+1), sh.strands[0].start_chain_id
+      assert sh.strands[0].end_chain_id == 'A%d' % (i+1)
+      assert sh.strands[1].start_chain_id == 'B%d' % (i+1), sh.strands[1].start_chain_id
+      assert sh.strands[1].end_chain_id == 'B%d' % (i+1)
+
+def exercise_001(file_name="tst_mtrix_biomt_cmdl_001.pdb"):
+  """
+  Make sure SS gets populated by MTRIX
+  """
+  of = open(file_name,"w")
+  print >> of, pdb_str_2b
+  of.close()
+  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  pdb_inp = iotbx.pdb.input(
+    file_name="tst_mtrix_biomt_cmdl_001_MTRIX_expanded.pdb")
+  a = pdb_inp.extract_secondary_structure()
+  assert a.get_n_helices() == 3, a.get_n_helices()
+  assert a.get_n_sheets() == 3, "%d" % a.get_n_sheets()
+  # checking chain ids. If this part is failing, then something is changed in
+  # chain expanding which made chain ids in hierarchy.py:join_roots()
+  # not compatible with those used in secondary_structure.py:multiply_to_asu
+  chain_ids = [h.start_chain_id for h in a.helices]
+  assert chain_ids == ['A1', 'A2', 'A3'], chain_ids
+  # checking sheets
+  for i, sh in enumerate(a.sheets):
+    assert sh.n_strands == 2
+    assert sh.registrations[0] == None
+    assert sh.registrations[1].cur_chain_id == 'B%d' % (i+1)
+    assert sh.registrations[1].prev_chain_id == 'A%d' % (i+1)
+    assert sh.strands[0].start_chain_id == 'A%d' % (i+1), sh.strands[0].start_chain_id
+    assert sh.strands[0].end_chain_id == 'A%d' % (i+1)
+    assert sh.strands[1].start_chain_id == 'B%d' % (i+1), sh.strands[1].start_chain_id
+    assert sh.strands[1].end_chain_id == 'B%d' % (i+1)
+
+def exercise_002(file_name="tst_mtrix_biomt_cmdl_002.pdb"):
+  """
+  Make sure SS is fine when expanding without MTRIX
   """
   of = open(file_name,"w")
   print >> of, pdb_str_0
   of.close()
+  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  pdb_inp = iotbx.pdb.input(
+    file_name="tst_mtrix_biomt_cmdl_002_MTRIX_expanded.pdb")
+  a = pdb_inp.extract_secondary_structure()
+  assert a.get_n_helices() == 3, a.get_n_helices()
+  assert a.get_n_sheets() == 1, "%d" % a.get_n_sheets()
+  # checking chain ids. If this part is failing, then something is changed in
+  # chain expanding which made chain ids in hierarchy.py:join_roots()
+  # not compatible with those used in secondary_structure.py:multiply_to_asu
+  chain_ids = [h.start_chain_id for h in a.helices]
+  assert chain_ids == ['A', 'B', 'C'], chain_ids
+  # checking sheets
+  for i, sh in enumerate(a.sheets):
+    assert sh.n_strands == 2
+    assert sh.registrations[0] == None
+    assert sh.registrations[1].cur_chain_id == 'B'
+    assert sh.registrations[1].prev_chain_id == 'A'
+    assert sh.strands[0].start_chain_id == 'A'
+    assert sh.strands[0].end_chain_id == 'A'
+    assert sh.strands[1].start_chain_id == 'B'
+    assert sh.strands[1].end_chain_id == 'B'
+
+def exercise_003(file_name="tst_mtrix_biomt_cmdl_003.pdb"):
+  """
+  Make sure SS is fine when expanding without BIOMT
+  """
+  of = open(file_name,"w")
+  print >> of, pdb_str_2b
+  of.close()
   easy_run.call("phenix.pdb.biomt_reconstruction %s"%file_name)
   pdb_inp = iotbx.pdb.input(
-    file_name="tst_mtrix_biomt_cmdl_00_BIOMT_expanded.pdb")
+    file_name="tst_mtrix_biomt_cmdl_003_BIOMT_expanded.pdb")
   a = pdb_inp.extract_secondary_structure()
-  assert a.get_n_helices() == 27
-  assert a.get_n_sheets() == 0
+  assert a.get_n_helices() == 1, a.get_n_helices()
+  assert a.get_n_sheets() == 1, "%d" % a.get_n_sheets()
+  # checking chain ids. If this part is failing, then something is changed in
+  # chain expanding which made chain ids in hierarchy.py:join_roots()
+  # not compatible with those used in secondary_structure.py:multiply_to_asu
+  chain_ids = [h.start_chain_id for h in a.helices]
+  assert chain_ids == ['A'], chain_ids
+  # checking sheets
+  for i, sh in enumerate(a.sheets):
+    assert sh.n_strands == 2
+    assert sh.registrations[0] == None
+    assert sh.registrations[1].cur_chain_id == 'B'
+    assert sh.registrations[1].prev_chain_id == 'A'
+    assert sh.strands[0].start_chain_id == 'A'
+    assert sh.strands[0].end_chain_id == 'A'
+    assert sh.strands[1].start_chain_id == 'B'
+    assert sh.strands[1].end_chain_id == 'B'
 
 def exercise_01(file_name="tst_mtrix_biomt_cmdl_01.pdb"):
   """
@@ -578,7 +717,12 @@ def exercise_03(file_name="tst_mtrix_biomt_cmdl_03.cif"):
 
 if(__name__=='__main__'):
   if libtbx.env.has_module("phenix"):
-    exercise_00()
+    # SS records handling
+    exercise_000()
+    exercise_001()
+    exercise_002()
+    exercise_003()
+    # other
     exercise_01()
     exercise_02()
     exercise_03()
