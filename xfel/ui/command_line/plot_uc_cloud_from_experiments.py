@@ -10,9 +10,9 @@ Plot a cloud of unit cell dimensions from stills. Provide either a combined_expe
 """
 
 phil_str = """
-  iqr = 1.5
+  iqr_ratio = 1.5
     .type = float
-    .help = Interquartile range for outlier rejection. Use None to disable outlier rejection.
+    .help = Interquartile range multiplier for outlier rejection. Use None to disable outlier rejection.
 """
 phil_scope = parse(phil_str)
 
@@ -61,8 +61,8 @@ class Script(object):
     info_list.append(info)
     import xfel.ui.components.xfel_gui_plotter as pltr
     plotter = pltr.PopUpCharts()
-    plotter.plot_uc_histogram(info_list=info_list, legend_list=[""], iqr = params.iqr)
-    plotter.plot_uc_3Dplot(info, iqr = params.iqr)
+    plotter.plot_uc_histogram(info_list=info_list, legend_list=[""], iqr_ratio = params.iqr_ratio)
+    plotter.plot_uc_3Dplot(info, iqr_ratio = params.iqr_ratio)
     plotter.plt.show()
 
 if __name__ == '__main__':
