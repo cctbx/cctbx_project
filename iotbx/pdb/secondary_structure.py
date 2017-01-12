@@ -739,6 +739,8 @@ class annotation(structure_base):
       return new_chain_id
     if n_copies <= 1:
       return
+    if n_copies+1 >= len(suffixes_for_chain_ids()):
+      return
     new_helices = []
     new_sheets = []
     new_h_serial = 1
