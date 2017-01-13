@@ -100,7 +100,7 @@ def from_map_map_atoms_optimal_radius(map_1, map_2, sites_cart, unit_cell, d_min
       unit_cell=unit_cell, radius=r)
     if(cc>cc_best):
       r_best = r
-      cc_best = cc      
+      cc_best = cc
   r_fine = [r/100. for r in range(max(150,int(r_best*100)-50), int(r_best*100)+50,10)]
   for r in r_fine:
     cc = from_map_map_atoms(map_1=map_1, map_2=map_2, sites_cart=sites_cart,
@@ -121,6 +121,12 @@ def from_map_map_atoms(map_1, map_2, sites_cart, unit_cell, radius):
   return flex.linear_correlation(
     x=map_1.select(sel).as_1d(),
     y=map_2.select(sel).as_1d()).coefficient()
+
+def from_map_map_selection(map_1, map_2, selection):
+  assert_same_gridding(map_1, map_2)
+  return flex.linear_correlation(
+    x=map_1.select(selection).as_1d(),
+    y=map_2.select(selection).as_1d()).coefficient()
 
 def from_map_map_atoms_per_atom(map_1, map_2, sites_cart, unit_cell, radius):
   assert_same_gridding(map_1, map_2)
