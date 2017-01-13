@@ -1,23 +1,20 @@
 from __future__ import division
+import libtbx.load_env
+from dxtbx.datablock import DataBlockFactory
+from dxtbx.imageset import ImageSweep
+from os.path import join
 
 class Test(object):
 
   def __init__(self):
-    import libtbx.load_env
     import os
-
-    try:
-      dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
-      exit(0)
+    dials_regression = libtbx.env.dist_path('dials_regression')
 
     self.dials_regression = dials_regression
     self.centroid_test_data = os.path.join(dials_regression, 'centroid_test_data')
     self.image_examples = os.path.join(dials_regression, 'image_examples')
 
   def single_sweep_filenames(self):
-    from os.path import join
     path = self.centroid_test_data
     filenames = []
     image_indices = range(1, 10)
@@ -26,7 +23,6 @@ class Test(object):
     return filenames
 
   def multiple_sweep_filenames(self):
-    from os.path import join
     path = self.centroid_test_data
     filenames = []
     image_indices = list(range(1, 4)) + list(range(7, 10))
@@ -35,7 +31,6 @@ class Test(object):
     return filenames
 
   def all_image_examples(self):
-    from os.path import join
     path = self.image_examples
     filenames = [
         ('ALS_1231', 'q315r_lyso_1_001.img'),
@@ -86,7 +81,6 @@ class Test(object):
     return pickle.load(temp)
 
   def encode_json_then_decode(self, obj, check_format=True):
-    from dxtbx.datablock import DataBlockFactory
     import json
     string = json.dumps([db.to_dict() for db in obj], ensure_ascii=True)
     return DataBlockFactory.from_json(string, check_format=check_format)
@@ -102,9 +96,6 @@ class Test(object):
     self.tst_with_bad_external_lookup()
 
   def tst_create_single_sweep(self):
-
-    from dxtbx.datablock import DataBlockFactory
-
     filenames = self.single_sweep_filenames()
     blocks = DataBlockFactory.from_filenames(filenames)
     assert(len(blocks) == 1)
@@ -118,9 +109,6 @@ class Test(object):
     print 'OK'
 
   def tst_create_multiple_sweeps(self):
-
-    from dxtbx.datablock import DataBlockFactory
-
     filenames = self.multiple_sweep_filenames()
     blocks = DataBlockFactory.from_filenames(filenames)
     assert(len(blocks) == 1)
@@ -134,9 +122,6 @@ class Test(object):
     print 'OK'
 
   def tst_create_multiple_blocks(self):
-
-    from dxtbx.datablock import DataBlockFactory
-
     filenames = self.multiple_block_filenames()
     blocks = DataBlockFactory.from_filenames(filenames, verbose=False)
     assert(len(blocks) == 22)
@@ -153,9 +138,6 @@ class Test(object):
     print 'OK'
 
   def tst_pickling(self):
-
-    from dxtbx.datablock import DataBlockFactory
-
     filenames = self.multiple_block_filenames()
     blocks1 = DataBlockFactory.from_filenames(filenames)
     blocks2 = self.pickle_then_unpickle(blocks1)
@@ -168,8 +150,6 @@ class Test(object):
     print 'OK'
 
   def tst_json(self):
-    from dxtbx.datablock import DataBlockFactory
-    from dxtbx.imageset import ImageSweep
 
     filenames = self.multiple_block_filenames()
     blocks1 = DataBlockFactory.from_filenames(filenames)
@@ -202,7 +182,6 @@ class Test(object):
     print 'OK'
 
   def tst_from_null_sweep(self):
-    from dxtbx.datablock import DataBlockFactory
     from dxtbx.imageset import NullReader, ImageSweep, SweepFileList
     from dxtbx.model import Beam, Detector, Goniometer, Scan
 
@@ -227,10 +206,6 @@ class Test(object):
     print 'OK'
 
   def tst_with_bad_external_lookup(self):
-    from dxtbx.datablock import DataBlockFactory
-    from dxtbx.imageset import ImageSweep
-    from os.path import join
-
     filename = join(self.dials_regression, "centroid_test_data",
                     "datablock_with_bad_lookup.json")
     blocks = DataBlockFactory.from_json_file(filename, check_format=False)
@@ -256,10 +231,6 @@ class Test(object):
     print 'OK'
 
   def tst_with_external_lookup(self):
-    from dxtbx.datablock import DataBlockFactory
-    from dxtbx.imageset import ImageSweep
-    from os.path import join
-
     filename = join(self.dials_regression, "centroid_test_data",
                     "datablock_with_lookup.json")
     blocks = DataBlockFactory.from_json_file(filename)
@@ -291,5 +262,10 @@ class Test(object):
     print 'OK'
 
 if __name__ == '__main__':
-  test = Test()
-  test.run()
+  if not libtbx.env.has_module("dials"):
+    print "Skipping test: dials not present"
+  elif not libtbx.env.has_module("dials_regression"):
+    print "Skipping test: dials_regression not present"
+  else:
+    test = Test()
+    test.run()

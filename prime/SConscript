@@ -35,3 +35,5 @@ if (not env_etc.no_boost_python):
     env=env_prime_boost_python_ext,
     paths=env_etc.prime_common_includes)
   Export("env_prime_boost_python_ext")
+
+SConscript("index_ambiguity/SConscript")

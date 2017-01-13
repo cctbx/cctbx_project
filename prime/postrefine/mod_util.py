@@ -555,9 +555,10 @@ class intensities_scaler(object):
       n_rows = 3
       n_cols = int(math.ceil(len(params)/n_rows))
       num_bins = 10
-      for i in xrange(len(params)):
+      for i in xrange(len(params)-1):
+        tmp_params = params_array[:,i].astype(np.float)
         plt.subplot(n_rows,n_cols,i+1)
-        plt.hist(params_array[:,i], num_bins, normed=0, facecolor='green', alpha=0.5)
+        plt.hist(tmp_params, num_bins, normed=0, facecolor='green', alpha=0.5)
         plt.ylabel('Frequencies')
-        plt.title(params[i]+'\nmu %5.1f med %5.1f sigma %5.1f' %(np.mean(params_array[:,i]), np.median(params_array[:,i]), np.std(params_array[:,i])))
+        plt.title(params[i]+'\nmu %5.1f med %5.1f sigma %5.1f' %(np.mean(tmp_params), np.median(tmp_params), np.std(tmp_params)))
       plt.show()

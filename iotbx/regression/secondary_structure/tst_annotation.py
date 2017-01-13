@@ -1,6 +1,6 @@
 from __future__ import division
 import time
-from iotbx.pdb.secondary_structure import annotation, pdb_helix
+from iotbx.pdb.secondary_structure import annotation, pdb_helix, pdb_strand
 import iotbx
 import iotbx.cif
 from libtbx.test_utils import show_diff
@@ -1417,6 +1417,31 @@ HELIX  238 238 LEU Z  125  ALA Z  136  1                                  12
   h_sizes = [x.length for x in ann.helices]
   assert h_sizes == [32, 29, 40, 12], h_sizes
 
+def tst_simple_elements():
+  ann_str = """\
+HELIX    3 AA3 SER B   26  LYS B   30  5                                   5
+HELIX    4 AA4 LEU B  196  GLU B  199  5                                   4
+SHEET    1 AA1 4 ILE A   7  PRO A  10  0
+SHEET    2 AA1 4 MET A  92  THR A  99  1  O  LEU A  95   N  ILE A   7
+SHEET    3 AA1 4 THR A  73  SER A  82 -1  N  LEU A  76   O  ILE A  94
+SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
+  """
+  ann = annotation.from_records(ann_str.split("\n"))
+  assert ann.get_n_helices() == 2
+  assert ann.get_n_sheets() == 1
+  n_h = 0
+  n_st = 0
+  se = ann.simple_elements()
+  assert len(se) == 6
+  for e in se:
+    if isinstance(e, pdb_helix):
+      n_h += 1
+    if isinstance(e, pdb_strand):
+      n_st += 1
+  assert n_h == 2
+  assert n_st == 4
+  s = ann.as_pdb_str()
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test_helix_interface()
@@ -1436,4 +1461,5 @@ if (__name__ == "__main__"):
   tst_split_helices_with_prolines_3()
   tst_remove_short_annotations()
   tst_concatenate_consecutive_helices()
+  tst_simple_elements()
   print "OK time =%8.3f"%(time.time() - t0)

@@ -1,4 +1,6 @@
 from __future__ import division
+import libtbx.load_env
+import os
 
 class Test(object):
 
@@ -91,13 +93,7 @@ class Test(object):
   def tst_sweep(self):
     from dxtbx.serialize import load
     from dxtbx.serialize.helpers import tuple_almost_equal
-    import libtbx.load_env
-    import os
-    try:
-      path = libtbx.env.dist_path('dials_regression')
-    except Exception:
-      print "No dials_regression directory found"
-      return
+    path = libtbx.env.dist_path('dials_regression')
 
     filename = os.path.join(path, "centroid_test_data", "test_sweep.json")
     sweep = load.imageset(filename)
@@ -131,14 +127,9 @@ class Test(object):
   def tst_cspad_hierarchy(self):
     from dxtbx.serialize import dump, load
     from dxtbx.imageset import ImageSetFactory
-    import libtbx.load_env
     import os
     from glob import glob
-    try:
-      path = libtbx.env.dist_path('dials_regression')
-    except Exception:
-      print "No dials_regression directory found"
-      return
+    path = libtbx.env.dist_path('dials_regression')
 
     # Get the imageset
     filename = os.path.join(path, "spotfinding_test_data", "idx*.cbf")
@@ -166,17 +157,9 @@ class Test(object):
     print 'OK'
 
   def tst_no_image_data(self):
-
     from dxtbx.serialize import load
-    import libtbx.load_env
-    import os
-    from glob import glob
     from dxtbx.imageset import ImageSweep, NullReader
-    try:
-      path = libtbx.env.dist_path('dials_regression')
-    except Exception:
-      print "No dials_regression directory found"
-      return
+    path = libtbx.env.dist_path('dials_regression')
     filename = os.path.join(
       path,
       'centroid_test_data',
@@ -194,5 +177,9 @@ class Test(object):
     print 'OK'
 
 if __name__ == '__main__':
-  test = Test()
-  test.run()
+  if libtbx.env.has_module("dials") and \
+     libtbx.env.has_module("dials_regression"):
+    test = Test()
+    test.run()
+  else:
+    print "Skipping test: dials or dials_regression not present"

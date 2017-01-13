@@ -175,11 +175,11 @@ namespace dxtbx { namespace model {
              image_size_.const_ref().all_eq(
               rhs.image_size_.const_ref())
           && pixel_size_.const_ref().all_approx_equal(
-              rhs.pixel_size_.const_ref(), 1e-7)
-          && trusted_range_.const_ref().all_approx_equal(
-              rhs.trusted_range_.const_ref(), 1e-7);
+              rhs.pixel_size_.const_ref(), 1e-7);
       if (!static_only) {
         result = result
+          && trusted_range_.const_ref().all_approx_equal(
+              rhs.trusted_range_.const_ref(), 1e-7)
           && get_fast_axis().const_ref().all_approx_equal(
               rhs.get_fast_axis().const_ref(), fast_axis_tolerance)
           && get_slow_axis().const_ref().all_approx_equal(

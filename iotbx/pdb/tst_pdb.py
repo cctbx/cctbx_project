@@ -13,6 +13,7 @@ import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 op = os.path
+import iotbx.mtrix_biomt
 
 def exercise_systematic_chain_ids():
   cids = iotbx.pdb.systematic_chain_ids()
@@ -533,7 +534,7 @@ def exercise_merge_files_and_check_for_overlap(regression_pdb):
 
 def exercise_mtrix(regression_pdb):
   pdb_inp = pdb.input(file_name=op.join(regression_pdb, "pdb1a1q.ent"))
-  mtrix_info = pdb_inp.process_mtrix_records()
+  mtrix_info = pdb_inp.process_MTRIX_records()
   assert len(mtrix_info.r)==len(mtrix_info.t)==2
   assert approx_equal(mtrix_info.r[0], [
     -0.952060, 0.305556,-0.014748,
@@ -567,8 +568,8 @@ ATOM      7  CG2 THR 1   1      10.523   7.209   9.055  1.00 43.17           C
 TER
 """%mtrix_recs
   pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  r = pi.process_mtrix_records()
-  rr = iotbx.pdb.format_MTRIX_pdb_string(rotation_matrices=r.r,
+  r = pi.process_MTRIX_records()
+  rr = iotbx.mtrix_biomt.format_MTRIX_pdb_string(rotation_matrices=r.r,
     translation_vectors=r.t, serial_numbers=r.serial_number,
     coordinates_present_flags=r.coordinates_present)
   for l1,l2,l3 in zip(rr.splitlines(),mtrix_recs.splitlines(),

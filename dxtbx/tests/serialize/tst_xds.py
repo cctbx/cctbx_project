@@ -10,6 +10,9 @@ from dxtbx.imageset import ImageSetFactory
 from dxtbx.serialize import xds
 
 def exercise_to_xds():
+  if not libtbx.env.has_module("dials"):
+    print "Skipping test: dials not present"
+    return
   if not libtbx.env.has_module("dials_regression"):
     print "Skipping exercise_to_xds(): dials_regression not present"
     return

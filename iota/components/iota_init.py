@@ -203,9 +203,15 @@ class InitAll(object):
         print 'Run #{} not found'.format(analysis_source)
 
     if os.path.isdir(int_folder):
+
+      cmd.Command.start("Analyzing results in {}".format(int_folder))
       int_list = [os.path.join(int_folder, i) for i in os.listdir(int_folder)]
       img_objects = [ep.load(i) for i in int_list if i.endswith('.int')]
+      cmd.Command.end("Analyzing results -- DONE")
+
       self.logfile = os.path.abspath(os.path.join(int_folder, 'iota.log'))
+      self.viz_base = os.path.join('/'.join(int_folder.split('/')),
+                                   'vizualization')
 
       analysis = Analyzer(self, img_objects, self.iver)
       analysis.print_results()
@@ -279,6 +285,8 @@ class InitAll(object):
       print msg
 
     if self.args.analyze != None:
+      print 'ANALYSIS ONLY will be performed (analyzing run #{})'.format(
+        self.args.analyze)
       self.analyze_prior_results('{:003d}'.format(int(self.args.analyze)))
       misc.iota_exit()
 

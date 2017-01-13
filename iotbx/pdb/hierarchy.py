@@ -663,6 +663,27 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
             raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
         set_attr(sc=sc, a=a)
 
+  def apply_rotation_translation(self, rot_matrices, trans_vectors):
+    """
+    LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
+    """
+    roots=[]
+    for r,t in zip(rot_matrices, trans_vectors):
+      for model in self.models():
+        root = iotbx.pdb.hierarchy.root()
+        m = iotbx.pdb.hierarchy.model()
+        for c in model.chains():
+          c = c.detached_copy()
+          xyz = c.atoms().extract_xyz()
+          new_xyz = r.elems*xyz+t
+          c.atoms().set_xyz(new_xyz)
+          m.append_chain(c)
+        root.append_model(m)
+        roots.append(root)
+    result = iotbx.pdb.hierarchy.join_roots(roots=roots)
+    result.reset_i_seq_if_necessary()
+    return result
+
   def expand_to_p1(self, crystal_symmetry):
     # ANISIU will be invalid
     import string
@@ -2393,11 +2414,15 @@ class show_summary(input):
         level_id=level_id,
         level_id_exception=level_id_exception)
 
-def append_chain_id_suffixes(roots, suffixes=Auto):
+def suffixes_for_chain_ids(suffixes=Auto):
   if (suffixes is Auto):
     suffixes="123456789" \
              "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
              "abcdefghijklmnopqrstuvwxyz"
+  return suffixes
+
+def append_chain_id_suffixes(roots, suffixes=Auto):
+  suffixes = suffixes_for_chain_ids(suffixes=suffixes)
   assert len(roots) <= len(suffixes)
   for root,suffix in zip(roots, suffixes):
     for model in root.models():

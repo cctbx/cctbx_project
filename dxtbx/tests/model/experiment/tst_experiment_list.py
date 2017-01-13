@@ -803,6 +803,9 @@ class Test(object):
   def __init__(self):
     import libtbx
 
+    if not libtbx.env.has_module("dials"):
+      print 'Skipping: dials_regresson not configured'
+      exit(0)
     if not libtbx.env.has_module("dials_regression"):
       print 'Skipping: dials_regresson not configured'
       exit(0)

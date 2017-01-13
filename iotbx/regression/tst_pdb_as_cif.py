@@ -76,10 +76,17 @@ ANISOUA0000  C4    U   367    20015  14160  16442  -1873  -2801  -1645  A16S C
   cntr = 0
   for l in inp.readlines():
     l = l.strip()
-    if(l.startswith("ATOM   99999  N3  .  U  .  367  ?")): cntr+=1
-    if(l.startswith("ATOM  100000  C4  .  U  .  367  ?")): cntr+=1
-    if(l.startswith("99999  N3  .  U  .  367  ?")): cntr+=1
-    if(l.startswith("100000  C4  .  U  .  367  ?")): cntr+=1
+    # These are for align_columns=True in iotbx.cif.write_whole_cif_file()
+    # if(l.startswith("ATOM   99999  N3  .  U  .  367  ?")): cntr+=1
+    # if(l.startswith("ATOM  100000  C4  .  U  .  367  ?")): cntr+=1
+    # if(l.startswith("99999  N3  .  U  .  367  ?")): cntr+=1
+    # if(l.startswith("100000  C4  .  U  .  367  ?")): cntr+=1
+
+    # These are for align_columns=False in iotbx.cif.write_whole_cif_file()
+    if(l.startswith("ATOM 99999 N3 . U . 367 ? ")): cntr+=1
+    if(l.startswith("ATOM 100000 C4 . U . 367 ?")): cntr+=1
+    if(l.startswith("99999 N3 . U . 367 ? ")): cntr+=1
+    if(l.startswith("100000 C4 . U . 367 ?")): cntr+=1
   assert cntr == 4
 
 if (__name__ == "__main__"):

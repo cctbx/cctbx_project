@@ -19,6 +19,9 @@ phil_str = """
     .multiple = True
   rungroup = None
     .type = int
+  iqr_ratio = 1.5
+    .type = float
+    .help = Interquartile range multiplier for outlier rejection. Use None to disable outlier rejection.
 """
 phil_scope = parse(phil_str + db_phil_str)
 
@@ -69,8 +72,8 @@ def run(args):
                  'n_img':0})
   import xfel.ui.components.xfel_gui_plotter as pltr
   plotter = pltr.PopUpCharts()
-  plotter.plot_uc_histogram(info_list=[info], extra_title=extra_title)
-  plotter.plot_uc_3Dplot(info=info)
+  plotter.plot_uc_histogram(info_list=[info], extra_title=extra_title, legend_list=[""], iqr_ratio = params.iqr_ratio)
+  plotter.plot_uc_3Dplot(info=info, iqr_ratio = params.iqr_ratio)
   plotter.plt.show()
 
 if __name__ == "__main__":

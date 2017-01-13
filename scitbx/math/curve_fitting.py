@@ -124,7 +124,54 @@ class skew_normal(function_base):
             d_normal_part_d_location * cdf_part + d_cdf_d_location * normal_part,
             d_normal_part_d_scale * cdf_part + d_cdf_d_scale * normal_part)
 
+class tanh(function_base):
 
+  def __init__(self, *params):
+    """
+  Curve fitting as suggested by Ed Pozharski to a tanh function
+  of the form (1/2)(1 - tanh(z)) where z = (s - s0)/r,
+  s0 is the value of s at the half-falloff value, and r controls the
+  steepness of falloff
+    """
+    self.params = params
+
+  def __call__(self, x_obs):
+    s = x_obs
+    r, s0 = self.params
+    z = (s - s0)/r
+    return 0.5 * (1 - flex.tanh(z))
+
+class tanh_fit(object):
+
+  def __init__(self, x_obs, y_obs, r=1, s0=1,
+        min_iterations=0,
+        max_iterations=None):
+    """Curve fitting as suggested by Ed Pozharski to a tanh function
+       of the form (1/2)(1 - tanh(z)) where z = (s - s0)/r,
+       s0 is the value of s at the half-falloff value, and r controls the
+       steepness of falloff
+
+       :param x_obs: x-coordinates of the data
+       :type x_obs: flex.double
+       :param y_obs: y-coordinates of the data
+       :type y_obs: flex.double
+       :param s0: s0 is the value of s at the half-falloff value
+       :type s0: float
+       :param r: r controls the steepness of falloff
+       :type r: float
+    """
+    self.x_obs = x_obs
+    self.y_obs = y_obs
+    assert r >= 0
+    f = tanh(r, s0)
+    fit = lbfgs_minimiser(
+      functions=[f],
+      x_obs=x_obs,
+      y_obs=self.y_obs,
+      termination_params=scitbx.lbfgs.termination_parameters(
+        min_iterations=min_iterations,
+        max_iterations=max_iterations))
+    self.params = fit.functions[0].params
 
 class univariate_polynomial_fit(object):
 

@@ -1,4 +1,7 @@
 from __future__ import division
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.plot_run_stats_from_experiments
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 from libtbx.phil import parse
 from libtbx.utils import Sorry
@@ -12,7 +15,7 @@ from libtbx import easy_pickle
 Script to analyze the results of dials.stills_process and plot statisitics over time using the xfel gui.
 
 Example command:
-libtbx.python plot_run_stats_from_experiments.py . d_min=2.0
+cctbx.xfel.plot_run_stats_from_experiments . d_min=2.0
 """
 
 phil_str = """
@@ -58,7 +61,7 @@ def run(args):
       split_fn = filename.split('_')
       if len(split_fn) <= 0 or split_fn[-1] != "datablock.json":
         continue
-      base = "_".join(split_fn[:-1])
+      base = os.path.join(root, "_".join(split_fn[:-1]))
       print filename
       strong_name = base + "_strong.pickle"
       if not os.path.exists(strong_name):

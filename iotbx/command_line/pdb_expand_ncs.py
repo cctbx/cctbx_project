@@ -41,7 +41,7 @@ def run (args=(), params=None, out=None) :
   pdb_hierarchy = pdb_in.hierarchy
   hierarchy_new = iotbx.pdb.hierarchy.expand_ncs(
     pdb_hierarchy=pdb_hierarchy,
-    processed_mtrix_records=pdb_in.input.process_mtrix_records(),
+    processed_mtrix_records=pdb_in.input.process_MTRIX_records(),
     log=out)
   if (params.expand_ncs.output_file is None) :
     params.expand_ncs.output_file = os.path.basename(

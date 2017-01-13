@@ -1,5 +1,4 @@
 from __future__ import division
-from iotbx.pdb.multimer_reconstruction import multimer
 import mmtbx.refinement.minimization_ncs_constraints
 from libtbx.test_utils import approx_equal
 import mmtbx.refinement.adp_refinement
@@ -13,6 +12,8 @@ import iotbx.pdb
 import random
 import sys
 import os
+import iotbx.ncs
+from cctbx import adptbx
 
 __author__ = 'Youval'
 
@@ -37,6 +38,16 @@ ATOM      7  CG2 THR A   1       8.964   8.000   8.565  1.00 20.00           C
 TER
 """
 
+def step_1(file_name, crystal_symmetry, write_name):
+  pdb_inp = iotbx.pdb.input(file_name=file_name)
+  ph2 = pdb_inp.construct_hierarchy()
+  pdb_inp = iotbx.pdb.input(file_name=file_name)
+  ph = pdb_inp.construct_hierarchy_MTRIX_expanded()
+  xrs_asu = ph.extract_xray_structure(crystal_symmetry=crystal_symmetry)
+  ph.write_pdb_file(file_name=write_name, crystal_symmetry=crystal_symmetry)
+  pdb_str = ph.as_pdb_string(crystal_symmetry=crystal_symmetry)
+  transform_info = pdb_inp.process_MTRIX_records(eps=1.e-2)
+  return xrs_asu, pdb_str, transform_info, ph2, ph
 
 class ncs_minimization_test(object):
 
@@ -56,7 +67,7 @@ class ncs_minimization_test(object):
     self.test_files_names = [] # collect names of files for cleanup
     # 1 NCS copy: starting template to generate whole asu; place into P1 box
     pdb_inp = iotbx.pdb.input(source_info=None, lines=ncs_1_copy)
-    mtrix_object = pdb_inp.process_mtrix_records()
+    mtrix_object = pdb_inp.process_MTRIX_records()
     ph = pdb_inp.construct_hierarchy()
     xrs = pdb_inp.xray_structure_simple()
     xrs_one_ncs = xrs.orthorhombic_unit_cell_around_centered_scatterers(
@@ -67,15 +78,11 @@ class ncs_minimization_test(object):
     print >> of, ph.as_pdb_string(crystal_symmetry=xrs_one_ncs.crystal_symmetry())
     of.close()
     # 1 NCS copy -> full asu (expand NCS). This is the answer-structure
-    m = multimer(file_name="one_ncs_in_asu.pdb",
-                 round_coordinates=False,
-                 reconstruction_type='cau',error_handle=True,eps=1e-2)
-    assert m.number_of_transforms == 2, m.number_of_transforms
-    xrs_asu = m.assembled_multimer.extract_xray_structure(
-      crystal_symmetry = xrs_one_ncs.crystal_symmetry())
-    m.write("full_asu.pdb")
+    xrs_asu, pdb_str, dummy1, dummy2, dummy3 = step_1(
+      file_name = "one_ncs_in_asu.pdb",
+      crystal_symmetry = xrs_one_ncs.crystal_symmetry(),
+      write_name="full_asu.pdb")
     # force ASU none-rounded coordinates into xray structure
-    xrs_asu.set_sites_cart(m.sites_cart())
     assert xrs_asu.crystal_symmetry().is_similar_symmetry(
       xrs_one_ncs.crystal_symmetry())
     # Generate Fobs from answer structure
@@ -115,8 +122,6 @@ class ncs_minimization_test(object):
     self.xrs_one_ncs = xrs_one_ncs
     # Get restraints manager
     self.grm = None
-    pdb_str = m.assembled_multimer.as_pdb_string(
-      crystal_symmetry=xrs_one_ncs.crystal_symmetry())
     self.iso_restraints = None
     if(self.use_geometry_restraints):
       self.grm = self.get_restraints_manager(pdb_string=pdb_str)
@@ -167,26 +172,21 @@ class ncs_minimization_test(object):
     params = mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
     params.algorithm = "direct"
     # Get the xray_structure of the shaken ASU
-    m_shaken = multimer(
+    xrs_shaken_asu, dummy, transform_info, ph, ph2 = step_1(
       file_name="one_ncs_in_asu_shaken.pdb",
-      round_coordinates=False,
-      reconstruction_type='cau',error_handle=True,eps=1e-2)
-    xrs_shaken_asu = m_shaken.assembled_multimer.extract_xray_structure(
-      crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
-    # force non-rounded coordinates into xray structure
-    xrs_shaken_asu.set_sites_cart(m_shaken.sites_cart())
-    # Save the shaken ASU for inspection
-    m_shaken.write(
-      pdb_output_file_name='asu_shaken.pdb',
-      crystal_symmetry=self.xrs_one_ncs.crystal_symmetry())
-    tr_obj = m_shaken.transforms_obj
+      crystal_symmetry=self.xrs_one_ncs.crystal_symmetry(),
+      write_name='asu_shaken.pdb')
+    tr_obj = iotbx.ncs.input(
+      hierarchy = ph,
+      transform_info = transform_info,
+      exclude_selection=None)
     self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
     # refine both ncs related and not related atoms
     self.refine_selection = flex.size_t(range(tr_obj.total_asu_length))
     self.extended_ncs_selection = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=tr_obj.get_ncs_restraints_group_list(),
       refine_selection=self.refine_selection)
-    assert self.refine_selection.size() == 21
+    assert self.refine_selection.size() == 21, self.refine_selection.size()
     self.fmodel = mmtbx.f_model.manager(
       f_obs                        = self.f_obs,
       r_free_flags                 = self.r_free_flags,
@@ -240,27 +240,34 @@ class ncs_minimization_test(object):
       assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
     elif(self.sites):
       if(self.use_geometry_restraints):
-        assert approx_equal(self.fmodel.r_work(), 0, 0.00015)
+        assert approx_equal(self.fmodel.r_work(), 0, 0.00018)
       else:
-        assert approx_equal(self.fmodel.r_work(), 0, 1.e-5)
+        assert approx_equal(self.fmodel.r_work(), 0, 3.e-4)
     elif self.transformations:
-        assert approx_equal(self.fmodel.r_work(), 0, 0.0001)
+        assert approx_equal(self.fmodel.r_work(), 0, 0.00025)
     else: assert 0
     # output refined model
     xrs_refined = self.fmodel.xray_structure
-    m_shaken.assembled_multimer.adopt_xray_structure(self.fmodel.xray_structure)
     output_file_name = "refined_u_iso%s_sites%s.pdb"%(str(self.u_iso),
       str(self.sites))
-    m_shaken.write(output_file_name)
+    assert ph2.atoms().size() == self.fmodel.xray_structure.scatterers().size()
+    ph2.atoms().set_xyz(self.fmodel.xray_structure.sites_cart())
+    ph2.atoms().set_b(
+      self.fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.))
+    ph2.write_pdb_file(file_name = output_file_name,
+      crystal_symmetry=self.fmodel.xray_structure.crystal_symmetry())
     self.test_files_names.append(output_file_name)
     # check final model
     if(not self.use_geometry_restraints):
       # XXX fix later for case self.use_geometry_restraints=True
       pdb_inp_answer = iotbx.pdb.input(source_info=None, lines=ncs_1_copy)
       pdb_inp_refined = iotbx.pdb.input(file_name=output_file_name)
-      xrs1 = pdb_inp_answer.xray_structure_simple()
+      xrs1 = pdb_inp_answer.xray_structure_simple(
+        crystal_symmetry=self.fmodel.xray_structure.crystal_symmetry())
       xrs2 = pdb_inp_refined.xray_structure_simple().select(
         minimized.extended_ncs_selection)
+      print xrs1.crystal_symmetry().unit_cell().parameters()
+      print xrs2.crystal_symmetry().unit_cell().parameters()
       mmtbx.utils.assert_xray_structures_equal(
         x1 = xrs1,
         x2 = xrs2,
@@ -270,7 +277,8 @@ class ncs_minimization_test(object):
       xrs2.set_sites_cart(sites_cart = xrs2.sites_cart()+delta)
       mmtbx.utils.assert_xray_structures_equal(
         x1 = xrs1,
-        x2 = xrs2)
+        x2 = xrs2,
+        eps=1.e-4)
 
   def clean_up_temp_test_files(self):
     """delete temporary test files """

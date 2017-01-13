@@ -390,7 +390,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     h = pdb_inp.construct_hierarchy()
     ncs_obj = iotbx.ncs.input(
         hierarchy=h,
-        transform_info=pdb_inp.process_mtrix_records(eps=0.01))
+        transform_info=pdb_inp.process_MTRIX_records(eps=0.01))
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     gr = ncs_obj.print_ncs_phil_param()
     self.assertEqual(gr,answer_4)
