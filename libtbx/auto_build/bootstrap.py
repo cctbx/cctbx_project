@@ -1011,7 +1011,6 @@ class Builder(object):
     return self.op.join(*args)
 
   def get_codebases(self):
-    # we can't currently compile cbflib for Windows
     if self.isPlatformWindows():
       rc = set(self.CODEBASES+self.CODEBASES_EXTRA)
       for r in windows_remove_list: rc = rc - set([r])
@@ -1025,11 +1024,13 @@ class Builder(object):
     return self.HOT + self.HOT_EXTRA
 
   def get_libtbx_configure(self):
-    # we can't currently compile cbflib for Windows
     if self.isPlatformWindows():
       rc = set(self.LIBTBX+self.LIBTBX_EXTRA)
       for r in windows_remove_list: rc = rc - set([r])
-      return list(rc)
+      configlst = list(rc)
+      # allow OpenMP on Windows which won't crash in multiprocessing/forking.py unlike UNIX
+      configlst.append("--enable-openmp-if-possible=True")
+      return configlst
     return self.LIBTBX + self.LIBTBX_EXTRA
 
   def add_init(self):
