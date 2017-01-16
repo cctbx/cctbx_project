@@ -455,10 +455,11 @@ def write_whole_cif_file(
     out = open(file_name, "w")
   cif = iotbx.cif.model.cif()
   cif_block = None
+  print crystal_symmetry
   if crystal_symmetry is not None:
     cif_block = crystal_symmetry.as_cif_block()
   if pdb_hierarchy is not None:
-    if(cif_block is None):
+    if(crystal_symmetry is not None):
       cif_block.update(pdb_hierarchy.as_cif_block())
     else:
       cif_block = pdb_hierarchy.as_cif_block()
