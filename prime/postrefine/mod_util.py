@@ -401,7 +401,7 @@ class intensities_scaler(object):
       txt_out += 'Bin Resolution Range     Completeness      <N_obs> |Rmerge  Rsplit   CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind| <I/sigI>   <I>    <sigI>    <I**2>\n'
       txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
       #for stat pickle
-      sp_res = sp_complete = sp_n_obs = sp_cc12 = sp_rmerge = sp_i_o_sigi = sp_isqr = []
+      sp_res,sp_complete,sp_n_obs,sp_cc12,sp_rmerge,sp_i_o_sigi,sp_isqr = ([],[],[],[],[],[],[])
       #binning
       binner_template_asu = miller_array_template_asu.setup_binner(n_bins=iparams.n_bins)
       binner_template_asu_indices = binner_template_asu.bin_indices()
@@ -457,7 +457,7 @@ class intensities_scaler(object):
         sp_n_obs.append(multiplicity)
         sp_cc12.append(cc12)
         sp_rmerge.append(mdh_bin.get_r_meas()*100)
-        sp_i_o_sigi.append(mdh_bin.get_mean_sigI())
+        sp_i_o_sigi.append(mdh_bin.get_mean_IoversigI())
         sp_isqr.append(mdh.get_second_moment())
       #txt out total for all reflections
       cc12, n_refl_cc12 = mdh.get_cc12()
@@ -501,6 +501,7 @@ class intensities_scaler(object):
       "total_i_o_sigi": [mdh.get_mean_IoversigI()], \
       "space_group_info": [mdh.miller_array_merge.space_group_info()], \
       }
+      print sp_i_o_sigi
       self.write_stat_pickle(iparams, stat_dict)
       txt_out += txt_out_cone
 
