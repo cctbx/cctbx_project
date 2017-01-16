@@ -455,12 +455,13 @@ def write_whole_cif_file(
     out = open(file_name, "w")
   cif = iotbx.cif.model.cif()
   cif_block = None
-
   if crystal_symmetry is not None:
     cif_block = crystal_symmetry.as_cif_block()
   if pdb_hierarchy is not None:
-    cif_block.update(pdb_hierarchy.as_cif_block())
-
+    if(cif_block is None):
+      cif_block.update(pdb_hierarchy.as_cif_block())
+    else:
+      cif_block = pdb_hierarchy.as_cif_block()
   # outputting HELIX/SHEET records
   ss_cif_loops = []
   if processed_pdb_file is not None:
@@ -490,6 +491,5 @@ def write_whole_cif_file(
       processed_pdb_file.all_chain_proxies.cif is not None):
     cif.update(processed_pdb_file.all_chain_proxies.cif)
   cif.show(out=out,align_columns=align_columns)
-
   if file_name is not None:
     out.close()
