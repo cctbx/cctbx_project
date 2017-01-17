@@ -501,7 +501,6 @@ class intensities_scaler(object):
       "total_i_o_sigi": [mdh.get_mean_IoversigI()], \
       "space_group_info": [mdh.miller_array_merge.space_group_info()], \
       }
-      print sp_i_o_sigi
       self.write_stat_pickle(iparams, stat_dict)
       txt_out += txt_out_cone
 
