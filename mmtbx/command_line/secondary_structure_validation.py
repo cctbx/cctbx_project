@@ -142,8 +142,9 @@ def some_chains_are_ca(pdb_h):
     if chain.is_ca_only():
       return True
 
-def run (args, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=sys.stderr) :
+def run (args=None, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=sys.stderr) :
   if(pdb_inp is None):
+    assert args is not None
     # params keyword is for running program from GUI dialog
     if ( ((len(args) == 0) and (params is None)) or
          ((len(args) > 0) and ((args[0] == "-h") or (args[0] == "--help"))) ):
