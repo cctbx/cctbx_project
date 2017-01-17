@@ -142,7 +142,7 @@ def some_chains_are_ca(pdb_h):
     if chain.is_ca_only():
       return True
 
-def run (args, pdb_inp=None, params=None, out=sys.stdout, log=sys.stderr) :
+def run (args, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=sys.stderr) :
   if(pdb_inp is None):
     # params keyword is for running program from GUI dialog
     if ( ((len(args) == 0) and (params is None)) or
@@ -166,6 +166,8 @@ def run (args, pdb_inp=None, params=None, out=sys.stdout, log=sys.stderr) :
       lines=flex.std_string(pdb_combined.raw_records))
   else:
     pdb_structure = pdb_inp
+    work_params = master_phil.extract()
+    if(nproc is not None): work_params.nproc = nproc
 
   cs = pdb_structure.crystal_symmetry()
   pdb_h = pdb_structure.construct_hierarchy()
