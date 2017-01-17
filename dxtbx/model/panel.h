@@ -125,7 +125,7 @@ namespace dxtbx { namespace model {
 
     /** Get the image size in millimeters */
     tiny<double,2> get_image_size_mm() const {
-      return pixel_to_millimeter(tiny<double,2>(image_size_[0], image_size_[1]));
+      return vec2<double> (image_size_[0] * pixel_size_[0], image_size_[1] * pixel_size_[1]);
     }
 
     /** Check the value is valid */
