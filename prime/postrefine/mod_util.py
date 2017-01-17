@@ -504,7 +504,7 @@ class intensities_scaler(object):
       self.write_stat_pickle(iparams, stat_dict)
       txt_out += txt_out_cone
 
-    return mdh.miller_array_merge, txt_out
+    return mdh, txt_out
 
   def plot_stats(self, results, iparams):
     #retrieve stats from results and plot them

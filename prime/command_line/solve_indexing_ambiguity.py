@@ -212,7 +212,8 @@ class indexing_ambiguity_handler(object):
         frame_files_processed = f.read().split('\n')[:-1]
       from prime.command_line.postrefine import scale_frames, merge_frames
       scaled_pres_set = scale_frames(range(len(frame_files_processed)), frame_files_processed, iparams)
-      miller_array_ref, txt_merge_out = merge_frames(scaled_pres_set, iparams, mtz_out_prefix='index_ambiguity/ref')
+      mdh, txt_merge_out = merge_frames(scaled_pres_set, iparams, mtz_out_prefix='index_ambiguity/ref')
+      miller_array_ref = mdh.miller_array_merge
       #setup a list of remaining frames
       frame_files_remain = [frame for frame in frame_files if frame not in sol_pickle]
       frames = [(i, frame_files_remain[i], iparams, miller_array_ref) for i in range(len(frame_files_remain))]
