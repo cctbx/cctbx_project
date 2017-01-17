@@ -12,6 +12,7 @@ from libtbx import easy_mp
 import mmtbx
 from mmtbx.building.loop_closure.utils import get_phi_psi_atoms, get_rama_score, \
     rama_evaluate, get_pair_angles
+from libtbx import group_args
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -141,28 +142,31 @@ def some_chains_are_ca(pdb_h):
     if chain.is_ca_only():
       return True
 
-def run (args, params=None, out=sys.stdout, log=sys.stderr) :
-  # params keyword is for running program from GUI dialog
-  if ( ((len(args) == 0) and (params is None)) or
-       ((len(args) > 0) and ((args[0] == "-h") or (args[0] == "--help"))) ):
-    show_usage()
-    return
+def run (args, pdb_inp=None, params=None, out=sys.stdout, log=sys.stderr) :
+  if(pdb_inp is None):
+    # params keyword is for running program from GUI dialog
+    if ( ((len(args) == 0) and (params is None)) or
+         ((len(args) > 0) and ((args[0] == "-h") or (args[0] == "--help"))) ):
+      show_usage()
+      return
+    # parse command-line arguments
+    if (params is None):
+      pcl = iotbx.phil.process_command_line_with_files(
+        args=args,
+        master_phil_string=master_phil_str,
+        pdb_file_def="file_name")
+      work_params = pcl.work.extract()
+    # or use parameters defined by GUI
+    else:
+      work_params = params
+    pdb_files = work_params.file_name
 
-  # parse command-line arguments
-  if (params is None):
-    pcl = iotbx.phil.process_command_line_with_files(
-      args=args,
-      master_phil_string=master_phil_str,
-      pdb_file_def="file_name")
-    work_params = pcl.work.extract()
-  # or use parameters defined by GUI
+    pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
+    pdb_structure = iotbx.pdb.input(source_info=None,
+      lines=flex.std_string(pdb_combined.raw_records))
   else:
-    work_params = params
-  pdb_files = work_params.file_name
+    pdb_structure = pdb_inp
 
-  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
-  pdb_structure = iotbx.pdb.input(source_info=None,
-    lines=flex.std_string(pdb_combined.raw_records))
   cs = pdb_structure.crystal_symmetry()
   pdb_h = pdb_structure.construct_hierarchy()
   atoms = pdb_h.atoms()
@@ -218,10 +222,13 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
     atoms.set_xyz(new_xyz=box.sites_cart)
     cs = box.crystal_symmetry()
 
+  n_total_helix_sheet_records = len(ss_annot.helices+ss_annot.sheets)
+  n_bad_helix_sheet_records = 0
   # Empty stuff:
   empty_annots = ss_annot.remove_empty_annotations(pdb_h)
   number_of_empty_helices = empty_annots.get_n_helices()
   number_of_empty_sheets = empty_annots.get_n_sheets()
+  n_bad_helix_sheet_records += (number_of_empty_helices+number_of_empty_sheets)
   if number_of_empty_helices > 0:
     print >> out, "Helices without corresponding atoms in the model (%d):" % number_of_empty_helices
     for h in empty_annots.helices:
@@ -249,7 +256,13 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   cumm_n_mediocre_hbonds = 0
   cumm_n_rama_out = 0
   cumm_n_wrong_reg = 0
-
+  #
+  # Hydrogen Bonds in Proteins: Role and Strength
+  # Roderick E Hubbard, Muhammad Kamran Haider
+  # ENCYCLOPEDIA OF LIFE SCIENCES & 2010, John Wiley & Sons, Ltd. www.els.net
+  #
+  # See also: http://proteopedia.org/wiki/index.php/Hydrogen_bonds
+  #
   for ss_elem, r in zip(ss_annot.helices+ss_annot.sheets, results):
     n_hbonds, n_bad_hbonds, n_mediocre_hbonds, hb_lens, n_outliers, n_wrong_region = r
     cumm_n_hbonds += n_hbonds
@@ -257,6 +270,8 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
     cumm_n_mediocre_hbonds += n_mediocre_hbonds
     cumm_n_rama_out += n_outliers
     cumm_n_wrong_reg += n_wrong_region
+    if n_bad_hbonds + n_outliers + n_wrong_region > 0:
+      n_bad_helix_sheet_records += 1
     if n_bad_hbonds + n_mediocre_hbonds + n_outliers + n_wrong_region > 0:
       # this is bad annotation, printing it to log with separate stats:
       print >> out, "Bad annotation found:"
@@ -273,14 +288,22 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   #   cumm_n_wrong_reg += r[5]
   #   print >> individ_log, "%d, %d, %d, %s, %d, %d" % (r[0], r[1], r[2], r[3], r[4], r[5])
   print >> out, "Overall info:"
+  print >> out, "  Total HELIX+SHEET recods       :", n_total_helix_sheet_records
+  print >> out, "  Total bad HELIX+SHEET recods   :", n_bad_helix_sheet_records
   print >> out, "  Total declared H-bonds         :", cumm_n_hbonds
   print >> out, "  Total mediocre H-bonds (3-3.5A):", cumm_n_mediocre_hbonds
   print >> out, "  Total bad H-bonds (> 3.5A)     :", cumm_n_bad_hbonds
   print >> out, "  Total Ramachandran outliers    :", cumm_n_rama_out
   print >> out, "  Total wrong Ramachandrans      :", cumm_n_wrong_reg
+  return group_args(
+    n_total_helix_sheet_records = n_total_helix_sheet_records,
+    n_bad_helix_sheet_records   = n_bad_helix_sheet_records,
+    n_hbonds                    = cumm_n_hbonds,
+    n_mediocre_hbonds           = cumm_n_mediocre_hbonds,
+    n_bad_hbonds                = cumm_n_bad_hbonds,
+    n_rama_out                  = cumm_n_rama_out,
+    n_wrong_reg                 = cumm_n_wrong_reg)
   print >> out, "All done."
-
-
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
