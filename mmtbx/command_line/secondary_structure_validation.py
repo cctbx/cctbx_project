@@ -225,7 +225,7 @@ def run (args=None, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=s
     atoms.set_xyz(new_xyz=box.sites_cart)
     cs = box.crystal_symmetry()
 
-  n_total_helix_sheet_records = len(ss_annot.helices+ss_annot.sheets)
+  n_total_helix_sheet_records = ss_annot.get_n_helices()+ss_annot.get_n_sheets()
   n_bad_helix_sheet_records = 0
   # Empty stuff:
   empty_annots = ss_annot.remove_empty_annotations(pdb_h)
@@ -298,6 +298,7 @@ def run (args=None, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=s
   print >> out, "  Total bad H-bonds (> 3.5A)     :", cumm_n_bad_hbonds
   print >> out, "  Total Ramachandran outliers    :", cumm_n_rama_out
   print >> out, "  Total wrong Ramachandrans      :", cumm_n_wrong_reg
+  print >> out, "All done."
   return group_args(
     n_total_helix_sheet_records = n_total_helix_sheet_records,
     n_bad_helix_sheet_records   = n_bad_helix_sheet_records,
@@ -306,7 +307,6 @@ def run (args=None, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=s
     n_bad_hbonds                = cumm_n_bad_hbonds,
     n_rama_out                  = cumm_n_rama_out,
     n_wrong_reg                 = cumm_n_wrong_reg)
-  print >> out, "All done."
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
