@@ -50,10 +50,12 @@ Full scope of parameters:
   master_phil.show()
 
 class gather_ss_stats(object):
-  def __init__(self, pdb_h, atoms):
+  def __init__(self, pdb_h, rama_eval_manager=None):
     self.pdb_h = pdb_h
-    self.atoms = atoms
-    self.r = rama_eval()
+    self.atoms = pdb_h.atoms()
+    self.r = rama_eval_manager
+    if self.r is None:
+      self.r = rama_eval()
 
   def __call__(self, hsh_tuple):
     temp_annot = iotbx.pdb.secondary_structure.annotation(
@@ -248,7 +250,7 @@ def run (args=None, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=s
     hsh_tuples.append(([h],[]))
   for sh in ss_annot.sheets:
     hsh_tuples.append(([],[sh]))
-  calc_ss_stats = gather_ss_stats(pdb_h, atoms)
+  calc_ss_stats = gather_ss_stats(pdb_h)
   results = easy_mp.pool_map(
       processes=work_params.nproc,
       fixed_func=calc_ss_stats,

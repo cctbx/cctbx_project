@@ -14,6 +14,7 @@ from mmtbx.command_line.geometry_minimization import \
 from time import time
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 from cctbx import crystal
+from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
 
 
 alpha_helix_str = """
@@ -75,6 +76,10 @@ ss_idealization
   skip_empty_ss_elements = True
     .type = bool
     .help = skip SS element if there is no atoms in the structure
+  skip_good_ss_elements = False
+    .type = bool
+    .help = Skip SS elements without wrong/outlier Ramachandran angles and \
+      with reasonable hydrogen bonds length
   restrain_torsion_angles = False
     .type = bool
     .help = Restrain torsion angles
@@ -436,6 +441,16 @@ def process_params(params):
       "Bad %s parameter" % par
   return p_pars
 
+def ss_element_is_good(ss_stats_obj, hsh_tuple):
+  (n_hbonds, n_bad_hbonds, n_mediocre_hbonds, hb_lens, n_outliers,
+      n_wrong_region) = ss_stats_obj(hsh_tuple)
+  # check Rama angles. Any outlier is bad.
+  if n_wrong_region+n_outliers > 0:
+    return False
+  # check hbonds. Theoretically, they could be corrected by refinement.
+  if n_bad_hbonds > n_hbonds/2.:
+    return False
+  return True
 
 def substitute_ss(real_h,
                     xray_structure,
@@ -520,38 +535,47 @@ def substitute_ss(real_h,
   # Actually idelizing SS elements
   log.write("Replacing ss-elements with ideal ones:\n")
   log.flush()
+  ss_stats = gather_ss_stats(pdb_h=real_h)
   for h in ann.helices:
     log.write("  %s\n" % h.as_pdb_str())
     log.flush()
-    selstring = h.as_atom_selections()
-    isel = selection_cache.iselection(selstring[0])
-    all_bsel = flex.bool(n_atoms_in_real_h, False)
-    all_bsel.set_selected(isel, True)
-    sel_h = real_h.select(all_bsel, copy_atoms=True)
-    ideal_h = get_helix(helix_class=h.helix_class,
-                        pdb_hierarchy_template=sel_h,
-                        rotamer_manager=rotamer_manager)
-    # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
-    set_xyz_carefully(dest_h=edited_h.select(all_bsel), source_h=ideal_h)
+    if processed_params.skip_good_ss_elements and ss_element_is_good(ss_stats, ([h],[])):
+      log.write("    skipping, good element.\n")
+    else:
+      log.write("    substitute with idealized one.\n")
+      selstring = h.as_atom_selections()
+      isel = selection_cache.iselection(selstring[0])
+      all_bsel = flex.bool(n_atoms_in_real_h, False)
+      all_bsel.set_selected(isel, True)
+      sel_h = real_h.select(all_bsel, copy_atoms=True)
+      ideal_h = get_helix(helix_class=h.helix_class,
+                          pdb_hierarchy_template=sel_h,
+                          rotamer_manager=rotamer_manager)
+      # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
+      set_xyz_carefully(dest_h=edited_h.select(all_bsel), source_h=ideal_h)
   for sh in ann.sheets:
     s = "  %s\n" % sh.as_pdb_str()
     ss = s.replace("\n", "\n  ")
     log.write(ss[:-2])
     log.flush()
-    for st in sh.strands:
-      selstring = st.as_atom_selections()
-      isel = selection_cache.iselection(selstring)
-      all_bsel = flex.bool(n_atoms_in_real_h, False)
-      all_bsel.set_selected(isel, True)
-      sel_h = real_h.select(all_bsel, copy_atoms=True)
-      ideal_h = secondary_structure_from_sequence(
-          pdb_str=beta_pdb_str,
-          sequence=None,
-          pdb_hierarchy_template=sel_h,
-          rotamer_manager=rotamer_manager,
-          )
-      set_xyz_carefully(edited_h.select(all_bsel), ideal_h)
-      # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
+    if processed_params.skip_good_ss_elements and ss_element_is_good(ss_stats, ([],[sh])):
+      log.write("    skipping, good element.\n")
+    else:
+      log.write("    substitute with idealized one.\n")
+      for st in sh.strands:
+        selstring = st.as_atom_selections()
+        isel = selection_cache.iselection(selstring)
+        all_bsel = flex.bool(n_atoms_in_real_h, False)
+        all_bsel.set_selected(isel, True)
+        sel_h = real_h.select(all_bsel, copy_atoms=True)
+        ideal_h = secondary_structure_from_sequence(
+            pdb_str=beta_pdb_str,
+            sequence=None,
+            pdb_hierarchy_template=sel_h,
+            rotamer_manager=rotamer_manager,
+            )
+        set_xyz_carefully(edited_h.select(all_bsel), ideal_h)
+        # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
 
   t3 = time()
   pre_result_h = edited_h
@@ -669,7 +693,7 @@ def substitute_ss(real_h,
       processed_pdb_file, xray_structure)
     t8 = time()
   else:
-    ss_params = secondary_structure.default_params
+    ss_params = secondary_structure.sec_str_master_phil.fetch().extract()
     ss_params.secondary_structure.protein.remove_outliers=False
     ss_manager = secondary_structure.manager(
         pdb_hierarchy=real_h,

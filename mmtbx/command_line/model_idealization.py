@@ -457,6 +457,7 @@ class model_idealization():
       if self.params.debug:
         self.params.ss_idealization.file_name_before_regularization = \
             "%s_ss_before_reg.pdb" % self.params.output_prefix
+      self.params.ss_idealization.skip_good_ss_elements = True
       ssb.substitute_ss(
           real_h=self.working_pdb_h,
           xray_structure=self.working_xrs,
