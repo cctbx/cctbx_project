@@ -148,7 +148,7 @@ class block_base(DictMixin):
           return loop[key]
       if key in self.loops:
         return self.loops[key]
-    raise KeyError
+    raise KeyError(key)
 
   def __delitem__(self, key):
     key = self.keys_lower.get(key.lower(), key)
@@ -165,7 +165,7 @@ class block_base(DictMixin):
           else:
             del loop[key]
           return
-      raise KeyError
+      raise KeyError(key)
     elif key in self.loops:
       del self.loops[key]
       self._set.discard(key)
