@@ -652,19 +652,29 @@ def multi_core_run( myfunction, argstuples, nproc ):
 
   Example:
 
-  from libtbx import easy_mp
-  argstuples = [(args1a, args2a), (args1b, args2b), (args1c, args2c) ]
+  # define RunMyJob() in a file testjob.py
+  def RunMyJob( foo, bar):
+    import math
+    return math.sqrt(foo)/bar
 
-  # get individual results as they trickle through:
+  # then one can start RunMyJob in parallel like:
+  >>> import testjob
+  >>> from libtbx import easy_mp
+  >>>
+  >>> argstuples = [( 3, 4), (2, 3) ] # define tuples of arguments
+  >>>
+  >>> for args, res, errstr in easy_mp.multi_core_run( testjob.RunMyJob, argstuples, 2):
+  ...   print "arguments: %s \nresult: %s \nerrorstring: %s\n" %(args, res, errstr)
+  ...
+  arguments: (2, 3)
+  result: 0.471404520791
+  errorstring: None
 
-  for i, parmres in enumerate(easy_mp.multi_core_run( RunMyJob, argstuples, nproc)):
-    DoSomethingWithResult( parmres )
+  arguments: (3, 4)
+  result: 0.433012701892
+  errorstring: None
 
-  # alternatively wait until the last job has finished:
-
-  allparmres = easy_mp.multi_core_run( RunMyJob, argstuples, nproc)
-  for parmres in allparmres:
-    DoSomethingWithResult( parmres )
+  >>>
 
   """
   from libtbx.scheduling import philgen
@@ -705,7 +715,8 @@ def multi_core_run( myfunction, argstuples, nproc ):
     except Exception, e:
       tracestr = ""
       if stacktrace.exc_info()[1]:
-        tracestr = stacktrace.exc_info()[1][1]
+        for inf in stacktrace.exc_info()[1]:
+          tracestr += inf
       errstr = str(e) + "\n" + tracestr
     #calc[0] is the function name, calc[1] is the tuple of function arguments
     parmres = ( calc[1], result, errstr )
