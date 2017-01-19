@@ -232,13 +232,20 @@ class Toolbox(object):
         etag = tf.readline()
         tf.close()
 
+    try:
+      import ssl
+      ssl_error = ssl.SSLError
+    except ImportError:
+      ssl = None
+      ssl_error = None
+
     # Open connection to remote server
     try:
       if sys.platform == "win32":
 # Downloading from http://cci.lbl.gov/cctbx_dependencies caused
 # SSL: CERTIFICATE_VERIFY_FAILED error on Windows only as of today (why?).
 # Quick and dirty hack to disable ssl certificate verification.
-        import ssl
+        assert ssl
         ssl._create_default_https_context = ssl._create_unverified_context
       url_request = urllib2.Request(url)
       if etag:
@@ -249,6 +256,15 @@ class Toolbox(object):
         socket = urllib2.urlopen(url_request, None, 7)
       else:
         socket = urllib2.urlopen(url_request)
+    except ssl.SSLError, e:
+      # This could be a timeout
+      if localcopy:
+        # Download failed for some reason, but a valid local copy of
+        # the file exists, so use that one instead.
+        log.write("%s\n" % str(e))
+        return -2
+      # otherwise pass on the error message
+      raise
     except (pysocket.timeout, urllib2.URLError, urllib2.HTTPError), e:
       if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:
         # When using ETag. a 304 error means everything is fine
