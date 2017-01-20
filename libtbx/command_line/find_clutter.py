@@ -12,6 +12,7 @@ def run(args):
   only_whitespace = False
   only_dos = False
   only_future = False
+  flag_future_import = False
   #
   paths = []
   for arg in args:
@@ -31,6 +32,8 @@ def run(args):
       only_dos = True
     elif (arg == "--only_future") :
       only_future = True
+    elif (arg == "--absolute_import"):
+      flag_future_import = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]
@@ -40,6 +43,8 @@ def run(args):
   message_lines = []
   n_missing_from_future_import_division = 0
   n_too_many_from_future_import_division = 0
+  n_missing_from_future_import_absolute_import = 0
+  n_too_many_from_future_import_absolute_import = 0
   n_bad_indentation = 0
   for info in gather(paths=paths, find_unused_imports=not flag_ni,
       find_bad_indentation=flag_indentation):
@@ -53,6 +58,10 @@ def run(args):
       n_missing_from_future_import_division += 1
     elif info.n_from_future_import_division > 1:
       n_too_many_from_future_import_division += 1
+    if info.n_from_future_import_absolute_import == 0:
+      n_missing_from_future_import_absolute_import += 1
+    elif info.n_from_future_import_absolute_import > 1:
+      n_too_many_from_future_import_absolute_import += 1
     if (info.bad_indentation is not None) and (flag_indentation) :
       n_bad_indentation += 1
     info.show(
@@ -64,6 +73,11 @@ def run(args):
   please_use = []
   if (n_is_cluttered != 0):
     please_use.append("libtbx.clean_clutter")
+  if not flag_future_import:
+    def _is_not_absolute_import(s):
+      if s.find("absolute_import")>-1: return False
+      return True
+    message_lines = filter(_is_not_absolute_import, message_lines)
   if only_whitespace:
     def _is_whitespace(s):
       if s.find("tabs or trailing")>-1: return True
@@ -76,7 +90,7 @@ def run(args):
     message_lines = filter(_is_dos, message_lines)
   elif only_future:
     def _is_future(s):
-      if s.find("from __future__ import division")>-1: return True
+      if s.find("from __future__")>-1: return True
       return False
     message_lines = filter(_is_future, message_lines)
   else:

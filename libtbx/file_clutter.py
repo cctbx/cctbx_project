@@ -7,6 +7,8 @@ class file_clutter(object):
 
   from_future_import_division_pat = re.compile(
     '^ from [ ]+ __future__ [ ]+ import [ \w,]+ division', re.VERBOSE)
+  from_future_import_absolute_import_pat = re.compile(
+    '^ from [ ]+ __future__ [ ]+ import [ \w,]+ absolute_import', re.VERBOSE)
 
   def __init__(self, path, find_unused_imports=False,
       find_bad_indentation=True):
@@ -19,6 +21,7 @@ class file_clutter(object):
     self.n_bare_excepts = 0
     self.unused_imports = None
     self.n_from_future_import_division = None
+    self.n_from_future_import_absolute_import = None
     self.bad_indentation = None
     bytes = open(path, "rb").read()
     if (len(bytes) > 0):
@@ -37,10 +40,13 @@ class file_clutter(object):
         else: self.n_trailing_empty_lines = 0
       if (path.endswith(".py")):
         self.n_from_future_import_division = 0
+        self.n_from_future_import_absolute_import = 0
         py_lines = bytes.splitlines()
         for line in py_lines:
           if self.from_future_import_division_pat.search(line):
             self.n_from_future_import_division += 1
+          if self.from_future_import_absolute_import_pat.search(line):
+            self.n_from_future_import_absolute_import += 1
           ls = line.strip()
           if (    ls.startswith("except")
               and ls[6:].strip().startswith(":")
@@ -93,6 +99,10 @@ class file_clutter(object):
       sapp("missing 'from __future__ import division'")
     elif self.n_from_future_import_division > 1:
       sapp("more than one appearance of 'from __future__ import division'")
+    if self.n_from_future_import_absolute_import == 0:
+      sapp("missing 'from __future__ import absolute_import'")
+    elif self.n_from_future_import_absolute_import > 1:
+      sapp("more than one appearance of 'from __future__ import absolute_import'")
     if (self.bad_indentation is not None) and (flag_indentation) :
       n_tab, n_space = self.bad_indentation
       sapp("non-standard indentation: %d space, %d tab" % (n_space, n_tab))
