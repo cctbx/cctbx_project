@@ -1,6 +1,6 @@
 from __future__ import division
 import sys
-from libtbx.command_line.file_clutter import gather
+from libtbx.file_clutter import gather
 
 def run(args):
   flag_x = False
