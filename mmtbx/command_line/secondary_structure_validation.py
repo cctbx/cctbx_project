@@ -144,8 +144,9 @@ def some_chains_are_ca(pdb_h):
     if chain.is_ca_only():
       return True
 
-def run (args=None, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=sys.stderr) :
-  if(pdb_inp is None):
+def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params=None,
+        out=sys.stdout, log=sys.stderr):
+  if(pdb_hierarchy is None):
     assert args is not None
     # params keyword is for running program from GUI dialog
     if ( ((len(args) == 0) and (params is None)) or
@@ -167,13 +168,11 @@ def run (args=None, pdb_inp=None, nproc=None, params=None, out=sys.stdout, log=s
     pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
     pdb_structure = iotbx.pdb.input(source_info=None,
       lines=flex.std_string(pdb_combined.raw_records))
+    pdb_h = pdb_structure.construct_hierarchy()
   else:
-    pdb_structure = pdb_inp
     work_params = master_phil.extract()
     if(nproc is not None): work_params.nproc = nproc
-
-  cs = pdb_structure.crystal_symmetry()
-  pdb_h = pdb_structure.construct_hierarchy()
+    pdb_h=pdb_hierarchy
   atoms = pdb_h.atoms()
   ss_log = cStringIO.StringIO()
   try:
