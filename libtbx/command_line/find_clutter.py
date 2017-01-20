@@ -12,7 +12,7 @@ def run(args):
   only_whitespace = False
   only_dos = False
   only_future = False
-  flag_future_import = False
+  flag_absolute_import = False
   #
   paths = []
   for arg in args:
@@ -33,7 +33,7 @@ def run(args):
     elif (arg == "--only_future") :
       only_future = True
     elif (arg == "--absolute_import"):
-      flag_future_import = True
+      flag_absolute_import = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]
@@ -47,7 +47,7 @@ def run(args):
   n_too_many_from_future_import_absolute_import = 0
   n_bad_indentation = 0
   for info in gather(paths=paths, find_unused_imports=not flag_ni,
-      find_bad_indentation=flag_indentation):
+      find_bad_indentation=flag_indentation, flag_absolute_import=flag_absolute_import):
     if (info.is_cluttered(flag_x=flag_x)):
       n_is_cluttered += 1
     if (info.n_bare_excepts > 0):
@@ -73,11 +73,6 @@ def run(args):
   please_use = []
   if (n_is_cluttered != 0):
     please_use.append("libtbx.clean_clutter")
-  if not flag_future_import:
-    def _is_not_absolute_import(s):
-      if s.find("absolute_import")>-1: return False
-      return True
-    message_lines = filter(_is_not_absolute_import, message_lines)
   if only_whitespace:
     def _is_whitespace(s):
       if s.find("tabs or trailing")>-1: return True

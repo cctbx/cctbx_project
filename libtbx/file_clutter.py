@@ -11,7 +11,7 @@ class file_clutter(object):
     '^ from [ ]+ __future__ [ ]+ import [ \w,]+ absolute_import', re.VERBOSE)
 
   def __init__(self, path, find_unused_imports=False,
-      find_bad_indentation=True):
+      find_bad_indentation=True, flag_absolute_import=False):
     self.path = path
     self.is_executable = os.access(path, os.X_OK)
     self.dos_format = False
@@ -21,6 +21,7 @@ class file_clutter(object):
     self.n_bare_excepts = 0
     self.unused_imports = None
     self.n_from_future_import_division = None
+    self.flag_absolute_import = flag_absolute_import
     self.n_from_future_import_absolute_import = None
     self.bad_indentation = None
     bytes = open(path, "rb").read()
@@ -71,7 +72,7 @@ class file_clutter(object):
 
   def status(self, flag_x, flag_dos_format=True, flag_indentation=False):
     status = []
-    def sapp(s): status.append(s)
+    sapp = status.append
     if (self.is_executable and flag_x
         and self.path.lower().find("command_line") < 0
         and not self.path.endswith(".csh")
@@ -99,10 +100,11 @@ class file_clutter(object):
       sapp("missing 'from __future__ import division'")
     elif self.n_from_future_import_division > 1:
       sapp("more than one appearance of 'from __future__ import division'")
-    if self.n_from_future_import_absolute_import == 0:
-      sapp("missing 'from __future__ import absolute_import'")
-    elif self.n_from_future_import_absolute_import > 1:
-      sapp("more than one appearance of 'from __future__ import absolute_import'")
+    if self.flag_absolute_import:
+      if self.n_from_future_import_absolute_import == 0:
+        sapp("missing 'from __future__ import absolute_import'")
+      elif self.n_from_future_import_absolute_import > 1:
+        sapp("more than one appearance of 'from __future__ import absolute_import'")
     if (self.bad_indentation is not None) and (flag_indentation) :
       n_tab, n_space = self.bad_indentation
       sapp("non-standard indentation: %d space, %d tab" % (n_space, n_tab))
@@ -111,15 +113,15 @@ class file_clutter(object):
   def show(self, flag_x, flag_dos_format=True, append=None, verbose=False,
       flag_indentation=False):
     status = self.status(flag_x, flag_dos_format, flag_indentation)
-    if (len(status) != 0):
+    if status:
       msg = "%s: %s" % (self.path, status)
-      if (append is not None):
+      if append:
         append(msg)
       else:
         print msg
       if (verbose) and (self.has_unused_imports()) :
         msg2 = "  unused imports: %s" % ", ".join(self.unused_imports)
-        if (append is not None):
+        if append:
           append(msg2)
         else :
           print msg2
@@ -131,11 +133,11 @@ def is_text_file(file_name):
     if (name.endswith(extension)): return True
   return False
 
-def gather(paths, find_unused_imports=False, find_bad_indentation=False):
+def gather(paths, find_unused_imports=False, find_bad_indentation=False, flag_absolute_import=False):
   clutter = []
   def capp():
     clutter.append(file_clutter(path, find_unused_imports,
-      find_bad_indentation=find_bad_indentation))
+      find_bad_indentation=find_bad_indentation, flag_absolute_import=flag_absolute_import))
   for path in paths:
     if (not os.path.exists(path)):
       print >> sys.stderr, "No such file or directory:", path
