@@ -389,7 +389,14 @@ def process_input(argv=None, flag_check_exist=True):
 
   #generate run_no folder
   if flag_check_exist:
-    if os.path.exists(params.run_no):
+    if not params.run_no:
+      #use default name (Echidna_Run_1)
+      default_run = 'Prime_Run_'
+      all_runs = glob.glob(default_run+'*')
+      new_run_no = 1
+      if all_runs: new_run_no = max([int(run_no.split('_')[-1]) for run_no in all_runs])+1
+      params.run_no = default_run+str(new_run_no)
+    elif os.path.exists(params.run_no):
       print "Warning: run number %s already exists."%(params.run_no)
       run_overwrite = raw_input('Overwrite?: N/Y (Enter for default)')
       if run_overwrite == 'Y':
