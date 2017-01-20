@@ -686,12 +686,14 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
   if not direction_forward:
     eff_end_resnum = start_res_num
   sel = m_cache.selection("resid %s" % end_res_num)
+  int_eff_resnum = hy36decode(4,eff_end_resnum)
   while len(moving_h.select(sel).atoms()) == 0:
     if direction_forward:
-      eff_end_resnum -= 1
+      int_eff_resnum -= 1
     else:
-      eff_end_resnum += 1
-    sel = m_cache.selection("resid %s" % eff_end_resnum)
+      int_eff_resnum += 1
+    sel = m_cache.selection("resid %d" % int_eff_resnum)
+  eff_end_resnum = hy36encode(4, int_eff_resnum)
 
   # print "fixed_ref_atoms:"
   sel = m_cache.selection("resid %s and name N" % eff_end_resnum)
