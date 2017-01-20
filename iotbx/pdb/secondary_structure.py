@@ -577,10 +577,13 @@ class annotation(structure_base):
     return cls(helices=helices, sheets=sheets)
 
   @classmethod
-  def from_phil(cls, phil_helices, phil_sheets, pdb_hierarchy, log=None):
+  def from_phil(cls, phil_helices, phil_sheets, pdb_hierarchy,
+      atom_selection_cache=None, log=None):
     helices = []
     sheets = []
-    cache = pdb_hierarchy.atom_selection_cache()
+    cache = atom_selection_cache
+    if cache is None:
+      cache = pdb_hierarchy.atom_selection_cache()
     for i, helix_param in enumerate(phil_helices):
       if helix_param.selection is not None:
         h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, cache, i, log)

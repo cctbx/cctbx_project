@@ -52,6 +52,7 @@ Full scope of parameters:
 class gather_ss_stats(object):
   def __init__(self, pdb_h, rama_eval_manager=None):
     self.pdb_h = pdb_h
+    self.asc = self.pdb_h.atom_selection_cache()
     self.atoms = pdb_h.atoms()
     self.r = rama_eval_manager
     if self.r is None:
@@ -73,6 +74,7 @@ class gather_ss_stats(object):
 
     ss_manager = mmtbx.secondary_structure.manager(
         pdb_hierarchy=self.pdb_h,
+        atom_selection_cache=self.asc,
         sec_str_from_pdb_file=temp_annot,
         params=ss_params.secondary_structure,
         log = ss_m_log)
