@@ -21,7 +21,7 @@ def run(args):
       flag_ni = True
     elif (arg == "-ndos"):
       flag_dos_format = False
-    elif (arg == "--verbose") :
+    elif (arg == "--verbose") or (arg == '-v'):
       verbose = True
     elif (arg == "--indentation") :
       flag_indentation = True
