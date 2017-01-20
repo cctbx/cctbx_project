@@ -50,10 +50,12 @@ Full scope of parameters:
   master_phil.show()
 
 class gather_ss_stats(object):
-  def __init__(self, pdb_h, atoms):
+  def __init__(self, pdb_h, rama_eval_manager=None):
     self.pdb_h = pdb_h
-    self.atoms = atoms
-    self.r = rama_eval()
+    self.atoms = pdb_h.atoms()
+    self.r = rama_eval_manager
+    if self.r is None:
+      self.r = rama_eval()
 
   def __call__(self, hsh_tuple):
     temp_annot = iotbx.pdb.secondary_structure.annotation(
@@ -171,7 +173,6 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
     work_params = master_phil.extract()
     if(nproc is not None): work_params.nproc = nproc
     pdb_h=pdb_hierarchy
-    pdb_structure=pdb_inp
   atoms = pdb_h.atoms()
   ss_log = cStringIO.StringIO()
   try:
@@ -225,7 +226,7 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
     atoms.set_xyz(new_xyz=box.sites_cart)
     cs = box.crystal_symmetry()
 
-  n_total_helix_sheet_records = len(ss_annot.helices+ss_annot.sheets)
+  n_total_helix_sheet_records = ss_annot.get_n_helices()+ss_annot.get_n_sheets()
   n_bad_helix_sheet_records = 0
   # Empty stuff:
   empty_annots = ss_annot.remove_empty_annotations(pdb_h)
@@ -248,7 +249,7 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
     hsh_tuples.append(([h],[]))
   for sh in ss_annot.sheets:
     hsh_tuples.append(([],[sh]))
-  calc_ss_stats = gather_ss_stats(pdb_h, atoms)
+  calc_ss_stats = gather_ss_stats(pdb_h)
   results = easy_mp.pool_map(
       processes=work_params.nproc,
       fixed_func=calc_ss_stats,
@@ -298,6 +299,7 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
   print >> out, "  Total bad H-bonds (> 3.5A)     :", cumm_n_bad_hbonds
   print >> out, "  Total Ramachandran outliers    :", cumm_n_rama_out
   print >> out, "  Total wrong Ramachandrans      :", cumm_n_wrong_reg
+  print >> out, "All done."
   return group_args(
     n_total_helix_sheet_records = n_total_helix_sheet_records,
     n_bad_helix_sheet_records   = n_bad_helix_sheet_records,
@@ -306,7 +308,6 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
     n_bad_hbonds                = cumm_n_bad_hbonds,
     n_rama_out                  = cumm_n_rama_out,
     n_wrong_reg                 = cumm_n_wrong_reg)
-  print >> out, "All done."
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
