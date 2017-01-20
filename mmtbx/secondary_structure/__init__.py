@@ -298,7 +298,9 @@ class manager (object) :
         if self.grm is not None:
           base_pairs = nucleic_acids.get_phil_base_pairs(
             pdb_hierarchy=self.pdb_hierarchy,
-            nonbonded_proxies=self.grm.pair_proxies().nonbonded_proxies,
+            nonbonded_proxies=self.grm.pair_proxies(
+                sites_cart=self.pdb_hierarchy.atoms().extract_xyz()).\
+                    nonbonded_proxies,
             prefix="secondary_structure.nucleic_acid",
             params=self.params.secondary_structure.nucleic_acid,
             log=log,
