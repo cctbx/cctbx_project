@@ -143,7 +143,7 @@ def gather(paths, find_unused_imports=False, find_bad_indentation=False):
       capp()
     else:
       for root, dirs, files in os.walk(path):
-        for f in files:
+        for f in sorted(files):
           if (is_text_file(f)):
             path = os.path.normpath(os.path.join(root, f))
             capp()
