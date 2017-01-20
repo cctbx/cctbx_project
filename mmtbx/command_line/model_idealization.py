@@ -368,7 +368,7 @@ class model_idealization():
         for ncs_gr in filtered_ncs_restr_group_list:
           for copy in ncs_gr.copies:
             master_sel.set_selected(copy.iselection, False)
-        self.master_pdb_h = self.whole_pdb_h.select(master_sel)
+        self.master_pdb_h = self.whole_pdb_h.select(master_sel).deep_copy()
         self.master_sel=master_sel
         self.master_pdb_h.reset_atom_i_seqs()
 
