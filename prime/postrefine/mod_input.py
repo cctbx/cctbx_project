@@ -314,6 +314,22 @@ isoform_name = None
 flag_hush = False
   .type = bool
   .help = Set to true to hush all the disc and elaboarated stats. operations.
+timeout_seconds = 300
+  .type = int
+  .help = Time limits used when queing system is activated.
+queue
+  .help = "Parameters used for submitting jobs to queuing system."
+{
+  mode = None
+    .type = str
+    .help = Queing system type. Only bsub is available now.
+  qname = psanaq
+    .type = str
+    .help = For system with queue name, specify your queue name here. For LCLS users, primary queue is the default value while high priority queue at NEH and FEH are psnehhiprioq and psfehhiprioq.
+  n_nodes = 12
+    .type = int
+    .help = No. of nodes used.
+}
 """)
 
 txt_help = """**************************************************************************************************
@@ -337,7 +353,7 @@ For feedback, please contact monarin@stanford.edu.
 List of available parameters:
 """
 
-def process_input(argv=None, flag_check_exist=True):
+def process_input(argv=None, flag_mkdir=True):
   user_phil = []
   if argv == None:
     master_phil.show()
@@ -388,25 +404,25 @@ def process_input(argv=None, flag_check_exist=True):
       raise InvalidPixelSize, "Error: Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd, set pixel_size_mm=0.079346)."
 
   #generate run_no folder
-  if flag_check_exist:
-    if not params.run_no:
-      #use default name (Echidna_Run_1)
-      default_run = 'Prime_Run_'
-      all_runs = glob.glob(default_run+'*')
-      new_run_no = 1
-      if all_runs: new_run_no = max([int(run_no.split('_')[-1]) for run_no in all_runs])+1
-      params.run_no = default_run+str(new_run_no)
-    elif os.path.exists(params.run_no):
-      print "Warning: run number %s already exists."%(params.run_no)
-      run_overwrite = raw_input('Overwrite?: N/Y (Enter for default)')
-      if run_overwrite == 'Y':
-        shutil.rmtree(params.run_no)
-      else:
-        raise InvalidRunNo, "Error: Run number exists. Please specifiy different run no."
+  if not params.run_no:
+    #use default name
+    default_run = 'Prime_Run_'
+    all_runs = glob.glob(default_run+'*')
+    new_run_no = 1
+    if all_runs: new_run_no = max([int(run_no.split('_')[-1]) for run_no in all_runs])+1
+    params.run_no = default_run+str(new_run_no)
+  elif os.path.exists(params.run_no):
+    print "Warning: run number %s already exists."%(params.run_no)
+    run_overwrite = raw_input('Overwrite?: N/Y (Enter for default)')
+    if run_overwrite == 'Y':
+      shutil.rmtree(params.run_no)
+    else:
+      raise InvalidRunNo, "Error: Run number exists. Please specifiy different run no."
 
   #make result folders
-  os.makedirs(params.run_no)
-  os.makedirs(params.run_no+'/index_ambiguity')
+  if flag_mkdir:
+    os.makedirs(params.run_no)
+    os.makedirs(params.run_no+'/index_ambiguity')
 
   #capture input read out by phil
   from cStringIO import StringIO

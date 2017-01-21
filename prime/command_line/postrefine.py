@@ -1,5 +1,5 @@
 from __future__ import division
-# LIBTBX_SET_DISPATCHER_NAME prime.run
+# LIBTBX_SET_DISPATCHER_NAME prime.postrefine
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 7/13/2014
@@ -12,7 +12,7 @@ from prime.command_line.solve_indexing_ambiguity import indexing_ambiguity_handl
 from prime.postrefine.mod_mx import mx_handler
 from prime.postrefine.mod_input import read_pickles
 from prime.postrefine.mod_util import intensities_scaler
-import sys, math
+import os, sys, math
 import numpy as np
 from datetime import datetime, time
 from libtbx.utils import Usage
@@ -184,8 +184,10 @@ def run(argv):
       ' seconds\nFinished: '+time_global_end.strftime("%A %d. %B %Y %H:%M:%S")+'\n'
   print txt_out_time_spent
   txt_out = txt_indexing_ambiguity + txt_merge_mean + txt_merge_postref + txt_out_time_spent
-  with open(iparams.run_no+'/log.txt', 'a') as f:
+  with open(os.path.join(iparams.run_no,'log.txt'), 'a') as f:
     f.write(txt_out)
+  with open(os.path.join(iparams.run_no,'.done'), 'w') as f:
+    f.write('Done')
   return mdh
 
 if (__name__ == "__main__"):
