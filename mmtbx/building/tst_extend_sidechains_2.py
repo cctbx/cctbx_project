@@ -4,6 +4,7 @@ from mmtbx.building import extend_sidechains
 import mmtbx.monomer_library
 from scitbx.array_family import flex
 import iotbx.pdb
+from libtbx.test_utils import approx_equal
 
 mon_lib_srv = mmtbx.monomer_library.server.server()
 
@@ -277,6 +278,19 @@ ATOM      8  CE  LYS A   7       3.009   6.453  -1.124  1.00 48.81           C
 ATOM      9  NZ  LYS A   7       1.909   6.785  -2.070  1.00 48.81           N
 """
 
+pdb_str_do_no_move_if_complete="""
+ATOM      1  N   LYS A   7       6.187   5.271   2.497  1.00 17.49           N
+ATOM      2  CA  LYS A   7       5.198   6.138   3.127  1.00 18.23           C
+ATOM      3  C   LYS A   7       4.507   5.426   4.285  1.00 14.78           C
+ATOM      4  O   LYS A   7       3.859   4.396   4.096  1.00 15.83           O
+ATOM      5  CB  LYS A   7       4.161   6.608   2.104  1.00 23.56           C
+ATOM      6  CG  LYS A   7       4.553   7.868   1.345  1.00 33.58           C
+ATOM      7  CD  LYS A   7       5.574   7.573   0.257  1.00 41.39           C
+ATOM      8  CE  LYS A   7       4.958   6.765  -0.874  1.00 48.81           C
+ATOM      9  NZ  LYS A   7       5.929   6.522  -1.976  1.00 48.81           N
+TER
+END
+"""
 
 ###
 
@@ -330,7 +344,22 @@ def exercise_extend_sidechains(pdb_str_bad, pdb_str_good, i, Sorry_msg, add_h):
   #
   check(answer=pdb_h_answer, result=pdb_h_result, bad=pdb_h_bad)
 
+def exercise_do_not_move_if_complete():
+  pdb_inp = iotbx.pdb.input(source_info=None,
+    lines=pdb_str_do_no_move_if_complete)
+  pdb_h = pdb_inp.construct_hierarchy()
+  xyz1 = pdb_h.atoms().extract_xyz()
+  pdb_h_completed = pdb_h.deep_copy()
+  extend_sidechains.extend_protein_model(
+    pdb_hierarchy = pdb_h_completed,
+    mon_lib_srv   = mon_lib_srv,
+    add_hydrogens = False)
+  xyz2 = pdb_h_completed.atoms().extract_xyz()
+  assert approx_equal(flex.max(flex.sqrt((xyz1 - xyz2).dot())),0.0)
+
 if(__name__ == "__main__"):
+  exercise_do_not_move_if_complete()
+  #
   for i, t in enumerate([
      (pdb_str0_bad, pdb_str0_good, None, None),
      (pdb_str1_bad, pdb_str1_good, None, None),

@@ -203,6 +203,9 @@ def extend_protein_model(
           mon_lib_srv      = mon_lib_srv,
           ignore_hydrogens = False)
         if(len(missing_atoms) > 0):
+          all_h = list(set([
+            s.strip()[0] for s in missing_atoms])) in [['H'],['D'],['T']]
+          if(add_hydrogens is False and all_h): continue
           partial_sidechains.append(residue)
   for residue in partial_sidechains:
     residue_elements = [e.strip() for e in residue.atoms().extract_element()]
