@@ -14,7 +14,7 @@ def exercise (debug=False) :
     print "phenix_regression not configured, skipping."
     return
   hkl_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/data/p9_se_w2.sca",
+    relative_path="phenix_regression/wizards/help_tests/test_help/p9_se_w2.sca",
     test=os.path.isfile)
   assert hkl_file is not None
   args = [
@@ -134,7 +134,7 @@ def exercise (debug=False) :
   # test use_internal_variance option
   out = StringIO()
   hkl_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/data/unmerged.mtz",
+    relative_path="phenix_regression/wizards/help_tests/test_help/unmerged.mtz",
     test=os.path.isfile)
   assert hkl_file is not None
   args = [hkl_file, "use_internal_variance=False"]
