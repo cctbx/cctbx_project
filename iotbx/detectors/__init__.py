@@ -24,6 +24,7 @@ from iotbx.detectors.saturn import SaturnImage
 from iotbx.detectors.noir import NoirImage
 from iotbx.detectors.bruker import BrukerImage
 from iotbx.detectors.pilatus_minicbf import PilatusImage
+from iotbx.detectors.eiger_minicbf import EigerCBFImage
 from iotbx.detectors.edf import EDFImage
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors.pilatus_slice import pilatus_slice_from_file_url
@@ -51,7 +52,7 @@ class SMVImage(ADSCImage):
 
 all_image_types = [EDFWrapper,SaturnImage,DIPImage,NoirImage,ADSCImage,HamamatsuImage,
                   MARImage,MARIPImage,DTREKImage,RAXISImage,
-                  NonSquareRAXISImage,SMVImage,PilatusImage,CBFImage,BrukerImage]
+                  NonSquareRAXISImage,SMVImage,PilatusImage,EigerCBFImage,CBFImage,BrukerImage]
 try :
   import h5py # special import
 except ImportError :

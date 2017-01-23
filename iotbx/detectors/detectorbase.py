@@ -176,6 +176,26 @@ class DetectorImageBase(object):
       self.parameters['SIZE1'] = 2463
       self.parameters['SIZE2'] = 2527
 
+    #handle eiger-1M
+    if self.parameters['SIZE1'] == 1065 and self.parameters['SIZE2'] == 1030:
+      self.parameters['SIZE1'] = 1030
+      self.parameters['SIZE2'] = 1065
+
+    #handle eiger-4M
+    if self.parameters['SIZE1'] == 2167 and self.parameters['SIZE2'] == 2070:
+      self.parameters['SIZE1'] = 2070
+      self.parameters['SIZE2'] = 2167
+
+    #handle eiger-9M
+    if self.parameters['SIZE1'] == 3269 and self.parameters['SIZE2'] == 3110:
+      self.parameters['SIZE1'] = 3110
+      self.parameters['SIZE2'] = 3269
+
+    #handle eiger-1M
+    if self.parameters['SIZE1'] == 4371 and self.parameters['SIZE2'] == 4150:
+      self.parameters['SIZE1'] = 4150
+      self.parameters['SIZE2'] = 4371
+
     info = """{
 HEADER_BYTES= 1024;
 DIM=2;
