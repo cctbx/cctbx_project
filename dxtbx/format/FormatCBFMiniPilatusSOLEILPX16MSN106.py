@@ -7,7 +7,7 @@
 #
 # Set up for Soleil PX1, with full kappa goniometer
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 #from dxtbx.model import ParallaxCorrectedPxMmStrategy

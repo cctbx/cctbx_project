@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 import dxtbx.data.beamline_defs
 
 class get_definition(dxtbx.data.beamline_defs.template):

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 #!/usr/bin/env python
 # detector_helpers.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
@@ -134,7 +134,6 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
   """
   mosflm_y, mosflm_x = mosflm_beam_centre
   from scitbx import matrix
-  import math
   s0 = matrix.col(beam.get_s0()).normalize()
   for panel in detector:
     f = matrix.col(panel.get_fast_axis())

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 #!/usr/bin/env python
 # test_detector.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter

@@ -8,7 +8,7 @@
 # An implementation of the CBF image reader for Pilatus images, from the Pilatus
 # 6M SN 119 currently on Diamond I24.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 

@@ -8,7 +8,7 @@
 #
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
-from __future__ import division
+from __future__ import absolute_import, division
 
 def filename_to_absolute(filename):
   ''' Convert filenames to absolute form. '''

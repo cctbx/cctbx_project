@@ -70,7 +70,7 @@
 # Then some more chunder follows - however I don't think it contains anything
 # useful. So need to read first 1K of the image header.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 import time
 import datetime

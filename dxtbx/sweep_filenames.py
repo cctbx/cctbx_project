@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 
 def template_regex(filename):
   '''Try a bunch of templates to work out the most sensible. N.B. assumes

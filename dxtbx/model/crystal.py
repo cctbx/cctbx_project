@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 from scitbx import matrix
 from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import space_group as SG

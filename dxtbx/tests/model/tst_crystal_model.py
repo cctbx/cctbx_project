@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 import math
 from cStringIO import StringIO
 from libtbx.test_utils import approx_equal, show_diff

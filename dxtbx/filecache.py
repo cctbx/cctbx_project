@@ -40,7 +40,7 @@
 #     cache.force_close()
 # Any further access attempts will then result in an exception.
 
-from __future__ import division
+from __future__ import absolute_import, division
 from cStringIO import StringIO
 import os
 from threading import Lock

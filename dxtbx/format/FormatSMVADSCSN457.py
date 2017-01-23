@@ -9,7 +9,7 @@
 # FormatSMVADSC, customised for example on Australian Synchrotron SN 457
 # which has reversed phi.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 

@@ -7,7 +7,7 @@
 #
 # A simple cache controller. Caching only one file at a time.
 
-from __future__ import division
+from __future__ import absolute_import, division
 import dxtbx.filecache
 import os
 import threading

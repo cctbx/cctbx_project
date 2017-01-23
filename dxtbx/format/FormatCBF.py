@@ -8,7 +8,7 @@
 # Base implementation of CBF formats - which is just really a place holder
 # which will tell you whether something is a CBF file (or no.)
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.Format import Format
 

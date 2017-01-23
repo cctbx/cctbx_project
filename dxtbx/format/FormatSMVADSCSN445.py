@@ -9,7 +9,7 @@
 # FormatSMVADSC, customised for example on ALS beamline 8.2.1 from back in the
 # day which had it's own way of recording beam centre.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 

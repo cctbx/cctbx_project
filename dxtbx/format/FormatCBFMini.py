@@ -9,7 +9,7 @@
 # this will read the header and populate a dictionary of the keyword / value
 # pairs.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatCBF import FormatCBF
 

@@ -7,7 +7,7 @@
 #
 # Pilatus implementation of fullCBF format, for use with Dectris detectors.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatCBFFull import FormatCBFFull
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask

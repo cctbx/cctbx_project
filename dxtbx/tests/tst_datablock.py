@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 import libtbx.load_env
 from dxtbx.datablock import DataBlockFactory
 from dxtbx.imageset import ImageSweep

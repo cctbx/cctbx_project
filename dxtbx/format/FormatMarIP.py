@@ -1,6 +1,6 @@
 # Implementation of an ImageFormat class to read MarIP-format image
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.Format import Format
 

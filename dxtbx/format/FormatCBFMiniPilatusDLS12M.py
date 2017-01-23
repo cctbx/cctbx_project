@@ -8,7 +8,7 @@
 #
 # An implementation of the CBF image reader for Pilatus images, for the P12M-DLS
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.model import ParallaxCorrectedPxMmStrategy

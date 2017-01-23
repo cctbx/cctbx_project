@@ -8,7 +8,7 @@
 # An implementation of the SMV image reader for Rigaku Pilatus 300K images.
 # Inherits from FormatSMVRigaku.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatSMVRigaku import FormatSMVRigaku
 

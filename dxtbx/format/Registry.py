@@ -9,9 +9,9 @@
 # this is useful for i.e. identifying the best tool to read a given range
 # of image formats.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
-from RegistryHelpers import LoadFormatClasses
+from dxtbx.format.RegistryHelpers import LoadFormatClasses
 
 class _Registry:
   '''A class to handle all of the recognised image formats within xia2

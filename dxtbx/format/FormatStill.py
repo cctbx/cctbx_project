@@ -4,7 +4,7 @@
 # Root class for still shots.  A still shot has no goniomter and no
 # scan in their model, as these constructs are not meaningful.
 #
-from __future__ import division
+from __future__ import absolute_import, division
 from dxtbx.format.Format import Format
 from dxtbx.model.detector import Detector
 from dxtbx.model.beam import Beam

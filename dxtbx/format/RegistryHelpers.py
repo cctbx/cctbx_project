@@ -7,7 +7,7 @@
 #
 # Things to help the ImageFormat registry to work.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 import os
 import sys

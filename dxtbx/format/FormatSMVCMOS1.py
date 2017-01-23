@@ -7,7 +7,7 @@
 #
 # An implementation of the SMV image reader for CMOS1 images, from ALS 4.2.2
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatSMV import FormatSMV
 

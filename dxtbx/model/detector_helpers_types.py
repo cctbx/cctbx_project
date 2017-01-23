@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 #!/usr/bin/env python
 # detector_helpers_types.py
 #
@@ -14,8 +14,8 @@ from __future__ import division
 import os
 import sys
 
-from detector_helpers import detector_helper_sensors
-from detector import detector_factory
+from dxtbx.model.detector_helpers import detector_helper_sensors
+from dxtbx.model.detector import detector_factory
 
 class detector_helpers_types:
   '''A singleton class to help with identifying specific detectors used for

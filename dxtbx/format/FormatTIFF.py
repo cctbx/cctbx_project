@@ -11,7 +11,7 @@
 # which really will acquire the full image including header information
 # and generate the experimental model representations.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatTIFFHelpers import read_basic_tiff_header

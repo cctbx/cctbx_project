@@ -8,7 +8,7 @@
 #
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
-from __future__ import division
+from __future__ import absolute_import, division
 
 
 class ReaderBase(object):
@@ -1344,7 +1344,7 @@ class FilenameAnalyser(object):
         A list of (template, [indices], is_sweep)
 
     '''
-    from sweep_filenames import group_files_by_imageset
+    from dxtbx.sweep_filenames import group_files_by_imageset
 
     # Analyse filenames to figure out how many imagesets we have
     filelist_per_imageset = group_files_by_imageset(filenames)
@@ -1477,7 +1477,7 @@ class ImageSetFactory(object):
     # Get the format class
     if check_format:
       format_class = Registry.find(filenames[0])
-      from format.FormatMultiImage import FormatMultiImage
+      from dxtbx.format.FormatMultiImage import FormatMultiImage
       if issubclass(format_class, FormatMultiImage):
         assert len(filenames) == 1
         format_instance = format_class(filenames[0])
@@ -1530,7 +1530,7 @@ class ImageSetFactory(object):
     format_class = Registry.find(filenames[0])
 
     # Create the image set object
-    from format.FormatMultiImage import FormatMultiImage
+    from dxtbx.format.FormatMultiImage import FormatMultiImage
     if issubclass(format_class, FormatMultiImage):
       assert len(filenames) == 1
       format_instance = format_class(filenames[0])
@@ -1604,7 +1604,7 @@ class ImageSetFactory(object):
                     single_file_indices=None, format_kwargs=None):
     '''Create an image set'''
     from dxtbx.format.Registry import Registry
-    from format.FormatMultiImage import FormatMultiImage
+    from dxtbx.format.FormatMultiImage import FormatMultiImage
 
     # Get the format object
     if format_class == None and check_format:
@@ -1633,7 +1633,7 @@ class ImageSetFactory(object):
     '''Create a sweep'''
     import os
     from dxtbx.format.Registry import Registry
-    from format.FormatMultiImage import FormatMultiImage
+    from dxtbx.format.FormatMultiImage import FormatMultiImage
 
     indices = sorted(indices)
 

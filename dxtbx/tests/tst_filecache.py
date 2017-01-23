@@ -7,13 +7,13 @@
 #
 # Tests for the filecache classes. This compares behaviour against StringIO.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 def test_filecache():
   import dxtbx.filecache
   import libtbx.load_env
   import os
-  from StringIO import StringIO
+  from StringIO import StringIO # this is not cStringIO on purpose!
 
   dxtbx_dir = libtbx.env.dist_path('dxtbx')
   image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
