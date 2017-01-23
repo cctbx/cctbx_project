@@ -33,7 +33,11 @@ if hasattr(os, 'getenv'):
 # Now hand over to the original python site package
 # Find the tail of sys.path not including the directory of this file
 _libtbx['path'] = []
-_libtbx['this_path'] = os.path.abspath(os.path.dirname(__file__))
+try:
+  _libtbx['this_path'] = __file__
+except NameError:
+  _libtbx['this_path'] = '.' # May not be defined in all cases
+_libtbx['this_path'] = os.path.abspath(os.path.dirname(_libtbx['this_path']))
 if sys.hexversion >= 0x02020000:
   _libtbx['this_path'] = os.path.realpath(_libtbx['this_path'])
 for _libtbx['path_candidate'] in sys.path:
