@@ -665,11 +665,12 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
     ss_selection_str = ss_annotation.overall_selection()
     ss_selection = cache.iselection(ss_selection_str)
     intersect = flex.size_t(sorted(list(set(ss_selection) & set(m_selection))))
-    if intersect.size > 0:
+    if intersect.size() > 0:
       intersect_h = pdb_hierarchy.select(intersect)
       print >> log, "Hitting SS element"
       print >> log, intersect_h.as_pdb_string()
       contains_ss_element = True
+      assert intersect_h.atoms_size() > 0, "Wrong atom count in SS intersection"
       # assert 0, "hitting SS element!"
 
 
