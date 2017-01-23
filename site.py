@@ -23,32 +23,46 @@ import imp
 import os
 import sys
 
-# Print a string if environment variable LIBTBX_IMPORT_CACHEDB is set
-try:
-  _libtbx_db = os.getenv('LIBTBX_IMPORT_CACHEDB')
-  if _libtbx_db:
+_libtbx = {}
+
+# Print a string if environment variable LIBTBX_IMPORTCACHE is set
+if hasattr(os, 'getenv'):
+  if os.getenv('LIBTBX_IMPORTCACHE'):
     print("Proof of concept")
-except (ImportError, AttributeError):
-  pass
 
 # Now hand over to the original python site package
-# Find a subset of sys.path that does not include the directory of this file
-_path_remainder = []
-for _path in sys.path:
-  if __file__.startswith(_path):
-    _path_remainder = []
+# Find the tail of sys.path not including the directory of this file
+_libtbx['path'] = []
+_libtbx['this_path'] = os.path.abspath(os.path.dirname(__file__))
+if sys.hexversion >= 0x02020000:
+  _libtbx['this_path'] = os.path.realpath(_libtbx['this_path'])
+for _libtbx['path_candidate'] in sys.path:
+  _libtbx['path_candidate'] = os.path.abspath(_libtbx['path_candidate'])
+  if sys.hexversion >= 0x02020000:
+    _libtbx['path_candidate'] = os.path.realpath(_libtbx['path_candidate'])
+  if _libtbx['path_candidate'] == _libtbx['this_path']:
+    _libtbx['path'] = []
   else:
-    _path_remainder.append(_path)
+    _libtbx['path'].append(_libtbx['path_candidate'])
 
 # Attempt to find the original python site package in that path
-_original_site_package = imp.find_module('site', _path_remainder)
-if _original_site_package[1] == __file__:
-  print("Error in site.py: Could not find original python site package")
-else:
-  # Load the original python site package in place
-  sys.modules['site'] = imp.load_module('site', *_original_site_package)
-  __file__ = sys.modules['site'].__file__
+_libtbx['true_site'] = []
+if _libtbx['path']:
+  try:
+    _libtbx['true_site'] = imp.find_module('site', _libtbx['path'])
+  except ImportError:
+    pass # Given that site should be in the python directory this
+         # should not fail. May however only be true for cPython.
+if _libtbx['true_site']:
+  _libtbx['true_site_path'] = os.path.abspath(os.path.dirname(_libtbx['true_site'][1]))
+  if sys.hexversion >= 0x02020000:
+    _libtbx['true_site_path'] = os.path.realpath(_libtbx['true_site_path'])
+  if _libtbx['true_site_path'] == _libtbx['this_path']:
+    print("Error in site.py: Could not find original python site package")
+  else:
+    # Load the original python site package in place
+    sys.modules['site'] = imp.load_module('site', *_libtbx['true_site'])
+    __file__ = sys.modules['site'].__file__
 
 # Clean up
-del(_original_site_package)
-del(_path_remainder)
+del(_libtbx)
