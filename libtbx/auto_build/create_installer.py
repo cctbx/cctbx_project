@@ -84,20 +84,36 @@ def archive(source, destination, tarfile=None):
   if not os.path.exists(source):
     print "Warning: source does not exist! Skipping: %s"%source
     return
-  if os.path.basename(source) != 'build': # don't delete lib files from python or modules
-    shutil.copytree(
-      source,
-      destination,
-      ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj', '*.ilk'),
-      symlinks=True
-      )
-  else:
-    shutil.copytree(
-      source,
-      destination,
-      ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj', '*.ilk'),
-      symlinks=True
-      )
+  try:
+    if os.path.basename(source) != 'build': # don't delete lib files from python or modules
+      shutil.copytree(
+        source,
+        destination,
+        ignore=shutil.ignore_patterns('*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj', '*.ilk'),
+        symlinks=True
+        )
+    else:
+      shutil.copytree(
+        source,
+        destination,
+        ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj', '*.ilk'),
+        symlinks=True
+        )
+  except Exception, err:
+    # workaround for possible very long path problem on Windows
+    if sys.platform == "win32" and type(err)==shutil.Error:
+      for e in err[0]:
+        if len(e)==3: # if not then it's some other error
+          (src, dst, errstr) = e
+          # Prepending \\?\ to path tells Windows to accept paths longer than 260 character
+          if len(src) > 260 or len(dst) > 260:
+            ultdsrc = "\\\\?\\" + src
+            ultddst = "\\\\?\\" + dst
+            shutil.copy(ultdsrc, ultddst)
+    else:
+      raise Exception, err
+
+
 
 def tar(source, tarfile, cwd=None):
   assert not os.path.exists(tarfile), "File exists: %s"%tarfile
