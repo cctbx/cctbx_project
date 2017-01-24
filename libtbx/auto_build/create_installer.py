@@ -285,6 +285,11 @@ class SetupInstaller(object):
         for f in files:
           fname = os.path.join(dirpath, f)
           relfname = os.path.relpath(fname, os.path.join(os.getcwd(), "tmp"))
+          # Prepending \\?\ to path tells Windows to accept paths longer than 260 character
+          if len(fname) >= 260:
+            fname = "\\\\?\\" + fname
+          if len(relfname) >= 260:
+            relfname = "\\\\?\\" + relfname
           myzip.write(filename=fname, arcname=relfname)
       myzip.close()
     else:
