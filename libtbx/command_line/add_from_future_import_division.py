@@ -4,6 +4,8 @@ import os, sys
 import ast
 
 def fix(module_path):
+  if os.path.getsize(module_path) == 0: # Do not add __future__ imports to empty files
+    return
   module_lines = file(module_path).readlines()
   module_node = ast.parse(''.join(module_lines), filename=module_path)
   # the attribute lineno is the index of the line *following* that node
