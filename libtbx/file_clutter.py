@@ -5,6 +5,8 @@ import re
 
 class file_clutter(object):
 
+  from_future_pat = re.compile(
+    '^ from [ ]+ __future__ ', re.VERBOSE)
   from_future_import_division_pat = re.compile(
     '^ from [ ]+ __future__ [ ]+ import [ \w,]+ division', re.VERBOSE)
   from_future_import_absolute_import_pat = re.compile(
@@ -24,6 +26,7 @@ class file_clutter(object):
     self.flag_absolute_import = flag_absolute_import
     self.n_from_future_import_absolute_import = None
     self.bad_indentation = None
+    self.file_should_be_empty = False
     bytes = open(path, "rb").read()
     if (len(bytes) > 0):
       if (bytes[-1] != "\n"):
@@ -43,7 +46,10 @@ class file_clutter(object):
         self.n_from_future_import_division = 0
         self.n_from_future_import_absolute_import = 0
         py_lines = bytes.splitlines()
+        self.file_should_be_empty = True
         for line in py_lines:
+          if self.file_should_be_empty and line.strip() != '' and not self.from_future_pat.search(line):
+            self.file_should_be_empty = False
           if self.from_future_import_division_pat.search(line):
             self.n_from_future_import_division += 1
           if self.from_future_import_absolute_import_pat.search(line):
@@ -96,11 +102,16 @@ class file_clutter(object):
       sapp("bare excepts=%d" % self.n_bare_excepts)
     if (self.has_unused_imports()):
       sapp("unused imports=%d" % len(self.unused_imports))
-    if self.n_from_future_import_division == 0:
+    if self.file_should_be_empty:
+      if self.n_from_future_import_division == 0 and self.n_from_future_import_absolute_import == 0:
+        sapp("file is empty, should be 0 byte file")
+      else:
+        sapp("file contains only 'from __future__ import' and should be empty instead")
+    elif self.n_from_future_import_division == 0:
       sapp("missing 'from __future__ import division'")
     elif self.n_from_future_import_division > 1:
       sapp("more than one appearance of 'from __future__ import division'")
-    if self.flag_absolute_import:
+    if self.flag_absolute_import and not self.file_should_be_empty:
       if self.n_from_future_import_absolute_import == 0:
         sapp("missing 'from __future__ import absolute_import'")
       elif self.n_from_future_import_absolute_import > 1:
