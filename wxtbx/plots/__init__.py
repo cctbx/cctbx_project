@@ -326,7 +326,10 @@ class iotbx_data_plot_base (plot_container) :
         x = xticks_[k]
         xticks.append(x)
         if (x != 0) :
-          x = math.sqrt(1 / x)
+          if x > 0.0:
+            x = math.sqrt(1 / x)
+          else:
+            x = -math.sqrt(1 / abs(x) )
           xticklabels.append("%.2f" % x)
         else : # FIXME?
           xticklabels.append("")
