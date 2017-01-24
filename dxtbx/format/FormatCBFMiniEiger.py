@@ -69,7 +69,6 @@ class FormatCBFMiniEiger(FormatCBFMini):
     for record in header.split('\n'):
       if '# detector' in record.lower() and \
              'eiger' in record.lower():
-        #print "recognized ", image_file
         return True
 
     return False
@@ -97,39 +96,31 @@ class FormatCBFMiniEiger(FormatCBFMini):
   def _detector(self):
     distance = float(
         self._cif_header_dictionary['Detector_distance'].split()[0])
-    #print "distance: ", distance
 
     beam_xy = self._cif_header_dictionary['Beam_xy'].replace(
         '(', '').replace(')', '').replace(',', '').split()[:2]
-    #print "beam_xy: ", beam_xy
 
     wavelength = float(
         self._cif_header_dictionary['Wavelength'].split()[0])
-    #print "wavelength: ", wavelength
 
     beam_x, beam_y = map(float, beam_xy)
-    #print "beam_x, beam_y: ", beam_x, beam_y
 
     pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
         'm', '').replace('x', '').split()
-    #print "pixel_xy: ", pixel_xy
 
     pixel_x, pixel_y = map(float, pixel_xy)
 
-    #print "pixel_x, pixel_y: ", pixel_x, pixel_y
 
+    # extract sensor thickness, assume < 10mm; default to 450 microns unfound
     try:
         thickness = float(
           self._cif_header_dictionary['Silicon'].split()[-2]) * 1000.0
         material = 'Si'
         if thickness > 10:
-            thickness = thickness/1000.0
-            #print "corrected thickness in mm"
+            thickness = thickness / 1000.0
     except KeyError:
-        thickness = .000450
+        thickness = 0.450
         material = 'Si'
-
-    #print "thickness: ", thickness
 
     nx = int(
         self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
@@ -144,7 +135,6 @@ class FormatCBFMiniEiger(FormatCBFMini):
         identifier =  self._cif_header_dictionary['Detector']
     except KeyError:
         identifier = 'Unknown Eiger'
-        #print self._cif_header_dictionary
 
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
@@ -166,10 +156,6 @@ class FormatCBFMiniEiger(FormatCBFMini):
         panel.set_material(material)
         panel.set_identifier(identifier)
         panel.set_mu(mu)
-
-    #print detector
-
-    #print determine_eiger_mask(detector)
 
     return detector
 
@@ -241,7 +227,8 @@ class FormatCBFMiniEiger(FormatCBFMini):
   def get_mask(self, goniometer=None):
     from scitbx.array_family import flex
     detector = self.get_detector()
-    mask = [flex.bool(flex.grid(reversed(p.get_image_size())), True) for p in detector]
+    mask = [flex.bool(flex.grid(reversed(p.get_image_size())), True)
+            for p in detector]
     for i, p in enumerate(detector):
       untrusted_regions = p.get_mask()
       for j, (f0, s0, f1, s1) in enumerate(untrusted_regions):
@@ -256,8 +243,9 @@ class FormatCBFMiniEiger(FormatCBFMini):
     trusted_mask = [
       p.get_trusted_range_mask(im) for im, p in zip(raw_data, detector)]
 
-    # returns merged untrusted pixels and active areas using bitwise AND (pixels are ac$
-    # if they are inside of the active areas AND inside of the trusted range)
+    # returns merged untrusted pixels and active areas using bitwise AND
+    # (pixels are accepted if they are inside of the active areas AND
+    # inside of the trusted range)
     return tuple([m & tm for m, tm in zip(mask, trusted_mask)])
 
   def detectorbase_start(self):
