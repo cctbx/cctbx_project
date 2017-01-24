@@ -281,7 +281,7 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
     if n_bad_hbonds + n_mediocre_hbonds + n_outliers + n_wrong_region > 0:
       # this is bad annotation, printing it to log with separate stats:
       print >> out, "Bad annotation found:"
-      print >> out, "  %s" % ss_elem.as_pdb_str()
+      print >> out, "%s" % ss_elem.as_pdb_str()
       print >> out, "  Total hb: %d, mediocre: %d, bad: %d, Rama outliers: %d, Rama wrong %d" % (
           n_hbonds, n_mediocre_hbonds, n_bad_hbonds, n_outliers, n_wrong_region)
       print >> out, "-"*80
