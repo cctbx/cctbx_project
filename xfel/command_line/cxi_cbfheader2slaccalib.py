@@ -85,6 +85,7 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
     self.list_of_geos.append(self._null_geo(0,"IP",0,"RAIL"))
 
     self._set_relations()
+    self.valid = True
 
   def _null_geo(self, pindex, pname, oindex, oname):
     """ Get a GeometryObject whose frameshift is zero
