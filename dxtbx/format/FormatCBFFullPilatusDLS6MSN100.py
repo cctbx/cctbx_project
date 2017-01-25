@@ -23,6 +23,14 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
     '''Check to see if this looks like an CBF format image, i.e. we can
     make sense of it.'''
 
+    # this depends on DIALS for the goniometer shadow model; if missing
+    # simply return False
+
+    try:
+      from dials.util.masking import GoniometerShadowMaskGenerator
+    except ImportError, e:
+      return False
+
     header = FormatCBFFullPilatus.get_cbf_header(image_file)
 
     for record in header.split('\n'):
