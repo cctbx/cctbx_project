@@ -102,9 +102,7 @@ def run (args, out=sys.stdout) :
   lines = mfile.readlines()
   mfile.close()
   lastlines = lines[(len(lines) - 25): ]
-  for l in lastlines:
-    mstr += l
-  print mstr
+  print mstr + ''.join(lastlines)
 
   if p.returncode != 0:
     raise RuntimeError, "create_windows_installer() failed with return code %s"%(p.returncode)
