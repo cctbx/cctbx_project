@@ -96,7 +96,7 @@ def run (args, out=sys.stdout) :
   import codecs
   try: # unicode version of makensis produces unicode log file
     mfile = codecs.open(logfname, encoding='utf-16', mode="r" )
-  except: # not a unicode file if plain version of makensis is used
+  except Exception, e: # not a unicode file if plain version of makensis is used
     mfile = open(logfname, "r" )
 
   lines = mfile.readlines()
