@@ -339,6 +339,10 @@ di::w_Distl::set_tiling(const string& vendortype)
   } else if (vendortype=="Pilatus-300K") {
     finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling_pilatus300K(
       finder.firstx, finder.lastx, finder.firsty, finder.lasty));
+  } else if (vendortype.substr(0,5)=="Eiger") {
+    finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling_eiger(
+      finder.firstx, finder.lastx, finder.firsty, finder.lasty,
+      finder.pixelvalue.nx, finder.pixelvalue.ny));
   } else {
     finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling(
       finder.firstx, finder.lastx, finder.firsty, finder.lasty));
