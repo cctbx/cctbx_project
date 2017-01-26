@@ -219,15 +219,17 @@ class model_idealization():
 
   def get_intermediate_result_hierarchy(self):
     result_h = self.whole_pdb_h.deep_copy()
+    result_h.reset_atom_i_seqs()
     if self.using_ncs:
       # multiply back and do geometry_minimization for the whole molecule
       for ncs_gr in self.ncs_restr_group_list:
-        new_sites = self.working_pdb_h.atoms().extract_xyz()
-        result_h.select(ncs_gr.master_iselection).atoms().set_xyz(new_sites)
+        ssb.set_xyz_smart(result_h, self.working_pdb_h)
+        new_sites = result_h.select(ncs_gr.master_iselection).atoms().extract_xyz()
+        # print len(ncs_gr.master_iselection), result_h.atoms_size(), len(new_sites)
+        # result_h.select(ncs_gr.master_iselection).atoms().set_xyz(new_sites)
         for c in ncs_gr.copies:
           new_c_sites = c.r.elems * new_sites + c.t
           result_h.select(c.iselection).atoms().set_xyz(new_c_sites)
-    result_h.reset_atom_i_seqs()
     return result_h
 
 
@@ -589,20 +591,23 @@ class model_idealization():
     ref_hierarchy_for_final_gm.reset_atom_i_seqs()
     # if self.params.additionally_fix_rotamer_outliers:
     #   ssb.set_xyz_smart(self.working_pdb_h, fixed_rot_pdb_h)
-    if self.using_ncs:
-      print >> self.log, "Using ncs"
-      # multiply back and do geometry_minimization for the whole molecule
-      for ncs_gr in self.ncs_restr_group_list:
-        # master_h = self.whole_pdb_h.select(ncs_gr.master_iselection)
-        new_sites = self.working_pdb_h.atoms().extract_xyz()
-        self.whole_pdb_h.select(ncs_gr.master_iselection).atoms().set_xyz(new_sites)
-        for c in ncs_gr.copies:
-          new_c_sites = c.r.elems * new_sites + c.t
-          self.whole_pdb_h.select(c.iselection).atoms().set_xyz(new_c_sites)
-      self.log.flush()
-    else:
-      # still need to run gm if rotamers were fixed
-      print >> self.log, "Not using ncs"
+
+    # This massively repeats  self.get_intermediate_result_hierarchy
+    self.whole_pdb_h = self.get_intermediate_result_hierarchy()
+    # if self.using_ncs:
+    #   print >> self.log, "Using ncs"
+    #   # multiply back and do geometry_minimization for the whole molecule
+    #   for ncs_gr in self.ncs_restr_group_list:
+    #     # master_h = self.whole_pdb_h.select(ncs_gr.master_iselection)
+    #     new_sites = self.working_pdb_h.atoms().extract_xyz()
+    #     self.whole_pdb_h.select(ncs_gr.master_iselection).atoms().set_xyz(new_sites)
+    #     for c in ncs_gr.copies:
+    #       new_c_sites = c.r.elems * new_sites + c.t
+    #       self.whole_pdb_h.select(c.iselection).atoms().set_xyz(new_c_sites)
+    #   self.log.flush()
+    # else:
+    #   # still need to run gm if rotamers were fixed
+    #   print >> self.log, "Not using ncs"
 
     # need to update SS manager for the whole model here.
     if self.params.use_ss_restraints:
