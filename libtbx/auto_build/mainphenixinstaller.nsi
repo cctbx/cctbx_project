@@ -133,8 +133,8 @@ Section "Basic components" SEC01
   SetOverwrite off
   File /r /x *.cpp /x *.cc /x *.h /x *.hh /x *.hpp /x *.c /x *.f /x .svn ${COPYDIR}\*
 
-  ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
-  #ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
+  #ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
+  ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
   SetAutoClose false
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
