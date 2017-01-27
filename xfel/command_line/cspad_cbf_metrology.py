@@ -9,6 +9,8 @@ from libtbx import easy_run
 from libtbx.utils import Sorry
 
 phil_scope = parse("""
+  method = *hierarchical expanding
+    .type = choice
   reflections = reindexedstrong *indexed integrated
     .type = choice
     .help = Which subset of reflections
@@ -29,6 +31,10 @@ phil_scope = parse("""
     .type = bool
     .help = If true, when refining level 0, also refine beam energy. Subsequent hierarchy \
             levels will fix the energy in place.
+  flat_refinement = False
+    .type = bool
+    .help = If True, do not refine tilt (Tau2 and Tau3) when refining panel positions. Further, \
+            don't refine distance at levels 1 or higher (respects refine_distance for level 0).
   n_subset = None
     .type = int
     .help = Refine a random subset of the provided files
@@ -244,6 +250,12 @@ def refine(params, merged_scope, combine_phil):
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
 
+  if params.method == 'hierarchical':
+    refine_hierarchical(params, merged_scope, combine_phil)
+  elif params.method == 'expanding':
+    refine_expanding(params, merged_scope, combine_phil)
+
+def refine_hierarchical(params, merged_scope, combine_phil):
   if params.panel_filter is not None:
     from libtbx import easy_pickle
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in params.panel_filter]))
@@ -283,14 +295,20 @@ def refine(params, merged_scope, combine_phil):
     print "Refining at hierarchy level", i
     refine_phil_file = "%s_refine_level%d.phil"%(params.tag, i)
     if i == 0:
-      if params.refine_distance:
-        diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
-      else:
-        diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Tau1\n" # fix detector rotz, distance
+      fix_list = ['Tau1'] # fix detector rotz
+      if not params.refine_distance:
+        fix_list.append('Dist')
+      if params.flat_refinement:
+        fix_list.extend(['Tau2','Tau3'])
+
+      diff_phil = "refinement.parameterisation.detector.fix_list=%s\n"%",".join(fix_list)
       if params.refine_energy:
-        diff_phil += "refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
+        diff_phil += " refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
     else:
-      diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
+      if params.flat_refinement:
+        diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Tau\n"
+      else:
+        diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
 
     if i == params.start_at_hierarchy_level:
       command = "dials.refine %s %s_%s_experiments.json %s_%s_reflections.pickle"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
@@ -311,13 +329,100 @@ def refine(params, merged_scope, combine_phil):
     result = easy_run.fully_buffered(command=command).raise_if_errors()
     result.show_stdout()
 
+  output_geometry(params)
+
+def refine_expanding(params, merged_scope, combine_phil):
+  assert not params.rmsd_filter.enable, "RMSD filter not implmented for expanding refinement mode"
+  assert params.start_at_hierarchy_level == 0
+
+  # this is the order to refine the CSPAD in
+  steps = {}
+  steps[0] = [2, 3]
+  steps[1] = steps[0] + [0, 1]
+  steps[2] = steps[1] + [14, 15]
+  steps[3] = steps[2] + [6, 7]
+  steps[4] = steps[3] + [4, 5]
+  steps[5] = steps[4] + [12, 13]
+  steps[6] = steps[5] + [8, 9]
+  steps[7] = steps[6] + [10, 11]
+
+  for s, panels in steps.iteritems():
+    rest = []
+    for p in panels:
+      rest.append(p+16)
+      rest.append(p+32)
+      rest.append(p+48)
+    panels.extend(rest)
+
+  levels = {0: 2} # levels 0 and 1
+  for i in xrange(7):
+    levels[i+1] = 3 # levels 0, 1 and 2
+
+  for j in xrange(8):
+    from libtbx import easy_pickle
+    print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]]))
+    combined_path = "%s_combined_reflections.pickle"%params.tag
+    output_path = "%s_reflections_step%d.pickle"%(params.tag, j)
+    data = easy_pickle.load(combined_path)
+    sel = None
+    for panel_id in steps[j]:
+      if sel is None:
+        sel = data['panel'] == panel_id
+      else:
+        sel |= data['panel'] == panel_id
+    print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
+    easy_pickle.dump(output_path, data.select(sel))
+
+    for i in xrange(levels[j]):
+      print "Step", j , "refining at hierarchy level", i
+      refine_phil_file = "%s_refine_step%d_level%d.phil"%(params.tag, j, i)
+      if i == 0:
+        if params.refine_distance:
+          diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
+        else:
+          diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Tau1\n" # fix detector rotz, distance
+        if params.refine_energy:
+          diff_phil += "refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
+      else:
+        diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
+
+      if j == 0 and i == params.start_at_hierarchy_level:
+        command = "dials.refine %s %s_combined_experiments.json %s_reflections_step%d.pickle"%( \
+          refine_phil_file, params.tag, params.tag, j)
+      elif i == params.start_at_hierarchy_level:
+        command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_reflections_step%d.pickle"%( \
+          refine_phil_file, params.tag, j-1, levels[j-1]-1, params.tag, j)
+      else:
+        command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.pickle"%( \
+          refine_phil_file, params.tag, j, i-1, params.tag, j, i-1)
+
+      diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
+
+      command += " output.experiments=%s_refined_experiments_step%d_level%d.json output.reflections=%s_refined_reflections_step%d_level%d.pickle"%( \
+        params.tag, j, i, params.tag, j, i)
+
+      scope = merged_scope.fetch(parse(diff_phil))
+      f = open(refine_phil_file, 'w')
+      f.write(refine_scope.fetch_diff(scope).as_str())
+      f.close()
+
+      print command
+      result = easy_run.fully_buffered(command=command).raise_if_errors()
+      result.show_stdout()
+
+  output_geometry(params)
+
+def output_geometry(params):
   print "Creating files to deploy to psana calibration directory..."
   if params.refine_to_hierarchy_level > 2:
     deploy_level = 2
   else:
     deploy_level = params.refine_to_hierarchy_level
 
-  command = "cxi.experiment_json_to_cbf_def %s_refined_experiments_level%d.json output_def_file=%s_refined_detector_level%d.def"%(params.tag, deploy_level, params.tag, deploy_level)
+  if params.method == 'hierarchical':
+    command = "cxi.experiment_json_to_cbf_def %s_refined_experiments_level%d.json output_def_file=%s_refined_detector_level%d.def"%(params.tag, deploy_level, params.tag, deploy_level)
+  elif params.method == 'expanding':
+    command = "cxi.experiment_json_to_cbf_def %s_refined_experiments_step7_level%d.json output_def_file=%s_refined_detector_level%d.def"%(params.tag, deploy_level, params.tag, deploy_level)
   print command
   result = easy_run.fully_buffered(command=command).raise_if_errors()
   result.show_stdout()
