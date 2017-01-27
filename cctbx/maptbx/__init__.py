@@ -1159,51 +1159,84 @@ def map_to_map_coefficients(m, cs, d_min):
     ).array(data=box_structure_factors.data()/n)
   return map_coeffs
 
-def resolution_from_map_and_model(map_data, xray_structure):
+def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
+               d_min_end=10., b_iso_start=0, b_iso_end=200, b_iso_step=10,
+               radius=5.0, sel_around_atoms=None, d_min_step=0.1):
+  from cctbx import miller
+  xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
+  cg = crystal_gridding(
+    unit_cell             = xray_structure.unit_cell(),
+    space_group_info      = xray_structure.space_group_info(),
+    pre_determined_n_real = map.accessor().all())
+  if(sel_around_atoms is None):
+    sel_around_atoms = maptbx.grid_indices_around_sites(
+      unit_cell  = xrs.unit_cell(),
+      fft_n_real = map.focus(),
+      fft_m_real = map.all(),
+      sites_cart = xrs.sites_cart(),
+      site_radii = flex.double(xrs.scatterers().size(), radius))
+  fc = xrs.structure_factors(d_min=d_min_start).f_calc()
+  d_spacings = fc.d_spacings().data()
+  ss = 1./flex.pow2(d_spacings) / 4.
+  d_min_best = None
+  cc_max=-999
+  map_ = map.select(sel_around_atoms)
+  d_min = d_min_start
+  while d_min<d_min_end:
+    sel = d_spacings > d_min
+    fc_ = fc.select(sel)
+    ss_ = ss.select(sel)
+    ccb=-9999
+    for b in range(int(b_iso_start),int(b_iso_end+b_iso_step),int(b_iso_step)):
+      scale = flex.exp(-b * ss_)
+      fc_ = fc_.array(data = fc_.data()*scale)
+      fft_map = miller.fft_map(
+        crystal_gridding     = cg,
+        fourier_coefficients = fc_.array(data = fc_.data()*scale))
+      map_calc = fft_map.real_map_unpadded()
+      cc = flex.linear_correlation(
+        x=map_.as_1d(),
+        y=map_calc.select(sel_around_atoms).as_1d()).coefficient()
+      if(cc>ccb):
+        ccb = cc
+        d_min_best_b = d_min
+    if(ccb>cc_max):
+      cc_max = ccb
+      d_min_best = d_min_best_b
+    d_min+=d_min_step
+  return d_min_best
+
+def resolution_from_map_and_model(map_data, xray_structure, d_min_min=None):
   """
   Given map and model estimate resolution by maximizing map CC(map, model-map).
   """
-  from cctbx import miller
-  xrs = xray_structure
-  sel = grid_indices_around_sites(
-    unit_cell  = xrs.unit_cell(),
+  unit_cell = xray_structure.unit_cell()
+  sel_around_atoms = grid_indices_around_sites(
+    unit_cell  = unit_cell,
     fft_n_real = map_data.focus(),
     fft_m_real = map_data.all(),
-    sites_cart = xrs.sites_cart(),
-    site_radii = flex.double(xrs.scatterers().size(),5))
-  map_data_selected_as_1d = map_data.select(sel).as_1d()
-  cg = crystal_gridding(
-    unit_cell             = xrs.unit_cell(),
-    space_group_info      = xrs.space_group_info(),
-    pre_determined_n_real = map_data.accessor().all())
-  def optimize(d_min_min, d_min_max, step):
-    d_min = d_min_min
-    d_min_result = None
-    cc_best=-1.e6
-    while d_min < d_min_max+1.e-6:
-      f_calc = xrs.structure_factors(d_min=d_min).f_calc()
-      fft_map = miller.fft_map(
-        crystal_gridding     = cg,
-        fourier_coefficients = f_calc)
-      map_data_ = fft_map.real_map_unpadded()
-      cc = flex.linear_correlation(
-        x=map_data_selected_as_1d,
-        y=map_data_.select(sel).as_1d()).coefficient()
-      if(cc > cc_best):
-        cc_best = cc
-        d_min_result = d_min
-      d_min += step
-    return d_min_result
-  # coarse estimate
-  d_min_max = d_min_from_map(
-    map_data=map_data, unit_cell=xrs.unit_cell(), resolution_factor=0.2)
-  d_min_min = d_min_from_map(
-    map_data=map_data, unit_cell=xrs.unit_cell(), resolution_factor=0.5)
-  step = (d_min_max-d_min_min)/5
-  d_min_result = optimize(d_min_min=d_min_min, d_min_max=d_min_max, step=step)
-  # fine estimate
-  d_min_min=d_min_result-step
-  d_min_max=d_min_result+step
-  step = (d_min_max-d_min_min)/10
-  d_min_result = optimize(d_min_min=d_min_min, d_min_max=d_min_max, step=step)
-  return d_min_result
+    sites_cart = xray_structure.sites_cart(),
+    site_radii = flex.double(xray_structure.scatterers().size(), 5.0))
+  d_min_end = round(d_min_from_map(
+    map_data=map_data, unit_cell=unit_cell, resolution_factor=0.2),1)
+  d_min_start = round(d_min_from_map(
+    map_data=map_data, unit_cell=unit_cell, resolution_factor=0.5),1)
+  if(d_min_min is not None and d_min_start<d_min_min):
+    d_min_start=d_min_min
+  step = (d_min_end-d_min_start)/5.
+  result = _resolution_from_map_and_model_helper(
+    map              = map_data,
+    xray_structure   = xray_structure,
+    sel_around_atoms = sel_around_atoms,
+    d_min_start      = d_min_start,
+    d_min_end        = d_min_end,
+    d_min_step       = step)
+  d_min_start = round(result-step, 1)
+  d_min_end   = round(result+step, 1)
+  return _resolution_from_map_and_model_helper(
+    map              = map_data,
+    xray_structure   = xray_structure,
+    sel_around_atoms = sel_around_atoms,
+    d_min_start      = d_min_start,
+    d_min_end        = d_min_end,
+    d_min_step       = 0.1)
