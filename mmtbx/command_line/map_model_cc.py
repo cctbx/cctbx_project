@@ -81,7 +81,7 @@ def run(args, log=sys.stdout):
   broadcast(m="Map resolution:", log=log)
   if(d_min is None):
     d_min = maptbx.resolution_from_map_and_model(
-      map_data=map_data, xray_structure=xrs)
+      map_data=map_data, xray_structure=xrs).d_min
   print >> log, "  d_min: %6.4f"%d_min
   # Compute FSC(map, model)
   broadcast(m="Model-map FSC:", log=log)
