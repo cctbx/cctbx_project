@@ -1159,6 +1159,50 @@ def map_to_map_coefficients(m, cs, d_min):
     ).array(data=box_structure_factors.data()/n)
   return map_coeffs
 
+def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
+  """
+  Estimate atom radius as half-width of the central peak of Fourier image.
+  """
+  from cctbx import xray, miller
+  dim = 40.
+  cs = crystal.symmetry((dim, dim, dim, 90, 90, 90), "P 1")
+  sp = crystal.special_position_settings(cs)
+  sc = xray.scatterer(
+    scattering_type = element,
+    site            = (0, 0, 0),
+    u               = adptbx.b_as_u(b_iso))
+  scatterers = flex.xray_scatterer([sc])
+  xrs = xray.structure(sp, scatterers)
+  xrs.scattering_type_registry(table = scattering_table)
+  cg = crystal_gridding(
+    unit_cell         = xrs.unit_cell(),
+    space_group_info  = xrs.space_group_info(),
+    step              = 0.1)
+  fc = xrs.structure_factors(d_min = d_min, algorithm = "direct").f_calc()
+  fft_map = miller.fft_map(
+    crystal_gridding     = cg,
+    fourier_coefficients = fc,
+    f_000                = xrs.f_000())
+  fft_map.apply_volume_scaling()
+  map_data = fft_map.real_map_unpadded()
+  def search_curve(map_data, dim):
+    x = 0.
+    step = 0.01
+    mv_max=None
+    mv_prev=None
+    while x<=dim:
+      mv = map_data.eight_point_interpolation([x/dim,0,0])
+      if(mv_prev is not None and mv>mv_prev): return x-step
+      if(mv_max is None): mv_max=mv
+      if(mv_max/mv>100.): return x-step
+      if(mv<0.):          return x-step
+      x+=step
+      mv_prev = mv
+    return None
+  radius = search_curve(map_data=map_data, dim=dim)
+  assert radius is not None
+  return radius
+
 def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
                d_min_end=10., b_iso_start=0, b_iso_end=200, b_iso_step=10,
                radius=5.0, sel_around_atoms=None, d_min_step=0.1):
