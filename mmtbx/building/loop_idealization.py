@@ -356,7 +356,8 @@ class loop_idealization():
               ss_annotation=ss_annotation,
               direction_forward=direction_forward,
               log=self.log)
-      # print "moving_ref_atoms_iseqs", moving_ref_atoms_iseqs
+      # print "  moving_ref_atoms_iseqs", moving_ref_atoms_iseqs
+      print "  moving_h resseqs:", [x.resseq for x in moving_h.residue_groups()]
       moving_h_set = None
       if change_all:
         moving_h_set = starting_conformations.get_all_starting_conformations(
@@ -647,7 +648,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
   # print >> log, "  out_res_num, n_following, n_previous", out_res_num, n_following, n_previous
   start_res_num, end_res_num = get_res_nums_around(pdb_hierarchy, out_res_num,
       n_following, n_previous, include_intermediate=False, avoid_ss_annot=ss_annotation)
-  # print >> log, "  start_res_num, end_res_num", start_res_num, end_res_num
+  print >> log, "  start_res_num, end_res_num", start_res_num, end_res_num
   xrs = original_pdb_h.extract_xray_structure()
   truncate_to_poly_gly(pdb_hierarchy, start_res_num, end_res_num)
   cache = pdb_hierarchy.atom_selection_cache()

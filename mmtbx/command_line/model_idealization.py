@@ -230,6 +230,9 @@ class model_idealization():
         for c in ncs_gr.copies:
           new_c_sites = c.r.elems * new_sites + c.t
           result_h.select(c.iselection).atoms().set_xyz(new_c_sites)
+    elif self.working_pdb_h is not None:
+      result_h = self.working_pdb_h.deep_copy()
+      result_h.reset_atom_i_seqs()
     return result_h
 
 
@@ -536,6 +539,7 @@ class model_idealization():
           fname_suffix="rama_ideal",
           grm=self.working_grm)
     for_stat_h = self.get_intermediate_result_hierarchy()
+    # for_stat_h.write_pdb_file(file_name="compare_with_rama_ideal.pdb")
     self.after_loop_idealization = geometry_no_grm(
         pdb_hierarchy=for_stat_h,
         molprobity_scores=True)
