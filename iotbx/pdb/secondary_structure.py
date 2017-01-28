@@ -655,6 +655,7 @@ class annotation(structure_base):
         del self.sheets[i]
 
   def concatenate_consecutive_helices(self, hierarchy=None, asc=None):
+    # also should divide them
     from mmtbx.command_line.angle import calculate_axes_and_angle
     if asc is None and hierarchy is not None:
       asc = hierarchy.atom_selection_cache()
@@ -669,9 +670,11 @@ class annotation(structure_base):
         # checking angle
         angle = 0
         if hierarchy is not None:
+          h1_hierarchy = hierarchy.select(asc.selection(self.helices[i-1].as_atom_selections()[0]))
+          h2_hierarchy = hierarchy.select(asc.selection(self.helices[i].as_atom_selections()[0]))
           a1, a2, angle = calculate_axes_and_angle(
-              hierarchy.select(asc.selection(self.helices[i-1].as_atom_selections()[0])).extract_xray_structure(),
-              hierarchy.select(asc.selection(self.helices[i].as_atom_selections()[0])).extract_xray_structure())
+              h1_hierarchy.extract_xray_structure(),
+              h2_hierarchy.extract_xray_structure())
         # print "angle between '%s', '%s': %.2f" % (
         #     self.helices[i-1].as_pdb_str()[7:40],
         #     self.helices[i].as_pdb_str()[7:40],
@@ -679,14 +682,32 @@ class annotation(structure_base):
         if (new_helices[-1].end_chain_id == self.helices[i].start_chain_id and
             abs(new_helices[-1].get_end_resseq_as_int() - self.helices[i].get_start_resseq_as_int()) < 2 and
             new_helices[-1].end_resname != "PRO" and
-            self.helices[i].start_resname != "PRO" and
-            angle < 15):
-          new_helices[-1].end_resname = self.helices[i].start_resname
-          new_helices[-1].set_end_resseq(self.helices[i].get_end_resseq_as_int())
-          new_helices[-1].end_icode = self.helices[i].start_icode
-          new_helices[-1].length = (new_helices[-1].get_end_resseq_as_int() -
-            new_helices[-1].get_start_resseq_as_int() + 1)
-          concatenations_made = True
+            self.helices[i].start_resname != "PRO"):
+            # helices are next to each other, so we will either
+          if angle < 15:
+            # concatenate
+            new_helices[-1].end_resname = self.helices[i].start_resname
+            new_helices[-1].set_end_resseq(self.helices[i].get_end_resseq_as_int())
+            new_helices[-1].end_icode = self.helices[i].start_icode
+            new_helices[-1].length = (new_helices[-1].get_end_resseq_as_int() -
+              new_helices[-1].get_start_resseq_as_int() + 1)
+            concatenations_made = True
+          else:
+            # or separate them by moving borders by 1 residue
+            h1_rg = [x for x in h1_hierarchy.residue_groups()][-2]
+            h2_rg = [x for x in h2_hierarchy.residue_groups()][1]
+            new_helices[-1].end_resname = h1_rg.atom_groups()[0].resname
+            new_helices[-1].set_end_resseq(h1_rg.resseq)
+            new_helices[-1].end_icode = h1_rg.icode
+            new_helices[-1].length -= 1
+
+            self.helices[i].start_resname = h2_rg.atom_groups()[0].resname
+            self.helices[i].set_start_resseq(h2_rg.resseq)
+            self.helices[i].start_icode = h2_rg.icode
+            self.helices[i].length -= 1
+
+            new_helices.append(self.helices[i])
+
         else:
           new_helices.append(self.helices[i])
       self.helices = new_helices
