@@ -1206,17 +1206,19 @@ def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
     d_min+=d_min_step
   return d_min_best
 
-def resolution_from_map_and_model(map_data, xray_structure, d_min_min=None):
+def resolution_from_map_and_model(map_data, xray_structure, d_min_min=None,
+      sel_around_atoms=None):
   """
   Given map and model estimate resolution by maximizing map CC(map, model-map).
   """
   unit_cell = xray_structure.unit_cell()
-  sel_around_atoms = grid_indices_around_sites(
-    unit_cell  = unit_cell,
-    fft_n_real = map_data.focus(),
-    fft_m_real = map_data.all(),
-    sites_cart = xray_structure.sites_cart(),
-    site_radii = flex.double(xray_structure.scatterers().size(), 5.0))
+  if(sel_around_atoms is None):
+    sel_around_atoms = grid_indices_around_sites(
+      unit_cell  = unit_cell,
+      fft_n_real = map_data.focus(),
+      fft_m_real = map_data.all(),
+      sites_cart = xray_structure.sites_cart(),
+      site_radii = flex.double(xray_structure.scatterers().size(), 5.0))
   d_min_end = round(d_min_from_map(
     map_data=map_data, unit_cell=unit_cell, resolution_factor=0.2),1)
   d_min_start = round(d_min_from_map(
