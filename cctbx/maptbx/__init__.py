@@ -1254,13 +1254,14 @@ def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
       d_min_best = d_min_best_b
       b_best=b_best_
     d_min+=d_min_step
-  return d_min_best, b_best
+  return d_min_best, b_best, cc_max
 
 class resolution_from_map_and_model(object):
   def __init__(self, map_data, xray_structure, d_min_min=None,
         sel_around_atoms=None, atom_radius=5.0):
     """
     Given map and model estimate resolution by maximizing map CC(map, model-map).
+    As a by-product, also provides CC and optimal overall B-factor.
     """
     unit_cell = xray_structure.unit_cell()
     if(sel_around_atoms is None):
@@ -1277,7 +1278,7 @@ class resolution_from_map_and_model(object):
     if(d_min_min is not None and d_min_start<d_min_min):
       d_min_start=d_min_min
     step = (d_min_end-d_min_start)/5.
-    result, dummy = _resolution_from_map_and_model_helper(
+    result, dummy, dummy = _resolution_from_map_and_model_helper(
       map              = map_data,
       xray_structure   = xray_structure,
       sel_around_atoms = sel_around_atoms,
@@ -1286,7 +1287,7 @@ class resolution_from_map_and_model(object):
       d_min_step       = step)
     d_min_start = round(result-step, 1)
     d_min_end   = round(result+step, 1)
-    self.d_min, self.b_iso = _resolution_from_map_and_model_helper(
+    self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper(
       map              = map_data,
       xray_structure   = xray_structure,
       sel_around_atoms = sel_around_atoms,

@@ -470,7 +470,7 @@ def run(pdb_str, d_min, b, randomize):
   xrs = ph.extract_xray_structure(crystal_symmetry=cs)
   o = maptbx.resolution_from_map_and_model(map_data=map_obs,
     xray_structure=xrs, d_min_min=1.5)
-  return o.d_min, o.b_iso
+  return o.d_min, o.b_iso, o.cc
 
 if (__name__ == "__main__"):
   for pdb_str in [pdb_str_5bb, pdb_str_5]:
@@ -478,9 +478,10 @@ if (__name__ == "__main__"):
       for b in [10,50,100,200]:
         if((d_min==2. or d_min==3.) and b>50.): continue
         for randomize in [True, False]:
-          result, b_result = run(pdb_str=pdb_str, d_min=d_min, b=b,
+          result, b_result, cc = run(pdb_str=pdb_str, d_min=d_min, b=b,
             randomize=randomize)
-          print b, d_min, "<>", b_result, result
+          print b, d_min, "<>", b_result, result, "<>", cc
           assert approx_equal(d_min, result)
+          assert cc>0.9
           if(not randomize):
             assert approx_equal(b, b_result)
