@@ -1202,7 +1202,7 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
     return None
   radius = search_curve(map_data=map_data, dim=dim)
   assert radius is not None
-  return min(max(2.,radius),10.)
+  return min(max(2.,radius),6.)
 
 def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
                d_min_end=10., b_iso_start=0, b_iso_end=200, b_iso_step=10,
