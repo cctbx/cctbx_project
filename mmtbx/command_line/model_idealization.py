@@ -608,6 +608,10 @@ class model_idealization():
     # else:
     #   # still need to run gm if rotamers were fixed
     #   print >> self.log, "Not using ncs"
+    if self.using_ncs:
+      print >> self.log, "Using ncs"
+    else:
+      print >> self.log, "Not using ncs"
 
     # need to update SS manager for the whole model here.
     if self.params.use_ss_restraints:
