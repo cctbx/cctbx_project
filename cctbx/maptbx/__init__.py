@@ -1202,7 +1202,7 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
     return None
   radius = search_curve(map_data=map_data, dim=dim)
   assert radius is not None
-  return radius
+  return min(max(2.,radius),10.)
 
 def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
                d_min_end=10., b_iso_start=0, b_iso_end=200, b_iso_step=10,
@@ -1278,10 +1278,17 @@ class resolution_from_map_and_model(object):
     if(d_min_min is not None and d_min_start<d_min_min):
       d_min_start=d_min_min
     step = (d_min_end-d_min_start)/5.
+    b_iso_end=200
+    b_iso_step=10
+    if(d_min_end>10):
+      b_iso_end=500
+      b_iso_step=25
     result, dummy, dummy = _resolution_from_map_and_model_helper(
       map              = map_data,
       xray_structure   = xray_structure,
       sel_around_atoms = sel_around_atoms,
+      b_iso_end        = b_iso_end,
+      b_iso_step       = b_iso_step,
       d_min_start      = d_min_start,
       d_min_end        = d_min_end,
       d_min_step       = step)
@@ -1291,6 +1298,8 @@ class resolution_from_map_and_model(object):
       map              = map_data,
       xray_structure   = xray_structure,
       sel_around_atoms = sel_around_atoms,
+      b_iso_end        = b_iso_end,
+      b_iso_step       = b_iso_step,
       d_min_start      = d_min_start,
       d_min_end        = d_min_end,
       d_min_step       = 0.1)
