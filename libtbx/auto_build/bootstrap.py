@@ -1727,7 +1727,6 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark',
                           name="test hipip",
                          )
-     commented out until bugs are fixed
     self.add_test_command('phenix_regression.wizards.test_all_parallel',
       args = ['test_resolve_ncs_memory'],
       name="test wizards",
