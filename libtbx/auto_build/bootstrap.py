@@ -1734,7 +1734,7 @@ class PhenixBuilder(CCIBuilder):
                          )
     run_dials_tests=True
     if self.isPlatformWindows():
-	    if 'dials' in windows_remove_list:
+      if 'dials' in windows_remove_list:
         run_dials_tests=False
     if run_dials_tests:
       self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
