@@ -64,6 +64,9 @@ phil_scope = parse("""
             refinement.  n_refl chooses the set with the largest numbers of reflections \
             listed in the pickle files, thus giving maximal coverage of the detector tiles \
             with the fewest refineable parameters.
+  n_refl_panel_list = None
+    .type = ints
+    .help = If n_subset_method is n_refl, specify which panels to search on.
   panel_filter = None
     .type = ints
     .help = Specify a list of panels to include during refinement. Default (None) is to use \
@@ -215,9 +218,19 @@ def generate_exp_list(params, all_exp, all_ref):
     elif params.n_subset_method=="n_refl":
       from dials.array_family import flex
       import cPickle as pickle
-      len_all_ref = flex.size_t(
-        [ len(pickle.load(open(A,"rb"))) for A in all_ref ]
-      )
+      if params.n_refl_panel_list is None:
+        len_all_ref = flex.size_t(
+          [ len(pickle.load(open(A,"rb"))) for A in all_ref ]
+        )
+      else:
+        len_all_ref = flex.size_t()
+        for refl_file in all_ref:
+          refls = pickle.load(open(refl_file,"rb"))
+          sel = flex.bool(len(refls), False)
+          for p in params.n_refl_panel_list:
+            sel |= refls['panel'] == p
+          len_all_ref.append(len(refls.select(sel)))
+
       sort_order = flex.sort_permutation(len_all_ref,reverse=True)
       for idx in sort_order[:params.n_subset]:
         subset_all_exp.append(all_exp[idx])
