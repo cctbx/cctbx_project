@@ -19,6 +19,7 @@ def exercise_01(prefix="tst_mi_map_test_01"):
       "number_of_refinement_cycles=1",
       "loop_idealization.number_of_ccd_trials=1",
       "n_macro=1",
+      "debug=True",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
@@ -27,6 +28,7 @@ def exercise_01(prefix="tst_mi_map_test_01"):
   for l in ["Secondary structure substitution step will be skipped\n",
       "  Minimizing...\n",
       "Using map as reference\n",
+      "Ramachandran outliers:      0.00      0.00      0.00      0.00      0.00\n",
       "All done.\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()
