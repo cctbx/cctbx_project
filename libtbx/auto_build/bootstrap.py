@@ -1727,18 +1727,14 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark',
                           name="test hipip",
                          )
-    # commented out until bugs are fixed
-    #self.add_test_command('phenix_regression.wizards.test_all_parallel',
-    #                      name="test wizards",
-    #                     )
-    self.add_test_command(
-      'phenix_regression.wizards.test_command_line_resolve_memory',
+     commented out until bugs are fixed
+    self.add_test_command('phenix_regression.wizards.test_all_parallel',
       args = ['test_resolve_ncs_memory'],
       name="test wizards",
-    )
+                         )
     run_dials_tests=True
     if self.isPlatformWindows():
-      if 'dials' in windows_remove_list:
+	    if 'dials' in windows_remove_list:
         run_dials_tests=False
     if run_dials_tests:
       self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
