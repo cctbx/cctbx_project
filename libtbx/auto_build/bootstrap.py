@@ -529,6 +529,7 @@ class cleanup_dirs_class(object):
       else:
         return
     print "===== Removing directories in %s" % (os.getcwd())
+
     for d in self.dirs:
       if os.path.exists(d):
         print "      removing %s" % (os.path.join(os.getcwd(),d))
@@ -1054,7 +1055,18 @@ class Builder(object):
 
   def cleanup(self, dirs=None):
     dirs = dirs or []
-    self.add_step(cleanup_dirs_class(dirs, "modules"))
+    if self.isPlatformWindows():
+      # deleting folders by copying an empty folder with robocopy is more reliable on Windows
+      cmd=['cmd', '/c', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
+       [')', 'DO', '(ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul', '&', 'rmdir', '%d))', '&', 'rmdir', 'empty']
+      self.add_step(self.shell(
+        name='Removing directories ' + ', '.join(dirs),
+        command =cmd,
+        workdir=['.'],
+        description="deleting " + ", ".join(dirs),
+      ))
+    else:
+      self.add_step(cleanup_dirs_class(dirs, "modules"))
 
   def add_rm_bootstrap_on_slave(self):
     # if file is not found error flag is set. Mask it with cmd shell
