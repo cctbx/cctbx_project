@@ -83,6 +83,7 @@ default_params = sec_str_master_phil.fetch().extract()
 class manager (object) :
   def __init__ (self,
                 pdb_hierarchy,
+                atom_selection_cache=None,
                 geometry_restraints_manager=None,
                 sec_str_from_pdb_file=None,
                 params=None,
@@ -113,7 +114,9 @@ class manager (object) :
       i_seqs = atoms.extract_i_seq()
     self.n_atoms = atoms.size()
     self._was_initialized = was_initialized
-    self.selection_cache = pdb_hierarchy.atom_selection_cache()
+    self.selection_cache = atom_selection_cache
+    if self.selection_cache is None:
+      self.selection_cache = pdb_hierarchy.atom_selection_cache()
     self.pdb_atoms = atoms
     self.initialize()
 
@@ -130,9 +133,8 @@ class manager (object) :
   def find_automatically(self):
     # find_automatically = self.params.secondary_structure.find_automatically
     protein_found = False
-    atom_labels = list(self.pdb_hierarchy.atoms_with_labels())
     segids = {}
-    for a in atom_labels:
+    for a in self.pdb_hierarchy.atoms():
       segids[a.segid] = ""
     use_segid = len(segids) > 1
     # XXX: check for presence of protein first?
@@ -202,31 +204,32 @@ class manager (object) :
     t1 = time.time()
     # print >> log, "    Time for finding protein SS: %f" % (t1-t0)
     # Step 2: nucleic acids
-    na_found = False
-    na_ss_definition_present = False
-    if (len(self.params.secondary_structure.nucleic_acid.base_pair) > 1 or
-        len(self.params.secondary_structure.nucleic_acid.stacking_pair) > 1):
-      na_ss_definition_present = True
-    elif (len(self.params.secondary_structure.nucleic_acid.base_pair) > 0 and
-        self.params.secondary_structure.nucleic_acid.base_pair[0].base1 is not None):
-      na_ss_definition_present = True
-    elif (len(self.params.secondary_structure.nucleic_acid.stacking_pair) > 0 and
-        self.params.secondary_structure.nucleic_acid.stacking_pair[0].base1 is not None):
-      na_ss_definition_present = True
+    if self.params.secondary_structure.nucleic_acid.enabled:
+      na_found = False
+      na_ss_definition_present = False
+      if (len(self.params.secondary_structure.nucleic_acid.base_pair) > 1 or
+          len(self.params.secondary_structure.nucleic_acid.stacking_pair) > 1):
+        na_ss_definition_present = True
+      elif (len(self.params.secondary_structure.nucleic_acid.base_pair) > 0 and
+          self.params.secondary_structure.nucleic_acid.base_pair[0].base1 is not None):
+        na_ss_definition_present = True
+      elif (len(self.params.secondary_structure.nucleic_acid.stacking_pair) > 0 and
+          self.params.secondary_structure.nucleic_acid.stacking_pair[0].base1 is not None):
+        na_ss_definition_present = True
 
-    if na_ss_definition_present:
-      na_found = True
+      if na_ss_definition_present:
+        na_found = True
 
-    if not na_found:
-      pairs = self.find_base_pairs(log=self.log, use_segid=use_segid, segids=segids)
-      if len(pairs) > 1:
-        bp_phil = iotbx.phil.parse(pairs)
-        bp_params = sec_str_master_phil.fetch(source=bp_phil).extract()
-        self.params.secondary_structure.nucleic_acid.base_pair = \
-          bp_params.secondary_structure.nucleic_acid.base_pair
-        self.params.secondary_structure.nucleic_acid.stacking_pair = \
-          bp_params.secondary_structure.nucleic_acid.stacking_pair
-    t2 = time.time()
+      if not na_found:
+        pairs = self.find_base_pairs(log=self.log, use_segid=use_segid, segids=segids)
+        if len(pairs) > 1:
+          bp_phil = iotbx.phil.parse(pairs)
+          bp_params = sec_str_master_phil.fetch(source=bp_phil).extract()
+          self.params.secondary_structure.nucleic_acid.base_pair = \
+            bp_params.secondary_structure.nucleic_acid.base_pair
+          self.params.secondary_structure.nucleic_acid.stacking_pair = \
+            bp_params.secondary_structure.nucleic_acid.stacking_pair
+      t2 = time.time()
     # print >> log, "    Time for finding NA SS: %f" % (t2-t1)
 
   def records_for_pdb_file(self):
@@ -298,7 +301,9 @@ class manager (object) :
         if self.grm is not None:
           base_pairs = nucleic_acids.get_phil_base_pairs(
             pdb_hierarchy=self.pdb_hierarchy,
-            nonbonded_proxies=self.grm.pair_proxies().nonbonded_proxies,
+            nonbonded_proxies=self.grm.pair_proxies(
+                sites_cart=self.pdb_hierarchy.atoms().extract_xyz()).\
+                    nonbonded_proxies,
             prefix="secondary_structure.nucleic_acid",
             params=self.params.secondary_structure.nucleic_acid,
             log=log,
@@ -358,7 +363,8 @@ class manager (object) :
     self.actual_sec_str = iotbx.pdb.secondary_structure.annotation.from_phil(
         phil_helices=new_ss_params.secondary_structure.protein.helix,
         phil_sheets=new_ss_params.secondary_structure.protein.sheet,
-        pdb_hierarchy=self.pdb_hierarchy)
+        pdb_hierarchy=self.pdb_hierarchy,
+        atom_selection_cache=self.selection_cache)
 
   def create_protein_hbond_proxies (self,
                             annotation=None,
@@ -371,7 +377,6 @@ class manager (object) :
     from scitbx.array_family import flex
     atoms = self.pdb_hierarchy.atoms()
     hbond_counts = flex.int(atoms.size(), 0)
-    selection_cache = self.pdb_hierarchy.atom_selection_cache()
 
     distance_ideal = self.params.secondary_structure.protein.distance_ideal_n_o
     distance_cut = self.params.secondary_structure.protein.distance_cut_n_o
@@ -385,7 +390,7 @@ class manager (object) :
           proxies = proteins.create_helix_hydrogen_bond_proxies(
               params=helix,
               pdb_hierarchy=self.pdb_hierarchy,
-              selection_cache=selection_cache,
+              selection_cache=self.selection_cache,
               weight=1.0,
               hbond_counts=hbond_counts,
               distance_ideal=distance_ideal,

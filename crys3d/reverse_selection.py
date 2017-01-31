@@ -173,6 +173,11 @@ class mouse_selection_manager (object) :
       self.selection_string = "none"
       atom_selection = self.selection_cache.selection("none")
     else :
+      # reduce selection string to most grouped format
+      if (hasattr(self, 'pdb_hierarchy')):
+        from iotbx.pdb.atom_selection import selection_string_from_selection
+        selection_string = selection_string_from_selection(
+          self.pdb_hierarchy, atom_selection)
       self.selection_string = selection_string
     self.atom_selection = atom_selection
     self.selection_i_seqs = atom_selection.iselection()

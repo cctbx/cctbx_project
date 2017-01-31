@@ -1,6 +1,6 @@
 from __future__ import division
 import sys
-from libtbx.command_line.file_clutter import gather
+from libtbx.file_clutter import gather
 
 def run(args):
   flag_x = False
@@ -12,6 +12,7 @@ def run(args):
   only_whitespace = False
   only_dos = False
   only_future = False
+  flag_absolute_import = False
   #
   paths = []
   for arg in args:
@@ -21,7 +22,7 @@ def run(args):
       flag_ni = True
     elif (arg == "-ndos"):
       flag_dos_format = False
-    elif (arg == "--verbose") :
+    elif (arg == "--verbose") or (arg == '-v'):
       verbose = True
     elif (arg == "--indentation") :
       flag_indentation = True
@@ -31,6 +32,8 @@ def run(args):
       only_dos = True
     elif (arg == "--only_future") :
       only_future = True
+    elif (arg == "--absolute_import"):
+      flag_absolute_import = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]
@@ -40,9 +43,11 @@ def run(args):
   message_lines = []
   n_missing_from_future_import_division = 0
   n_too_many_from_future_import_division = 0
+  n_missing_from_future_import_absolute_import = 0
+  n_too_many_from_future_import_absolute_import = 0
   n_bad_indentation = 0
   for info in gather(paths=paths, find_unused_imports=not flag_ni,
-      find_bad_indentation=flag_indentation):
+      find_bad_indentation=flag_indentation, flag_absolute_import=flag_absolute_import):
     if (info.is_cluttered(flag_x=flag_x)):
       n_is_cluttered += 1
     if (info.n_bare_excepts > 0):
@@ -53,6 +58,10 @@ def run(args):
       n_missing_from_future_import_division += 1
     elif info.n_from_future_import_division > 1:
       n_too_many_from_future_import_division += 1
+    if info.n_from_future_import_absolute_import == 0:
+      n_missing_from_future_import_absolute_import += 1
+    elif info.n_from_future_import_absolute_import > 1:
+      n_too_many_from_future_import_absolute_import += 1
     if (info.bad_indentation is not None) and (flag_indentation) :
       n_bad_indentation += 1
     info.show(
@@ -76,7 +85,7 @@ def run(args):
     message_lines = filter(_is_dos, message_lines)
   elif only_future:
     def _is_future(s):
-      if s.find("from __future__ import division")>-1: return True
+      if s.find("from __future__")>-1: return True
       return False
     message_lines = filter(_is_future, message_lines)
   else:

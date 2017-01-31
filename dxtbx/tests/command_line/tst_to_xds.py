@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 
 import glob
 import os
@@ -12,6 +12,9 @@ from dxtbx.serialize import dump
 from dxtbx.imageset import ImageSetFactory
 
 def exercise_to_xds():
+  if not libtbx.env.has_module("dials"):
+    print "Skipping test: dials not present"
+    return
   if not libtbx.env.has_module("dials_regression"):
     print "Skipping exercise_to_xds(): dials_regression not present"
     return

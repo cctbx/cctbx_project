@@ -121,7 +121,7 @@ def get_run_stats(timestamps,
           tuple_of_timestamp_boundaries,
           run_numbers)
 
-def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True, xsize=30, ysize=10, high_vis=False):
+def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True, xsize=30, ysize=10, high_vis=False, title = None):
   plot_ratio = max(min(xsize, ysize)/2.5, 3)
   if high_vis:
     spot_ratio = plot_ratio*4
@@ -214,6 +214,8 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
     for item in [ax1, ax2, ax3, ax4]:
       item.tick_params(labelsize=text_ratio)
     start += lengths[idx]
+  if title is not None:
+    plt.title(title)
   if interactive:
     def onclick(event):
       import math
@@ -222,9 +224,8 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
       ts = t[flex.first_index(diffs, flex.min(diffs))]
       print get_paths_from_timestamps([ts], tag="shot")[0]
 
-    cid = f.canvas.mpl_connect('button_press_event', onclick)
+    f.canvas.mpl_connect('button_press_event', onclick)
     plt.show()
-    f.canvas.mpl_disconnect(cid)
   else:
     f.set_size_inches(xsize, ysize)
     f.savefig("runstats_tmp.png", bbox_inches='tight', dpi=100)
@@ -242,7 +243,8 @@ def plot_multirun_stats(runs,
                         compress_runs=True,
                         xsize=30,
                         ysize=10,
-                        high_vis=False):
+                        high_vis=False,
+                        title = None):
   tset = flex.double()
   two_theta_low_set = flex.double()
   two_theta_high_set = flex.double()
@@ -286,7 +288,7 @@ def plot_multirun_stats(runs,
                               ratio_cutoff=ratio_cutoff,
                               n_strong_cutoff=n_strong_cutoff)
   png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, interactive=interactive,
-    xsize=xsize, ysize=ysize, high_vis=high_vis)
+    xsize=xsize, ysize=ysize, high_vis=high_vis, title = title)
   return png
 
 if __name__ == "__main__":

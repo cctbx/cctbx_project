@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 def to_ewald_sphere(list_of_images):
 
   from dxtbx.sweep import SweepFactory

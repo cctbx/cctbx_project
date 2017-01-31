@@ -144,6 +144,7 @@ di::w_Distl::setspotimg(::dxtbx::model::Panel& panel,
 void
 di::w_Distl::set_tiling(const string& vendortype)
 {
+  SCITBX_EXAMINE(vendortype);
   if (vendortype=="Pilatus-6M") {
     finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling_pilatus6M(
       finder.firstx, finder.lastx, finder.firsty, finder.lasty));
@@ -153,6 +154,8 @@ di::w_Distl::set_tiling(const string& vendortype)
   } else if (vendortype=="Pilatus-300K") {
     finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling_pilatus300K(
       finder.firstx, finder.lastx, finder.firsty, finder.lasty));
+  } else if (vendortype.substr(0,5)=="Eiger") {
+    throw std::runtime_error("Eiger not explicitly supported in spotfinder::dxtbx::w_Distl, contact authors");
   } else {
     finder.tiling = Distl::ptr_tiling(new Distl::scanbox_tiling(
       finder.firstx, finder.lastx, finder.firsty, finder.lasty));

@@ -60,7 +60,8 @@ class cif(DictMixin):
 
   def show(self, out=None, indent="  ", indent_row=None,
            data_name_field_width=34,
-           loop_format_strings=None):
+           loop_format_strings=None,
+           align_columns=True):
     if out is None:
       out = sys.stdout
     for name, block in self.items():
@@ -68,7 +69,8 @@ class cif(DictMixin):
       block.show(
         out=out, indent=indent, indent_row=indent_row,
         data_name_field_width=data_name_field_width,
-        loop_format_strings=loop_format_strings)
+        loop_format_strings=loop_format_strings,
+        align_columns=align_columns)
 
   def __str__(self):
     s = StringIO()
@@ -146,7 +148,7 @@ class block_base(DictMixin):
           return loop[key]
       if key in self.loops:
         return self.loops[key]
-    raise KeyError
+    raise KeyError(key)
 
   def __delitem__(self, key):
     key = self.keys_lower.get(key.lower(), key)
@@ -163,7 +165,7 @@ class block_base(DictMixin):
           else:
             del loop[key]
           return
-      raise KeyError
+      raise KeyError(key)
     elif key in self.loops:
       del self.loops[key]
       self._set.discard(key)
@@ -351,7 +353,7 @@ class block_base(DictMixin):
 
 class save(block_base):
 
-  def show(self, out=None, indent="  ", data_name_field_width=34):
+  def show(self, out=None, indent="  ", data_name_field_width=34, align_columns=True):
     if out is None:
       out = sys.stdout
       assert indent.strip() == ""
@@ -362,7 +364,7 @@ class save(block_base):
         print >> out, indent + format_str %k, format_value(v)
       else:
         print >> out, indent,
-        self.loops[k].show(out=out, indent=(indent+indent))
+        self.loops[k].show(out=out, indent=(indent+indent),align_columns=align_columns)
         print >> out
 
 
@@ -408,7 +410,8 @@ class block(block_base):
 
   def show(self, out=None, indent="  ", indent_row=None,
            data_name_field_width=34,
-           loop_format_strings=None):
+           loop_format_strings=None,
+           align_columns=True):
     assert indent.strip() == ""
     if out is None:
       out = sys.stdout
@@ -431,9 +434,11 @@ class block(block_base):
         if loop_format_strings is not None and k in loop_format_strings:
           lp.show(
             out=out, indent=indent, indent_row=indent_row,
-            fmt_str=loop_format_strings[k])
+            fmt_str=loop_format_strings[k],
+            align_columns=align_columns)
         else:
-          lp.show(out=out, indent=indent, indent_row=indent_row)
+          lp.show(out=out, indent=indent, indent_row=indent_row,
+            align_columns=align_columns)
         print >> out
 
   def sort(self, recursive=False, key=None, reverse=False):
@@ -518,10 +523,7 @@ class loop(DictMixin):
     return size
 
   def n_rows(self):
-    size = 0
-    for column in self.values():
-      size = max(size, len(column))
-    return size
+    return self.size()
 
   def n_columns(self):
     return len(self.keys())
@@ -597,6 +599,7 @@ class loop(DictMixin):
     for k in self.keys():
       print >> out, indent + k
     values = self._columns.values()
+    range_len_values = range(len(values))
     if fmt_str is not None:
       # Pretty printing:
       #   The user is responsible for providing a valid format string.
@@ -616,7 +619,7 @@ class loop(DictMixin):
       if fmt_str is None:
         fmt_str = indent_row + ' '.join(["%s"]*len(values))
       for i in range(self.size()):
-        print >> out, fmt_str % tuple([values[j][i] for j in range(len(values))])
+        print >> out, fmt_str % tuple([values[j][i] for j in range_len_values])
     elif align_columns:
       fmt_str = []
       for i, (k, v) in enumerate(self.iteritems()):
@@ -637,10 +640,10 @@ class loop(DictMixin):
       for i in range(self.size()):
         print >> out, (fmt_str %
                        tuple([values[j][i]
-                              for j in range(len(values))])).rstrip()
+                              for j in range_len_values])).rstrip()
     else:
       for i in range(self.size()):
-        values_to_print = [format_value(values[j][i]) for j in range(len(values))]
+        values_to_print = [format_value(values[j][i]) for j in range_len_values]
         print >> out, ' '.join([indent] + values_to_print)
 
   def __str__(self):
@@ -649,9 +652,31 @@ class loop(DictMixin):
     return s.getvalue()
 
   def iterrows(self):
+    """ Warning! Still super-slow! """
     keys = self.keys()
+    s_values = self.values()
+    range_len_self = range(len(self))
+    # range is 1% faster than xrange in this particular place.
+    # tuple (s_values...) is slightly faster than list
     for j in range(self.size()):
-      yield OrderedDict(zip(keys, [self.values()[i][j] for i in range(len(self))]))
+      yield OrderedDict(zip(keys, (s_values[i][j] for i in range_len_self)))
+
+  def find_row(self, kv_dict):
+    self_keys = self.keys()
+    for k in kv_dict.keys():
+      assert k in self_keys
+    result = []
+    s_values = self.values()
+    range_len_self = range(len(self))
+    for i in range(self.size()):
+      goodrow = True
+      for k, v in kv_dict.iteritems():
+        if self[k][i] != v:
+          goodrow = False
+          break
+      if goodrow:
+        result.append(OrderedDict(zip(self_keys, [s_values[j][i] for j in range_len_self])))
+    return result
 
   def sort(self, key=None, reverse=False):
     self._columns = OrderedDict(

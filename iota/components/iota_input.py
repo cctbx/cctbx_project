@@ -212,6 +212,15 @@ advanced
   experimental = False
     .type = bool
     .help = Set to true to run the experimental section of codes
+  monitor_mode = False
+    .type = bool
+    .help = Set to true to keep watch for incoming images (GUI only)
+  monitor_mode_timeout = False
+    .type = bool
+    .help = Set to true to auto-terminate continuous mode (GUI only)
+  monitor_mode_timeout_length = 0
+    .type = int
+    .help = Timeout length in seconds (GUI only)
   random_sample
     .help = Use a randomized subset of images (or -r <number> option)
   {

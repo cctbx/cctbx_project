@@ -5,6 +5,7 @@ from libtbx.str_utils import make_sub_header
 from libtbx.utils import null_out
 from libtbx import Auto
 import sys
+import mmtbx.monomer_library
 
 master_params = """
 selection = None
@@ -134,120 +135,97 @@ class conformation_scorer (object) :
   def apply_final (self) :
     self.new_residue_atoms.set_xyz(self.sites_cart)
 
-def extend_residue (residue,
-    ideal_dict,
-    mon_lib_srv=None,
-    hydrogens=False,
-    match_conformation=True) :
+def extend_residue(
+    residue,
+    target_atom_group,
+    mon_lib_srv):
   """
-  Rebuild a sidechain by substituting an ideal amino acid and (optionally)
-  rotating the sidechain to match the old conformation as closely as possible.
+  Rebuild a sidechain by substituting an ideal amino acid and rotating the
+  sidechain to match the old conformation as closely as possible.
+  Limited functionality:
+    1) Amino-acids only, 2) side chain atoms only.
   """
   from iotbx.pdb import hierarchy
-  res_key = residue.resname.lower()
-  if (hydrogens == True) : res_key += "_h"
-  ideal = ideal_dict[res_key]
+  from mmtbx.building import generate_sidechain_clusters
+  import mmtbx.refinement.real_space
   tmp_residue = residue.detached_copy()
   new_residue = hierarchy.substitute_atom_group(
-    current_group=tmp_residue,
-    new_group=ideal.only_model().only_chain().only_residue_group().only_atom_group(),
-    backbone_only=True,
-    is_amino_acid=True, # XXX this could probably be smarter...
-    exclude_hydrogens=False)
-  assert (new_residue.resname == residue.resname)
-  if (match_conformation) :
-    from mmtbx.building import generate_sidechain_clusters
-    import mmtbx.refinement.real_space
-    assert (mon_lib_srv is not None)
-    clusters = generate_sidechain_clusters(residue=new_residue,
-      mon_lib_srv=mon_lib_srv)
-    scorer = conformation_scorer(
-      old_residue=residue,
-      new_residue=new_residue)
-    mmtbx.refinement.real_space.torsion_search(
-      scorer=scorer,
-      clusters=clusters,
-      sites_cart=new_residue.atoms().extract_xyz(),
-      start=0, stop=360, step=1)
-    scorer.apply_final()
+    current_group = tmp_residue,
+    new_group     = target_atom_group)
+  clusters = generate_sidechain_clusters(
+    residue     = new_residue,
+    mon_lib_srv = mon_lib_srv)
+  #print clusters
+
+  #clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
+  #  residue         = residue,
+  #  mon_lib_srv     = mon_lib_srv,
+  #  backbone_sample = True)
+
+  scorer = conformation_scorer(
+    old_residue = residue,
+    new_residue = new_residue)
+  mmtbx.refinement.real_space.torsion_search(
+    scorer     = scorer,
+    clusters   = clusters,
+    sites_cart = new_residue.atoms().extract_xyz(),
+    start=0, stop=360, step=1)
+  scorer.apply_final()
   return new_residue
 
-def extend_protein_model (pdb_hierarchy,
-    selection=None,
-    hydrogens=Auto,
-    max_atoms_missing=None,
-    log=None,
-    modify_segids=True,
-    prefilter_callback=None,
-    idealized_residue_dict=None,
-    skip_non_protein_chains=True) :
+def extend_protein_model(
+    pdb_hierarchy,
+    mon_lib_srv,
+    add_hydrogens=None,
+    selection=None):
   """
-  Replace all sidechains with missing non-hydrogen atoms in a PDB hierarchy.
+  Rebuild a sidechain by substituting an ideal amino acid and rotating the
+  sidechain to match the old conformation as closely as possible.
+  Limited functionality:
+    1) Amino-acids only, 2) side chain atoms only.
+    3) Not terminii aware
+    4) Not aware of v2.3 vs v3.2 atom names e.g. HB1,HB2 vs HB2,HB3
   """
   from mmtbx.monomer_library import idealized_aa
   from mmtbx.rotamer import rotamer_eval
-  import mmtbx.monomer_library.server
-  from iotbx.pdb import common_residue_names_get_class
   from scitbx.array_family import flex
-  if (prefilter_callback is not None) :
-    assert hasattr(prefilter_callback, "__call__")
-  else :
-    prefilter_callback = lambda r: True
-  ideal_dict = idealized_residue_dict
-  if (ideal_dict is None) :
-    ideal_dict = idealized_aa.residue_dict()
-  if (log is None) : log = null_out()
-  mon_lib_srv = mmtbx.monomer_library.server.server()
+  ideal_dict = idealized_aa.residue_dict()
   pdb_atoms = pdb_hierarchy.atoms()
-  if (selection is None) :
+  if(selection is None):
     selection = flex.bool(pdb_atoms.size(), True)
   partial_sidechains = []
-  for chain in pdb_hierarchy.only_model().chains() :
-    if (not chain.is_protein()) and (skip_non_protein_chains) :
-      print >> log, "    skipping non-protein chain '%s'" % chain.id
-      continue
-    for residue_group in chain.residue_groups() :
-      atom_groups = residue_group.atom_groups()
-      if (len(atom_groups) > 1) :
-        print >> log, "    %s %s has multiple conformations, skipping" % \
-          (chain.id, residue_group.resid())
-        continue
-      residue = atom_groups[0]
-      i_seqs = residue.atoms().extract_i_seq()
-      residue_sel = selection.select(i_seqs)
-      if (not residue_sel.all_eq(True)) :
-        continue
-      if (idealized_residue_dict is None) :
-        res_class = common_residue_names_get_class(residue.resname)
-        if (res_class != "common_amino_acid") :
-          print >> log, "    skipping non-standard residue %s" % residue.resname
-          continue
-      else :
-        key = residue.resname.lower()
-        if (hydrogens == True) :
-          key = key + "_h"
-        if (not key in idealized_residue_dict.keys()) :
-          pass
-      missing_atoms = rotamer_eval.eval_residue_completeness(
-        residue=residue,
-        mon_lib_srv=mon_lib_srv,
-        ignore_hydrogens=True)
-      if (len(missing_atoms) > 0) :
-        print >> log, "    missing %d atoms in %s: %s" % (len(missing_atoms),
-          residue.id_str(), ",".join(missing_atoms))
-        if ((max_atoms_missing is None) or
-            (len(missing_atoms) < max_atoms_missing)) :
-          if (prefilter_callback(residue)) :
-            partial_sidechains.append(residue)
-  for residue in partial_sidechains :
-    new_residue = extend_residue(residue=residue,
-      ideal_dict=ideal_dict,
-      hydrogens=hydrogens,
-      mon_lib_srv=mon_lib_srv,
-      match_conformation=True)
-    if (modify_segids) :
-      for atom in new_residue.atoms() :
-        atom.segid = "XXXX"
+  for chain in pdb_hierarchy.only_model().chains():
+    for residue_group in chain.residue_groups():
+      for residue in residue_group.atom_groups():
+        i_seqs = residue.atoms().extract_i_seq()
+        residue_sel = selection.select(i_seqs)
+        if(not residue.resname.lower() in ideal_dict.keys()): continue
+        missing_atoms = rotamer_eval.eval_residue_completeness(
+          residue          = residue,
+          mon_lib_srv      = mon_lib_srv,
+          ignore_hydrogens = False)
+        if(len(missing_atoms) > 0):
+          all_h = list(set([
+            s.strip()[0] for s in missing_atoms])) in [['H'],['D'],['T']]
+          if(add_hydrogens is False and all_h): continue
+          partial_sidechains.append(residue)
+  for residue in partial_sidechains:
+    residue_elements = [e.strip() for e in residue.atoms().extract_element()]
+    res_key = residue.resname.lower()
+    if(add_hydrogens is None):
+      if("H" in residue_elements): res_key += "_h"
+    if(add_hydrogens is True): res_key += "_h"
+    target_atom_group = ideal_dict[res_key].only_model().only_chain().\
+      only_residue_group().only_atom_group()
+    new_residue = extend_residue(
+      residue           = residue,
+      target_atom_group = target_atom_group,
+      mon_lib_srv       = mon_lib_srv)
+    missing_atoms = rotamer_eval.eval_residue_completeness(
+      residue          = new_residue,
+      mon_lib_srv      = mon_lib_srv,
+      ignore_hydrogens = False)
+    #assert len(missing_atoms) == 0, missing_atoms
     rg = residue.parent()
     rg.remove_atom_group(residue)
     rg.append_atom_group(new_residue.detached_copy())
@@ -408,10 +386,8 @@ class extend_and_refine (object) :
     n_atoms_start = xray_structure.sites_cart().size()
     self.n_extended = extend_protein_model(
       pdb_hierarchy=pdb_hierarchy,
-      hydrogens=params.build_hydrogens,
-      max_atoms_missing=params.max_atoms_missing,
-      prefilter_callback=prefilter_callback,
-      log=out)
+      add_hydrogens=params.build_hydrogens,
+      mon_lib_srv = mmtbx.monomer_library.server.server())
     print >> out, "  %d sidechains extended." % self.n_extended
     if (self.n_extended > 0) and (not params.skip_rsr) :
       pdb_hierarchy, xray_structure = refit_residues(

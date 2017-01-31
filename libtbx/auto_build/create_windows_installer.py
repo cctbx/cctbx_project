@@ -31,7 +31,7 @@ def WriteNSISpreamble(productname="Phenix",
   !define PRODUCT_PUBLISHER \"%s\"
   !define PRODUCT_WEB_SITE \"%s\"
   !define SOURCEDIR \"%s\"
-  !define COPYDIR \"%s\"
+  !define COPYDIR \"\\\\?\\%s\"
   !define BITNESS %s
 
   ; Custom definitions end
@@ -71,7 +71,8 @@ def run (args, out=sys.stdout) :
 
   options, args = parser.parse_args(args)
   print "Creating windows installer in", options.outdir
-  print "Writing log file to", os.path.join(options.outdir, "MakeWindowsInstaller.log")
+  logfname = os.path.join(options.outdir, "MakeWindowsInstaller.log")
+  print "Writing log file to", logfname
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   scriptname = WriteNSISpreamble(options.productname, options.version,
                     options.company, options.website, options.sourcedir,
@@ -89,6 +90,20 @@ def run (args, out=sys.stdout) :
   except Exception, e:
     raise e
   p.wait()
+
+  mstr = "\nLast 25 lines of %s:\n\n" %logfname
+
+  import codecs
+  try: # unicode version of makensis produces unicode log file
+    mfile = codecs.open(logfname, encoding='utf-16', mode="r" )
+  except Exception, e: # not a unicode file if plain version of makensis is used
+    mfile = open(logfname, "r" )
+
+  lines = mfile.readlines()
+  mfile.close()
+  lastlines = lines[(len(lines) - 25): ]
+  print mstr + ''.join(lastlines)
+
   if p.returncode != 0:
     raise RuntimeError, "create_windows_installer() failed with return code %s"%(p.returncode)
 

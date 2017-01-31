@@ -6287,6 +6287,7 @@ ATOM      0 2HB  ASN A   6       8.027   2.692   2.570  1.00 12.13           H
 ATOM      0 1HD2 ASN A   6       4.439   3.617   1.038  1.00 10.07           H
 ATOM      0 2HD2 ASN A   6       5.366   4.650   2.073  1.00 10.07           H
 """).construct_hierarchy(sort_atoms=False)
+  hierarchy1.write_pdb_file(file_name="hierarchy1.pdb")
   hierarchy2 = pdb.input(source_info=None, lines="""\
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
 ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
@@ -6302,29 +6303,30 @@ ATOM     57  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
 ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
 ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
 """).construct_hierarchy(sort_atoms=False)
+  hierarchy2.write_pdb_file(file_name="hierarchy2.pdb")
   chain1 = hierarchy1.models()[0].chains()[0]
   chain2 = hierarchy2.models()[0].chains()[0]
   current_group = chain1.residue_groups()[0].atom_groups()[0]
   new_group = chain2.residue_groups()[0].atom_groups()[0]
   pdb.hierarchy.substitute_atom_group(
     current_group=current_group,
-    new_group=new_group,
-    backbone_only=True,
-    log=None)
+    new_group=new_group)
+  hierarchy1.write_pdb_file(file_name="moved.pdb")
+  print hierarchy1.as_pdb_string()
   assert not show_diff(hierarchy1.as_pdb_string(), """\
 ATOM     39  N   TYR A   6       5.514   2.664   4.856  1.00 11.99           N
 ATOM     40  CA  TYR A   6       6.831   2.310   4.318  1.00 12.30           C
 ATOM     41  C   TYR A   6       7.854   2.761   5.324  1.00 13.40           C
 ATOM     42  O   TYR A   6       8.219   3.943   5.374  1.00 13.92           O
-ATOM     43  CB  TYR A   6       7.065   3.016   2.993  1.00 12.13           C
+ATOM     51  CB  TYR A   6       7.068   3.009   2.992  1.00 12.13           C
 ATOM     52  CG  TYR A   6       6.101   2.535   1.948  1.00 12.77           C
-ATOM     53  CD1 TYR A   6       4.898   3.215   1.734  1.00 14.27           C
-ATOM     54  CD2 TYR A   6       6.343   1.371   1.232  1.00 14.27           C
-ATOM     55  CE1 TYR A   6       3.994   2.773   0.792  1.00 14.27           C
-ATOM     56  CE2 TYR A   6       5.440   0.910   0.265  1.00 14.27           C
-ATOM     57  CZ  TYR A   6       4.262   1.615   0.069  1.00 14.27           C
-ATOM     58  OH  TYR A   6       3.358   1.201  -0.871  1.00 14.27           O
-ATOM     59  OXT TYR A   6       9.015   2.205   5.262  1.00 14.27           O
+ATOM     53  CD1 TYR A   6       4.898   3.215   1.734  1.00 12.11           C
+ATOM     54  CD2 TYR A   6       6.343   1.371   1.232  1.00 12.11           C
+ATOM     55  CE1 TYR A   6       3.994   2.773   0.792  1.00 12.11           C
+ATOM     56  CE2 TYR A   6       5.440   0.910   0.265  1.00 12.11           C
+ATOM     57  CZ  TYR A   6       4.262   1.615   0.069  1.00 12.11           C
+ATOM     58  OH  TYR A   6       3.358   1.201  -0.871  1.00 12.11           O
+ATOM     59  OXT TYR A   6       9.015   2.205   5.262  1.00 12.11           O
 TER
 """)
 

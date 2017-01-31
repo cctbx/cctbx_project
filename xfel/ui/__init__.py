@@ -46,7 +46,7 @@ dump_shots = False
 include scope xfel.command_line.cxi_mpi_submit.mp_phil_scope
 """
 db_phil_str = """
-experiment_tag = ""
+experiment_tag = None
   .type = str
   .help = User defined tag to describe the set of trials being performed. All database tables will \
           be pre-pended with this string

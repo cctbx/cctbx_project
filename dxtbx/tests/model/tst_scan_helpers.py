@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 from dxtbx.model import is_angle_in_range
 from dxtbx.model import get_range_of_mod2pi_angles
 from dxtbx.model import get_mod2pi_angles_in_range

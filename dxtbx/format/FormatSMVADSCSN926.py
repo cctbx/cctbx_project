@@ -10,7 +10,7 @@
 # two-theta offsets in the vertical direction, as well as idiosyncratic ways
 # of recording the beam centre... which work fine for ADXV...
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 

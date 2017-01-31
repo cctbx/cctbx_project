@@ -190,6 +190,7 @@ void diffimage::set_imagedata(const int* const data, const int ncol, const int n
 
 int diffimage::get_underload() const
 {
+
 //printf("spotarealowcut(-s2) %3d, spotbasesize(-s3) %3d bgupperint[2] %4.2f difflowerint %4.2f spotareamaxfactor %4.2f\n",spotarealowcut, spotbasesize, bgupperint[2], difflowerint, spotareamaxfactor);
   scanbox_tiling_pilatus6M* possible_pilatus_6M =
     dynamic_cast<scanbox_tiling_pilatus6M*>(&(*tiling));
@@ -197,8 +198,13 @@ int diffimage::get_underload() const
     dynamic_cast<scanbox_tiling_pilatus2M*>(&(*tiling));
   scanbox_tiling_pilatus300K* possible_pilatus_300K =
     dynamic_cast<scanbox_tiling_pilatus300K*>(&(*tiling));
+  scanbox_tiling_eiger* possible_eiger =
+    dynamic_cast<scanbox_tiling_eiger*>(&(*tiling));
 
-  if (possible_pilatus_6M != NULL || possible_pilatus_2M != NULL || possible_pilatus_300K != NULL){
+  if (possible_eiger != NULL){ //must test this first as scanbox_tiling_eiger is derived from pilatus
+    //std::cout<<"THIS IS AN EIGER"<<std::endl;
+    return -1;
+  } else if (possible_pilatus_6M != NULL || possible_pilatus_2M != NULL || possible_pilatus_300K != NULL){
     //std::cout<<"THIS IS A PILATUS"<<std::endl;
     return -1;
   } else if (dynamic_cast<scanbox_tiling_explicit*>(&(*tiling)) != NULL) {

@@ -1,7 +1,8 @@
 from __future__ import division
 from scitbx import lbfgs
 from cctbx.array_family import flex
-from mod_lbfgs_target import lbfgs_target_handler
+from prime import index_ambiguity
+import numpy as np
 
 class lbfgs_handler(object):
   """
@@ -31,19 +32,9 @@ class lbfgs_handler(object):
             )
 
   def compute_functional_and_gradients(self):
-    lp_h = lbfgs_target_handler()
-    #calculate sum_sqr of the function
-    fvec = lp_h.func(self.x, self.args)
-    self.f = flex.sum(fvec*fvec)
-    #calculate gradient for each parameter
-    DELTA = 1.E-7
-    self.g = flex.double()
-    for x in xrange(self.n):
-      templist = list(self.x)
-      templist[x]+=DELTA
-      dvalues = flex.double(templist)
-      dfvec = lp_h.func(dvalues, self.args)
-      df = flex.sum(dfvec*dfvec)
-      #calculate by finite_difference
-      self.g.append( ( df-self.f )/DELTA )
+    x_set = np.array(self.x).reshape((len(self.x)/2,2))
+    r_grid = flex.double(self.args)
+    x_vec_set = flex.vec2_double(x_set)
+    self.f = index_ambiguity.calc_BD_alg_2_sum_sqr(r_grid, x_vec_set)
+    self.g = index_ambiguity.calc_gradient_BD_alg_2(r_grid, x_vec_set)
     return self.f, self.g

@@ -37,20 +37,28 @@ master_phil = iotbx.phil.parse("""
   {
 
     shifted_map_file = shifted_map.ccp4
-      .type = path
+      .type = str
       .help = Input map file shifted to new origin.
       .short_caption = Shifted map file
 
-    shifted_sharpened_map_file = shifted_sharpened_map.ccp4
+    sharpened_map_file = sharpened_map.ccp4
       .type = str
-      .help = Input map file shifted to new origin and sharpened.
+      .help = Sharpened input map file. In the same location as input map.
+      .short_caption = Sharpened map file
+      .input_size = 400
+
+    shifted_sharpened_map_file = None
+      .type = str
+      .help = Input map file shifted to place origin at 0,0,0 and sharpened.
       .short_caption = Shifted sharpened map file
       .input_size = 400
 
-    shifted_sharpened_map_coeffs_file = shifted_sharpened_map_coeffs.mtz
+    sharpened_map_coeffs_file = sharpened_map_coeffs.mtz
       .type = str
-      .help = Input map coeffs shifted to new origin and sharpened.
-      .short_caption = Shifted sharpened map coeffs file
+      .help = Sharpened input map \
+              (shifted to new origin if original origin was not 0,0,0), \
+              written out as map coefficients
+      .short_caption = Sharpened map coeffs file
       .input_size = 400
 
     output_directory =  None
@@ -302,11 +310,17 @@ def get_map_coeffs_from_file(
          return ma
 
 def get_map(params=None,out=sys.stdout):
+
+  acc=None # accessor used to shift map back to original location if desired
   if params.input_files.map_file:
     from cctbx.maptbx.segment_and_split_map import get_map_object
-    map_data,space_group,unit_cell,crystal_symmetry,origin_frac=get_map_object(
-       file_name=params.input_files.map_file,out=out)
+    map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc=\
+      get_map_object(file_name=params.input_files.map_file,out=out)
     map_data=map_data.as_double()
+    if origin_frac != (0,0,0) and acc is None:
+      print >>out,"\nWARNING: Unable to place output map at position of "+\
+        "input map though input map has non-zero origin at %s\n" %(
+        str(origin_frac))
 
   elif params.input_files.map_coeffs_file:
     map_coeffs=get_map_coeffs_from_file(
@@ -323,6 +337,7 @@ def get_map(params=None,out=sys.stdout):
     from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
     map_data=get_map_from_map_coeffs(
       map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry)
+    acc=map_data.accessor()
     if not params.crystal_info.resolution:
       params.crystal_info.resolution=map_coeffs.d_min()
       print >>out,"Resolution from map_coeffs is %7.2f A" %(
@@ -333,7 +348,7 @@ def get_map(params=None,out=sys.stdout):
   if params.crystal_info.resolution is None:
     raise Sorry("Need resolution if map is supplied")
 
-  return map_data,crystal_symmetry
+  return map_data,crystal_symmetry,acc
 
 
 def run(args,out=sys.stdout):
@@ -341,12 +356,16 @@ def run(args,out=sys.stdout):
   params=get_params(args,out=out)
 
   # get map_data and crystal_symmetry
-  map_data,crystal_symmetry=get_map(params=params,out=out)
+
+  map_data,crystal_symmetry,acc=get_map(params=params,out=out)
+
+  # NOTE: map_data is now relative to origin at (0,0,0).
+  # Use map_data.reshape(acc) to put it back where it was if acc is not None
 
 
   # auto-sharpen the map
   from cctbx.maptbx.segment_and_split_map import auto_sharpen_map_or_map_coeffs
-  new_map_data=auto_sharpen_map_or_map_coeffs(
+  si=auto_sharpen_map_or_map_coeffs(
         resolution=params.crystal_info.resolution, # required
         crystal_symmetry=crystal_symmetry,
         map=map_data,
@@ -373,34 +392,53 @@ def run(args,out=sys.stdout):
            params.map_modification.resolution_dependent_b,
         out=out)
 
-  # convert to map_coeffs also
+  # get map_data and map_coeffs of final map
 
-  from cctbx.maptbx.segment_and_split_map import get_f_phases_from_map
-  new_map_coeffs=get_f_phases_from_map(map_data=new_map_data,
-       crystal_symmetry=crystal_symmetry,
-       d_min=params.crystal_info.resolution,
-       d_min_ratio=params.map_modification.d_min_ratio,
-       return_as_map_coeffs=True,
-       out=out)
+  new_map_data=si.as_map_data()
+  new_map_coeffs=si.as_map_coeffs()
+
+  print >>out
+  print >>out,80*"=","\n",80*"="
+  print >>out,"\n           Final sharpening information\n "
+  si.show_summary(verbose=params.control.verbose,out=out)
+  print >>out,80*"=","\n",80*"="
 
   # write out the new map_coeffs and map if requested:
+
+  if params.output_files.sharpened_map_file:
+    output_map_file=os.path.join(params.output_files.output_directory,
+        params.output_files.sharpened_map_file)
+    from cctbx.maptbx.segment_and_split_map import write_ccp4_map
+    offset_map_data=new_map_data.deep_copy()
+    if acc is not None:  # offset the map to match original if possible
+      offset_map_data.reshape(acc)
+      print >>out,\
+       "\nWrote sharpened map in original location with origin at %s\nto %s" %(
+         str(offset_map_data.origin()),output_map_file)
+    else:
+      print >>out,"\nWrote sharpened map with origin at 0,0,0 "+\
+        "(NOTE: may not be \nsame as original location) to %s\n" %(
+         output_map_file)
+    write_ccp4_map(crystal_symmetry, output_map_file, offset_map_data)
 
   if params.output_files.shifted_sharpened_map_file:
     output_map_file=os.path.join(params.output_files.output_directory,
         params.output_files.shifted_sharpened_map_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
     write_ccp4_map(crystal_symmetry, output_map_file, new_map_data)
-    print >>out,"\nWrote sharpened map to %s" %(output_map_file)
+    print >>out,"\nWrote sharpened map (origin at %s)\nto %s" %(
+     str(new_map_data.origin()),output_map_file)
 
-  if params.output_files.shifted_sharpened_map_coeffs_file:
+  if params.output_files.sharpened_map_coeffs_file:
     output_map_coeffs_file=os.path.join(params.output_files.output_directory,
-        params.output_files.shifted_sharpened_map_coeffs_file)
+        params.output_files.sharpened_map_coeffs_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
     new_map_coeffs.as_mtz_dataset(column_root_label='FWT').mtz_object().write(
        file_name=output_map_coeffs_file)
-    print >>out,"\nWrote sharpened map_coeffs to %s" %(output_map_coeffs_file)
+    print >>out,"\nWrote sharpened map_coeffs (origin at 0,0,0)\n to %s\n" %(
+       output_map_coeffs_file)
 
-  return new_map_data,new_map_coeffs,crystal_symmetry
+  return new_map_data,new_map_coeffs,crystal_symmetry,si
 
 # =============================================================================
 # GUI-specific bits for running command

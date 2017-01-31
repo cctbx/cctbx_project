@@ -232,13 +232,20 @@ class Toolbox(object):
         etag = tf.readline()
         tf.close()
 
+    try:
+      import ssl
+      ssl_error = ssl.SSLError
+    except ImportError:
+      ssl = None
+      ssl_error = None
+
     # Open connection to remote server
     try:
       if sys.platform == "win32":
 # Downloading from http://cci.lbl.gov/cctbx_dependencies caused
 # SSL: CERTIFICATE_VERIFY_FAILED error on Windows only as of today (why?).
 # Quick and dirty hack to disable ssl certificate verification.
-        import ssl
+        assert ssl
         ssl._create_default_https_context = ssl._create_unverified_context
       url_request = urllib2.Request(url)
       if etag:
@@ -249,6 +256,15 @@ class Toolbox(object):
         socket = urllib2.urlopen(url_request, None, 7)
       else:
         socket = urllib2.urlopen(url_request)
+    except ssl.SSLError, e:
+      # This could be a timeout
+      if localcopy:
+        # Download failed for some reason, but a valid local copy of
+        # the file exists, so use that one instead.
+        log.write("%s\n" % str(e))
+        return -2
+      # otherwise pass on the error message
+      raise
     except (pysocket.timeout, urllib2.URLError, urllib2.HTTPError), e:
       if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:
         # When using ETag. a 304 error means everything is fine
@@ -513,6 +529,7 @@ class cleanup_dirs_class(object):
       else:
         return
     print "===== Removing directories in %s" % (os.getcwd())
+
     for d in self.dirs:
       if os.path.exists(d):
         print "      removing %s" % (os.path.join(os.getcwd(),d))
@@ -1011,7 +1028,6 @@ class Builder(object):
     return self.op.join(*args)
 
   def get_codebases(self):
-    # we can't currently compile cbflib for Windows
     if self.isPlatformWindows():
       rc = set(self.CODEBASES+self.CODEBASES_EXTRA)
       for r in windows_remove_list: rc = rc - set([r])
@@ -1025,11 +1041,13 @@ class Builder(object):
     return self.HOT + self.HOT_EXTRA
 
   def get_libtbx_configure(self):
-    # we can't currently compile cbflib for Windows
     if self.isPlatformWindows():
       rc = set(self.LIBTBX+self.LIBTBX_EXTRA)
       for r in windows_remove_list: rc = rc - set([r])
-      return list(rc)
+      configlst = list(rc)
+      # allow OpenMP on Windows which won't crash in multiprocessing/forking.py unlike UNIX
+      configlst.append("--enable-openmp-if-possible=True")
+      return configlst
     return self.LIBTBX + self.LIBTBX_EXTRA
 
   def add_init(self):
@@ -1037,7 +1055,18 @@ class Builder(object):
 
   def cleanup(self, dirs=None):
     dirs = dirs or []
-    self.add_step(cleanup_dirs_class(dirs, "modules"))
+    if self.isPlatformWindows():
+      # deleting folders by copying an empty folder with robocopy is more reliable on Windows
+      cmd=['cmd', '/c', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
+       [')', 'DO', '(ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul', '&', 'rmdir', '%d))', '&', 'rmdir', 'empty']
+      self.add_step(self.shell(
+        name='Removing directories ' + ', '.join(dirs),
+        command =cmd,
+        workdir=['.'],
+        description="deleting " + ", ".join(dirs),
+      ))
+    else:
+      self.add_step(cleanup_dirs_class(dirs, "modules"))
 
   def add_rm_bootstrap_on_slave(self):
     # if file is not found error flag is set. Mask it with cmd shell
@@ -1698,10 +1727,10 @@ class PhenixBuilder(CCIBuilder):
     self.add_test_command('phenix_regression.run_hipip_refine_benchmark',
                           name="test hipip",
                          )
-    # commented out until bugs are fixed
-    #self.add_test_command('phenix_regression.wizards.test_all_parallel',
-    #                      name="test wizards",
-    #                     )
+    self.add_test_command('phenix_regression.wizards.test_all_parallel',
+      args = ['test_resolve_ncs_memory'],
+      name="test wizards",
+                         )
     run_dials_tests=True
     if self.isPlatformWindows():
       if 'dials' in windows_remove_list:

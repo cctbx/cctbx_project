@@ -1,3 +1,8 @@
+"""
+This module is deprecated and no longer used as of Phenix Version 1.10.1-2155
+where create_windows_installer.py supersedes it to invoke creating a NullSoft setup installer
+"""
+
 
 # XXX like the Mac equivalent, this module is designed to be run independently
 # of the rest of CCTBX if necessary, although it will use installed resources

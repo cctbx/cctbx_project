@@ -10,7 +10,7 @@
 #  included in the root directory of this package.
 
 
-from __future__ import division
+from __future__ import absolute_import, division
 try:
   from dxtbx_format_nexus_ext import *
 except ImportError:

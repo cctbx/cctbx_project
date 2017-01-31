@@ -14,8 +14,9 @@ def exercise (debug=False) :
     print "phenix_regression not configured, skipping."
     return
   hkl_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/p9_se_w2.sca",
+    relative_path="phenix_regression/wizards/help_tests/test_help/p9_se_w2.sca",
     test=os.path.isfile)
+  assert hkl_file is not None
   args = [
     hkl_file,
     "space_group=I4",
@@ -95,9 +96,11 @@ def exercise (debug=False) :
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/unmerged.sca",
     test=os.path.isfile)
+  assert hkl_file is not None
   symm_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/harvesting/refine.mtz",
     test=os.path.isfile)
+  assert symm_file is not None
   args = [
     hkl_file,
     "symmetry_file=\"%s\"" % symm_file,
@@ -121,6 +124,7 @@ def exercise (debug=False) :
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/i_anomalous.mtz",
     test=os.path.isfile)
+  assert hkl_file is not None
   args = [hkl_file]
   try:
     result = merging_statistics.run(args, out=out)
@@ -130,8 +134,9 @@ def exercise (debug=False) :
   # test use_internal_variance option
   out = StringIO()
   hkl_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/unmerged.mtz",
+    relative_path="phenix_regression/wizards/help_tests/test_help/unmerged.mtz",
     test=os.path.isfile)
+  assert hkl_file is not None
   args = [hkl_file, "use_internal_variance=False"]
   result = merging_statistics.run(args, out=out)
   assert approx_equal(result.overall.i_over_sigma_mean, 4.4867598237199)
@@ -147,6 +152,7 @@ def exercise (debug=False) :
   hkl_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/AUTOMATIC_DEFAULT_scaled_unmerged_WAVE1.mtz",
     test=os.path.isfile)
+  assert hkl_file is not None
   args = [hkl_file,
           #"eliminate_sys_absent=True" # default behaviour
           ]

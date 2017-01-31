@@ -1,9 +1,12 @@
-from __future__ import division
+from __future__ import absolute_import, division
 def exercise_multi_axis_goniometer():
   import libtbx.load_env
   from libtbx.test_utils import approx_equal
   import os
 
+  if not libtbx.env.has_module("dials"):
+    print "Skipping tstFormatCBFFull.py: dials not present"
+    return
   if not libtbx.env.has_module("dials_regression"):
     print "Skipping tstFormatCBFFull.py: dials_regression not present"
     return

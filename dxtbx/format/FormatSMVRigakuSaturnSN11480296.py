@@ -10,7 +10,7 @@
 # FormatSMVRigakuSaturn customizing only the difference (incorrect definition
 # of fast and slow directions.)
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from scitbx import matrix
 

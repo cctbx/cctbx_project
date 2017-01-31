@@ -577,10 +577,13 @@ class annotation(structure_base):
     return cls(helices=helices, sheets=sheets)
 
   @classmethod
-  def from_phil(cls, phil_helices, phil_sheets, pdb_hierarchy, log=None):
+  def from_phil(cls, phil_helices, phil_sheets, pdb_hierarchy,
+      atom_selection_cache=None, log=None):
     helices = []
     sheets = []
-    cache = pdb_hierarchy.atom_selection_cache()
+    cache = atom_selection_cache
+    if cache is None:
+      cache = pdb_hierarchy.atom_selection_cache()
     for i, helix_param in enumerate(phil_helices):
       if helix_param.selection is not None:
         h = pdb_helix.from_phil_params(helix_param, pdb_hierarchy, cache, i, log)
@@ -593,6 +596,14 @@ class annotation(structure_base):
 
   def deep_copy(self):
     return copy.deepcopy(self)
+
+  def simple_elements(self):
+    """ helices and strands"""
+    all_elem_list = []
+    all_elem_list += self.helices
+    for sh in self.sheets:
+      all_elem_list += sh.strands
+    return all_elem_list
 
   def remove_empty_annotations(self, hierarchy, asc=None):
     # returns annotation of deleted helices and sheets
@@ -644,6 +655,7 @@ class annotation(structure_base):
         del self.sheets[i]
 
   def concatenate_consecutive_helices(self, hierarchy=None, asc=None):
+    # also should divide them
     from mmtbx.command_line.angle import calculate_axes_and_angle
     if asc is None and hierarchy is not None:
       asc = hierarchy.atom_selection_cache()
@@ -658,9 +670,11 @@ class annotation(structure_base):
         # checking angle
         angle = 0
         if hierarchy is not None:
+          h1_hierarchy = hierarchy.select(asc.selection(self.helices[i-1].as_atom_selections()[0]))
+          h2_hierarchy = hierarchy.select(asc.selection(self.helices[i].as_atom_selections()[0]))
           a1, a2, angle = calculate_axes_and_angle(
-              hierarchy.select(asc.selection(self.helices[i-1].as_atom_selections()[0])).extract_xray_structure(),
-              hierarchy.select(asc.selection(self.helices[i].as_atom_selections()[0])).extract_xray_structure())
+              h1_hierarchy.extract_xray_structure(),
+              h2_hierarchy.extract_xray_structure())
         # print "angle between '%s', '%s': %.2f" % (
         #     self.helices[i-1].as_pdb_str()[7:40],
         #     self.helices[i].as_pdb_str()[7:40],
@@ -668,14 +682,32 @@ class annotation(structure_base):
         if (new_helices[-1].end_chain_id == self.helices[i].start_chain_id and
             abs(new_helices[-1].get_end_resseq_as_int() - self.helices[i].get_start_resseq_as_int()) < 2 and
             new_helices[-1].end_resname != "PRO" and
-            self.helices[i].start_resname != "PRO" and
-            angle < 15):
-          new_helices[-1].end_resname = self.helices[i].start_resname
-          new_helices[-1].set_end_resseq(self.helices[i].get_end_resseq_as_int())
-          new_helices[-1].end_icode = self.helices[i].start_icode
-          new_helices[-1].length = (new_helices[-1].get_end_resseq_as_int() -
-            new_helices[-1].get_start_resseq_as_int() + 1)
-          concatenations_made = True
+            self.helices[i].start_resname != "PRO"):
+            # helices are next to each other, so we will either
+          if angle < 15:
+            # concatenate
+            new_helices[-1].end_resname = self.helices[i].start_resname
+            new_helices[-1].set_end_resseq(self.helices[i].get_end_resseq_as_int())
+            new_helices[-1].end_icode = self.helices[i].start_icode
+            new_helices[-1].length = (new_helices[-1].get_end_resseq_as_int() -
+              new_helices[-1].get_start_resseq_as_int() + 1)
+            concatenations_made = True
+          else:
+            # or separate them by moving borders by 1 residue
+            h1_rg = [x for x in h1_hierarchy.residue_groups()][-2]
+            h2_rg = [x for x in h2_hierarchy.residue_groups()][1]
+            new_helices[-1].end_resname = h1_rg.atom_groups()[0].resname
+            new_helices[-1].set_end_resseq(h1_rg.resseq)
+            new_helices[-1].end_icode = h1_rg.icode
+            new_helices[-1].length -= 1
+
+            self.helices[i].start_resname = h2_rg.atom_groups()[0].resname
+            self.helices[i].set_start_resseq(h2_rg.resseq)
+            self.helices[i].start_icode = h2_rg.icode
+            self.helices[i].length -= 1
+
+            new_helices.append(self.helices[i])
+
         else:
           new_helices.append(self.helices[i])
       self.helices = new_helices
@@ -713,17 +745,26 @@ class annotation(structure_base):
       h.set_new_serial(serial=i+1, adopt_as_id=True)
     self.helices=new_helices
 
-  def multiply_to_asu(self, ncs_copies_chain_names, n_copies):
-    from iotbx.ncs import format_num_as_str
+  def multiply_to_asu(self, n_copies):
+    # from iotbx.ncs import format_num_as_str
     # ncs_copies_chain_names = {'chain B_022':'CD' ...}
-    def make_key(chain_id, n):
-      return "chain %s_%s" % (chain_id, format_num_as_str(n))
+    # def make_key(chain_id, n):
+    #   return "chain %s_%s" % (chain_id, format_num_as_str(n))
+    # def get_new_chain_id(old_chain_id, n_copy):
+    #   new_chain_id = ncs_copies_chain_names.get(
+    #       make_key(old_chain_id,n_copy), None)
+    #   if new_chain_id is None:
+    #     raise Sorry("Something went wrong in mulitplying HELIX/SHEET records")
+    #   return new_chain_id
+    from iotbx.pdb.hierarchy import suffixes_for_chain_ids
     def get_new_chain_id(old_chain_id, n_copy):
-      new_chain_id = ncs_copies_chain_names.get(
-          make_key(old_chain_id,n_copy), None)
-      if new_chain_id is None:
-        raise Sorry("Something went wrong in mulitplying HELIX/SHEET records")
+      assert len(old_chain_id) == 1
+      new_chain_id = old_chain_id+suffixes_for_chain_ids()[n_copy-1]
       return new_chain_id
+    if n_copies <= 1:
+      return
+    if n_copies+1 >= len(suffixes_for_chain_ids()):
+      return
     new_helices = []
     new_sheets = []
     new_h_serial = 1
@@ -2154,49 +2195,45 @@ class pdb_sheet(structure_base):
     registrations = []
     number_of_strands = 0
     # counting number of strands
-    for row in struct_sheet_range_loop.iterrows():
-      if row['_struct_sheet_range.sheet_id'] == sheet_id:
-        number_of_strands += 1
+    number_of_strands = struct_sheet_range_loop['_struct_sheet_range.sheet_id'].\
+        count(sheet_id)
     for i in range(1, number_of_strands+1):
+      f_rows = struct_sheet_range_loop.find_row(kv_dict={
+          '_struct_sheet_range.sheet_id' : sheet_id,
+          '_struct_sheet_range.id' : str(i),
+        })
       if i == 1:
         # the first strand, no sense, no hbond
-        res_range = None
-        for row in struct_sheet_range_loop.iterrows():
-          if (row['_struct_sheet_range.sheet_id'] == sheet_id and
-              int(row['_struct_sheet_range.id']) == i):
-            res_range = row
-            break
-        if res_range is None:
+        if len(f_rows) != 1:
           raise Sorry("Error in sheet definitions")
-        strands.append(pdb_strand.from_cif_dict(res_range, 0))
+        strands.append(pdb_strand.from_cif_dict(f_rows[0], 0))
         registrations.append(None)
       else:
         # all the rest
         res_range = None
         registration = None
         sense = None
-        for row in struct_sheet_range_loop.iterrows():
-          if (row['_struct_sheet_range.sheet_id'] == sheet_id and
-              int(row['_struct_sheet_range.id']) == i):
-            res_range = row
-            break
-        for row in struct_sheet_order_loop.iterrows():
-          if (row['_struct_sheet_order.sheet_id'] == sheet_id and
-              int(row['_struct_sheet_order.range_id_1']) == i-1 and
-              int(row['_struct_sheet_order.range_id_2']) == i):
-            str_sense = row.get('_struct_sheet_order.sense', '.')
-            sense = 0
-            if str_sense == 'parallel':
-              sense = 1
-            elif str_sense == 'anti-parallel':
-              sense = -1
-            break
-        for row in struct_sheet_hbond_loop.iterrows():
-          if (row['_pdbx_struct_sheet_hbond.sheet_id'] == sheet_id and
-              int(row['_pdbx_struct_sheet_hbond.range_id_1']) == i-1 and
-              int(row['_pdbx_struct_sheet_hbond.range_id_2']) == i):
-            registration = row
-            break
+        if len(f_rows) == 1:
+          res_range = f_rows[0]
+        sense_rows = struct_sheet_order_loop.find_row(kv_dict = {
+            '_struct_sheet_order.sheet_id':sheet_id,
+            '_struct_sheet_order.range_id_1':str(i-1),
+            '_struct_sheet_order.range_id_2':str(i)
+          })
+        if len(sense_rows) >= 1:
+          sense = 0
+          str_sense = sense_rows[0].get('_struct_sheet_order.sense', '.')
+          if str_sense == 'parallel':
+            sense = 1
+          elif str_sense == 'anti-parallel':
+            sense = -1
+        registration_rows = struct_sheet_hbond_loop.find_row(kv_dict = {
+              '_pdbx_struct_sheet_hbond.sheet_id':sheet_id,
+              '_pdbx_struct_sheet_hbond.range_id_1':str(i-1),
+              '_pdbx_struct_sheet_hbond.range_id_2':str(i)
+          })
+        if len(registration_rows) >= 1:
+          registration = registration_rows[0]
         if (res_range is not None and
             registration is not None and sense is not None):
           strands.append(pdb_strand.from_cif_dict(res_range, sense))

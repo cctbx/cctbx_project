@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 from dxtbx.serialize.filename import temp_chdir, load_path
 
 class Test(object):

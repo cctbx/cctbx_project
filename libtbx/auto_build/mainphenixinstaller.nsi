@@ -88,7 +88,7 @@ AutoCloseWindow false
 
 
 Function LaunchProg
-  Exec '"$SYSDIR\notepad.exe" $INSTDIR\${SOURCEDIR}\README'
+  Exec '"$SYSDIR\notepad.exe" \\?\$INSTDIR\${SOURCEDIR}\README'
 FunctionEnd
 
 
@@ -129,11 +129,12 @@ var ICONS_GROUP
 
 
 Section "Basic components" SEC01
-  SetOutPath "$INSTDIR"
+  SetOutPath "\\?\$INSTDIR"
   SetOverwrite off
   File /r /x *.cpp /x *.cc /x *.h /x *.hh /x *.hpp /x *.c /x *.f /x .svn ${COPYDIR}\*
 
-  ExecWait '"$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
+  #ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
+  ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
   SetAutoClose false
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
@@ -141,7 +142,7 @@ Section "Basic components" SEC01
 SectionEnd
 
 Section "Source code" SEC02
-  SetOutPath "$INSTDIR"
+  SetOutPath "\\?\$INSTDIR"
   SetOverwrite on
   File /nonfatal /r ${COPYDIR}\*.hh
   File /nonfatal /r ${COPYDIR}\*.hpp
@@ -164,18 +165,18 @@ SectionEnd
 
 
 Section -AdditionalIcons
-  !define UNINSTEXE "$INSTDIR\UnInstall${PRODUCT_NAME}${PRODUCT_VERSION}.exe"
-  !define MYICON "$INSTDIR\${SOURCEDIR}\modules\gui_resources\icons\custom\WinPhenix.ico"
+  !define UNINSTEXE "\\?\$INSTDIR\UnInstall${PRODUCT_NAME}${PRODUCT_VERSION}.exe"
+  !define MYICON "\\?\$INSTDIR\${SOURCEDIR}\modules\gui_resources\icons\custom\WinPhenix.ico"
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-  WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
-  WriteRegStr ${PRODUCT_ROOT_KEY} "${PRODUCT_INST_KEY}" "InstallPath" "$INSTDIR\${SOURCEDIR}"
+  WriteIniStr "\\?\$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
+  WriteRegStr ${PRODUCT_ROOT_KEY} "${PRODUCT_INST_KEY}" "InstallPath" "\\?\$INSTDIR\${SOURCEDIR}"
 
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
-  CreateShortCut "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Documentation ${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.doc.bat" "" "$WINDIR\hh.exe" 0
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix.Python ${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.python.bat" "" "$INSTDIR\${SOURCEDIR}\base\bin\python\python.exe"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix Command Prompt ${PRODUCT_VERSION}.lnk" "$SYSDIR\cmd.exe" "/k $\"$INSTDIR\${SOURCEDIR}\phenix_env.bat$\"" "$SYSDIR\cmd.exe"
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "\\?\$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
+  CreateShortCut "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "\\?\$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Documentation ${PRODUCT_VERSION}.lnk" "\\?\$INSTDIR\${SOURCEDIR}\build\bin\phenix.doc.bat" "" "$WINDIR\hh.exe" 0
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix.Python ${PRODUCT_VERSION}.lnk" "\\?\$INSTDIR\${SOURCEDIR}\build\bin\phenix.python.bat" "" "\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python.exe"
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix Command Prompt ${PRODUCT_VERSION}.lnk" "$SYSDIR\cmd.exe" "/k $\"\\?\$INSTDIR\${SOURCEDIR}\phenix_env.bat$\"" "$SYSDIR\cmd.exe"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Uninstall${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "${UNINSTEXE}" "" "${UNINSTEXE}"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\PHENIX Website.lnk" "${PRODUCT_WEB_SITE}" "" "$PROGRAMFILES\Internet Explorer\iexplore.exe" 0
   !insertmacro MUI_STARTMENU_WRITE_END
@@ -224,7 +225,7 @@ Section Uninstall
 
   RMDir /r "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
   Delete "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk"
-  RMDir /r "$INSTDIR\${SOURCEDIR}"
+  RMDir /r "\\?\$INSTDIR\${SOURCEDIR}"
   Delete "${UNINSTEXE}"
 
   DeleteRegKey ${PRODUCT_ROOT_KEY} "${PRODUCT_UNINST_KEY}"

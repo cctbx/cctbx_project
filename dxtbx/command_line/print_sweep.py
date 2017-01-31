@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 def print_sweep(list_of_images):
 
   from dxtbx.imageset import ImageSetFactory

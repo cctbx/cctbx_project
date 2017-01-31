@@ -8,7 +8,7 @@
 # An implementation of the SMV image reader for pseudo "ADSC" images, converted
 # from Pilatus images using iotbx debug_write.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.format.FormatSMVADSC import FormatSMVADSC
 

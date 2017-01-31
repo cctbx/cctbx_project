@@ -4,7 +4,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cxi.image_average
 #
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 import sys, dxtbx
 from scitbx.array_family import flex

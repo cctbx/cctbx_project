@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 #!/usr/bin/env python
 #
 # dxtbx.serialize.beam.py

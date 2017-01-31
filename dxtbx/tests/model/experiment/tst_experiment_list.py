@@ -1,6 +1,6 @@
 
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from dxtbx.model.experiment.experiment_list import \
   ExperimentList, Experiment, ExperimentListFactory, \
@@ -803,6 +803,9 @@ class Test(object):
   def __init__(self):
     import libtbx
 
+    if not libtbx.env.has_module("dials"):
+      print 'Skipping: dials_regresson not configured'
+      exit(0)
     if not libtbx.env.has_module("dials_regression"):
       print 'Skipping: dials_regresson not configured'
       exit(0)

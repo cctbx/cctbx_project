@@ -4,7 +4,7 @@ import os.path
 from fileinput import input, isfirstline, filename, isstdin
 from libtbx import subversion
 from libtbx.option_parser import option_parser
-import libtbx.command_line.file_clutter
+import libtbx.file_clutter
 
 def clean_clutter_in(files, tabsize=8):
   if not files: return
@@ -71,7 +71,7 @@ by running svn commit.""")
     if len(files) <= 1:
       if not files: dir = '.'
       else: dir = files[0]
-      files = [ c.path for c in libtbx.command_line.file_clutter.gather([dir])
+      files = [ c.path for c in libtbx.file_clutter.gather([dir])
                 if c.is_cluttered(flag_x=False) ]
   clean_clutter_in(files, tabsize=co.tabsize)
 

@@ -12,6 +12,7 @@ from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
 from iotbx.cif.builders import crystal_symmetry_builder
+import iotbx.mtrix_biomt
 
 class pdb_hierarchy_builder(crystal_symmetry_builder):
 
@@ -589,7 +590,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     coordinates_present = [coordinates_present[i] for i in items_order]
     serial_number = [j for (j,_) in serial_number]
     # collect results
-    result = iotbx.pdb.mtrix_and_biomt_records_container()
+    result = iotbx.mtrix_biomt.container()
     for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
       if not r.is_r3_rotation_matrix(rms_tolerance=eps):
         if error_handle:
@@ -603,7 +604,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         serial_number=sn)
     return result
 
-  def process_mtrix_records(self,error_handle=True,eps=1e-4):
+  def process_MTRIX_records(self,error_handle=True,eps=1e-4):
     """
     Read MTRIX records from a pdb file
 
@@ -648,7 +649,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     coordinates_present = [coordinates_present[i] for i in items_order]
     serial_number = [j for (j,_) in serial_number]
     # collect results
-    result = iotbx.pdb.mtrix_and_biomt_records_container()
+    result = iotbx.mtrix_biomt.container()
     for sn,r,t,cp in zip(serial_number,rots,trans,coordinates_present):
       if not r.is_r3_rotation_matrix(rms_tolerance=eps):
         if error_handle:
@@ -667,7 +668,6 @@ def _float_or_None(value):
     if value == '?' or value == '.':
       return None
     return float(value)
-
 
 class _cif_get_r_rfree_sigma_object(object):
   def __init__(self, cif_block, file_name):

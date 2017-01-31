@@ -26,6 +26,8 @@ quiet = False
 verbose = -1
   .type = int
   .style = hidden
+output_prefix = None
+  .type = str
 file_name = None
   .type = path
   .multiple = True
@@ -203,7 +205,10 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
             pdb_hierarchy=pdb_hierarchy)
       print >> result_out, bonds_in_format
   result = result_out.getvalue()
-  filename = "%s_ss.eff" %os.path.basename(work_params.file_name[0])
+  out_prefix = os.path.basename(work_params.file_name[0])
+  if work_params.output_prefix is not None:
+    out_prefix = work_params.output_prefix
+  filename = "%s_ss.eff" % out_prefix
   outf = open(filename, "w")
   outf.write(result)
   outf.close()

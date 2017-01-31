@@ -12,7 +12,7 @@
 # from the X(component)Factories which will allow construction of e.g.
 # goniometers etc. from the headers and hence a format specific factory.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 import sys
 

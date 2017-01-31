@@ -8,7 +8,7 @@
 # An implementation of the CBF image reader for Pilatus images. Inherits from
 # FormatCBFMini.
 
-from __future__ import division
+from __future__ import absolute_import, division
 import os
 
 from dxtbx.format.FormatCBFMini import FormatCBFMini

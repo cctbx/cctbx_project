@@ -1,23 +1,18 @@
 from __future__ import division
 from cctbx.uctbx import unit_cell
-from cctbx import miller
-from cctbx import crystal
+from cctbx import miller, crystal, statistics
 from cctbx.array_family import flex
 from iotbx import mtz
-import math
+from libtbx.utils import Sorry
+import math, os
 import numpy as np
 import matplotlib.pyplot as plt
-from libtbx.utils import Sorry
-from cctbx.uctbx import unit_cell
 from copy import deepcopy
+import cPickle as pickle
+from collections import Counter
 from mod_merge_data import merge_data_handler
 from mod_mx import mx_handler
-import cPickle as pickle
-import os
-from collections import Counter
 from mod_leastsqr import good_unit_cell
-from prime.postrefine.mod_mx import mx_handler
-from cctbx import statistics
 
 class intensities_scaler(object):
   """
@@ -151,7 +146,7 @@ class intensities_scaler(object):
               cn_bad_frame_G += 1
         if flag_pres_ok:
           if re_std > 0:
-            if abs(pres.re-re_med)/(math.sqrt(re_med)) > std_filter:
+            if abs(pres.re-re_med)/re_std > std_filter:
               flag_pres_ok = False
               cn_bad_frame_re += 1
         if flag_pres_ok and not good_unit_cell(pres.uc_params, iparams, iparams.merge.uc_tolerance):
@@ -316,7 +311,7 @@ class intensities_scaler(object):
     wavelength_mean = mdh.wavelength_mean
     #output mtz file and report binning stat
     miller_set_merge = crystal.symmetry(
-          unit_cell=unit_cell((uc_mean[0],uc_mean[1],uc_mean[2],uc_mean[3],uc_mean[4],uc_mean[5])),
+          unit_cell=unit_cell(tuple(uc_mean)),
           space_group_symbol=iparams.target_space_group
         ).build_miller_set(
           anomalous_flag=target_anomalous_flag,
@@ -406,7 +401,7 @@ class intensities_scaler(object):
       txt_out += 'Bin Resolution Range     Completeness      <N_obs> |Rmerge  Rsplit   CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind| <I/sigI>   <I>    <sigI>    <I**2>\n'
       txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
       #for stat pickle
-      sp_res = sp_complete = sp_n_obs = sp_cc12 = sp_rmerge = sp_i_o_sigi = sp_isqr = []
+      sp_res,sp_complete,sp_n_obs,sp_cc12,sp_rmerge,sp_i_o_sigi,sp_isqr = ([],[],[],[],[],[],[])
       #binning
       binner_template_asu = miller_array_template_asu.setup_binner(n_bins=iparams.n_bins)
       binner_template_asu_indices = binner_template_asu.bin_indices()
@@ -462,7 +457,7 @@ class intensities_scaler(object):
         sp_n_obs.append(multiplicity)
         sp_cc12.append(cc12)
         sp_rmerge.append(mdh_bin.get_r_meas()*100)
-        sp_i_o_sigi.append(mdh_bin.get_mean_sigI())
+        sp_i_o_sigi.append(mdh_bin.get_mean_IoversigI())
         sp_isqr.append(mdh.get_second_moment())
       #txt out total for all reflections
       cc12, n_refl_cc12 = mdh.get_cc12()
@@ -509,7 +504,7 @@ class intensities_scaler(object):
       self.write_stat_pickle(iparams, stat_dict)
       txt_out += txt_out_cone
 
-    return mdh.miller_array_merge, txt_out
+    return mdh, txt_out
 
   def plot_stats(self, results, iparams):
     #retrieve stats from results and plot them
@@ -560,9 +555,10 @@ class intensities_scaler(object):
       n_rows = 3
       n_cols = int(math.ceil(len(params)/n_rows))
       num_bins = 10
-      for i in xrange(len(params)):
+      for i in xrange(len(params)-1):
+        tmp_params = params_array[:,i].astype(np.float)
         plt.subplot(n_rows,n_cols,i+1)
-        plt.hist(params_array[:,i], num_bins, normed=0, facecolor='green', alpha=0.5)
+        plt.hist(tmp_params, num_bins, normed=0, facecolor='green', alpha=0.5)
         plt.ylabel('Frequencies')
-        plt.title(params[i]+'\nmu %5.1f med %5.1f sigma %5.1f' %(np.mean(params_array[:,i]), np.median(params_array[:,i]), np.std(params_array[:,i])))
+        plt.title(params[i]+'\nmu %5.1f med %5.1f sigma %5.1f' %(np.mean(tmp_params), np.median(tmp_params), np.std(tmp_params)))
       plt.show()

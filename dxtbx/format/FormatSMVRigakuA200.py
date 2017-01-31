@@ -8,7 +8,7 @@
 # An implementation of the SMV image reader for Rigaku A200 images.
 # Inherits from FormatSMVRigaku.
 
-from __future__ import division
+from __future__ import absolute_import, division
 
 from scitbx import matrix
 

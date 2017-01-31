@@ -1571,6 +1571,9 @@ selfx:
     self.write_python_and_show_path_duplicates()
     self.process_exe()
     self.write_command_version_duplicates()
+    if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
+      os.environ[ld_library_path_var_name()] = ":".join(
+        [abs(p) for p in self.ld_library_path_additions()])
     regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
     self.pickle()
     print >> completed_file_name.open("w"), "libtbx_refresh_is_completed"

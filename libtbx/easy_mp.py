@@ -634,72 +634,99 @@ def parallel_map (
 
 
 
-
 def multi_core_run( myfunction, argstuples, nproc ):
   """
-  Run a function on many cpu cores using multiprocessing.
-  Adapted from example in Computational Crystallography Newsletter (2013). 4, p21.
+  Run myfunction on many cpu cores using multiprocessing.
+  A simplified version of parallel_map() above
 
-  myfunction: the name of the function to be parallelised,
-  argstuples: a list of tuples of function arguments,
-  nproc: the number of cores to run on
+  myfunction: name of the function to be parallelised,
+  argstuples: list of tuples of associated input arguments,
+  nproc: number of cores to run on.
 
-  Output is an iterator where each element contains:
-  the tuple of arguments,
-  the result,
-  an error message if myfunction crashed
+  Both myfunction and its input arguments must be pickleable.
+
+  Output is an iterator where each element is a tuple that contains:
+  a tuple of arguments for one particular calculation with myfunction,
+  the result of this calculation,
+  the stacktrace if myfunction crashed
 
   Example:
 
-  from libtbx import easy_mp
-  argstuples = [(args1a, args2a), (args1b, args2b), (args1c, args2c) ]
+  # define RunMyJob() in a file testjob.py
+  def RunMyJob( foo, bar):
+    import math
+    return math.sqrt(foo)/bar
 
-  for i, parmres in enumerate(easy_mp.multi_core_run( RunMyJob, argstuples, nproc)):
-    GatherResults( parmres )
+  # then one can start RunMyJob in parallel like:
+  >>> import testjob
+  >>> from libtbx import easy_mp
+  >>>
+  >>> argstuples = [( 3, 4), (2, 3) ] # define tuples of arguments
+  >>>
+  >>> for args, res, errstr in easy_mp.multi_core_run( testjob.RunMyJob, argstuples, 2):
+  ...   print "arguments: %s \nresult: %s \nerrorstring: %s\n" %(args, res, errstr)
+  ...
+  arguments: (2, 3)
+  result: 0.471404520791
+  errorstring: None
+
+  arguments: (3, 4)
+  result: 0.433012701892
+  errorstring: None
+
+  >>>
 
   """
-  from libtbx.utils import Sorry
-  from libtbx.queuing_system_utils import scheduling
-  import multiprocessing
+  from libtbx.scheduling import philgen
+  from libtbx.scheduling import job_scheduler
+  from libtbx.scheduling import parallel_for
+  import libtbx.scheduling
+  from libtbx.scheduling import stacktrace
 
-  qman = multiprocessing.Manager()
-  manager = scheduling.Manager(
-    units = [
-    scheduling.ExecutionUnit(
-        factory = multiprocessing.Process,
-        processor = scheduling.RetrieveProcessor( queue = qman.Queue() ),
-        )
-    for i in range(nproc)
-    ]
-  )
+  technology = philgen.multiprocessing(
+    capture_stderr = True, # catch each individual error message and stack trace
+    qtype = philgen.mp_managed_queue,
+    )
 
-  pf = scheduling.ParallelForIterator(
-    calculations = (
-          (
-            myfunction,
-            argstuple,
-            {},
-          )
-         for argstuple in argstuples
-    ),
+  jfactory = technology.jfactory()
+  qfactory = technology.qfactory()[0]
+  capacity = job_scheduler.limited(
+    njobs = get_processes( processes = nproc )
+    )
+
+  creator = job_scheduler.creator(
+    job_factory = jfactory,
+    queue_factory = qfactory,
+    capacity = capacity,
+    )
+
+  manager = creator.create()
+  pfi = parallel_for.iterator(
+      calculations = ( ( myfunction, args, {} ) for args in argstuples ),
       manager = manager,
-  )
+      keep_input_order = False,
+      )
 
-  for ( params, result ) in scheduling.FinishingOrder( parallel_for = pf ):
-    # params[0] is the function name. params[1] is the tuple of function arguments
-    from libtbx import introspection
-    import StringIO
-    res = None
-    errstr = StringIO.StringIO()
-
+  for i, ( calc, res ) in enumerate(pfi):
+    result = None
+    errstr =  None
     try:
-      res = result()
+      result = res()
     except Exception, e:
-      introspection.show_stack( out = errstr )
+      tracestr = ""
+      if stacktrace.exc_info()[1]:
+        for inf in stacktrace.exc_info()[1]:
+          tracestr += inf
+      errstr = str(e) + "\n" + tracestr
+    #calc[0] is the function name, calc[1] is the tuple of function arguments
+    parmres = ( calc[1], result, errstr )
 
-    parmres = ( params[1], res, errstr.getvalue() )
-    yield parmres
+    if i >= len(argstuples)-1:
+      manager.shutdown() # clean up once the last calculation has returned
+      manager.join()
+      creator.destroy( manager = manager )
 
+    yield parmres # spit out results as they emerge
 
 
 

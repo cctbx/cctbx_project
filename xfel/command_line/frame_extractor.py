@@ -11,7 +11,7 @@ from dials.util.options import Importer, flatten_reflections, flatten_experiment
 from cctbx import crystal, miller
 from cctbx.crystal_orientation import crystal_orientation
 import iotbx.phil
-import cctbx, os
+import cctbx, os, glob
 from libtbx import easy_pickle
 
 class ConstructFrame(object):
@@ -201,11 +201,13 @@ if __name__ == "__main__":
       """)
   parser = OptionParser(phil=master_phil_scope)
   params, options = parser.parse_args(show_diff_phil=True)
-  frame = ConstructFrameFromFiles(params.pickle_name, params.json_name).make_frame()
-  if not params.output_dir is None:
-    assert os.path.isdir(params.output_dir)
-    basename = os.path.basename(params.pickle_name)
-    name = os.path.splitext(basename)[0] + "_extracted.pickle"
-    dest_path = os.path.join(params.output_dir, name)
-    assert not os.path.isfile(dest_path)
-    easy_pickle.dump(dest_path, frame)
+  for pickle_name, json_name in zip(glob.glob(params.pickle_name), glob.glob(params.json_name)):
+    frame = ConstructFrameFromFiles(pickle_name, json_name).make_frame()
+    if not params.output_dir is None:
+      assert os.path.isdir(params.output_dir)
+      basename = os.path.basename(pickle_name)
+      name = os.path.splitext(basename)[0] + "_extracted.pickle"
+      dest_path = os.path.join(params.output_dir, name)
+      assert not os.path.isfile(dest_path)
+      print dest_path
+      easy_pickle.dump(dest_path, frame)

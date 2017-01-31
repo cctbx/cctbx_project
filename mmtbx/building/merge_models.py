@@ -664,7 +664,7 @@ def run(
   if not resolution:
     from cctbx import maptbx
     resolution=maptbx.resolution_from_map_and_model(
-      map_data=map_data, xray_structure=xrs)
+      map_data=map_data, xray_structure=xrs).d_min
 
   print >>out,"\nResolution limit: %7.2f" %(resolution)
   print >>out,"\nSummary of input models"

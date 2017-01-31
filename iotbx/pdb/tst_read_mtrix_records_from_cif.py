@@ -5,7 +5,6 @@ import iotbx.pdb
 import unittest
 import sys
 
-
 class TestMtrixRecFromCif(unittest.TestCase):
   '''Compare the results of reading MTRIX records of PDB and CIF files'''
 
@@ -16,10 +15,10 @@ class TestMtrixRecFromCif(unittest.TestCase):
     pdb_inp2 = iotbx.pdb.input(source_info=None, lines=test_cif)
     trans_obj1 = ncs.input(
         hierarchy=pdb_inp1.construct_hierarchy(),
-        transform_info=pdb_inp1.process_mtrix_records())
+        transform_info=pdb_inp1.process_MTRIX_records())
     trans_obj2 = ncs.input(
         hierarchy=pdb_inp2.construct_hierarchy(),
-        transform_info=pdb_inp2.process_mtrix_records())
+        transform_info=pdb_inp2.process_MTRIX_records())
 
     # trans_obj1 = ncs.input(pdb_string=test_pdb)
     # trans_obj2 = ncs.input(cif_string=test_cif)
@@ -34,11 +33,11 @@ class TestMtrixRecFromCif(unittest.TestCase):
     self.assertEqual(x.min_max_mean().as_tuple(), (0,0,0))
     #
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_cif)
-    transform_info = pdb_inp.process_mtrix_records()
+    transform_info = pdb_inp.process_MTRIX_records()
     results = transform_info.as_pdb_string()
 
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb)
-    transform_info = pdb_inp.process_mtrix_records()
+    transform_info = pdb_inp.process_MTRIX_records()
     expected = transform_info.as_pdb_string()
 
     self.assertEqual(results,expected)

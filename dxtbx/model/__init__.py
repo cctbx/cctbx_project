@@ -1,11 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division
 import boost.python
 from dxtbx_model_ext import *
-from beam import *
-from goniometer import *
-from detector import *
-from scan import *
-from profile import *
+from dxtbx.model.beam import *
+from dxtbx.model.goniometer import *
+from dxtbx.model.detector import *
+from dxtbx.model.scan import *
+from dxtbx.model.profile import *
 
 class DetectorAux(boost.python.injector, Detector):
   def iter_panels(self):

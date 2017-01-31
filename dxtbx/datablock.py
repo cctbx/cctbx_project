@@ -8,7 +8,7 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 
-from __future__ import division
+from __future__ import absolute_import, division
 import cPickle as pickle
 
 class DataBlock(object):
@@ -352,6 +352,7 @@ class DataBlockTemplateImporter(object):
     ''' Import the datablocks from the given templates. '''
     from dxtbx.sweep_filenames import locate_files_matching_template_string
     from libtbx.utils import Sorry
+    from os.path import normpath
     assert(len(templates) > 0)
 
     self.datablocks = []
@@ -367,6 +368,7 @@ class DataBlockTemplateImporter(object):
 
     # For each template do an import
     for template in templates:
+      template = normpath(template)
       paths = sorted(locate_files_matching_template_string(template))
       if verbose:
         print 'The following files matched the template string:'

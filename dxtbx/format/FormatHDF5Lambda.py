@@ -11,7 +11,7 @@
 # Experimental format for the X-Spectrum LAMBDA detector
 # http://www.x-spectrum.de/
 
-from __future__ import division
+from __future__ import absolute_import, division
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatHDF5 import FormatHDF5
 
