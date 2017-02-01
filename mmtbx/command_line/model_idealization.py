@@ -114,6 +114,7 @@ class model_idealization():
     self.after_rotamer_fixing = None
     self.final_model_statistics = None
     self.reference_map = map_data
+    self.master_map = None
 
     self.whole_grm = None
     self.master_grm = None
