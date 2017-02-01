@@ -1,5 +1,23 @@
 from __future__ import division
 
+def iterator(mon_lib_srv, residue, atom_selection_bool):
+  atoms = residue.atoms()
+  if (atom_selection_bool is not None):
+    if (atom_selection_bool.select(
+          indices=residue.atoms().extract_i_seq()).all_eq(False)):
+      return None
+  rotamer_iterator = mon_lib_srv.rotamer_iterator(
+    comp_id=residue.resname,
+    atom_names=residue.atoms().extract_name(),
+    sites_cart=residue.atoms().extract_xyz())
+  if (rotamer_iterator is None) :
+    return None
+  if (rotamer_iterator.problem_message is not None):
+    return None
+  if (rotamer_iterator.rotamer_info is None):
+    return None
+  return rotamer_iterator
+
 def improper_ncab_from_atoms(thisN, thisC, thisCA, thisCB):
   assert (not None in [thisN, thisC, thisCA, thisCB])
   return phi_from_sites(thisN.xyz, thisC.xyz, thisCA.xyz, thisCB.xyz)
