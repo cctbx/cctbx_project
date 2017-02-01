@@ -283,7 +283,6 @@ class model_idealization():
 
   def prepare_reference_map_3(self, xrs, pdb_h):
     """ with ramachandran outliers """
-
     print >> self.log, "Preparing reference map, method 3"
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
           rama_outliers_selection(pdb_h, self.rama_manager, 1)
@@ -303,7 +302,9 @@ class model_idealization():
         space_group_info = xrs.space_group_info(),
         symmetry_flags   = maptbx.use_space_group_symmetry,
         d_min             = self.params.reference_map_resolution)
-    fc = xrs.structure_factors(d_min = self.params.reference_map_resolution, algorithm = "direct").f_calc()
+    fc = xrs.structure_factors(
+        d_min = self.params.reference_map_resolution,
+        algorithm = "direct").f_calc()
     fft_map = miller.fft_map(
         crystal_gridding=crystal_gridding,
         fourier_coefficients=fc)
@@ -311,6 +312,30 @@ class model_idealization():
     self.reference_map = fft_map.real_map_unpadded(in_place=False)
     if self.params.debug:
       fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
+    self.master_map = self.reference_map.deep_copy()
+    if self.using_ncs and self.master_pdb_h is not None:
+      # here we are negating non-master part of the model
+      # self.master_sel=master_sel
+      # self.master_map = self.reference_map.deep_copy()
+      print type(self.reference_map), dir(self.reference_map)
+      print type(self.master_map), dir(self.master_map)
+      mask = maptbx.mask(
+              xray_structure=xrs.select(self.master_sel),
+              n_real=self.master_map.focus(),
+              mask_value_inside_molecule=1,
+              mask_value_outside_molecule=-1,
+              solvent_radius=0,
+              atom_radius=1.)
+      self.master_map = self.reference_map * mask
+      if self.params.debug:
+        iotbx.ccp4_map.write_ccp4_map(
+            file_name="%s_3_master.map" % self.params.output_prefix,
+            unit_cell=xrs.unit_cell(),
+            space_group=xrs.space_group(),
+            map_data=self.master_map,
+            labels=flex.std_string([""]))
+        # fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
+    # STOP()
 
   def get_grm(self):
     # first make whole grm using self.whole_pdb_h
@@ -492,7 +517,7 @@ class model_idealization():
           fix_rotamer_outliers=True,
           cif_objects=self.cif_objects,
           verbose=True,
-          reference_map=self.reference_map,
+          reference_map=self.master_map,
           rotamer_manager=self.rotamer_manager,
           log=self.log)
       self.log.flush()
@@ -524,7 +549,7 @@ class model_idealization():
         pdb_hierarchy=self.working_pdb_h,
         params=self.params.loop_idealization,
         secondary_structure_annotation=self.ann,
-        reference_map=self.reference_map,
+        reference_map=self.master_map,
         crystal_symmetry=self.working_xrs.crystal_symmetry(),
         grm=self.working_grm,
         rama_manager=self.rama_manager,
@@ -567,7 +592,7 @@ class model_idealization():
           pdb_hierarchy=self.working_pdb_h,
           grm=self.working_grm.geometry,
           xrs=self.working_xrs,
-          map_data=self.reference_map,
+          map_data=self.master_map,
           mon_lib_srv=self.mon_lib_srv,
           rotamer_manager=self.rotamer_manager,
           verbose=True)

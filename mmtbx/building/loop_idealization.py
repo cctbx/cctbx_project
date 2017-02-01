@@ -670,7 +670,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num, n_following, n_previous,
       intersect_h = pdb_hierarchy.select(intersect)
       print >> log, "Hitting SS element"
       print >> log, intersect_h.as_pdb_string()
-      contains_ss_element = True
+      contains_ss_element = False
       assert intersect_h.atoms_size() > 0, "Wrong atom count in SS intersection"
       # assert 0, "hitting SS element!"
 
