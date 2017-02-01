@@ -475,7 +475,7 @@ def run(pdb_str, d_min, b, randomize):
 if (__name__ == "__main__"):
   for pdb_str in [pdb_str_5bb, pdb_str_5]:
     for d_min in [2., 3., 4., 5., 6., 7., 8., 9.]:
-      for b in [10,50,100,200]:
+      for b in [20,80,100,200]:
         if((d_min==2. or d_min==3.) and b>50.): continue
         for randomize in [True, False]:
           result, b_result, cc = run(pdb_str=pdb_str, d_min=d_min, b=b,

@@ -1204,10 +1204,17 @@ def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
   assert radius is not None
   return min(max(2.,radius),6.)
 
-def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
-               d_min_end=10., b_iso_start=0, b_iso_end=200, b_iso_step=10,
-               radius=5.0, sel_around_atoms=None, d_min_step=0.1):
+def _resolution_from_map_and_model_helper(
+      map,
+      xray_structure,
+      b_range,
+      d_min_start=1.5,
+      d_min_end=10.,
+      radius=5.0,
+      sel_around_atoms=None,
+      d_min_step=0.1):
   from cctbx import miller
+  import mmtbx.bulk_solvent
   xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
   cg = crystal_gridding(
     unit_cell             = xray_structure.unit_cell(),
@@ -1221,7 +1228,12 @@ def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
       sites_cart = xrs.sites_cart(),
       site_radii = flex.double(xrs.scatterers().size(), radius))
   assert approx_equal(flex.mean(xrs.extract_u_iso_or_u_equiv()),0.)
-  fc = xrs.structure_factors(d_min=d_min_start).f_calc()
+  fc = xrs.structure_factors(d_min=d_min_start+0.1).f_calc()
+  f_obs = fc.structure_factors_from_map(
+    map            = map,
+    use_scale      = True,
+    anomalous_flag = False,
+    use_sg         = False)
   d_spacings = fc.d_spacings().data()
   ss = 1./flex.pow2(d_spacings) / 4.
   d_min_best = None
@@ -1233,26 +1245,21 @@ def _resolution_from_map_and_model_helper(map, xray_structure, d_min_start=1.5,
     sel = d_spacings > d_min
     fc_ = fc.select(sel)
     ss_ = ss.select(sel)
-    ccb=-9999
-    b_best_=None
-    for b in range(int(b_iso_start),int(b_iso_end+b_iso_step),int(b_iso_step)):
-      scale = flex.exp(-b * ss_)
-      fc__ = fc_.array(data = fc_.data()*scale)
-      fft_map = miller.fft_map(
-        crystal_gridding     = cg,
-        fourier_coefficients = fc__)
-      map_calc = fft_map.real_map_unpadded()
-      cc = flex.linear_correlation(
-        x=map_.as_1d(),
-        y=map_calc.select(sel_around_atoms).as_1d()).coefficient()
-      if(cc>ccb):
-        ccb = cc
-        d_min_best_b = d_min
-        b_best_=b
+    o = mmtbx.bulk_solvent.complex_f_kb_scaled(
+      f_obs.data().select(sel), fc_.data(),
+      flex.double(b_range), ss_)
+    fc__ = fc_.array(data = o.scaled())
+    fft_map = miller.fft_map(
+      crystal_gridding     = cg,
+      fourier_coefficients = fc__)
+    map_calc = fft_map.real_map_unpadded()
+    ccb = flex.linear_correlation(
+      x=map_.as_1d(),
+      y=map_calc.select(sel_around_atoms).as_1d()).coefficient()
     if(ccb>cc_max):
       cc_max = ccb
-      d_min_best = d_min_best_b
-      b_best=b_best_
+      d_min_best = d_min
+      b_best = o.b()
     d_min+=d_min_step
   return d_min_best, b_best, cc_max
 
@@ -1278,17 +1285,14 @@ class resolution_from_map_and_model(object):
     if(d_min_min is not None and d_min_start<d_min_min):
       d_min_start=d_min_min
     step = (d_min_end-d_min_start)/5.
-    b_iso_end=200
-    b_iso_step=10
+    b_range=[0,10,20,30,40,50,60,70,80,90,100,150,200]
     if(d_min_end>10):
-      b_iso_end=500
-      b_iso_step=25
-    result, dummy, dummy = _resolution_from_map_and_model_helper(
+      b_range = b_range + [300,400,500]
+    result, b_iso, dummy = _resolution_from_map_and_model_helper(
       map              = map_data,
       xray_structure   = xray_structure,
       sel_around_atoms = sel_around_atoms,
-      b_iso_end        = b_iso_end,
-      b_iso_step       = b_iso_step,
+      b_range          = b_range,
       d_min_start      = d_min_start,
       d_min_end        = d_min_end,
       d_min_step       = step)
@@ -1298,8 +1302,7 @@ class resolution_from_map_and_model(object):
       map              = map_data,
       xray_structure   = xray_structure,
       sel_around_atoms = sel_around_atoms,
-      b_iso_end        = b_iso_end,
-      b_iso_step       = b_iso_step,
+      b_range          = b_range,
       d_min_start      = d_min_start,
       d_min_end        = d_min_end,
       d_min_step       = 0.1)

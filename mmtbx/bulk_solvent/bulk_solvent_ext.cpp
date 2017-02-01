@@ -63,6 +63,22 @@ namespace {
       .def("grad_u_star", &ls_u_star<>::grad_u_star)
    ;
 
+   class_<complex_f_kb_scaled<> >(
+      "complex_f_kb_scaled")
+      .def(init<
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<std::complex<double> > const&,
+           af::const_ref<double> const&,
+           af::const_ref<double> const& >(
+             (arg("f1"),
+              arg("f2"),
+              arg("b_range"),
+              arg("ss"))))
+      .def("k", &complex_f_kb_scaled<>::k)
+      .def("b", &complex_f_kb_scaled<>::b)
+      .def("scaled", &complex_f_kb_scaled<>::scaled)
+   ;
+
    class_<k_sol_b_sol_k_anisotropic_scaler_twin<> >(
       "k_sol_b_sol_k_anisotropic_scaler_twin")
       .def(init<
