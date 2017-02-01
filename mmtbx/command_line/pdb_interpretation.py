@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_interpretation
 from __future__ import division
 import sys
+from iotbx.file_reader import any_file
 
 def get_master_phil():
   import iotbx.phil
@@ -16,12 +17,16 @@ build_xray_structure = True
   .type = bool
 max_atoms = None
   .type = int
-
 write_geo_files = False
   .type = bool
 write_tardy_geo_files = False
   .type = bool
-
+model_file_name = None
+  .type = path
+  .multiple = True
+restraints_cif_file_name = None
+  .type = path
+  .multiple = True
 include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 """, process_includes=True)
 
@@ -29,35 +34,35 @@ def run(args):
   from libtbx.str_utils import show_string
   #
   master_phil = get_master_phil()
-  import iotbx.utils
-  input_objects = iotbx.utils.process_command_line_inputs(
+  import iotbx.phil
+  input_objects = iotbx.phil.process_command_line_with_files(
     args=args,
-    master_phil=master_phil,
-    input_types=("pdb", "cif"))
-  work_phil = master_phil.fetch(sources=input_objects["phil"])
-  work_phil.show()
-  print
-  work_params = work_phil.extract()
+    pdb_file_def="model_file_name",
+    cif_file_def="restraints_cif_file_name",
+    master_phil=master_phil)
+  input_objects.work.show()
+  work_params = input_objects.work.extract()
   #
   import mmtbx.monomer_library.server
   mon_lib_srv = mmtbx.monomer_library.server.server()
   ener_lib = mmtbx.monomer_library.server.ener_lib()
-  for file_obj in input_objects["cif"]:
-    print "Processing CIF file: %s" % show_string(file_obj.file_name)
+  for file_name in work_params.restraints_cif_file_name:
+    print "Processing CIF file: %s" % show_string(file_name)
+    af = any_file(file_name = file_name)
     for srv in [mon_lib_srv, ener_lib]:
       srv.process_cif_object(
-        cif_object=file_obj.file_content,
-        file_name=file_obj.file_name)
+        cif_object=af.file_object.model(),
+        file_name=af.file_name)
   #
   import mmtbx.monomer_library.pdb_interpretation
   from libtbx.utils import Sorry
   processed_pdb_files = []
-  for input_obj in input_objects["pdb"]:
+  for file_name in work_params.model_file_name:
     processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
       params=work_params.pdb_interpretation,
-      file_name=input_obj.file_name,
+      file_name=file_name,
       atom_selection_string=work_params.atom_selection,
       strict_conflict_handling=work_params.strict_processing,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
