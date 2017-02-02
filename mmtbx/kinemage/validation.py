@@ -939,20 +939,21 @@ def run(args, pdb_interpretation_params=None):
       raise Usage(usage())
   pdbID = None
   master_phil = get_master_phil()
-  import iotbx.utils
-  input_objects = iotbx.utils.process_command_line_inputs(
+  import iotbx.phil
+  input_objects = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=master_phil,
-    input_types=("pdb", "cif"))
-  auto_cdl=True
-  for po in input_objects["phil"]:
-    if po.as_str().find(".cdl")>-1:
-      auto_cdl=False
-      break
-  work_phil = master_phil.fetch(sources=input_objects["phil"])
-  work_params = work_phil.extract()
-  if auto_cdl:
-    work_params.kinemage.pdb_interpretation.restraints_library.cdl = Auto
+    pdb_file_def="kinemage.pdb",
+    cif_file_def="kinemage.cif")
+  work_params = input_objects.work.extract()
+  # Stange workaround?
+  # auto_cdl=True
+  # for po in input_objects["phil"]:
+  #   if po.as_str().find(".cdl")>-1:
+  #     auto_cdl=False
+  #     break
+  # if auto_cdl:
+  work_params.kinemage.pdb_interpretation.restraints_library.cdl = Auto
   if work_params.kinemage.pdb == None:
     assert len(input_objects["pdb"]) == 1
     file_obj = input_objects["pdb"][0]
@@ -967,13 +968,7 @@ def run(args, pdb_interpretation_params=None):
   assert pdb_io is not None
   cif_file = None
   cif_object = None
-  if len(work_params.kinemage.cif) == 0:
-    if len(input_objects["cif"]) > 0:
-      cif_file = []
-      for cif in input_objects["cif"]:
-        cif_file.append(cif.file_name)
-  else:
-    cif_file = work_params.kinemage.cif
+  cif_file = work_params.kinemage.cif
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   if cif_file != None:

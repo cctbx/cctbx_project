@@ -10,6 +10,7 @@ def get_master_phil():
     analyze_peptides {
       pdb = None
         .type = path
+        .multiple = True
         .help = '''Enter a PDB file name'''
       cis_only = True
         .type = bool
@@ -154,20 +155,17 @@ def run(args):
   if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
     raise Usage(usage())
   import iotbx.pdb
-  import iotbx.utils
+  import iotbx.phil
   master_phil = get_master_phil()
   args = list(args)
-  input_objects = iotbx.utils.process_command_line_inputs(
+  input_objects = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=master_phil,
-    input_types=("pdb",))
-  work_phil = master_phil.fetch(sources=input_objects["phil"])
-  work_params = work_phil.extract()
-  if len(input_objects["pdb"]) != 1:
-    summary, header = self.get_summary_and_header("ramalyze")
-    raise Usage(summary)
-  file_obj = input_objects["pdb"][0]
-  file_name = file_obj.file_name
+    pdb_file_def="analyze_peptides.pdb")
+  work_params = input_objects.work.extract()
+  if len(work_params.analyze_peptides.pdb) != 1:
+    raise Usage(usage())
+  file_name = work_params.analyze_peptides.pdb[0]
   pdb_io = iotbx.pdb.input(file_name)
   pdb_hierarchy = pdb_io.construct_hierarchy()
   pdb_hierarchy.reset_i_seq_if_necessary()

@@ -12,6 +12,7 @@ def get_master_phil():
   mp_geo {
     pdb = None
       .type = path
+      .multiple = True
     out_file = None
       .type = path
     bonds_and_angles = False
@@ -65,15 +66,20 @@ def get_altloc(atoms_info):
   return altloc
 
 def run(args):
+  """
+  I suggest adding here:
+  cctbx_project/mmtbx/validation/regression/tst_mp_geo.py
+  test cases with just .pdb, without arguments, etc.
+  """
   master_phil = get_master_phil()
-  import iotbx.utils
-  input_objects = iotbx.utils.process_command_line_inputs(
+  import iotbx.phil
+  input_objects = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=master_phil,
-      input_types=("pdb",))
-  work_phil = master_phil.fetch(sources=input_objects["phil"])
-  work_params = work_phil.extract()
-  file_name = work_params.mp_geo.pdb
+    pdb_file_def="mp_geo.pdb")
+  work_params = input_objects.work.extract()
+  assert len(work_params.mp_geo.pdb) == 1, "Need a model file to run"
+  file_name = work_params.mp_geo.pdb[0]
   out_file = None
   if work_params.mp_geo.out_file != None:
     out_file = work_params.mp_geo.out_file
