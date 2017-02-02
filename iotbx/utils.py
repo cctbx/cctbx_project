@@ -2,6 +2,7 @@ from __future__ import division
 class try_read_file(object):
 
   def __init__(O, file_name, input_types):
+    assert 0, "DEPRECATED"
     def O_assign(file_type, file_content):
       O.file_name = file_name
       O.file_type = file_type
@@ -59,6 +60,7 @@ class try_read_file(object):
     O_assign(file_type=None, file_content=None)
 
 def process_command_line_inputs(args, master_phil, input_types):
+  assert 0, "DEPRECATED"
   assert set(("directory", "mtz", "pdb", "cif")).issuperset(set(input_types))
   input_objects = {}
   for key in input_types:
