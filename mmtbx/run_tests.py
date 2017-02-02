@@ -309,6 +309,7 @@ tst_list = (
   "$D/regression/tst_model_map.py",
   #
   "$D/regression/tst_cis_trans_peptide_link.py",
+  "$D/regression/tst_apply_cif_restraints.py",
   )
 
 def run():
