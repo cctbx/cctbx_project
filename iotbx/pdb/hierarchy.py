@@ -652,7 +652,8 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       cl2 = gc(a.resname)
       if([cl1,cl2].count("common_water")==2 or
          (id_str.strip()=="" and cl2=="common_water")):
-        assert sc.scattering_type.strip().lower() in ["o","h","d"]
+        if(not sc.scattering_type.strip().lower() in ["o","h","d"]):
+          raise Sorry("Bad ATOM record:\n%s"%a.format_atom_record())
         set_attr(sc=sc, a=a)
       else:
         # XXX may be fix it when creating IS ? or make another special case?

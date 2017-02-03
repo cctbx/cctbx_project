@@ -1,6 +1,4 @@
-
 from __future__ import division
-from libtbx.utils import null_out
 from cStringIO import StringIO
 import os.path
 
@@ -60,7 +58,7 @@ def exercise_cmdline () :
   extend_sidechains.run(
     args=[pdb_file, mtz_file, "output_model=%s" % pdb_out],
     out=out)
-  assert ("7 sidechains extended." in out.getvalue()), out.getvalue()
+  assert ("1 sidechains extended." in out.getvalue()), out.getvalue()
   from mmtbx.validation import rotalyze
   pdb_new = iotbx.pdb.hierarchy.input(file_name=pdb_out)
   r1 = rotalyze.rotalyze(pdb_hierarchy=pdb_in.hierarchy, outliers_only=False)
@@ -74,7 +72,7 @@ def exercise_cmdline () :
   extend_sidechains.run(
     args=[pdb_file, mtz_file, seq_file, "output_model=%s" % pdb_out],
     out=out)
-  assert ("7 sidechains extended." in out.getvalue())
+  assert ("1 sidechains extended." in out.getvalue())
 
 def exercise_correct_sequence () :
   from mmtbx.building import extend_sidechains

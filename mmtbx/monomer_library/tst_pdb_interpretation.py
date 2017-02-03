@@ -2091,12 +2091,39 @@ END
     log=log)
   grm = processed_pdb_file.geometry_restraints_manager()
   assert grm.angle_proxies.size() == 21
-  assert grm.get_dihedral_proxies().size() == 9, "dihedrals %d" % grm.get_dihedral_proxies().size()
+  assert grm.get_dihedral_proxies().size() == 9, \
+    "dihedrals %d" % grm.get_dihedral_proxies().size()
+
+def exercise_bad_water(mon_lib_srv, ener_lib):
+  raw_records = """\
+CRYST1   34.035   17.923   13.510  90.00  90.00  90.00 P 1
+SCALE1      0.029382  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.055794  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.074019        0.00000
+ATOM   5961  W   HOH 21100      44.341  86.390 -10.071 1.000 50.00
+ATOM   5962  W   HOH 21101      56.357  78.467 -11.839 1.000 50.00
+ATOM   5963  W   HOH 21102      32.322  79.906 -13.581 1.000 50.00
+END
+  """.splitlines()
+  e = None
+  try:
+    log = StringIO()
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=None,
+      raw_records=raw_records,
+      log=log)
+  except Exception, e:
+    pass
+  assert str(e)=="""Bad ATOM record:
+ATOM      1  W   HOH 21100      44.341  86.390 -10.071  1.00 50.00"""
 
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_bad_water(mon_lib_srv, ener_lib)
   exercise_unk_and_cys(mon_lib_srv, ener_lib)
   exercise_cdl_automatic()
   exercise_flattened_cif_loop()
