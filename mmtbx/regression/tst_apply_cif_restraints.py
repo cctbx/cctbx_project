@@ -242,6 +242,7 @@ def run():
   cmd += ' %(preamble)s.eff' % {'preamble' : preamble}
   rc = easy_run.call(cmd)
   print 'rc',rc
+  assert rc==0
   return rc
   
 if __name__=="__main__":
