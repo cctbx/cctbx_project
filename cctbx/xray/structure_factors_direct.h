@@ -6,7 +6,7 @@
 #include <cctbx/math/cos_sin_table.h>
 #include <omptbx/omp_or_stubs.h>
 
-//#define CCTBX_XRAY_STRUCTURE_FACTORS_DIRECT_NO_PRAGMA_OMP
+#define CCTBX_XRAY_STRUCTURE_FACTORS_DIRECT_NO_PRAGMA_OMP
 
 namespace cctbx { namespace xray { namespace structure_factors {
 
