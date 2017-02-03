@@ -223,11 +223,11 @@ LIG plan-1   H051 0.020
   '%s.eff' % preamble : '''
 pdb_interpretation {
   apply_cif_restraints {
-    restraints_file_name=elbow.cif 
+    restraints_file_name=%s_02.cif 
     residue_selection="chain B and resname LIG"
   }
 }
-  ''',
+  ''' % preamble,
 }
 
 def run():
