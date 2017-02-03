@@ -191,7 +191,6 @@ supported_compilers = (
                   # It will hopefully be so with the soon-to-be-released
                   # LLVM 2.8 which will most likely ship with the first
                   # official release of XCode 4 (currently in Preview).
-  "darwin_clang-omp",
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
