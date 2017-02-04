@@ -134,7 +134,7 @@ class PopUpCharts(object):
     outliers.set_selected(data < q1_x - cut_x, True)
     return outliers
 
-  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5):
+  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
@@ -144,8 +144,16 @@ class PopUpCharts(object):
     plot to save in inches
     @param ysize as xsize
     @param iqr_ratio Inter-quartile range multiplier for rejecting outliers
+    @param ranges Limits for the a, b and c axes. Tuple of 6 doubles, low then high in pairs for each.
     @return if not interactive, returns the path of the saved image, otherwise None
     """
+    if ranges is not None:
+      assert len(ranges) == 6
+      alim = ranges[0:2]
+      blim = ranges[2:4]
+      clim = ranges[4:6]
+    else:
+      alim = blim = clim = None
 
     plot_ratio = max(min(xsize, ysize)/2.5, 3)
     if high_vis:
@@ -187,6 +195,14 @@ class PopUpCharts(object):
       alpha = flex.double([i['alpha'] for i in info])
       beta = flex.double([i['beta'] for i in info])
       gamma = flex.double([i['gamma'] for i in info])
+      if ranges is not None:
+        sel = (a >= alim[0]) & (a <= alim[1]) & (b >= blim[0]) & (b <= blim[1]) & (c >= clim[0]) & (c <= clim[1])
+        a = a.select(sel)
+        b = b.select(sel)
+        c = c.select(sel)
+        alpha = alpha.select(sel)
+        beta = beta.select(sel)
+        gamma = gamma.select(sel)
 
       accepted = flex.bool(len(a), True)
       for d in [a, b, c, alpha, beta, gamma]:
@@ -212,7 +228,7 @@ class PopUpCharts(object):
       else:
         a_legend = n_str + varstr
       a_hist = sub_a.hist(a, nbins, normed=False,
-                 alpha=0.75, histtype='stepfilled', label = a_legend)
+                 alpha=0.75, histtype='stepfilled', label = a_legend, range = alim)
       sub_a.set_xlabel("a-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
       sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
 
@@ -223,7 +239,7 @@ class PopUpCharts(object):
       else:
         b_legend = varstr
       b_hist = sub_b.hist(b, nbins, normed=False,
-               alpha=0.75, histtype='stepfilled', label = b_legend)
+               alpha=0.75, histtype='stepfilled', label = b_legend, range = blim)
       sub_b.set_xlabel("b-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
       self.plt.setp(sub_b.get_yticklabels(), visible=False)
 
@@ -234,7 +250,7 @@ class PopUpCharts(object):
       else:
         c_legend = varstr
       c_hist = sub_c.hist(c, nbins, normed=False,
-               alpha=0.75, histtype='stepfilled', label = c_legend)
+               alpha=0.75, histtype='stepfilled', label = c_legend, range = clim)
       sub_c.set_xlabel("c-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
       self.plt.setp(sub_c.get_yticklabels(), visible=False)
 
@@ -242,25 +258,34 @@ class PopUpCharts(object):
       sub_a.set_ylim([0, abc_hist_ylim])
 
       if len(info_list) == 1:
-        sub_ba.hist2d(a, b, bins=100)
+        sub_ba.hist2d(a, b, bins=100, range=[alim,blim] if ranges is not None else None)
       else:
         sub_ba.plot(a.as_numpy_array(), b.as_numpy_array(), '.')
+        if ranges is not None:
+          sub_ba.set_xlim(alim)
+          sub_ba.set_ylim(blim)
       sub_ba.set_xlabel("a axis").set_fontsize(text_ratio)
       sub_ba.set_ylabel("b axis").set_fontsize(text_ratio)
       # plt.setp(sub_ba.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
-        sub_cb.hist2d(b, c, bins=100)
+        sub_cb.hist2d(b, c, bins=100, range=[blim,clim] if ranges is not None else None)
       else:
         sub_cb.plot(b.as_numpy_array(), c.as_numpy_array(), '.')
+        if ranges is not None:
+          sub_cb.set_xlim(blim)
+          sub_cb.set_ylim(clim)
       sub_cb.set_xlabel("b axis").set_fontsize(text_ratio)
       sub_cb.set_ylabel("c axis").set_fontsize(text_ratio)
       # plt.setp(sub_cb.get_yticklabels(), visible=False)
 
       if len(info_list) == 1:
-        sub_ac.hist2d(c, a, bins=100)
+        sub_ac.hist2d(c, a, bins=100, range=[clim,alim] if ranges is not None else None)
       else:
         sub_ac.plot(c.as_numpy_array(), a.as_numpy_array(), '.')
+        if ranges is not None:
+          sub_ac.set_xlim(clim)
+          sub_ac.set_ylim(alim)
       sub_ac.set_xlabel("c axis").set_fontsize(text_ratio)
       sub_ac.set_ylabel("a axis").set_fontsize(text_ratio)
       # plt.setp(sub_ac.get_yticklabels(), visible=False)

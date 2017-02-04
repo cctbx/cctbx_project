@@ -13,6 +13,9 @@ phil_str = """
   iqr_ratio = 1.5
     .type = float
     .help = Interquartile range multiplier for outlier rejection. Use None to disable outlier rejection.
+  ranges = None
+    .type = floats(6)
+    .help = Lower and upper bounds for the ranges to display for each of the a, b and c axes
 """
 phil_scope = parse(phil_str)
 
@@ -44,25 +47,30 @@ class Script(object):
     from dials.util.options import flatten_experiments
     # Parse the command line
     params, options = self.parser.parse_args(show_diff_phil=True)
-    experiments = flatten_experiments(params.input.experiments)
+    if all([len(e.data) == 1 for e in params.input.experiments]):
+      experiments_list = [flatten_experiments(params.input.experiments)]
+    else:
+      experiments_list = [e.data for e in params.input.experiments]
 
     info_list = []
-    info = []
-    for experiment in experiments:
-      a, b, c, alpha, beta, gamma = experiment.crystal.get_unit_cell().parameters()
+    for experiments in experiments_list:
+      info = []
+      for experiment in experiments:
+        a, b, c, alpha, beta, gamma = experiment.crystal.get_unit_cell().parameters()
 
-      info.append({'a':a,
-                   'b':b,
-                   'c':c,
-                   'alpha':alpha,
-                   'beta':beta,
-                   'gamma':gamma,
-                   'n_img':0})
-    info_list.append(info)
+        info.append({'a':a,
+                     'b':b,
+                     'c':c,
+                     'alpha':alpha,
+                     'beta':beta,
+                     'gamma':gamma,
+                     'n_img':0})
+      info_list.append(info)
     import xfel.ui.components.xfel_gui_plotter as pltr
     plotter = pltr.PopUpCharts()
-    plotter.plot_uc_histogram(info_list=info_list, legend_list=[""], iqr_ratio = params.iqr_ratio)
-    plotter.plot_uc_3Dplot(info, iqr_ratio = params.iqr_ratio)
+    plotter.plot_uc_histogram(info_list=info_list, legend_list=[""]*len(experiments_list), iqr_ratio = params.iqr_ratio, ranges = params.ranges)
+    if len(experiments_list) == 1:
+      plotter.plot_uc_3Dplot(info, iqr_ratio = params.iqr_ratio)
     plotter.plt.show()
 
 if __name__ == '__main__':
