@@ -352,7 +352,7 @@ class postref_handler(object):
     uc_params = observations_original.unit_cell().parameters()
     ph = partiality_handler()
     r0 = ph.calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
-                                          observations_original_sel.indices(), wavelength)
+                                 observations_original_sel.indices(), wavelength)
     #calculate first G
     (G, B) = (1,0)
     stats = (0,0,0,0,0,0,0,0,0,0)
@@ -365,7 +365,7 @@ class postref_handler(object):
         observations_as_f = observations_non_polar_sel.as_amplitude_array()
         binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
         wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
-        G = wp.wilson_intensity_scale_factor
+        G = wp.wilson_intensity_scale_factor * 1e2
         B = wp.wilson_b
       except Exception:
         txt_exception += 'warning B-factor calculation failed.\n'

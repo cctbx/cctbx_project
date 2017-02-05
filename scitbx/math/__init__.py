@@ -449,3 +449,15 @@ def similarity_indices(x, eps):
   for i, ii in enumerate(ii_all):
     for iii in ii: y[iii]=i
   return y
+
+def simpson(f, a, b, n):
+  """
+  Integral of f on [a,b] using composite Simpson's rule.
+  """
+  if(n % 2 != 0): raise ValueError("n must be even" % n)
+  h = (b - a) / n
+  s = f(a) + f(b)
+  for i in range(1, n, 1):
+    if(i%2==0): s += 4 * f(a + i * h)
+    else:       s += 2 * f(a + i * h)
+  return s * h / 3

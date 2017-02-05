@@ -130,6 +130,7 @@ tst_list = (
    "$D/maptbx/tst_asymmetric_map.py",
    "$D/maptbx/tst_peak_volume_estimate.py",
    "$D/maptbx/tst_resolution_from_map_and_model.py",
+   "$D/maptbx/tst_atom_curves.py",
    "$D/maptbx/tst_atom_radius_as_central_peak_width.py",
    "$D/maptbx/tst_get_percentile_cutoffs.py",
    "$D/regression/tst_sphericity.py",

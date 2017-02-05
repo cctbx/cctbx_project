@@ -1314,3 +1314,93 @@ class resolution_from_map_and_model(object):
       d_min_start      = d_min_start,
       d_min_end        = d_min_end,
       d_min_step       = 0.1)
+
+class atom_curves(object):
+  """
+Class-toolkit to compute various 1-atom 1D curves: exact electron density,
+Fourier image of specified resolution, etc.
+  """
+
+  def __init__(self, scattering_type, scattering_table="wk1995"):
+    adopt_init_args(self, locals())
+    self.xray_structure = self.get_xray_structure()
+    self.scr = self.xray_structure.scattering_type_registry()
+    self.uff = self.scr.unique_form_factors_at_d_star_sq
+
+  def get_xray_structure(self):
+    cs = crystal.symmetry((10, 10, 10, 90, 90, 90), "P 1")
+    sp = crystal.special_position_settings(cs)
+    from cctbx import xray
+    sc = xray.scatterer(
+      scattering_type = self.scattering_type,
+      site            = (0, 0, 0))
+    scatterers = flex.xray_scatterer([sc])
+    xrs = xray.structure(sp, scatterers)
+    xrs.scattering_type_registry(table = self.scattering_table)
+    return xrs
+
+  def exact_density(self, b_iso, radius_max=5., radius_step=0.001):
+    r = 0.0
+    density = flex.double()
+    radii   = flex.double()
+    ed = self.scr.gaussian(self.scattering_type)
+    while r < radius_max:
+      density.append(ed.electron_density(r, b_iso))
+      radii.append(r)
+      r+=radius_step
+    return group_args(radii = radii, density = density)
+
+  def form_factor(self, ss, b_iso):
+    dss = 4*ss
+    return self.uff(dss)[0]*math.exp(-b_iso*ss)
+
+  def integrand(self, r, b_iso):
+    def compute(s):
+      ss = (s/2)**2
+      if(abs(r)>1.e-9):
+        return 2/r * s * self.form_factor(ss, b_iso) * math.sin(2*math.pi*r*s)
+      else:
+        return 4*math.pi * s**2 * self.form_factor(ss, b_iso)
+    return compute
+
+  def image(self,
+            d_min,
+            b_iso,
+            d_max=None,
+            radius_max=5.,
+            radius_step=0.001,
+            n_integration_steps=2000):
+    r = 0.0
+    assert d_max != 0.
+    if(d_max is None): s_min=0
+    else:              s_min=1./d_max
+    assert d_min != 0.
+    s_max = 1./d_min
+    image_values = flex.double()
+    radii        = flex.double()
+    while r < radius_max:
+      s = scitbx.math.simpson(
+        f=self.integrand(r, b_iso), a=s_min, b=s_max, n=n_integration_steps)
+      image_values.append(s)
+      radii.append(r)
+      r+=radius_step
+    # Fine first inflection point
+    first_inflection_point=None
+    size = image_values.size()
+    second_derivatives = flex.double()
+    for i in xrange(size):
+      if(i>0 and i<size-1):
+        dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
+      elif(i==0):
+        dxx = 2*image_values[i+1]-2*image_values[i]
+      else:
+        dxx = second_derivatives[i-1]*radius_step**2
+      if(first_inflection_point is None and dxx>0):
+        first_inflection_point = (radii[i-1]+radii[i])/2.
+      second_derivatives.append(dxx/radius_step**2)
+    return group_args(
+      radii                  = radii,
+      image_values           = image_values,
+      first_inflection_point = first_inflection_point,
+      radius                 = first_inflection_point*2,
+      second_derivatives     = second_derivatives)
