@@ -1228,12 +1228,20 @@ def _resolution_from_map_and_model_helper(
       sites_cart = xrs.sites_cart(),
       site_radii = flex.double(xrs.scatterers().size(), radius))
   assert approx_equal(flex.mean(xrs.extract_u_iso_or_u_equiv()),0.)
-  fc = xrs.structure_factors(d_min=d_min_start+0.1).f_calc()
-  f_obs = fc.structure_factors_from_map(
-    map            = map,
-    use_scale      = True,
-    anomalous_flag = False,
-    use_sg         = False)
+  fc = xrs.structure_factors(d_min=d_min_start).f_calc()
+  while True:
+    f_obs = None
+    try:
+      f_obs = fc.structure_factors_from_map(
+        map            = map,
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = False)
+    except RuntimeError, e:
+      pass
+    if(f_obs is not None): break
+    d_min_start += 0.1
+    fc = fc.resolution_filter(d_min=d_min_start)
   d_spacings = fc.d_spacings().data()
   ss = 1./flex.pow2(d_spacings) / 4.
   d_min_best = None
@@ -1279,7 +1287,7 @@ class resolution_from_map_and_model(object):
         sites_cart = xray_structure.sites_cart(),
         site_radii = flex.double(xray_structure.scatterers().size(), atom_radius))
     d_min_end = round(d_min_from_map(
-      map_data=map_data, unit_cell=unit_cell, resolution_factor=0.2),1)
+      map_data=map_data, unit_cell=unit_cell, resolution_factor=0.1),1)
     d_min_start = round(d_min_from_map(
       map_data=map_data, unit_cell=unit_cell, resolution_factor=0.5),1)
     if(d_min_min is not None and d_min_start<d_min_min):
