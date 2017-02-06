@@ -1384,6 +1384,8 @@ class resolution_from_map_and_model(object):
       nproc          = nproc)
     d_min_start = round(result-step, 1)
     d_min_end   = round(result+step*2, 1)
+    if(d_min_min is not None and d_min_start<d_min_min):
+      d_min_start=d_min_min
     self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper(
       map              = map_data,
       xray_structure   = xray_structure,
