@@ -481,7 +481,7 @@ if (__name__ == "__main__"):
           result, b_result, cc = run(pdb_str=pdb_str, d_min=d_min, b=b,
             randomize=randomize)
           print b, d_min, "<>", b_result, result, "<>", cc
-          assert approx_equal(d_min, result)
+          assert approx_equal(d_min, result, 0.11)
           assert cc>0.9
           if(not randomize):
             assert approx_equal(b, b_result)

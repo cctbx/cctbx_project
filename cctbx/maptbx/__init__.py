@@ -1211,22 +1211,28 @@ def _resolution_from_map_and_model_helper(
       d_min_start=1.5,
       d_min_end=10.,
       radius=5.0,
-      sel_around_atoms=None,
-      d_min_step=0.1):
+      d_min_step=0.1,
+      approximate=False):
   from cctbx import miller
   import mmtbx.bulk_solvent
+  import scitbx.math.curve_fitting
   xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
   cg = crystal_gridding(
     unit_cell             = xray_structure.unit_cell(),
     space_group_info      = xray_structure.space_group_info(),
     pre_determined_n_real = map.accessor().all())
-  if(sel_around_atoms is None):
-    sel_around_atoms = maptbx.grid_indices_around_sites(
+  #
+  radii = [2,2.25,2.5,2.75,3,3.5,4,4.5,5]
+  selections = []
+  for radius in radii:
+    sel_around_atoms = grid_indices_around_sites(
       unit_cell  = xrs.unit_cell(),
       fft_n_real = map.focus(),
       fft_m_real = map.all(),
       sites_cart = xrs.sites_cart(),
       site_radii = flex.double(xrs.scatterers().size(), radius))
+    selections.append(sel_around_atoms)
+  #
   assert approx_equal(flex.mean(xrs.extract_u_iso_or_u_equiv()),0.)
   fc = xrs.structure_factors(d_min=d_min_start).f_calc()
   while True:
@@ -1242,13 +1248,25 @@ def _resolution_from_map_and_model_helper(
     if(f_obs is not None): break
     d_min_start += 0.1
     fc = fc.resolution_filter(d_min=d_min_start)
+  #
+  def get_cc(m1, m2, selections):
+    result=-9999.
+    for sel in selections:
+      m1_ = m1.select(sel)
+      m2_ = m2.select(sel)
+      cc = flex.linear_correlation(
+        x=m1_.as_1d(),
+        y=m2_.as_1d()).coefficient()
+      if(cc>result):
+        result=cc
+    return result
+  #
   d_spacings = fc.d_spacings().data()
   ss = 1./flex.pow2(d_spacings) / 4.
-  d_min_best = None
-  b_best = None
-  cc_max=-999
-  map_ = map.select(sel_around_atoms)
   d_min = d_min_start
+  x=flex.double()
+  y=flex.double()
+  b=flex.double()
   while d_min<d_min_end:
     sel = d_spacings > d_min
     fc_ = fc.select(sel)
@@ -1261,31 +1279,44 @@ def _resolution_from_map_and_model_helper(
       crystal_gridding     = cg,
       fourier_coefficients = fc__)
     map_calc = fft_map.real_map_unpadded()
-    ccb = flex.linear_correlation(
-      x=map_.as_1d(),
-      y=map_calc.select(sel_around_atoms).as_1d()).coefficient()
-    if(ccb>cc_max):
-      cc_max = ccb
-      d_min_best = d_min
-      b_best = o.b()
+    cc = get_cc(m1=map_calc, m2=map, selections=selections)
+    x.append(d_min)
+    y.append(cc)
+    b.append(o.b())
     d_min+=d_min_step
-  return d_min_best, b_best, cc_max
+  #
+  if(approximate):
+    fit = scitbx.math.curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
+      degree=2, min_iterations=50, number_of_cycles=10)
+    a0,a1,a2 = fit.params
+    if(a2>=0.): return None,None,None # concave down
+    x_=[]
+    y_=[]
+    b_=[]
+    for i in xrange(y.size()):
+      if(i>=2 and i<=y.size()-3):
+        x_.append(x[i])
+        y_.append( (y[i-2]+y[i-1]+y[i]+y[i+1]+y[i+2])/5. )
+        b_.append(b[i])
+    x,y,b = x_,y_,b_
+  cc_max = max(y)
+  r=1.e+9
+  d_best, b_best, cc_best = None,None,None
+  for di,bi,cci in zip(x,b,y):
+    r_ = abs(cci-cc_max)
+    if(r_<r):
+      r=r_
+      d_best, b_best, cc_best = di, bi, cci
+  return d_best, b_best, cc_best
 
 class resolution_from_map_and_model(object):
   def __init__(self, map_data, xray_structure, d_min_min=None,
-        sel_around_atoms=None, atom_radius=5.0):
+        atom_radius=5.0):
     """
     Given map and model estimate resolution by maximizing map CC(map, model-map).
     As a by-product, also provides CC and optimal overall B-factor.
     """
     unit_cell = xray_structure.unit_cell()
-    if(sel_around_atoms is None):
-      sel_around_atoms = grid_indices_around_sites(
-        unit_cell  = unit_cell,
-        fft_n_real = map_data.focus(),
-        fft_m_real = map_data.all(),
-        sites_cart = xray_structure.sites_cart(),
-        site_radii = flex.double(xray_structure.scatterers().size(), atom_radius))
     d_min_end = round(d_min_from_map(
       map_data=map_data, unit_cell=unit_cell, resolution_factor=0.1),1)
     d_min_start = round(d_min_from_map(
@@ -1297,23 +1328,23 @@ class resolution_from_map_and_model(object):
     if(d_min_end>10):
       b_range = b_range + [300,400,500]
     result, b_iso, dummy = _resolution_from_map_and_model_helper(
-      map              = map_data,
-      xray_structure   = xray_structure,
-      sel_around_atoms = sel_around_atoms,
-      b_range          = b_range,
-      d_min_start      = d_min_start,
-      d_min_end        = d_min_end,
-      d_min_step       = step)
+      map            = map_data,
+      xray_structure = xray_structure,
+      b_range        = b_range,
+      d_min_start    = d_min_start,
+      d_min_end      = d_min_end,
+      d_min_step     = step,
+      approximate    = False)
     d_min_start = round(result-step, 1)
-    d_min_end   = round(result+step, 1)
+    d_min_end   = round(result+step*2, 1)
     self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper(
       map              = map_data,
       xray_structure   = xray_structure,
-      sel_around_atoms = sel_around_atoms,
       b_range          = b_range,
       d_min_start      = d_min_start,
       d_min_end        = d_min_end,
-      d_min_step       = 0.1)
+      d_min_step       = 0.1,
+      approximate      = True)
 
 class atom_curves(object):
   """
