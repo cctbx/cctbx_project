@@ -1208,6 +1208,7 @@ def _resolution_from_map_and_model_helper(
       map,
       xray_structure,
       b_range,
+      nproc,
       d_min_start=1.5,
       d_min_end=10.,
       radius=5.0,
@@ -1221,18 +1222,36 @@ def _resolution_from_map_and_model_helper(
     unit_cell             = xray_structure.unit_cell(),
     space_group_info      = xray_structure.space_group_info(),
     pre_determined_n_real = map.accessor().all())
-  #
-  radii = [2,2.25,2.5,2.75,3,3.5,4,4.5,5]
-  selections = []
-  for radius in radii:
-    sel_around_atoms = grid_indices_around_sites(
-      unit_cell  = xrs.unit_cell(),
-      fft_n_real = map.focus(),
-      fft_m_real = map.all(),
-      sites_cart = xrs.sites_cart(),
-      site_radii = flex.double(xrs.scatterers().size(), radius))
-    selections.append(sel_around_atoms)
-  #
+  ### Embedded class to get radii (parallel enabled)
+  class run_get_selection(object):
+    def __init__(self, xrs, map, nproc):
+      adopt_init_args(self, locals())
+      self.uc = self.xrs.unit_cell()
+      self.sites_cart = self.xrs.sites_cart()
+      self.size = self.xrs.scatterers().size()
+      self.selections = []
+      radii = [2,2.25,2.5,2.75,3,3.5,4,4.5,5]
+      if(self.nproc>1):
+        from libtbx import easy_mp
+        stdout_and_results = easy_mp.pool_map(
+          processes    = self.nproc,
+          fixed_func   = self.run,
+          args         = radii,
+          func_wrapper = "buffer_stdout_stderr")
+        for so, sel in stdout_and_results:
+          self.selections.append(sel)
+      else:
+        for radius in radii:
+          self.selections.append(self.run(radius=radius))
+    def run(self, radius):
+      return grid_indices_around_sites(
+        unit_cell  = self.uc,
+        fft_n_real = self.map.focus(),
+        fft_m_real = self.map.all(),
+        sites_cart = self.sites_cart,
+        site_radii = flex.double(self.size, radius))
+  ###
+  selections = run_get_selection(xrs=xrs, map=map, nproc=nproc).selections
   assert approx_equal(flex.mean(xrs.extract_u_iso_or_u_equiv()),0.)
   fc = xrs.structure_factors(d_min=d_min_start).f_calc()
   while True:
@@ -1260,31 +1279,58 @@ def _resolution_from_map_and_model_helper(
       if(cc>result):
         result=cc
     return result
-  #
-  d_spacings = fc.d_spacings().data()
-  ss = 1./flex.pow2(d_spacings) / 4.
-  d_min = d_min_start
-  x=flex.double()
-  y=flex.double()
-  b=flex.double()
-  while d_min<d_min_end:
-    sel = d_spacings > d_min
-    fc_ = fc.select(sel)
-    ss_ = ss.select(sel)
-    o = mmtbx.bulk_solvent.complex_f_kb_scaled(
-      f_obs.data().select(sel), fc_.data(),
-      flex.double(b_range), ss_)
-    fc__ = fc_.array(data = o.scaled())
-    fft_map = miller.fft_map(
-      crystal_gridding     = cg,
-      fourier_coefficients = fc__)
-    map_calc = fft_map.real_map_unpadded()
-    cc = get_cc(m1=map_calc, m2=map, selections=selections)
-    x.append(d_min)
-    y.append(cc)
-    b.append(o.b())
-    d_min+=d_min_step
-  #
+  ### Embedded class to run over resolutions (parallel enabled)
+  class run_loop_body(object):
+    def __init__(self, cg, fc, f_obs, b_range, map, selections, d_min_start,
+                 d_min_end, d_min_step, nproc):
+      adopt_init_args(self, locals())
+      self.d_spacings = self.fc.d_spacings().data()
+      self.ss = 1./flex.pow2(self.d_spacings) / 4.
+      self.x=flex.double()
+      self.y=flex.double()
+      self.b=flex.double()
+      d_mins = []
+      d_min = self.d_min_start
+      while d_min<self.d_min_end:
+        d_mins.append(d_min)
+        d_min+=self.d_min_step
+      if(self.nproc>1):
+        from libtbx import easy_mp
+        stdout_and_results = easy_mp.pool_map(
+          processes    = self.nproc,
+          fixed_func   = self.run,
+          args         = d_mins,
+          func_wrapper = "buffer_stdout_stderr")
+        for so, res in stdout_and_results:
+          self.x.append(res[0])
+          self.y.append(res[1])
+          self.b.append(res[2])
+      else:
+        for d_min in d_mins:
+          res = self.run(d_min=d_min)
+          self.x.append(res[0])
+          self.y.append(res[1])
+          self.b.append(res[2])
+    def run(self, d_min):
+      sel = self.d_spacings > d_min
+      fc_ = self.fc.select(sel)
+      ss_ = self.ss.select(sel)
+      o = mmtbx.bulk_solvent.complex_f_kb_scaled(
+        self.f_obs.data().select(sel), fc_.data(),
+        flex.double(self.b_range), ss_)
+      fc__ = fc_.array(data = o.scaled())
+      fft_map = miller.fft_map(
+        crystal_gridding     = self.cg,
+        fourier_coefficients = fc__)
+      map_calc = fft_map.real_map_unpadded()
+      cc = get_cc(m1=map_calc, m2=self.map, selections=self.selections)
+      return d_min, cc, o.b()
+  ###
+  o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
+    selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
+    d_min_step=d_min_step, nproc=nproc)
+  x,y,b = o.x, o.y, o.b
+  ###
   if(approximate):
     fit = scitbx.math.curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
       degree=2, min_iterations=50, number_of_cycles=10)
@@ -1311,7 +1357,7 @@ def _resolution_from_map_and_model_helper(
 
 class resolution_from_map_and_model(object):
   def __init__(self, map_data, xray_structure, d_min_min=None,
-        atom_radius=5.0):
+        atom_radius=5.0, nproc=1):
     """
     Given map and model estimate resolution by maximizing map CC(map, model-map).
     As a by-product, also provides CC and optimal overall B-factor.
@@ -1334,7 +1380,8 @@ class resolution_from_map_and_model(object):
       d_min_start    = d_min_start,
       d_min_end      = d_min_end,
       d_min_step     = step,
-      approximate    = False)
+      approximate    = False,
+      nproc          = nproc)
     d_min_start = round(result-step, 1)
     d_min_end   = round(result+step*2, 1)
     self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper(
@@ -1344,7 +1391,8 @@ class resolution_from_map_and_model(object):
       d_min_start      = d_min_start,
       d_min_end        = d_min_end,
       d_min_step       = 0.1,
-      approximate      = True)
+      approximate      = True,
+      nproc            = nproc)
 
 class atom_curves(object):
   """
