@@ -1308,6 +1308,7 @@ def _resolution_from_map_and_model_helper(
       else:
         for d_min in d_mins:
           res = self.run(d_min=d_min)
+          print d_min, res[1], res[2]
           self.x.append(res[0])
           self.y.append(res[1])
           self.b.append(res[2])
@@ -1370,9 +1371,10 @@ class resolution_from_map_and_model(object):
     if(d_min_min is not None and d_min_start<d_min_min):
       d_min_start=d_min_min
     step = (d_min_end-d_min_start)/5.
-    b_range=[0,10,20,30,40,50,60,70,80,90,100,150,200]
-    if(d_min_end>10):
-      b_range = b_range + [300,400,500]
+    #b_range=[0,10,20,30,40,50,60,70,80,90,100,150,200]
+    #if(d_min_end>10):
+    #  b_range = b_range + [300,400,500]
+    b_range=[i for i in range(0,500,5)]
     result, b_iso, dummy = _resolution_from_map_and_model_helper(
       map            = map_data,
       xray_structure = xray_structure,
