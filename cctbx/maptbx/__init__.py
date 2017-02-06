@@ -1370,12 +1370,12 @@ class resolution_from_map_and_model(object):
       map_data=map_data, unit_cell=unit_cell, resolution_factor=0.5),1)
     if(d_min_min is not None and d_min_start<d_min_min):
       d_min_start=d_min_min
-    step = (d_min_end-d_min_start)/5.
+    step = (d_min_end-d_min_start)/10.
     #b_range=[0,10,20,30,40,50,60,70,80,90,100,150,200]
     #if(d_min_end>10):
     #  b_range = b_range + [300,400,500]
     b_range=[i for i in range(0,500,5)]
-    result, b_iso, dummy = _resolution_from_map_and_model_helper(
+    result, b_iso, cc = _resolution_from_map_and_model_helper(
       map            = map_data,
       xray_structure = xray_structure,
       b_range        = b_range,
@@ -1384,19 +1384,22 @@ class resolution_from_map_and_model(object):
       d_min_step     = step,
       approximate    = False,
       nproc          = nproc)
-    d_min_start = round(result-step, 1)
-    d_min_end   = round(result+step*2, 1)
-    if(d_min_min is not None and d_min_start<d_min_min):
-      d_min_start=d_min_min
-    self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper(
-      map              = map_data,
-      xray_structure   = xray_structure,
-      b_range          = b_range,
-      d_min_start      = d_min_start,
-      d_min_end        = d_min_end,
-      d_min_step       = 0.1,
-      approximate      = True,
-      nproc            = nproc)
+    if(cc<0.5):
+      self.d_min, self.b_iso, self.cc = None,None,None
+    else:
+      d_min_start = round(result-step, 1)
+      d_min_end   = round(result+step*2, 1)
+      if(d_min_min is not None and d_min_start<d_min_min):
+        d_min_start=d_min_min
+      self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper(
+        map              = map_data,
+        xray_structure   = xray_structure,
+        b_range          = b_range,
+        d_min_start      = d_min_start,
+        d_min_end        = d_min_end,
+        d_min_step       = 0.1,
+        approximate      = True,
+        nproc            = nproc)
 
 class atom_curves(object):
   """
