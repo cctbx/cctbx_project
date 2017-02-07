@@ -165,18 +165,19 @@ SectionEnd
 
 
 Section -AdditionalIcons
-  !define UNINSTEXE "\\?\$INSTDIR\UnInstall${PRODUCT_NAME}${PRODUCT_VERSION}.exe"
-  !define MYICON "\\?\$INSTDIR\${SOURCEDIR}\modules\gui_resources\icons\custom\WinPhenix.ico"
+  SetOutPath "$INSTDIR"
+  !define UNINSTEXE "$INSTDIR\UnInstall${PRODUCT_NAME}${PRODUCT_VERSION}.exe"
+  !define MYICON "$INSTDIR\${SOURCEDIR}\modules\gui_resources\icons\custom\WinPhenix.ico"
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-  WriteIniStr "\\?\$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
-  WriteRegStr ${PRODUCT_ROOT_KEY} "${PRODUCT_INST_KEY}" "InstallPath" "\\?\$INSTDIR\${SOURCEDIR}"
+  WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
+  WriteRegStr ${PRODUCT_ROOT_KEY} "${PRODUCT_INST_KEY}" "InstallPath" "$INSTDIR\${SOURCEDIR}"
 
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "\\?\$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
-  CreateShortCut "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "\\?\$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Documentation ${PRODUCT_VERSION}.lnk" "\\?\$INSTDIR\${SOURCEDIR}\build\bin\phenix.doc.bat" "" "$WINDIR\hh.exe" 0
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix.Python ${PRODUCT_VERSION}.lnk" "\\?\$INSTDIR\${SOURCEDIR}\build\bin\phenix.python.bat" "" "\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python.exe"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix Command Prompt ${PRODUCT_VERSION}.lnk" "$SYSDIR\cmd.exe" "/k $\"\\?\$INSTDIR\${SOURCEDIR}\phenix_env.bat$\"" "$SYSDIR\cmd.exe"
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
+  CreateShortCut "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.bat" "" "${MYICON}" 0 SW_SHOWMINIMIZED
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Documentation ${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.doc.bat" "" "$WINDIR\hh.exe" 0
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix.Python ${PRODUCT_VERSION}.lnk" "$INSTDIR\${SOURCEDIR}\build\bin\phenix.python.bat" "" "$INSTDIR\${SOURCEDIR}\base\bin\python\python.exe"
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Phenix Command Prompt ${PRODUCT_VERSION}.lnk" "$SYSDIR\cmd.exe" "/k $\"$INSTDIR\${SOURCEDIR}\phenix_env.bat$\"" "$SYSDIR\cmd.exe"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}\Uninstall${PRODUCT_NAME}${PRODUCT_VERSION}.lnk" "${UNINSTEXE}" "" "${UNINSTEXE}"
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\PHENIX Website.lnk" "${PRODUCT_WEB_SITE}" "" "$PROGRAMFILES\Internet Explorer\iexplore.exe" 0
   !insertmacro MUI_STARTMENU_WRITE_END
