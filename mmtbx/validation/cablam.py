@@ -1123,7 +1123,7 @@ class cablamalyze(validation):
     if self.count_residues() == 0:
       self.out.write('pdbid:0:0:0:0\n')
     else:
-      self.out.write('pdbid:%i:%.1f:%.1f:%.2f\n' %(self.count_residues(), self.percent_outliers()*100, self.percent_disfavored()*100, self.percent_ca_outliers()*100) )
+      self.out.write('pdbid:%i:%.1f:%.1f:%.2f\n' %(self.count_residues(), self.percent_outliers(), self.percent_disfavored(), self.percent_ca_outliers()) )
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1136,19 +1136,19 @@ class cablamalyze(validation):
   def percent_outliers(self):
     if self.count_residues() == 0:
       return 0
-    return self.count_outliers()/self.count_residues()
+    return self.count_outliers()/self.count_residues()*100
   def count_disfavored(self):
     return self.summary_stats['cablam_disfavored']
   def percent_disfavored(self):
     if self.count_residues() == 0:
       return 0
-    return self.count_disfavored()/self.count_residues()
+    return self.count_disfavored()/self.count_residues()*100
   def count_ca_outliers(self):
     return self.summary_stats['ca_geom_outliers']
   def percent_ca_outliers(self):
     if self.count_residues() == 0:
       return 0
-    return self.count_ca_outliers()/self.count_residues()
+    return self.count_ca_outliers()/self.count_residues()*100
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1347,9 +1347,9 @@ class cablamalyze(validation):
     else:
       print >> out,prefix+"SUMMARY: Note: Regardless of number of alternates, each residue is counted as having at most one outlier."
       print >> out,prefix+"SUMMARY: CaBLAM found %s evaluable residues." % (self.count_residues())
-      print >> out,prefix+"SUMMARY: %.1f" % (self.percent_disfavored()*100)+"% of these residues have disfavored conformations. (<=5% expected)"
-      print >> out,prefix+"SUMMARY: %.1f" % (self.percent_outliers()*100)+"% of these residues have outlier conformations. (<=1% expected)"
-      print >> out,prefix+"SUMMARY: %.2f" % (self.percent_ca_outliers()*100)+"% of these residues have severe CA geometry outliers. (<=0.5% expected)"
+      print >> out,prefix+"SUMMARY: %.1f" % (self.percent_disfavored())+"% of these residues have disfavored conformations. (<=5% expected)"
+      print >> out,prefix+"SUMMARY: %.1f" % (self.percent_outliers())+"% of these residues have outlier conformations. (<=1% expected)"
+      print >> out,prefix+"SUMMARY: %.2f" % (self.percent_ca_outliers())+"% of these residues have severe CA geometry outliers. (<=0.5% expected)"
   #-----------------------------------------------------------------------------
   #}}}
 
