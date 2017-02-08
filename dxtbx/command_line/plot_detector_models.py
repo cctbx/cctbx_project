@@ -9,13 +9,21 @@ Example: dxtbx.plot_detector_models datablock1.json datablock2.json
 
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
+import sys, os
 from scitbx.matrix import col
+from libtbx.phil import parse
+from libtbx.utils import Sorry
 
 from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 
 from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+
+phil_scope = parse("""
+  show_origin_vectors = True
+    .type = bool
+    .help = If true, draw origin vectors as arrows
+""")
 
 # http://stackoverflow.com/questions/22867620/putting-arrowheads-on-vectors-in-matplotlibs-3d-plot
 class Arrow3D(FancyArrowPatch):
@@ -30,15 +38,28 @@ class Arrow3D(FancyArrowPatch):
     FancyArrowPatch.draw(self, renderer)
 
 def run(args):
+  user_phil=[]
+  files = []
+  for arg in args:
+    if os.path.isfile(arg):
+      files.append(arg)
+    else:
+      try:
+        user_phil.append(parse(arg))
+      except Exception, e:
+        raise Sorry("Unrecognized argument %s"%arg)
+  params = phil_scope.fetch(sources = user_phil).extract()
+
   def plot_group(g, color):
     # recursively plot a detector group
     p = g.parent()
-    if p is None:
-      #parent origin
-      pori = (0,0,0)
-    else:
-      #parent origin
-      pori = p.get_origin()
+    if params.show_origin_vectors:
+      if p is None:
+        #parent origin
+        pori = (0,0,0)
+      else:
+        #parent origin
+        pori = p.get_origin()
       ori = g.get_origin()
       a = Arrow3D([pori[0], ori[0]], [pori[1], ori[1]],
                   [pori[2], ori[2]], mutation_scale=20,
@@ -69,11 +90,11 @@ def run(args):
 
   fig = plt.figure()
   colormap = plt.cm.gist_ncar
-  colors = [colormap(i) for i in np.linspace(0, 0.9, len(args))]
-  for arg, color, in zip(args, colors):
+  colors = [colormap(i) for i in np.linspace(0, 0.9, len(files))]
+  for file_name, color, in zip(files, colors):
 
     # read the data and get the detector models
-    experiments = ExperimentListFactory.from_json_file(arg, check_format=False)
+    experiments = ExperimentListFactory.from_json_file(file_name, check_format=False)
     detector = experiments.detectors()[0]
 
     # plot the hierarchy
