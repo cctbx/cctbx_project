@@ -180,9 +180,9 @@ class SetupInstaller(object):
       import platform
       if int(platform.architecture()[0][0:2]) < 64:
         vcredist = "vcredist_x86.exe"
-        shutil.copyfile( os.path.join(self.root_dir, 'base_tmp', vcredist),
-                         os.path.join(self.dest_dir, vcredist)
-        )
+      shutil.copyfile( os.path.join(self.root_dir, 'base_tmp', vcredist),
+                       os.path.join(self.dest_dir, vcredist)
+      )
       self.make_windows_installer()
 
   def copy_info(self):

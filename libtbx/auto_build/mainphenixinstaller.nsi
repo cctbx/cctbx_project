@@ -166,7 +166,7 @@ Section "VC++ 2008 Redistributable" SEC03
   !define VCREDIST "vcredist_x86.exe"
   !endIf
 
-  File "${COPYDIR}\${VCREDIST}"
+  File "${COPYDIR}\${SOURCEDIR}\${VCREDIST}"
   ExecShell "" '"$INSTDIR\${SOURCEDIR}\${VCREDIST}"'
 
   SetAutoClose false
