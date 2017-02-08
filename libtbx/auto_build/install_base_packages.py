@@ -137,9 +137,12 @@ class installer (object) :
       if platform.architecture()[0] == '64bit':
         winpythonpkg = WIN64PYTHON_PKG
         hdf5pkg = WIN64HDF5_PKG
+        vcredist = VCREDIST64
       else:
         winpythonpkg = WIN32PYTHON_PKG
         hdf5pkg = WIN32HDF5_PKG
+        vcredist = VCREDIST32
+
       self.fetch_package(pkg_name=winpythonpkg, pkg_url=BASE_CCI_PKG_URL)
       winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, winpythonpkg), 'r')
       members = winpython.namelist()
@@ -147,6 +150,7 @@ class installer (object) :
         print >> self.log, "extracting", zipinfo
         winpython.extract(zipinfo, path=os.path.join(self.base_dir,'bin'))
       winpython.close()
+
       self.fetch_package(pkg_name=hdf5pkg, pkg_url=BASE_CCI_PKG_URL)
       winhdf5 = zipfile.ZipFile(os.path.join(self.tmp_dir, hdf5pkg), 'r')
       members = winhdf5.namelist()
@@ -154,6 +158,9 @@ class installer (object) :
         print >> self.log, "extracting", zipinfo
         winhdf5.extract(zipinfo, path=self.base_dir)
       winhdf5.close()
+
+      self.fetch_package(pkg_name=vcredist, pkg_url=BASE_CCI_PKG_URL)
+
       # On Windows quit now as all required modules are in the precompiled python package
       # and HDF5 installation
       return

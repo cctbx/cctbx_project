@@ -110,6 +110,8 @@ WIN64PYTHON_PKG = "python2.7.12_x86_64_plus_relocatable.zip"
 WIN32PYTHON_PKG = "python2.7.12_x86_32_plus_relocatable.zip"
 WIN64HDF5_PKG = "HDF5-1.8.16-win64.zip"
 WIN32HDF5_PKG = "HDF5-1.8.16-win32.zip"
+VCREDIST64 = "vcredist_x64.exe"
+VCREDIST32 = "vcredist_x86.exe"
 
 # Various dependencies from external repositories, distributed as static
 # tarballs (since they are not under active development by us or our
