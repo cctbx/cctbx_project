@@ -6,7 +6,6 @@ from mmtbx.geometry_restraints.torsion_restraints import utils
 from mmtbx.validation.rotalyze import rotalyze
 from cctbx.array_family import flex
 import iotbx.phil
-import iotbx.utils
 import iotbx.pdb
 from libtbx.test_utils import show_diff
 import libtbx.load_env
