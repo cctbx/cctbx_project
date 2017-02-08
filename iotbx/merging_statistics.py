@@ -243,7 +243,8 @@ class merging_stats (object) :
     # calculate merging statistics with F+ and F- treated as redundant
     # observations even when we're going to keep them separate.
     if (anomalous) :
-      self.anom_completeness = array_merged.anomalous_completeness()
+      self.anom_completeness = array_merged.anomalous_completeness(
+        d_max=self.d_max, d_min=self.d_min)
     redundancies = merge.redundancies().data()
     self.redundancies = {}
     self.mean_redundancy = 0
