@@ -761,7 +761,7 @@ class annotation(structure_base):
       assert len(old_chain_id) == 1
       new_chain_id = old_chain_id+suffixes_for_chain_ids()[n_copy-1]
       return new_chain_id
-    if n_copies <= 1:
+    if n_copies < 1:
       return
     if n_copies+1 >= len(suffixes_for_chain_ids()):
       return
@@ -1737,12 +1737,12 @@ class pdb_helix (structure_base) :
     result['id'] = "%s" % self.serial
     result['pdbx_PDB_helix_id'] = self.helix_id
     result['beg_label_comp_id'] = self.start_resname
-    result['beg_label_asym_id'] = "%d" % self.get_start_resseq_as_int()
-    result['beg_label_seq_id'] = self.start_chain_id
+    result['beg_label_asym_id'] = self.start_chain_id
+    result['beg_label_seq_id'] =  "%d" % self.get_start_resseq_as_int()
     result['pdbx_beg_PDB_ins_code'] = self.icode_to_cif(self.start_icode)
     result['end_label_comp_id'] = self.end_resname
-    result['end_label_asym_id'] = "%d" % self.get_end_resseq_as_int()
-    result['end_label_seq_id'] = self.end_chain_id
+    result['end_label_asym_id'] = self.end_chain_id
+    result['end_label_seq_id'] =  "%d" % self.get_end_resseq_as_int()
     result['pdbx_end_PDB_ins_code'] = self.icode_to_cif(self.end_icode)
     result['pdbx_PDB_helix_class'] = self.helix_class_to_int(self.helix_class)
     result['details'] = self.comment_to_cif()

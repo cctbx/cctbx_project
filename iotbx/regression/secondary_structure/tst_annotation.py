@@ -508,9 +508,9 @@ loop_
   _struct_conf.pdbx_PDB_helix_class
   _struct_conf.details
   _struct_conf.pdbx_PDB_helix_length
-  HELX_P  1  1  ARG   87  A  ?  GLN   92  A  ?  0  ?  5
-  HELX_P  2  2  ARG  287  B  ?  GLN  292  B  ?  0  ?  5
-  HELX_P  3  3  PRO    1  A  ?  LEU    5  A  ?  0  ?  4
+  HELX_P  1  1  ARG  A   87  ?  GLN  A   92  ?  0  ?  5
+  HELX_P  2  2  ARG  B  287  ?  GLN  B  292  ?  0  ?  5
+  HELX_P  3  3  PRO  A    1  ?  LEU  A    5  ?  0  ?  4
 """
   pdb_answer_minimal_helix = """\
 HELIX    1   1 ARG A   87  GLN A   92  1                                   5
@@ -664,10 +664,11 @@ loop_
   _struct_conf.pdbx_PDB_helix_class
   _struct_conf.details
   _struct_conf.pdbx_PDB_helix_length
-  HELX_P  1  AA1  SER   26  A  ?  LYS   30  A  ?  5  ?  5
-  HELX_P  2  AA2  LEU  196  A  ?  GLU  199  A  ?  5  ?  4
-  HELX_P  3  AA3  SER   26  B  ?  LYS   30  B  ?  5  ?  5
-  HELX_P  4  AA4  LEU  196  B  ?  GLU  199  B  ?  5  ?  4\n"""
+  HELX_P  1  AA1  SER  A   26  ?  LYS  A   30  ?  5  ?  5
+  HELX_P  2  AA2  LEU  A  196  ?  GLU  A  199  ?  5  ?  4
+  HELX_P  3  AA3  SER  B   26  ?  LYS  B   30  ?  5  ?  5
+  HELX_P  4  AA4  LEU  B  196  ?  GLU  B  199  ?  5  ?  4
+"""
 
   pdb_str2 = """\
 HELIX    1 AA1 SER A   26  LYS A   30  5                                   5
@@ -688,7 +689,7 @@ loop_
   _struct_conf.pdbx_PDB_helix_class
   _struct_conf.details
   _struct_conf.pdbx_PDB_helix_length
-  HELX_P  1  AA1  SER  26  A  ?  LYS  30  A  ?  5  ?  5\n"""
+  HELX_P  1  AA1  SER  A  26  ?  LYS  A  30  ?  5  ?  5\n"""
 
   ann = annotation.from_records(pdb_str.split("\n"))
   cif_loops = ann.as_cif_loops()
@@ -1442,6 +1443,26 @@ SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
   assert n_st == 4
   s = ann.as_pdb_str()
 
+def tst_multiply_to_asu_1():
+  ann_str = """\
+HELIX  233 233 PHE Z   12  CYS Z   43  1                                  32
+  """
+  ann = annotation.from_records(ann_str.split("\n"))
+  original_ann = ann.deep_copy()
+  assert ann.get_n_helices() == 1
+  ann.multiply_to_asu(n_copies=0)
+  assert ann.get_n_helices() == 1
+
+  ann = original_ann.deep_copy()
+  ann.multiply_to_asu(n_copies = 1)
+  # print ann
+  assert ann.get_n_helices() == 2
+
+  ann = original_ann.deep_copy()
+  ann.multiply_to_asu(n_copies = 2)
+  # print ann
+  assert ann.get_n_helices() == 3
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test_helix_interface()
@@ -1454,7 +1475,7 @@ if (__name__ == "__main__"):
   tst_from_minimal_cif_sheet()
   tst_to_cif_helix()
   tst_to_cif_sheet()
-  # tst_to_cif_annotation()
+  tst_to_cif_annotation()
   tst_remove_empty_annotations()
   tst_split_helices_with_prolines()
   tst_split_helices_with_prolines_2()
@@ -1462,4 +1483,5 @@ if (__name__ == "__main__"):
   tst_remove_short_annotations()
   tst_concatenate_consecutive_helices()
   tst_simple_elements()
+  tst_multiply_to_asu_1()
   print "OK time =%8.3f"%(time.time() - t0)
