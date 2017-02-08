@@ -1109,6 +1109,13 @@ Wait for the command to finish, then try again.""" % vars())
         cmd += ' "%s"' % source_file.sh_value()
       print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
       print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
+      tmp_reloc = os.path.basename(source_file.relocatable)
+      if tmp_reloc.endswith('.py') and cmd.find('-Qnew')>-1:
+        print >> f, 'elif [ -n "$LIBTBX__CPROFILE_FLAG__" ]; then'
+        print >> f, '  exec %s "$@"' % cmd.replace(
+          '-Qnew', 
+          '-Qnew -m cProfile -o %s.profile' % os.path.basename(target_file.relocatable),
+          )
       print >> f, "elif [ $# -eq 0 ]; then"
       print >> f, "  exec"+cmd
       print >> f, "else"

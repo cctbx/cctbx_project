@@ -605,8 +605,9 @@ Residue classes
       if not link_residues:
         if class_key in [
             ("common_amino_acid", "common_amino_acid"),
-            ("common_amino_acid", "other"),
-           ]: continue
+            #("common_amino_acid", "other"),
+           ]:
+          continue
       #else:
       #  atoms_must_be.setdefault(("common_amino_acid",
       #                            "common_amino_acid"),["C", "N"])
