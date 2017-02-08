@@ -17,8 +17,6 @@ class parameterization_info(object):
     a       = None,  # coefficient for reconstruction
     b       = None,  # coefficient for reconstruction
     h       = None,  # coefficient for reconstruction
-    phi     = None,  # angle
-    alpha   = None,  # angle
     n       = None,  # parameter for propeller and H2 groups: integer
     dist_h  = None): # measured or ideal distance
     self.htype  = htype
@@ -29,8 +27,6 @@ class parameterization_info(object):
     self.a      = a
     self.b      = b
     self.h      = h
-    self.phi    = phi
-    self.alpha  = alpha
     self.n      = n
     self.dist_h = dist_h
 
@@ -111,9 +107,11 @@ class manager(object):
       a0     = i_a0,
       a1     = i_a1,
       a2     = i_b1,
-      phi    = phi,
+      a3     = 0,
+      a      = alpha,
+      b      = phi,
+      h      = 0,
       n      = 0,
-      alpha  = alpha,
       dist_h = dist_h)
     if (neighbors.number_h_neighbors == 2):
       self.h_parameterization[ih].htype = 'prop'
@@ -123,11 +121,14 @@ class manager(object):
         a0     = i_a0,
         a1     = i_a1,
         a2     = i_b1,
-        phi    = phi,
+        a3     = 0,
+        a      = alpha,
         n      = 1,
-        alpha  = alpha,
+        b      = phi,
+        h      = 0,
         dist_h = dist_h)
       # check if order is reversed
+      # this can maybe be done earlier, in connectivity?
       i_h1_coord = compute_H_position(
         sites_cart = self.sites_cart,
         ih         = i_h1,
@@ -137,9 +138,11 @@ class manager(object):
         a0     = i_a0,
         a1     = i_a1,
         a2     = i_b1,
-        phi    = phi,
+        a3     = 0,
+        a      = alpha,
         n      = 2,
-        alpha  = alpha,
+        b      = phi,
+        h      = 0,
         dist_h = dist_h)
       if ((i_h1_coord - matrix.col(self.sites_cart[i_h2])).length() <
         (i_h1_coord - matrix.col(self.sites_cart[i_h1])).length()):
@@ -209,9 +212,11 @@ class manager(object):
           a0     = i_a0,
           a1     = i_a1,
           a2     = i_b1,
-          phi    = phi,
+          a3     = 0,
+          a      = alpha,
           n      = 0,
-          alpha  = alpha,
+          b      = phi,
+          h      = 0,
           dist_h = dist_h)
       if ih_no_dihedral not in self.h_parameterization:
         self.h_parameterization[ih_no_dihedral] = parameterization_info(
@@ -219,9 +224,11 @@ class manager(object):
           a0     = i_a0,
           a1     = i_a1,
           a2     = i_b1,
-          phi    = phi+math.pi,
+          a3     = 0,
+          a      = alpha,
+          b      = phi+math.pi,
           n      = 0,
-          alpha  = alpha,
+          h      = 0,
           dist_h = dist_h)
 
   # alg2a, 2tetra, 2neigbs
@@ -247,8 +254,11 @@ class manager(object):
       a0     = neighbors.a0['iseq'],
       a1     = neighbors.a1['iseq'],
       a2     = neighbors.a2['iseq'],
+      a3     = 0,
       a      = a,
       b      = b,
+      h      = 0,
+      n      = 0,
       dist_h = dist_h)
     # alg2a
     if (sumang > (2*math.pi + 0.05) and root < 0):
@@ -259,20 +269,24 @@ class manager(object):
       if (neighbors.number_h_neighbors == 1):
       # 2 tetragonal geometry
         self.h_parameterization[ih].htype = '2tetra'
-        self.h_parameterization[ih].alpha = h
+        self.h_parameterization[ih].h = h
+        self.h_parameterization[ih].n = 0
         self.h_parameterization[i_h1] = parameterization_info(
           a0     = neighbors.a0['iseq'],
           a1     = neighbors.a1['iseq'],
           a2     = neighbors.a2['iseq'],
+          a3     = 0,
           a      = a,
           b      = b,
-          alpha  = -h,
+          h      = -h,
+          n      = 0,
           dist_h = dist_h,
           htype  = '2tetra')
       else:
         # 2neigbs
         self.h_parameterization[ih].h = h
         self.h_parameterization[ih].htype = '2neigbs'
+        self.h_parameterization[ih].n = 0
 
   def process_3_neighbors(self, neighbors):
     ih = neighbors.ih
@@ -295,6 +309,7 @@ class manager(object):
       a      = a,
       b      = b,
       h      = h,
+      n      = 0,
       dist_h = dist_h,
       htype  = '3neigbs')
 
@@ -467,7 +482,7 @@ def compute_H_position(ih, sites_cart, hp):
     h_distance = (rh_calc - matrix.col(sites_cart[ih])).length()
   # 2tetrahedral
   elif (hp.htype == '2tetra'):
-    a, b, delta = hp.a, hp.b, hp.alpha
+    a, b, delta = hp.a, hp.b, hp.h
     r2 = matrix.col(sites_cart[hp.a2])
     u10, u20 = (r1 - r0).normalize(), (r2 - r0).normalize()
     v0 = (u10.cross(u20)).normalize()
@@ -493,8 +508,8 @@ def compute_H_position(ih, sites_cart, hp):
   elif (hp.htype in ['alg1b', 'alg1a', 'prop']):
     rb1 = matrix.col(sites_cart[hp.a2])
     n = hp.n
-    phi = hp.phi + n*2*math.pi/3
-    alpha = hp.alpha
+    phi = hp.b + n*2*math.pi/3
+    alpha = hp.a
     salpha = math.sin(alpha)
     calpha = math.cos(alpha)
     sphi = math.sin(phi)

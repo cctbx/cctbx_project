@@ -74,7 +74,7 @@ class modify_gradients(object):
           Gu10 = a/length*GuH0-a*b*u20*(1/length)**3*rh0.dot(GuH0)
           Gu20 = b/length*GuH0-a*b*u10*(1/length)**3*rh0.dot(GuH0)
         elif (hp.htype == '2tetra'):
-          alpha = hp.alpha
+          alpha = hp.h
           v = u10.cross(u20)
           d = a * u10 + b * u20
         # step 2
@@ -164,7 +164,7 @@ class modify_gradients(object):
       if (hp.htype in ['alg1b', 'prop', 'alg1a']):
         r1 = matrix.col(sites_cart[a1])
         rb1 = matrix.col(sites_cart[a2])
-        phi, alpha, n = hp.phi, hp.alpha, hp.n
+        alpha, phi, n = hp.a, hp.b, hp.n
         k1 = -math.cos(alpha)
         k2 = math.sin(alpha)*math.cos(phi + n*2*math.pi/3)
         k3 = math.sin(alpha)*math.sin(phi + n*2*math.pi/3)
@@ -203,4 +203,4 @@ class modify_gradients(object):
                           G2[1] + Grb1[1],
                           G2[2] + Grb1[2])
       #
-      self.grads[ih] = (0,0,0)
+      #self.grads[ih] = (0,0,0)
