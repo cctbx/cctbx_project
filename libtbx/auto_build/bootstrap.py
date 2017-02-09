@@ -999,6 +999,14 @@ class Builder(object):
         return True
     return False
 
+  def isPlatformMacOSX(self):
+    if self.platform and 'mac' in self.platform:
+        return True
+    else:
+      if self.platform == "dev" and sys.platform.startswith("darwin"):
+        return True
+    return False
+
   def add_auth(self, account, username):
     self.auth[account] = username
 
@@ -1040,14 +1048,7 @@ class Builder(object):
   def get_hot(self):
     return self.HOT + self.HOT_EXTRA
 
-  def get_libtbx_configure(self):
-    if self.isPlatformWindows():
-      rc = set(self.LIBTBX+self.LIBTBX_EXTRA)
-      for r in windows_remove_list: rc = rc - set([r])
-      configlst = list(rc)
-      # allow OpenMP on Windows which won't crash in multiprocessing/forking.py unlike UNIX
-      configlst.append("--enable-openmp-if-possible=True")
-      return configlst
+  def get_libtbx_configure(self): # modified in derived class PhenixBuilder
     return self.LIBTBX + self.LIBTBX_EXTRA
 
   def add_init(self):
@@ -1706,6 +1707,16 @@ class PhenixBuilder(CCIBuilder):
     Builder.add_install(self)
     #self.rebuild_docs()
 
+
+  def get_libtbx_configure(self):
+    configlst = super(PhenixBuilder, self).get_libtbx_configure()
+    if not self.isPlatformMacOSX():
+      configlst.append("--enable-openmp-if-possible=True")
+    #if self.isPlatformMacOSX():
+    #  configlst.append("--compiler=clang-omp")
+    return configlst
+
+
   def rebuild_docs(self):
     self.add_command('phenix_html.rebuild_docs')
 
@@ -1728,7 +1739,7 @@ class PhenixBuilder(CCIBuilder):
                           name="test hipip",
                          )
     self.add_test_command('phenix_regression.wizards.test_all_parallel',
-      args = ['nproc=8'],
+      args = ['n_proc=1'],
       name="test wizards",
                          )
     run_dials_tests=True
