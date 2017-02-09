@@ -10,6 +10,7 @@ from bootstrap import Toolbox
 from installer_utils import *
 import os.path as op
 import os
+import platform
 import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
@@ -99,6 +100,12 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 FONT_PKG = "fonts.tar.gz"
 
 MATPLOTLIB_PKG = "matplotlib-2.0.0.tar.gz"
+# CentOS 5 glibc too old to support matplotlib-2.0.0 dependency (subprocess32)
+if (sys.platform.startswith("linux")):
+  distribution = platform.dist()
+  if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
+    MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
+
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
