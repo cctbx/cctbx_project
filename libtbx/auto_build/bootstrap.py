@@ -1739,7 +1739,7 @@ class PhenixBuilder(CCIBuilder):
                           name="test hipip",
                          )
     self.add_test_command('phenix_regression.wizards.test_all_parallel',
-      args = ['n_proc=8'],
+      args = ['nproc=8'],
       name="test wizards",
                          )
     run_dials_tests=True
