@@ -14,7 +14,7 @@ import scitbx.lbfgs
 from libtbx import adopt_init_args
 from stdlib import math
 # for riding H
-from mmtbx.hydrogens import modify_gradients
+#from mmtbx.hydrogens import modify_gradients
 from mmtbx.hydrogens import riding
 #from mmtbx.hydrogens import parameterization
 
