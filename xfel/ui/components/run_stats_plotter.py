@@ -121,7 +121,7 @@ def get_run_stats(timestamps,
           tuple_of_timestamp_boundaries,
           run_numbers)
 
-def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True, xsize=30, ysize=10, high_vis=False, title = None):
+def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], minimalist=False, interactive=True, xsize=30, ysize=10, high_vis=False, title=None):
   plot_ratio = max(min(xsize, ysize)/2.5, 3)
   if high_vis:
     spot_ratio = plot_ratio*4
@@ -139,8 +139,14 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
     run_tags = [[] for i in xrange(n_runs)]
   if len(run_statuses) != n_runs:
     run_statuses = [None for i in xrange(n_runs)]
-  f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
-  for a in (ax1, ax2, ax3, ax4):
+  if minimalist:
+    print "Minimalist mode activated."
+    f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
+    axset = (ax1, ax2, ax3)
+  else:
+    f, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True, sharey=False)
+    axset = (ax1, ax2, ax3, ax4)
+  for a in axset:
     a.tick_params(axis='x', which='both', bottom='off', top='off')
   ax1.scatter(t.select(~low_sel), n_strong.select(~low_sel), edgecolors="none", color ='grey', s=spot_ratio)
   ax1.scatter(t.select(low_sel), n_strong.select(low_sel), edgecolors="none", color='blue', s=spot_ratio)
@@ -163,17 +169,19 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
   ax3.axis('tight')
   ax3.set_ylabel("I/sig(I)\nred: low\nyellow: %3.1f Ang" % d_min, fontsize=text_ratio)
   ax3_twin.set_ylabel("line:% HQ", fontsize=text_ratio)
-  for a in [ax1, ax2, ax3, ax4, ax2_twin, ax3_twin]:
+  axset_with_twins = list(axset) + [ax2_twin, ax3_twin]
+  for a in axset_with_twins:
     xlab = a.get_xticklabels()
     ylab = a.get_yticklabels()
     for l in xlab + ylab:
       l.set_fontsize(text_ratio)
   f.subplots_adjust(hspace=0)
   # add lines and text summaries at the timestamp boundaries
-  for boundary in boundaries:
-    if boundary is not None:
-      for a in (ax1, ax2, ax3):
-        a.axvline(x=boundary, ymin=0, ymax=3, linewidth=1, color='k')
+  if not minimalist:
+    for boundary in boundaries:
+      if boundary is not None:
+        for a in (ax1, ax2, ax3):
+          a.axvline(x=boundary, ymin=0, ymax=3, linewidth=1, color='k')
   run_starts = boundaries[0::2]
   run_ends = boundaries[1::2]
   start = 0
@@ -202,16 +210,20 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], interactive=True,
       status_color = 'black'
     else:
       status_color = 'red'
-    ax4.text(start_t, 3.85, " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color)
-    ax4.text(start_t, .85, "run %d" % run_numbers[idx], fontsize=text_ratio)
-    ax4.text(start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio)
-    ax4.text(start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio)
-    ax4.text(start_t, .25, "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio)
-    ax4.text(start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
-      (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio)
-    ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
-    ax4.set_yticks([])
-    for item in [ax1, ax2, ax3, ax4]:
+    if minimalist:
+      ax3.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
+      ax3.set_yticks([])
+    else:
+      ax4.text(start_t, 3.85, " " + ", ".join(tags) + " [%s]" % status, fontsize=text_ratio, color=status_color)
+      ax4.text(start_t, .85, "run %d" % run_numbers[idx], fontsize=text_ratio)
+      ax4.text(start_t, .65, "%d img/%d hit" % (lengths[idx], n_hits), fontsize=text_ratio)
+      ax4.text(start_t, .45, "%d (%d) idx" % (n_idx_low, n_idx_high), fontsize=text_ratio)
+      ax4.text(start_t, .25, "%-3.1f%% solv/%-3.1f%% xtal" % ((100*n_drops/lengths[idx]),(100*n_hits/lengths[idx])), fontsize=text_ratio)
+      ax4.text(start_t, .05, "%-3.1f (%-3.1f)%% idx" % \
+        (100*n_idx_low/lengths[idx], 100*n_idx_high/lengths[idx]), fontsize=text_ratio)
+      ax4.set_xlabel("timestamp (s)\n# images shown as all (%3.1f Angstroms)" % d_min, fontsize=text_ratio)
+      ax4.set_yticks([])
+    for item in axset:
       item.tick_params(labelsize=text_ratio)
     start += lengths[idx]
   if title is not None:
@@ -239,12 +251,13 @@ def plot_multirun_stats(runs,
                         n_strong_cutoff=40,
                         run_tags=[],
                         run_statuses=[],
+                        minimalist=False,
                         interactive=False,
                         compress_runs=True,
                         xsize=30,
                         ysize=10,
                         high_vis=False,
-                        title = None):
+                        title=None):
   tset = flex.double()
   two_theta_low_set = flex.double()
   two_theta_high_set = flex.double()
@@ -287,8 +300,8 @@ def plot_multirun_stats(runs,
                               runs_with_data,
                               ratio_cutoff=ratio_cutoff,
                               n_strong_cutoff=n_strong_cutoff)
-  png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, interactive=interactive,
-    xsize=xsize, ysize=ysize, high_vis=high_vis, title = title)
+  png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
+    interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
   return png
 
 if __name__ == "__main__":

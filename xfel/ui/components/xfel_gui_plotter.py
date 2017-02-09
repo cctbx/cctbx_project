@@ -77,7 +77,8 @@ class DoubleBarPlot(gctr.CtrlBase):
                  verticalalignment='center', weight='bold',
                  clip_on=False)
 
-    self.ax.axvline(x=goal, lw=4, c='#d95f02')
+    if not minimalist:
+      self.ax.axvline(x=goal, lw=4, c='#d95f02')
     self.ax.set_xlim(xmax=xmax / 0.8)
     self.ax.axis('off')
     self.canvas.draw()

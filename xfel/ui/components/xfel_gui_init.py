@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 06/02/2016
-Last Changed: 06/02/2016
+Last Changed: 02/09/2017
 Description : XFEL UI Initialization module
 '''
 
@@ -474,6 +474,7 @@ class RunStatsSentinel(Thread):
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
       run_tags=self.run_tags,
       run_statuses=self.run_statuses,
+      minimalist=self.parent.run_window.runstats_tab.entire_expt,
       xsize=(sizex-115)/82, ysize=(sizey-115)/82,
       high_vis=self.parent.high_vis)
       # convert px to inches with fudge factor for scaling inside borders
@@ -490,6 +491,7 @@ class RunStatsSentinel(Thread):
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
       run_tags=self.run_tags,
       run_statuses=self.run_statuses,
+      minimalist=self.parent.run_window.runstats_tab.entire_expt,
       high_vis=self.parent.high_vis)
 
 # ----------------------------- Unit Cell Sentinel ----------------------------- #
@@ -1671,8 +1673,8 @@ class RunStatsTab(BaseTab):
     self.selected_runs = []
     self.tag_trial_changed = True
     self.tag_runs_changed = True
-    self.tag_last_three = False
     self.tag_last_five = False
+    self.entire_expt = False
     self.png = None
     self.static_bitmap = None
     self.redraw_windows = True
@@ -1693,12 +1695,12 @@ class RunStatsTab(BaseTab):
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
-    self.last_three_runs = wx.Button(self,
-                                     label='Auto plot last three runs',
-                                     size=(200, -1))
     self.last_five_runs =  wx.Button(self,
                                      label='Auto plot last five runs',
                                      size=(200, -1))
+    self.plot_entire_expt = wx.Button(self,
+                                     label='Auto plot entire experiment',
+                                     size=(200,-1))
     self.d_min_select = gctr.OptionCtrl(self,
                                  label='high resolution limit:',
                                  label_size=(160, -1),
@@ -1732,10 +1734,10 @@ class RunStatsTab(BaseTab):
 
     self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
                                flag=wx.ALL, border=10)
-    self.options_opt_sizer.Add(self.last_three_runs, pos=(1, 0),
+    self.options_opt_sizer.Add(self.last_five_runs, pos=(1, 0),
                                flag=wx.ALL, border=10)
-    self.options_opt_sizer.Add(self.last_five_runs, pos=(2, 0),
-                               flag=wx.ALL, border=10)
+    self.options_opt_sizer.Add(self.plot_entire_expt, pos=(2, 0),
+                                   flag=wx.ALL, border=10)
     self.options_opt_sizer.Add(self.d_min_select, pos=(3, 0),
                                flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.ratio_cutoff, pos=(4, 0),
@@ -1767,8 +1769,8 @@ class RunStatsTab(BaseTab):
 
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
-    self.Bind(wx.EVT_BUTTON, self.onLastThreeRuns, self.last_three_runs)
     self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
+    self.Bind(wx.EVT_BUTTON, self.onEntireExpt, self.plot_entire_expt)
     self.Bind(wx.EVT_TEXT_ENTER, self.onDMin, self.d_min_select.d_min)
     self.Bind(wx.EVT_TEXT_ENTER, self.onRatioCutoff, self.ratio_cutoff.ratio)
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
@@ -1795,8 +1797,8 @@ class RunStatsTab(BaseTab):
       self.find_runs()
 
   def onRunChoice(self, e):
-    self.tag_last_three = False
     self.tag_last_five = False
+    self.entire_expt = False
     run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
@@ -1833,10 +1835,10 @@ class RunStatsTab(BaseTab):
   def onRefresh(self, e):
     self.refresh_trials()
     self.refresh_runs()
-    if self.tag_last_three:
-      self.select_last_n_runs(3)
-    elif self.tag_last_five:
+    if self.tag_last_five:
       self.select_last_n_runs(5)
+    elif self.entire_expt:
+      self.select_all()
     if self.redraw_windows:
       self.plot_static_runstats()
       self.print_should_have_indexed_paths()
@@ -1889,16 +1891,20 @@ class RunStatsTab(BaseTab):
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs][-n:]
 
-  def onLastThreeRuns(self, e):
-    self.tag_last_five = False
-    self.tag_last_three = True
-    self.select_last_n_runs(3)
-    self.main.run_window.runstats_light.change_status('idle')
+  def select_all(self):
+    if self.trial is not None:
+      self.selected_runs = [r.run for r in self.trial.runs]
 
   def onLastFiveRuns(self, e):
-    self.tag_last_three = False
+    self.entire_expt = False
     self.tag_last_five = True
     self.select_last_n_runs(5)
+    self.main.run_window.runstats_light.change_status('idle')
+
+  def onEntireExpt(self, e):
+    self.entire_expt = True
+    self.tag_last_five = False
+    self.select_all()
     self.main.run_window.runstats_light.change_status('idle')
 
   def onDMin(self, e):
