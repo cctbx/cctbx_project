@@ -35,36 +35,37 @@ def exercise():
   atoms = pdb_hierarchy.atoms()
 
   riding_h_manager = riding.manager(
-    pdb_hierarchy           = pdb_hierarchy,
+    pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry_restraints)
-
   h_parameterization = riding_h_manager.h_parameterization
 
   diagnostics = riding_h_manager.diagnostics(
-    sites_cart         = sites_cart,
-    threshold          = 0.05)
+    sites_cart = sites_cart,
+    threshold  = 0.05)
+  h_distances   = diagnostics.h_distances
+  unk_list      = diagnostics.unk_list
+  number_h_para = diagnostics.number_h_para
+  type_list     = diagnostics.type_list
 
-  h_distances        = diagnostics.h_distances
-  unk_list           = diagnostics.unk_list
+# number of H atoms in structure
+  number_h = 0
+  for h_bool in xray_structure.hd_selection():
+    if h_bool: number_h += 1
 
-# There are 90 H atoms in the pdb_string, check if all of them are recognized
-  assert (len(h_parameterization.keys()) == 90), 'Not all H atoms are parameterized'
+# There are 90 H atoms in pdb_string, check if all of them are recognized and
+# that none of them has unknown type
+  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+  assert(len(unk_list) == 0), \
+    'Some H atoms are parameterized with an unknown type'
 
-# For each H atom, check if distance between computed H and that in input model is
-# not too large
-  type_list = []
+# For every H , check if distance between computed H and H in input model is
+# < 0.03 A
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()
-    hp = h_parameterization[ih]
-    type_list.append(hp.htype)
     assert (h_distances[ih] < 0.03), 'distance too large: %s  atom: %s (%s) residue: %s ' \
-      % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
+      % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
 
-# Check if there are atoms with unknown parameterization
-  assert(len(unk_list) == 0), 'Some H atoms are not recognized'
-
-# Check that parameterization types are correct
-  assert (len(h_parameterization) == 90), 'Fewer H atoms than expected'
+# Check if parameterization types are correct
   for type1, type2 in zip(type_list, type_list_known):
     assert (type1 == type2)
 

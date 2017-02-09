@@ -3,8 +3,6 @@ from libtbx import adopt_init_args
 from scitbx import matrix
 import math
 
-
-
 # transformation for derivative of a unit vector
 def G_unitvector(Gu, r):
   x, y, z = r[0], r[1], r[2]
@@ -42,8 +40,10 @@ class modify_gradients(object):
                grads):
     adopt_init_args(self, locals())
 
-    for ih in self.h_parameterization:
-      hp = self.h_parameterization[ih]
+    for hp in self.h_parameterization:
+      if (hp == None): continue
+      ih = hp.ih
+      #hp = self.h_parameterization[ih]
       if(hp.htype == 'unk'):
         continue
       a0, a1, a2 = hp.a0, hp.a1, hp.a2

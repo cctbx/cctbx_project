@@ -1,6 +1,6 @@
 from __future__ import division
 import time
-import sys
+#import sys
 from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -8,8 +8,8 @@ import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens import riding
 from mmtbx.hydrogens import parameterization
-from mmtbx.hydrogens import modify_gradients
-from scitbx import matrix
+#from mmtbx.hydrogens import modify_gradients
+#from scitbx import matrix
 
 #-----------------------------------------------------------------------------
 # Finite difference test for modified gradients of riding H
@@ -47,9 +47,12 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
 
   h_parameterization = riding_h_manager.h_parameterization
 
-  ih = h_parameterization.keys()[0]
+  #ih = h_parameterization.keys()[0]
+  for hp in h_parameterization:
+    if (hp is not None):
+      ih = hp.ih
+
   rh_calc = parameterization.compute_H_position(
-    ih         = ih,
     sites_cart = sites_cart,
     hp         = h_parameterization[ih])
   #print 'distance before changing H', \
@@ -97,9 +100,10 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
         sites_cart_[i_site] = [
           sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
         # after shift, recalculate H position
-        for ih in h_parameterization.keys():
+        for hp in h_parameterization:
+          if (hp == None): continue
+          ih = hp.ih
           rh_calc = parameterization.compute_H_position(
-            ih         = ih,
             sites_cart = sites_cart_,
             hp         = h_parameterization[ih])
           sites_cart_[ih] = tuple(rh_calc)

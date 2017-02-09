@@ -39,24 +39,26 @@ def exercise(pdb_str):
   diagnostics = riding_h_manager.diagnostics(
     sites_cart         = sites_cart,
     threshold          = 0.05)
+  number_h_para = diagnostics.number_h_para
+  h_distances   = diagnostics.h_distances
+  unk_list      = diagnostics.unk_list
 
-  number_h           = diagnostics.number_h
-  h_distances        = diagnostics.h_distances
-  unk_list           = diagnostics.unk_list
+# number of H atoms in structure
+  number_h = 0
+  for h_bool in xray_structure.hd_selection():
+    if h_bool: number_h += 1
 
-  #type_list = []
+# There are 90 H atoms in pdb_string, check if all of them are recognized and
+# that none of them has unknown type
+  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+  assert(len(unk_list) == 0), \
+    'Some H atoms are parameterized with an unknown type'
+
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()
-    hp = h_parameterization[ih]
-    #type_list.append(hp.htype)
     assert (h_distances[ih] < 0.01), \
       'distance too large: %s  atom: %s (%s) residue: %s ' \
-      % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
-
-
-  assert (number_h == len(h_parameterization.keys())), \
-    'not all H atoms are parameterized'
-  assert(len(unk_list) == 0), 'Some H atoms are not recognized'
+      % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
 
 
 pdb_str_00 = """

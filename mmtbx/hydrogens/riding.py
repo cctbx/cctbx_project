@@ -4,7 +4,7 @@ from scitbx import matrix
 from mmtbx.hydrogens import connectivity
 from mmtbx.hydrogens import parameterization
 from mmtbx.hydrogens import modify_gradients
-#from time import time
+#from mmtbx_hydrogens_ext import *
 
 class manager(object):
   def __init__(self,
@@ -52,15 +52,16 @@ class manager(object):
     #sites_cart = pdb_hierarchy.atoms().extract_xyz()
     sites_cart = xray_structure.sites_cart()
 
-    for ih in self.h_parameterization:
-      hp = self.h_parameterization[ih]
+    for hp in self.h_parameterization:
+      if (hp == None): continue
+      ih = hp.ih
+      #hp = self.h_parameterization[ih]
       rh = matrix.col(sites_cart[ih])
       rh_calc = None
       if (hp.htype in ['unk','unk_ideal']):
         rh_calc = rh
       else:
         rh_calc = parameterization.compute_H_position(
-          ih         = ih,
           sites_cart = sites_cart,
           hp         = hp)
         if (rh_calc is None):
@@ -73,6 +74,35 @@ class manager(object):
     if pdb_hierarchy is not None:
       pdb_hierarchy.adopt_xray_structure(xray_structure)
 
+  #def idealize_hydrogens_inplace_cpp(self, pdb_hierarchy=None, xray_structure=None):
+  #  if pdb_hierarchy is not None:
+  #    assert pdb_hierarchy.atoms_size() == self.pdb_hierarchy.atoms_size()
+  #  if xray_structure is None:
+  #    xray_structure = pdb_hierarchy.extract_xray_structure(
+  #      crystal_symmetry=self.cs)
+  #  sites_cart = xray_structure.sites_cart()
+#
+  #  for ih in self.h_parameterization:
+  #    hp = self.h_parameterization[ih]
+  #    rc = riding_coefficients(
+  #      htype=hp.htype, a0=hp.a0, a1=hp.a1, a2=hp.a2, a=hp.a, b=hp.b,
+  #      h=hp.h, n=hp.n, disth=hp.dist_h)
+  #    rh = matrix.col(sites_cart[ih])
+  #    rh_calc = None
+  #    if (hp.htype in ['unk','unk_ideal']):
+  #      rh_calc = rh
+  #    else:
+  #      rh_calc = compute_H_position(
+  #        riding_coefficients = rc,
+  #        sites_cart          = sites_cart,
+  #        ih                  = ih)
+  #      if (rh_calc is None):
+  #        rh_calc = rh
+  #    sites_cart[ih] = rh_calc
+  #  xray_structure.set_sites_cart(sites_cart)
+  #  if pdb_hierarchy is not None:
+  #    pdb_hierarchy.adopt_xray_structure(xray_structure)
+
   def gradients_reduced(self, grads, sites_cart, hd_selection):
     modify_gradients.modify_gradients(
       sites_cart          = sites_cart,
@@ -83,8 +113,8 @@ class manager(object):
 
   def diagnostics(self, sites_cart, threshold):
     diagnostics = parameterization.diagnostics(
-      h_connectivity     = self.h_connectivity,
       h_parameterization = self.h_parameterization,
+      h_connectivity     = self.h_connectivity,
       sites_cart         = sites_cart,
       threshold          = threshold)
     return diagnostics

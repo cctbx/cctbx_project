@@ -33,37 +33,39 @@ def exercise():
   riding_h_manager = riding.manager(
     pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry_restraints)
-
-  h_parameterization = riding_h_manager.h_parameterization
+  h_para = riding_h_manager.h_parameterization
 
   diagnostics = riding_h_manager.diagnostics(
-    sites_cart         = sites_cart,
-    threshold          = 0.05)
+    sites_cart = sites_cart,
+    threshold  = 0.05)
+  h_distances   = diagnostics.h_distances
+  unk_list      = diagnostics.unk_list
+  number_h_para = diagnostics.number_h_para
+  type_list     = diagnostics.type_list
 
-  h_distances        = diagnostics.h_distances
-  unk_list           = diagnostics.unk_list
+# number of H atoms in structure
+  number_h = 0
+  for h_bool in xray_structure.hd_selection():
+    if h_bool: number_h += 1
 
-# There are 53 H atoms in the pdb_string, check if all of them are recognized
+# There are 68 H atoms in the pdb_string, check if all of them are recognized
 # Note: one H atom (VAL 7 HA) is bound to two CA atoms at once
-  assert (len(h_parameterization.keys()) == 68), \
-    'Not all H atoms are parameterized'
+  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+  assert(len(unk_list) == 0), \
+    'Some H atoms are parameterized with an unknown type'
 
-  type_list = []
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()
-    hp = h_parameterization[ih]
-    type_list.append(hp.htype)
     assert (h_distances[ih] < 0.2), \
       'distance too large: %s  atom: %s (%s) residue: %s ' \
-      % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
-
-  assert(len(unk_list) == 0), 'Some H atoms are not recognized'
+      % (h_para[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
 
   for type1, type2 in zip(type_list, type_list_known):
     assert (type1 == type2)
     #print "'%s'," % type1,
 
 # Several fragments from pdb with double conformations which caused crashes
+# and which should now be mended
 pdb_str = """\
 CRYST1   27.832   30.931   25.475  90.00  90.00  90.00 P 1
 SCALE1      0.035930  0.000000  0.000000        0.00000
@@ -305,14 +307,25 @@ END
 """
 
 
-type_list_known = ['2tetra', '2tetra', 'alg1b', '3neigbs', '2tetra',
-  'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', '3neigbs', 'alg1b', '3neigbs',
-  'alg1b', '2tetra', '2tetra', '2tetra', '2tetra', 'flat_2neigbs',
-  'flat_2neigbs', '2tetra', '2tetra', 'alg1b', 'alg1b', 'alg1b', '3neigbs',
-  '2tetra', '2tetra', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs', '2tetra',
+#type_list_known = ['2tetra', '2tetra', 'alg1b', '3neigbs', '2tetra',
+#  'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', '3neigbs', 'alg1b', '3neigbs',
+#  'alg1b', '2tetra', '2tetra', '2tetra', '2tetra', 'flat_2neigbs',
+#  'flat_2neigbs', '2tetra', '2tetra', 'alg1b', 'alg1b', 'alg1b', '3neigbs',
+#  '2tetra', '2tetra', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs', '2tetra',
+#  'alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
+#  '2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs', 'prop', 'prop', 'prop',
+#  'prop', 'prop', 'prop', 'prop', '3neigbs', 'prop']
+
+type_list_known = ['2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs',
+  '3neigbs', 'alg1b', '2tetra', '2tetra', '2tetra', '2tetra', 'alg1b',
+  '3neigbs', '2tetra', '2tetra', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs',
   'alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
   '2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs', 'prop', 'prop', 'prop',
-  'prop', 'prop', 'prop', 'prop', '3neigbs', 'prop']
+  'prop', 'prop', 'prop', '3neigbs', 'prop', 'prop', 'prop', 'prop', 'prop',
+  'prop', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
+  'flat_2neigbs', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs', 'flat_2neigbs',
+  'flat_2neigbs', 'flat_2neigbs', 'alg1b', '2tetra', '2tetra', 'flat_2neigbs',
+  'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'alg1b']
 
 if (__name__ == "__main__"):
   t0 = time.time()
