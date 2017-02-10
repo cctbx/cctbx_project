@@ -58,6 +58,8 @@ output_prefix = None
   .type = str
 use_map_for_reference = True
   .type = bool
+run_minimization_first = False
+  .type = bool
 reference_map_resolution = 5
   .type = float
 data_for_map = None
@@ -109,6 +111,7 @@ class model_idealization():
 
     self.rmsd_from_start = None
     self.init_model_statistics = None
+    self.init_gm_model_statistics = None
     self.after_ss_idealization = None
     self.after_loop_idealization = None
     self.after_rotamer_fixing = None
@@ -236,6 +239,26 @@ class model_idealization():
       result_h.reset_atom_i_seqs()
     return result_h
 
+  def prepare_init_reference_map(self, xrs, pdb_h):
+    print >> self.log, "Preparing reference map"
+    # new_h = pdb_h.deep_copy()
+    # truncate_to_poly_gly(new_h)
+    # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
+    xrs=xrs.set_b_iso(value=10)
+    crystal_gridding = maptbx.crystal_gridding(
+        unit_cell        = xrs.unit_cell(),
+        space_group_info = xrs.space_group_info(),
+        symmetry_flags   = maptbx.use_space_group_symmetry,
+        d_min             = self.params.reference_map_resolution)
+    fc = xrs.structure_factors(d_min = 2, algorithm = "fft").f_calc()
+    fft_map = miller.fft_map(
+        crystal_gridding=crystal_gridding,
+        fourier_coefficients=fc)
+    fft_map.apply_sigma_scaling()
+    init_reference_map = fft_map.real_map_unpadded(in_place=False)
+    if self.params.debug:
+      fft_map.as_xplor_map(file_name="%s_init.map" % self.params.output_prefix)
+    return init_reference_map
 
   def prepare_reference_map(self, xrs, pdb_h):
     print >> self.log, "Preparing reference map"
@@ -398,6 +421,13 @@ class model_idealization():
 
   def run(self):
     t_0 = time()
+    self.ann = ioss.annotation.from_phil(
+        phil_helices=self.params.secondary_structure.protein.helix,
+        phil_sheets=self.params.secondary_structure.protein.sheet,
+        pdb_hierarchy=self.whole_pdb_h)
+    if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
+      self.ann = self.pdb_input.extract_secondary_structure()
+
     filtered_ncs_restr_group_list = []
     if not self.params.ignore_ncs:
       ncs_obj = iotbx.ncs.input(
@@ -413,6 +443,30 @@ class model_idealization():
       master_sel = flex.size_t([])
       filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
           self.whole_pdb_h, self.ncs_restr_group_list)
+
+
+    if self.params.run_minimization_first:
+      # running simple minimization and updating all
+      # self.master, self.working, etc...
+      init_ref_map = self.prepare_init_reference_map(
+        self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
+        self.whole_pdb_h)
+      self.minimize(
+          hierarchy=self.whole_pdb_h,
+          xrs=self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
+          original_pdb_h=self.whole_pdb_h,
+          grm=self.whole_grm,
+          ncs_restraints_group_list=filtered_ncs_restr_group_list,
+          excl_string_selection=None, # don't need if we have map
+          ss_annotation=self.ann,
+          reference_map=init_ref_map)
+      self.init_gm_model_statistics = geometry_no_grm(
+          pdb_hierarchy=self.whole_pdb_h,
+          molprobity_scores=True)
+      self.time_for_init = time()-t_0
+
+
+    if not self.params.ignore_ncs:
       if len(filtered_ncs_restr_group_list) > 0:
         self.using_ncs = True
         master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
@@ -431,10 +485,6 @@ class model_idealization():
       self.working_pdb_h = self.whole_pdb_h
     self.working_pdb_h.reset_atom_i_seqs()
 
-    self.ann = ioss.annotation.from_phil(
-        phil_helices=self.params.secondary_structure.protein.helix,
-        phil_sheets=self.params.secondary_structure.protein.sheet,
-        pdb_hierarchy=self.whole_pdb_h)
 
     self.working_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
     if self.using_ncs:
@@ -447,8 +497,7 @@ class model_idealization():
       # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
       self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
 
-    if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
-      self.ann = self.pdb_input.extract_secondary_structure()
+
     self.original_ann = None
     self.filtered_whole_ann = None
     if self.ann is not None:
@@ -646,7 +695,7 @@ class model_idealization():
     # need to update SS manager for the whole model here.
     if self.params.use_ss_restraints:
       ss_params = sec_str_master_phil.fetch().extract()
-      ss_params.secondary_structure.protein.remove_outliers=False
+      ss_params.secondary_structure.protein.remove_outliers = not self.params.ss_idealization.enabled
       ss_manager = manager(
           pdb_hierarchy=self.whole_pdb_h,
           geometry_restraints_manager=self.whole_grm.geometry,
@@ -691,7 +740,7 @@ class model_idealization():
       excl_string_selection,
       ss_annotation,
       reference_map):
-    if self.reference_map is None:
+    if reference_map is None:
       minimize_wrapper_for_ramachandran(
           hierarchy=hierarchy,
           xrs=xrs,
@@ -762,7 +811,21 @@ class model_idealization():
         backbone_only=False)
 
   def print_stat_comparison(self):
-    print >> self.log, "                        Starting    SS ideal    Rama      Rota     Final"
+    if self.params.run_minimization_first:
+      print >> self.log, "                        Starting    Init GM   SS ideal    Rama      Rota     Final"
+      stat_obj_list = [self.init_model_statistics,
+          self.init_gm_model_statistics,
+          self.after_ss_idealization,
+          self.after_loop_idealization,
+          self.after_rotamer_fixing,
+          self.final_model_statistics,]
+    else:
+      print >> self.log, "                        Starting    SS ideal    Rama      Rota     Final"
+      stat_obj_list = [self.init_model_statistics,
+          self.after_ss_idealization,
+          self.after_loop_idealization,
+          self.after_rotamer_fixing,
+          self.final_model_statistics,]
     #                         Starting    SS ideal    Rama      Rota     Final
     # Molprobity Score     :      4.50      3.27      2.66      2.32      2.54
     for val_caption, val_name, val_format in [
@@ -777,13 +840,7 @@ class model_idealization():
         ("Twisted prolines", "n_twisted_proline", "{:10d}"),
         ("Twisted general", "n_twisted_general", "{:10d}")]:
       l = "%-21s:" % val_caption
-      for stat_obj in [
-          self.init_model_statistics,
-          self.after_ss_idealization,
-          self.after_loop_idealization,
-          self.after_rotamer_fixing,
-          self.final_model_statistics
-          ]:
+      for stat_obj in stat_obj_list:
         value = 99999
         if stat_obj is not None:
           l += val_format.format(getattr(stat_obj, val_name, 99999))
