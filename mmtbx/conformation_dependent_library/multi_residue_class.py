@@ -116,6 +116,7 @@ class ThreeProteinResidues(list):
 
   def are_linked(self,
                  return_value=False,
+                 use_distance_always=False,
                  verbose=True):
     d2 = None
     for i, residue in enumerate(self):
@@ -143,7 +144,7 @@ class ThreeProteinResidues(list):
         else: bond=False
       else:
         bond=self.bond_params_table.lookup(c.i_seq, n.i_seq)
-        if not bond:
+        if not bond and use_distance_always:
           # needed for situations where atoms are added and the i_seq is updated
           if distance2(n,c)<4: bond=True
       if not bond:
