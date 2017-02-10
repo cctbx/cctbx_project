@@ -427,6 +427,7 @@ class model_idealization():
         pdb_hierarchy=self.whole_pdb_h)
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
+    self.filtered_whole_ann = self.ann.deep_copy()
 
     filtered_ncs_restr_group_list = []
     if not self.params.ignore_ncs:
@@ -443,7 +444,6 @@ class model_idealization():
       master_sel = flex.size_t([])
       filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
           self.whole_pdb_h, self.ncs_restr_group_list)
-
 
     if self.params.run_minimization_first:
       # running simple minimization and updating all
@@ -464,8 +464,28 @@ class model_idealization():
       self.init_gm_model_statistics = geometry_no_grm(
           pdb_hierarchy=self.whole_pdb_h,
           molprobity_scores=True)
-      self.time_for_init = time()-t_0
+      if self.params.debug:
+        self.shift_and_write_result(
+            hierarchy=self.whole_pdb_h,
+            fname_suffix="init_gm",
+            grm=self.whole_grm)
 
+    if (self.init_gm_model_statistics is not None
+        and self.init_gm_model_statistics.ramachandran_outliers == 0):
+      print >> self.log, "Simple minimization was enough"
+      # Early exit!!!
+      self.shift_and_write_result(
+          hierarchy=self.whole_pdb_h,
+          fname_suffix="all_idealized",
+          grm=self.whole_grm)
+      self.final_model_statistics = geometry_no_grm(
+          pdb_hierarchy=iotbx.pdb.input(
+            source_info=None,
+            lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
+          molprobity_scores=True)
+      # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
+      self.time_for_run = time() - t_0
+      return
 
     if not self.params.ignore_ncs:
       if len(filtered_ncs_restr_group_list) > 0:
@@ -500,7 +520,6 @@ class model_idealization():
 
 
     self.original_ann = None
-    self.filtered_whole_ann = None
     if self.ann is not None:
       self.original_ann = self.ann.deep_copy()
       print >> self.log, "Original SS annotation"
@@ -845,6 +864,8 @@ class model_idealization():
         value = 99999
         if stat_obj is not None:
           l += val_format.format(getattr(stat_obj, val_name, 99999))
+        else:
+          l += val_format.format(0)
       print >> self.log, l
 
   def print_runtime(self):
