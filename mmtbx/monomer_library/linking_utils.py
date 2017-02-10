@@ -220,6 +220,7 @@ def get_hand(c_atom, o_atom, angles, verbose=False):
 def get_classes(atom, verbose=False):
   def _num_atoms_residue(atom):
     return len(atom.parent().parent().atoms())
+  #
   def _filter_for_metal(atom, class_name):
     if class_name=="common_element":
       if atom.element.strip().upper() in ad_hoc_single_metal_residue_element_types:
@@ -231,6 +232,15 @@ def get_classes(atom, verbose=False):
     return class_name
   #
   important_only_value = None
+  def _filter_for_uncommon_amino_acid(atom, class_name):
+    backbone_atoms = ['C', 'CA', 'N', 'O', 'OXT']
+    backbone_bonds = [[0,1],]
+    count = 0
+    for a in atom.parent().parent().atoms():
+      if a.name.strip() in backbone_atoms: count+=1
+    if count>=4: class_name='uncommon_amino_acid'
+    return class_name
+  #
   attrs = [
     "common_saccharide",
     "common_water",
@@ -296,6 +306,10 @@ def get_classes(atom, verbose=False):
         important_only_value = _filter_for_metal(atom, rc)
         setattr(classes, "important_only", important_only_value)
       setattr(classes, attr, True)
+  if (classes.other):
+    setattr(classes, _filter_for_uncommon_amino_acid(atom, rc), True)
+  if verbose:
+    print classes
   return classes
 
 def is_atom_group_pair_linked(atom_group1,
