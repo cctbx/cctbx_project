@@ -542,6 +542,12 @@ class model_idealization():
       self.filtered_whole_ann.split_helices_with_prolines(
           hierarchy=self.whole_pdb_h,
           asc=None)
+      self.ann.filter_sheets_with_long_hbonds(
+          hierarchy=self.working_pdb_h,
+          asc=None)
+      self.filtered_whole_ann.filter_sheets_with_long_hbonds(
+          hierarchy=self.whole_pdb_h,
+          asc=None)
       # print >> self.log, "Splitted SS annotation"
       # print >> self.log, ann.as_pdb_str()
       print >> self.log, "Filtered SS annotation"
