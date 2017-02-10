@@ -427,7 +427,9 @@ class model_idealization():
         pdb_hierarchy=self.whole_pdb_h)
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
-    self.filtered_whole_ann = self.ann.deep_copy()
+    self.filtered_whole_ann = None
+    if self.ann is not None:
+      self.filtered_whole_ann = self.ann.deep_copy()
 
     filtered_ncs_restr_group_list = []
     if not self.params.ignore_ncs:
