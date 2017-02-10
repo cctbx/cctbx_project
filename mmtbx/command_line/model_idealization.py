@@ -448,6 +448,7 @@ class model_idealization():
     if self.params.run_minimization_first:
       # running simple minimization and updating all
       # self.master, self.working, etc...
+      self.whole_pdb_h.reset_atom_i_seqs()
       init_ref_map = self.prepare_init_reference_map(
         self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
         self.whole_pdb_h)
