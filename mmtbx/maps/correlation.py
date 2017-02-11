@@ -7,7 +7,7 @@ from cctbx import adptbx
 from mmtbx import masks
 import sys
 import boost.python
-cctbx_mapt1x_ext = boost.python.import_ext("cctbx_maptbx_ext")
+cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 
 class four_cc(object):
   def __init__(self, map, xray_structure, d_min):
@@ -36,7 +36,7 @@ class four_cc(object):
       map_1=self.map, map_2=self.map_calc, selection = self.sel_inside)
     self.cc_volume = self._cc_volume()
     # Free memory
-    del self.bs_mask, self.map_calc, self.sel_inside
+    del self.bs_mask, self.sel_inside
 
   def _cc_image(self):
     b_iso = adptbx.u_as_b(

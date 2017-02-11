@@ -9,6 +9,7 @@ from libtbx.utils import Sorry
 import mmtbx.utils
 import mmtbx.maps.correlation
 from cctbx import maptbx
+from cctbx.maptbx import resolution_from_map_and_model
 
 legend = """phenix.map_model_cc or phenix.model_map_cc:
   Given PDB file and a map file calculate model-map coorelation.
@@ -80,9 +81,8 @@ def run(args, log=sys.stdout):
   d_min = params.resolution
   broadcast(m="Map resolution:", log=log)
   if(d_min is None):
-    d_min = maptbx.resolution_from_map_and_model(
-      map_data=map_data, xray_structure=xrs).d_min
-  print >> log, "  d_min: %6.4f"%d_min
+    raise Sorry("Resolution is required.")
+  print >> log, "  d_min:", d_min
   # Compute FSC(map, model)
   broadcast(m="Model-map FSC:", log=log)
   mmtbx.maps.correlation.fsc_model_map(

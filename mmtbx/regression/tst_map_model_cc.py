@@ -84,6 +84,7 @@ def run(prefix="tst_map_model_cc"):
       "phenix.map_model_cc",
       "%s_shifted.pdb"%prefix,
       "%s_shifted.ccp4"%prefix,
+      "resolution=2.",
       "%s"%opt,
       "> %s.zlog"%prefix
     ])
