@@ -3,6 +3,7 @@ import iotbx.pdb
 from cctbx import  miller
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
+from cctbx.maptbx import resolution_from_map_and_model
 
 pdb_str_box = """
 CRYST1   46.014   46.587   51.149  90.00  90.00  90.00 P 1
@@ -468,7 +469,7 @@ def run(pdb_str, d_min, b, randomize):
   #
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   xrs = ph.extract_xray_structure(crystal_symmetry=cs)
-  o = maptbx.resolution_from_map_and_model(map_data=map_obs,
+  o = maptbx.resolution_from_map_and_model.run(map_data=map_obs,
     xray_structure=xrs, d_min_min=1.5)
   return o.d_min, o.b_iso, o.cc
 
@@ -484,4 +485,4 @@ if (__name__ == "__main__"):
           assert approx_equal(d_min, result, 0.11)
           assert cc>0.9
           if(not randomize):
-            assert approx_equal(b, b_result)
+            assert approx_equal(b, b_result,5.+1)

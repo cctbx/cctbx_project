@@ -93,7 +93,7 @@ namespace cctbx { namespace maptbx {
 
 template <typename DataType>
 void hoppe_gassman_modification2(af::ref<DataType, af::c_grid<3> > map_data,
-       DataType mean_scale, int n_iterations)
+       int n_iterations)
 /* A modified version of rho->3*rho^2-2*rho^3 modification.
    Acta Cryst. (1968). B24, 97-107
    Acta Cryst. (1975). A31, 388-389
