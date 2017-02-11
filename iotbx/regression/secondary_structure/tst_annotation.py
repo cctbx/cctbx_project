@@ -1447,6 +1447,9 @@ SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
 
 def tst_filter_sheets_with_long_hbonds():
   """ Attention. In this case there are 2 almost identical SHEET annotations."""
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "Skipped: required module ksdssp not present"
+    return
   file_path = libtbx.env.find_in_repositories(
     relative_path="cctbx_project/iotbx/regression/secondary_structure/3jd6_noh.pdb",
     test=os.path.isfile)
