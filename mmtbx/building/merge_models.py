@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 from scitbx.matrix import col
 from copy import deepcopy
 from libtbx import adopt_init_args
+from cctbx.maptbx import resolution_from_map_and_model
 
 # merge_models.py
 # crossover models and pick best parts of each
@@ -663,9 +664,10 @@ def run(
 
   if not resolution:
     from cctbx import maptbx
-    resolution=maptbx.resolution_from_map_and_model(
+    resolution=maptbx.resolution_from_map_and_model.run(
       map_data=map_data, xray_structure=xrs).d_min
-
+  if(resolution is None):
+    raise Sorry("Resolution is required")
   print >>out,"\nResolution limit: %7.2f" %(resolution)
   print >>out,"\nSummary of input models"
   xrs.show_summary(f=out, prefix="  ")
