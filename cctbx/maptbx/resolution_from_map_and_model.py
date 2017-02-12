@@ -17,12 +17,12 @@ def parabola_is_good(x, y, xmin, xmax, xstep):
     yp,ym=[],[]
     offsets = [1,2,3]
     for j in offsets:
-        if(i-j>=0 and y[i-j]<=yi and not y[i-j] in ym):
-          cntr+=1
-          ym.append(y[i-j])
-        if(i+j<=y.size()-1 and y[i+j]<=yi and not y[i+j] in yp):
-          cntr+=1
-          yp.append(y[i+j])
+      if(i-j>=0 and y[i-j]<=yi and not y[i-j] in ym):
+        cntr+=1
+        ym.append(y[i-j])
+      if(i+j<=y.size()-1 and y[i+j]<=yi and not y[i+j] in yp):
+        cntr+=1
+        yp.append(y[i+j])
     if(cntr==len(offsets)+len(offsets)): maxima.append([x[i],yi,i])
   #print "       ",len(maxima), maxima
   # Remove plateau
@@ -30,22 +30,43 @@ def parabola_is_good(x, y, xmin, xmax, xstep):
   tmp2 = []
   for m in maxima:
     if(not m[1] in tmp):
-        tmp.append(m[1])
-        tmp2.append(m)
+      tmp.append(m[1])
+      tmp2.append(m)
   maxima = tmp2
   # Choose between several peaks
-  if(len(maxima)==2):
-    x_max = -a1/(2*a2)
-    if(x_max<xmin or x_max>xmax): return []
-    d=1.e+9
-    maximum=None
+  if(len(maxima)>1):
+    maxima_plus = []
     for m in maxima:
-        d_=abs(x_max-m[0])
-        if(d_<d):
-          d=d_
-          maximum=m[:]
-    return [maximum]
+      i = m[2]
+      cntr=0
+      for j in range(1,100):
+        if(i-j>=0 and y[i-j]<=y[i-j+1]):
+          cntr+=1
+        else: break
+        if(i+j<=y.size()-1 and y[i+j]<=y[i+j-1]):
+          cntr+=1
+        else: break
+      maxima_plus.append([m,cntr])
+    cntr_max = -1
+    maximum = None
+    for mp in maxima_plus:
+      if(mp[1]>cntr_max):
+        cntr_max = mp[1]
+        maximum = mp[0]
+    maxima = [maximum]
   return maxima
+  #if(len(maxima)==2):
+  #  x_max = -a1/(2*a2)
+  #  if(x_max<xmin or x_max>xmax): return []
+  #  d=1.e+9
+  #  maximum=None
+  #  for m in maxima:
+  #    d_=abs(x_max-m[0])
+  #    if(d_<d):
+  #      d=d_
+  #      maximum=m[:]
+  #  return [maximum]
+  #return maxima
 
 def _resolution_from_map_and_model_helper(
       map,
@@ -196,7 +217,7 @@ def _resolution_from_map_and_model_helper(
       else:
         y_ave = y[i]
       y_.append(y_ave)
-      #print x[i],y_ave, b[i], radii[i]
+      #print "%8.3f %12.6f %8.3f %8.3f"%(x[i],y_ave, b[i], radii[i])
     x,y,b, radii = x_,y_,b_, r_
     maxima = parabola_is_good(x=flex.double(x), y=flex.double(y),
       xmin=d_min_start, xmax=d_min_end, xstep=d_min_step)
