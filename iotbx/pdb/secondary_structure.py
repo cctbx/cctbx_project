@@ -772,17 +772,24 @@ class annotation(structure_base):
           # SHEET is bad, work with it
           sh_indeces_to_delete.append(i)
           # check other sheets for intersection with this one
-          intersect = sh_atom_selections[i]
           for j in range(i+1, self.get_n_sheets()):
+            intersect = sh_atom_selections[i].deep_copy()
             if j not in sh_indeces_to_delete: # don't check deleted sheets
-              intersect = sh_atom_selections[i] and sh_atom_selections[j]
-              # print dir(intersect)
+              intersect &= sh_atom_selections[j]
               if not intersect.all_eq(False):
                 sh_indeces_to_delete.append(j)
+                sh_atom_selections[i] |= sh_atom_selections[j]
           # find new sheet structure for this sheet
-          sh_hierarchy = hierarchy.select(intersect)
-          # print sh_hierarchy.as_pdb_string()
+          sh_hierarchy = hierarchy.select(sh_atom_selections[i])
+          n_rgs = len(sh_hierarchy.only_chain().residue_groups())
           ss_m = ss_manager(pdb_hierarchy=sh_hierarchy)
+          fresh_sheets = ss_m.actual_sec_str.sheets
+          # checking for bug occuring in 4a7h where one strand happens to be
+          # too long
+          for f_sh in fresh_sheets:
+            for f_strand in f_sh.strands:
+              if f_strand.get_end_resseq_as_int() - f_strand.get_start_resseq_as_int() > n_rgs:
+                raise Sorry("It is 4a7h or ksdssp failed on another structure.")
           new_sheets += ss_m.actual_sec_str.sheets
     if len(sh_indeces_to_delete) > 0:
       for i in reversed(sh_indeces_to_delete):
@@ -861,6 +868,15 @@ class annotation(structure_base):
     filtered_helices = []
     for h in self.helices:
       if h.get_n_maximum_hbonds() <= 1:
+        continue
+      else:
+        filtered_helices.append(h)
+    self.helices = filtered_helices
+
+  def remove_3_10_helices(self):
+    filtered_helices = []
+    for h in self.helices:
+      if h.get_class_as_str == 5:
         continue
       else:
         filtered_helices.append(h)
@@ -1731,6 +1747,12 @@ class pdb_helix (structure_base) :
     if self.end_resseq is not None:
       return hy36decode(4, self.end_resseq)
     return None
+
+  def get_class_as_int(self):
+    return self.helix_class_to_int(self.helix_class)
+
+  def get_class_as_str(self):
+    return self.helix_class
 
   def set_start_resseq(self, resseq):
     self.start_resseq = self.convert_resseq(resseq)
