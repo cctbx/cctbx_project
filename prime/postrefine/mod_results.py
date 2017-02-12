@@ -67,3 +67,8 @@ class postref_results(object):
     self.CC_iso_init = stats[8]
     self.CC_iso_final = stats[9]
 
+  def get_full_observations(self):
+    sin_theta_over_lambda_sq = self.observations.two_theta(wavelength=self.wavelength).sin_theta_over_lambda_sq().data()
+    return self.observations.customized_copy( \
+        data=self.observations.data()/(self.G * flex.exp(-2*self.B*sin_theta_over_lambda_sq) * self.partiality), \
+        sigmas=self.observations.sigmas()/(self.G * flex.exp(-2*self.B*sin_theta_over_lambda_sq) * self.partiality))
