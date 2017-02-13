@@ -77,7 +77,8 @@ def _resolution_from_map_and_model_helper(
       d_min_end=10.,
       radius=5.0,
       d_min_step=0.1,
-      approximate=False):
+      approximate=False,
+      second=False):
   from cctbx import miller
   import mmtbx.bulk_solvent
   xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
@@ -197,6 +198,13 @@ def _resolution_from_map_and_model_helper(
         radii=so.radii)
       return d_min, cc, o.b(), radius
   ###
+  if(second):
+    o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
+      selections=selections, d_min_start=d_min_start, d_min_end=f_obs.d_min()+d_min_step,
+      d_min_step=d_min_step, nproc=nproc)
+    junk,junk,b, junk = o.x, o.y, o.b, o.radii
+    b_range = [b[0],]
+  #
   o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
     selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
     d_min_step=d_min_step, nproc=nproc)
@@ -259,7 +267,8 @@ class run(object):
       d_min_end      = d_min_end,
       d_min_step     = step,
       approximate    = False,
-      nproc          = nproc)
+      nproc          = nproc,
+      second         = False)
     if(cc<0.5):
       self.d_min, self.b_iso, self.cc, self.radius = None,None,None,None
     else:
@@ -280,4 +289,5 @@ class run(object):
         d_min_end        = d_min_end,
         d_min_step       = 0.1,
         approximate      = True,
-        nproc            = nproc)
+        nproc            = nproc,
+        second           = True)
