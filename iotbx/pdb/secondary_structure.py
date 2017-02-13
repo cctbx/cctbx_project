@@ -781,7 +781,7 @@ class annotation(structure_base):
                 sh_atom_selections[i] |= sh_atom_selections[j]
           # find new sheet structure for this sheet
           sh_hierarchy = hierarchy.select(sh_atom_selections[i])
-          n_rgs = len(sh_hierarchy.only_chain().residue_groups())
+          n_rgs = len(list(sh_hierarchy.residue_groups()))
           ss_m = ss_manager(pdb_hierarchy=sh_hierarchy)
           fresh_sheets = ss_m.actual_sec_str.sheets
           # checking for bug occuring in 4a7h where one strand happens to be
