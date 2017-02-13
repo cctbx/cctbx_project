@@ -528,10 +528,8 @@ class model_idealization():
       print >> self.log, self.original_ann.as_pdb_str()
       self.ann.remove_short_annotations()
       self.filtered_whole_ann = self.ann.deep_copy()
-      self.ann.remove_3_10_helices(
-          hierarchy=self.working_pdb_h)
-      self.filtered_whole_ann.remove_3_10_helices(
-          hierarchy=self.whole_pdb_h)
+      self.ann.remove_3_10_helices()
+      self.filtered_whole_ann.remove_3_10_helices()
       self.ann.remove_empty_annotations(
           hierarchy=self.working_pdb_h)
       self.filtered_whole_ann.remove_empty_annotations(
