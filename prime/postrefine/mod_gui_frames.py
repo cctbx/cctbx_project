@@ -75,7 +75,7 @@ class BasePanel(wx.Panel):
 class PRIMEInputWindow(BasePanel):
   ''' Main PRIME Window panel '''
 
-  def __init__(self, parent, phil):
+  def __init__(self, parent, phil=master_phil):
     BasePanel.__init__(self, parent=parent)
 
     self.regenerate_params(phil)
