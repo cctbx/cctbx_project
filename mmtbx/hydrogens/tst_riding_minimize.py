@@ -6,17 +6,15 @@ import mmtbx.monomer_library.pdb_interpretation
 from cctbx import geometry_restraints
 import scitbx.lbfgs
 import mmtbx.utils
-# For lbfgs class
+# For lbfgs class:
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from libtbx import adopt_init_args
 from stdlib import math
-# for riding H
-#from mmtbx.hydrogens import modify_gradients
+# for riding H:
 from mmtbx.hydrogens import riding
-#from mmtbx.hydrogens import parameterization
 
 class lbfgs(object):
 
@@ -37,19 +35,15 @@ class lbfgs(object):
     # self.x = coordinate shifts
     self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self.h_parameterization = self.riding_h_manager.h_parameterization
-    #print 'length of x in the beginning', len(self.x)
     self._scatterers_start = self.xray_structure.scatterers()
     # -----------------------------------------------------
     if self.use_riding:
       self.hd_selection = self.xray_structure.hd_selection()
       self.x = flex.double(
         self.xray_structure.select(~self.hd_selection).n_parameters(), 0)
-      #print 'length of x in the beginning if riding H', len(self.x)
       self._scatterers_start = self.xray_structure.scatterers().select(
         ~self.hd_selection)
-      #print len(self._scatterers_start)
     # -----------------------------------------------------
-    #self._scatterers_start = self.xray_structure.scatterers()
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations,
       min_iterations = min_iterations)
@@ -68,7 +62,6 @@ class lbfgs(object):
       scatterers     = self._scatterers_start,
       shifts         = self.x)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
-    #print len(scatterers_shifted)
     site_symmetry_table = self.xray_structure.site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices():
       scatterers_shifted[i_seq].site = crystal.correct_special_position(
@@ -81,14 +74,11 @@ class lbfgs(object):
     if self.use_riding:
       new_sites = self.xray_structure.sites_frac().set_selected(
         ~self.hd_selection, scatterers_shifted.extract_sites())
-      #print len(new_sites)
       self.xray_structure.set_sites_frac(new_sites)
       self.riding_h_manager.idealize_hydrogens_inplace(
           xray_structure = self.xray_structure)
     else:
       self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
-    # -----------------------------------------------------
-    # add current xrs to the list of states
     self.states.add(sites_cart = self.xray_structure.sites_cart())
 
   def compute_target(self, compute_gradients):
@@ -98,7 +88,6 @@ class lbfgs(object):
     self.f = target_and_grads.target
     if(compute_gradients):
       self.grads = target_and_grads.gradients
-      #print len(self.grads)
     # -----------------------------------------------------
     # if use_riding hydrogen, modify the gradients
       if self.use_riding:
@@ -106,7 +95,6 @@ class lbfgs(object):
           sites_cart          = self.xray_structure.sites_cart(),
           grads               = self.grads,
           hd_selection        = self.hd_selection)
-        #print len(self.grads)
     # -----------------------------------------------------
       self.g = self.grads.as_double()
 
@@ -123,7 +111,7 @@ class lbfgs(object):
       print self.f, math.sqrt(flex.mean_sq(self.g))
     return self.f, self.g
 
-# Tyr distorted
+# distorted Tyrosine residue
 pdb_str = """
 CRYST1   16.660   13.261   16.215  90.00  90.00  90.00 P 1
 SCALE1      0.060024  0.000000  0.000000        0.00000
@@ -151,7 +139,6 @@ ATOM     19  HE2 TYR A   7       7.206   7.495  11.005  1.00 15.00           H
 ATOM     20  HH  TYR A   7       5.208   7.016  11.256  1.00 15.00           H
 TER
 """
-#
 
 def run():
   mon_lib_srv = monomer_library.server.server()
@@ -164,9 +151,9 @@ def run():
     force_symmetry = True)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xray_structure = processed_pdb_file.xray_structure()
-  pdb_hierarchy.write_pdb_file(
-    file_name        = "distorted.pdb",
-    crystal_symmetry = xray_structure.crystal_symmetry())
+  #pdb_hierarchy.write_pdb_file(
+  #  file_name        = "distorted.pdb",
+  #  crystal_symmetry = xray_structure.crystal_symmetry())
   geometry_restraints = processed_pdb_file.geometry_restraints_manager(
     show_energies = False)
   #geometry_restraints.write_geo_file(file_name='start.geo')
@@ -179,13 +166,10 @@ def run():
     pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry_restraints)
 
-  # save shaked model in states
   states.add(sites_cart = xray_structure.sites_cart())
-  #
   #xray_structure.scatterers().flags_set_grads(state=False)
   xray_structure.scatterers().flags_set_grad_site(
     iselection = xray_structure.all_selection().iselection())
-  #xray_structure.show_scatterer_flags_summary()
 
   use_riding = True
   minimized = lbfgs(
@@ -195,19 +179,19 @@ def run():
     riding_h_manager    = riding_h_manager,
     use_riding          = use_riding,
     verbose             = 0)
-  minimized.states.write(
-    file_name        = "minimized_all_states.pdb",
-    crystal_symmetry = xray_structure.crystal_symmetry())
+  #minimized.states.write(
+  #  file_name        = "minimized_all_states.pdb",
+  #  crystal_symmetry = xray_structure.crystal_symmetry())
   pdb_hierarchy.adopt_xray_structure(minimized.xray_structure)
-  pdb_hierarchy.write_pdb_file(
-    file_name        = "minimized.pdb",
-    crystal_symmetry = xray_structure.crystal_symmetry())
+  #pdb_hierarchy.write_pdb_file(
+  #  file_name        = "minimized.pdb",
+  #  crystal_symmetry = xray_structure.crystal_symmetry())
 
   target_final = geometry_restraints.energies_sites(
     sites_cart = xray_structure.sites_cart(),
     compute_gradients = True).target
-  #print 'final target', target_final
-  #assert (target_final < 1.5), 'Target of final riding model is too large'
+  print 'final target', target_final
+  assert (target_final < 1.5), 'Target of final riding model is too large'
 
 if (__name__ == "__main__"):
   t0 = time.time()
