@@ -94,12 +94,13 @@ class Stats(object):
     return cells
 
 class HitrateStats(object):
-  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None):
+  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None, raw_data_sampling = 1):
     self.app = app
     self.run = app.get_run(run_number = run_number)
     self.trial = app.get_trial(trial_number = trial_number)
     self.rungroup = app.get_rungroup(rungroup_id = rungroup_id)
     self.d_min = d_min
+    self.sampling = raw_data_sampling
 
   def __call__(self):
     from iotbx.detectors.cspad_detector_formats import reverse_timestamp
@@ -153,12 +154,16 @@ class HitrateStats(object):
     average_i_sigi_high = flex.double()
     two_theta_low = flex.double()
     two_theta_high = flex.double()
+    sample = -1
     for row in cursor.fetchall():
       b_id, ts, n_s, avg_i_sigi, tt_low, tt_high = row
       rts = reverse_timestamp(ts)
       rts = rts[0] + (rts[1]/1000)
       if rts not in timestamps:
         # First time through, figure out which bin is reported (high or low), add avg_i_sigi to that set of results
+        sample += 1
+        if sample % self.sampling != 0:
+          continue
         timestamps.append(rts)
         n_strong.append(n_s)
         two_theta_low.append(tt_low or -1)
