@@ -179,7 +179,6 @@ class PRIMEInputWindow(BasePanel):
       advanced.uc.unit_cell.SetValue(uc)
     else:
       advanced.uc.unit_cell.SetValue(str(self.pparams.target_unit_cell))
-    advanced.uc_override.SetValue(self.pparams.flag_override_unit_cell)
     advanced.anom.SetValue(self.pparams.target_anomalous_flag)
     advanced.cc.cc_cutoff.SetValue(str(self.pparams.frame_accept_min_cc))
     advanced.pix.pixel_size.SetValue(str(self.pparams.pixel_size_mm))
@@ -213,7 +212,6 @@ class PRIMEInputWindow(BasePanel):
         self.pparams.target_unit_cell = unit_cell(list(map(float, uc)))
       else:
         self.pparams.target_unit_cell = None
-      self.pparams.flag_override_unit_cell = advanced.uc_override.GetValue()
       self.pparams.target_anomalous_flag = advanced.anom.GetValue()
       if advanced.cc.cc_cutoff.GetValue().lower() != 'none':
         self.pparams.frame_accept_min_cc = float(advanced.cc.cc_cutoff.GetValue())
@@ -259,8 +257,10 @@ class LogTab(wx.Panel):
     self.SetSizer(self.log_sizer)
 
 class RuntimeTab(wx.Panel):
-  def __init__(self, parent):
+  def __init__(self, parent, params=None):
     wx.Panel.__init__(self, parent)
+    self.pparams = params
+
     self.prime_sizer = wx.BoxSizer(wx.VERTICAL)
     self.prime_figure = Figure()
     self.prime_figure.patch.set_alpha(0)
@@ -304,7 +304,11 @@ class RuntimeTab(wx.Panel):
     self.mult_axes.set_ylabel('# of Observations')
     self.bcc_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bcc_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.bcc_axes.set_ylabel(r'$CC_{1/2}$ (%)')
+
+    if self.pparams.target_anomalous_flag:
+      self.bcc_axes.set_ylabel(r'$CC_{1/2}$ anom (%)')
+    else:
+      self.bcc_axes.set_ylabel(r'$CC_{1/2}$ (%)')
     plt.setp(self.bcc_axes.get_xticklabels(), visible=False)
     self.bcomp_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bcomp_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
@@ -352,9 +356,14 @@ class RuntimeTab(wx.Panel):
 
     # plot binned stats
     self.bcc_axes.clear()
-    self.bcc_axes.bar(bins, info['binned_cc12'][-1], color='#2b8cbe',
+    if self.pparams.target_anomalous_flag:
+      binned_cc = info['binned_cc12_anom']
+    else:
+      binned_cc = info['binned_cc12']
+
+    self.bcc_axes.bar(bins, binned_cc[-1], color='#2b8cbe',
                       alpha=0.5, width=1, lw=0)
-    self.bcc_axes.step(bins, info['binned_cc12'][-1], color='blue',
+    self.bcc_axes.step(bins, binned_cc[-1], color='blue',
                        where='post')
     self.bcomp_axes.clear()
     self.bcomp_axes.bar(bins, info['binned_completeness'][-1],
@@ -540,7 +549,7 @@ class PRIMERunWindow(wx.Frame):
     self.prime_panel = wx.Panel(self.main_panel)
     self.prime_nb = wx.Notebook(self.prime_panel, style=0)
     self.log_tab = LogTab(self.prime_nb)
-    self.graph_tab = RuntimeTab(self.prime_nb)
+    self.graph_tab = RuntimeTab(self.prime_nb, params=self.pparams)
     self.prime_nb.AddPage(self.log_tab, 'Log')
     self.prime_nb.AddPage(self.graph_tab, 'Charts')
     self.prime_nb.SetSelection(1)

@@ -139,13 +139,9 @@ class PRIMEAdvancedOptions(BaseDialog):
                             label_style='normal',
                             ctrl_size=(300, -1),
                             items=[('unit_cell', '72 120 134 90 90 90')])
-    self.uc_override = wx.CheckBox(self.options,
-                                   label='Unit cell override')
-    self.uc_override.SetValue(False)
     self.anom = wx.CheckBox(self.options, label='Anomalous')
     self.anom.SetValue(False)
     opt_box_sizer.Add(self.uc, flag=f.stack, border=10)
-    opt_box_sizer.Add(self.uc_override, flag=f.stack, border=10)
     opt_box_sizer.Add(self.anom, flag=f.stack, border=10)
 
     # CC cutoff

@@ -97,7 +97,11 @@ class Plotter(object):
     ax_cc12 = fig.add_subplot(gsp[0])
     reslabel = 'Resolution ({})'.format(r'$\AA$')
     ax_cc12.set_xlabel(reslabel, fontsize=15)
-    ax_cc12.set_ylabel(r'$CC_{1/2}$ (%)', fontsize=15)
+
+    if self.params.target_anomalous_flag:
+      ax_cc12.set_ylabel(r'$CC_{1/2}$ anom (%)', fontsize=15)
+    else:
+      ax_cc12.set_ylabel(r'$CC_{1/2}$ (%)', fontsize=15)
     ax_cc12.set_xticks(xticks)
     ax_cc12.set_xticklabels(xlabels)
     ax_cc12.grid(True)
