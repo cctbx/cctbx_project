@@ -1603,6 +1603,9 @@ def consistent_set_and_model(work_params,i_model=None):
     work_params.model_reindex_op).map_to_asu()
 
   if i_model is not None:
+    # Handle the case where model is anomalous=False but the requested merging is anomalous=True
+    if i_model.anomalous_flag() is False and miller_set.anomalous_flag() is True:
+      i_model = i_model.generate_bijvoet_mates()
     # manage the sizes of arrays.  General_fcalc assures that
     # N(i_model) >= N(miller_set) since it fills non-matches with invalid structure factors
     # However, if N(i_model) > N(miller_set) it's because this run of cxi.merge requested

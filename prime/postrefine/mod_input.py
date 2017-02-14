@@ -330,6 +330,32 @@ queue
     .type = int
     .help = No. of nodes used.
 }
+isoform_cluster
+  .help = "Parameters used in clustering isoform"
+{
+  n_clusters = 2
+    .type = int
+    .help = No. of expected isoforms.
+  isorefin = None
+    .multiple = True
+    .type = path
+    .help = Specify list of mtz files for identifying isoform clusters. Note that n_clusters will be replaced with no. of items in this list.
+  d_min = 3.0
+    .type = float
+    .help = High resolution limit used in the calculation of r_metric.
+  d_max = 10.0
+    .type = float
+    .help = Low resolution limit used in the calculation of r_metric.
+  sigma_min = 1.5
+    .type = float
+    .help = Minimum I/sigI cutoff.
+  n_sample_frames = 300
+    .type = int
+    .help = No. of frames used in scoring r_matrix. Images (n_selected_frames) with the highest score will be used in the Brehm & Diederichs algorithm.
+  n_selected_frames = 100
+    .type = int
+    .help = No. of frames used in Auto solution mode. The rest of the frame data will be determined against this merged dataset.
+}
 """)
 
 txt_help = """**************************************************************************************************
@@ -423,6 +449,7 @@ def process_input(argv=None, flag_mkdir=True):
   if flag_mkdir:
     os.makedirs(params.run_no)
     os.makedirs(params.run_no+'/index_ambiguity')
+    os.makedirs(params.run_no+'/isoform_cluster')
 
   #capture input read out by phil
   from cStringIO import StringIO

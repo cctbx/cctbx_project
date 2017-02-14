@@ -745,6 +745,73 @@ class annotation(structure_base):
       h.set_new_serial(serial=i+1, adopt_as_id=True)
     self.helices=new_helices
 
+  def filter_sheets_with_long_hbonds(self, hierarchy, asc=None):
+    from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
+    from mmtbx.secondary_structure import manager as ss_manager
+    if asc is None:
+      asc = hierarchy.atom_selection_cache()
+    ss_stats_obj = gather_ss_stats(pdb_h=hierarchy)
+    new_sheets = []
+    sh_indeces_to_delete = []
+    asc = asc
+    if asc is None:
+      asc = hierarchy.atom_selection_cache()
+    # prepare atom_selections for sheets
+    sh_atom_selections = []
+    for sh in self.sheets:
+      atom_selections = sh.as_atom_selections()
+      total_selection = " or ".join(["(%s)" % x for x in atom_selections])
+      sel = asc.selection(total_selection)
+      sh_atom_selections.append(sel)
+    for i, sh in enumerate(self.sheets):
+      if i not in sh_indeces_to_delete:
+        sh_tuple = ([], [sh])
+        (n_hbonds, n_bad_hbonds, n_mediocre_hbonds, hb_lens,
+            n_outliers, n_wrong_region) = ss_stats_obj(sh_tuple)
+        if n_bad_hbonds > 0:
+          # SHEET is bad, work with it
+          sh_indeces_to_delete.append(i)
+          # check other sheets for intersection with this one
+          for j in range(i+1, self.get_n_sheets()):
+            intersect = sh_atom_selections[i].deep_copy()
+            if j not in sh_indeces_to_delete: # don't check deleted sheets
+              intersect &= sh_atom_selections[j]
+              if not intersect.all_eq(False):
+                sh_indeces_to_delete.append(j)
+                sh_atom_selections[i] |= sh_atom_selections[j]
+          # find new sheet structure for this sheet
+          sh_hierarchy = hierarchy.select(sh_atom_selections[i])
+          n_rgs = len(list(sh_hierarchy.residue_groups()))
+          ss_m = ss_manager(pdb_hierarchy=sh_hierarchy)
+          fresh_sheets = ss_m.actual_sec_str.sheets
+          # checking for bug occuring in 4a7h where one strand happens to be
+          # too long
+          for f_sh in fresh_sheets:
+            for f_strand in f_sh.strands:
+              if f_strand.get_end_resseq_as_int() - f_strand.get_start_resseq_as_int() > n_rgs:
+                raise Sorry("It is 4a7h or ksdssp failed on another structure.")
+          new_sheets += ss_m.actual_sec_str.sheets
+    if len(sh_indeces_to_delete) > 0:
+      for i in reversed(sh_indeces_to_delete):
+        del self.sheets[i]
+    self.sheets = self.sheets + new_sheets
+    if len(new_sheets) > 0:
+      self.reset_sheet_ids()
+
+  def reset_sheet_ids(self):
+    import itertools, string
+    ch = string.digits+string.ascii_uppercase
+    ids = [''.join(x) for x in itertools.product(ch, repeat = 1)]
+    if self.get_n_sheets() > len(ids):
+      ids = [''.join(x) for x in itertools.product(ch, repeat = 2)]
+    if self.get_n_sheets() > len(ids):
+      ids = [''.join(x) for x in itertools.product(ch, repeat = 3)]
+    if self.get_n_sheets() > len(ids):
+      # Too many sheets for PDB format (max 3 chars for sheet id)
+      raise Sorry("Too many sheets in annotations: %d" % self.get_n_sheets())
+    for i, sh in enumerate(self.sheets):
+      sh.sheet_id = ids[i]
+
   def multiply_to_asu(self, n_copies):
     # from iotbx.ncs import format_num_as_str
     # ncs_copies_chain_names = {'chain B_022':'CD' ...}
@@ -801,6 +868,15 @@ class annotation(structure_base):
     filtered_helices = []
     for h in self.helices:
       if h.get_n_maximum_hbonds() <= 1:
+        continue
+      else:
+        filtered_helices.append(h)
+    self.helices = filtered_helices
+
+  def remove_3_10_helices(self):
+    filtered_helices = []
+    for h in self.helices:
+      if h.get_class_as_str == 5:
         continue
       else:
         filtered_helices.append(h)
@@ -1672,6 +1748,12 @@ class pdb_helix (structure_base) :
       return hy36decode(4, self.end_resseq)
     return None
 
+  def get_class_as_int(self):
+    return self.helix_class_to_int(self.helix_class)
+
+  def get_class_as_str(self):
+    return self.helix_class
+
   def set_start_resseq(self, resseq):
     self.start_resseq = self.convert_resseq(resseq)
 
@@ -1915,6 +1997,8 @@ class pdb_strand(structure_base):
             cif_dict.get('_struct_sheet_range.pdbx_end_PDB_ins_code', '.')),
         sense=sense,
       )
+  def deep_copy(self):
+    return copy.deepcopy(self)
 
   def set_new_chain_ids(self, new_chain_id):
     self.start_chain_id = new_chain_id
@@ -2400,6 +2484,9 @@ class pdb_sheet(structure_base):
       if len(strand_indices_to_delete) > 0:
         self.renumber_strands()
         self.erase_hbond_list()
+
+  def deep_copy(self):
+    return copy.deepcopy(self)
 
   def renumber_strands(self):
     i = 1

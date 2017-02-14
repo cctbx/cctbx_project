@@ -23,11 +23,12 @@ namespace {
 
     class_<riding_coefficients>("riding_coefficients")
       .def(init<string const&, int const&, int const&, int const&, int const&,
-                double const&, double const&,
+                int const&, double const&, double const&,
                 double const&, int const&, double const& >(
-                    (arg("htype"),arg("a0"),arg("a1"),arg("a2"), arg("a3"),
+                    (arg("htype"),arg("ih"), arg("a0"),arg("a1"),arg("a2"), arg("a3"),
                      arg("a"), arg("b"), arg("h"), arg("n"), arg("disth"))))
       .add_property("htype", make_getter(&riding_coefficients::htype, rbv()))
+      .add_property("ih", make_getter(&riding_coefficients::ih, rbv()))
       .add_property("a0", make_getter(&riding_coefficients::a0, rbv()))
       .add_property("a1", make_getter(&riding_coefficients::a1, rbv()))
       .add_property("a2", make_getter(&riding_coefficients::a2, rbv()))
@@ -40,15 +41,13 @@ namespace {
       .def("__getinitargs__", getinitargs)
     ;
 
-//    def("compute_H_position",
-//         (vec3<double>(*)
-//               (riding_coefficients,
-//                af::shared<vec3<double> > const&,
-//                int const&)) compute_H_position,
-//                  (arg("riding_coefficients"),
-//                   arg("sites_cart"),
-//                   arg("ih")))
-//    ;
+    def("compute_H_position",
+         (vec3<double>(*)
+               (riding_coefficients,
+                af::shared<vec3<double> > const&)) compute_H_position,
+                  (arg("riding_coefficients"),
+                   arg("sites_cart")))
+    ;
 
   }
 

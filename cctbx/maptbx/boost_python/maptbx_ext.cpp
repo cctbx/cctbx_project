@@ -449,10 +449,8 @@ namespace {
     def("hoppe_gassman_modification2",
       (void(*)
         (af::ref<double, af::c_grid<3> >,
-         double,
          int)) hoppe_gassman_modification2, (
       arg("data"),
-      arg("mean_scale"),
       arg("n_iterations")));
 
     def("sphericity_tensor",

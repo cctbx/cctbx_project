@@ -5,6 +5,8 @@ import iotbx
 import iotbx.cif
 from libtbx.test_utils import show_diff
 from StringIO import StringIO
+import libtbx.load_env
+import os
 
 def test_helix_interface():
   # helix_class_to_int.
@@ -1443,6 +1445,110 @@ SHEET    4 AA1 4 VAL A  34  THR A  39 -1  N  PHE A  35   O  VAL A  81
   assert n_st == 4
   s = ann.as_pdb_str()
 
+def tst_filter_sheets_with_long_hbonds():
+  """ Attention. In this case there are 2 almost identical SHEET annotations."""
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "Skipped: required module ksdssp not present"
+    return
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="cctbx_project/iotbx/regression/secondary_structure/3jd6_noh.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print 'WARNING: Skipping tst_filter_sheets_with_long_hbonds("%s"): input file not available' % file_path
+    return
+  inp = iotbx.pdb.input(file_name=file_path)
+  original_ann = inp.extract_secondary_structure()
+  assert original_ann.get_n_helices() == 1
+  assert original_ann.get_n_sheets() == 2
+  h = inp.construct_hierarchy()
+  ann = original_ann.deep_copy()
+  ann.filter_sheets_with_long_hbonds(hierarchy=h)
+  # print ann
+  assert ann.get_n_helices() == 1
+  assert ann.get_n_sheets() == 3
+
+def tst_filter_sheets_with_long_hbonds2():
+  """ bug found in 4a7h where ksdssp defines sheet 200 residues long sheet for
+  rather small selection.
+  A 2 ILE C 384  ARG C 586  1  N  LEU C 385   O  VAL C  97
+  correct definition can be provided by any other method in ss_manager. """
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "Skipped: required module ksdssp not present"
+    return
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="cctbx_project/iotbx/regression/secondary_structure/4a7h_chainC.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print 'WARNING: Skipping tst_filter_sheets_with_long_hbonds2("%s"): input file not available' % file_path
+    return
+  inp = iotbx.pdb.input(file_name=file_path)
+  original_ann = inp.extract_secondary_structure()
+  assert original_ann.get_n_helices() == 0
+  assert original_ann.get_n_sheets() == 3
+  h = inp.construct_hierarchy()
+  ann = original_ann.deep_copy()
+  try:
+    ann.filter_sheets_with_long_hbonds(hierarchy=h)
+  except Exception as e:
+    if e.args[0].startswith("It is 4a7h"):
+      pass
+    else:
+      raise e
+
+def tst_reset_sheet_ids():
+  ann_str = """\
+SHEET    1 AA1 4 ILE A   7  PRO A  10  0
+SHEET    2 AA1 4 MET A  92  THR A  99  1  O  LEU A  95   N  ILE A   7
+  """
+  ann_str2 = """\
+SHEET    1 AA1 4 ILE A   7  PRO A  10  0
+SHEET    2 AA2 4 MET A  92  THR A  99  0
+  """
+  # One sheet
+  ann = annotation.from_records(ann_str.split("\n"))
+  assert ann.get_n_helices() == 0
+  assert ann.get_n_sheets() == 1
+  assert ann.sheets[0].sheet_id == 'AA1'
+  ann.reset_sheet_ids()
+  assert ann.get_n_helices() == 0
+  assert ann.get_n_sheets() == 1
+  assert ann.sheets[0].sheet_id == '0', ann.sheets[0].sheet_id
+
+  # Two sheets
+  ann = annotation.from_records(ann_str2.split("\n"))
+  assert ann.get_n_helices() == 0
+  assert ann.get_n_sheets() == 2
+  assert ann.sheets[0].sheet_id == 'AA1'
+  assert ann.sheets[1].sheet_id == 'AA2'
+  ann.reset_sheet_ids()
+  assert ann.get_n_helices() == 0
+  assert ann.get_n_sheets() == 2
+  assert ann.sheets[0].sheet_id == '0', ann.sheets[0].sheet_id
+  assert ann.sheets[1].sheet_id == '1', ann.sheets[0].sheet_id
+
+  # 11 sheets
+  ann = annotation.from_records(ann_str.split("\n"))
+  for x in xrange(10):
+    ann.sheets.append(ann.sheets[0].deep_copy())
+  assert ann.get_n_sheets() == 11
+  ann.reset_sheet_ids()
+  sheet_ids = [x.sheet_id for x in ann.sheets]
+  assert sheet_ids ==['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A'], sheet_ids
+
+  # 51 sheets
+  ann = annotation.from_records(ann_str.split("\n"))
+  for x in xrange(50):
+    ann.sheets.append(ann.sheets[0].deep_copy())
+  assert ann.get_n_sheets() == 51
+  ann.reset_sheet_ids()
+  sheet_ids = [x.sheet_id for x in ann.sheets]
+  assert sheet_ids ==['00', '01', '02', '03', '04', '05', '06', '07', '08', '09',
+      '0A', '0B', '0C', '0D', '0E', '0F', '0G', '0H', '0I', '0J', '0K', '0L',
+      '0M', '0N', '0O', '0P', '0Q', '0R', '0S', '0T', '0U', '0V', '0W', '0X',
+      '0Y', '0Z', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
+      '1A', '1B', '1C', '1D', '1E'], sheet_ids
+
+
 def tst_multiply_to_asu_1():
   ann_str = """\
 HELIX  233 233 PHE Z   12  CYS Z   43  1                                  32
@@ -1482,6 +1588,9 @@ if (__name__ == "__main__"):
   tst_split_helices_with_prolines_3()
   tst_remove_short_annotations()
   tst_concatenate_consecutive_helices()
+  tst_filter_sheets_with_long_hbonds()
+  tst_filter_sheets_with_long_hbonds2()
+  tst_reset_sheet_ids()
   tst_simple_elements()
   tst_multiply_to_asu_1()
   print "OK time =%8.3f"%(time.time() - t0)

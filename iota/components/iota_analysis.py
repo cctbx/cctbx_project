@@ -292,10 +292,9 @@ class Analyzer(object):
   def __init__(self,
                init,
                all_objects,
-               version,
                gui_mode = False):
 
-    self.ver = version
+    self.ver = misc.iota_version
     self.now = init.now
     self.params = init.params
     self.args = init.args

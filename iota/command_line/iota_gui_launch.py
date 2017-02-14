@@ -11,14 +11,14 @@ Description : IOTA GUI startup module.
 '''
 
 import wx
+from iota import iota_version
 from iota.components.iota_gui_init import MainWindow
-from iota.components.iota_misc import iota_version
 
 class MainApp(wx.App):
   ''' App for the main GUI window  '''
   def OnInit(self):
     self.frame = MainWindow(None, -1, title='IOTA v.{}'.format(iota_version))
-    self.frame.Fit()
+    self.frame.SetSize((1000, 800))
     self.frame.SetPosition((150, 150))
     self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
     self.frame.Show(True)

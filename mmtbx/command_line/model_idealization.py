@@ -427,7 +427,9 @@ class model_idealization():
         pdb_hierarchy=self.whole_pdb_h)
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
-    self.filtered_whole_ann = self.ann.deep_copy()
+    self.filtered_whole_ann = None
+    if self.ann is not None:
+      self.filtered_whole_ann = self.ann.deep_copy()
 
     filtered_ncs_restr_group_list = []
     if not self.params.ignore_ncs:
@@ -526,6 +528,8 @@ class model_idealization():
       print >> self.log, self.original_ann.as_pdb_str()
       self.ann.remove_short_annotations()
       self.filtered_whole_ann = self.ann.deep_copy()
+      self.ann.remove_3_10_helices()
+      self.filtered_whole_ann.remove_3_10_helices()
       self.ann.remove_empty_annotations(
           hierarchy=self.working_pdb_h)
       self.filtered_whole_ann.remove_empty_annotations(
@@ -538,6 +542,12 @@ class model_idealization():
           hierarchy=self.working_pdb_h,
           asc=None)
       self.filtered_whole_ann.split_helices_with_prolines(
+          hierarchy=self.whole_pdb_h,
+          asc=None)
+      self.ann.filter_sheets_with_long_hbonds(
+          hierarchy=self.working_pdb_h,
+          asc=None)
+      self.filtered_whole_ann.filter_sheets_with_long_hbonds(
           hierarchy=self.whole_pdb_h,
           asc=None)
       # print >> self.log, "Splitted SS annotation"

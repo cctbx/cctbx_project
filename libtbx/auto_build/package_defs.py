@@ -99,12 +99,13 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
 
-MATPLOTLIB_PKG = "matplotlib-2.0.0.tar.gz"
-# CentOS 5 glibc too old to support matplotlib-2.0.0 dependency (subprocess32)
-if (sys.platform.startswith("linux")):
-  distribution = platform.dist()
-  if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
-    MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
+MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
+# MATPLOTLIB_PKG = "matplotlib-2.0.0.tar.gz"
+# # CentOS 5 glibc too old to support matplotlib-2.0.0 dependency (subprocess32)
+# if (sys.platform.startswith("linux")):
+#   distribution = platform.dist()
+#   if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
+#     MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
 
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 
