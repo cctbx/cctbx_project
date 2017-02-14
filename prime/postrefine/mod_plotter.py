@@ -101,8 +101,11 @@ class Plotter(object):
     ax_cc12.set_xticks(xticks)
     ax_cc12.set_xticklabels(xlabels)
     ax_cc12.grid(True)
-    ax_cc12.plot(bins, self.info['binned_cc12'][0], c='#7fcdbb', lw=2)
-    ax_cc12.plot(bins, self.info['binned_cc12'][-1], c='#2c7fb8', lw=3)
+    start, = ax_cc12.plot(bins, self.info['binned_cc12'][0], c='#7fcdbb', lw=2)
+    end, = ax_cc12.plot(bins, self.info['binned_cc12'][-1], c='#2c7fb8', lw=3)
+    labels = ['Initial', 'Final']
+    ax_cc12.legend([start, end], labels, loc='lower left',
+                          fontsize=9, fancybox=True)
 
     # Plot Completeness vs. resolution
     ax_comp = fig.add_subplot(gsp[1])
@@ -111,8 +114,13 @@ class Plotter(object):
     ax_comp.set_xticks(xticks)
     ax_comp.set_xticklabels(xlabels)
     ax_comp.grid(True)
-    ax_comp.plot(bins, self.info['binned_completeness'][0], c='#7fcdbb', lw=2)
-    ax_comp.plot(bins, self.info['binned_completeness'][-1], c='#2c7fb8', lw=3)
+    start, = ax_comp.plot(bins, self.info['binned_completeness'][0],
+                         c='#7fcdbb', lw=2)
+    end, = ax_comp.plot(bins, self.info['binned_completeness'][-1], c='#2c7fb8',
+                   lw=3)
+    labels = ['Initial', 'Final']
+    ax_comp.legend([start, end], labels, loc='lower left',
+                          fontsize=9, fancybox=True)
 
     # Plot Multiplicity (no. of observations) vs. resolution
     ax_mult = fig.add_subplot(gsp[2])
@@ -121,8 +129,11 @@ class Plotter(object):
     ax_mult.set_xticks(xticks)
     ax_mult.set_xticklabels(xlabels)
     ax_mult.grid(True)
-    ax_mult.plot(bins, self.info['binned_n_obs'][0], c='#7fcdbb', lw=2)
-    ax_mult.plot(bins, self.info['binned_n_obs'][-1], c='#2c7fb8', lw=3)
+    start, = ax_mult.plot(bins, self.info['binned_n_obs'][0], c='#7fcdbb', lw=2)
+    end, = ax_mult.plot(bins, self.info['binned_n_obs'][-1], c='#2c7fb8', lw=3)
+    labels = ['Initial', 'Final']
+    ax_mult.legend([start, end], labels, loc='lower left',
+                          fontsize=9, fancybox=True)
 
     # Plot I / sig(I) vs. resolution
     ax_i_sigi = fig.add_subplot(gsp[3])
@@ -131,8 +142,13 @@ class Plotter(object):
     ax_i_sigi.set_xticks(xticks)
     ax_i_sigi.set_xticklabels(xlabels)
     ax_i_sigi.grid(True)
-    ax_i_sigi.plot(bins, self.info['binned_i_o_sigi'][0], c='#7fcdbb', lw=2)
-    ax_i_sigi.plot(bins, self.info['binned_i_o_sigi'][-1], c='#2c7fb8', lw=3)
+    start, = ax_i_sigi.plot(bins, self.info['binned_i_o_sigi'][0], c='#7fcdbb',
+                        lw=2)
+    end, = ax_i_sigi.plot(bins, self.info['binned_i_o_sigi'][-1], c='#2c7fb8',
+                       lw=3)
+    labels = ['Initial', 'Final']
+    ax_i_sigi.legend([start, end], labels, loc='lower left',
+                          fontsize=9, fancybox=True)
 
     plt.tight_layout()
     plt.show()

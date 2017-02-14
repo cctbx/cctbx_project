@@ -9,10 +9,11 @@ Description : Module with miscellaneous useful functions and classes
 
 import os
 import sys
+import wx
 from cStringIO import StringIO
 
 from datetime import datetime
-iota_version = '1.0.016'
+iota_version = '1.1.001'
 now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
 
 # For GUI
@@ -31,6 +32,26 @@ gui_license = ''' IOTA is distributed under open source license '''
 prime_license = ''' PRIME is distributed under open source license'''
 cxi_merge_license = ''' cxi.merge is distributed under open source license '''
 
+
+def noneset(value):
+  if value == '':
+    return 'None'
+  elif 'none' in str(value).lower():
+    return "None"
+  else:
+    return value
+
+class UnicodeCharacters():
+  def __init__(self):
+    self.alpha = u'\N{GREEK SMALL LETTER ALPHA}'.encode('utf-8')
+    self.beta = u'\N{GREEK SMALL LETTER BETA}'.encode('utf-8')
+    self.gamma = u'\N{GREEK SMALL LETTER GAMMA}'.encode('utf-8')
+    self.sigma = u'\N{GREEK SMALL LETTER SIGMA}'.encode('utf-8')
+
+class WxFlags():
+  def __init__(self):
+    self.stack = wx.TOP | wx.RIGHT | wx.LEFT
+    self.expand = wx.TOP | wx.RIGHT | wx.LEFT | wx.EXPAND
 
 class Capturing(list):
   """ Class used to capture stdout from cctbx.xfel objects. Saves output in
