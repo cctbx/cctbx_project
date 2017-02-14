@@ -5,11 +5,12 @@ from libtbx.test_utils import approx_equal
 from cctbx import maptbx
 import scitbx.math.curve_fitting
 
-def parabola_is_good(x, y, xmin, xmax, xstep):
-  fit = scitbx.math.curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
-    degree=2, min_iterations=50, number_of_cycles=10)
-  a0,a1,a2 = fit.params
-  if(a2>=0.): return [] # concave down
+def parabola_is_good(x, y, assert_concave_up):
+  if(assert_concave_up):
+    fit = scitbx.math.curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
+      degree=2, min_iterations=50, number_of_cycles=10)
+    a0,a1,a2 = fit.params
+    if(a2>=0.): return [] # concave down
   maxima = []
   for i in xrange(y.size()):
     yi = y[i]
@@ -24,7 +25,6 @@ def parabola_is_good(x, y, xmin, xmax, xstep):
         cntr+=1
         yp.append(y[i+j])
     if(cntr==len(offsets)+len(offsets)): maxima.append([x[i],yi,i])
-  #print "       ",len(maxima), maxima
   # Remove plateau
   tmp=[]
   tmp2 = []
@@ -33,7 +33,7 @@ def parabola_is_good(x, y, xmin, xmax, xstep):
       tmp.append(m[1])
       tmp2.append(m)
   maxima = tmp2
-  # Choose between several peaks
+  # Choose peaks with longest slope
   if(len(maxima)>1):
     maxima_plus = []
     for m in maxima:
@@ -55,18 +55,6 @@ def parabola_is_good(x, y, xmin, xmax, xstep):
         maximum = mp[0]
     maxima = [maximum]
   return maxima
-  #if(len(maxima)==2):
-  #  x_max = -a1/(2*a2)
-  #  if(x_max<xmin or x_max>xmax): return []
-  #  d=1.e+9
-  #  maximum=None
-  #  for m in maxima:
-  #    d_=abs(x_max-m[0])
-  #    if(d_<d):
-  #      d=d_
-  #      maximum=m[:]
-  #  return [maximum]
-  #return maxima
 
 def _resolution_from_map_and_model_helper(
       map,
@@ -77,8 +65,7 @@ def _resolution_from_map_and_model_helper(
       d_min_end=10.,
       radius=5.0,
       d_min_step=0.1,
-      approximate=False,
-      second=False):
+      thorough=False):
   from cctbx import miller
   import mmtbx.bulk_solvent
   xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
@@ -177,11 +164,22 @@ def _resolution_from_map_and_model_helper(
       else:
         for d_min in d_mins:
           res = self.run(d_min=d_min)
-          #print d_min, res[1], res[2], res[3]
           self.x.append(res[0])
           self.y.append(res[1])
           self.b.append(res[2])
           self.radii.append(res[3])
+    def y_smooth(self):
+      y = self.y
+      y_=[]
+      for i in xrange(y.size()):
+        if(i>=2 and i<=y.size()-3):
+          y_ave = (y[i-2]+y[i-1]+y[i]+y[i+1]+y[i+2])/5.
+        elif(i>=1 and i<=y.size()-2):
+          y_ave = (y[i-1]+y[i]+y[i+1])/3.
+        else:
+          y_ave = y[i]
+        y_.append(y_ave)
+      return flex.double(y_)
     def run(self, d_min):
       sel = self.d_spacings > d_min
       fc_ = self.fc.select(sel)
@@ -198,44 +196,46 @@ def _resolution_from_map_and_model_helper(
         radii=so.radii)
       return d_min, cc, o.b(), radius
   ###
-  if(second):
+  if(thorough):
     o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
-      selections=selections, d_min_start=d_min_start, d_min_end=f_obs.d_min()+d_min_step,
-      d_min_step=d_min_step, nproc=nproc)
+      selections=selections, d_min_start=d_min_start, d_min_end=f_obs.d_min()+1.e-6,
+      d_min_step=d_min_step, nproc=1)
     junk,junk,b, junk = o.x, o.y, o.b, o.radii
-    b_range = [b[0],]
-  #
-  o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
-    selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
-    d_min_step=d_min_step, nproc=nproc)
-  x,y,b, radii = o.x, o.y, o.b, o.radii
-  ###
-  y = flex.double([round(i,4) for i in y])
-  if(approximate):
-    x_=[]
-    y_=[]
-    b_=[]
-    r_=[]
-    for i in xrange(y.size()):
-      x_.append(x[i])
-      b_.append(b[i])
-      r_.append(radii[i])
-      if(i>=2 and i<=y.size()-3):
-        y_ave = (y[i-2]+y[i-1]+y[i]+y[i+1]+y[i+2])/5.
-      else:
-        y_ave = y[i]
-      y_.append(y_ave)
-      #print "%8.3f %12.6f %8.3f %8.3f"%(x[i],y_ave, b[i], radii[i])
-    x,y,b, radii = x_,y_,b_, r_
-    maxima = parabola_is_good(x=flex.double(x), y=flex.double(y),
-      xmin=d_min_start, xmax=d_min_end, xstep=d_min_step)
-    if(len(maxima)==0):
-      return None,None,None,None
-  if(approximate): cc_max = maxima[0][1]
-  else: cc_max = max(y)
+    assert o.b.size()==1
+    o1 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=o.b, map=map,
+      selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
+      d_min_step=d_min_step, nproc=nproc)
+    maxima1 = parabola_is_good(x=o1.x, y=o1.y_smooth(), assert_concave_up=True)
+    if(len(maxima1)!=1): return None,None,None,None # Exactly one peak expected
+    o2 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
+      selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
+      d_min_step=d_min_step, nproc=nproc)
+    maxima2 = parabola_is_good(x=o2.x, y=o2.y_smooth(), assert_concave_up=False)
+    if(len(maxima2)==0): return None,None,None,None # At least one peak expected
+    # Match maxima2 against maxima1 to find the closest peak to maxima1
+    d1 = maxima1[0][0]
+    dist=1.e+9
+    m_best = None
+    for m in maxima2:
+      dist_ = abs(d1-m[0])
+      if(dist_<dist):
+        dist=dist_
+        m_best = m[:]
+    return m_best[0], o2.b[m_best[2]], o2.y[m_best[2]], o2.radii[m_best[2]]
+    assert approx_equal(o1.x, o2.x)
+    #for d_min, cc1,b1,r1, cc2,b2,r2 in zip(o1.x, o1.y_smooth(),o1.b,o1.radii,
+    #                                             o2.y_smooth(),o2.b,o2.radii):
+    #  print "%4.1f %8.6f %3.0f %5.2f <> %8.6f %3.0f %5.2f"%(
+    #    d_min, cc1,b1,r1, cc2,b2,r2)
+  else:
+    o2 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
+      selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
+      d_min_step=d_min_step, nproc=nproc)
+    cc_max = flex.max(o2.y)
+  # Finalize
   r=1.e+9
   d_best, b_best, cc_best, rad_best = None,None,None,None
-  for di,bi,cci,ri in zip(x,b,y,radii):
+  for di,bi,cci,ri in zip(o2.x, o2.b, o2.y, o2.radii):
     r_ = abs(cci-cc_max)
     if(r_<r):
       r=r_
@@ -266,9 +266,8 @@ class run(object):
       d_min_start    = d_min_start,
       d_min_end      = d_min_end,
       d_min_step     = step,
-      approximate    = False,
-      nproc          = nproc,
-      second         = False)
+      thorough       = False,
+      nproc          = nproc)
     if(cc<0.5):
       self.d_min, self.b_iso, self.cc, self.radius = None,None,None,None
     else:
@@ -281,27 +280,13 @@ class run(object):
       d_min_end   = round(result+result/2*scale, 1)
       if(d_min_min is not None and d_min_start<d_min_min):
         d_min_start=d_min_min
-      self.d_min, self.b_iso, self.cc, self.radius = _resolution_from_map_and_model_helper(
-        map              = map_data,
-        xray_structure   = xray_structure,
-        b_range          = b_range,
-        d_min_start      = d_min_start,
-        d_min_end        = d_min_end,
-        d_min_step       = 0.1,
-        approximate      = True,
-        nproc            = nproc,
-        second           = True)
-      if(self.d_min is not None):
-        if(self.d_min<=4.): inc = 0.5
-        elif(self.d_min>4. and self.d_min<=8.): inc = 2.
-        else: inc = 1.
-        self.d_min, self.b_iso, self.cc, self.radius = _resolution_from_map_and_model_helper(
-          map              = map_data,
-          xray_structure   = xray_structure,
-          b_range          = b_range,
-          d_min_start      = self.d_min-inc,
-          d_min_end        = self.d_min+inc,
-          d_min_step       = 0.1,
-          approximate      = False,
-          nproc            = nproc,
-          second           = False)
+      self.d_min, self.b_iso, self.cc, self.radius = \
+        _resolution_from_map_and_model_helper(
+          map            = map_data,
+          xray_structure = xray_structure,
+          b_range        = b_range,
+          d_min_start    = d_min_start,
+          d_min_end      = d_min_end,
+          d_min_step     = 0.1,
+          thorough       = True,
+          nproc          = nproc)
