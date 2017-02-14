@@ -334,6 +334,9 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.image_chooser.SetSelection(i)
 
     self.pyslip.tiles.show_untrusted = show_untrusted
+    self.pyslip.tiles.current_brightness = self.settings.brightness
+    self.pyslip.tiles.current_color_scheme = self.settings.color_scheme
+
     self.pyslip.tiles.set_image(
       file_name_or_data=img, metrology_matrices=self.metrology_matrices,
       get_raw_data=get_raw_data)
