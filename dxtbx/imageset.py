@@ -599,7 +599,10 @@ class ImageSet(object):
     # Check for a dynamic mask
     if goniometer is None:
       goniometer = self.get_goniometer(index)
-    dyn_mask = self.get_format(index).get_mask(goniometer=goniometer)
+    if isinstance(self._reader, SingleFileReader):
+      dyn_mask = self.get_format(index).get_mask(index=index, goniometer=goniometer)
+    else:
+      dyn_mask = self.get_format(index).get_mask(goniometer=goniometer)
     if dyn_mask is None:
 
       # Get the image and detector

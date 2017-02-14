@@ -1,12 +1,174 @@
 from __future__ import division
 from cctbx.array_family import flex
 import math, sys
-from mmtbx.refinement import fit_rotamers
 from mmtbx.utils import rotatable_bonds
 import mmtbx.geometry_restraints.torsion_restraints.utils as torsion_utils
 from scitbx.matrix import rotate_point_around_axis
 import mmtbx.monomer_library.server
 from mmtbx.validation import rotalyze
+import iotbx.phil
+from libtbx import adopt_init_args
+
+torsion_search_params_str = """\
+torsion_search
+  .style = box auto_align
+{
+  min_angle_between_solutions = 5
+    .type = float
+    .short_caption = Min. angle between solutions
+  range_start = -40
+    .type = float
+  range_stop = 40
+    .type = float
+  step = 2
+    .type = float
+}
+"""
+
+def generate_range(start, stop, step):
+  assert abs(start) <= abs(stop)
+  inc = start
+  result = []
+  while abs(inc) <= abs(stop):
+    result.append(inc)
+    inc += step
+  return result
+
+def target(sites_cart_residue, unit_cell, m):
+  sites_frac_residue = unit_cell.fractionalize(sites_cart_residue)
+  result = 0
+  for rsf in sites_frac_residue:
+    result += m.eight_point_interpolation(rsf)
+  return result
+
+def torsion_search_params():
+  return iotbx.phil.parse(input_string = torsion_search_params_str)
+
+class rotamer_evaluator(object):
+  def __init__(self, sites_cart_start,
+                     unit_cell,
+                     two_mfo_dfc_map,
+                     mfo_dfc_map):
+    adopt_init_args(self, locals())
+    t1 = target(self.sites_cart_start, self.unit_cell, self.two_mfo_dfc_map)
+    t2 = target(self.sites_cart_start, self.unit_cell, self.mfo_dfc_map)
+    self.t1 = t1
+    self.t2 = t2
+    self.t_start = t1+t2
+    self.t_best = self.t_start
+    self.t1_start = t1
+    self.t1_best = self.t1_start
+    self.t2_start = t2
+    self.t2_best = self.t2_start
+
+  def is_better(
+                self,
+                sites_cart,
+                percent_cutoff=0.0,
+                verbose=False):
+    t1 = target(sites_cart, self.unit_cell, self.two_mfo_dfc_map)
+    t2 = target(sites_cart, self.unit_cell, self.mfo_dfc_map)
+    t = t1+t2#*3 # XXX very promising thing to do, but reaaly depends on resolution
+    result = False
+    size = sites_cart.size()
+    if 1:
+      if(t > self.t_best):
+        if percent_cutoff > 0.0 and self.t_best > 0.0:
+          percent = (t - self.t_best) / self.t_best
+          if percent < percent_cutoff:
+            return False
+        if((t2 > 0 and self.t2_best > 0 and t2 > self.t2_best) or
+           (t2 < 0 and self.t2_best < 0 and abs(t2)<abs(self.t2_best)) or
+           (t2 > 0 and self.t2_best < 0)):
+          result = True
+          self.t2_best = t2
+          self.t1_best = t1
+          self.t_best = t
+    return result
+
+def torsion_search(residue_evaluator,
+                   cluster_evaluators,
+                   axes_and_atoms_to_rotate,
+                   rotamer_sites_cart,
+                   rotamer_id_best,
+                   residue_sites_best,
+                   params = None,
+                   rotamer_id = None,
+                   include_ca_hinge = False):
+  if(params is None):
+    params = torsion_search_params().extract().torsion_search
+    params.range_start = 0
+    params.range_stop = 360
+    params.step = 1.0
+  rotamer_sites_cart_ = rotamer_sites_cart.deep_copy()
+  n_clusters = len(axes_and_atoms_to_rotate)
+  c_counter = 0
+  for cluster_evaluator, aa in zip(cluster_evaluators,axes_and_atoms_to_rotate):
+    #account for CA hinge at beginning of search
+    if include_ca_hinge and c_counter == 0:
+      cur_range_start = -6.0
+      cur_range_stop = 6.0
+    else:
+      cur_range_start = params.range_start
+      cur_range_stop = params.range_stop
+    c_counter += 1
+    axis = aa[0]
+    atoms = aa[1]
+    angle_deg_best = None
+    angle_deg_good = None
+    for angle_deg in generate_range(start = cur_range_start, stop =
+                                    cur_range_stop, step = params.step):
+      if(c_counter != n_clusters):
+        if include_ca_hinge and c_counter == 1:
+          new_xyz = flex.vec3_double()
+          for atom in atoms:
+            new_xyz.append(rotate_point_around_axis(
+              axis_point_1 = rotamer_sites_cart[axis[0]],
+              axis_point_2 = rotamer_sites_cart[axis[1]],
+              point  = rotamer_sites_cart[atom],
+              angle = angle_deg, deg=True))
+        else:
+          point_local = rotamer_sites_cart[atoms[0]]
+          new_xyz = flex.vec3_double([rotate_point_around_axis(
+            axis_point_1 = rotamer_sites_cart[axis[0]],
+            axis_point_2 = rotamer_sites_cart[axis[1]],
+            point  = point_local,
+            angle = angle_deg, deg=True)])
+      else:
+        new_xyz = flex.vec3_double()
+        for atom in atoms:
+          new_xyz.append(rotate_point_around_axis(
+            axis_point_1 = rotamer_sites_cart[axis[0]],
+            axis_point_2 = rotamer_sites_cart[axis[1]],
+            point  = rotamer_sites_cart[atom],
+            angle = angle_deg, deg=True))
+      if(cluster_evaluator.is_better(sites_cart = new_xyz)):
+        if(angle_deg_best is not None and
+           abs(abs(angle_deg_best)-abs(angle_deg))>
+           params.min_angle_between_solutions):
+          angle_deg_good = angle_deg_best
+        angle_deg_best = angle_deg
+    if(angle_deg_best is not None):
+      for atom in atoms:
+        new_xyz = rotate_point_around_axis(
+          axis_point_1 = rotamer_sites_cart[axis[0]],
+          axis_point_2 = rotamer_sites_cart[axis[1]],
+          point  = rotamer_sites_cart[atom],
+          angle = angle_deg_best, deg=True)
+        rotamer_sites_cart[atom] = new_xyz
+    if(angle_deg_good is not None):
+      for atom in atoms:
+        new_xyz = rotate_point_around_axis(
+          axis_point_1 = rotamer_sites_cart_[axis[0]],
+          axis_point_2 = rotamer_sites_cart_[axis[1]],
+          point  = rotamer_sites_cart_[atom],
+          angle = angle_deg_best, deg=True)
+        rotamer_sites_cart_[atom] = new_xyz
+  for rsc in [rotamer_sites_cart, rotamer_sites_cart_]:
+    if(residue_evaluator.is_better(sites_cart = rsc)):
+      rotamer_id_best = rotamer_id
+      residue_sites_best = rsc.deep_copy()
+  return residue_sites_best, rotamer_id_best
 
 class manager(object):
 
@@ -25,8 +187,7 @@ class manager(object):
     self.mon_lib_srv = mmtbx.monomer_library.server.server()
     self.unit_cell = xray_structure.unit_cell()
     self.exclude_free_r_reflections = False
-    self.torsion_params = \
-      fit_rotamers.torsion_search_params().extract().torsion_search
+    self.torsion_params = torsion_search_params().extract().torsion_search
     self.torsion_params.range_start = range_start
     self.torsion_params.range_stop = range_stop
     self.torsion_params.step = step
@@ -121,7 +282,7 @@ class manager(object):
                   residue_iselection)
     rev_first_atoms = []
 
-    rev_start = fit_rotamers.rotamer_evaluator(
+    rev_start = rotamer_evaluator(
       sites_cart_start = sites_cart_residue_start,
       unit_cell        = self.unit_cell,
       two_mfo_dfc_map  = self.target_map_data,
@@ -198,14 +359,14 @@ class manager(object):
           sites_aa.append(sites_cart_residue[aa_])
       else:
         sites_aa = flex.vec3_double([sites_cart_residue[aa[1][0]]])
-      rev_i = fit_rotamers.rotamer_evaluator(
+      rev_i = rotamer_evaluator(
         sites_cart_start = sites_aa,
         unit_cell        = self.unit_cell,
         two_mfo_dfc_map  = self.target_map_data,
         mfo_dfc_map      = self.residual_map_data)
       rev_first_atoms.append(rev_i)
 
-    rev = fit_rotamers.rotamer_evaluator(
+    rev = rotamer_evaluator(
       sites_cart_start = sites_cart_residue,
       unit_cell        = self.unit_cell,
       two_mfo_dfc_map  = self.target_map_data,
@@ -213,7 +374,7 @@ class manager(object):
 
     residue_sites_best = sites_cart_residue.deep_copy()
     residue_sites_best, rotamer_id_best = \
-      fit_rotamers.torsion_search(
+      torsion_search(
         residue_evaluator=rev,
         cluster_evaluators=rev_first_atoms,
         axes_and_atoms_to_rotate=eval_axes,

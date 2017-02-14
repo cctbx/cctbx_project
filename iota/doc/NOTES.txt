@@ -1,11 +1,20 @@
-IOTA v1.0.016 - Further GUI Updates
+IOTA v1.1.001 - GUI changes
 
 Features:
 
-1. Updated monitor mode: files updated via a separate thread to make the
-process less jerky when lots of images are generated rapidly
-2. Restart button can pick up where aborted while run window is up
-
-Bugfixes:
-
-1. Suppressed annoying numpy "mean of empty slice" runtime warning
+1. Refactored GUI code:
+    a. Icons now imported using wxtbx.bitmaps
+    b. Dialogs / frames classes now in separate modules
+    c. Streamlined how IOTA PHIL is passed around
+    d. Re-did the options dialogs with better designed controls
+2. Toolbar buttons:
+    a. to reset settings to defaults (clears input as well)
+    b. to load / save IOTA scripts
+3. Changes to interface:
+    a. GUI now supports multiple input entries
+    b. Individual frames can be viewed using cctbx / dials image viewer
+    c. Can add files or folders (and delete each entry)
+    d. Moved some widgets (subset options, prefix, etc.) to Preferences
+    e. Default number of processors set as half of those available on server
+4. Folder for temp files is now created under /tmp
+5. Made similar GUI changes to PRIME

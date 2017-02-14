@@ -401,7 +401,7 @@ class intensities_scaler(object):
       txt_out += 'Bin Resolution Range     Completeness      <N_obs> |Rmerge  Rsplit   CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind| <I/sigI>   <I>    <sigI>    <I**2>\n'
       txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
       #for stat pickle
-      sp_res,sp_complete,sp_n_obs,sp_cc12,sp_rmerge,sp_i_o_sigi,sp_isqr = ([],[],[],[],[],[],[])
+      sp_res,sp_complete,sp_n_obs,sp_cc12,sp_cc12_anom,sp_rmerge,sp_i_o_sigi,sp_isqr = ([],[],[],[],[],[],[],[])
       #binning
       binner_template_asu = miller_array_template_asu.setup_binner(n_bins=iparams.n_bins)
       binner_template_asu_indices = binner_template_asu.bin_indices()
@@ -456,6 +456,7 @@ class intensities_scaler(object):
         sp_complete.append(completeness)
         sp_n_obs.append(multiplicity)
         sp_cc12.append(cc12)
+        sp_cc12_anom.append(cc_anom_acentric)
         sp_rmerge.append(mdh_bin.get_r_meas()*100)
         sp_i_o_sigi.append(mdh_bin.get_mean_IoversigI())
         sp_isqr.append(mdh.get_second_moment())
@@ -489,6 +490,7 @@ class intensities_scaler(object):
       "binned_completeness": [sp_complete], \
       "binned_n_obs": [sp_n_obs], \
       "binned_cc12": [sp_cc12], \
+      "binned_cc12_anom": [sp_cc12_anom], \
       "binned_rmerge": [sp_rmerge], \
       "binned_i_o_sigi": [sp_i_o_sigi], \
       "binned_isqr": [sp_isqr], \

@@ -177,7 +177,8 @@ class univariate_polynomial_fit(object):
 
   def __init__(self, x_obs, y_obs, degree,
         min_iterations=0,
-        max_iterations=None):
+        max_iterations=None,
+        number_of_cycles=1):
     """Fit a polynomial of degree n to points (x_obs, y_obs)
          f(x) = a[0] + a[1] x**1 + ... * a[n] x**n.
 
@@ -195,15 +196,17 @@ class univariate_polynomial_fit(object):
     self.degree = degree
     self.n_terms = degree + 1
     params = flex.double([1] * self.n_terms)
-    polynomial = univariate_polynomial(*params)
-    fit = lbfgs_minimiser(
-      functions=[polynomial],
-      x_obs=x_obs,
-      y_obs=self.y_obs,
-      termination_params=scitbx.lbfgs.termination_parameters(
-        min_iterations=min_iterations,
-        max_iterations=max_iterations))
-    self.params = fit.functions[0].params
+    for cycle in xrange(number_of_cycles):
+      polynomial = univariate_polynomial(*params)
+      fit = lbfgs_minimiser(
+        functions=[polynomial],
+        x_obs=x_obs,
+        y_obs=self.y_obs,
+        termination_params=scitbx.lbfgs.termination_parameters(
+          min_iterations=min_iterations,
+          max_iterations=max_iterations))
+      self.params = fit.functions[0].params
+      params = self.params
 
 
 class single_gaussian_fit(object):

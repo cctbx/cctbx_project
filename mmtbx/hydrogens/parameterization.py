@@ -10,6 +10,7 @@ class parameterization_info(object):
   def __init__(
     self,
     htype   = None,  # type of hydrogen geometry
+    ih      = None,  # index of H atom
     a0      = None,  # parent atom index
     a1      = None,  # 1-3 neighbor index
     a2      = None,  # 1-3 or 1-4 neighbor index
@@ -17,11 +18,10 @@ class parameterization_info(object):
     a       = None,  # coefficient for reconstruction
     b       = None,  # coefficient for reconstruction
     h       = None,  # coefficient for reconstruction
-    phi     = None,  # angle
-    alpha   = None,  # angle
     n       = None,  # parameter for propeller and H2 groups: integer
     dist_h  = None): # measured or ideal distance
     self.htype  = htype
+    self.ih     = ih
     self.a0     = a0
     self.a1     = a1
     self.a2     = a2
@@ -29,8 +29,6 @@ class parameterization_info(object):
     self.a      = a
     self.b      = b
     self.h      = h
-    self.phi    = phi
-    self.alpha  = alpha
     self.n      = n
     self.dist_h = dist_h
 
@@ -48,13 +46,16 @@ class manager(object):
 
 # for every H atom, determine the type of bond
   def determine_parameterization(self):
-    self.h_parameterization = {}
+    #self.h_parameterization = {}
+    self.h_parameterization = [None]*len(self.h_connectivity)
     for neighbors in self.h_connectivity:
       if (neighbors is None): continue
       ih = neighbors.ih
       #if ih in h_parameterization.keys():
-      if ih in self.h_parameterization:
+      if self.h_parameterization[ih] is not None:
         continue
+      #if ih in self.h_parameterization:
+      #  continue
       number_h_neighbors = neighbors.number_h_neighbors
       number_non_h_neighbors = neighbors.number_non_h_neighbors
       # alg2a, 2tetra, 2neigbs
@@ -73,6 +74,7 @@ class manager(object):
       else:
         self.h_parameterization[ih] = parameterization_info(
           htype = 'unk',
+          ih    = ih,
           a0    = neighbors.a0['iseq'])
     return self.h_parameterization
 
@@ -108,38 +110,47 @@ class manager(object):
     u3 = u1.cross(u2)
     self.h_parameterization[ih] = parameterization_info(
       htype  = 'alg1b',
+      ih     = ih,
       a0     = i_a0,
       a1     = i_a1,
       a2     = i_b1,
-      phi    = phi,
+      a3     = 0,
+      a      = alpha,
+      b      = phi,
+      h      = 0,
       n      = 0,
-      alpha  = alpha,
       dist_h = dist_h)
     if (neighbors.number_h_neighbors == 2):
       self.h_parameterization[ih].htype = 'prop'
       i_h1, i_h2 = neighbors.h1['iseq'], neighbors.h2['iseq']
       self.h_parameterization[i_h1] = parameterization_info(
         htype  = 'prop',
+        ih     = i_h1,
         a0     = i_a0,
         a1     = i_a1,
         a2     = i_b1,
-        phi    = phi,
+        a3     = 0,
+        a      = alpha,
         n      = 1,
-        alpha  = alpha,
+        b      = phi,
+        h      = 0,
         dist_h = dist_h)
       # check if order is reversed
+      # this can maybe be done earlier, in connectivity?
       i_h1_coord = compute_H_position(
         sites_cart = self.sites_cart,
-        ih         = i_h1,
         hp         = self.h_parameterization[i_h1])
       self.h_parameterization[i_h2] = parameterization_info(
         htype  = 'prop',
+        ih     = i_h2,
         a0     = i_a0,
         a1     = i_a1,
         a2     = i_b1,
-        phi    = phi,
+        a3     = 0,
+        a      = alpha,
         n      = 2,
-        alpha  = alpha,
+        b      = phi,
+        h      = 0,
         dist_h = dist_h)
       if ((i_h1_coord - matrix.col(self.sites_cart[i_h2])).length() <
         (i_h1_coord - matrix.col(self.sites_cart[i_h1])).length()):
@@ -171,9 +182,11 @@ class manager(object):
       else:
         self.h_parameterization[ih] = parameterization_info(
           htype  = 'unk',
+          ih     = ih,
           a0     = i_a0)
         self.h_parameterization[i_h1] = parameterization_info(
           htype  = 'unk',
+          ih     = i_h1,
           a0     = i_a0)
         return
     i_b1 = self.h_connectivity[ih_dihedral].b1['iseq']
@@ -183,9 +196,11 @@ class manager(object):
     if (neighbors.h1['angle_ideal'] >107 and neighbors.h1['angle_ideal'] <111):
       self.h_parameterization[ih] = parameterization_info(
         htype  = 'unk',
+        ih     = ih,
         a0     = a0.iseq)
       self.h_parameterization[i_h1] = parameterization_info(
         htype  = 'unk',
+        ih     = i_h1,
         a0     = a0.iseq)
     else:
       dihedral = dihedral_angle(
@@ -203,25 +218,33 @@ class manager(object):
       rb10 = rb1 - r1
       u2 = (rb10 - ((rb10).dot(u10)) * u10).normalize()
       u3 = u1.cross(u2)
-      if ih_dihedral not in self.h_parameterization:
+      #if ih_dihedral not in self.h_parameterization:
+      if self.h_parameterization[ih_dihedral] is None:
         self.h_parameterization[ih_dihedral] = parameterization_info(
           htype  = 'alg1a',
+          ih     = ih_dihedral,
           a0     = i_a0,
           a1     = i_a1,
           a2     = i_b1,
-          phi    = phi,
+          a3     = 0,
+          a      = alpha,
           n      = 0,
-          alpha  = alpha,
+          b      = phi,
+          h      = 0,
           dist_h = dist_h)
-      if ih_no_dihedral not in self.h_parameterization:
+      #if ih_no_dihedral not in self.h_parameterization:
+      if self.h_parameterization[ih_no_dihedral] is None:
         self.h_parameterization[ih_no_dihedral] = parameterization_info(
           htype  = 'alg1a',
+          ih     = ih_no_dihedral,
           a0     = i_a0,
           a1     = i_a1,
           a2     = i_b1,
-          phi    = phi+math.pi,
+          a3     = 0,
+          a      = alpha,
+          b      = phi+math.pi,
           n      = 0,
-          alpha  = alpha,
+          h      = 0,
           dist_h = dist_h)
 
   # alg2a, 2tetra, 2neigbs
@@ -244,11 +267,15 @@ class manager(object):
       use_ideal_bonds_angles = self.use_ideal_bonds_angles,
       sites_cart             = self.sites_cart)
     self.h_parameterization[ih] = parameterization_info(
+      ih     = ih,
       a0     = neighbors.a0['iseq'],
       a1     = neighbors.a1['iseq'],
       a2     = neighbors.a2['iseq'],
+      a3     = 0,
       a      = a,
       b      = b,
+      h      = 0,
+      n      = 0,
       dist_h = dist_h)
     # alg2a
     if (sumang > (2*math.pi + 0.05) and root < 0):
@@ -259,20 +286,25 @@ class manager(object):
       if (neighbors.number_h_neighbors == 1):
       # 2 tetragonal geometry
         self.h_parameterization[ih].htype = '2tetra'
-        self.h_parameterization[ih].alpha = h
+        self.h_parameterization[ih].h = h
+        self.h_parameterization[ih].n = 0
         self.h_parameterization[i_h1] = parameterization_info(
+          ih     = i_h1,
           a0     = neighbors.a0['iseq'],
           a1     = neighbors.a1['iseq'],
           a2     = neighbors.a2['iseq'],
+          a3     = 0,
           a      = a,
           b      = b,
-          alpha  = -h,
+          h      = -h,
+          n      = 0,
           dist_h = dist_h,
           htype  = '2tetra')
       else:
         # 2neigbs
         self.h_parameterization[ih].h = h
         self.h_parameterization[ih].htype = '2neigbs'
+        self.h_parameterization[ih].n = 0
 
   def process_3_neighbors(self, neighbors):
     ih = neighbors.ih
@@ -288,6 +320,7 @@ class manager(object):
       use_ideal_bonds_angles = self.use_ideal_bonds_angles,
       sites_cart             = self.sites_cart)
     self.h_parameterization[ih] = parameterization_info(
+      ih     = ih,
       a0     = neighbors.a0['iseq'],
       a1     = neighbors.a1['iseq'],
       a2     = neighbors.a2['iseq'],
@@ -295,6 +328,7 @@ class manager(object):
       a      = a,
       b      = b,
       h      = h,
+      n      = 0,
       dist_h = dist_h,
       htype  = '3neigbs')
 
@@ -436,7 +470,8 @@ class manager(object):
     c = matrix_z.determinant()/matrix_d.determinant()
     return a, b, c
 
-def compute_H_position(ih, sites_cart, hp):
+def compute_H_position(sites_cart, hp):
+  ih = hp.ih
   r0 = matrix.col(sites_cart[hp.a0])
   r1 = matrix.col(sites_cart[hp.a1])
   dh = hp.dist_h
@@ -467,7 +502,7 @@ def compute_H_position(ih, sites_cart, hp):
     h_distance = (rh_calc - matrix.col(sites_cart[ih])).length()
   # 2tetrahedral
   elif (hp.htype == '2tetra'):
-    a, b, delta = hp.a, hp.b, hp.alpha
+    a, b, delta = hp.a, hp.b, hp.h
     r2 = matrix.col(sites_cart[hp.a2])
     u10, u20 = (r1 - r0).normalize(), (r2 - r0).normalize()
     v0 = (u10.cross(u20)).normalize()
@@ -493,8 +528,8 @@ def compute_H_position(ih, sites_cart, hp):
   elif (hp.htype in ['alg1b', 'alg1a', 'prop']):
     rb1 = matrix.col(sites_cart[hp.a2])
     n = hp.n
-    phi = hp.phi + n*2*math.pi/3
-    alpha = hp.alpha
+    phi = hp.b + n*2*math.pi/3
+    alpha = hp.a
     salpha = math.sin(alpha)
     calpha = math.cos(alpha)
     sphi = math.sin(phi)
@@ -512,48 +547,47 @@ def compute_H_position(ih, sites_cart, hp):
 def count_h(h_connectivity):
   number_h = 0
   for item in h_connectivity:
-    if item: number_h = number_h + 1
+    if item: number_h += 1
   return number_h
 
 def diagnostics(sites_cart, threshold, h_parameterization, h_connectivity):
-  number_h = count_h(h_connectivity = h_connectivity)
-  #double_H = self.h_connectivity.double_H
   h_distances = {}
-  unk_list = []
-  unk_ideal_list = []
+  unk_list, unk_ideal_list = [], []
   long_distance_list = []
-  for ih in h_parameterization:
-    hp = h_parameterization[ih]
+  list_h = []
+  type_list = []
+  number_h_para = 0
+  for hp in h_parameterization:
+    if (hp == None): continue
+    ih = hp.ih
+    list_h.append(ih)
+    number_h_para += 1
+    #hp = h_parameterization[ih]
+    h_distance = None
     rh = matrix.col(sites_cart[ih])
     if (hp.htype == 'unk'):
-      h_distance = None
       unk_list.append(ih)
     elif (hp.htype == 'unk_ideal'):
-      h_distance = None
       unk_ideal_list.append(ih)
     else:
       rh_calc = compute_H_position(
-        ih         = ih,
         sites_cart = sites_cart,
         hp         = hp)
       if (rh_calc is not None):
         h_distance = (rh_calc - rh).length()
-      else:
-        h_distance = None
-    if (h_distance is not None):
-      h_distances[ih] = h_distance
+        h_distances[ih] = h_distance
+        type_list.append(hp.htype)
       if (h_distance > threshold):
         long_distance_list.append(ih)
-  set_temp = set(list(h_parameterization.keys()))
+  set_temp = set(list_h)
+  #set_temp = set(list(h_parameterization.keys()))
   slipped = [x for x in h_connectivity if x not in set_temp]
   return group_args(
-    number_h           = number_h,
-    #double_H           = double_H,
     h_distances        = h_distances,
     unk_list           = unk_list,
     unk_ideal_list     = unk_ideal_list,
     long_distance_list = long_distance_list,
-    n_connect          = len(h_connectivity),
     slipped            = slipped,
-    threshold          = threshold)
+    type_list          = type_list,
+    number_h_para      = number_h_para)
 

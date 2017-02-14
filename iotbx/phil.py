@@ -258,7 +258,7 @@ Full parameters:
 # Utilities for Phenix GUI
 class setup_app_generic (object) :
   def __init__ (self, master_phil_path) :
-    master_phil = load_from_cache_if_possible(master_phil_path)
+    master_phil = self.load_from_cache_if_possible(master_phil_path)
     if master_phil is None :
       raise Sorry("Couldn't start program using specified phil object (%s)!" %
         master_phil_path)
@@ -271,7 +271,7 @@ class setup_app_generic (object) :
     self.master_phil = master_phil
 
   def __call__ (self, args) :
-    (working_phil, options, unused_args) = parse_command_line_phil_args(
+    (working_phil, options, unused_args) = self.parse_command_line_phil_args(
       args=args,
       master_phil=self.master_phil,
       command_name="phenix",
@@ -280,54 +280,54 @@ class setup_app_generic (object) :
       home_scope="")
     return (self.master_phil,working_phil,options, unused_args)
 
-# TODO probably redundant, replace with process_command_line or similar?
-def parse_command_line_phil_args (args, master_phil, command_name, usage_opts,
-    app_options, home_scope, log=sys.stdout) :
-  sources = []
-  unused_args = []
-  interpreter = master_phil.command_line_argument_interpreter(
-    home_scope=home_scope)
-  for arg in args :
-    if os.path.isfile(arg) :
-      try :
-        user_phil = parse(file_name=arg)
-        sources.append(user_phil)
-      except Exception, e :
-        unused_args.append(os.path.abspath(arg))
-    elif arg != "" and not arg.startswith("-") :
-      try :
-        params = interpreter.process(arg=arg)
-      except RuntimeError :
-        print >> log, "%s does not appear to be a parameter definition" % arg
+  # TODO probably redundant, replace with process_command_line or similar?
+  def parse_command_line_phil_args (self, args, master_phil, command_name, usage_opts,
+      app_options, home_scope, log=sys.stdout) :
+    sources = []
+    unused_args = []
+    interpreter = master_phil.command_line_argument_interpreter(
+      home_scope=home_scope)
+    for arg in args :
+      if os.path.isfile(arg) :
+        try :
+          user_phil = parse(file_name=arg)
+          sources.append(user_phil)
+        except Exception, e :
+          unused_args.append(os.path.abspath(arg))
+      elif arg != "" and not arg.startswith("-") :
+        try :
+          params = interpreter.process(arg=arg)
+        except RuntimeError :
+          print >> log, "%s does not appear to be a parameter definition" % arg
+          unused_args.append(arg)
+        else :
+          sources.append(params)
+      elif arg != "" :
         unused_args.append(arg)
-      else :
-        sources.append(params)
-    elif arg != "" :
-      unused_args.append(arg)
-  try :
-    working_phil = master_phil.fetch(sources=sources,
-       skip_incompatible_objects=True)
-  except Exception, e :
-    print >> log, "Error incorporating parameters from user-specified file(s):"
-    print >> log, str(e)
-    print >> log, "Will revert to default parameters for this run."
-    working_phil = master_phil.fetch()
+    try :
+      working_phil = master_phil.fetch(sources=sources,
+         skip_incompatible_objects=True)
+    except Exception, e :
+      print >> log, "Error incorporating parameters from user-specified file(s):"
+      print >> log, str(e)
+      print >> log, "Will revert to default parameters for this run."
+      working_phil = master_phil.fetch()
 
-  assert working_phil is not None
-  if "--debug" in args :
-    working_phil.show()
-  cmdline_opts = None
-  return (working_phil, cmdline_opts, unused_args)
+    assert working_phil is not None
+    if "--debug" in args :
+      working_phil.show()
+    cmdline_opts = None
+    return (working_phil, cmdline_opts, unused_args)
 
-def load_from_cache_if_possible (phil_path) :
-  import libtbx.load_env
-  full_path = os.path.join(abs(libtbx.env.build_path), "phil_cache",
-    "%s.phil" % phil_path)
-  if (os.path.exists(full_path)) :
-    return parse(file_name=full_path)
-  else :
-    return import_python_object(
-      import_path=phil_path,
-      error_prefix="",
-      target_must_be="",
-      where_str="").object
+  def load_from_cache_if_possible (self, phil_path) :
+    import libtbx.load_env
+    full_path = os.path.join(abs(libtbx.env.build_path), "phil_cache",
+      "%s.phil" % phil_path)
+    if (os.path.exists(full_path)) :
+      return parse(file_name=full_path)
+    else :
+      return import_python_object(
+        import_path=phil_path,
+        error_prefix="",
+        target_must_be="",
+        where_str="").object

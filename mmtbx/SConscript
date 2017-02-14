@@ -23,6 +23,7 @@ if (not env_etc.no_boost_python):
     target="#lib/mmtbx_alignment_ext",
     source=["alignment_ext.cpp"])
 
+
 SConscript("masks/SConscript")
 SConscript("ncs/SConscript")
 SConscript("max_lik/SConscript")
@@ -41,3 +42,4 @@ SConscript("geometry/SConscript")
 SConscript("rotamer/SConscript")
 SConscript("validation/SConscript")
 SConscript("building/SConscript")
+SConscript("hydrogens/SConscript")

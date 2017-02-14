@@ -42,6 +42,20 @@ class show_observations:
       sel_atten_data = attenuated.select(sel_atten_w).data()
       sel_atten_sig = attenuated.select(sel_atten_w).sigmas()
 
+      if len(sel_unatten_data)>0:
+        unatten_mean_I = flex.mean(sel_unatten_data)
+        unatten_mean_I_sigI  = flex.mean(sel_unatten_data/sel_unatten_sig)
+      else:
+        unatten_mean_I = 0
+        unatten_mean_I_sigI  = 0
+
+      if len(sel_atten_data)>0:
+        atten_mean_I = flex.mean(sel_atten_data)
+        atten_mean_I_sigI  = flex.mean(sel_atten_data/sel_atten_sig)
+      else:
+        atten_mean_I = 0
+        atten_mean_I_sigI  = 0
+
       if(sel_data.size() > 0):
         bin = resolution_bin(
           i_bin        = i_bin,
@@ -52,11 +66,11 @@ class show_observations:
           d_max_min    = (d_max_, d_min_),
           completeness = (counts_given[i_bin], counts_complete[i_bin]),
           given_unatten = counts_given_unattenuated[i_bin],
-          unatten_mean_I       = flex.mean(sel_unatten_data),
-          unatten_mean_I_sigI  = flex.mean(sel_unatten_data/sel_unatten_sig),
+          unatten_mean_I       = unatten_mean_I,
+          unatten_mean_I_sigI  = unatten_mean_I_sigI,
           given_atten  = counts_given_attenuated[i_bin],
-          atten_mean_I       = flex.mean(sel_atten_data),
-          atten_mean_I_sigI  = flex.mean(sel_atten_data/sel_atten_sig),
+          atten_mean_I       = atten_mean_I,
+          atten_mean_I_sigI  = atten_mean_I_sigI,
         )
         self.result.append(bin)
     self.set_limits(unobstructed)

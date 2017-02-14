@@ -2004,7 +2004,12 @@ def exercise_fast_approx_math(n=1000):
     #  print a, v1, v2
   print diff.min_max_mean().as_tuple()
 
+def exercise_simpson():
+  def f(x): return math.sqrt(9-x*x)
+  assert approx_equal(scitbx.math.simpson(f,-3,3,20000), math.pi*9./2, 1.e-4)
+
 def run():
+  exercise_simpson()
   exercise_fast_approx_math()
   exercise_parabolic_cylinder_d()
   exercise_equally_spaced_points_on_vector()

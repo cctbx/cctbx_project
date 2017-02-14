@@ -11,6 +11,8 @@
 #  included in the root directory of this package.
 #
 # LIBTBX_SET_DISPATCHER_NAME dev.cctbx.xfel.detector_residuals
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
+# LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 from __future__ import division
 from dials.array_family import flex
@@ -31,7 +33,7 @@ between observed and predicted reflections
 
 Example:
 
-  cctbx.xfel.detector_residuals experiment.json reflections.pickle
+  dev.cctbx.xfel.detector_residuals experiment.json reflections.pickle
 '''
 
 # Create the phil parameters

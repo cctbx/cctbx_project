@@ -10,6 +10,7 @@ from bootstrap import Toolbox
 from installer_utils import *
 import os.path as op
 import os
+import platform
 import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
@@ -98,7 +99,13 @@ GTK_THEME_PKG = "gtk_themes.tar.gz"
 # end Linux-only
 FONT_PKG = "fonts.tar.gz"
 
-MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
+MATPLOTLIB_PKG = "matplotlib-2.0.0.tar.gz"
+# CentOS 5 glibc too old to support matplotlib-2.0.0 dependency (subprocess32)
+if (sys.platform.startswith("linux")):
+  distribution = platform.dist()
+  if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
+    MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
+
 PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
@@ -110,6 +117,8 @@ WIN64PYTHON_PKG = "python2.7.12_x86_64_plus_relocatable.zip"
 WIN32PYTHON_PKG = "python2.7.12_x86_32_plus_relocatable.zip"
 WIN64HDF5_PKG = "HDF5-1.8.16-win64.zip"
 WIN32HDF5_PKG = "HDF5-1.8.16-win32.zip"
+VCREDIST64 = "vcredist_x64.exe"
+VCREDIST32 = "vcredist_x86.exe"
 
 # Various dependencies from external repositories, distributed as static
 # tarballs (since they are not under active development by us or our

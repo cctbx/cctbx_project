@@ -3,9 +3,71 @@ from libtbx import adopt_init_args
 from scitbx.array_family import flex
 from cctbx import maptbx
 from cctbx import miller
+from cctbx import adptbx
+from mmtbx import masks
 import sys
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+
+class four_cc(object):
+  def __init__(self, map, xray_structure, d_min):
+    adopt_init_args(self, locals())
+    self.crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = xray_structure.unit_cell(),
+      space_group_info      = xray_structure.space_group_info(),
+      pre_determined_n_real = map.accessor().all(),
+      symmetry_flags        = maptbx.use_space_group_symmetry)
+    f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
+    fft_map = miller.fft_map(
+      crystal_gridding     = self.crystal_gridding,
+      fourier_coefficients = f_calc)
+    self.map_calc = fft_map.real_map_unpadded()
+    self.bs_mask = masks.mask_from_xray_structure(
+      xray_structure        = self.xray_structure,
+      p1                    = True,
+      for_structure_factors = False,
+      n_real                = self.map.accessor().all()).mask_data
+    maptbx.unpad_in_place(map=self.bs_mask)
+    self.sel_inside = (self.bs_mask==0.).iselection()
+    #
+    self.cc_overall = from_map_map(map_1=self.map, map_2=self.map_calc)
+    self.cc_image = self._cc_image()
+    self.cc_atoms = from_map_map_selection(
+      map_1=self.map, map_2=self.map_calc, selection = self.sel_inside)
+    self.cc_volume = self._cc_volume()
+    # Free memory
+    del self.bs_mask, self.sel_inside
+
+  def _cc_image(self):
+    b_iso = adptbx.u_as_b(
+      flex.mean(self.xray_structure.extract_u_iso_or_u_equiv()))
+    o = maptbx.atom_curves(scattering_type="C", scattering_table="electron")
+    atom_radius = o.image(d_min=self.d_min, b_iso=b_iso,
+      radius_max=max(10.,self.d_min), radius_step=0.01).radius
+    return from_map_map_atoms(
+      map_1=self.map,
+      map_2=self.map_calc,
+      sites_cart=self.xray_structure.sites_cart(),
+      unit_cell=self.xray_structure.unit_cell(),
+      radius=atom_radius)
+
+  def _cc_volume(self):
+    n_nodes_inside = self.sel_inside.size()
+    def get_selection_above_cutoff(m, n):
+      m_ = m.as_1d()
+      s = flex.sort_permutation(m_, reverse=True)
+      return m>=m_.select(s)[n]
+    s1 = get_selection_above_cutoff(m=self.map, n=n_nodes_inside)
+    s2 = get_selection_above_cutoff(m=self.map_calc, n=n_nodes_inside)
+    s = s1 | s2
+    #G = flex.double(flex.grid(self.map.all()), 0)
+    #G = G.set_selected(s, 1)
+    #ccp4_map(cg=self.crystal_gridding, file_name="m1.ccp4", map_data=self.map)
+    #ccp4_map(cg=self.crystal_gridding, file_name="m2.ccp4", map_data=self.map_calc)
+    #ccp4_map(cg=self.crystal_gridding, file_name="m3.ccp4", map_data=G)
+    return flex.linear_correlation(
+      x=self.map.select(s.iselection()).as_1d(),
+      y=self.map_calc.select(s.iselection()).as_1d()).coefficient()
 
 def fsc_model_map(xray_structure, map, d_min, log=sys.stdout, radius=2.,
                   prefix=""):

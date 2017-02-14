@@ -16,7 +16,7 @@ from cStringIO import StringIO
 import iotbx.phil as ip
 
 master_phil = ip.parse("""
-description = Integration Optimization, Transfer and Analysis (IOTA)
+description = None
   .type = str
   .help = Run description (optional).
   .multiple = False
@@ -35,14 +35,17 @@ output = None
 image_conversion
   .help = Parameters for raw image conversion to pickle format
 {
-  rename_pickle_prefix = Auto
+  rename_pickle = None keep_file_structure *auto_filename custom_filename
+    .type = choice
+    .help = "keep_file_structure" retains the input filenames w/ folder tree
+    .help = "auto_filename" is <your_login_name>_<conversion_run>_<#####>
+  rename_pickle_prefix = None
     .type = str
-    .help = Specify prefix (e.g. "HEWL_room_temp") to rename all input images
-    .help = Set to None to keep original image filenames and directory tree
+    .help = Will only be used in conjunction with "custom_filename"
   convert_only = False
     .type = bool
     .help = Set to True (or use -c option) to convert and exit
-  square_mode = None *pad crop
+  square_mode = None no_modification *pad crop
     .type = choice
     .help = Method to generate square image
   beamstop = 0
@@ -63,7 +66,7 @@ image_conversion
 image_triage
   .help = Check if images have diffraction using basic spotfinding (-t option)
 {
-  type = None *simple grid_search
+  type = None no_triage *simple grid_search
     .type = choice
     .help = Set to None to attempt integrating all images
   min_Bragg_peaks = 10
@@ -99,7 +102,7 @@ cctbx
   grid_search
     .help = "Parameters for the grid search."
   {
-    type = None *brute_force smart
+    type = None no_grid_search *brute_force smart
       .type = choice
       .help = Set to None to only use median spotfinding parameters
     area_median = 5
@@ -186,7 +189,7 @@ analysis
   cluster_threshold = 5000
     .type = int
     .help = threshold value for unit cell clustering
-  viz = *None integration cv_vectors
+  viz = None *no_visualization integration cv_vectors
     .type = choice
     .help = Set to "integration" to visualize spotfinding and integration results.
     .help = Set to "cv_vectors" to visualize accuracy of CV vectors
@@ -221,6 +224,9 @@ advanced
   monitor_mode_timeout_length = 0
     .type = int
     .help = Timeout length in seconds (GUI only)
+  prime_prefix = prime
+    .type = str
+    .help = Prefix for the PRIME script filename
   random_sample
     .help = Use a randomized subset of images (or -r <number> option)
   {
@@ -235,16 +241,12 @@ advanced
 n_processors = 32
   .type = int
   .help = No. of processing units
-mp_method = *multiprocessing mpi lsf
+mp_method = *multiprocessing mpi lsf torq
   .type = choice
   .help = Multiprocessing method
 mp_queue = None
   .type = str
   .help = Multiprocessing queue
-prime_prefix = prime
-  .type = str
-  .multiple = False
-  .help = Prefix for the PRIME input file
 """)
 
 class Capturing(list):

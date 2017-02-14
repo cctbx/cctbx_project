@@ -3005,12 +3005,12 @@ class build_all_chain_proxies(linking_mixins):
         acf.residue_selection,
         acf.restraints_file_name,
         ]
-#    if apply_restraints_specifications:
-#      print >> log, "  apply specific restraints filenames to specific monomers"
-#      for acf in self.params.apply_cif_restraints:
-#        print >> log, '    "%s" - %s' % (acf.residue_selection,
-#                                         acf.restraints_file_name,
-#          )
+    if apply_restraints_specifications:
+      print >> log, "  Apply specific restraints filenames to specific monomers"
+      for acf in self.params.apply_cif_restraints:
+        print >> log, '    "%s" - %s' % (acf.residue_selection,
+                                         acf.restraints_file_name,
+          )
     self.special_position_settings = None
     self._site_symmetry_table = None
     self.sites_cart = None

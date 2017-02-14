@@ -6,7 +6,6 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens import riding
-from mmtbx.hydrogens import modify_gradients
 
 def exercise(pdb_str, eps):
   mon_lib_srv = monomer_library.server.server()
@@ -18,15 +17,10 @@ def exercise(pdb_str, eps):
     force_symmetry = True)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xray_structure = processed_pdb_file.xray_structure()
-  sites_cart = xray_structure.sites_cart()
+  #sites_cart = xray_structure.sites_cart()
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies      = False,
     plain_pairs_radius = 5.0)
-
-  es = geometry.energies_sites(
-    sites_cart        = sites_cart,
-    compute_gradients = True)
-  g_analytical = es.gradients
 #
   riding_h_manager = riding.manager(
     pdb_hierarchy       = pdb_hierarchy,
@@ -37,18 +31,18 @@ def exercise(pdb_str, eps):
   riding_h_manager.idealize_hydrogens_inplace(
     pdb_hierarchy=pdb_hierarchy,
     xray_structure=xray_structure)
-  #sites_cart = pdb_hierarchy.atoms().extract_xyz()
+
   sites_cart = xray_structure.sites_cart()
 
-  #for i in g_analytical:
-  #  print i
-  #print '----------'
   g_analytical = geometry.energies_sites(
-    sites_cart = sites_cart, compute_gradients = True).gradients
-  modify_gradients.modify_gradients(
-    sites_cart         = sites_cart,
-    h_parameterization = h_parameterization,
-    grads              = g_analytical)
+    sites_cart = sites_cart,
+    compute_gradients = True).gradients
+  hd_selection = xray_structure.hd_selection()
+
+  g_analytical_reduced = riding_h_manager.gradients_reduced(
+    sites_cart          = sites_cart,
+    grads               = g_analytical,
+    hd_selection        = hd_selection)
   #
   ex = [eps,0,0]
   ey = [0,eps,0]
@@ -74,7 +68,9 @@ def exercise(pdb_str, eps):
       g_fd_i.append((ts[1]-ts[0])/(2*eps))
     g_fd.append(g_fd_i)
 
-  for g1, g2 in zip(g_analytical, g_fd):
+  g_fd_reduced = g_fd.select(~hd_selection)
+
+  for g1, g2 in zip(g_analytical_reduced, g_fd_reduced):
     #print g1,g2
     assert approx_equal(g1,g2, 1.e-4)
   #print '*'*79

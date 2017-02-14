@@ -209,6 +209,8 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   if work_params.output_prefix is not None:
     out_prefix = work_params.output_prefix
   filename = "%s_ss.eff" % out_prefix
+  if work_params.format == "pymol":
+    filename = "%s_ss.pml" % out_prefix
   outf = open(filename, "w")
   outf.write(result)
   outf.close()

@@ -88,7 +88,7 @@ AutoCloseWindow false
 
 
 Function LaunchProg
-  Exec '"$SYSDIR\notepad.exe" $INSTDIR\${SOURCEDIR}\README'
+  Exec '"$SYSDIR\notepad.exe" \\?\$INSTDIR\${SOURCEDIR}\README'
 FunctionEnd
 
 
@@ -129,19 +129,20 @@ var ICONS_GROUP
 
 
 Section "Basic components" SEC01
-  SetOutPath "$INSTDIR"
+  SetOutPath "\\?\$INSTDIR"
   SetOverwrite off
   File /r /x *.cpp /x *.cc /x *.h /x *.hh /x *.hpp /x *.c /x *.f /x .svn ${COPYDIR}\*
 
-  ExecWait '"$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
+  #ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
+  ExecWait '"\\?\$INSTDIR\${SOURCEDIR}\base\bin\python\python" -c $\"import compileall; compileall.compile_dir($\'\\?\$INSTDIR\${SOURCEDIR}\modules$\', 100)$\"'
   SetAutoClose false
-; Shortcuts
+  ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
 Section "Source code" SEC02
-  SetOutPath "$INSTDIR"
+  SetOutPath "\\?\$INSTDIR"
   SetOverwrite on
   File /nonfatal /r ${COPYDIR}\*.hh
   File /nonfatal /r ${COPYDIR}\*.hpp
@@ -156,14 +157,34 @@ Section "Source code" SEC02
   !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
+Section "VC++ 2008 Redistributable" SEC03
+  SetOutPath "\\?\$INSTDIR\${SOURCEDIR}"
+
+  !if ${BITNESS} > 32
+  !define VCREDIST "vcredist_x64.exe"
+  !else
+  !define VCREDIST "vcredist_x86.exe"
+  !endIf
+
+  File "${COPYDIR}\${SOURCEDIR}\${VCREDIST}"
+  ExecShell "" '"$INSTDIR\${SOURCEDIR}\${VCREDIST}"'
+
+  SetAutoClose false
+; Shortcuts
+  !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
+  !insertmacro MUI_STARTMENU_WRITE_END
+SectionEnd
+
 ; Section descriptions
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "Required executables, scripts and tutorials"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "Optional C/C++ source code for developers or expert users"
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "Microsoft Visual C++ 2008 Redistributable Components. Install these only if not already present."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 
 Section -AdditionalIcons
+  SetOutPath "$INSTDIR"
   !define UNINSTEXE "$INSTDIR\UnInstall${PRODUCT_NAME}${PRODUCT_VERSION}.exe"
   !define MYICON "$INSTDIR\${SOURCEDIR}\modules\gui_resources\icons\custom\WinPhenix.ico"
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
@@ -195,6 +216,7 @@ Function MyOnGUIinit
 ;!insertmacro UnSelectSection ${SEC01}
 !insertmacro SelectSection ${SEC01}
 !insertmacro UnSelectSection ${SEC02}
+!insertmacro SelectSection ${SEC03}
 FunctionEnd
 
 
@@ -205,6 +227,11 @@ ${If}  ${SectionIsSelected} ${SEC02}
 !insertmacro SetSectionFlag ${SEC01} ${SF_RO}
 ${Else}
 !insertmacro ClearSectionFlag ${SEC01} ${SF_RO}
+${EndIf}
+${If}  ${SectionIsSelected} ${SEC03}
+!insertmacro SelectSection ${SEC03}
+${Else}
+!insertmacro UnSelectSection ${SEC03}
 ${EndIf}
 FunctionEnd
 
@@ -224,7 +251,7 @@ Section Uninstall
 
   RMDir /r "$SMPROGRAMS\$ICONS_GROUP\${PRODUCT_VERSION}"
   Delete "$DESKTOP\${PRODUCT_NAME}${PRODUCT_VERSION}.lnk"
-  RMDir /r "$INSTDIR\${SOURCEDIR}"
+  RMDir /r "\\?\$INSTDIR\${SOURCEDIR}"
   Delete "${UNINSTEXE}"
 
   DeleteRegKey ${PRODUCT_ROOT_KEY} "${PRODUCT_UNINST_KEY}"

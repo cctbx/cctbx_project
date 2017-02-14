@@ -5,7 +5,7 @@
 #include <scitbx/fftpack/real_to_complex.h>
 #include <omptbx/omp_or_stubs.h>
 
-//#define SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP
+#define SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP
 
 namespace scitbx { namespace fftpack {
 

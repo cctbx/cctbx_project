@@ -17,6 +17,28 @@ from dxtbx.format.FormatPY import FormatPY as FPy
 from collections import Counter
 from iota.components.iota_misc import Capturing
 
+def get_file_list(path, as_string=False, ignore_ext=None,
+                  ext_only=None):
+  file_list = []
+  for root, dirs, files in os.walk(path):
+    for filename in files:
+      found_file = os.path.join(root, filename)
+      if ignore_ext is not None:
+        if not found_file.endswith(ignore_ext):
+          file_list.append(found_file)
+      elif ext_only is not None:
+        if found_file.endswith(ext_only):
+          file_list.append(found_file)
+      else:
+        file_list.append(found_file)
+
+  if as_string:
+    file_string = '\n'.join(file_list)
+    return file_string
+  else:
+    return file_list
+
+
 class GenerateInput():
   ''' Class will try to determine the type of the input file/folder  '''
 
@@ -142,7 +164,7 @@ class GenerateInput():
       pickle = ep.load(file_list[0])
       try:
         if 'TIMESTAMP' in pickle:
-          return 'converted pickles folder'
+          return 'image pickles folder'
         elif 'ewald_proximal_volume' in pickle:
           return 'processed pickles folder'
         else:
@@ -191,12 +213,35 @@ class GenerateInput():
 
   def get_file_type(self, path):
 
+    if path.endswith('mtz'):
+      return 'reference MTZ'
+
+    # Test if list of files / folders or PHIL
+    if self.is_text(path):
+      with open(path, 'r') as tf:
+        contents = tf.readlines()
+
+      contents = [i.replace('\n', '') for i in contents]
+
+      if os.path.isfile(contents[0]):
+        if self.test_pickle(contents[0]) == 'image pickle':
+          return 'image list'
+        elif self.test_pickle(contents[0]) == 'processed pickle':
+          return 'processed pickles list'
+      else:
+        return self.test_phil(path)
+    else:
+      return self.test_pickle(path)
+
+  def test_pickle(self, path):
     # Test if pickle
     if FPy.understand(path):
       pickle = ep.load(path)
       try:
         if 'TIMESTAMP' in pickle:
           return 'image pickle'
+        elif 'ewald_proximal_volume' in pickle:
+          return 'processed pickle'
         else:
           return 'pickle'
       except TypeError:

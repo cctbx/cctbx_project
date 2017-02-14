@@ -64,6 +64,8 @@ import boost.python
 from mmtbx import bulk_solvent
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
+import mmtbx.rotamer
+
 def miller_array_symmetry_safety_check(miller_array,
                                        data_description,
                                        working_point_group,
@@ -2332,10 +2334,9 @@ def _get_rotamers_evaluated(
     mon_lib_srv,
     map_data=None,
     prefix="a"):
-  from mmtbx.command_line import lockit
   from cctbx.geometry_restraints import nonbonded_overlaps as nbo
   assert xrs.scatterers().size() == pdb_hierarchy.atoms_size()
-  rotamer_iterator = lockit.get_rotamer_iterator(
+  rotamer_iterator = mmtbx.rotamer.iterator(
       mon_lib_srv         = mon_lib_srv,
       residue             = res,
       atom_selection_bool = None)
@@ -2362,30 +2363,13 @@ def _get_rotamers_evaluated(
       d = list(p)
       summ += d[3]-d[4]
     map_cc = 0
-    # print "Map_data", map_data
     rsr_target = 0
     if map_data is not None:
-      # STOP()
-      # getting map score for rotamer
       rsr_target = maptbx.real_space_target_simple(
           unit_cell   = xrs.crystal_symmetry().unit_cell(),
           density_map = map_data,
           sites_cart  = sites_for_nb_overlaps)
       map_cc = 0
-
-      # new_xrs = xrs.deep_copy_scatterers()
-      # new_xrs.set_sites_cart(sites_for_nb_overlaps)
-      # f_model = new_xrs.structure_factors(d_min=3).f_calc()
-      # fft_map2 = miller.fft_map(
-      #   crystal_gridding     = crystal_gridding,
-      #   fourier_coefficients = f_model)
-      # fft_map2.apply_sigma_scaling()
-      # map_data2 = fft_map2.real_map_unpadded(in_place=False)
-      # map_cc = flex.linear_correlation(
-      #   x=map_data.as_1d(),
-      #   y=map_data2.as_1d()).coefficient()
-      print "rsr target, cc:", rsr_target, map_cc
-
     inf.append((i,
         rotamer.id,
         rotamer.frequency,
@@ -2674,7 +2658,6 @@ def switch_rotamers(
   if(mode is None): return pdb_hierarchy
   pdb_hierarchy.reset_atom_i_seqs()
   assert mode in ["max_distant","min_distant","exact_match","fix_outliers"],mode
-  from mmtbx.command_line import lockit
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   sites_cart_start = pdb_hierarchy.atoms().extract_xyz()
@@ -2706,7 +2689,7 @@ def switch_rotamers(
               exclude = True
           if not exclude:
             # print "  Fixing rotamer outlier", residue.id_str()
-            rotamer_iterator = lockit.get_rotamer_iterator(
+            rotamer_iterator = mmtbx.rotamer.iterator(
               mon_lib_srv         = mon_lib_srv,
               residue             = residue,
               atom_selection_bool = None)

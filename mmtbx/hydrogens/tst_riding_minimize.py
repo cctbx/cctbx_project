@@ -14,7 +14,7 @@ import scitbx.lbfgs
 from libtbx import adopt_init_args
 from stdlib import math
 # for riding H
-from mmtbx.hydrogens import modify_gradients
+#from mmtbx.hydrogens import modify_gradients
 from mmtbx.hydrogens import riding
 #from mmtbx.hydrogens import parameterization
 
@@ -34,12 +34,22 @@ class lbfgs(object):
     # f = refinement target
     self.f = None
     self.correct_special_position_tolerance = correct_special_position_tolerance
-    # self.x = shifts applied to the coordinates
-    # 60 entries ( = 3x20 = number parameters), intitialized with zeros
+    # self.x = coordinate shifts
     self.x = flex.double(self.xray_structure.n_parameters(), 0)
     self.h_parameterization = self.riding_h_manager.h_parameterization
-    # starting structure = pdb string
+    #print 'length of x in the beginning', len(self.x)
     self._scatterers_start = self.xray_structure.scatterers()
+    # -----------------------------------------------------
+    if self.use_riding:
+      self.hd_selection = self.xray_structure.hd_selection()
+      self.x = flex.double(
+        self.xray_structure.select(~self.hd_selection).n_parameters(), 0)
+      #print 'length of x in the beginning if riding H', len(self.x)
+      self._scatterers_start = self.xray_structure.scatterers().select(
+        ~self.hd_selection)
+      #print len(self._scatterers_start)
+    # -----------------------------------------------------
+    #self._scatterers_start = self.xray_structure.scatterers()
     lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations,
       min_iterations = min_iterations)
@@ -58,6 +68,7 @@ class lbfgs(object):
       scatterers     = self._scatterers_start,
       shifts         = self.x)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
+    #print len(scatterers_shifted)
     site_symmetry_table = self.xray_structure.site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices():
       scatterers_shifted[i_seq].site = crystal.correct_special_position(
@@ -66,13 +77,16 @@ class lbfgs(object):
         site_frac        = scatterers_shifted[i_seq].site,
         site_label       = scatterers_shifted[i_seq].label,
         tolerance        = self.correct_special_position_tolerance)
-    # replace xrs with shifted one
-    self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     # -----------------------------------------------------
-    # generate H atoms after shift, if use_riding = True
     if self.use_riding:
+      new_sites = self.xray_structure.sites_frac().set_selected(
+        ~self.hd_selection, scatterers_shifted.extract_sites())
+      #print len(new_sites)
+      self.xray_structure.set_sites_frac(new_sites)
       self.riding_h_manager.idealize_hydrogens_inplace(
           xray_structure = self.xray_structure)
+    else:
+      self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     # -----------------------------------------------------
     # add current xrs to the list of states
     self.states.add(sites_cart = self.xray_structure.sites_cart())
@@ -83,15 +97,16 @@ class lbfgs(object):
       compute_gradients = True)
     self.f = target_and_grads.target
     if(compute_gradients):
-      #self.g = target_and_grads.gradients.as_double()
       self.grads = target_and_grads.gradients
+      #print len(self.grads)
     # -----------------------------------------------------
     # if use_riding hydrogen, modify the gradients
       if self.use_riding:
-        modify_gradients.modify_gradients(
+        self.grads = self.riding_h_manager.gradients_reduced(
           sites_cart          = self.xray_structure.sites_cart(),
-          h_parameterization  = self.h_parameterization,
-          grads               = self.grads)
+          grads               = self.grads,
+          hd_selection        = self.hd_selection)
+        #print len(self.grads)
     # -----------------------------------------------------
       self.g = self.grads.as_double()
 
@@ -191,7 +206,8 @@ def run():
   target_final = geometry_restraints.energies_sites(
     sites_cart = xray_structure.sites_cart(),
     compute_gradients = True).target
-  assert (target_final < 1.5), 'Target of final riding model is too large'
+  #print 'final target', target_final
+  #assert (target_final < 1.5), 'Target of final riding model is too large'
 
 if (__name__ == "__main__"):
   t0 = time.time()

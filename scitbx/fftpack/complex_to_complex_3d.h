@@ -5,7 +5,7 @@
 #include <scitbx/error.h>
 #include <omptbx/omp_or_stubs.h>
 
-//#define SCITBX_FFTPACK_COMPLEX_TO_COMPLEX_3D_NO_PRAGMA_OMP
+#define SCITBX_FFTPACK_COMPLEX_TO_COMPLEX_3D_NO_PRAGMA_OMP
 
 namespace scitbx { namespace fftpack {
 

@@ -236,6 +236,7 @@ def exercise_04(prefix="tst_mi_map_test_04"):
       "loop_idealization.number_of_ccd_trials=1",
       "number_of_refinement_cycles=1",
       "n_macro=1",
+      "debug=True",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
@@ -246,6 +247,7 @@ def exercise_04(prefix="tst_mi_map_test_04"):
   for l in ["Using ncs\n",
       "Using map as reference\n",
       "  Minimizing... (NCS)\n",
+      "Ramachandran outliers:      0.00      0.00      0.00      0.00      0.00\n",
       "All done.\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()

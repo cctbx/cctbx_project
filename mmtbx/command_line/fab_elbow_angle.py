@@ -5,9 +5,34 @@ from libtbx.utils import Sorry
 import iotbx.pdb
 import sys
 import os
+import iotbx.phil
 
-def run(args, log=sys.stdout):
-  """
+def get_master_phil():
+  import libtbx.phil
+  return libtbx.phil.parse(
+    input_string="""
+      model_file_name = None
+        .type = path
+        .multiple = True
+        .help = '''Enter a PDB file name'''
+      light = 'L'
+        .type = str
+        .help = '''chain ID of light domain'''
+      heavy = 'H'
+        .type = str
+        .help = '''chain ID of heavy domain'''
+      limit_l = 107
+        .type = int
+        .help = the number of the residue separating between variable \
+            and constant domains in the light chain
+      limit_h = 113
+        .type = int
+        .help = the number of the residue separating between variable \
+            and constant domains in the heavy chain, by default 113
+""")
+
+def usage():
+  return """
   Calculating Fragment Antigen-Binding (Fab) elbow angle
 
   Each FAB is made of two chains, Heavy (H) and Light (L), and two domains,
@@ -26,7 +51,7 @@ def run(args, log=sys.stdout):
   h            help
 
   usage:
-  >>>phenix.fab_elbow_angle fab_name.pdb [light=L] [heavy=H] [limit_l=107] [limit_h=113]
+  phenix.fab_elbow_angle fab_name.pdb [light=L] [heavy=H] [limit_l=107] [limit_h=113]
 
   examples:
   >>>phenix.fab_elbow_angle 7fab.pdb light=L heavy=H limit_l=104 limit_h=117
@@ -34,38 +59,26 @@ def run(args, log=sys.stdout):
   >>>phenix.fab_elbow_angle 1bbd.pdb
   >>>126.34
   """
-  if(len(args)==0 or (len(args)==1 and
-                          args[0].lower() in ("-h", "--h","-help","--help"))):
-    print >> log, "-"*79
-    print >> log, run.__doc__
-    print >> log, "-"*79
-    sys.exit(0)
-  elif not os.path.isfile(args[0]):
-    print >> log, 'There is no file %s in the current directory'%args[0]
-    raise Sorry('File name error')
-  else:
-    ph = iotbx.pdb.input(file_name=args[0]).construct_hierarchy()
-    inp_params = dict()
-    # fab_elbow_angle.py input parameters has different names
-    param_manes = dict(light='chain_id_light',
-               heavy='chain_id_heavy',
-               limit_l='limit_light',
-               limit_h='limit_heavy')
-    for x in args[1:]:
-      kv = x.split('=')
-      if kv[0].lower() in ('light','heavy','limit_l','limit_h') and len(kv)==2:
-        try:
-          val = int(kv[1])
-        except ValueError:
-          val = kv[1]
-        inp_params[param_manes[kv[0]]] = val
-      else:
-        raise Sorry('Option {} does not exist'.format(kv[0]))
 
-    elbow_angle = fab_elbow_angle(
+def run(args, log=sys.stdout):
+  master_phil = get_master_phil()
+  input_objects = iotbx.phil.process_command_line_with_files(
+    args=args,
+    master_phil=master_phil,
+    pdb_file_def="model_file_name")
+  work_params = input_objects.work.extract()
+  if len(work_params.model_file_name) != 1:
+    print >> log, usage()
+    return
+
+  ph = iotbx.pdb.input(file_name=work_params.model_file_name[0]).construct_hierarchy()
+  elbow_angle = fab_elbow_angle(
       pdb_hierarchy=ph,
-      **inp_params).fab_elbow_angle
-    print  >> log, 'fab elbow angle (deg): {0:.2f}'.format(elbow_angle)
+      chain_id_light=work_params.light,
+      chain_id_heavy=work_params.heavy,
+      limit_light=work_params.limit_l,
+      limit_heavy=work_params.limit_h).fab_elbow_angle
+  print  >> log, 'fab elbow angle (deg): {0:.2f}'.format(elbow_angle)
 
 if __name__ == "__main__":
   run(args=sys.argv[1:])

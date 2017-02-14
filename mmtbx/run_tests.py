@@ -65,6 +65,7 @@ tst_list = (
   "$D/maps/tst_composite_omit_map.py",
   "$D/maps/tst_composite_omit_map_2.py",
   "$D/maps/tst_composite_omit_map_3.py",
+  "$D/maps/tst_correlation.py",
   "$D/regression/ncs/tst_ncs_utils.py",
   "$D/regression/ncs/tst_ncs_search.py",
   "$D/regression/ncs/tst_ncs_search_flips.py",
@@ -309,6 +310,7 @@ tst_list = (
   "$D/regression/tst_model_map.py",
   #
   "$D/regression/tst_cis_trans_peptide_link.py",
+  "$D/regression/tst_apply_cif_restraints.py",
   )
 
 def run():

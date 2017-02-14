@@ -23,6 +23,9 @@ class FormatMultiImage(object):
   def get_raw_data(self, index=None):
     raise RuntimeError('Overload!')
 
+  def get_mask(self, index=None, goniometer=None):
+    return None
+
   def get_detectorbase(self, index=None):
     raise RuntimeError('Overload!')
 

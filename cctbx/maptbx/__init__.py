@@ -18,6 +18,7 @@ import scitbx.math
 from cctbx import adptbx
 from libtbx import group_args
 from scitbx import fftpack
+from libtbx.test_utils import approx_equal
 
 debug_peak_cluster_analysis = os.environ.get(
   "CCTBX_MAPTBX_DEBUG_PEAK_CLUSTER_ANALYSIS", "")
@@ -1159,51 +1160,136 @@ def map_to_map_coefficients(m, cs, d_min):
     ).array(data=box_structure_factors.data()/n)
   return map_coeffs
 
-def resolution_from_map_and_model(map_data, xray_structure):
+def atom_radius_as_central_peak_width(element, b_iso, d_min, scattering_table):
   """
-  Given map and model estimate resolution by maximizing map CC(map, model-map).
+  Estimate atom radius as half-width of the central peak of Fourier image.
   """
-  from cctbx import miller
-  xrs = xray_structure
-  sel = grid_indices_around_sites(
-    unit_cell  = xrs.unit_cell(),
-    fft_n_real = map_data.focus(),
-    fft_m_real = map_data.all(),
-    sites_cart = xrs.sites_cart(),
-    site_radii = flex.double(xrs.scatterers().size(),5))
-  map_data_selected_as_1d = map_data.select(sel).as_1d()
+  from cctbx import xray, miller
+  dim = 40.
+  cs = crystal.symmetry((dim, dim, dim, 90, 90, 90), "P 1")
+  sp = crystal.special_position_settings(cs)
+  sc = xray.scatterer(
+    scattering_type = element,
+    site            = (0, 0, 0),
+    u               = adptbx.b_as_u(b_iso))
+  scatterers = flex.xray_scatterer([sc])
+  xrs = xray.structure(sp, scatterers)
+  xrs.scattering_type_registry(table = scattering_table)
   cg = crystal_gridding(
-    unit_cell             = xrs.unit_cell(),
-    space_group_info      = xrs.space_group_info(),
-    pre_determined_n_real = map_data.accessor().all())
-  def optimize(d_min_min, d_min_max, step):
-    d_min = d_min_min
-    d_min_result = None
-    cc_best=-1.e6
-    while d_min < d_min_max+1.e-6:
-      f_calc = xrs.structure_factors(d_min=d_min).f_calc()
-      fft_map = miller.fft_map(
-        crystal_gridding     = cg,
-        fourier_coefficients = f_calc)
-      map_data_ = fft_map.real_map_unpadded()
-      cc = flex.linear_correlation(
-        x=map_data_selected_as_1d,
-        y=map_data_.select(sel).as_1d()).coefficient()
-      if(cc > cc_best):
-        cc_best = cc
-        d_min_result = d_min
-      d_min += step
-    return d_min_result
-  # coarse estimate
-  d_min_max = d_min_from_map(
-    map_data=map_data, unit_cell=xrs.unit_cell(), resolution_factor=0.2)
-  d_min_min = d_min_from_map(
-    map_data=map_data, unit_cell=xrs.unit_cell(), resolution_factor=0.5)
-  step = (d_min_max-d_min_min)/5
-  d_min_result = optimize(d_min_min=d_min_min, d_min_max=d_min_max, step=step)
-  # fine estimate
-  d_min_min=d_min_result-step
-  d_min_max=d_min_result+step
-  step = (d_min_max-d_min_min)/10
-  d_min_result = optimize(d_min_min=d_min_min, d_min_max=d_min_max, step=step)
-  return d_min_result
+    unit_cell         = xrs.unit_cell(),
+    space_group_info  = xrs.space_group_info(),
+    step              = 0.1)
+  fc = xrs.structure_factors(d_min = d_min, algorithm = "direct").f_calc()
+  fft_map = miller.fft_map(
+    crystal_gridding     = cg,
+    fourier_coefficients = fc,
+    f_000                = xrs.f_000())
+  fft_map.apply_volume_scaling()
+  map_data = fft_map.real_map_unpadded()
+  def search_curve(map_data, dim):
+    x = 0.
+    step = 0.01
+    mv_max=None
+    mv_prev=None
+    while x<=dim:
+      mv = map_data.eight_point_interpolation([x/dim,0,0])
+      if(mv_prev is not None and mv>mv_prev): return x-step
+      if(mv_max is None): mv_max=mv
+      if(mv_max/mv>100.): return x-step
+      if(mv<0.):          return x-step
+      x+=step
+      mv_prev = mv
+    return None
+  radius = search_curve(map_data=map_data, dim=dim)
+  assert radius is not None
+  return radius
+
+class atom_curves(object):
+  """
+Class-toolkit to compute various 1-atom 1D curves: exact electron density,
+Fourier image of specified resolution, etc.
+  """
+
+  def __init__(self, scattering_type, scattering_table="wk1995"):
+    adopt_init_args(self, locals())
+    self.xray_structure = self.get_xray_structure()
+    self.scr = self.xray_structure.scattering_type_registry()
+    self.uff = self.scr.unique_form_factors_at_d_star_sq
+
+  def get_xray_structure(self):
+    cs = crystal.symmetry((10, 10, 10, 90, 90, 90), "P 1")
+    sp = crystal.special_position_settings(cs)
+    from cctbx import xray
+    sc = xray.scatterer(
+      scattering_type = self.scattering_type,
+      site            = (0, 0, 0))
+    scatterers = flex.xray_scatterer([sc])
+    xrs = xray.structure(sp, scatterers)
+    xrs.scattering_type_registry(table = self.scattering_table)
+    return xrs
+
+  def exact_density(self, b_iso, radius_max=5., radius_step=0.001):
+    r = 0.0
+    density = flex.double()
+    radii   = flex.double()
+    ed = self.scr.gaussian(self.scattering_type)
+    while r < radius_max:
+      density.append(ed.electron_density(r, b_iso))
+      radii.append(r)
+      r+=radius_step
+    return group_args(radii = radii, density = density)
+
+  def form_factor(self, ss, b_iso):
+    dss = 4*ss
+    return self.uff(dss)[0]*math.exp(-b_iso*ss)
+
+  def integrand(self, r, b_iso):
+    def compute(s):
+      ss = (s/2)**2
+      if(abs(r)>1.e-9):
+        return 2/r * s * self.form_factor(ss, b_iso) * math.sin(2*math.pi*r*s)
+      else:
+        return 4*math.pi * s**2 * self.form_factor(ss, b_iso)
+    return compute
+
+  def image(self,
+            d_min,
+            b_iso,
+            d_max=None,
+            radius_max=5.,
+            radius_step=0.001,
+            n_integration_steps=2000):
+    r = 0.0
+    assert d_max != 0.
+    if(d_max is None): s_min=0
+    else:              s_min=1./d_max
+    assert d_min != 0.
+    s_max = 1./d_min
+    image_values = flex.double()
+    radii        = flex.double()
+    while r < radius_max:
+      s = scitbx.math.simpson(
+        f=self.integrand(r, b_iso), a=s_min, b=s_max, n=n_integration_steps)
+      image_values.append(s)
+      radii.append(r)
+      r+=radius_step
+    # Fine first inflection point
+    first_inflection_point=None
+    size = image_values.size()
+    second_derivatives = flex.double()
+    for i in xrange(size):
+      if(i>0 and i<size-1):
+        dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
+      elif(i==0):
+        dxx = 2*image_values[i+1]-2*image_values[i]
+      else:
+        dxx = second_derivatives[i-1]*radius_step**2
+      if(first_inflection_point is None and dxx>0):
+        first_inflection_point = (radii[i-1]+radii[i])/2.
+      second_derivatives.append(dxx/radius_step**2)
+    return group_args(
+      radii                  = radii,
+      image_values           = image_values,
+      first_inflection_point = first_inflection_point,
+      radius                 = first_inflection_point*2,
+      second_derivatives     = second_derivatives)

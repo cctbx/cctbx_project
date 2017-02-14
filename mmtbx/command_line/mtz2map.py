@@ -13,6 +13,7 @@ from libtbx import runtime_utils
 import libtbx.phil
 from libtbx.utils import Sorry, Usage
 import sys, os
+import iotbx.phil
 
 master_phil = iotbx.phil.parse("""
 mtz_file = None
@@ -22,6 +23,7 @@ mtz_file = None
   .help = MTZ file containing map coefficients
 pdb_file = None
   .type = path
+  .multiple = True
   .short_caption = Model file
   .help = Model file around which to draw the map.  If not supplied, the map \
     will fill the unit cell.
@@ -114,44 +116,14 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
     master_phil.show(out=log, prefix="  ")
     raise Usage("phenix.mtz2map [mtz_file] [pdb_file] [param_file] " +
       "[--show_maps]")
-  parameter_interpreter = master_phil.command_line_argument_interpreter(
-    home_scope="")
-  for arg in args :
-    if os.path.isfile(arg) :
-      input_file = file_reader.any_file(arg)
-      if input_file.file_type == "pdb" :
-        if pdb_file is not None :
-          raise Sorry("A model file has already been defined.")
-        input_phil.append(iotbx.phil.parse("pdb_file=%s" %
-          os.path.abspath(arg)))
-        pdb_file = input_file
-      elif input_file.file_type == "hkl" :
-        if not arg.endswith(".mtz") :
-          raise Sorry("Only MTZ files are supported for reflections input.")
-        elif mtz_file is not None :
-          raise Sorry("An MTZ file has already been defined.")
-        input_phil.append(iotbx.phil.parse("mtz_file=%s" %
-          os.path.abspath(arg)))
-        mtz_file = input_file
-      else :
-        try :
-          file_phil = iotbx.phil.parse(file_name=arg)
-        except RuntimeError :
-          raise Sorry("The file %s was not in a recognizable format." % arg)
-        else :
-          input_phil.append(file_phil)
-    else :
-      if arg.startswith("--") :
-        arg = arg[2:] + "=True"
-      try :
-        arg_phil = parameter_interpreter.process(arg=arg)
-      except RuntimeError :
-        print >> log, "Unknown argument '%s'." % arg
-      else :
-        input_phil.append(arg_phil)
-  working_phil = master_phil.fetch(sources=input_phil)
-  params = working_phil.extract()
-  if mtz_file is None and params.mtz_file is None :
+  input_objects = iotbx.phil.process_command_line_with_files(
+    args=args,
+    master_phil=master_phil,
+    pdb_file_def="pdb_file",
+    reflection_file_def="mtz_file")
+  params = input_objects.work.extract()
+
+  if params.mtz_file is None:
     raise Sorry("Please specify an MTZ file containing map coefficients.")
   if (not run_in_current_working_directory) :
     if params.output.directory is None :
@@ -167,10 +139,9 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
   if params.output.prefix is None :
     params.output.prefix = os.path.splitext(
       os.path.basename(params.mtz_file))[0]
-  if mtz_file is None :
-    mtz_file = file_reader.any_file(params.mtz_file,
-      force_type="hkl",
-      raise_sorry_if_errors=True)
+  mtz_file = file_reader.any_file(params.mtz_file,
+    force_type="hkl",
+    raise_sorry_if_errors=True)
   all_labels=[]
   if params.show_maps or len(params.labels) == 0 :
     map_labels = utils.get_map_coeff_labels(mtz_file.file_server,
@@ -200,8 +171,9 @@ def run (args, log=sys.stdout, run_in_current_working_directory=False) :
     else :
       raise Sorry("No map coefficients found in this MTZ file.")
     if params.show_maps : return False
-  if pdb_file is None and params.pdb_file is not None :
-    pdb_file = file_reader.any_file(params.pdb_file, force_type="pdb")
+  pdb_file = None
+  if len(params.pdb_file) > 0:
+    pdb_file = file_reader.any_file(params.pdb_file[0], force_type="pdb")
     pdb_file.assert_file_type("pdb")
   miller_arrays = mtz_file.file_object.as_miller_arrays()
   r_free_flags = None
@@ -387,7 +359,7 @@ class launcher (runtime_utils.target_with_save_result) :
       run_in_current_working_directory=True)
 
 def validate_params (params) :
-  if (params.mtz_file is None) :
+  if params.mtz_file is None:
     raise Sorry("No MTZ file was provided.")
 
 if __name__ == "__main__" :

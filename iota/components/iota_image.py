@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/17/2016
+Last Changed: 01/30/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -400,11 +400,11 @@ class SingleImage(object):
     if (                  self.params.advanced.integrate_with == 'dials' or
         abs(img_data['BEAM_CENTER_X'] - img_data['BEAM_CENTER_Y']) < 0.1
         ):
-      self.params.image_conversion.square_mode = 'None'
+      self.params.image_conversion.square_mode = 'no_modification'
 
     # Check if conversion/modification is required and carry them out
     if (                                               img_type == 'raw' or
-                      self.params.image_conversion.square_mode != "None" or
+           self.params.image_conversion.square_mode != "no_modification" or
                          self.params.image_conversion.beam_center.x != 0 or
                          self.params.image_conversion.beam_center.y != 0 or
                               self.params.image_conversion.beamstop != 0 or
@@ -419,26 +419,28 @@ class SingleImage(object):
         pass
 
       # Generate converted image pickle filename
-      if self.params.image_conversion.rename_pickle_prefix != None:
-        if str(self.params.image_conversion.rename_pickle_prefix).lower() == "auto":
-          try:
-            prefix = os.getlogin()
-          except Exception:
-            prefix = 'converted'
-        else:
-          prefix = self.params.image_conversion.rename_pickle_prefix
-        number = int(os.path.basename(self.conv_base))
-        self.conv_img = os.path.abspath(os.path.join(self.conv_base,
-                    "{}_{}_{:05d}.pickle".format(prefix, number, self.img_index)))
-      else:  # This option preserves the input directory structure
-        img_path = misc.make_image_path(self.raw_img, self.input_base, self.conv_base)
-        self.conv_img = os.path.abspath(os.path.join(img_path,
-             os.path.basename(self.raw_img).split('.')[0] + ".pickle"))
+      rename_choice = str(self.params.image_conversion.rename_pickle).lower()
+      if rename_choice == "keep_file_structure":
+        img_path = misc.make_image_path(self.raw_img, self.input_base,
+                                        self.conv_base)
+        img_filename = os.path.basename(self.raw_img).split('.')[0] + ".pickle"
+        self.conv_img = os.path.abspath(os.path.join(img_path, img_filename))
         try:
           if not os.path.isdir(img_path):
             os.makedirs(img_path)
         except OSError:
           pass
+      else:
+        if rename_choice == "auto_filename":
+          try:
+            prefix = os.getlogin()
+          except Exception:
+            prefix = 'converted'
+        elif rename_choice == "custom_filename":
+          prefix = self.params.image_conversion.rename_pickle_prefix
+        number = int(os.path.basename(self.conv_base))
+        self.conv_img = os.path.abspath(os.path.join(self.conv_base,
+                    "{}_{}_{:05d}.pickle".format(prefix, number, self.img_index)))
 
       # Convert raw image to image pickle
       beamstop = self.params.image_conversion.beamstop
@@ -474,7 +476,7 @@ class SingleImage(object):
       ep.dump(self.conv_img, img_data)
 
     # Triage image (i.e. check for usable diffraction, using selected method)
-    if str(self.params.image_triage.type).lower() != 'none':
+    if str(self.params.image_triage.type).lower() != 'no_triage':
       if self.params.advanced.integrate_with == 'cctbx':
         from iota.components.iota_cctbx import Triage
         triage = Triage(self.conv_img, self.gain, self.params)

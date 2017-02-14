@@ -404,8 +404,8 @@ class rna_validation (slots_getstate_setstate):
 
   def __init__(self,
       pdb_hierarchy,
-      geometry_restraints_manager,
-      params,
+      geometry_restraints_manager=None,
+      params=None,
       outliers_only=True):
     if (geometry_restraints_manager is None) :
       mon_lib_srv = monomer_library.server.server()

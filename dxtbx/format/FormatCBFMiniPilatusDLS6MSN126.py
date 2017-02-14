@@ -290,7 +290,6 @@ class FormatCBFMiniPilatusDLS6MSN126(FormatCBFMiniPilatus):
       for panel in d:
         xmin, ymin, xmax, ymax = self.coords[panel.get_name()]
         self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
-        self._raw_data.append(raw_data[ymin:ymax,xmin:xmax])
       self._raw_data = tuple(self._raw_data)
     return self._raw_data
 

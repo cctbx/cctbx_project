@@ -5,7 +5,6 @@ from mmtbx.validation import ramalyze
 from mmtbx.validation import analyze_peptides
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
 from mmtbx.rotamer import rotamer_eval
-from mmtbx.refinement import fit_rotamers
 from cctbx.array_family import flex
 import iotbx.phil
 from libtbx.str_utils import make_sub_header
@@ -57,6 +56,23 @@ torsion_ncs_params = iotbx.phil.parse("""
    .type = bool
    .expert_level = 4
 """)
+
+def target(sites_cart_residue, unit_cell, m):
+  sites_frac_residue = unit_cell.fractionalize(sites_cart_residue)
+  result = 0
+  for rsf in sites_frac_residue:
+    result += m.eight_point_interpolation(rsf)
+  return result
+
+def all_sites_above_sigma_cutoff(sites_cart_residue,
+                                 unit_cell,
+                                 m,
+                                 sigma_cutoff):
+  sites_frac_residue = unit_cell.fractionalize(sites_cart_residue)
+  for rsf in sites_frac_residue:
+    if m.eight_point_interpolation(rsf) < sigma_cutoff:
+      return False
+  return True
 
 class torsion_ncs(object):
   def __init__(self,
@@ -1140,9 +1156,7 @@ class torsion_ncs(object):
   def get_sites_cc(self,
                    sites_cart,
                    target_map_data):
-    t = fit_rotamers.target(sites_cart,
-                            self.unit_cell,
-                            target_map_data)
+    t = target(sites_cart, self.unit_cell, target_map_data)
     return t
 
 
@@ -1180,7 +1194,7 @@ class torsion_ncs(object):
             t_test = self.get_sites_cc(sites_cart_residue,
                                        target_map_data)
             map_cc_hash[key] = t_test
-            sigma_state = fit_rotamers.all_sites_above_sigma_cutoff(
+            sigma_state = all_sites_above_sigma_cutoff(
                             sites_cart_residue,
                             self.unit_cell,
                             target_map_data,

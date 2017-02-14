@@ -54,7 +54,7 @@ def exercise(pdb_str, use_ideal_bonds_angles):
   grf = cctbx.geometry_restraints.flags.flags(default=True)
   minimized = mmtbx.refinement.geometry_minimization.lbfgs(
       sites_cart                         = sites_cart,
-      correct_special_position_tolerance =1.0,
+      correct_special_position_tolerance = 1.0,
       geometry_restraints_manager        = geometry_restraints,
       geometry_restraints_flags          = grf,
       lbfgs_termination_params           = scitbx.lbfgs.termination_parameters(
@@ -64,39 +64,42 @@ def exercise(pdb_str, use_ideal_bonds_angles):
   sites_cart = xray_structure.sites_cart()
 
   riding_h_manager = riding.manager(
-    pdb_hierarchy           = pdb_hierarchy,
+    pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry_restraints,
     use_ideal_bonds_angles = use_ideal_bonds_angles)
 
   h_parameterization = riding_h_manager.h_parameterization
 
   diagnostics = riding_h_manager.diagnostics(
-    sites_cart         = sites_cart,
-    threshold          = 0.05)
+    sites_cart = sites_cart,
+    threshold  = 0.05)
+  h_distances   = diagnostics.h_distances
+  unk_list      = diagnostics.unk_list
+  number_h_para = diagnostics.number_h_para
 
-  h_distances        = diagnostics.h_distances
-  unk_list           = diagnostics.unk_list
-  number_h           = diagnostics.number_h
+# number of H atoms in structure
+  number_h = 0
+  for h_bool in xray_structure.hd_selection():
+    if h_bool: number_h += 1
+
+  assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+  assert(len(unk_list) == 0), \
+    'Some H atoms are parameterized with an unknown type'
 
   #type_list = []
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()
-    hp = h_parameterization[ih]
     #type_list.append(hp.htype)
     if use_ideal_bonds_angles:
       assert (h_distances[ih] < 0.03), \
         'distance too large: %s  atom: %s (%s) residue: %s ' \
-        % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
+        % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
     else:
       assert (h_distances[ih] < 1e-8), \
         'distance too large: %s  atom: %s (%s) residue: %s ' \
-        % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
-    print 'type: %s distance: %s  atom: %s (%s) residue: %s ' % \
-      (hp.htype, h_distances[ih], atoms[ih].name, ih, labels.resseq)
-
-  assert (number_h == len(h_parameterization.keys())), \
-    'Not all H atoms are parameterized'
-  assert(len(unk_list) == 0), 'Some H atoms are not recognized'
+        % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
+    #print '%s distance: %s  atom: %s (%s) residue: %s ' % \
+    #  (h_parameterization[ih].htype, h_distances[ih], atoms[ih].name, ih, labels.resseq)
 
   #for type1, type2 in zip(type_list, type_list_known):
   #  assert (type1 == type2)

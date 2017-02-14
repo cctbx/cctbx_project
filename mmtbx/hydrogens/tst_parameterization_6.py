@@ -35,31 +35,32 @@ def exercise(pdb_str):
   riding_h_manager = riding.manager(
     pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry_restraints)
-
   h_parameterization = riding_h_manager.h_parameterization
 
   diagnostics = riding_h_manager.diagnostics(
     sites_cart         = sites_cart,
     threshold          = 0.05)
-
   h_distances        = diagnostics.h_distances
   unk_list           = diagnostics.unk_list
-  number_h           = diagnostics.number_h
+  number_h_para = diagnostics.number_h_para
+
+# number of H atoms in structure
+  number_h = 0
+  for h_bool in xray_structure.hd_selection():
+    if h_bool: number_h += 1
+
+  if (pdb_str != pdb_str_02):
+    assert (number_h_para == number_h), 'Not all H atoms are parameterized'
+  assert(len(unk_list) == 0), \
+    'Some H atoms are parameterized with an unknown type'
 
 # For each H atom, check if distance between computed H and that in input model is
 # not too large
-  type_list = []
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()
-    hp = h_parameterization[ih]
-    type_list.append(hp.htype)
-    assert (h_distances[ih] < 0.1), 'distance too large: %s  atom: %s (%s) residue: %s ' \
-      % (hp.htype, atoms[ih].name, ih, labels.resseq.strip())
-#
-  assert(len(unk_list) == 0), 'Some H atoms are not recognized'
-  if (pdb_str != pdb_str_02):
-    assert (number_h == len(h_parameterization.keys())), \
-      'Not all H atoms are parameterized'
+    assert (h_distances[ih] < 0.1), \
+      'distance too large: %s  atom: %s (%s) residue: %s ' \
+      % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
 
   #for type1, type2 in zip(type_list, type_list_known):
   #  assert (type1 == type2)
@@ -178,13 +179,6 @@ pdb_list = [pdb_str_00, pdb_str_01, pdb_str_02]
 
 pdb_list_name = ['pdb_str_00', 'pdb_str_01', 'pdb_str_02']
 
-
-#pdb_list = [pdb_str_00, pdb_str_01, pdb_str_02, pdb_str_03,
-#  pdb_str_04, pdb_str_05]
-#
-#pdb_list_name = ['pdb_str_00', 'pdb_str_01', 'pdb_str_02', 'pdb_str_03',
-#  'pdb_str_04', 'pdb_str_05']
-
 #type_list_known = ['2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs',
 #  '3neigbs', 'alg1b', '2tetra', '2tetra', '2tetra', '2tetra', 'alg1b',
 #  '3neigbs', '2tetra', '2tetra', '3neigbs', '2tetra', '2tetra',
@@ -196,7 +190,7 @@ pdb_list_name = ['pdb_str_00', 'pdb_str_01', 'pdb_str_02']
 
 def run():
   for pdb_str, str_name in zip(pdb_list,pdb_list_name):
-    print str_name
+    #print str_name
     exercise(pdb_str=pdb_str)
 
 

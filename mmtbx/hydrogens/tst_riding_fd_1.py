@@ -1,6 +1,6 @@
 from __future__ import division
 import time
-import sys
+#import sys
 from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -8,9 +8,8 @@ import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens import riding
 from mmtbx.hydrogens import parameterization
-from mmtbx.hydrogens import modify_gradients
-from scitbx import matrix
-
+#from mmtbx.hydrogens import modify_gradients
+#from scitbx import matrix
 
 #-----------------------------------------------------------------------------
 # Finite difference test for modified gradients of riding H
@@ -32,17 +31,15 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
       raw_records    = pdb_str,
       force_symmetry = True)
   xray_structure = processed_pdb_file.xray_structure()
+  sites_cart = xray_structure.sites_cart()
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  #sites_cart = pdb_hierarchy.atoms().extract_xyz()
+
+  hd_selection = xray_structure.hd_selection()
   geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = 5.0)
-  sites_cart = xray_structure.sites_cart()
-  es = geometry.energies_sites(
-    sites_cart = sites_cart,
-    compute_gradients = True)
-  g_analytical = es.gradients
 #
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-
   riding_h_manager = riding.manager(
     pdb_hierarchy          = pdb_hierarchy,
     geometry_restraints    = geometry,
@@ -50,9 +47,12 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
 
   h_parameterization = riding_h_manager.h_parameterization
 
-  ih = h_parameterization.keys()[0]
+  #ih = h_parameterization.keys()[0]
+  for hp in h_parameterization:
+    if (hp is not None):
+      ih = hp.ih
+
   rh_calc = parameterization.compute_H_position(
-    ih         = ih,
     sites_cart = sites_cart,
     hp         = h_parameterization[ih])
   #print 'distance before changing H', \
@@ -73,10 +73,19 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
   g_analytical = geometry.energies_sites(
     sites_cart = sites_cart,
     compute_gradients = True).gradients
-  modify_gradients.modify_gradients(
-    sites_cart         = sites_cart,
-    h_parameterization = h_parameterization,
-    grads              = g_analytical)
+
+  #modify_gradients.modify_gradients(
+  #  sites_cart         = sites_cart,
+  #  h_parameterization = h_parameterization,
+  #  grads              = g_analytical)
+  g_analytical_reduced = riding_h_manager.gradients_reduced(
+    sites_cart          = sites_cart,
+    grads               = g_analytical,
+    hd_selection        = hd_selection)
+
+  #print len(g_analytical)
+  #sites_cart_non_H = sites_cart.select(~hd_selection)
+
    #
   ex = [eps,0,0]
   ey = [0,eps,0]
@@ -91,9 +100,10 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
         sites_cart_[i_site] = [
           sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
         # after shift, recalculate H position
-        for ih in h_parameterization.keys():
+        for hp in h_parameterization:
+          if (hp == None): continue
+          ih = hp.ih
           rh_calc = parameterization.compute_H_position(
-            ih         = ih,
             sites_cart = sites_cart_,
             hp         = h_parameterization[ih])
           sites_cart_[ih] = tuple(rh_calc)
@@ -102,8 +112,10 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
           compute_gradients = False).target)
       g_fd_i.append((ts[1]-ts[0])/(2*eps))
     g_fd.append(g_fd_i)
+
+  g_fd_reduced = g_fd.select(~hd_selection)
   #
-  for g1, g2 in zip(g_analytical, g_fd):
+  for g1, g2 in zip(g_analytical_reduced, g_fd_reduced):
     #print g1,g2
     assert approx_equal(g1,g2, 1.e-4)
   #print '*'*79
