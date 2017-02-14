@@ -397,8 +397,10 @@ class RunStatsSentinel(Thread):
       time.sleep(5)
 
   def refresh_stats(self):
+    from xfel.ui.components.timeit import duration
     from xfel.ui.db.stats import HitrateStats
-    import copy
+    import copy, time
+    t1 = time.time()
     if self.parent.run_window.runstats_tab.trial_no is not None:
       trial = self.db.get_trial(
         trial_number=self.parent.run_window.runstats_tab.trial_no)
@@ -432,6 +434,8 @@ class RunStatsSentinel(Thread):
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
     self.reorder()
+    t2 = time.time()
+    print "refresh_stats (RunStats sentinel thread) took %s" % duration(t1, t2)
 
   def reorder(self):
     run_numbers_ordered = sorted(self.run_numbers)
@@ -1868,6 +1872,9 @@ class RunStatsTab(BaseTab):
           self.all_runs.append(r)
 
   def plot_static_runstats(self):
+    import time
+    from xfel.ui.components.timeit import duration
+    t1 = time.time()
     if self.png is not None:
       if self.static_bitmap is not None:
         self.static_bitmap.Destroy()
@@ -1878,6 +1885,8 @@ class RunStatsTab(BaseTab):
       self.runstats_panel.SetSizer(self.runstats_sizer)
       self.runstats_panel.Layout()
       # self.figure_panel.SetupScrolling(scrollToTop=False)
+    t2 = time.time()
+    print "plot_static_runstats (GUI main thread) took %s" % duration(t1, t2)
 
   def print_should_have_indexed_paths(self):
     try:

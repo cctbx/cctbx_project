@@ -103,6 +103,9 @@ class HitrateStats(object):
 
   def __call__(self):
     from iotbx.detectors.cspad_detector_formats import reverse_timestamp
+    from xfel.ui.components.timeit import duration
+    import time
+    t1 = time.time()
     run_numbers = [r.run for r in self.trial.runs]
     assert self.run.run in run_numbers
     rungroup_ids = [rg.id for rg in self.trial.rungroups]
@@ -141,7 +144,8 @@ class HitrateStats(object):
                JOIN `%s_cell_bin` cb ON cb.bin_id = bin.id AND cb.crystal_id = crystal.id
                WHERE event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d AND
                      cb.bin_id IN (%s)
-            """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id, ", ".join(low_res_bin_ids + high_res_bin_ids))
+            """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id,
+                  ", ".join(low_res_bin_ids + high_res_bin_ids))
     cursor = self.app.execute_query(query)
     timestamps = flex.double()
     n_strong = flex.int()
@@ -204,4 +208,6 @@ class HitrateStats(object):
     two_theta_low = two_theta_low.select(order)
     two_theta_high = two_theta_high.select(order)
 
+    t2 = time.time()
+    print "HitrateStats took %s" % duration(t1, t2)
     return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high

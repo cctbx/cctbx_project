@@ -2,6 +2,8 @@ from __future__ import division
 
 from dials.array_family import flex
 from matplotlib import pyplot as plt
+from xfel.ui.components.timeit import duration
+import time
 
 # get_hitrate_stats takes a tuple (run, trial, rungroup, d_min)
 # and returns a tuple of flex arrays as follows:
@@ -121,7 +123,18 @@ def get_run_stats(timestamps,
           tuple_of_timestamp_boundaries,
           run_numbers)
 
-def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], minimalist=False, interactive=True, xsize=30, ysize=10, high_vis=False, title=None):
+def plot_run_stats(stats,
+                   d_min,
+                   run_tags=[],
+                   run_statuses=[],
+                   minimalist=False,
+                   interactive=True,
+                   xsize=30,
+                   ysize=10,
+                   high_vis=False,
+                   title=None,
+                   ):
+  t1 = time.time()
   plot_ratio = max(min(xsize, ysize)/2.5, 3)
   if high_vis:
     spot_ratio = plot_ratio*4
@@ -242,6 +255,8 @@ def plot_run_stats(stats, d_min, run_tags=[], run_statuses=[], minimalist=False,
     f.set_size_inches(xsize, ysize)
     f.savefig("runstats_tmp.png", bbox_inches='tight', dpi=100)
     plt.close(f)
+    t2 = time.time()
+    print "plot_run_stats took %s" % duration(t1, t2)
     return "runstats_tmp.png"
 
 def plot_multirun_stats(runs,
