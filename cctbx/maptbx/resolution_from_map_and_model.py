@@ -291,16 +291,17 @@ class run(object):
         approximate      = True,
         nproc            = nproc,
         second           = True)
-      if(self.d_min<=4.): inc = 0.5
-      elif(self.d_min>4. and self.d_min<=8.): inc = 2.
-      else: inc = 1.
-      self.d_min, self.b_iso, self.cc, self.radius = _resolution_from_map_and_model_helper(
-        map              = map_data,
-        xray_structure   = xray_structure,
-        b_range          = b_range,
-        d_min_start      = self.d_min-inc,
-        d_min_end        = self.d_min+inc,
-        d_min_step       = 0.1,
-        approximate      = False,
-        nproc            = nproc,
-        second           = False)
+      if(self.d_min is not None):
+        if(self.d_min<=4.): inc = 0.5
+        elif(self.d_min>4. and self.d_min<=8.): inc = 2.
+        else: inc = 1.
+        self.d_min, self.b_iso, self.cc, self.radius = _resolution_from_map_and_model_helper(
+          map              = map_data,
+          xray_structure   = xray_structure,
+          b_range          = b_range,
+          d_min_start      = self.d_min-inc,
+          d_min_end        = self.d_min+inc,
+          d_min_step       = 0.1,
+          approximate      = False,
+          nproc            = nproc,
+          second           = False)
