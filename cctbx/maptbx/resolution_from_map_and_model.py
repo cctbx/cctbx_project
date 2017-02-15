@@ -5,6 +5,7 @@ from libtbx.test_utils import approx_equal
 from cctbx import maptbx
 from cctbx import miller
 import scitbx.math.curve_fitting
+import iotbx.pdb
 
 def parabola_is_good(x, y, assert_concave_up, use_longest_slope_criteria=False):
   if(assert_concave_up):
@@ -259,6 +260,13 @@ def _resolution_from_map_and_model_helper(
 
 def strip_model(map_data, xray_structure, pdb_hierarchy, d_min, radius, b_iso):
   from mmtbx.maps import correlation
+  ### Remove H or D
+  asc=pdb_hierarchy.atom_selection_cache()
+  sel = asc.selection("not (element H or element D)")
+  xray_structure = xray_structure.select(sel)
+  pdb_hierarchy = pdb_hierarchy.select(sel)
+  pdb_hierarchy.atoms().reset_i_seq()
+  ###
   size_start = xray_structure.scatterers().size()
   xray_structure = xray_structure.set_b_iso(value=b_iso)
   crystal_gridding = maptbx.crystal_gridding(
@@ -272,14 +280,39 @@ def strip_model(map_data, xray_structure, pdb_hierarchy, d_min, radius, b_iso):
     fourier_coefficients = f_calc)
   map_calc = fft_map.real_map_unpadded()
   selection = flex.size_t()
-  for rg in pdb_hierarchy.residue_groups():
-    sel = rg.atoms().extract_i_seq()
-    xyz = rg.atoms().extract_xyz()
-    cc = correlation.from_map_map_atoms(
-      map_1=map_data, map_2=map_calc, sites_cart=xyz,
-      unit_cell=f_calc.unit_cell(), radius=radius)
-    if(cc>0.5):
-      selection.extend(sel)
+  class cc(object):
+    def __init__(self, map1, map2, unit_cell, radius):
+      adopt_init_args(self, locals())
+    def compute(self, xyz):
+      return correlation.from_map_map_atoms( map_1=self.map1, map_2=self.map2,
+        sites_cart=xyz, unit_cell=self.unit_cell, radius=self.radius)
+  cc_calculator = cc(map1=map_data, map2=map_calc, unit_cell=f_calc.unit_cell(),
+    radius=radius)
+  get_class = iotbx.pdb.common_residue_names_get_class
+  for chain in pdb_hierarchy.only_model().chains():
+    for residue_group in chain.residue_groups():
+      for residue in residue_group.atom_groups():
+        if(get_class(residue.resname) == "common_amino_acid"):
+          sel_bb = flex.size_t()
+          sel_sc = flex.size_t()
+          xyz_bb = flex.vec3_double()
+          xyz_sc = flex.vec3_double()
+          for atom in residue.atoms():
+            if(atom.name.strip().upper() in ["CA","CB","C","O","N"]):
+              sel_bb.append(atom.i_seq)
+              xyz_bb.append(atom.xyz)
+            else:
+              sel_sc.append(atom.i_seq)
+              xyz_sc.append(atom.xyz)
+          cc = cc_calculator.compute(xyz = xyz_bb)
+          if(cc>0.5): selection.extend(sel_bb)
+          cc = cc_calculator.compute(xyz = xyz_sc)
+          if(cc>0.5): selection.extend(sel_sc)
+        else:
+          sel = residue.atoms().extract_i_seq()
+          xyz = residue.atoms().extract_xyz()
+          cc = cc_calculator.compute(xyz = xyz)
+          if(cc>0.5): selection.extend(sel)
   xray_structure = xray_structure.select(selection)
   size_final = xray_structure.scatterers().size()
   if(size_final*100./size_start < 50):
