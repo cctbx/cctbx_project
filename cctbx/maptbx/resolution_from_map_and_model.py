@@ -119,6 +119,7 @@ def _resolution_from_map_and_model_helper(
     if(f_obs is not None): break
     d_min_start += 0.1
     fc = fc.resolution_filter(d_min=d_min_start)
+  d_min_start = fc.d_min()
   #
   def get_cc(m1, m2, selections, radii):
     result = -9999.
@@ -202,7 +203,8 @@ def _resolution_from_map_and_model_helper(
   ###
   if(thorough):
     o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
-      selections=selections, d_min_start=d_min_start, d_min_end=f_obs.d_min()+1.e-6,
+      selections=selections, d_min_start=d_min_start,
+      d_min_end=f_obs.d_min()+1.e-6,
       d_min_step=d_min_step, nproc=1)
     junk,junk,b, junk = o.x, o.y, o.b, o.radii
     assert o.b.size()==1
@@ -214,7 +216,7 @@ def _resolution_from_map_and_model_helper(
     if(len(maxima1)!=1): return None,None,None,None # Exactly one peak expected
     o2 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
       selections=selections, d_min_start=d_min_start,
-      d_min_end=max(maxima1[1]+2., d_min_end),
+      d_min_end=max(maxima1[0][1]+2., d_min_end),
       d_min_step=d_min_step, nproc=nproc)
     maxima2 = parabola_is_good(x=o2.x, y=o2.y_smooth(), assert_concave_up=False)
     #print "maxima2",maxima2
