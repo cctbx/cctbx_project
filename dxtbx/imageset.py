@@ -206,7 +206,6 @@ class SingleFileReader(ReaderBase):
     Override deep copy behaviour to use same format instance
 
     '''
-    from copy import deepcopy
     return SingleFileReader(self.get_format())
 
 
