@@ -110,7 +110,7 @@ class groups(object):
     components = connected_component_algorithm.connected_components(g)
     import itertools
     self.ncs_pairs = []
-    self.largest_tncs_order = [ 0, "", [] ]
+    self.tncsresults = [ 0, "", [], 0.0 ]
     for (i,group) in enumerate(components):
       chains = [g.vertex_label(vertex=v) for v in group]
       fracscats = []
@@ -120,9 +120,10 @@ class groups(object):
         fracscats.append(sup[-1])
         radii.append(sup[-2])
       fs = sum(fracscats)/len(fracscats)
+      self.tncsresults[3] = fs # store fracscat in array
       rad = sum(radii)/len(radii)
       #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
-      n = 1
+      maxorder = 1
       vectors = []
       previous_id = itertools.combinations(chains,2).next()[0].id
       for pair in itertools.combinations(chains,2):
@@ -142,19 +143,20 @@ class groups(object):
         if not quiet:
           print fmt%(i, pair[0].id, pair[1].id, sup[2], t, fs)
         if pair[0].id == previous_id:
-          n += 1
+          maxorder += 1
           orthoxyz = unit_cell.orthogonalize( sup[1] )
           vectors.append(( sup[1], orthoxyz, sup[2] ))
         else:
           previous_id = pair[0].id
-          n = 1
+          maxorder = 1
           vectors = []
-        if n > self.largest_tncs_order[0]:
-          self.largest_tncs_order[0] = n
-          self.largest_tncs_order[1] = previous_id
-          self.largest_tncs_order[2] = vectors
+        if maxorder > self.tncsresults[0]:
+          self.tncsresults[0] = maxorder
+          self.tncsresults[1] = previous_id
+          self.tncsresults[2] = vectors
     if not quiet:
-      print "Largest TNCS order= ", str(self.largest_tncs_order)
+      print "Largest TNCS order, peptide chain, fracvector, orthvector, angle, fracscat = ", \
+       str(self.tncsresults)
     #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
 
 
