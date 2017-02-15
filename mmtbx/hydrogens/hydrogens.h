@@ -114,7 +114,57 @@ vec3<double> compute_H_position(
     }
 
     return rh_calc;
+} // compute_H_position
+
+// returns new sites_cart (does not overwrite input sites_cart)
+af::shared<vec3<double> > apply_new_H_positions(
+    af::shared<vec3<double> > const& sites_cart,
+    boost::python::list const& parameterization_)
+  {
+// make local list parameterization
+    std::cout << "length of parameterization: " << len(parameterization_) << "\n";
+    af::shared<riding_coefficients> parameterization;
+    for(std::size_t i=0;i<boost::python::len(parameterization_);i++) {
+      parameterization.push_back(
+          boost::python::extract<riding_coefficients>(parameterization_[i])());
+    }
+// create new sites_cart and initialize
+    af::shared<vec3<double> > sites_cart_new(sites_cart.size());
+    for(std::size_t i=0; i < sites_cart.size(); i++) {
+      sites_cart_new[i] = sites_cart[i];
+    }
+// calculate positions of H atoms according to parameterization
+    for(int i=0; i < parameterization.size(); i++) {
+      riding_coefficients rc = parameterization[i];
+      int ih = rc.ih;
+      vec3<double> rh_calc;
+      //std::cout << "ih: " << ih << "  rx_ini: " << sites_cart[ih][0] << "\n";
+      rh_calc = compute_H_position(rc, sites_cart);
+      sites_cart_new[ih] = rh_calc;
+    }
+  return sites_cart_new;
 }
+
+//af::shared<scitbx::vec3<double> > modify_gradients_cpp(
+//                   af::shared<scitbx::vec3<double> > const& gradients,
+//                   boost::python::list const& parameterization_)
+//  {
+//    std::cout << "length of parameterization: " << len(parameterization_) << "\n";
+//    af::shared<riding_coefficients> parameterization;
+//    af::shared<scitbx::vec3<double> > gradients_new;
+//    gradients_new = gradients;
+//    for(std::size_t i=0;i<boost::python::len(parameterization_);i++) {
+//      parameterization.push_back(
+//          boost::python::extract<riding_coefficients>(parameterization_[i])());
+//    }
+//    for(int i=0; i < parameterization.size(); i++) {
+//      riding_coefficients rc = parameterization[i];
+//      int ih = rc.ih;
+//      std::cout << "ih: " << ih << "  Gx: " << gradients[ih][0] << "\n";
+//    }
+//  return gradients_new;
+//}
+
 
 }} // namespace mmtbx::riding_h
 

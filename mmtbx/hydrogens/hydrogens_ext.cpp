@@ -3,6 +3,8 @@
 #include <boost/python.hpp>
 #include <mmtbx/hydrogens/hydrogens.h>
 
+#include <cctbx/boost_python/flex_fwd.h>
+
 //SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(mmtbx::hydrogens::common)
 
 namespace mmtbx { namespace hydrogens {
@@ -48,6 +50,22 @@ namespace {
                   (arg("riding_coefficients"),
                    arg("sites_cart")))
     ;
+
+    def("apply_new_H_positions",
+         (af::shared<vec3<double> >(*)
+               (af::shared<vec3<double> > const&,
+                boost::python::list const&)) apply_new_H_positions,
+                  (arg("sites_cart"),
+                   arg("parameterization")))
+    ;
+
+    //def("modify_gradients_cpp",
+    //      (af::shared<scitbx::vec3<double> >(*)
+    //          (af::shared<scitbx::vec3<double> >,
+    //           boost::python::list const& )) modify_gradients_cpp,
+    //             (arg("gradients"),
+    //              arg("parameterization")))
+    //;
 
   }
 
