@@ -665,7 +665,7 @@ def run(
   if not resolution:
     from cctbx import maptbx
     resolution=maptbx.resolution_from_map_and_model.run(
-      map_data=map_data, xray_structure=xrs).d_min
+      map_data=map_data, xray_structure=xrs, pdb_hierarchy=hierarchy).d_min
   if(resolution is None):
     raise Sorry("Resolution is required")
   print >>out,"\nResolution limit: %7.2f" %(resolution)

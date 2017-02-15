@@ -470,7 +470,7 @@ def run(pdb_str, d_min, b, randomize):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   xrs = ph.extract_xray_structure(crystal_symmetry=cs)
   o = maptbx.resolution_from_map_and_model.run(map_data=map_obs,
-    xray_structure=xrs, d_min_min=1.5)
+    xray_structure=xrs, d_min_min=1.5, pdb_hierarchy=ph)
   return o.d_min, o.b_iso, o.cc
 
 if (__name__ == "__main__"):

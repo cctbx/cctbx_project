@@ -3,9 +3,10 @@ from cctbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
 from cctbx import maptbx
+from cctbx import miller
 import scitbx.math.curve_fitting
 
-def parabola_is_good(x, y, assert_concave_up):
+def parabola_is_good(x, y, assert_concave_up, use_longest_slope_criteria=False):
   if(assert_concave_up):
     fit = scitbx.math.curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
       degree=2, min_iterations=50, number_of_cycles=10)
@@ -34,6 +35,28 @@ def parabola_is_good(x, y, assert_concave_up):
       tmp.append(m[1])
       tmp2.append(m)
   maxima = tmp2
+  # Choose peaks with longest slope
+  if(use_longest_slope_criteria):
+    if(len(maxima)>1):
+      maxima_plus = []
+      for m in maxima:
+        i = m[2]
+        cntr=0
+        for j in range(1,100):
+          if(i-j>=0 and y[i-j]<=y[i-j+1]):
+            cntr+=1
+          else: break
+          if(i+j<=y.size()-1 and y[i+j]<=y[i+j-1]):
+            cntr+=1
+          else: break
+        maxima_plus.append([m,cntr])
+      cntr_max = -1
+      maximum = None
+      for mp in maxima_plus:
+        if(mp[1]>cntr_max):
+          cntr_max = mp[1]
+          maximum = mp[0]
+      maxima = [maximum]
   return maxima
 
 def _resolution_from_map_and_model_helper(
@@ -191,7 +214,8 @@ def _resolution_from_map_and_model_helper(
     o1 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=o.b, map=map,
       selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
       d_min_step=d_min_step, nproc=nproc)
-    maxima1 = parabola_is_good(x=o1.x, y=o1.y_smooth(), assert_concave_up=True)
+    maxima1 = parabola_is_good(x=o1.x, y=o1.y_smooth(), assert_concave_up=True,
+      use_longest_slope_criteria=True)
     #print "maxima1",maxima1
     if(len(maxima1)!=1): return None,None,None,None # Exactly one peak expected
     o2 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
@@ -233,8 +257,39 @@ def _resolution_from_map_and_model_helper(
       d_best, b_best, cc_best,rad_best = di, bi, cci,ri
   return d_best, b_best, cc_best, rad_best
 
+def strip_model(map_data, xray_structure, pdb_hierarchy, d_min, radius, b_iso):
+  from mmtbx.maps import correlation
+  size_start = xray_structure.scatterers().size()
+  xray_structure = xray_structure.set_b_iso(value=b_iso)
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell             = xray_structure.unit_cell(),
+    space_group_info      = xray_structure.space_group_info(),
+    pre_determined_n_real = map_data.accessor().all(),
+    symmetry_flags        = maptbx.use_space_group_symmetry)
+  f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
+  fft_map = miller.fft_map(
+    crystal_gridding     = crystal_gridding,
+    fourier_coefficients = f_calc)
+  map_calc = fft_map.real_map_unpadded()
+  selection = flex.size_t()
+  for rg in pdb_hierarchy.residue_groups():
+    sel = rg.atoms().extract_i_seq()
+    xyz = rg.atoms().extract_xyz()
+    cc = correlation.from_map_map_atoms(
+      map_1=map_data, map_2=map_calc, sites_cart=xyz,
+      unit_cell=f_calc.unit_cell(), radius=radius)
+    if(cc>0.5):
+      selection.extend(sel)
+  xray_structure = xray_structure.select(selection)
+  size_final = xray_structure.scatterers().size()
+  if(size_final*100./size_start < 50):
+    return None
+  else:
+    return xray_structure
+
 class run(object):
-  def __init__(self, map_data, xray_structure, d_min_min=None, nproc=1):
+  def __init__(self, map_data, xray_structure, pdb_hierarchy, d_min_min=None,
+                     nproc=1):
     """
     Given map and model estimate resolution by maximizing map CC(map, model-map).
     As a by-product, also provides CC and optimal overall B-factor.
@@ -281,3 +336,24 @@ class run(object):
           d_min_step     = 0.1,
           thorough       = True,
           nproc          = nproc)
+      xray_structure = strip_model(
+        map_data       = map_data,
+        xray_structure = xray_structure,
+        pdb_hierarchy  = pdb_hierarchy,
+        d_min          = self.d_min,
+        radius         = self.radius,
+        b_iso          = self.b_iso)
+      if(xray_structure is not None):
+        d_min, b_iso, cc, radius = \
+          _resolution_from_map_and_model_helper(
+            map            = map_data,
+            xray_structure = xray_structure,
+            b_range        = b_range,
+            d_min_start    = d_min_start,
+            d_min_end      = d_min_end,
+            d_min_step     = 0.1,
+            thorough       = True,
+            nproc          = nproc)
+        if(d_min is not None):
+          self.d_min, self.b_iso, self.cc, self.radius = \
+            d_min, b_iso, cc, radius
