@@ -1,10 +1,11 @@
 from __future__ import division
+import time
 from cctbx import geometry_restraints
 from scitbx import matrix
 from mmtbx.hydrogens import connectivity
 from mmtbx.hydrogens import parameterization
 from mmtbx.hydrogens import modify_gradients
-#from mmtbx_hydrogens_ext import *
+from mmtbx_hydrogens_ext import *
 
 class manager(object):
   def __init__(self,
@@ -38,7 +39,23 @@ class manager(object):
     self.h_parameterization = \
       self.parameterization_manager.determine_parameterization()
 
-  def idealize_hydrogens_inplace(self, pdb_hierarchy=None, xray_structure=None):
+    self.parameterization_cpp = []
+#    t0=time.time()
+    for hp in self.h_parameterization:
+      if (hp is not None):
+        if (hp.htype not in ['unk','unk_ideal']):
+          ih = hp.ih
+          rc = riding_coefficients(
+            htype=hp.htype, ih = hp.ih, a0=hp.a0, a1=hp.a1, a2=hp.a2, a3=hp.a3,
+            a=hp.a, b=hp.b, h=hp.h, n=hp.n, disth=hp.dist_h)
+          self.parameterization_cpp.append(rc)
+#    print "initialize cpp para", time.time()-t0
+
+
+  def idealize_hydrogens_inplace(
+      self,
+      pdb_hierarchy  = None,
+      xray_structure = None):
     """ Doing idealization in place, maybe it is better to return a copy, but
     not sure. """
     # some safeguarding is necessary, like
@@ -55,7 +72,6 @@ class manager(object):
     for hp in self.h_parameterization:
       if (hp == None): continue
       ih = hp.ih
-      #hp = self.h_parameterization[ih]
       rh = matrix.col(sites_cart[ih])
       rh_calc = None
       if (hp.htype in ['unk','unk_ideal']):
@@ -74,34 +90,19 @@ class manager(object):
     if pdb_hierarchy is not None:
       pdb_hierarchy.adopt_xray_structure(xray_structure)
 
-  #def idealize_hydrogens_inplace_cpp(self, pdb_hierarchy=None, xray_structure=None):
-  #  if pdb_hierarchy is not None:
-  #    assert pdb_hierarchy.atoms_size() == self.pdb_hierarchy.atoms_size()
-  #  if xray_structure is None:
-  #    xray_structure = pdb_hierarchy.extract_xray_structure(
-  #      crystal_symmetry=self.cs)
-  #  sites_cart = xray_structure.sites_cart()
-#
-  #  for ih in self.h_parameterization:
-  #    hp = self.h_parameterization[ih]
-  #    rc = riding_coefficients(
-  #      htype=hp.htype, a0=hp.a0, a1=hp.a1, a2=hp.a2, a=hp.a, b=hp.b,
-  #      h=hp.h, n=hp.n, disth=hp.dist_h)
-  #    rh = matrix.col(sites_cart[ih])
-  #    rh_calc = None
-  #    if (hp.htype in ['unk','unk_ideal']):
-  #      rh_calc = rh
-  #    else:
-  #      rh_calc = compute_H_position(
-  #        riding_coefficients = rc,
-  #        sites_cart          = sites_cart,
-  #        ih                  = ih)
-  #      if (rh_calc is None):
-  #        rh_calc = rh
-  #    sites_cart[ih] = rh_calc
-  #  xray_structure.set_sites_cart(sites_cart)
-  #  if pdb_hierarchy is not None:
-  #    pdb_hierarchy.adopt_xray_structure(xray_structure)
+  def idealize_hydrogens_inplace_cpp(self, pdb_hierarchy=None, xray_structure=None):
+    if pdb_hierarchy is not None:
+      assert pdb_hierarchy.atoms_size() == self.pdb_hierarchy.atoms_size()
+    if xray_structure is None:
+      xray_structure = pdb_hierarchy.extract_xray_structure(
+        crystal_symmetry=self.cs)
+    sites_cart = xray_structure.sites_cart()
+    sites_cart_new = apply_new_H_positions(
+      sites_cart = sites_cart,
+      parameterization = self.parameterization_cpp)
+    xray_structure.set_sites_cart(sites_cart_new)
+    if pdb_hierarchy is not None:
+      pdb_hierarchy.adopt_xray_structure(xray_structure)
 
   def gradients_reduced(self, grads, sites_cart, hd_selection):
     modify_gradients.modify_gradients(
