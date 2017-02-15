@@ -13,64 +13,29 @@ import os
 import sys
 import iota.components.iota_misc as misc
 from iotbx.phil import parse
-from dials.array_family import flex
+from dxtbx.datablock import DataBlockFactory
+from dials.command_line.stills_process import phil_scope, Processor
 
-# TEMPORARY: The settings in the phil_scope will eventually be constructed from
-# settings in IOTA, reasonable defaults and an optional *.phil file
-phil_scope = parse('''
-  verbosity = 10
-    .type = int(value_min=0)
-    .help = "The verbosity level"
+class IOTADialsProcessor(Processor):
+  ''' Subclassing the Processor module from dials.stills_process to introduce
+  streamlined integration pickles output '''
 
-  input {
-    template = None
-      .type = str
-      .help = "The image sweep template"
-      .multiple = True
-   }
+  def __init__(self, params):
+    self.phil = params
+    Processor.__init__(self, params=params)
 
-  output {
-    shoeboxes = True
-      .type = bool
+  def write_integration_pickles(self, integrated, experiments, callback=None):
+    ''' This is streamlined vs. the code in stills_indexer, since the filename
+        convention is set up upstream.
+    '''
+    from libtbx import easy_pickle
+    from xfel.command_line.frame_extractor import ConstructFrame
 
-    datablock_filename = datablock.json
-      .type = str
-      .help = "The filename for output datablock"
+    print 'DEBUG: SAVING FILE UNDER ', self.phil.output.integration_pickle
 
-    strong_filename = strong.pickle
-      .type = str
-      .help = "The filename for strong reflections from spot finder output."
-
-    indexed_filename = indexed.pickle
-      .type = str
-      .help = "The filename for indexed reflections."
-
-    refined_experiments_filename = refined_experiments.json
-      .type = str
-      .help = "The filename for saving refined experimental models"
-
-    integrated_filename = integrated.pickle
-      .type = str
-      .help = "The filename for final integrated reflections."
-
-    profile_filename = profile.phil
-      .type = str
-      .help = "The filename for output reflection profile parameters"
-
-    integration_pickle = int-%s_%d.pickle
-      .type = str
-      .help = Output integration results for each color data to separate cctbx.xfel-style pickle files
-  }
-
-  include scope dials.algorithms.spot_finding.factory.phil_scope
-  include scope dials.algorithms.indexing.indexer.index_only_phil_scope
-  include scope dials.algorithms.refinement.refiner.phil_scope
-  include scope dials.algorithms.integration.integrator.phil_scope
-  include scope dials.algorithms.profile_model.factory.phil_scope
-  include scope dials.algorithms.spot_prediction.reflection_predictor.phil_scope
-
-''', process_includes=True)
-
+    self.frame = ConstructFrame(integrated, experiments[0]).make_frame()
+    self.frame["pixel_size"] = experiments[0].detector[0].get_pixel_size()[0]
+    easy_pickle.dump(self.phil.output.integration_pickle, self.frame)
 
 class Triage(object):
   """ Performs quick spotfinding (with mostly defaults) and determines if the number of
@@ -81,8 +46,6 @@ class Triage(object):
   def __init__(self, img, gain, params):
     """ Initialization and data read-in
     """
-    from dxtbx.datablock import DataBlockFactory
-
     self.gain = gain
     self.params = params
 
@@ -105,12 +68,10 @@ class Triage(object):
     """ Perform triage by running spotfinding and analyzing results
     """
 
-    # Set spotfinding params
-    self.phil.spotfinder.threshold.xds.global_threshold = self.params.dials.global_threshold
-    self.phil.spotfinder.threshold.xds.gain = self.gain
+    self.processor = IOTADialsProcessor(params=self.phil)
 
     # Perform spotfinding
-    observed = flex.reflection_table.from_observations(self.datablock, self.phil)
+    observed = self.processor.find_spots(datablock=self.datablock)
 
     # Triage the image
     if len(observed) >= self.params.image_triage.min_Bragg_peaks:
@@ -136,9 +97,9 @@ class Integrator(object):
                gain = 0.32,
                params=None):
     '''Initialise the script.'''
-    from dxtbx.datablock import DataBlockFactory
 
     self.params = params
+    #self.processor = IOTADialsProcessor(params=params)
 
     # Read settings from the DIALS target (.phil) file
     # If none is provided, use default settings (and may God have mercy)
@@ -146,7 +107,7 @@ class Integrator(object):
       with open(self.params.dials.target, 'r') as settings_file:
         settings_file_contents = settings_file.read()
       settings = parse(settings_file_contents)
-      current_phil = phil_scope.fetch(sources=[settings])
+      current_phil = phil_scope.fetch(source=settings)
       self.phil = current_phil.extract()
     else:
       self.phil = phil_scope.extract()
@@ -175,135 +136,29 @@ class Integrator(object):
 
   def find_spots(self):
 
-    # Set spotfinding params (NEED TO SCREEN OR DETERMINE)
-    self.phil.spotfinder.threshold.xds.global_threshold = self.params.dials.global_threshold
-    self.phil.spotfinder.threshold.xds.gain = self.gain
-
     # Perform spotfinding
-    self.observed = flex.reflection_table.from_observations(self.datablock, self.phil)
+    self.observed = self.processor.find_spots(datablock=self.datablock)
 
   def index(self):
 
-    from dials.algorithms.indexing.indexer import indexer_base
-
-    # Generate imagesets
-    imagesets = self.datablock.extract_imagesets()
-
-    # Necessary settings for stills processing
-    #self.phil.refinement.parameterisation.crystal.scan_varying = False
-    self.phil.indexing.scan_range=[]
-
-    # Check if unit cell / space group have been provided
-    if self.phil.indexing.known_symmetry.space_group == None or \
-       self.phil.indexing.known_symmetry.unit_cell == None:
-      self.phil.indexing.method = 'fft1d'
-    else:
-      self.phil.indexing.method == 'real_space_grid_search'
-
     # Run indexing
-    idxr = indexer_base.from_parameters(self.observed, imagesets, params=self.phil)
-    self.indexed = idxr.refined_reflections
-    self.experiments = idxr.refined_experiments
+    self.experiments, self.indexed = self.processor.index(
+      datablock=self.datablock, reflections=self.observed)
 
   def refine(self):
-    # From Aaron Brewster: refinement step skipped as it's done in indexing
-    # This writes out experiments to disc
-    if self.phil.output.refined_experiments_filename:
-      from dxtbx.model.experiment.experiment_list import ExperimentListDumper
-      dump = ExperimentListDumper(self.experiments)
-      dump.as_json(self.phil.output.refined_experiments_filename)
+    self.experiments = self.processor.refine(experiments=self.experiments,
+                                             centroids=self.indexed)
 
   def integrate(self):
+    print 'DEBUG: ', self.processor.params.indexing.known_symmetry.unit_cell
 
-    # Process reference reflections
-    self.indexed,_ = self.process_reference(self.indexed)
-
-    # Get integrator from input params
-    from dials.algorithms.profile_model.factory import ProfileModelFactory
-    from dials.algorithms.integration.integrator import IntegratorFactory
-
-    # Compute the profile model
-    self.experiments = ProfileModelFactory.create(self.phil, self.experiments, self.indexed)
-
-    # Predict the reflections
-    predicted = flex.reflection_table.from_predictions_multi(
-      self.experiments,
-      dmin=self.phil.prediction.d_min,
-      dmax=self.phil.prediction.d_max,
-      margin=self.phil.prediction.margin,
-      force_static=self.phil.prediction.force_static)
-
-    # Match the predictions with the reference
-    predicted.match_with_reference(self.indexed)
-
-    # Create the integrator
-    integrator = IntegratorFactory.create(self.phil, self.experiments, predicted)
-
-    # Integrate the reflections
-    self.integrated = integrator.integrate()
-
-    if self.integrated.has_key('intensity.prf.value'):
-      method = 'prf' # integration by profile fitting
-    elif self.integrated.has_key('intensity.sum.value'):
-      method = 'sum' # integration by simple summation
-    self.integrated = self.integrated.select(self.integrated['intensity.' + method + '.variance'] > 0) # keep only spots with sigmas above zero
-
-    # Save the reflections if selected
-    if self.phil.output.integrated_filename:
-      self.save_reflections(self.integrated, self.phil.output.integrated_filename)
-
-    self.write_integration_pickles()
-    from dials.algorithms.indexing.stills_indexer import calc_2D_rmsd_and_displacements
-    rmsd_indexed, _ = calc_2D_rmsd_and_displacements(self.indexed)
-    rmsd_integrated, _ = calc_2D_rmsd_and_displacements(self.integrated)
-    crystal_model = self.experiments.crystals()[0]
-
-  def write_integration_pickles(self):
-    ''' This is streamlined vs. the code in stills_indexer, since the filename
-        convention is set up upstream.
-    '''
-    from libtbx import easy_pickle
-    from xfel.command_line.frame_extractor import ConstructFrame
-
-    self.frame = ConstructFrame(self.integrated, self.experiments[0]).make_frame()
-    self.frame["pixel_size"] = self.experiments[0].detector[0].get_pixel_size()[0]
-    easy_pickle.dump(self.phil.output.integration_pickle, self.frame)
-
-
-  def process_reference(self, reference):
-    ''' Load the reference spots. - from xfel_process.py'''
-    from libtbx.utils import Sorry
-    if reference is None:
-      return None, None
-    assert("miller_index" in reference)
-    assert("id" in reference)
-    mask = reference.get_flags(reference.flags.indexed)
-    rubbish = reference.select(mask == False)
-    if mask.count(False) > 0:
-      reference.del_selected(mask == False)
-    if len(reference) == 0:
-      raise Sorry('''
-        Invalid input for reference reflections.
-        Expected > %d indexed spots, got %d
-      ''' % (0, len(reference)))
-    mask = reference['miller_index'] == (0, 0, 0)
-    if mask.count(True) > 0:
-      rubbish.extend(reference.select(mask))
-      reference.del_selected(mask)
-    mask = reference['id'] < 0
-    if mask.count(True) > 0:
-      raise Sorry('''
-        Invalid input for reference reflections.
-        %d reference spots have an invalid experiment id
-      ''' % mask.count(True))
-    return reference, rubbish
-
-  def save_reflections(self, reflections, filename):
-    ''' Save the reflections to file.  - from xfel_process.py (Aaron Brewster) '''
-    reflections.as_pickle(filename)
-
+    self.integrated = self.processor.integrate(experiments=self.experiments,
+                                               indexed=self.indexed)
+    self.frame = self.processor.frame
 
   def run(self):
+
+    self.processor = IOTADialsProcessor(params=self.phil)
 
     log_entry = ['\n']
     with misc.Capturing() as output:
