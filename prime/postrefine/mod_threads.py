@@ -11,8 +11,21 @@ import os
 import wx
 from threading import Thread
 
+from cctbx.uctbx import unit_cell
 from libtbx import easy_run
+from libtbx import easy_pickle as ep
+from libtbx.utils import to_str
+import iotbx.phil as ip
+import numpy as np
+
+import matplotlib.gridspec as gridspec
+from matplotlib import pyplot as plt
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+import iota.components.iota_misc as misc
 import iota.components.iota_controls as ct
+from prime.postrefine.mod_input import master_phil
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point

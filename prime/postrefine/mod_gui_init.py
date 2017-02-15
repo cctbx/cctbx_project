@@ -336,3 +336,6 @@ class PRIMEWindow(wx.Frame):
 
   def onQuit(self, e):
     self.Destroy()
+
+
+
