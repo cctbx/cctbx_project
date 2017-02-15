@@ -769,7 +769,7 @@ class SingleImage(object):
       from iota.components.iota_dials import Integrator
       integrator = Integrator(self.conv_img,
                               self.obj_base,
-                              self.fin_base,
+                              #self.fin_base,
                               self.fin_file,
                               self.final,
                               self.int_log,

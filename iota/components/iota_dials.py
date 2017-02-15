@@ -31,8 +31,6 @@ class IOTADialsProcessor(Processor):
     from libtbx import easy_pickle
     from xfel.command_line.frame_extractor import ConstructFrame
 
-    print 'DEBUG: SAVING FILE UNDER ', self.phil.output.integration_pickle
-
     self.frame = ConstructFrame(integrated, experiments[0]).make_frame()
     self.frame["pixel_size"] = experiments[0].detector[0].get_pixel_size()[0]
     easy_pickle.dump(self.phil.output.integration_pickle, self.frame)
@@ -90,7 +88,6 @@ class Integrator(object):
   def __init__(self,
                source_image,
                object_folder,
-               final_folder,
                final_filename,
                final,
                logfile,
@@ -99,7 +96,6 @@ class Integrator(object):
     '''Initialise the script.'''
 
     self.params = params
-    #self.processor = IOTADialsProcessor(params=params)
 
     # Read settings from the DIALS target (.phil) file
     # If none is provided, use default settings (and may God have mercy)
@@ -123,6 +119,11 @@ class Integrator(object):
     self.phil.output.integration_pickle = final_filename
     self.int_log = logfile #"{}/int_{}.log".format(final_folder, file_basename)
 
+    # Set customized parameters
+    self.phil.spotfinder.threshold.xds.global_threshold = self.params.dials.global_threshold
+    #self.phil.spotfinder.threshold.xds.gain = self.gain
+    self.phil.spotfinder.filter.min_spot_size=self.params.dials.min_spot_size
+
     self.img = [source_image]
     self.obj_base = object_folder
     self.gain = gain
@@ -135,23 +136,21 @@ class Integrator(object):
     self.obj_filename = "int_{}".format(os.path.basename(self.img[0]))
 
   def find_spots(self):
-
     # Perform spotfinding
     self.observed = self.processor.find_spots(datablock=self.datablock)
 
   def index(self):
-
     # Run indexing
     self.experiments, self.indexed = self.processor.index(
       datablock=self.datablock, reflections=self.observed)
 
   def refine(self):
+    # Run refinement
     self.experiments = self.processor.refine(experiments=self.experiments,
                                              centroids=self.indexed)
 
   def integrate(self):
-    print 'DEBUG: ', self.processor.params.indexing.known_symmetry.unit_cell
-
+    # Run integration
     self.integrated = self.processor.integrate(experiments=self.experiments,
                                                indexed=self.indexed)
     self.frame = self.processor.frame

@@ -1018,7 +1018,7 @@ class DIALSOptions(BaseDialog):
     # Add all to sizers
     options_sizer.Add(dials_box_sizer, flag=wx.ALL | wx.EXPAND, border=10)
     self.main_sizer.Add(phil_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.options, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.options, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(dialog_box,
                    flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
@@ -1091,9 +1091,13 @@ class DIALSOptions(BaseDialog):
       self.target_phil = self.phil.ctr.GetValue()
 
     dials_phil_text = '\n'.join([
-      'min_spot_size = {}'.format(self.min_spot_size.min_spot_size.GetValue()),
-      'global_threshold = {}'.format(
+      'dials',
+      '{',
+      '  min_spot_size = {}'.format(
+        self.min_spot_size.min_spot_size.GetValue()),
+      '  global_threshold = {}'.format(
         self.global_threshold.threshold.GetValue()),
+      '}'
     ])
 
     self.proc_phil = ip.parse(dials_phil_text)
@@ -1320,3 +1324,98 @@ class TextFileView(BaseDialog):
     self.txt_panel.SetupScrolling()
     self.main_sizer.Add(self.txt_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
+
+    # Dialog control
+    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK),
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+
+class ViewerWarning(BaseDialog):
+  def __init__(self, parent,
+               img_list_length = None,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
+    BaseDialog.__init__(self, parent, style=dlg_style,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(400, 400),
+                        *args, **kwargs)
+
+    self.img_list_length = img_list_length
+    self.no_images = 0
+
+    self.opt_sizer = wx.FlexGridSizer(6, 3, 10, 10)
+
+    self.rb1_img_view = wx.RadioButton(self, label='First 1 image',
+                                       style=wx.RB_GROUP)
+    self.rb2_img_view = wx.RadioButton(self, label='First 10 images')
+    self.rb3_img_view = wx.RadioButton(self, label='First 50 images')
+    self.rb4_img_view = wx.RadioButton(self, label='First 100 images')
+    self.rb5_img_view = wx.RadioButton(self, label='All images')
+    self.rb_custom = wx.RadioButton(self, label='Other: ')
+    self.opt_custom = wx.TextCtrl(self, size=(100, -1))
+    self.opt_custom.Disable()
+    self.txt_custom = wx.StaticText(self, label='images')
+    self.txt_custom.Disable()
+
+    self.opt_sizer.AddMany([self.rb1_img_view, (0, 0), (0, 0),
+                            self.rb2_img_view, (0, 0), (0, 0),
+                            self.rb3_img_view, (0, 0), (0, 0),
+                            self.rb4_img_view, (0, 0), (0, 0),
+                            self.rb5_img_view, (0, 0), (0, 0),
+                            self.rb_custom, self.opt_custom, self.txt_custom])
+
+    # Grey out irrelevant radio buttons
+    if self.img_list_length < 100:
+      self.rb4_img_view.Disable()
+    if self.img_list_length < 50:
+      self.rb3_img_view.Disable()
+    if self.img_list_length < 10:
+      self.rb3_img_view.Disable()
+
+    self.main_sizer.Add(self.opt_sizer, flag=wx.ALL, border=10)
+
+    # Dialog control
+    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL),
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+    self.rb1_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb2_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb3_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb4_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb5_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb_custom.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onCustom(self, e):
+    if self.rb_custom.GetValue():
+      self.txt_custom.Enable()
+      self.opt_custom.Enable()
+      if self.img_list_length < 25:
+        value = str(self.img_list_length)
+      else:
+        value = '25'
+      self.opt_custom.SetValue(value)
+    else:
+      self.txt_custom.Disable()
+      self.opt_custom.Disable()
+      self.opt_custom.SetValue('')
+
+  def onOK(self, e):
+    if self.rb1_img_view.GetValue():
+      self.no_images = 1
+    elif self.rb2_img_view.GetValue():
+      self.no_images = 10
+    elif self.rb3_img_view.GetValue():
+      self.no_images = 50
+    elif self.rb4_img_view.GetValue():
+      self.no_images = 100
+    elif self.rb5_img_view.GetValue():
+      self.no_images = self.img_list_length
+    elif self.rb_custom.GetValue():
+      self.no_images = int(self.opt_custom.GetValue())
+    e.Skip()

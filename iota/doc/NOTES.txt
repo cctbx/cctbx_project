@@ -1,20 +1,14 @@
-IOTA v1.1.001 - GUI changes
+IOTA v1.1.002 - GUI / DIALS updates
 
 Features:
 
-1. Refactored GUI code:
-    a. Icons now imported using wxtbx.bitmaps
-    b. Dialogs / frames classes now in separate modules
-    c. Streamlined how IOTA PHIL is passed around
-    d. Re-did the options dialogs with better designed controls
-2. Toolbar buttons:
-    a. to reset settings to defaults (clears input as well)
-    b. to load / save IOTA scripts
-3. Changes to interface:
-    a. GUI now supports multiple input entries
-    b. Individual frames can be viewed using cctbx / dials image viewer
-    c. Can add files or folders (and delete each entry)
-    d. Moved some widgets (subset options, prefix, etc.) to Preferences
-    e. Default number of processors set as half of those available on server
-4. Folder for temp files is now created under /tmp
-5. Made similar GUI changes to PRIME
+1. Image viewer callup update:
+    a. now works for all image entries (single, folders, list files, etc.)
+    b. cctbx.- or dials.image_viewer used depending on backend chosen
+    c. If list file / folder viewed, dialog pops up allowing user to choose a
+     subset of images to view (useful for large datasets)
+2. DIALS bug fixes
+    a. unit cell clustering automatically greyed out (doesn't work yet)
+    b. Updated defaults
+3. New DIALS defaults derived from Aaron's scripts
+4. Assorted GUI bugfixes, especially in input type identification
