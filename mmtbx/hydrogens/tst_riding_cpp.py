@@ -10,7 +10,7 @@ from mmtbx_hydrogens_ext import *
 def run():
   print 'Test if c++ class is available in python code.'
 # fill in values in c++ object
-  rc = riding_coefficients(htype='flat_2neigbs', a0=5, a1=2, a2=3, a3=6,
+  rc = riding_coefficients(htype='flat_2neigbs', ih=1, a0=5, a1=2, a2=3, a3=6,
     a=3.467, b=5.4, h=3.58, n=2, disth=0.887)
 # print the values
   print rc.htype, rc.a0, rc.a1, rc.a2, rc.a3, rc.a, rc.b, rc.h,\
