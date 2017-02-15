@@ -30,7 +30,7 @@ from xfel.ui import load_cached_settings, save_cached_settings
 from xfel.ui.db import get_run_path
 from xfel.ui.db.xfel_db import xfel_db_application
 
-from prime.postrefine.mod_gui_init import PRIMEInputWindow, PRIMERunWindow
+from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
 from prime.postrefine.mod_input import master_phil
 from iota.components import iota_misc as misc
 
@@ -2243,8 +2243,8 @@ class MergeTab(BaseTab):
 
 
     self.Bind(wx.EVT_TEXT, self.onInput, self.input_list)
-    self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
-    self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
+    #self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
+    #self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
