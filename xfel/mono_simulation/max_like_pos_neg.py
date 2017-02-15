@@ -149,10 +149,10 @@ class minimizer:
 
       else:
         prefactor = 0.5/ (0.5*pi - psi_model)
-        prob = 0. * prefactor * (1. - fx * gx)
-        exit()
-
-
+        prob = prefactor * (1. - fx * gx)
+        temp = prefactor / (0.5*pi - psi_model)
+        part_prob_partP0 = temp * (-part_fg_partP0 * (0.5*pi - psi_model) + (1.-f * g) * part_psi_model_partP0)
+        part_prob_partP1 = temp * (-part_fg_partP1 * (0.5*pi - psi_model) + (1.-f * g) * part_psi_model_partP1)
 
       partf_partP0 -= (1./prob) * part_prob_partP0
       partf_partP1 -= (1./prob) * part_prob_partP1
