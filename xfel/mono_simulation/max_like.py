@@ -113,8 +113,6 @@ class minimizer:
         from libtbx.utils import Sorry
         raise Sorry("Model has diverged, cannot continue")
 
-      partB_partP0 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP0
-      partB_partP1 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP1
       expB = exp( B * (psi_i + psi_model) )
       expBneg = exp( -B * (psi_i - psi_model) )
 
@@ -122,28 +120,59 @@ class minimizer:
         from libtbx.utils import Sorry
         raise Sorry("Model has diverged, cannot continue")
 
-      partSpos_partP0 = expB * ((psi_i+psi_model)*partB_partP0 + B*part_psi_model_partP0)
-      partSpos_partP1 = expB * ((psi_i+psi_model)*partB_partP1 + B*part_psi_model_partP1)
-
-      partSneg_partP0 = expBneg * ((-psi_i+psi_model)*partB_partP0 + B*part_psi_model_partP0)
-      partSneg_partP1 = expBneg * ((-psi_i+psi_model)*partB_partP1 + B*part_psi_model_partP1)
-
       Spos = 1. + expB
       Sneg = 1. + expBneg
-
       expnu = 1. + exp(self.escalate)
-      partG_partP0 = -expnu*pow(Sneg,-2)*partSneg_partP0
-      partG_partP1 = -expnu*pow(Sneg,-2)*partSneg_partP1
 
-      Sfac = 2.*psi_model*Spos
-      partF_partP0 = -expnu*pow(Sfac,-2)*2*(psi_model*partSpos_partP0 + Spos*part_psi_model_partP0)
-      partF_partP1 = -expnu*pow(Sfac,-2)*2*(psi_model*partSpos_partP1 + Spos*part_psi_model_partP1)
+      sign_error_27Feb2014_through_15Feb2017 = False
+      if sign_error_27Feb2014_through_15Feb2017:
+        partB_partP0 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP0
+        partB_partP1 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP1
 
-      fx = (0.5/psi_model)/(Spos) * expnu
-      gx = (1./Sneg) * expnu
-      prob = fx * gx
-      part_prob_partP0 = fx*partG_partP0 + gx*partF_partP0
-      part_prob_partP1 = fx*partG_partP1 + gx*partF_partP1
+        partSpos_partP0 = expB * ((psi_i+psi_model)*partB_partP0 + B*part_psi_model_partP0)
+        partSpos_partP1 = expB * ((psi_i+psi_model)*partB_partP1 + B*part_psi_model_partP1)
+
+        partSneg_partP0 = expBneg * ((-psi_i+psi_model)*partB_partP0 + B*part_psi_model_partP0)
+        partSneg_partP1 = expBneg * ((-psi_i+psi_model)*partB_partP1 + B*part_psi_model_partP1)
+
+        partG_partP0 = -expnu*pow(Sneg,-2)*partSneg_partP0
+        partG_partP1 = -expnu*pow(Sneg,-2)*partSneg_partP1
+
+        Sfac = 2.*psi_model*Spos
+        partF_partP0 = -expnu*pow(Sfac,-2)*2*(psi_model*partSpos_partP0 + Spos*part_psi_model_partP0)
+        partF_partP1 = -expnu*pow(Sfac,-2)*2*(psi_model*partSpos_partP1 + Spos*part_psi_model_partP1)
+
+        fx = (0.5/psi_model)/(Spos) * expnu
+        gx = (1./Sneg) * expnu
+        prob = fx * gx
+        part_prob_partP0 = fx*partG_partP0 + gx*partF_partP0
+        part_prob_partP1 = fx*partG_partP1 + gx*partF_partP1
+      else:
+        # AD14 eqn B.7 (AD14 = Sauter et al (2014) Acta Cryst D70: 3299-3309)
+        temp = (psi_i/(psi_model*psi_model))
+        part_zed_partP0 = temp * part_psi_model_partP0
+        part_zed_partP1 = temp * part_psi_model_partP1
+
+        # AD14 eqn B.8
+        fx = expnu / Sneg
+        part_f_partP0 = self.escalate * fx * (expBneg / Sneg) * part_zed_partP0
+        part_f_partP1 = self.escalate * fx * (expBneg / Sneg) * part_zed_partP1
+
+        # AD14 eqn B.9
+        gx = expnu / Spos
+        part_g_partP0 = -self.escalate * gx * (expB / Spos) * part_zed_partP0
+        part_g_partP1 = -self.escalate * gx * (expB / Spos) * part_zed_partP1
+
+        # AD14 eqn B.10
+        part_fg_partP0 = fx * part_g_partP0 + gx * part_f_partP0
+        part_fg_partP1 = fx * part_g_partP1 + gx * part_f_partP1
+
+        # AD14 eqn B.11
+        prefactor = 0.5/psi_model
+        prob = prefactor * fx * gx
+        temp = 0.5 / (psi_model*psi_model)
+        part_prob_partP0 = temp * (part_fg_partP0 * psi_model - fx * gx * part_psi_model_partP0)
+        part_prob_partP1 = temp * (part_fg_partP1 * psi_model - fx * gx * part_psi_model_partP1)
 
 
       partf_partP0 -= (1./prob) * part_prob_partP0
