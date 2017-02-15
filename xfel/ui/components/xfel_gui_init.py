@@ -1671,7 +1671,7 @@ class RunStatsTab(BaseTab):
 
     self.main = main
     self.all_trials = []
-    self.trial_no = 0
+    self.trial_no = None
     self.trial = None
     self.all_runs = []
     self.selected_runs = []
