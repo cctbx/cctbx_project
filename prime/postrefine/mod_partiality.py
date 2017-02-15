@@ -88,9 +88,13 @@ class partiality_handler(object):
     elif partiality_model == "Lognormal":
       partiality_set = self.lognpdf(rh_set, rs_set, nu)
     #calculate delta_xy
-    d_ratio = -detector_distance_mm/sd_array.parts()[2]
-    calc_xy_array = flex.vec3_double(sd_array.parts()[0]*d_ratio, \
-        sd_array.parts()[1]*d_ratio, flex.double([0]*len(d_ratio)))
-    pred_xy_array = flex.vec3_double(spot_pred_x_mm_set, spot_pred_y_mm_set, flex.double([0]*len(d_ratio)))
-    delta_xy_set = (pred_xy_array - calc_xy_array).norms()
+    if sum(spot_pred_y_mm_set) == 0:
+      #hack for dials integration - spot_pred_x_mm_set is s1 * to be fixed *
+      delta_xy_set = (spot_pred_x_mm_set - sd_array).norms()
+    else:
+      d_ratio = -detector_distance_mm/sd_array.parts()[2]
+      calc_xy_array = flex.vec3_double(sd_array.parts()[0]*d_ratio, \
+          sd_array.parts()[1]*d_ratio, flex.double([0]*len(d_ratio)))
+      pred_xy_array = flex.vec3_double(spot_pred_x_mm_set, spot_pred_y_mm_set, flex.double([0]*len(d_ratio)))
+      delta_xy_set = (pred_xy_array - calc_xy_array).norms()
     return partiality_set, delta_xy_set, rs_set, rh_set
