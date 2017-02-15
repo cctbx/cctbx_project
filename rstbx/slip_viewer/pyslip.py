@@ -837,7 +837,7 @@ class PySlip(_BufferedCanvas):
 
     def AddPointLayer(self, points, map_rel=True, visible=True,
                       show_levels=None, selectable=False,
-                      name='<points_layer>', **kwargs):
+                      name='<points_layer>', update=True, **kwargs):
         """Add a layer of points.
 
         points       iterable of point data:
@@ -905,11 +905,11 @@ class PySlip(_BufferedCanvas):
         return self.AddLayer(kwargs.get("renderer",self.DrawPointLayer), draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
-                             type=self.TypePoint)
+                             type=self.TypePoint, update=update)
 
     def AddEllipseLayer(self, data, map_rel=True, visible=True,
                         show_levels=None, selectable=False,
-                        name='<polygon_layer>', **kwargs):
+                        name='<polygon_layer>', update=True, **kwargs):
         # get global values, if required
         default_placement = kwargs.get('placement',
                                        self.DefaultPolygonPlacement)
@@ -948,7 +948,7 @@ class PySlip(_BufferedCanvas):
         return self.AddLayer(self.DrawLightweightEllipticalSpline, draw_data, map_rel,
                              visible, show_levels=show_levels,
                              selectable=False, name=name,
-                             type=self.TypeEllipse)
+                             type=self.TypeEllipse, update=update)
 
     def DrawLightweightEllipticalSpline(self, dc, data, map_rel):
         assert map_rel
@@ -1002,7 +1002,7 @@ class PySlip(_BufferedCanvas):
 
     def AddPolygonLayer(self, data, map_rel=True, visible=True,
                         show_levels=None, selectable=False,
-                        name='<polygon_layer>', **kwargs):
+                        name='<polygon_layer>', update=True, **kwargs):
         """Add a layer of polygon data to the map.
 
         data         iterable of polygon tuples:
@@ -1089,7 +1089,7 @@ class PySlip(_BufferedCanvas):
         return self.AddLayer(self.DrawPolygonLayer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
-                             type=self.TypePolygon)
+                             type=self.TypePolygon, update=update)
 
     def AddImageLayer(self, data, map_rel=True, visible=True,
                       show_levels=None, selectable=False,
@@ -1167,7 +1167,7 @@ class PySlip(_BufferedCanvas):
                              type=self.TypeImage)
 
     def AddTextLayer(self, text, map_rel=True, visible=True, show_levels=None,
-                     selectable=False, name='<text_layer>', **kwargs):
+                     selectable=False, name='<text_layer>', update=True, **kwargs):
         """Add a text layer to the map.
 
         text         list of sequence of (lon, lat, text, [dict]) coordinates
@@ -1243,10 +1243,10 @@ class PySlip(_BufferedCanvas):
         return self.AddLayer(self.DrawTextLayer, draw_data, map_rel,
                              visible=visible, show_levels=show_levels,
                              selectable=selectable, name=name,
-                             type=self.TypeText)
+                             type=self.TypeText, update=update)
 
     def AddLayer(self, render, data, map_rel, visible, show_levels,
-                 selectable, name, type):
+                 selectable, name, type, update=True):
         """Add a generic layer to the system.
 
         render       the function used to render the layer
@@ -1278,7 +1278,7 @@ class PySlip(_BufferedCanvas):
         self.layer_z_order.append(id)
 
         # force display of new layer if it's visible
-        if visible:
+        if visible and update:
             self.Update()
 
         return id
@@ -1305,7 +1305,7 @@ class PySlip(_BufferedCanvas):
         self.layer_mapping[id].visible = False
         self.Update()
 
-    def DeleteLayer(self, id):
+    def DeleteLayer(self, id, update=True):
         """Delete a layer.
 
         id  the layer id
@@ -1321,7 +1321,7 @@ class PySlip(_BufferedCanvas):
             self.layer_z_order.remove(id)
 
             # if layer was visible, refresh display
-            if visible:
+            if visible and update:
                 self.Update()
 
     def SetLayerShowLevels(self, id, show_levels=None):

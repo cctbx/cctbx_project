@@ -352,7 +352,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     self.settings_frame.set_image(self._img)
     self.update_statusbar() # XXX Not always working?
-    self.Layout()
+    #self.Layout()
 
     detector = self.get_detector()
     if abs(detector[0].get_distance()) > 0:
@@ -378,7 +378,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     # them back if appropriate.  This also creates the self.*_layer
     # variables.
     if hasattr(self, 'beam_layer') and self.beam_layer is not None:
-      self.pyslip.DeleteLayer(self.beam_layer)
+      self.pyslip.DeleteLayer(self.beam_layer, update=False)
     self.beam_layer = None
 
     if hasattr(self, 'spotfinder_layer') and self.spotfinder_layer is not None:
@@ -427,7 +427,6 @@ class XrayFrame (AppFrame,XFBaseClass) :
         return str(file_name_or_data)
       else: return super(XrayFrame, self).get_key(file_name_or_data)
 
-
   def update_settings (self, layout=True) :
     # XXX The zoom level from the settings panel are not taken into
     # account here.
@@ -437,15 +436,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
     if new_brightness is not self.pyslip.tiles.current_brightness or \
        new_color_scheme is not self.pyslip.tiles.current_color_scheme:
       self.pyslip.tiles.update_brightness(new_brightness,new_color_scheme)
-      self.pyslip.Update()#triggers redraw
 
     if self.settings.show_beam_center:
       if self.beam_layer is None and hasattr(self, 'beam_center_cross_data'):
         self.beam_layer = self.pyslip.AddPolygonLayer(
           self.beam_center_cross_data, name="<beam_layer>",
-          show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
+          show_levels=[-2, -1, 0, 1, 2, 3, 4, 5], update=False)
     elif self.beam_layer is not None:
-      self.pyslip.DeleteLayer(self.beam_layer)
+      self.pyslip.DeleteLayer(self.beam_layer, update=False)
       self.beam_layer = None
 
     if self.settings.show_spotfinder_spots:
@@ -483,6 +481,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     if hasattr(self,"user_callback"):
       self.user_callback(self)
+    self.pyslip.Update() #triggers redraw
 
   def OnCalibration(self, event):
     from rstbx.slip_viewer.calibration_frame import SBSettingsFrame
