@@ -16,7 +16,7 @@ def parabola_is_good(x, y, assert_concave_up):
     yi = y[i]
     cntr=0
     yp,ym=[],[]
-    offsets = [1,2,3]
+    offsets = [1,] #XXX[1,2,3]
     for j in offsets:
       if(i-j>=0 and y[i-j]<=yi and not y[i-j] in ym):
         cntr+=1
@@ -24,7 +24,8 @@ def parabola_is_good(x, y, assert_concave_up):
       if(i+j<=y.size()-1 and y[i+j]<=yi and not y[i+j] in yp):
         cntr+=1
         yp.append(y[i+j])
-    if(cntr==len(offsets)+len(offsets)): maxima.append([x[i],yi,i])
+    #XXX if(cntr==len(offsets)+len(offsets)): maxima.append([x[i],yi,i])
+    if(cntr==2 and len(offsets)==len(offsets)): maxima.append([x[i],yi,i])
   # Remove plateau
   tmp=[]
   tmp2 = []
@@ -33,27 +34,6 @@ def parabola_is_good(x, y, assert_concave_up):
       tmp.append(m[1])
       tmp2.append(m)
   maxima = tmp2
-  # Choose peaks with longest slope
-  #if(len(maxima)>1):
-  #  maxima_plus = []
-  #  for m in maxima:
-  #    i = m[2]
-  #    cntr=0
-  #    for j in range(1,100):
-  #      if(i-j>=0 and y[i-j]<=y[i-j+1]):
-  #        cntr+=1
-  #      else: break
-  #      if(i+j<=y.size()-1 and y[i+j]<=y[i+j-1]):
-  #        cntr+=1
-  #      else: break
-  #    maxima_plus.append([m,cntr])
-  #  cntr_max = -1
-  #  maximum = None
-  #  for mp in maxima_plus:
-  #    if(mp[1]>cntr_max):
-  #      cntr_max = mp[1]
-  #      maximum = mp[0]
-  #  maxima = [maximum]
   return maxima
 
 def _resolution_from_map_and_model_helper(
@@ -216,7 +196,7 @@ def _resolution_from_map_and_model_helper(
     if(len(maxima1)!=1): return None,None,None,None # Exactly one peak expected
     o2 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
       selections=selections, d_min_start=d_min_start,
-      d_min_end=max(maxima1[0][1]+2., d_min_end),
+      d_min_end=max(maxima1[0][0]+2., d_min_end),
       d_min_step=d_min_step, nproc=nproc)
     maxima2 = parabola_is_good(x=o2.x, y=o2.y_smooth(), assert_concave_up=False)
     #print "maxima2",maxima2
@@ -230,11 +210,13 @@ def _resolution_from_map_and_model_helper(
       if(dist_<dist):
         dist=dist_
         m_best = m[:]
-    assert approx_equal(o1.x, o2.x)
-    #for d_min, cc1,b1,r1, cc2,b2,r2 in zip(o1.x, o1.y_smooth(),o1.b,o1.radii,
-    #                                             o2.y_smooth(),o2.b,o2.radii):
-    #  print "%4.1f %8.6f %3.0f %5.2f <> %8.6f %3.0f %5.2f"%(
-    #    d_min, cc1,b1,r1, cc2,b2,r2)
+    #assert approx_equal(o1.x, o2.x)
+    #for d_min, cc1,b1,r1 in zip(o1.x, o1.y_smooth(),o1.b,o1.radii):
+    #  print "%4.1f %8.6f %3.0f %5.2f"%(d_min, cc1,b1,r1)
+    #print
+    #for d_min, cc1,b1,r1 in zip(o2.x, o2.y_smooth(),o2.b,o2.radii):
+    #  print "%4.1f %8.6f %3.0f %5.2f"%(d_min, cc1,b1,r1)
+    #
     return m_best[0], o2.b[m_best[2]], o2.y[m_best[2]], o2.radii[m_best[2]]
   else:
     o2 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
