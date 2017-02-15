@@ -68,6 +68,7 @@ def get_run_stats(timestamps,
                    run_numbers,
                    ratio_cutoff=1,
                    n_strong_cutoff=40,
+                   i_sigi_cutoff=1,
                    ):
   iterator = xrange(len(isigi_low))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
@@ -82,8 +83,8 @@ def get_run_stats(timestamps,
   # indexing and droplet hit rate in a sliding window
   half_idx_rate_window = min(50, int(len(isigi_low)//20))
   half_hq_rate_window = 500
-  low_sel = isigi_low > 1
-  high_sel = isigi_high > 1
+  low_sel = isigi_low > i_sigi_cutoff
+  high_sel = isigi_high > i_sigi_cutoff
   idx_rate = flex.double()
   hq_rate = flex.double()
   drop_hit_rate = flex.double()
@@ -264,6 +265,7 @@ def plot_multirun_stats(runs,
                         d_min,
                         ratio_cutoff=1,
                         n_strong_cutoff=40,
+                        i_sigi_cutoff=1,
                         run_tags=[],
                         run_statuses=[],
                         minimalist=False,
@@ -314,7 +316,8 @@ def plot_multirun_stats(runs,
                               tuple(lengths),
                               runs_with_data,
                               ratio_cutoff=ratio_cutoff,
-                              n_strong_cutoff=n_strong_cutoff)
+                              n_strong_cutoff=n_strong_cutoff,
+                              i_sigi_cutoff=i_sigi_cutoff)
   png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
     interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
   return png

@@ -476,6 +476,7 @@ class RunStatsSentinel(Thread):
       interactive=False,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
+      i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
       run_tags=self.run_tags,
       run_statuses=self.run_statuses,
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
@@ -493,6 +494,7 @@ class RunStatsSentinel(Thread):
       interactive=True,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
+      i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
       run_tags=self.run_tags,
       run_statuses=self.run_statuses,
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
@@ -1685,6 +1687,7 @@ class RunStatsTab(BaseTab):
     self.d_min = 2.5
     self.ratio = 1
     self.n_strong = 40
+    self.i_sigi = 1
     self.should_have_indexed_image_paths = None
 
     self.runstats_panel = wx.Panel(self, size=(900, 120))
@@ -1720,6 +1723,11 @@ class RunStatsTab(BaseTab):
                                            label_size=(160, -1),
                                            ctrl_size=(30, -1),
                                            items=[('n_strong', 40)])
+    self.i_sigi_cutoff = gctr.OptionCtrl(self,
+                                         label='I/sig(I) cutoff:',
+                                         label_size=(160, -1),
+                                         ctrl_size=(30, -1),
+                                         items=[('isigi', 1)])
     self.run_numbers =  gctr.CheckListCtrl(self,
                                            label='Selected runs:',
                                            label_size=(200, -1),
@@ -1737,18 +1745,20 @@ class RunStatsTab(BaseTab):
     self.options_opt_sizer = wx.GridBagSizer(1, 1)
 
     self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
-                               flag=wx.ALL, border=10)
+                               flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.last_five_runs, pos=(1, 0),
-                               flag=wx.ALL, border=10)
+                               flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.plot_entire_expt, pos=(2, 0),
-                                   flag=wx.ALL, border=10)
+                                   flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.d_min_select, pos=(3, 0),
                                flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.ratio_cutoff, pos=(4, 0),
                                flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.n_strong_cutoff, pos=(5, 0),
                                flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(6, 1),
+    self.options_opt_sizer.Add(self.i_sigi_cutoff, pos=(6, 0),
+                               flag=wx.ALL, border=2)
+    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(7, 1),
                                flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
                                border=10)
     self.options_box_sizer.Add(self.options_opt_sizer)
@@ -1778,6 +1788,7 @@ class RunStatsTab(BaseTab):
     self.Bind(wx.EVT_TEXT_ENTER, self.onDMin, self.d_min_select.d_min)
     self.Bind(wx.EVT_TEXT_ENTER, self.onRatioCutoff, self.ratio_cutoff.ratio)
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.i_sigi_cutoff.isigi)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -1934,6 +1945,13 @@ class RunStatsTab(BaseTab):
     n_strong = self.n_strong_cutoff.n_strong.GetValue()
     if n_strong.isdigit():
       self.n_strong = int(n_strong)
+
+  def onIsigICutoff(self, e):
+    try:
+      isigi = float(self.i_sigi_cutoff.isigi.GetValue())
+      self.i_sigi = isigi
+    except ValueError:
+      pass
 
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
