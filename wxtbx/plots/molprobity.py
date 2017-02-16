@@ -204,6 +204,7 @@ class rotalyze_frame (rotarama_frame) :
       utils.std_sizer_flags, 5)
     pt_names = ["All", "None", "Outlier"]
     pt_choice = wx.Choice(self.top_panel, choices=pt_names)
+    pt_choice.SetSelection(0)
     self.Bind(wx.EVT_CHOICE, self.OnUpdatePlot, pt_choice)
     grid.Add(pt_choice, 0, utils.std_sizer_flags, 5)
     grid.Add(utils.bold_text(self.top_panel, "Color scheme:"), 0,
@@ -240,22 +241,23 @@ class rotalyze_frame (rotarama_frame) :
       self._map_cache[res_type] = z_data
     title = "Chi1-Chi2 plot for %s" % res_type
     points = coords = None
-    if not (res_type, pt_type) in self._point_cache :
-      (points, coords) = self._validation.get_plot_data(
-        residue_name=res_type.upper(),
-        point_type=pt_type)
-      # shift chi2 values by 180 to fit in contours
-      if (res_type.lower() in ["asp", "phe", "tyr"]) :
-        for i in xrange(len(points)):
-          if (points[i][1] > 180.0):
-            point = list(points[i])
-            point[1] -= 180.0
-            points[i] = tuple(point)
-      self._point_cache[(res_type, pt_type)] = points
-      self._xyz_cache[(res_type, pt_type)] = coords
-    else :
-      points = self._point_cache[(res_type, pt_type)]
-      coords = self._xyz_cache[(res_type, pt_type)]
+    if (pt_type != "None"):
+      if not (res_type, pt_type) in self._point_cache :
+        (points, coords) = self._validation.get_plot_data(
+          residue_name=res_type.upper(),
+          point_type=pt_type)
+        # shift chi2 values by 180 to fit in contours
+        if (res_type.lower() in ["asp", "phe", "tyr"]) :
+          for i in xrange(len(points)):
+            if (points[i][1] > 180.0):
+              point = list(points[i])
+              point[1] -= 180.0
+              points[i] = tuple(point)
+        self._point_cache[(res_type, pt_type)] = points
+        self._xyz_cache[(res_type, pt_type)] = coords
+      else :
+        points = self._point_cache[(res_type, pt_type)]
+        coords = self._xyz_cache[(res_type, pt_type)]
     extent = y_marks = None
     if (res_type.lower() in ["asp", "phe", "tyr"]) :
       extent = [0, 360, 0, 180]
