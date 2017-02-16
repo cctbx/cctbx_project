@@ -65,8 +65,9 @@ vec3<double> compute_h_position(
       vec3<double> r2 = sites_cart[rc.a2];
       vec3<double> u10 = (r1-r0).normalize();
       vec3<double> u20 = (r2-r0).normalize();
-      double length = sqrt(a*a + b*b + 2*a*b*u10*u20);
-      vec3<double> uh0 = (a * u10 + b * u20) / length;
+      vec3<double> rh0 = a * u10 + b * u20;
+      double rh0_length = rh0.length();
+      vec3<double> uh0 = rh0/ rh0_length;
       rh_calc = r0 + dh * uh0;
     } else if (rc.htype == "2neigbs") {
       vec3<double> r2 = sites_cart[rc.a2];
@@ -74,8 +75,8 @@ vec3<double> compute_h_position(
       vec3<double> u20 = (r2-r0).normalize();
       vec3<double> v0 = (u10.cross(u20)).normalize();
       vec3<double> rh0 = (a * u10 + b * u20 + h * v0);
-      double length = sqrt(rh0 * rh0);
-      vec3<double> uh0 = rh0/length;
+      double rh0_length = rh0.length();
+      vec3<double> uh0 = rh0/ rh0_length;
       rh_calc = r0 + dh * uh0;
     } else if (rc.htype == "2tetra") {
       vec3<double> r2 = sites_cart[rc.a2];
@@ -91,8 +92,8 @@ vec3<double> compute_h_position(
       vec3<double> u20 = (r2-r0).normalize();
       vec3<double> u30 = (r3-r0).normalize();
       vec3<double> rh0 = (a * u10 + b * u20 + h * u30);
-      double length = sqrt(rh0 * rh0);
-      vec3<double> uh0 = rh0/length;
+      double rh0_length = rh0.length();
+      vec3<double> uh0 = rh0/ rh0_length;
       rh_calc = r0 + dh * uh0;
     } else if (rc.htype=="alg1b" || rc.htype=="alg1a" || rc.htype=="prop") {
       //std::cout << "Type 1neigb\n";
@@ -122,7 +123,6 @@ af::shared<vec3<double> > apply_new_H_positions(
     boost::python::list const& parameterization_)
   {
 // make local list parameterization
-    //std::cout << "length of parameterization: " << len(parameterization_) << "\n";
     af::shared<riding_coefficients> parameterization;
     for(std::size_t i=0;i<boost::python::len(parameterization_);i++) {
       parameterization.push_back(
@@ -138,7 +138,6 @@ af::shared<vec3<double> > apply_new_H_positions(
       riding_coefficients rc = parameterization[i];
       int ih = rc.ih;
       vec3<double> rh_calc;
-      //std::cout << "ih: " << ih << "  rx_ini: " << sites_cart[ih][0] << "\n";
       rh_calc = compute_h_position(rc, sites_cart);
       sites_cart_new[ih] = rh_calc;
     }
