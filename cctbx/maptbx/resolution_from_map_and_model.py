@@ -369,24 +369,25 @@ class run(object):
           d_min_step     = 0.1,
           thorough       = True,
           nproc          = nproc)
-      xray_structure = strip_model(
-        map_data       = map_data,
-        xray_structure = xray_structure,
-        pdb_hierarchy  = pdb_hierarchy,
-        d_min          = self.d_min,
-        radius         = self.radius,
-        b_iso          = self.b_iso)
-      if(xray_structure is not None):
-        d_min, b_iso, cc, radius = \
-          _resolution_from_map_and_model_helper(
-            map            = map_data,
-            xray_structure = xray_structure,
-            b_range        = b_range,
-            d_min_start    = d_min_start,
-            d_min_end      = d_min_end,
-            d_min_step     = 0.1,
-            thorough       = True,
-            nproc          = nproc)
-        if(d_min is not None):
-          self.d_min, self.b_iso, self.cc, self.radius = \
-            d_min, b_iso, cc, radius
+      if(self.d_min is not None):
+        xray_structure = strip_model(
+          map_data       = map_data,
+          xray_structure = xray_structure,
+          pdb_hierarchy  = pdb_hierarchy,
+          d_min          = self.d_min,
+          radius         = self.radius,
+          b_iso          = self.b_iso)
+        if(xray_structure is not None):
+          d_min, b_iso, cc, radius = \
+            _resolution_from_map_and_model_helper(
+              map            = map_data,
+              xray_structure = xray_structure,
+              b_range        = b_range,
+              d_min_start    = d_min_start,
+              d_min_end      = d_min_end,
+              d_min_step     = 0.1,
+              thorough       = True,
+              nproc          = nproc)
+          if(d_min is not None):
+            self.d_min, self.b_iso, self.cc, self.radius = \
+              d_min, b_iso, cc, radius
