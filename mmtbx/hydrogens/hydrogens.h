@@ -5,6 +5,8 @@
 #include <string>
 #include <cctbx/sgtbx/space_group.h>
 #include <boost/python/list.hpp>
+//#include <assert.h>
+#include <mmtbx/error.h>
 
 using namespace std;
 namespace mmtbx { namespace hydrogens {
@@ -67,7 +69,8 @@ vec3<double> compute_h_position(
       vec3<double> u20 = (r2-r0).normalize();
       vec3<double> rh0 = a * u10 + b * u20;
       double rh0_length = rh0.length();
-      vec3<double> uh0 = rh0/ rh0_length;
+      MMTBX_ASSERT(rh0_length > 0.);
+      vec3<double> uh0 = rh0 / rh0_length;
       rh_calc = r0 + dh * uh0;
     } else if (rc.htype == "2neigbs") {
       vec3<double> r2 = sites_cart[rc.a2];
@@ -76,7 +79,8 @@ vec3<double> compute_h_position(
       vec3<double> v0 = (u10.cross(u20)).normalize();
       vec3<double> rh0 = (a * u10 + b * u20 + h * v0);
       double rh0_length = rh0.length();
-      vec3<double> uh0 = rh0/ rh0_length;
+      MMTBX_ASSERT(rh0_length > 0.);
+      vec3<double> uh0 = rh0 / rh0_length;
       rh_calc = r0 + dh * uh0;
     } else if (rc.htype == "2tetra") {
       vec3<double> r2 = sites_cart[rc.a2];
@@ -93,7 +97,8 @@ vec3<double> compute_h_position(
       vec3<double> u30 = (r3-r0).normalize();
       vec3<double> rh0 = (a * u10 + b * u20 + h * u30);
       double rh0_length = rh0.length();
-      vec3<double> uh0 = rh0/ rh0_length;
+      MMTBX_ASSERT(rh0_length > 0.);
+      vec3<double> uh0 = rh0 / rh0_length;
       rh_calc = r0 + dh * uh0;
     } else if (rc.htype=="alg1b" || rc.htype=="alg1a" || rc.htype=="prop") {
       //std::cout << "Type 1neigb\n";
