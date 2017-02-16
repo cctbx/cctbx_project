@@ -17,7 +17,7 @@ def exercise(pdb_str, eps):
     force_symmetry = True)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xray_structure = processed_pdb_file.xray_structure()
-  #sites_cart = xray_structure.sites_cart()
+
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies      = False,
     plain_pairs_radius = 5.0)
@@ -28,7 +28,7 @@ def exercise(pdb_str, eps):
 
   h_parameterization = riding_h_manager.h_parameterization
 
-  riding_h_manager.idealize_hydrogens_inplace(
+  riding_h_manager.idealize_hydrogens_inplace_cpp(
     pdb_hierarchy=pdb_hierarchy,
     xray_structure=xray_structure)
 
@@ -59,7 +59,7 @@ def exercise(pdb_str, eps):
           sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
         xray_structure_.set_sites_cart(sites_cart_)
         # after shift, recalculate H position
-        riding_h_manager.idealize_hydrogens_inplace(
+        riding_h_manager.idealize_hydrogens_inplace_cpp(
           xray_structure=xray_structure_)
         sites_cart_ = xray_structure_.sites_cart()
         ts.append(geometry.energies_sites(
@@ -73,7 +73,7 @@ def exercise(pdb_str, eps):
   for g1, g2 in zip(g_analytical_reduced, g_fd_reduced):
     #print g1,g2
     assert approx_equal(g1,g2, 1.e-4)
-  #print '*'*79
+
 
 pdb_str = """
 CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1

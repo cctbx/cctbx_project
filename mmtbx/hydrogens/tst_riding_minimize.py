@@ -75,7 +75,7 @@ class lbfgs(object):
       new_sites = self.xray_structure.sites_frac().set_selected(
         ~self.hd_selection, scatterers_shifted.extract_sites())
       self.xray_structure.set_sites_frac(new_sites)
-      self.riding_h_manager.idealize_hydrogens_inplace(
+      self.riding_h_manager.idealize_hydrogens_inplace_cpp(
           xray_structure = self.xray_structure)
     else:
       self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
