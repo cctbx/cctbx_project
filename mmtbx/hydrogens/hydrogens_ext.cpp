@@ -43,10 +43,10 @@ namespace {
       .def("__getinitargs__", getinitargs)
     ;
 
-    def("compute_H_position",
+    def("compute_h_position",
          (vec3<double>(*)
                (riding_coefficients,
-                af::shared<vec3<double> > const&)) compute_H_position,
+                af::shared<vec3<double> > const&)) compute_h_position,
                   (arg("riding_coefficients"),
                    arg("sites_cart")))
     ;

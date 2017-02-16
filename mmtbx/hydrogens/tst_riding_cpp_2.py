@@ -60,7 +60,7 @@ def exercise(pdb_str):
       htype=hp.htype, ih = hp.ih, a0=hp.a0, a1=hp.a1, a2=hp.a2, a3=hp.a3,
       a=hp.a, b=hp.b, h=hp.h, n=hp.n, disth=hp.dist_h)
     # H position with C++ code
-    rh_calc_cpp = compute_H_position(
+    rh_calc_cpp = compute_h_position(
       riding_coefficients = rc,
       sites_cart          = sites_cart)
     # H position with python code

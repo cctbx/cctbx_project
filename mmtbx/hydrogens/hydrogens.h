@@ -49,7 +49,7 @@ class riding_coefficients
     {}
 };
 
-vec3<double> compute_H_position(
+vec3<double> compute_h_position(
                    riding_coefficients rc,
                    af::shared<vec3<double> > const& sites_cart)
   {
@@ -122,7 +122,7 @@ af::shared<vec3<double> > apply_new_H_positions(
     boost::python::list const& parameterization_)
   {
 // make local list parameterization
-    std::cout << "length of parameterization: " << len(parameterization_) << "\n";
+    //std::cout << "length of parameterization: " << len(parameterization_) << "\n";
     af::shared<riding_coefficients> parameterization;
     for(std::size_t i=0;i<boost::python::len(parameterization_);i++) {
       parameterization.push_back(
@@ -139,7 +139,7 @@ af::shared<vec3<double> > apply_new_H_positions(
       int ih = rc.ih;
       vec3<double> rh_calc;
       //std::cout << "ih: " << ih << "  rx_ini: " << sites_cart[ih][0] << "\n";
-      rh_calc = compute_H_position(rc, sites_cart);
+      rh_calc = compute_h_position(rc, sites_cart);
       sites_cart_new[ih] = rh_calc;
     }
   return sites_cart_new;
