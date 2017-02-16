@@ -289,30 +289,31 @@ def strip_model(map_data, xray_structure, pdb_hierarchy, d_min, radius, b_iso):
   cc_calculator = cc(map1=map_data, map2=map_calc, unit_cell=f_calc.unit_cell(),
     radius=radius)
   get_class = iotbx.pdb.common_residue_names_get_class
-  for chain in pdb_hierarchy.only_model().chains():
-    for residue_group in chain.residue_groups():
-      for residue in residue_group.atom_groups():
-        if(get_class(residue.resname) == "common_amino_acid"):
-          sel_bb = flex.size_t()
-          sel_sc = flex.size_t()
-          xyz_bb = flex.vec3_double()
-          xyz_sc = flex.vec3_double()
-          for atom in residue.atoms():
-            if(atom.name.strip().upper() in ["CA","CB","C","O","N"]):
-              sel_bb.append(atom.i_seq)
-              xyz_bb.append(atom.xyz)
-            else:
-              sel_sc.append(atom.i_seq)
-              xyz_sc.append(atom.xyz)
-          cc = cc_calculator.compute(xyz = xyz_bb)
-          if(cc>0.5): selection.extend(sel_bb)
-          cc = cc_calculator.compute(xyz = xyz_sc)
-          if(cc>0.5): selection.extend(sel_sc)
-        else:
-          sel = residue.atoms().extract_i_seq()
-          xyz = residue.atoms().extract_xyz()
-          cc = cc_calculator.compute(xyz = xyz)
-          if(cc>0.5): selection.extend(sel)
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        for residue in residue_group.atom_groups():
+          if(get_class(residue.resname) == "common_amino_acid"):
+            sel_bb = flex.size_t()
+            sel_sc = flex.size_t()
+            xyz_bb = flex.vec3_double()
+            xyz_sc = flex.vec3_double()
+            for atom in residue.atoms():
+              if(atom.name.strip().upper() in ["CA","CB","C","O","N"]):
+                sel_bb.append(atom.i_seq)
+                xyz_bb.append(atom.xyz)
+              else:
+                sel_sc.append(atom.i_seq)
+                xyz_sc.append(atom.xyz)
+            cc = cc_calculator.compute(xyz = xyz_bb)
+            if(cc>0.5): selection.extend(sel_bb)
+            cc = cc_calculator.compute(xyz = xyz_sc)
+            if(cc>0.5): selection.extend(sel_sc)
+          else:
+            sel = residue.atoms().extract_i_seq()
+            xyz = residue.atoms().extract_xyz()
+            cc = cc_calculator.compute(xyz = xyz)
+            if(cc>0.5): selection.extend(sel)
   xray_structure = xray_structure.select(selection)
   size_final = xray_structure.scatterers().size()
   if(size_final*100./size_start < 50):
