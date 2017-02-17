@@ -58,7 +58,7 @@ def exercise(pdb_str):
     # fill in c++ object
     rc = riding_coefficients(
       htype=hp.htype, ih = hp.ih, a0=hp.a0, a1=hp.a1, a2=hp.a2, a3=hp.a3,
-      a=hp.a, b=hp.b, h=hp.h, n=hp.n, disth=hp.dist_h)
+      a=hp.a, b=hp.b, h=hp.h, n=hp.n, disth=hp.disth)
     # H position with C++ code
     rh_calc_cpp = compute_h_position(
       riding_coefficients = rc,

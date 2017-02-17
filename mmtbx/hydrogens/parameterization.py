@@ -17,7 +17,7 @@ class parameterization_info(object):
     b       = None,  # coefficient for reconstruction
     h       = None,  # coefficient for reconstruction
     n       = None,  # parameter for propeller and H2 groups: integer
-    dist_h  = None): # measured or ideal distance
+    disth  = None): # measured or ideal distance
     self.htype  = htype
     self.ih     = ih
     self.a0     = a0
@@ -28,7 +28,7 @@ class parameterization_info(object):
     self.b      = b
     self.h      = h
     self.n      = n
-    self.dist_h = dist_h
+    self.disth = disth
 
 class manager(object):
   def __init__(self,
@@ -78,9 +78,9 @@ class manager(object):
     rh = matrix.col(self.sites_cart[ih])
     r0 = matrix.col(self.sites_cart[i_a0])
     if self.use_ideal_bonds_angles:
-      dist_h = neighbors.a0['dist_ideal']
+      disth = neighbors.a0['dist_ideal']
     else:
-      dist_h = (r0 - rh).length()
+      disth = (r0 - rh).length()
     i_a1 = neighbors.a1['iseq']
     i_b1 = neighbors.b1['iseq']
     r1 = matrix.col(self.sites_cart[i_a1])
@@ -113,7 +113,7 @@ class manager(object):
       b      = phi,
       h      = 0,
       n      = 0,
-      dist_h = dist_h)
+      disth = disth)
     if (neighbors.number_h_neighbors == 2):
       self.h_parameterization[ih].htype = 'prop'
       i_h1, i_h2 = neighbors.h1['iseq'], neighbors.h2['iseq']
@@ -134,7 +134,7 @@ class manager(object):
         n      = 1,
         b      = phi,
         h      = 0,
-        dist_h = dist_h)
+        disth = disth)
       self.h_parameterization[i_h2] = parameterization_info(
         htype  = 'prop',
         ih     = i_h2,
@@ -146,7 +146,7 @@ class manager(object):
         n      = 2,
         b      = phi,
         h      = 0,
-        dist_h = dist_h)
+        disth = disth)
 #a0.dihedral : dihedral angle between angle ideal and actual position
 
 #    # alg1a: X-H2 planar groups, such as in ARG, ASN, GLN
@@ -158,9 +158,9 @@ class manager(object):
     rh = matrix.col(self.sites_cart[ih])
     r0 = matrix.col(self.sites_cart[i_a0])
     if self.use_ideal_bonds_angles:
-      dist_h = neighbors.a0['dist_ideal']
+      disth = neighbors.a0['dist_ideal']
     else:
-      dist_h = (r0 - rh).length()
+      disth = (r0 - rh).length()
     i_a1 = neighbors.a1['iseq']
     r1 = matrix.col(self.sites_cart[i_a1])
     if ('dihedral_ideal' in neighbors.b1):
@@ -221,7 +221,7 @@ class manager(object):
           n      = 0,
           b      = phi,
           h      = 0,
-          dist_h = dist_h)
+          disth = disth)
       if self.h_parameterization[ih_no_dihedral] is None:
         self.h_parameterization[ih_no_dihedral] = parameterization_info(
           htype  = 'alg1a',
@@ -234,7 +234,7 @@ class manager(object):
           b      = phi+math.pi,
           n      = 0,
           h      = 0,
-          dist_h = dist_h)
+          disth = disth)
 
   # alg2a, 2tetra, 2neigbs
   def process_2_neighbors(self, neighbors):
@@ -243,9 +243,9 @@ class manager(object):
     rh = matrix.col(self.sites_cart[ih])
     r0 = matrix.col(self.sites_cart[i_a0])
     if self.use_ideal_bonds_angles:
-      dist_h = neighbors.a0['dist_ideal']
+      disth = neighbors.a0['dist_ideal']
     else:
-      dist_h = (r0 - rh).length()
+      disth = (r0 - rh).length()
     # if H is second neighbor, get its index
     if (neighbors.number_h_neighbors == 1):
       i_h1 = neighbors.h1['iseq']
@@ -265,7 +265,7 @@ class manager(object):
       b      = b,
       h      = 0,
       n      = 0,
-      dist_h = dist_h)
+      disth = disth)
     # alg2a
     if (sumang > (2*math.pi + 0.05) and root < 0):
       self.h_parameterization[ih].htype = 'unk_ideal'
@@ -287,7 +287,7 @@ class manager(object):
           b      = b,
           h      = -h,
           n      = 0,
-          dist_h = dist_h,
+          disth = disth,
           htype  = '2tetra')
       else:
         # 2neigbs
@@ -301,9 +301,9 @@ class manager(object):
     rh = matrix.col(self.sites_cart[ih])
     r0 = matrix.col(self.sites_cart[i_a0])
     if self.use_ideal_bonds_angles:
-      dist_h = neighbors.a0['dist_ideal']
+      disth = neighbors.a0['dist_ideal']
     else:
-      dist_h = (r0 - rh).length()
+      disth = (r0 - rh).length()
     a, b, h = self.get_coefficients_alg3(
       neighbors              = neighbors,
       use_ideal_bonds_angles = self.use_ideal_bonds_angles,
@@ -318,7 +318,7 @@ class manager(object):
       b      = b,
       h      = h,
       n      = 0,
-      dist_h = dist_h,
+      disth = disth,
       htype  = '3neigbs')
 
 # this function determines parameters for three cases:
@@ -474,7 +474,7 @@ def compute_H_position(sites_cart, hp):
   ih = hp.ih
   r0 = matrix.col(sites_cart[hp.a0])
   r1 = matrix.col(sites_cart[hp.a1])
-  dh = hp.dist_h
+  dh = hp.disth
   a, b, h = hp.a, hp.b, hp.h
   # alg2a
   if (hp.htype == 'flat_2neigbs'):

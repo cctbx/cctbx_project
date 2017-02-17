@@ -47,7 +47,7 @@ class manager(object):
           ih = hp.ih
           rc = riding_coefficients(
             htype=hp.htype, ih = hp.ih, a0=hp.a0, a1=hp.a1, a2=hp.a2, a3=hp.a3,
-            a=hp.a, b=hp.b, h=hp.h, n=hp.n, disth=hp.dist_h)
+            a=hp.a, b=hp.b, h=hp.h, n=hp.n, disth=hp.disth)
           self.parameterization_cpp.append(rc)
 #    print "initialize cpp para", time.time()-t0
 
