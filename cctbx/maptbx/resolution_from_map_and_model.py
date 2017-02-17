@@ -179,8 +179,12 @@ def _resolution_from_map_and_model_helper(
       for i in xrange(y.size()):
         if(i>=1 and i<=y.size()-2):
           y_ave = (y[i-1]+y[i]+y[i+1])/3.
+        elif(i==0):
+          y_ave = (y[0]+y[1])/2.
+        elif(y==y.size()-1):
+          y_ave = (y[y.size()-2]+y[y.size()-1])/2.
         else:
-          y_ave = y[i]
+          assert 0
         #if(i>=2 and i<=y.size()-3):
         #  y_ave = (y[i-2]+y[i-1]+y[i]+y[i+1]+y[i+2])/5.
         #elif(i>=1 and i<=y.size()-2):
@@ -207,12 +211,16 @@ def _resolution_from_map_and_model_helper(
   ###
   if(thorough):
     o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
-      selections=selections, d_min_start=d_min_start,
-      d_min_end=f_obs.d_min()+1.e-6,
-      d_min_step=d_min_step, nproc=1)
-    junk,junk,b, junk = o.x, o.y, o.b, o.radii
-    assert o.b.size()==1
-    o1 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=o.b, map=map,
+      selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
+      d_min_step=0.5, nproc=nproc)
+    b = [flex.mean(o.b),]
+    #o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
+    #  selections=selections, d_min_start=d_min_start,
+    #  d_min_end=f_obs.d_min()+1.e-6,
+    #  d_min_step=d_min_step, nproc=1)
+    #junk,junk,b, junk = o.x, o.y, o.b, o.radii
+    #assert o.b.size()==1
+    o1 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b, map=map,
       selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
       d_min_step=d_min_step, nproc=nproc)
     maxima1 = parabola_is_good(x=o1.x, y=o1.y_smooth(), assert_concave_up=True,
@@ -379,6 +387,7 @@ class run(object):
           radius         = self.radius,
           b_iso          = self.b_iso)
         if(xray_structure is not None):
+          #print "-"
           d_min, b_iso, cc, radius = \
             _resolution_from_map_and_model_helper(
               map            = map_data,
