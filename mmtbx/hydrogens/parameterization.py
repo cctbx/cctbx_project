@@ -1,7 +1,5 @@
 from __future__ import division
 from scitbx import matrix
-#from scitbx.array_family import flex
-#from libtbx.utils import Sorry
 from libtbx import group_args
 from stdlib import math
 from scitbx.math import dihedral_angle
@@ -41,21 +39,17 @@ class manager(object):
     self.sites_cart = sites_cart
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
 
-  def test_print(self, ih, neighbors):
-    print 'now at atom %s' % (ih)
+  #def test_print(self, ih, neighbors):
+  #  print 'now at atom %s' % (ih)
 
-# for every H atom, determine the type of bond
+# for every H atom, determine the type of geometry
   def determine_parameterization(self):
-    #self.h_parameterization = {}
     self.h_parameterization = [None]*len(self.h_connectivity)
     for neighbors in self.h_connectivity:
       if (neighbors is None): continue
       ih = neighbors.ih
-      #if ih in h_parameterization.keys():
       if self.h_parameterization[ih] is not None:
         continue
-      #if ih in self.h_parameterization:
-      #  continue
       number_h_neighbors = neighbors.number_h_neighbors
       number_non_h_neighbors = neighbors.number_non_h_neighbors
       # alg2a, 2tetra, 2neigbs
@@ -123,6 +117,12 @@ class manager(object):
     if (neighbors.number_h_neighbors == 2):
       self.h_parameterization[ih].htype = 'prop'
       i_h1, i_h2 = neighbors.h1['iseq'], neighbors.h2['iseq']
+      i_h1, i_h2 = self.check_propeller_order(
+        i_a0 = i_a0,
+        i_a1 = i_a1,
+        ih   = ih,
+        i_h1 = i_h1,
+        i_h2 = i_h2)
       self.h_parameterization[i_h1] = parameterization_info(
         htype  = 'prop',
         ih     = i_h1,
@@ -135,11 +135,6 @@ class manager(object):
         b      = phi,
         h      = 0,
         dist_h = dist_h)
-      # check if order is reversed
-      # this can maybe be done earlier, in connectivity?
-      i_h1_coord = compute_H_position(
-        sites_cart = self.sites_cart,
-        hp         = self.h_parameterization[i_h1])
       self.h_parameterization[i_h2] = parameterization_info(
         htype  = 'prop',
         ih     = i_h2,
@@ -152,11 +147,7 @@ class manager(object):
         b      = phi,
         h      = 0,
         dist_h = dist_h)
-      if ((i_h1_coord - matrix.col(self.sites_cart[i_h2])).length() <
-        (i_h1_coord - matrix.col(self.sites_cart[i_h1])).length()):
-        self.h_parameterization[i_h1].n = 2
-        self.h_parameterization[i_h2].n = 1
-#info: a0.dihedral = dihedral angle between angle ideal and actual position
+#a0.dihedral : dihedral angle between angle ideal and actual position
 
 #    # alg1a: X-H2 planar groups, such as in ARG, ASN, GLN
 #    # requires that dihedral angle restraint exists for at least one H atom
@@ -218,7 +209,6 @@ class manager(object):
       rb10 = rb1 - r1
       u2 = (rb10 - ((rb10).dot(u10)) * u10).normalize()
       u3 = u1.cross(u2)
-      #if ih_dihedral not in self.h_parameterization:
       if self.h_parameterization[ih_dihedral] is None:
         self.h_parameterization[ih_dihedral] = parameterization_info(
           htype  = 'alg1a',
@@ -232,7 +222,6 @@ class manager(object):
           b      = phi,
           h      = 0,
           dist_h = dist_h)
-      #if ih_no_dihedral not in self.h_parameterization:
       if self.h_parameterization[ih_no_dihedral] is None:
         self.h_parameterization[ih_no_dihedral] = parameterization_info(
           htype  = 'alg1a',
@@ -470,6 +459,17 @@ class manager(object):
     c = matrix_z.determinant()/matrix_d.determinant()
     return a, b, c
 
+  def check_propeller_order(self, i_a0, i_a1, ih, i_h1, i_h2):
+    rh = matrix.col(self.sites_cart[ih])
+    #rh_1 = matrix.col(self.sites_cart[i_h1])
+    rh_2 = matrix.col(self.sites_cart[i_h2])
+    r0 = matrix.col(self.sites_cart[i_a0])
+    r1 = matrix.col(self.sites_cart[i_a1])
+    if (((rh-r0).cross(rh_2-r0)).dot(r1-r0) >= 0):
+      return i_h1, i_h2
+    else:
+      return i_h2, i_h1
+
 def compute_H_position(sites_cart, hp):
   ih = hp.ih
   r0 = matrix.col(sites_cart[hp.a0])
@@ -562,7 +562,6 @@ def diagnostics(sites_cart, threshold, h_parameterization, h_connectivity):
     ih = hp.ih
     list_h.append(ih)
     number_h_para += 1
-    #hp = h_parameterization[ih]
     h_distance = None
     rh = matrix.col(sites_cart[ih])
     if (hp.htype == 'unk'):
@@ -589,5 +588,6 @@ def diagnostics(sites_cart, threshold, h_parameterization, h_connectivity):
     long_distance_list = long_distance_list,
     slipped            = slipped,
     type_list          = type_list,
-    number_h_para      = number_h_para)
+    number_h_para      = number_h_para,
+    threshold          = threshold)
 
