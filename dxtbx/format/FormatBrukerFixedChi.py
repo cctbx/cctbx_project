@@ -85,7 +85,7 @@ class FormatBrukerFixedChi(FormatBruker):
   def _detector(self):
     # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
     two_theta = float(self.header_dict['ANGLES'][0])
-    overload = 65535
+    overload = 60000
     underload = 0
 
     fast = matrix.col((1, 0, 0))
