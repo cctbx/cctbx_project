@@ -152,7 +152,8 @@ class symmetry(object):
                           absolute_angle_tolerance=1.,
                           absolute_length_tolerance=-9999.,
                           ):
-    if (not self.unit_cell().is_similar_to(
+    if (self.unit_cell() and other.unit_cell() and
+        not self.unit_cell().is_similar_to(
         other.unit_cell(),
         relative_length_tolerance,
         absolute_angle_tolerance,
@@ -249,12 +250,13 @@ class symmetry(object):
 
   def join_symmetry(self, other_symmetry, force=False,
       raise_sorry_if_incompatible_unit_cell=False):
-    if (other_symmetry is None):
-      return symmetry(
+    same_result = symmetry(
         unit_cell=self.unit_cell(),
         space_group_info=self.space_group_info(),
         raise_sorry_if_incompatible_unit_cell=
           raise_sorry_if_incompatible_unit_cell)
+    if (other_symmetry is None):
+      return same_result
     if (force == False):
       strong = self
       weak = other_symmetry
@@ -437,17 +439,59 @@ class symmetry(object):
         result.append(self.unit_cell().orthogonalize(m3.elems*site_frac+t)[0])
     return result
 
+  def is_nonsence(self):
+    uc = self.unit_cell()
+    if uc is None:
+      return False
+    ucp = uc.parameters()
+    return ((abs(1.-ucp[0])<1.e-3 and
+             abs(1.-ucp[1])<1.e-3 and
+             abs(1.-ucp[2])<1.e-3) or
+          (abs(0.-ucp[0])<1.e-3 and
+             abs(0.-ucp[1])<1.e-3 and
+             abs(0.-ucp[2])<1.e-3) or
+          (abs(1.-ucp[3])<1.e-3 and
+             abs(1.-ucp[4])<1.e-3 and
+             abs(1.-ucp[5])<1.e-3) or
+          (abs(0.-ucp[3])<1.e-3 and
+             abs(0.-ucp[4])<1.e-3 and
+             abs(0.-ucp[5])<1.e-3))
+
+  def is_empty(self):
+    return self.unit_cell() is None and self.space_group_info() is None
+
 def select_crystal_symmetry(
       from_command_line     = None,
       from_parameter_file   = None,
       from_coordinate_files = [None],
-      from_reflection_files = [None]):
+      from_reflection_files = [None],
+      enforce_similarity = False,
+      absolute_angle_tolerance = 1.,
+      absolute_length_tolerance = -9999.):
   """Select/construct a crystal symmetry from a list of various options"""
   tmp = [from_command_line, from_parameter_file]+from_coordinate_files \
         +from_reflection_files
   if tmp.count(None)==len(tmp):
     raise AssertionError("No unit cell and symmetry information supplied")
-
+  if len(tmp) > 0 and enforce_similarity:
+    cs0 = None
+    i = 0
+    while cs0 is None and i<len(tmp):
+      cs0 = tmp[i]
+      if cs0 is not None:
+        if cs0.is_nonsence() or cs0.is_empty():
+          cs0 = None
+      i += 1
+    for cs in tmp[i:]:
+      if cs and not cs.is_nonsence() and not cs.is_empty():
+        is_similar_cs = cs0.is_similar_symmetry(cs,
+           absolute_angle_tolerance=absolute_angle_tolerance,
+           absolute_length_tolerance=absolute_angle_tolerance)
+        if(not is_similar_cs):
+          msg = "Crystal symmetry mismatch between different files.\n"
+          msg += "%s %s\n" % (cs0.unit_cell(), cs0.space_group_info())
+          msg += "%s %s\n" % (cs.unit_cell(), cs.space_group_info())
+          raise Sorry("%s"%(msg))
   result = symmetry(
     unit_cell=None,
     space_group_info=None)
@@ -482,6 +526,10 @@ def select_crystal_symmetry(
           space_group_info=space_group_info,
           assert_is_compatible_unit_cell=False)
         break
+  if result.is_nonsence():
+    return None
+  if result.is_empty():
+    return None
   return result
 
 def non_crystallographic_symmetry(

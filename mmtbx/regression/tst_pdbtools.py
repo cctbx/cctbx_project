@@ -842,9 +842,11 @@ HETATM   20  O   UNK B   6      35.068  19.167 155.349  1.00 15.97       B   O
 """
   open("tst_pdbtools_unknown.pdb", "w").write(pdb_in)
   cmd = "phenix.pdbtools tst_pdbtools_unknown.pdb set_b_iso=20"
+  print cmd
   run_command(command=cmd, sorry_expected=True)
   cmd2 = cmd + " stop_for_unknowns=False"
-  run_command(command=cmd)
+  print cmd2
+  run_command(command=cmd2)
 
 def exercise_remove_alt_confs () :
   pdb_in = """\
