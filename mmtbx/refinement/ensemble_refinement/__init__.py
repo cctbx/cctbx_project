@@ -154,9 +154,6 @@ ensemble_refinement {
     .type = bool
     .help = 'Scale <Ncalc> to starting Ncalc'
     .short_caption = Scale <Ncalc> to starting Ncalc
-  show_wilson_plot = False
-    .type = bool
-    .help = 'Print Wilson plot during simulation'
   output_running_kinetic_energy_in_occupancy_column = False
     .type = bool
     .help = 'Output PDB file contains running kinetic energy in place of occupancy'
@@ -426,13 +423,6 @@ class run_ensemble_refinement(object):
 
     self.setup_bulk_solvent_and_scale()
 
-    # Wilson plot for input model
-    if self.params.show_wilson_plot:
-      self.wilson_plot(miller_data = self.fmodel_running.f_obs().data(), header = "Fobs input")
-      self.wilson_plot(miller_data = self.fmodel_running.f_calc().data(), header = "Fcalc input")
-      self.wilson_plot(miller_data = self.fmodel_running.f_model().data(), header = "Fmodel input")
-      self.wilson_plot(miller_data = self.fmodel_running.f_model_scaled_with_k1().data(), header = "Fmodel_k1")
-
     self.fmodel_running.info(
       free_reflections_per_bin = 100,
       max_number_of_bins       = 999).show_rfactors_targets_in_bins(out = self.log)
@@ -463,11 +453,6 @@ class run_ensemble_refinement(object):
         print >> self.log, "Fix Ncalc scale          : True"
         print >> self.log, "Sum current Ncalc        : {0:5.3f}".format(sum(self.fmodel_running.n_calc))
 
-      # XXX test
-      self.wilson_plot(miller_data = self.fmodel_running.n_obs, header = "Nobs reference")
-      self.wilson_plot(miller_data = self.fmodel_running.n_calc, header = "Ncalc reference")
-      print >> self.log, "|"+"-"*77+"|\n"
-
     #Set ADP model
     self.tls_manager = er_tls_manager()
     self.setup_tls_selections(tls_group_selection_strings = self.params.tls_group_selections)
@@ -480,14 +465,6 @@ class run_ensemble_refinement(object):
       self.model.xray_structure.set_occupancies(
         value      = 1.0)
       self.model.show_occupancy_statistics(out = self.log)
-
-    # Wilson plot for start model
-    if self.params.show_wilson_plot:
-      self.wilson_plot(miller_data = self.fmodel_running.f_obs().data(), header = "Fobs start")
-      self.wilson_plot(miller_data = self.fmodel_running.f_calc().data(), header = "Fcalc start")
-      self.wilson_plot(miller_data = self.fmodel_running.f_model().data(), header = "Fmodel start")
-      self.wilson_plot(miller_data = self.fmodel_running.f_model_scaled_with_k1().data(), header = "Fmodel_k1 start")
-
     #Initiates running average SFs
     self.er_data.f_calc_running = self.fmodel_running.f_calc().data().deep_copy()
     #self.fc_running_ave = self.fmodel_running.f_calc()
@@ -660,14 +637,6 @@ class run_ensemble_refinement(object):
         if self.macro_cycle < self.equilibrium_macro_cycles:
           if self.fmodel_running.r_free() < (self.best_r_free - self.params.update_sigmaa_rfree):
             self.update_sigmaa()
-
-      # XXX wilson plot
-      if self.params.show_wilson_plot and self.macro_cycle%int(self.n_mc_per_tx) == 0:
-        self.wilson_plot(miller_data = self.fmodel_running.f_obs().data(), header = "Fobs running")
-        self.wilson_plot(miller_data = self.fmodel_running.f_calc().data(), header = "Fcalc running")
-        self.wilson_plot(miller_data = self.fmodel_running.f_model().data(), header = "Fmodel running")
-        self.wilson_plot(miller_data = self.fmodel_running.f_model_scaled_with_k1().data(), header = "Fmodel_k1 running")
-
       # Wxray coupled to temperature bath
       if self.params.wxray_coupled_tbath:
         if self.macro_cycle < 5:
@@ -785,13 +754,6 @@ class run_ensemble_refinement(object):
                                   )
     info.show_remark_3(out = self.log)
     info.show_rfactors_targets_in_bins(out = self.log)
-
-    # Final wilson plot
-    if self.params.show_wilson_plot:
-      self.wilson_plot(miller_data = self.fmodel_total.f_obs().data(), header = "Fobs final")
-      self.wilson_plot(miller_data = self.fmodel_total.f_calc().data(), header = "Fcalc final")
-      self.wilson_plot(miller_data = self.fmodel_total.f_model().data(), header = "Fmodel final")
-      self.wilson_plot(miller_data = self.fmodel_total.f_model_scaled_with_k1().data(), header = "Fmodel_k1 final")
 
     self.write_output_files(run_number=run_number)
 
@@ -1569,14 +1531,6 @@ class run_ensemble_refinement(object):
         info.max,
         info.mean)
     print >> self.log, "|"+"-"*77+"|\n"
-
-  def wilson_plot(self, miller_data, header = ""):
-    make_header("Wilson Plot " + header, out = self.log)
-    self.copy_ma = self.copy_ma.array(data = flex.abs(miller_data))
-    reflections_per_bin = min(250, self.copy_ma.data().size())
-    self.copy_ma.setup_binner(reflections_per_bin = reflections_per_bin)
-    wilson_plot = self.copy_ma.wilson_plot(use_binning=True)
-    wilson_plot.show(f = self.log)
 
 ################################################################################
 
