@@ -605,6 +605,40 @@ class annotation(structure_base):
       all_elem_list += sh.strands
     return all_elem_list
 
+  def filter_annotation(
+      self,
+      hierarchy=None,
+      asc=None,
+      remove_short_annotations=True,
+      remove_3_10_helices=True,
+      remove_empty_annotations=True,
+      concatenate_consecutive_helices=True,
+      split_helices_with_prolines=True,
+      filter_sheets_with_long_hbonds=True
+      ):
+    """ Returns filtered annotation"""
+    result = self.deep_copy()
+    if remove_short_annotations:
+      result.remove_short_annotations()
+    if asc is None and hierarchy is not None:
+      asc = hierarchy.atom_selection_cache()
+    if remove_3_10_helices:
+      result.remove_3_10_helices()
+    if hierarchy is not None:
+      if asc is None:
+        asc = hierarchy.atom_selection_cache()
+      if remove_empty_annotations:
+        result.remove_empty_annotations(hierarchy, asc)
+      if concatenate_consecutive_helices:
+        result.concatenate_consecutive_helices(hierarchy, asc)
+      if split_helices_with_prolines:
+        result.split_helices_with_prolines(hierarchy, asc)
+      if filter_sheets_with_long_hbonds:
+        result.filter_sheets_with_long_hbonds(hierarchy, asc)
+    return result
+
+
+
   def remove_empty_annotations(self, hierarchy, asc=None):
     # returns annotation of deleted helices and sheets
     if asc is None:

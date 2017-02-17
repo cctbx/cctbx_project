@@ -526,29 +526,11 @@ class model_idealization():
       self.original_ann = self.ann.deep_copy()
       print >> self.log, "Original SS annotation"
       print >> self.log, self.original_ann.as_pdb_str()
-      self.ann.remove_short_annotations()
-      self.filtered_whole_ann = self.ann.deep_copy()
-      self.ann.remove_3_10_helices()
-      self.filtered_whole_ann.remove_3_10_helices()
-      self.ann.remove_empty_annotations(
-          hierarchy=self.working_pdb_h)
-      self.filtered_whole_ann.remove_empty_annotations(
-          hierarchy=self.whole_pdb_h)
-      self.ann.concatenate_consecutive_helices(
-          hierarchy=self.whole_pdb_h)
-      self.filtered_whole_ann.concatenate_consecutive_helices(
-          hierarchy=self.whole_pdb_h)
-      self.ann.split_helices_with_prolines(
-          hierarchy=self.working_pdb_h,
-          asc=None)
-      self.filtered_whole_ann.split_helices_with_prolines(
+      self.filtered_whole_ann = self.ann.filter_annotation(
           hierarchy=self.whole_pdb_h,
           asc=None)
-      self.ann.filter_sheets_with_long_hbonds(
+      self.ann = self.ann.filter_annotation(
           hierarchy=self.working_pdb_h,
-          asc=None)
-      self.filtered_whole_ann.filter_sheets_with_long_hbonds(
-          hierarchy=self.whole_pdb_h,
           asc=None)
       # print >> self.log, "Splitted SS annotation"
       # print >> self.log, ann.as_pdb_str()
