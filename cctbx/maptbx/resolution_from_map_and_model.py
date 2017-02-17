@@ -12,13 +12,13 @@ def parabola_is_good(x, y, assert_concave_up, use_longest_slope_criteria=False):
     fit = scitbx.math.curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
       degree=2, min_iterations=50, number_of_cycles=10)
     a0,a1,a2 = fit.params
-    if(a2>=0.): return [] # concave down
+    if(a2>=0. or abs(a2)<1.e-6): return [] # concave down or flat line
   maxima = []
   for i in xrange(y.size()):
     yi = y[i]
     cntr=0
     yp,ym=[],[]
-    offsets = [1,] #XXX[1,2,3]
+    offsets = [1,2,3]
     for j in offsets:
       if(i-j>=0 and y[i-j]<=yi and not y[i-j] in ym):
         cntr+=1
@@ -26,8 +26,8 @@ def parabola_is_good(x, y, assert_concave_up, use_longest_slope_criteria=False):
       if(i+j<=y.size()-1 and y[i+j]<=yi and not y[i+j] in yp):
         cntr+=1
         yp.append(y[i+j])
-    #XXX if(cntr==len(offsets)+len(offsets)): maxima.append([x[i],yi,i])
-    if(cntr==2 and len(offsets)==len(offsets)): maxima.append([x[i],yi,i])
+    #if(cntr==len(offsets)+len(offsets)): maxima.append([x[i],yi,i])
+    if(cntr==6 and len(offsets)==len(offsets)): maxima.append([x[i],yi,i])
   # Remove plateau
   tmp=[]
   tmp2 = []
@@ -223,7 +223,8 @@ def _resolution_from_map_and_model_helper(
     o1 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b, map=map,
       selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
       d_min_step=d_min_step, nproc=nproc)
-    maxima1 = parabola_is_good(x=o1.x, y=o1.y_smooth(), assert_concave_up=True,
+    y = flex.double([round(i,5) for i in o1.y_smooth()])
+    maxima1 = parabola_is_good(x=o1.x, y=y, assert_concave_up=True,
       use_longest_slope_criteria=True)
     #print "maxima1",maxima1
     if(len(maxima1)!=1): return None,None,None,None # Exactly one peak expected
