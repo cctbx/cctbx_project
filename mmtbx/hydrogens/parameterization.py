@@ -1,6 +1,5 @@
 from __future__ import division
 from scitbx import matrix
-from libtbx import group_args
 from stdlib import math
 from scitbx.math import dihedral_angle
 
@@ -41,6 +40,7 @@ class manager(object):
 
 # for every H atom, determine the type of geometry
   def determine_parameterization(self):
+    self.unk_list, self.unk_ideal_list = [], []
     self.h_parameterization = [None]*len(self.h_connectivity)
     for neighbors in self.h_connectivity:
       if (neighbors is None): continue
@@ -63,10 +63,7 @@ class manager(object):
       elif(number_non_h_neighbors == 1 and number_h_neighbors == 1):
         self.process_1_neighbor_type_arg(neighbors = neighbors)
       else:
-        self.h_parameterization[ih] = parameterization_info(
-          htype = 'unk',
-          ih    = ih,
-          a0    = neighbors.a0['iseq'])
+        self.unk_list.append(ih)
     return self.h_parameterization
 
   def process_1_neighbor(self, neighbors):
@@ -157,28 +154,14 @@ class manager(object):
         ih_dihedral = i_h1
         ih_no_dihedral = ih
       else:
-        self.h_parameterization[ih] = parameterization_info(
-          htype  = 'unk',
-          ih     = ih,
-          a0     = i_a0)
-        self.h_parameterization[i_h1] = parameterization_info(
-          htype  = 'unk',
-          ih     = i_h1,
-          a0     = i_a0)
+        self.unk_list.append(ih)
         return
     i_b1 = self.h_connectivity[ih_dihedral].b1['iseq']
     rb1 = matrix.col(self.sites_cart[i_b1])
     # check if angle is typical for propeller
     # catches case of missing propeller atom
     if (neighbors.h1['angle_ideal'] >107 and neighbors.h1['angle_ideal'] <111):
-      self.h_parameterization[ih] = parameterization_info(
-        htype  = 'unk',
-        ih     = ih,
-        a0     = a0.iseq)
-      self.h_parameterization[i_h1] = parameterization_info(
-        htype  = 'unk',
-        ih     = i_h1,
-        a0     = a0.iseq)
+      self.unk_list.append(ih)
     else:
       dihedral = dihedral_angle(
         sites=[self.sites_cart[i_b1], self.sites_cart[i_a1],
@@ -229,7 +212,9 @@ class manager(object):
     sumang, a, b, h, root = self.get_coefficients(ih = ih)
     # alg2a
     if (sumang > (2*math.pi + 0.05) and root < 0):
-      htype = 'unk_ideal'
+      #htype = 'unk_ideal'
+      self.unk_ideal_list.append(ih)
+      return
     elif (sumang < (2*math.pi + 0.05) and (sumang > 2*math.pi - 0.05)):
       htype = 'flat_2neigbs'
     else:
@@ -510,49 +495,3 @@ def compute_H_position(sites_cart, hp):
     rh_calc = sites_cart[ih]
   return rh_calc
 
-def count_h(h_connectivity):
-  number_h = 0
-  for item in h_connectivity:
-    if item: number_h += 1
-  return number_h
-
-def diagnostics(sites_cart, threshold, h_parameterization, h_connectivity):
-  h_distances = {}
-  unk_list, unk_ideal_list = [], []
-  long_distance_list = []
-  list_h = []
-  type_list = []
-  number_h_para = 0
-  for hp in h_parameterization:
-    if (hp == None): continue
-    ih = hp.ih
-    list_h.append(ih)
-    number_h_para += 1
-    h_distance = None
-    rh = matrix.col(sites_cart[ih])
-    if (hp.htype == 'unk'):
-      unk_list.append(ih)
-    elif (hp.htype == 'unk_ideal'):
-      unk_ideal_list.append(ih)
-    else:
-      rh_calc = compute_H_position(
-        sites_cart = sites_cart,
-        hp         = hp)
-      if (rh_calc is not None):
-        h_distance = (rh_calc - rh).length()
-        h_distances[ih] = h_distance
-        type_list.append(hp.htype)
-      if (h_distance > threshold):
-        long_distance_list.append(ih)
-  set_temp = set(list_h)
-  #set_temp = set(list(h_parameterization.keys()))
-  slipped = [x for x in h_connectivity if x not in set_temp]
-  return group_args(
-    h_distances        = h_distances,
-    unk_list           = unk_list,
-    unk_ideal_list     = unk_ideal_list,
-    long_distance_list = long_distance_list,
-    slipped            = slipped,
-    type_list          = type_list,
-    number_h_para      = number_h_para,
-    threshold          = threshold)

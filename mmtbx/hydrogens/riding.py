@@ -1,5 +1,6 @@
 from __future__ import division
 import time
+from libtbx import group_args
 from cctbx import geometry_restraints
 from scitbx import matrix
 from mmtbx.hydrogens import connectivity
@@ -113,10 +114,33 @@ class manager(object):
     return grads
 
   def diagnostics(self, sites_cart, threshold):
-    diagnostics = parameterization.diagnostics(
-      h_parameterization = self.h_parameterization,
-      h_connectivity     = self.h_connectivity,
-      sites_cart         = sites_cart,
+    h_parameterization = self.h_parameterization
+    h_connectivity     = self.h_connectivity
+    h_distances = {}
+    long_distance_list, list_h, type_list = [], [], []
+    for hp in h_parameterization:
+      if (hp == None): continue
+      ih = hp.ih
+      list_h.append(ih)
+      rh = matrix.col(sites_cart[ih])
+      rh_calc = parameterization.compute_H_position(
+        sites_cart = sites_cart,
+        hp         = hp)
+      if (rh_calc is not None):
+        h_distance = (rh_calc - rh).length()
+        h_distances[ih] = h_distance
+        type_list.append(hp.htype)
+      if (h_distance > threshold):
+        long_distance_list.append(ih)
+    #set_temp = set(list_h)
+    #set_temp = set(list(h_parameterization.keys()))
+    #slipped = [x for x in h_connectivity if x not in set_temp]
+    return group_args(
+      h_distances        = h_distances,
+      unk_list           = self.parameterization_manager.unk_list,
+      unk_ideal_list     = self.parameterization_manager.unk_ideal_list,
+      long_distance_list = long_distance_list,
+#      slipped            = slipped,
+      type_list          = type_list,
+      number_h_para      = len(list_h),
       threshold          = threshold)
-    return diagnostics
-
