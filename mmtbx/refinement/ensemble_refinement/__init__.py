@@ -588,11 +588,13 @@ class run_ensemble_refinement(object):
       self.fc_running_ave = self.fc_running_ave.array(data = self.er_data.f_calc_running)
 
       #Update running average Fmask
+      f_mask = self.fmodel_running.f_masks()[0]
+      self.copy_ma, f_mask = self.copy_ma.common_sets(f_mask)
       if self.macro_cycle == 1:
-        self.er_data.f_mask_running = self.fmodel_running.f_masks()[0].data().deep_copy()
+        self.er_data.f_mask_running = f_mask.data().deep_copy()
       else:
         self.er_data.f_mask_running \
-          = (self.a_prime * self.er_data.f_mask_running) + ((1-self.a_prime) * self.fmodel_running.f_masks()[0].data())
+          = (self.a_prime * self.er_data.f_mask_running) + ((1-self.a_prime) * f_mask.data())
       self.running_f_mask_update = self.copy_ma.array(data = self.er_data.f_mask_running).deep_copy()
 
       #Update runnning average Fcalc and Fmask
