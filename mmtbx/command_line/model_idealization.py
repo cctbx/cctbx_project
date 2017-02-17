@@ -2,10 +2,12 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_idealization
 
 import sys, os
+from cctbx import crystal
 from iotbx.pdb import secondary_structure as ioss
 from mmtbx.secondary_structure import build as ssb
 from mmtbx.secondary_structure import manager, sec_str_master_phil
 import mmtbx.utils
+from iotbx.phil import process_command_line_with_files
 from scitbx.array_family import flex
 from iotbx.pdb import write_whole_pdb_file
 import iotbx.phil
@@ -885,51 +887,75 @@ class model_idealization():
     return result
 
 def run(args):
-
-
   # processing command-line stuff, out of the object
   log = multi_out()
   log.register("stdout", sys.stdout)
   if len(args) == 0:
     format_usage_message(log)
     return
-  inputs = mmtbx.utils.process_command_line_args(args=args,
-      master_params=master_params())
-  work_params = inputs.params.extract()
-  inputs.params.show(prefix=" ", out=log)
-  pdb_file_names = list(inputs.pdb_file_names)
-  if work_params.file_name is not None:
-    pdb_file_names += work_params.file_name
-  if len(pdb_file_names) == 0:
+  input_objects = process_command_line_with_files(
+      args=args,
+      master_phil=master_params(),
+      pdb_file_def="file_name",
+      map_file_def="map_file_name")
+  work_params = input_objects.work.extract()
+  input_objects.work.show(prefix=" ", out=log)
+  if len(work_params.file_name) == 0:
     raise Sorry("No PDB file specified")
   if work_params.output_prefix is None:
-    work_params.output_prefix = os.path.basename(pdb_file_names[0])
+    work_params.output_prefix = os.path.basename(work_params.file_name[0])
   log_file_name = "%s.log" % work_params.output_prefix
   logfile = open(log_file_name, "w")
   log.register("logfile", logfile)
   if work_params.loop_idealization.output_prefix is None:
     work_params.loop_idealization.output_prefix = "%s_rama_fixed" % work_params.output_prefix
-  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_file_names)
+
+  # Here we start opening files provided,
+  # collect crystal symmetries
+  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=work_params.file_name)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
+  pdb_cs = pdb_input.crystal_symmetry()
+  map_cs = None
+  crystal_symmetry = None
   map_data = None
-  if inputs.ccp4_map is not None:
+
+  if work_params.map_file_name is not None:
+    af = any_file(work_params.map_file_name)
     print >> log, "Processing input CCP4 map file..."
-    map_data = inputs.ccp4_map.data.as_double()
+    map_data = af.file_content.data.as_double()
+    try:
+      map_cs = af.crystal_symmetry()
+    except NotImplementedError as e:
+      pass
     print >> log, "Input map min,max,mean: %7.3f %7.3f %7.3f"%\
-      map_data.as_1d().min_max_mean().as_tuple()
+        map_data.as_1d().min_max_mean().as_tuple()
     map_data = map_data - flex.mean(map_data)
     sd = map_data.sample_standard_deviation()
     map_data = map_data/sd
     print >> log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
       map_data.as_1d().min_max_mean().as_tuple()
-    inputs.ccp4_map.show_summary(prefix="  ")
+    af.file_content.ccp4_map.show_summary(prefix="  ")
+
+  # Crystal symmetry: validate and finalize consensus object
+  try:
+    crystal_symmetry = crystal.select_crystal_symmetry(
+        from_command_line     = None,
+        from_parameter_file   = None,
+        from_coordinate_files = [pdb_cs],
+        from_reflection_files = [map_cs],
+        enforce_similarity    = True)
+  except AssertionError as e:
+    if len(e.args)>0 and e.args[0].startswith("No unit cell and symmetry information supplied"):
+      pass
+    else:
+      raise e
 
   mi_object = model_idealization(
       pdb_input=pdb_input,
-      cif_objects=inputs.cif_objects,
+      cif_objects=input_objects.cif_file_def,
       map_data = map_data,
-      crystal_symmetry = inputs.crystal_symmetry,
+      crystal_symmetry = crystal_symmetry,
       params=work_params,
       log=log,
       verbose=True)
