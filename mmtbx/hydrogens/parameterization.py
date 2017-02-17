@@ -39,9 +39,6 @@ class manager(object):
     self.sites_cart = sites_cart
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
 
-  #def test_print(self, ih, neighbors):
-  #  print 'now at atom %s' % (ih)
-
 # for every H atom, determine the type of geometry
   def determine_parameterization(self):
     self.h_parameterization = [None]*len(self.h_connectivity)
@@ -102,20 +99,20 @@ class manager(object):
     rb10 = rb1 - r1
     u2 = (rb10 - ((rb10).dot(u1)) * u1).normalize()
     u3 = u1.cross(u2)
-    self.h_parameterization[ih] = parameterization_info(
-      htype  = 'alg1b',
-      ih     = ih,
-      a0     = i_a0,
-      a1     = i_a1,
-      a2     = i_b1,
-      a3     = 0,
-      a      = alpha,
-      b      = phi,
-      h      = 0,
-      n      = 0,
-      disth = disth)
+    if (neighbors.number_h_neighbors == 0):
+      self.h_parameterization[ih] = parameterization_info(
+        htype  = 'alg1b',
+        ih     = ih,
+        a0     = i_a0,
+        a1     = i_a1,
+        a2     = i_b1,
+        a3     = 0,
+        a      = alpha,
+        b      = phi,
+        h      = 0,
+        n      = 0,
+        disth = disth)
     if (neighbors.number_h_neighbors == 2):
-      self.h_parameterization[ih].htype = 'prop'
       i_h1, i_h2 = neighbors.h1['iseq'], neighbors.h2['iseq']
       i_h1, i_h2 = self.check_propeller_order(
         i_a0 = i_a0,
@@ -123,30 +120,19 @@ class manager(object):
         ih   = ih,
         i_h1 = i_h1,
         i_h2 = i_h2)
-      self.h_parameterization[i_h1] = parameterization_info(
-        htype  = 'prop',
-        ih     = i_h1,
-        a0     = i_a0,
-        a1     = i_a1,
-        a2     = i_b1,
-        a3     = 0,
-        a      = alpha,
-        n      = 1,
-        b      = phi,
-        h      = 0,
-        disth = disth)
-      self.h_parameterization[i_h2] = parameterization_info(
-        htype  = 'prop',
-        ih     = i_h2,
-        a0     = i_a0,
-        a1     = i_a1,
-        a2     = i_b1,
-        a3     = 0,
-        a      = alpha,
-        n      = 2,
-        b      = phi,
-        h      = 0,
-        disth = disth)
+      for nprop, hprop in zip([0,1,2],[ih,i_h1,i_h2]):
+        self.h_parameterization[hprop] = parameterization_info(
+          htype  = 'prop',
+          ih     = hprop,
+          a0     = i_a0,
+          a1     = i_a1,
+          a2     = i_b1,
+          a3     = 0,
+          a      = alpha,
+          n      = nprop,
+          b      = phi,
+          h      = 0,
+          disth = disth)
 #a0.dihedral : dihedral angle between angle ideal and actual position
 
 #    # alg1a: X-H2 planar groups, such as in ARG, ASN, GLN
@@ -209,32 +195,21 @@ class manager(object):
       rb10 = rb1 - r1
       u2 = (rb10 - ((rb10).dot(u10)) * u10).normalize()
       u3 = u1.cross(u2)
-      if self.h_parameterization[ih_dihedral] is None:
-        self.h_parameterization[ih_dihedral] = parameterization_info(
-          htype  = 'alg1a',
-          ih     = ih_dihedral,
-          a0     = i_a0,
-          a1     = i_a1,
-          a2     = i_b1,
-          a3     = 0,
-          a      = alpha,
-          n      = 0,
-          b      = phi,
-          h      = 0,
-          disth = disth)
-      if self.h_parameterization[ih_no_dihedral] is None:
-        self.h_parameterization[ih_no_dihedral] = parameterization_info(
-          htype  = 'alg1a',
-          ih     = ih_no_dihedral,
-          a0     = i_a0,
-          a1     = i_a1,
-          a2     = i_b1,
-          a3     = 0,
-          a      = alpha,
-          b      = phi+math.pi,
-          n      = 0,
-          h      = 0,
-          disth = disth)
+      for ih_alg1a, phi_alg1a in zip(
+        [ih_dihedral,ih_no_dihedral],[phi, phi+math.pi]):
+        if self.h_parameterization[ih_alg1a] is None:
+          self.h_parameterization[ih_alg1a] = parameterization_info(
+            htype  = 'alg1a',
+            ih     = ih_alg1a,
+            a0     = i_a0,
+            a1     = i_a1,
+            a2     = i_b1,
+            a3     = 0,
+            a      = alpha,
+            b      = phi_alg1a,
+            n      = 0,
+            h      = 0,
+            disth = disth)
 
   # alg2a, 2tetra, 2neigbs
   def process_2_neighbors(self, neighbors):
@@ -251,32 +226,16 @@ class manager(object):
       i_h1 = neighbors.h1['iseq']
     else:
       i_h1 = None
-    sumang, a, b, h, root = self.get_coefficients(
-      ih                     = ih,
-      use_ideal_bonds_angles = self.use_ideal_bonds_angles,
-      sites_cart             = self.sites_cart)
-    self.h_parameterization[ih] = parameterization_info(
-      ih     = ih,
-      a0     = neighbors.a0['iseq'],
-      a1     = neighbors.a1['iseq'],
-      a2     = neighbors.a2['iseq'],
-      a3     = 0,
-      a      = a,
-      b      = b,
-      h      = 0,
-      n      = 0,
-      disth = disth)
+    sumang, a, b, h, root = self.get_coefficients(ih = ih)
     # alg2a
     if (sumang > (2*math.pi + 0.05) and root < 0):
-      self.h_parameterization[ih].htype = 'unk_ideal'
+      htype = 'unk_ideal'
     elif (sumang < (2*math.pi + 0.05) and (sumang > 2*math.pi - 0.05)):
-      self.h_parameterization[ih].htype = 'flat_2neigbs'
+      htype = 'flat_2neigbs'
     else:
       if (neighbors.number_h_neighbors == 1):
       # 2 tetragonal geometry
-        self.h_parameterization[ih].htype = '2tetra'
-        self.h_parameterization[ih].h = h
-        self.h_parameterization[ih].n = 0
+        htype = '2tetra'
         self.h_parameterization[i_h1] = parameterization_info(
           ih     = i_h1,
           a0     = neighbors.a0['iseq'],
@@ -287,13 +246,25 @@ class manager(object):
           b      = b,
           h      = -h,
           n      = 0,
-          disth = disth,
+          disth  = disth,
           htype  = '2tetra')
       else:
         # 2neigbs
-        self.h_parameterization[ih].h = h
-        self.h_parameterization[ih].htype = '2neigbs'
-        self.h_parameterization[ih].n = 0
+        htype = '2neigbs'
+    if (h is None):
+      h = 0
+    self.h_parameterization[ih] = parameterization_info(
+      htype = htype,
+      ih    = ih,
+      a0    = neighbors.a0['iseq'],
+      a1    = neighbors.a1['iseq'],
+      a2    = neighbors.a2['iseq'],
+      a3    = 0,
+      a     = a,
+      b     = b,
+      h     = h,
+      n     = 0,
+      disth = disth)
 
   def process_3_neighbors(self, neighbors):
     ih = neighbors.ih
@@ -304,10 +275,7 @@ class manager(object):
       disth = neighbors.a0['dist_ideal']
     else:
       disth = (r0 - rh).length()
-    a, b, h = self.get_coefficients_alg3(
-      neighbors              = neighbors,
-      use_ideal_bonds_angles = self.use_ideal_bonds_angles,
-      sites_cart             = self.sites_cart)
+    a, b, h = self.get_coefficients_alg3(ih = ih)
     self.h_parameterization[ih] = parameterization_info(
       ih     = ih,
       a0     = neighbors.a0['iseq'],
@@ -325,9 +293,8 @@ class manager(object):
 # 1. planar geometry
 # 2. two tetragonal CH2 geometry
 # 3. H out of plane of its 3 neighbors (should be rare and not in AA)
-  def get_coefficients(self, ih, use_ideal_bonds_angles, sites_cart):
+  def get_coefficients(self, ih):
     neighbors = self.h_connectivity[ih]
-    ih = neighbors.ih
     if (neighbors.number_h_neighbors == 1):
       i_h1 = neighbors.h1['iseq']
     else:
@@ -335,14 +302,14 @@ class manager(object):
     i_a0 = neighbors.a0['iseq']
     i_a1 = neighbors.a1['iseq']
     i_a2 = neighbors.a2['iseq']
-    rh = matrix.col(sites_cart[ih])
-    r0 = matrix.col(sites_cart[i_a0])
-    r1 = matrix.col(sites_cart[i_a1])
-    r2 = matrix.col(sites_cart[i_a2])
+    rh = matrix.col(self.sites_cart[ih])
+    r0 = matrix.col(self.sites_cart[i_a0])
+    r1 = matrix.col(self.sites_cart[i_a1])
+    r2 = matrix.col(self.sites_cart[i_a2])
     uh0 = (rh - r0).normalize()
     u10 = (r1 - r0).normalize()
     u20 = (r2 - r0).normalize()
-    if use_ideal_bonds_angles:
+    if self.use_ideal_bonds_angles:
       alpha0 = math.radians(neighbors.a0['angle_a1a0a2'])
       alpha1 = math.radians(neighbors.a1['angle_ideal'])
       alpha2 = math.radians(neighbors.a2['angle_ideal'])
@@ -373,9 +340,9 @@ class manager(object):
     else:
       # two tetragonal geometry: e.g. CH2 group
       if (i_h1 is not None):
-        rh2 = matrix.col(sites_cart[neighbors.h1['iseq']])
+        rh2 = matrix.col(self.sites_cart[neighbors.h1['iseq']])
         uh02 = (rh2 - r0).normalize()
-        if use_ideal_bonds_angles:
+        if self.use_ideal_bonds_angles:
           h = math.radians(neighbors.h1['angle_ideal']) * 0.5
         else:
           h = (uh0).angle(uh02) * 0.5
@@ -401,22 +368,22 @@ class manager(object):
 
 #
 # obtain coefficients for tetragonal H (such as HA) using Cramer's rule
-  def get_coefficients_alg3(self,neighbors, use_ideal_bonds_angles, sites_cart):
-    ih = neighbors.ih
+  def get_coefficients_alg3(self, ih):
+    neighbors = self.h_connectivity[ih]
     i_a0 = neighbors.a0['iseq']
     i_a1 = neighbors.a1['iseq']
     i_a2 = neighbors.a2['iseq']
     i_a3 = neighbors.a3['iseq']
-    rh = matrix.col(sites_cart[ih])
-    r0 = matrix.col(sites_cart[i_a0])
-    r1 = matrix.col(sites_cart[i_a1])
-    r2 = matrix.col(sites_cart[i_a2])
-    r3 = matrix.col(sites_cart[i_a3])
+    rh = matrix.col(self.sites_cart[ih])
+    r0 = matrix.col(self.sites_cart[i_a0])
+    r1 = matrix.col(self.sites_cart[i_a1])
+    r2 = matrix.col(self.sites_cart[i_a2])
+    r3 = matrix.col(self.sites_cart[i_a3])
     uh0 = (rh - r0).normalize()
     u10 = (r1 - r0).normalize()
     u20 = (r2 - r0).normalize()
     u30 = (r3 - r0).normalize()
-    if use_ideal_bonds_angles:
+    if self.use_ideal_bonds_angles:
       alpha0 = math.radians(neighbors.a1['angle_ideal'])
       alpha1 = math.radians(neighbors.a2['angle_ideal'])
       alpha2 = math.radians(neighbors.a3['angle_ideal'])
@@ -461,7 +428,6 @@ class manager(object):
 
   def check_propeller_order(self, i_a0, i_a1, ih, i_h1, i_h2):
     rh = matrix.col(self.sites_cart[ih])
-    #rh_1 = matrix.col(self.sites_cart[i_h1])
     rh_2 = matrix.col(self.sites_cart[i_h2])
     r0 = matrix.col(self.sites_cart[i_a0])
     r1 = matrix.col(self.sites_cart[i_a1])
@@ -590,4 +556,3 @@ def diagnostics(sites_cart, threshold, h_parameterization, h_connectivity):
     type_list          = type_list,
     number_h_para      = number_h_para,
     threshold          = threshold)
-
