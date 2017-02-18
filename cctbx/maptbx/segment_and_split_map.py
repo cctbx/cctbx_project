@@ -318,7 +318,7 @@ master_phil = iotbx.phil.parse("""
                  or adjusted surface area
 
      auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
-                            *resolution_dependent None
+                            *resolution_dependent model_sharpening None
        .type = choice(multi=True)
        .short_caption = Sharpening methods
        .help = Methods to use in sharpening. b_iso searches for b_iso to \
@@ -1216,7 +1216,7 @@ class sharpening_info:
       sharpening_target=None,
       residual_target=None,
       fraction_occupied=None,
-      d_cut=None,
+      resolution=None, # changed from d_cut
       resolution_dependent_b=None,  # linear sharpening
       b_sharpen=None,
       b_iso=None,  # expected B_iso after applying b_sharpen
@@ -1233,13 +1233,13 @@ class sharpening_info:
       search_b_n=None,
       box_sharpening_info_obj=None,
       chain_type=None,
+      model_sharpening_scale=None,
         ):
 
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
     del self.tracking_data  # don't need it as part of the object
     del self.box_sharpening_info_obj# don't need it as part of the object
-
     if tracking_data:  # use tracking data information
       self.update_with_tracking_data(tracking_data=tracking_data)
 
@@ -1250,9 +1250,24 @@ class sharpening_info:
     if self.resolution_dependent_b is None:
       self.resolution_dependent_b=[0,0,0]
 
+    if self.model_sharpening_scale and self.sharpening_type!='model_sharpening':
+      assert self.sharpening_type is None # XXX may want to print out error
+      self.sharpening_type='model_sharpening'
+
+  def set_resolution_dependent_b(self,
+    resolution_dependent_b=None,
+    sharpening_method='resolution_dependent'):
+    if resolution_dependent_b:
+      self.resolution_dependent_b=resolution_dependent_b
+    if sharpening_method:
+      self.sharpening_method=sharpening_method
+
   def sharpening_is_defined(self):
     if self.sharpening_method is None:
       return False
+
+    if self.model_sharpening_scale:
+      return True
 
     if self.b_iso is not None or \
        self.b_sharpen is not None or \
@@ -1281,6 +1296,7 @@ class sharpening_info:
 
   def update_with_params(self,params=None,
      crystal_symmetry=None,solvent_fraction=None,
+     pdb_inp=None,
      n_residues=None,ncs_copies=None):
       self.crystal_symmetry=crystal_symmetry
       self.solvent_fraction=solvent_fraction
@@ -1294,15 +1310,18 @@ class sharpening_info:
       self.region_weight=params.map_modification.region_weight
       self.max_regions_to_test=params.map_modification.max_regions_to_test
       self.d_min_ratio=params.map_modification.d_min_ratio
-      self.d_cut=params.crystal_info.resolution
-      self.d_min=params.crystal_info.resolution
+      self.resolution=params.crystal_info.resolution  # changed from d_cut
+      #  NOTE:
+      #  resolution=X-ray resolution or nominal resolution of cryoEM map
+      #  high-res cutoff of reflections is d_min*d_min_ratio
+
+      self.max_box_fraction=params.map_modification.max_box_fraction
       self.k_sharpen=params.map_modification.k_sharpen
       self.sharpening_target=params.map_modification.sharpening_target
       self.residual_target=params.map_modification.residual_target
       self.eps=params.map_modification.eps
       self.n_bins=params.map_modification.n_bins
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
-      self.max_box_fraction=params.map_modification.max_box_fraction
       self.min_ratio_of_ncs_copy_to_first=\
          params.segmentation.min_ratio_of_ncs_copy_to_first
       self.max_ratio_to_target=params.segmentation.max_ratio_to_target
@@ -1316,7 +1335,13 @@ class sharpening_info:
       self.search_b_max=params.map_modification.search_b_max
       self.search_b_n=params.map_modification.search_b_n
       self.verbose=params.control.verbose
-      if params.map_modification.b_iso is not None or \
+
+      if pdb_inp or self.sharpening_method=='model_sharpening':
+        self.sharpening_method='model_sharpening'
+        self.box_in_auto_sharpen=False
+        self.sharpening_target='model'
+
+      elif params.map_modification.b_iso is not None or \
           params.map_modification.b_sharpen is not None:
         if params.map_modification.k_sharpen is not None:
            self.sharpening_method='b_iso_to_d_cut'
@@ -1339,6 +1364,7 @@ class sharpening_info:
        'b_iso':"Overall b_iso sharpening",
        'b_iso_to_d_cut':"b_iso sharpening to high_resolution cutoff",
        'resolution_dependent':"Resolution-dependent sharpening",
+       'model_sharpening':"Model sharpening",
        'no_sharpening':"No sharpening",
        None:"No sharpening",
         }
@@ -1346,6 +1372,7 @@ class sharpening_info:
     target_summary_dict={
        'adjusted_sa':"Adjusted surface area",
        'kurtosis':"Map kurtosis",
+       'model':"Map-model CC",
       }
     print >>out,"\nSummary of sharpening:\n"
 
@@ -1362,7 +1389,7 @@ class sharpening_info:
       if self.b_sharpen is not None:
         print >>out,"Overall b_sharpen applied:      %7.2f A**2" %(
           self.b_sharpen)
-      print >>out,"High-resolution cutoff:         %7.2f A" %(self.d_cut)
+      print >>out,"High-resolution cutoff:         %7.2f A" %(self.resolution)
     elif self.sharpening_method=="resolution_dependent":
       print >>out,"Resolution-dependent b values (%7.2f,%7.2f,%7.2f)\n" %(
         tuple(self.resolution_dependent_b))
@@ -1370,7 +1397,9 @@ class sharpening_info:
       print >>out,"Effective b_iso vs resolution obtained:"
       from cctbx.maptbx.refine_sharpening import get_effective_b_values  
       d_min_values,b_values=get_effective_b_values(
-        self.d_min,self.resolution_dependent_b,self.d_cut)
+        d_min_ratio=self.d_min_ratio,
+         resolution_dependent_b=self.resolution_dependent_b,
+         resolution=self.resolution)
       print >>out,"                                Resolution  Effective B-iso"
       print >>out,"                                    (A)         (A**2)"
       for dd,b in zip(d_min_values,b_values):
@@ -1378,7 +1407,7 @@ class sharpening_info:
          dd,b)
 
     if self.sharpening_method in ["b_iso_to_d_cut"] and \
-      self.k_sharpen and self.d_cut:
+      self.k_sharpen and self.resolution:
         print >>out,"Transition from sharpening"
         print >>out,"   to not sharpening (k_sharpen):%7.2f " %(self.k_sharpen)
 
@@ -1401,19 +1430,20 @@ class sharpening_info:
   def get_effective_b_iso(self,map_data=None,out=sys.stdout):
     b_iso,map_coeffs,f_array,phases=\
     get_effective_b_iso(map_data=map_data,
-      resolution=self.d_min,
+      resolution=self.resolution,
       d_min_ratio=self.d_min_ratio,
       crystal_symmetry=self.crystal_symmetry,
        out=out)
     return b_iso
 
-  def sharpen_and_score_map(self,map_data=None,out=sys.stdout):
+  def sharpen_and_score_map(self,map_data=None,pdb_inp=None,out=sys.stdout):
     if self.n_real is None: # need to get it
       self.n_real=map_data.all()
     self.map_data=sharpen_map_with_si(
-      sharpening_info_obj=self,map_data=map_data,out=out)
+      sharpening_info_obj=self,map_data=map_data,pdb_inp=pdb_inp,
+        resolution=self.resolution,out=out)
     self.get_effective_b_iso(map_data=self.map_data,out=out)
-    score_map(map_data=self.map_data,
+    score_map(map_data=self.map_data,pdb_inp=pdb_inp,
         sharpening_info_obj=self,
         out=null_out())
     return self
@@ -1429,10 +1459,16 @@ class sharpening_info:
     else:
        return False
 
+  def is_model_sharpening(self):
+    if self.sharpening_method=='model_sharpening':
+       return True
+    else:
+       return False
+
   def as_map_coeffs(self,out=sys.stdout):
     return get_f_phases_from_map(map_data=self.map_data,
        crystal_symmetry=self.crystal_symmetry,
-       d_min=self.d_min,
+       d_min=self.resolution,
        d_min_ratio=self.d_min_ratio,
        return_as_map_coeffs=True,
        out=out)
@@ -1646,6 +1682,21 @@ def map_coeffs_as_fp_phi(map_coeffs):
   phases=map_coeffs.phases(deg=True)
   return amplitudes,phases
 
+def map_coeffs_to_fp(map_coeffs):
+  amplitudes=map_coeffs.amplitudes()
+  amplitudes.set_observation_type_xray_amplitude()
+  assert amplitudes.is_real_array()
+  return amplitudes
+
+def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
+     out=sys.stdout):
+  xray_structure=pdb_inp.construct_hierarchy().extract_xray_structure(
+     crystal_symmetry=f_array.crystal_symmetry()) 
+       
+  model_f_array=f_array.structure_factors_from_scatterers(
+      xray_structure = xray_structure).f_calc()
+  return model_f_array
+
 def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       d_min_ratio=None,return_as_map_coeffs=False,out=sys.stdout):
     from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
@@ -1674,7 +1725,9 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       if not map_coeffs:
             raise Sorry("Failed to run map_to_structure_factors (no map coeffs)...")
 
-
+    elif d_min:
+       args=['d_min=%s' %(d_min)]
+       print >>out,"Using all grid points for inversion"
     else:
        args=['d_min=None','box=True']
        print >>out,"Using all grid points for inversion"
@@ -1692,6 +1745,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
 def apply_sharpening(map_coeffs=None,
     sharpening_info_obj=None,
     n_real=None,b_sharpen=None,crystal_symmetry=None,
+    model_sharpening_scale=None,
     f_array=None,phases=None,d_min=None,k_sharpen=None,out=sys.stdout):
     if map_coeffs and f_array is None and phases is None:
       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
@@ -1699,9 +1753,17 @@ def apply_sharpening(map_coeffs=None,
     if sharpening_info_obj is not None:
       b_sharpen=sharpening_info_obj.b_sharpen
       k_sharpen=sharpening_info_obj.k_sharpen
-      d_min=sharpening_info_obj.d_cut
+      d_min=sharpening_info_obj.resolution# changed from d_cut
       n_real=sharpening_info_obj.n_real
-    if b_sharpen is None or (
+      model_sharpening_scale=sharpening_info_obj.model_sharpening_scale
+
+    if model_sharpening_scale:
+      if not map_coeffs:
+        map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
+      return get_map_from_map_coeffs(map_coeffs=map_coeffs,
+        crystal_symmetry=crystal_symmetry,n_real=n_real)
+
+    elif b_sharpen is None or (
         b_sharpen in [0,None] and k_sharpen in [0,None]):
       if not map_coeffs:
         map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
@@ -5124,6 +5186,7 @@ def get_kurtosis(data=None):
   return (x**4).min_max_mean().mean/sd**4
 
 def score_map(map_data=None,
+        pdb_inp=None,
         sharpening_info_obj=None,
         solvent_fraction=None,
         fraction_occupied=None,
@@ -5197,18 +5260,105 @@ def score_map(map_data=None,
 
 def sharpen_map_with_si(sharpening_info_obj=None,
      f_array_normalized=None,
-     f_array=None,phases=None,map_data=None,out=sys.stdout):
+     f_array=None,phases=None,
+     map_data=None,
+     pdb_inp=None,
+     overall_b=None,
+     resolution=None,
+     out=sys.stdout):
 
   si=sharpening_info_obj
 
   if map_data and (not f_array or not phases):
     map_coeffs=get_f_phases_from_map(map_data=map_data,
        crystal_symmetry=si.crystal_symmetry,
-       d_min=si.d_min,
+       d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
        return_as_map_coeffs=True,
        out=out)
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+
+  if si.is_model_sharpening():
+
+    # Figure out resolution_dependent sharpening to optimally
+    #  match map and model. Then apply it as usual.
+
+    from cctbx.maptbx.refine_sharpening import get_sharpened_map,\
+       quasi_normalize_structure_factors
+    (d_max,d_min)=f_array.d_max_min()
+    if not f_array.binner():
+      f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
+    f_array_normalized=quasi_normalize_structure_factors(
+          f_array,set_to_minimum=0.01)
+
+    # define Wilson B for the model
+    if overall_b is None:
+      if resolution is None: # Note resolution is defined by user, d_min here is just what 
+        # reflections are present
+        raise Sorry("Need resolution if overall_b is not defined for model sharpening")
+      overall_b=10*resolution
+      print >>out,"Setting Wilson B = %5.1fA based on resolution of %5.1f A" %(
+        overall_b,resolution)
+
+    # create model map using same coeffs
+    model_map_coeffs=get_f_phases_from_model(
+       pdb_inp=pdb_inp,
+       f_array=f_array,
+       overall_b=overall_b,
+       out=out)
+    model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)
+    model_f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
+    model_f_array_normalized=quasi_normalize_structure_factors(
+          model_f_array,set_to_minimum=0.01)
+    # Set overall_b....
+    starting_b_iso=get_b_iso(model_f_array)
+    normalized_b_iso=get_b_iso(model_f_array_normalized)
+    model_f_array_normalized=model_f_array_normalized.apply_debye_waller_factors(
+      b_iso=overall_b-normalized_b_iso)
+    final_b_iso=get_b_iso(model_f_array_normalized)
+    print "Effective b_iso of initial and adjusted model map: %6.1f A**2  %6.1f A**2" %(
+       starting_b_iso,final_b_iso)
+
+    # get f and model_f vs resolution and FSC vs resolution and apply
+    # scale to f_array and return sharpened map
+    dsd = f_array.d_spacings().data()
+    target_scale_factors=flex.double()
+    target_sthol2=flex.double()
+    for i_bin in f_array.binner().range_used():
+      sel       = f_array.binner().selection(i_bin)
+      d         = dsd.select(sel)
+      d_min     = flex.min(d)
+      d_max     = flex.max(d)
+      d_avg     = flex.mean(d)
+      n         = d.size()
+      fc        = map_coeffs.select(sel)
+      fo        = model_map_coeffs.select(sel)
+      cc        = fc.map_correlation(other = fo)
+      f_array_fc=map_coeffs_to_fp(fc)
+      f_array_fo=map_coeffs_to_fp(fo)
+
+      rms_fc=f_array_fc.data().norm()
+      rms_fo=f_array_fo.data().norm()
+      scale_on_fo=(rms_fc/rms_fo) * cc
+      target_sthol2.append(0.25/d_avg**2)
+      target_scale_factors.append(scale_on_fo)
+
+    # Now create resolution-dependent coefficients from the scale factors
+    from cctbx.maptbx.refine_sharpening import run as refine_sharpening
+    si.sharpening_method='model_sharpening'
+    si.residual_target='model'
+    si.b_sharpen=0
+    si.b_iso=None
+
+    refine_sharpening(  # get b values back...
+      target_sthol2=target_sthol2,
+      target_scale_factors=target_scale_factors,
+      sharpening_info_obj=si, out=out)
+    si.sharpening_method='resolution_dependent'
+
+    print >>out,"\nSet resolution dependent b to match model to map:"
+    si.show_summary()
+
 
   if si.is_resolution_dependent_sharpening():
     if f_array_normalized is None:
@@ -5219,8 +5369,9 @@ def sharpen_map_with_si(sharpening_info_obj=None,
         f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
       f_array_normalized=quasi_normalize_structure_factors(
           f_array,set_to_minimum=0.01)
-    return get_sharpened_map(f_array_normalized,phases,
-       si.resolution_dependent_b,si.d_cut,si.n_real)
+    return get_sharpened_map(ma=f_array_normalized,phases=phases,
+       b=si.resolution_dependent_b,resolution=si.resolution,n_real=si.n_real,
+       d_min_ratio=si.d_min_ratio)
 
   else:
     return apply_sharpening(n_real=si.n_real,
@@ -5383,6 +5534,7 @@ def auto_sharpen_map_or_map_coeffs(
         crystal_symmetry=None,  # supply crystal_symmetry and map or
         map=None,               #  map_coeffs and n_real
         map_coeffs=None,
+        pdb_inp=None,
         n_real=None,
         solvent_content=None,
         region_weight=None,
@@ -5419,6 +5571,10 @@ def auto_sharpen_map_or_map_coeffs(
     else:  # convert from structure factors to create map if necessary
       map=get_fft_map(n_real=n_real, map_coeffs=map_coeffs).real_map_unpadded()
       return_as_map=False
+
+    # Determine if we are running model_sharpening
+    if pdb_inp: 
+      auto_sharpen_methods=['model_sharpening']
 
     # run auto_sharpening
     si=sharpening_info(n_real=map.all())
@@ -5457,7 +5613,9 @@ def auto_sharpen_map_or_map_coeffs(
     si.update_with_params(params=local_params,
       crystal_symmetry=crystal_symmetry,
       solvent_fraction=solvent_content,
+      pdb_inp=pdb_inp,
       )
+    
     if si.solvent_fraction is None:
       si.solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=crystal_symmetry,
@@ -5467,9 +5625,10 @@ def auto_sharpen_map_or_map_coeffs(
     si=run_auto_sharpen(
       si=si,
       map_data=map,
+      pdb_inp=pdb_inp,
       auto_sharpen_methods=local_params.map_modification.auto_sharpen_methods,
       out=out)
-    si.sharpen_and_score_map(map_data=map,
+    si.sharpen_and_score_map(map_data=map,pdb_inp=pdb_inp,
           out=out).show_score(out=out)
     si.show_summary(out=out)
     return si 
@@ -5477,6 +5636,7 @@ def auto_sharpen_map_or_map_coeffs(
 def run_auto_sharpen(
       si=None,
       map_data=None,
+      pdb_inp=None,
       auto_sharpen_methods=None,
       out=sys.stdout):
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
@@ -5516,7 +5676,7 @@ def run_auto_sharpen(
 
   original_b_iso,map_coeffs,f_array,phases=get_effective_b_iso(
      map_data=map_data,
-      resolution=si.d_min,
+      resolution=si.resolution,
       d_min_ratio=si.d_min_ratio,
       crystal_symmetry=crystal_symmetry,
      out=out)
@@ -5531,7 +5691,7 @@ def run_auto_sharpen(
   if si.sharpening_is_defined():  # just do it
     print >>out,"\nUsing specified sharpening"
     best_si=set_up_sharpening(si=si,map_data=map_data,out=out)
-    best_si.sharpen_and_score_map(map_data=map_data,
+    best_si.sharpen_and_score_map(map_data=map_data,pdb_inp=pdb_inp,
           out=out).show_score(out=out)
     best_si.show_summary(out=out)
 
@@ -5542,7 +5702,7 @@ def run_auto_sharpen(
       auto_sharpen_methods=['no_sharpening']
     for m in auto_sharpen_methods:
       # ------------------------
-      if m in ['no_sharpening','resolution_dependent']:
+      if m in ['no_sharpening','resolution_dependent','model_sharpening']:
         b_min=original_b_iso
         b_max=original_b_iso
         b_n=1
@@ -5610,6 +5770,7 @@ def run_auto_sharpen(
           local_si.b_sharpen=original_b_iso-b_iso
           local_si.b_iso=b_iso
 
+        print >>out,"\nAbout to apply sharpening with b_iso=%6.1f A**2\n" %(b_iso)
         local_map_data=apply_sharpening(
             f_array=local_f_array,phases=local_phases,
             sharpening_info_obj=local_si,
@@ -5842,6 +6003,10 @@ def set_up_sharpening(si=None,map_data=None,out=sys.stdout):
            print >>out,"Resolution-dependent b_sharpening values:" +\
               "b0: %7.2f  b1: %7.2f  b2: %7.2f " %(
              tuple(check_si.resolution_dependent_b))
+         elif check_si.model_sharpening_scale:
+           print >>out,"Model sharpening scale values:"
+           for x in check_si.model_sharpening_scale: print >>out,x,
+           print >>out
          return check_si
 
 def run(args,

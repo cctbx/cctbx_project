@@ -105,11 +105,13 @@ def get_amplitudes(args):
   return array
 
 
-def get_effective_b_values(d_min,resolution_dependent_b,d_cut):
+def get_effective_b_values(d_min_ratio=None,resolution_dependent_b=None,
+    resolution=None):
   # Return effective b values at sthol2_1 2 and 3
   # see adjust_amplitudes_linear below
 
-  sthol2_2=0.25/d_cut**2
+  d_min=resolution*d_min_ratio
+  sthol2_2=0.25/resolution**2
   sthol2_1=sthol2_2*0.5
   sthol2_3=0.25/d_min**2
   b1=resolution_dependent_b[0]
@@ -124,22 +126,24 @@ def get_effective_b_values(d_min,resolution_dependent_b,d_cut):
 
   return [res_1,res_2,res_3],[b1,b2,b3_use]
 
-def adjust_amplitudes_linear(f_array,b1,b2,b3,d_cut=None):
+def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
+    d_min_ratio=None):
   # do something to the amplitudes.
-  #   b1=delta_b at midway between d=inf and d=d_cut,b2 at d_cut,
+  #   b1=delta_b at midway between d=inf and d=resolution,b2 at resolution,
   #   b3 at d_min (added to b2)
-  # pseudo-B at position of b1= -b1/sthol2_2= -b1*4*d_cut**2
-  #  or...b1=-pseudo_b1/(4*d_cut**2)
+  # pseudo-B at position of b1= -b1/sthol2_2= -b1*4*resolution**2
+  #  or...b1=-pseudo_b1/(4*resolution**2)
   #  typical values of say b1=1 at 3 A -> pseudo_b1=-4*9=-36
 
   data_array=f_array.data()
   sthol2_array=f_array.sin_theta_over_lambda_sq()
   scale_array=flex.double()
   import math
-  d_min=f_array.d_min()
-  if d_cut is None: d_cut=d_min
+  #d_min=f_array.d_min()
+  #if resolution is None: resolution=d_min
+  d_min=d_min_ratio*resolution
 
-  sthol2_2=0.25/d_cut**2
+  sthol2_2=0.25/resolution**2
   sthol2_1=sthol2_2*0.5
   sthol2_3=0.25/d_min**2
   b0=0.0
@@ -162,16 +166,43 @@ def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
     from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
     return get_map_from_map_coeffs(map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry, n_real=n_real)
 
-def get_sharpened_map(ma=None,phases=None,b=None,d_cut=None,
-    n_real=None):
+def get_sharpened_map(ma=None,phases=None,b=None,resolution=None,
+    n_real=None,d_min_ratio=None):
   assert n_real is not None
-  sharpened_ma=adjust_amplitudes_linear(ma,b[0],b[1],b[2],d_cut=d_cut)
+  sharpened_ma=adjust_amplitudes_linear(ma,b[0],b[1],b[2],resolution=resolution,
+     d_min_ratio=d_min_ratio)
   new_map_coeffs=sharpened_ma.phase_transfer(phase_source=phases,deg=True)
   return calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
 
+def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resolution=None,d_min_ratio=None):
+
+  d_min=d_min_ratio*resolution
+  sthol2_2=0.25/resolution**2
+  sthol2_1=sthol2_2*0.5
+  sthol2_3=0.25/d_min**2
+  b0=0.0
+  b1=b[0]
+  b2=b[1]
+  b3=b[2]
+  b3_use=b3+b2
+
+  resid=0.
+  import math 
+  for sthol2,scale_factor in zip(target_sthol2,target_scale_factors):
+    if sthol2 > sthol2_2:
+      value=b2+(sthol2-sthol2_2)*(b3_use-b2)/(sthol2_3-sthol2_2)
+    elif sthol2 > sthol2_1:
+      value=b1+(sthol2-sthol2_1)*(b2-b1)/(sthol2_2-sthol2_1)
+    else:
+      value=b0+(sthol2-0.)*(b1-b0)/(sthol2_1-0.)
+    
+    value=math.exp(value)
+    resid+=(value-scale_factor)**2
+  return resid
 
 def calculate_adjusted_sa(ma,phases,b,
-    d_cut=None,
+    resolution=None,
+    d_min_ratio=None,
     solvent_fraction=None,
     region_weight=None,
     max_regions_to_test=None,
@@ -180,7 +211,8 @@ def calculate_adjusted_sa(ma,phases,b,
     wrapping=None,
     n_real=None):
 
-  map_data=get_sharpened_map(ma,phases,b,d_cut,n_real=n_real)
+  map_data=get_sharpened_map(ma,phases,b,resolution,n_real=n_real,
+    d_min_ratio=d_min_ratio)
   from cctbx.maptbx.segment_and_split_map import score_map
 
   from libtbx.utils import null_out
@@ -203,7 +235,7 @@ def get_kurtosis(data=None):
 
 
 class refinery:
-  def __init__(self,ma,phases,b,d_cut,
+  def __init__(self,ma,phases,b,resolution,
     residual_target=None,
     solvent_fraction=None,
     region_weight=None,
@@ -215,12 +247,19 @@ class refinery:
     tol=0.01,
     max_iterations=20,
     n_real=None,
+    target_sthol2=None,
+    target_scale_factors=None,
+    d_min_ratio=None,
     dummy_run=False):
 
     self.ma=ma
     self.n_real=n_real
     self.phases=phases
-    self.d_cut=d_cut
+    self.resolution=resolution
+    self.d_min_ratio=d_min_ratio
+
+    self.target_sthol2=target_sthol2
+    self.target_scale_factors=target_scale_factors
 
     self.tol=tol
     self.eps=eps
@@ -248,11 +287,15 @@ class refinery:
 
     b=self.get_b()
     value = -1.*self.residual(b)
-    print >>out,"Result: b1 %7.2f b2 %7.2f b3 %7.2f d_cut %7.2f %s: %7.3f" %(
-     b[0],b[1],b[2],self.d_cut,self.residual_target,value)
+    print >>out,"Result: b1 %7.2f b2 %7.2f b3 %7.2f resolution %7.2f %s: %7.3f" %(
+     b[0],b[1],b[2],self.resolution,self.residual_target,value)
 
-    self.sharpened_ma=adjust_amplitudes_linear(
-         self.ma,b[0],b[1],b[2],d_cut=self.d_cut)
+    if self.ma:
+      self.sharpened_ma=adjust_amplitudes_linear(
+         self.ma,b[0],b[1],b[2],resolution=self.resolution,
+         d_min_ratio=self.d_min_ratio)
+    else:
+      self.sharpened_ma=None
     return value
 
   def compute_functional_and_gradients(self):
@@ -264,20 +307,29 @@ class refinery:
   def residual(self,b,restraint_weight=100.):
 
     if self.residual_target=='kurtosis':
-      resid=-1.*calculate_kurtosis(self.ma,self.phases,b,self.d_cut,
-         n_real=self.n_real)
+      resid=-1.*calculate_kurtosis(self.ma,self.phases,b,self.resolution,
+         n_real=self.n_real,d_min_ratio=self.d_min_ratio)
 
     elif self.residual_target=='adjusted_sa':
       resid=-1.*calculate_adjusted_sa(self.ma,self.phases,b,
-        d_cut=self.d_cut,
+        resolution=self.resolution,
+        d_min_ratio=self.d_min_ratio,
         solvent_fraction=self.solvent_fraction,
         region_weight=self.region_weight,
         max_regions_to_test=self.max_regions_to_test,
         sa_percent=self.sa_percent,
         fraction_occupied=self.fraction_occupied,
         wrapping=self.wrapping,n_real=self.n_real)
+
+    elif self.residual_target=='model':
+      resid=calculate_match(target_sthol2=self.target_sthol2,
+        target_scale_factors=self.target_scale_factors,
+        b=b,
+        resolution=self.resolution,
+        d_min_ratio=self.d_min_ratio)
+   
     else:
-      raise Sorry("residual_target must be kurtosis or adjusted_sa")
+      raise Sorry("residual_target must be kurtosis or adjusted_sa or match_target")
 
     # put in restraint so b[1] is not bigger than b[0]
     if b[1]>b[0]:  resid+=(b[1]-b[0])*restraint_weight
@@ -303,14 +355,16 @@ class refinery:
   def callback_after_step(self, minimizer):
     pass # can do anything here
 
-def calculate_kurtosis(ma,phases,b,d_cut,n_real=None):
-  map_data=get_sharpened_map(ma,phases,b,d_cut,n_real=n_real)
+def calculate_kurtosis(ma,phases,b,resolution,n_real=None,
+    d_min_ratio=None):
+  map_data=get_sharpened_map(ma,phases,b,resolution,n_real=n_real,
+  d_min_ratio=d_min_ratio)
   return get_kurtosis(map_data.as_1d())
 
 def run(map_coeffs=None,
   b=[0,0,0],
   sharpening_info_obj=None,
-  d_cut=None,
+  resolution=None,
   residual_target=None,
   solvent_fraction=None,
   region_weight=None,
@@ -321,6 +375,9 @@ def run(map_coeffs=None,
   eps=None,
   wrapping=False,
   n_real=False,
+  target_sthol2=None,
+  target_scale_factors=None,
+  d_min_ratio=None,
   out=sys.stdout):
 
   if sharpening_info_obj:
@@ -332,15 +389,20 @@ def run(map_coeffs=None,
     region_weight=sharpening_info_obj.region_weight
     max_regions_to_test=sharpening_info_obj.max_regions_to_test
     residual_target=sharpening_info_obj.residual_target
-    d_cut=sharpening_info_obj.d_cut
+    resolution=sharpening_info_obj.resolution
+    d_min_ratio=sharpening_info_obj.d_min_ratio
     eps=sharpening_info_obj.eps
     n_bins=sharpening_info_obj.n_bins
   else:
     sharpening_info_obj=sharpening_info()
 
 
-  phases=map_coeffs.phases(deg=True)
-  ma=map_coeffs.as_amplitude_array()
+  if map_coeffs:
+    phases=map_coeffs.phases(deg=True)
+    ma=map_coeffs.as_amplitude_array()
+  else:
+    phases=None
+    ma=None
 
   # set some defaults
   if residual_target is None: residual_target='kurtosis'
@@ -359,14 +421,14 @@ def run(map_coeffs=None,
   if n_bins is None: n_bins=20
   if max_regions_to_test is None: max_regions_to_test=30
   assert (solvent_fraction is not None ) or residual_target=='kurtosis'
-  assert d_cut is not None
+  assert resolution is not None
 
 
   # Get initial value
 
   best_b=b
-  print >>out,"Getting starting value ..."
-  refined = refinery(ma,phases,b,d_cut,
+  print >>out,"Getting starting value ...",residual_target
+  refined = refinery(ma,phases,b,resolution,
     residual_target=residual_target,
     solvent_fraction=solvent_fraction,
     region_weight=region_weight,
@@ -375,19 +437,24 @@ def run(map_coeffs=None,
     fraction_occupied=fraction_occupied,
     wrapping=wrapping,
     n_real=n_real,
+    target_sthol2=target_sthol2,
+    target_scale_factors=target_scale_factors, 
+    d_min_ratio=d_min_ratio,
     eps=eps)
 
 
   starting_result=refined.show_result(out=out)
   print >>out,"Starting value: %7.2f" %(starting_result)
 
+  if ma:
+    print >>out,"Normalizing structure factors..."
+    (d_max,d_min)=ma.d_max_min()
+    ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
+    ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
+  else:
+    assert resolution is not None
 
-  print >>out,"Normalizing structure factors..."
-  (d_max,d_min)=ma.d_max_min()
-  ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
-  ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
-
-  refined = refinery(ma,phases,b,d_cut,
+  refined = refinery(ma,phases,b,resolution,
     residual_target=residual_target,
     solvent_fraction=solvent_fraction,
     region_weight=region_weight,
@@ -396,6 +463,9 @@ def run(map_coeffs=None,
     fraction_occupied=fraction_occupied,
     wrapping=wrapping,
     n_real=n_real,
+    target_sthol2=target_sthol2,
+    target_scale_factors=target_scale_factors, 
+    d_min_ratio=d_min_ratio,
     eps=eps)
 
   starting_normalized_result=refined.show_result(out=out)
@@ -426,12 +496,12 @@ if (__name__ == "__main__"):
   residual_target='kurtosis'
   if 'adjusted_sa' in args:
     residual_target='adjusted_sa'
-  d_cut=2.9 # need to set this as nominal resolution
+  resolution=2.9 # need to set this as nominal resolution
   # get data
   map_coeffs=get_amplitudes(args)
 
   new_map_coeffs=run(map_coeffs=map_coeffs,
-    d_cut=d_cut,
+    resolution=resolution,
     residual_target=residual_target)
   mtz_dataset=new_map_coeffs.as_mtz_dataset(column_root_label="FWT")
   mtz_dataset.mtz_object().write(file_name='sharpened.mtz')
