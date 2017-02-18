@@ -44,12 +44,7 @@ class manager(object):
 #    t0=time.time()
     for hp in self.h_parameterization:
       if (hp is not None):
-        if (hp.htype not in ['unk','unk_ideal']):
-          ih = hp.ih
-          rc = riding_coefficients(
-            htype=hp.htype, ih = hp.ih, a0=hp.a0, a1=hp.a1, a2=hp.a2, a3=hp.a3,
-            a=hp.a, b=hp.b, h=hp.h, n=hp.n, disth=hp.disth)
-          self.parameterization_cpp.append(rc)
+        self.parameterization_cpp.append(hp)
 #    print "initialize cpp para", time.time()-t0
 
 
@@ -108,7 +103,7 @@ class manager(object):
   def gradients_reduced(self, grads, sites_cart, hd_selection):
     modify_gradients.modify_gradients(
       sites_cart          = sites_cart,
-      h_parameterization  = self.h_parameterization,
+      h_parameterization  = self.parameterization_cpp,
       grads               = grads)
     grads = grads.select(~hd_selection)
     return grads

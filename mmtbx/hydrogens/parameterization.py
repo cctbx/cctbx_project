@@ -2,32 +2,7 @@ from __future__ import division
 from scitbx import matrix
 from stdlib import math
 from scitbx.math import dihedral_angle
-
-class parameterization_info(object):
-  def __init__(
-    self,
-    htype   = None,  # type of hydrogen geometry
-    ih      = None,  # index of H atom
-    a0      = None,  # parent atom index
-    a1      = None,  # 1-3 neighbor index
-    a2      = None,  # 1-3 or 1-4 neighbor index
-    a3      = None,  # 1-3 or 1-4 neighbor index
-    a       = None,  # coefficient for reconstruction
-    b       = None,  # coefficient for reconstruction
-    h       = None,  # coefficient for reconstruction
-    n       = None,  # parameter for propeller and H2 groups: integer
-    disth  = None): # measured or ideal distance
-    self.htype  = htype
-    self.ih     = ih
-    self.a0     = a0
-    self.a1     = a1
-    self.a2     = a2
-    self.a3     = a3
-    self.a      = a
-    self.b      = b
-    self.h      = h
-    self.n      = n
-    self.disth = disth
+from mmtbx_hydrogens_ext import *
 
 class manager(object):
   def __init__(self,
@@ -97,7 +72,7 @@ class manager(object):
     u2 = (rb10 - ((rb10).dot(u1)) * u1).normalize()
     u3 = u1.cross(u2)
     if (neighbors.number_h_neighbors == 0):
-      self.h_parameterization[ih] = parameterization_info(
+      self.h_parameterization[ih] = riding_coefficients(
         htype  = 'alg1b',
         ih     = ih,
         a0     = i_a0,
@@ -118,7 +93,7 @@ class manager(object):
         i_h1 = i_h1,
         i_h2 = i_h2)
       for nprop, hprop in zip([0,1,2],[ih,i_h1,i_h2]):
-        self.h_parameterization[hprop] = parameterization_info(
+        self.h_parameterization[hprop] = riding_coefficients(
           htype  = 'prop',
           ih     = hprop,
           a0     = i_a0,
@@ -181,7 +156,7 @@ class manager(object):
       for ih_alg1a, phi_alg1a in zip(
         [ih_dihedral,ih_no_dihedral],[phi, phi+math.pi]):
         if self.h_parameterization[ih_alg1a] is None:
-          self.h_parameterization[ih_alg1a] = parameterization_info(
+          self.h_parameterization[ih_alg1a] = riding_coefficients(
             htype  = 'alg1a',
             ih     = ih_alg1a,
             a0     = i_a0,
@@ -212,7 +187,6 @@ class manager(object):
     sumang, a, b, h, root = self.get_coefficients(ih = ih)
     # alg2a
     if (sumang > (2*math.pi + 0.05) and root < 0):
-      #htype = 'unk_ideal'
       self.unk_ideal_list.append(ih)
       return
     elif (sumang < (2*math.pi + 0.05) and (sumang > 2*math.pi - 0.05)):
@@ -221,7 +195,7 @@ class manager(object):
       if (neighbors.number_h_neighbors == 1):
       # 2 tetragonal geometry
         htype = '2tetra'
-        self.h_parameterization[i_h1] = parameterization_info(
+        self.h_parameterization[i_h1] = riding_coefficients(
           ih     = i_h1,
           a0     = neighbors.a0['iseq'],
           a1     = neighbors.a1['iseq'],
@@ -238,7 +212,7 @@ class manager(object):
         htype = '2neigbs'
     if (h is None):
       h = 0
-    self.h_parameterization[ih] = parameterization_info(
+    self.h_parameterization[ih] = riding_coefficients(
       htype = htype,
       ih    = ih,
       a0    = neighbors.a0['iseq'],
@@ -261,7 +235,7 @@ class manager(object):
     else:
       disth = (r0 - rh).length()
     a, b, h = self.get_coefficients_alg3(ih = ih)
-    self.h_parameterization[ih] = parameterization_info(
+    self.h_parameterization[ih] = riding_coefficients(
       ih     = ih,
       a0     = neighbors.a0['iseq'],
       a1     = neighbors.a1['iseq'],
