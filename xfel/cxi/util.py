@@ -10,7 +10,11 @@ allowable_basename_endings = ["_00000.pickle",
 def is_odd_numbered(file_name):
   for allowable in allowable_basename_endings:
     if (file_name.endswith(allowable)):
-      return int(os.path.basename(file_name).split(allowable)[0][-1])%2==1
+      try:
+        return int(os.path.basename(file_name).split(allowable)[0][-1])%2==1
+      except ValueError:
+        file_name = os.path.basename(file_name).split(allowable)[0]
+        break
   #can not find standard filename extension, instead find the last digit:
   for idx in xrange(1,len(file_name)+1):
     if file_name[-idx].isdigit():
