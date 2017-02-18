@@ -8,11 +8,13 @@ import scitbx.math.curve_fitting
 import iotbx.pdb
 
 def parabola_is_good(x, y, assert_concave_up, use_longest_slope_criteria=False):
+  y = flex.double([round(i,5) for i in y])
   if(assert_concave_up):
     fit = scitbx.math.curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
       degree=2, min_iterations=50, number_of_cycles=10)
     a0,a1,a2 = fit.params
     if(a2>=0. or abs(a2)<1.e-6): return [] # concave down or flat line
+    #if(a2>=0.): return [] # concave down or flat line
   maxima = []
   for i in xrange(y.size()):
     yi = y[i]
@@ -214,26 +216,24 @@ def _resolution_from_map_and_model_helper(
       selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
       d_min_step=0.5, nproc=nproc)
     b = [flex.mean(o.b),]
-    #o = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
-    #  selections=selections, d_min_start=d_min_start,
-    #  d_min_end=f_obs.d_min()+1.e-6,
-    #  d_min_step=d_min_step, nproc=1)
-    #junk,junk,b, junk = o.x, o.y, o.b, o.radii
-    #assert o.b.size()==1
     o1 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b, map=map,
       selections=selections, d_min_start=d_min_start, d_min_end=d_min_end,
       d_min_step=d_min_step, nproc=nproc)
-    y = flex.double([round(i,5) for i in o1.y_smooth()])
-    maxima1 = parabola_is_good(x=o1.x, y=y, assert_concave_up=True,
+    maxima1 = parabola_is_good(x=o1.x, y=o1.y_smooth(), assert_concave_up=True,
       use_longest_slope_criteria=True)
     #print "maxima1",maxima1
+    #for d_min, cc1,b1,r1 in zip(o1.x, o1.y_smooth(),o1.b,o1.radii):
+    #  print "%4.1f %8.6f %3.0f %5.2f"%(d_min, cc1,b1,r1)
+    #print
     if(len(maxima1)!=1): return None,None,None,None # Exactly one peak expected
     o2 = run_loop_body(cg=cg, fc=fc, f_obs=f_obs, b_range=b_range, map=map,
       selections=selections, d_min_start=d_min_start,
-      d_min_end=max(maxima1[0][0]+2., d_min_end),
+      d_min_end=max(8.,max(maxima1[0][0]+2., d_min_end)),
       d_min_step=d_min_step, nproc=nproc)
     maxima2 = parabola_is_good(x=o2.x, y=o2.y_smooth(), assert_concave_up=False)
     #print "maxima2",maxima2
+    #for d_min, cc1,b1,r1 in zip(o2.x, o2.y_smooth(),o2.b,o2.radii):
+    #  print "%4.1f %8.6f %3.0f %5.2f"%(d_min, cc1,b1,r1)
     if(len(maxima2)==0): return None,None,None,None # At least one peak expected
     # Match maxima2 against maxima1 to find the closest peak to maxima1
     d1 = maxima1[0][0]
@@ -244,12 +244,6 @@ def _resolution_from_map_and_model_helper(
       if(dist_<dist):
         dist=dist_
         m_best = m[:]
-    #assert approx_equal(o1.x, o2.x)
-    #for d_min, cc1,b1,r1 in zip(o1.x, o1.y_smooth(),o1.b,o1.radii):
-    #  print "%4.1f %8.6f %3.0f %5.2f"%(d_min, cc1,b1,r1)
-    #print
-    #for d_min, cc1,b1,r1 in zip(o2.x, o2.y_smooth(),o2.b,o2.radii):
-    #  print "%4.1f %8.6f %3.0f %5.2f"%(d_min, cc1,b1,r1)
     #
     return m_best[0], o2.b[m_best[2]], o2.y[m_best[2]], o2.radii[m_best[2]]
   else:
