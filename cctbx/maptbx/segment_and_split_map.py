@@ -5289,87 +5289,11 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 
   if si.is_model_sharpening():
 
-    # Figure out resolution_dependent sharpening to optimally
-    #  match map and model. Then apply it as usual.
+    from cctbx.maptbx.refine_sharpening import scale_amplitudes
+    return scale_amplitudes(pdb_inp=pdb_inp,map_coeffs=map_coeffs,
+      si=si,overall_b=overall_b,out=out)
 
-    from cctbx.maptbx.refine_sharpening import get_sharpened_map,\
-       quasi_normalize_structure_factors
-    (d_max,d_min)=f_array.d_max_min()
-    if not f_array.binner():
-      f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
-    f_array_normalized=quasi_normalize_structure_factors(
-          f_array,set_to_minimum=0.01)
-
-    # define Wilson B for the model
-    if overall_b is None:
-      if resolution is None: # Note resolution is defined by user, d_min here is just what 
-        # reflections are present
-        raise Sorry("Need resolution if overall_b is not defined for model sharpening")
-      overall_b=10*resolution
-      print >>out,"Setting Wilson B = %5.1fA based on resolution of %5.1f A" %(
-        overall_b,resolution)
-
-    # create model map using same coeffs
-    model_map_coeffs=get_f_phases_from_model(
-       pdb_inp=pdb_inp,
-       f_array=f_array,
-       overall_b=overall_b,
-       out=out)
-    model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)
-    model_f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
-    model_f_array_normalized=quasi_normalize_structure_factors(
-          model_f_array,set_to_minimum=0.01)
-    # Set overall_b....
-    starting_b_iso=get_b_iso(model_f_array)
-    normalized_b_iso=get_b_iso(model_f_array_normalized)
-    model_f_array_normalized=model_f_array_normalized.apply_debye_waller_factors(
-      b_iso=overall_b-normalized_b_iso)
-    final_b_iso=get_b_iso(model_f_array_normalized)
-    print "Effective b_iso of initial and adjusted model map: %6.1f A**2  %6.1f A**2" %(
-       starting_b_iso,final_b_iso)
-
-    # get f and model_f vs resolution and FSC vs resolution and apply
-    # scale to f_array and return sharpened map
-    dsd = f_array.d_spacings().data()
-    target_scale_factors=flex.double()
-    target_sthol2=flex.double()
-    for i_bin in f_array.binner().range_used():
-      sel       = f_array.binner().selection(i_bin)
-      d         = dsd.select(sel)
-      d_min     = flex.min(d)
-      d_max     = flex.max(d)
-      d_avg     = flex.mean(d)
-      n         = d.size()
-      fc        = map_coeffs.select(sel)
-      fo        = model_map_coeffs.select(sel)
-      cc        = fc.map_correlation(other = fo)
-      f_array_fc=map_coeffs_to_fp(fc)
-      f_array_fo=map_coeffs_to_fp(fo)
-
-      rms_fc=f_array_fc.data().norm()
-      rms_fo=f_array_fo.data().norm()
-      scale_on_fo=(rms_fc/rms_fo) * cc
-      target_sthol2.append(0.25/d_avg**2)
-      target_scale_factors.append(scale_on_fo)
-
-    # Now create resolution-dependent coefficients from the scale factors
-    from cctbx.maptbx.refine_sharpening import run as refine_sharpening
-    si.sharpening_method='model_sharpening'
-    si.residual_target='model'
-    si.b_sharpen=0
-    si.b_iso=None
-
-    refine_sharpening(  # get b values back...
-      target_sthol2=target_sthol2,
-      target_scale_factors=target_scale_factors,
-      sharpening_info_obj=si, out=out)
-    si.sharpening_method='resolution_dependent'
-
-    print >>out,"\nSet resolution dependent b to match model to map:"
-    si.show_summary()
-
-
-  if si.is_resolution_dependent_sharpening():
+  elif si.is_resolution_dependent_sharpening():
     if f_array_normalized is None:
       from cctbx.maptbx.refine_sharpening import get_sharpened_map,\
        quasi_normalize_structure_factors

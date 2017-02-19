@@ -168,11 +168,142 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
   data_array=data_array*scale_array
   return f_array.customized_copy(data=data_array)
 
+def scale_amplitudes(pdb_inp=None,map_coeffs=None,
+    si=None,resolution=None,overall_b=None,
+    out=sys.stdout):
+
+  # Figure out resolution_dependent sharpening to optimally
+  #  match map and model. Then apply it as usual.
+  from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
+  from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model 
+  from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
+  import math 
+
+  f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+
+  from cctbx.maptbx.refine_sharpening import get_sharpened_map,\
+     quasi_normalize_structure_factors
+  (d_max,d_min)=f_array.d_max_min()
+  if not f_array.binner():
+    f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
+  f_array_normalized=quasi_normalize_structure_factors(
+        f_array,set_to_minimum=0.01)
+
+  if resolution is None:
+    resolution=si.resolution
+  if resolution is None:
+    raise Sorry("Need resolution for model sharpening")
+  # define Wilson B for the model
+  if overall_b is None:
+    overall_b=10*resolution
+    print >>out,"Setting Wilson B = %5.1f A based on resolution of %5.1f A" %(
+      overall_b,resolution)
+
+  # Define expected fall-off of CC due to model error
+  if si.rmsd is None:
+    b_eff=None
+  else:
+    b_eff=8*3.14159*si.rmsd**2
+    print >>out,\
+     "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1 A" \
+       %( b_eff,rmsd)
+
+
+  # create model map using same coeffs
+  model_map_coeffs=get_f_phases_from_model(
+     pdb_inp=pdb_inp,
+     f_array=f_array,
+     overall_b=overall_b,
+     out=out)
+
+  model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)
+  model_f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
+  model_f_array_normalized=quasi_normalize_structure_factors(
+        model_f_array,set_to_minimum=0.01)
+  # Set overall_b....
+  starting_b_iso=get_b_iso(model_f_array)
+  normalized_b_iso=get_b_iso(model_f_array_normalized)
+  model_f_array_normalized=\
+   model_f_array_normalized.apply_debye_waller_factors(
+      b_iso=overall_b-normalized_b_iso)
+  final_b_iso=get_b_iso(model_f_array_normalized)
+  print "Effective b_iso of initial and adjusted model map: %6.1f A**2  %6.1f A**2" %(
+     starting_b_iso,final_b_iso)
+  model_map_coeffs_normalized=model_f_array_normalized.phase_transfer(
+     phase_source=model_phases,deg=True)
+
+  # get f and model_f vs resolution and FSC vs resolution and apply
+  # scale to f_array and return sharpened map
+  dsd = f_array.d_spacings().data()
+  target_scale_factors=flex.double()
+  target_sthol2=flex.double()
+  rms_fo_list=flex.double()
+  max_scale=None
+  for i_bin in f_array.binner().range_used():
+    sel       = f_array.binner().selection(i_bin)
+    d         = dsd.select(sel)
+    d_min     = flex.min(d)
+    d_max     = flex.max(d)
+    d_avg     = flex.mean(d)
+    n         = d.size()
+    fo        = map_coeffs.select(sel)
+    fc        = model_map_coeffs_normalized.select(sel)
+    cc        = fc.map_correlation(other = fo)
+    f_array_fc=map_coeffs_to_fp(fc)
+    f_array_fo=map_coeffs_to_fp(fo)
+
+    rms_fc=f_array_fc.data().norm()
+    rms_fo=f_array_fo.data().norm()
+    sthol2=0.25/d_avg**2
+    if b_eff is not None:
+      scale_on_fo=(rms_fc/rms_fo) * min(1.,
+        max(0.00001,cc) * math.exp(min(20.,sthol2*b_eff)) )
+    else:
+      scale_on_fo=(rms_fc/rms_fo) * min(1.,max(0.00001,cc))
+    if d_min >= resolution:
+      max_scale=scale_on_fo
+    else: # at less than resolution don't allow any bigger scale than last one
+      scale_on_fo=min(scale_on_fo,max_scale)
+
+    target_sthol2.append(sthol2)
+    target_scale_factors.append(scale_on_fo)
+    rms_fo_list.append(rms_fo)
+  target_scale_factors=\
+     target_scale_factors/target_scale_factors.min_max_mean().mean
+  print >>out,"\nScale factors vs resolution:"
+  for sthol2,scale,rms_fo in zip(
+     target_sthol2,target_scale_factors,rms_fo_list):
+     print >>out,"d_min: %5.1f   scale:  %5.2f  rms F:  %7.1f" %(
+       0.5/math.sqrt(sthol2),scale,rms_fo*scale)
+
+  # Now create resolution-dependent coefficients from the scale factors
+  from cctbx.maptbx.refine_sharpening import run as refine_sharpening
+  si.sharpening_method='model_sharpening'
+  si.residual_target='model'
+  si.b_sharpen=0
+  si.b_iso=None
+
+  si.target_scale_factors=target_scale_factors
+  si.target_sthol2=target_sthol2
+
+  si.show_summary()
+  scale_array=flex.double(f_array.data().size()*(-1.,))
+  for i_bin in f_array.binner().range_used():
+    sel       = f_array.binner().selection(i_bin)
+    scale_array.set_selected(sel,target_scale_factors[i_bin-1])
+  assert scale_array.count(-1.)==0
+
+  scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
+  assert si.n_real is not None
+  new_map_coeffs=scaled_f_array.phase_transfer(phase_source=phases,deg=True)
+  return calculate_map(map_coeffs=new_map_coeffs,n_real=si.n_real)
+
 def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
 
-    if crystal_symmetry is None: crystal_symmetry=map_coeffs.crystal_symmetry()
-    from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
-    return get_map_from_map_coeffs(map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry, n_real=n_real)
+  if crystal_symmetry is None: crystal_symmetry=map_coeffs.crystal_symmetry()
+  from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
+  return get_map_from_map_coeffs(
+     map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry, n_real=n_real)
 
 def get_sharpened_map(ma=None,phases=None,b=None,resolution=None,
     n_real=None,d_min_ratio=None):
@@ -485,7 +616,7 @@ def run(map_coeffs=None,
   print >>out,"Starting value: %7.2f" %(starting_result)
 
   if ma:
-    print >>out,"Normalizing structure factors..."
+    print >>out,"Normalizing structure factors..." # XXX why here?
     (d_max,d_min)=ma.d_max_min()
     ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
     ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
