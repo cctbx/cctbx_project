@@ -124,6 +124,14 @@ def get_effective_b_values(d_min_ratio=None,resolution_dependent_b=None,
   res_2=(0.25/sthol2_2)**0.5
   res_3=(0.25/sthol2_3)**0.5
 
+  #  Scale factor is exp(b3_use) at res_3 for example
+  #  f=exp(-b sthol2)
+  #  b= - ln(f)/sthol2
+  b1=-b1/sthol2_1 
+  b2=-b2/sthol2_2 
+  b3_use=-b3_use/sthol2_3 
+  
+
   return [res_1,res_2,res_3],[b1,b2,b3_use]
 
 def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
@@ -174,7 +182,12 @@ def get_sharpened_map(ma=None,phases=None,b=None,resolution=None,
   new_map_coeffs=sharpened_ma.phase_transfer(phase_source=phases,deg=True)
   return calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
 
-def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resolution=None,d_min_ratio=None):
+def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resolution=None,d_min_ratio=None,rmsd=None):
+
+  if rmsd is None:
+    b_eff=None
+  else:
+    b_eff=8*3.14159*rmsd**2
 
   d_min=d_min_ratio*resolution
   sthol2_2=0.25/resolution**2
@@ -188,6 +201,9 @@ def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resoluti
 
   resid=0.
   import math 
+  value_list=flex.double()
+  scale_factor_list=flex.double()
+  
   for sthol2,scale_factor in zip(target_sthol2,target_scale_factors):
     if sthol2 > sthol2_2:
       value=b2+(sthol2-sthol2_2)*(b3_use-b2)/(sthol2_3-sthol2_2)
@@ -197,7 +213,17 @@ def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resoluti
       value=b0+(sthol2-0.)*(b1-b0)/(sthol2_1-0.)
     
     value=math.exp(value)
-    resid+=(value-scale_factor)**2
+    if b_eff is not None:
+      value=value*math.exp(-sthol2*b_eff)
+    value_list.append(value)
+    scale_factor_list.append(scale_factor)
+  mean_value=value_list.min_max_mean().mean
+  mean_scale_factor=scale_factor_list.min_max_mean().mean
+  ratio=mean_scale_factor/mean_value
+  value_list=value_list*ratio
+  delta_list=value_list-scale_factor_list
+  delta_sq_list=delta_list*delta_list
+  resid=delta_sq_list.min_max_mean().mean
   return resid
 
 def calculate_adjusted_sa(ma,phases,b,
@@ -250,6 +276,7 @@ class refinery:
     target_sthol2=None,
     target_scale_factors=None,
     d_min_ratio=None,
+    rmsd=None,
     dummy_run=False):
 
     self.ma=ma
@@ -257,6 +284,7 @@ class refinery:
     self.phases=phases
     self.resolution=resolution
     self.d_min_ratio=d_min_ratio
+    self.rmsd=rmsd
 
     self.target_sthol2=target_sthol2
     self.target_scale_factors=target_scale_factors
@@ -326,7 +354,8 @@ class refinery:
         target_scale_factors=self.target_scale_factors,
         b=b,
         resolution=self.resolution,
-        d_min_ratio=self.d_min_ratio)
+        d_min_ratio=self.d_min_ratio,
+        rmsd=self.rmsd)
    
     else:
       raise Sorry("residual_target must be kurtosis or adjusted_sa or match_target")
@@ -378,6 +407,7 @@ def run(map_coeffs=None,
   target_sthol2=None,
   target_scale_factors=None,
   d_min_ratio=None,
+  rmsd=None,
   out=sys.stdout):
 
   if sharpening_info_obj:
@@ -391,6 +421,7 @@ def run(map_coeffs=None,
     residual_target=sharpening_info_obj.residual_target
     resolution=sharpening_info_obj.resolution
     d_min_ratio=sharpening_info_obj.d_min_ratio
+    rmsd=sharpening_info_obj.rmsd
     eps=sharpening_info_obj.eps
     n_bins=sharpening_info_obj.n_bins
   else:
@@ -407,6 +438,9 @@ def run(map_coeffs=None,
   # set some defaults
   if residual_target is None: residual_target='kurtosis'
 
+  assert (solvent_fraction is not None ) or residual_target=='kurtosis'
+  assert resolution is not None
+
   if residual_target=='adjusted_sa' and solvent_fraction is None:
     raise Sorry("Solvent fraction is required for residual_target=adjusted_sa")
 
@@ -415,13 +449,16 @@ def run(map_coeffs=None,
   elif eps is None:
     eps=0.5
 
+  if rmsd is None:
+    rmsd=resolution/3.
+    print >>out,"Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
+       rmsd,resolution)
+
   if fraction_occupied is None: fraction_occupied=0.20
   if region_weight is None: region_weight=20.
   if sa_percent is None: sa_percent=30.
   if n_bins is None: n_bins=20
   if max_regions_to_test is None: max_regions_to_test=30
-  assert (solvent_fraction is not None ) or residual_target=='kurtosis'
-  assert resolution is not None
 
 
   # Get initial value
@@ -440,6 +477,7 @@ def run(map_coeffs=None,
     target_sthol2=target_sthol2,
     target_scale_factors=target_scale_factors, 
     d_min_ratio=d_min_ratio,
+    rmsd=rmsd,
     eps=eps)
 
 
@@ -466,6 +504,7 @@ def run(map_coeffs=None,
     target_sthol2=target_sthol2,
     target_scale_factors=target_scale_factors, 
     d_min_ratio=d_min_ratio,
+    rmsd=rmsd,
     eps=eps)
 
   starting_normalized_result=refined.show_result(out=out)

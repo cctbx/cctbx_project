@@ -311,6 +311,13 @@ master_phil = iotbx.phil.parse("""
              d_min_ratio times resolution. If None, box of reflections \
              with the same grid as the map used.
 
+     rmsd = None
+       .type = float
+       .short_caption = RMSD of model
+       .help = RMSD of model to true model (if supplied).  Used to \
+             estimate expected fall-of with resolution of correct part \
+             of model-based map. If None, assumed to be resolution/3.
+
      auto_sharpen = True
        .type = bool
        .short_caption = Automatically determine sharpening
@@ -1212,6 +1219,7 @@ class sharpening_info:
       eps=None,
       d_min=None,
       d_min_ratio=None,
+      rmsd=None,
       wrapping=None,
       sharpening_target=None,
       residual_target=None,
@@ -1310,6 +1318,7 @@ class sharpening_info:
       self.region_weight=params.map_modification.region_weight
       self.max_regions_to_test=params.map_modification.max_regions_to_test
       self.d_min_ratio=params.map_modification.d_min_ratio
+      self.rmsd=params.map_modification.rmsd
       self.resolution=params.crystal_info.resolution  # changed from d_cut
       #  NOTE:
       #  resolution=X-ray resolution or nominal resolution of cryoEM map
@@ -5535,6 +5544,7 @@ def auto_sharpen_map_or_map_coeffs(
         map=None,               #  map_coeffs and n_real
         map_coeffs=None,
         pdb_inp=None,
+        rmsd=None,
         n_real=None,
         solvent_content=None,
         region_weight=None,
@@ -5593,6 +5603,7 @@ def auto_sharpen_map_or_map_coeffs(
         eps,
         max_regions_to_test,
         fraction_occupied,
+        rmsd,
           ],
       ['box_in_auto_sharpen','resolution','d_min_ratio',
        'max_box_fraction','k_sharpen',
@@ -5606,6 +5617,7 @@ def auto_sharpen_map_or_map_coeffs(
        'eps',
        'max_regions_to_test',
        'fraction_occupied',
+       'rmsd',
          ],):
      if x is not None:
        args.append("%s=%s" %(param,x))

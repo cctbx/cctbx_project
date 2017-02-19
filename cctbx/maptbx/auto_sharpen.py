@@ -140,6 +140,13 @@ master_phil = iotbx.phil.parse("""
        .help = Sharpening will be applied using d_min equal to \
              d_min_ratio times resolution. Default is 0.833
 
+     rmsd = None
+       .type = float
+       .short_caption = RMSD of model
+       .help = RMSD of model to true model (if supplied).  Used to \
+             estimate expected fall-of with resolution of correct part \
+             of model-based map. If None, assumed to be resolution/3.
+
      auto_sharpen = None
        .type = bool
        .short_caption = Automatically determine sharpening
@@ -406,6 +413,7 @@ def run(args,out=sys.stdout):
         resolution_dependent_b=\
            params.map_modification.resolution_dependent_b,
         pdb_inp=pdb_inp,
+        rmsd=params.map_modification.rmsd,
         out=out)
 
   # get map_data and map_coeffs of final map
