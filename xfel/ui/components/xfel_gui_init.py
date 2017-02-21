@@ -30,7 +30,7 @@ from xfel.ui import load_cached_settings, save_cached_settings
 from xfel.ui.db import get_run_path
 from xfel.ui.db.xfel_db import xfel_db_application
 
-from prime.postrefine.mod_gui_init import PRIMEInputWindow, PRIMERunWindow
+from prime.postrefine.mod_gui_frames import PRIMEInputWindow, PRIMERunWindow
 from prime.postrefine.mod_input import master_phil
 from iota.components import iota_misc as misc
 
@@ -397,8 +397,10 @@ class RunStatsSentinel(Thread):
       time.sleep(5)
 
   def refresh_stats(self):
+    from xfel.ui.components.timeit import duration
     from xfel.ui.db.stats import HitrateStats
-    import copy
+    import copy, time
+    t1 = time.time()
     if self.parent.run_window.runstats_tab.trial_no is not None:
       trial = self.db.get_trial(
         trial_number=self.parent.run_window.runstats_tab.trial_no)
@@ -432,6 +434,8 @@ class RunStatsSentinel(Thread):
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
     self.reorder()
+    t2 = time.time()
+    print "refresh_stats (RunStats sentinel thread) took %s" % duration(t1, t2)
 
   def reorder(self):
     run_numbers_ordered = sorted(self.run_numbers)
@@ -472,6 +476,7 @@ class RunStatsSentinel(Thread):
       interactive=False,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
+      i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
       run_tags=self.run_tags,
       run_statuses=self.run_statuses,
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
@@ -489,6 +494,7 @@ class RunStatsSentinel(Thread):
       interactive=True,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
+      i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
       run_tags=self.run_tags,
       run_statuses=self.run_statuses,
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
@@ -1667,7 +1673,7 @@ class RunStatsTab(BaseTab):
 
     self.main = main
     self.all_trials = []
-    self.trial_no = 0
+    self.trial_no = None
     self.trial = None
     self.all_runs = []
     self.selected_runs = []
@@ -1681,6 +1687,7 @@ class RunStatsTab(BaseTab):
     self.d_min = 2.5
     self.ratio = 1
     self.n_strong = 40
+    self.i_sigi = 1
     self.should_have_indexed_image_paths = None
 
     self.runstats_panel = wx.Panel(self, size=(900, 120))
@@ -1716,6 +1723,11 @@ class RunStatsTab(BaseTab):
                                            label_size=(160, -1),
                                            ctrl_size=(30, -1),
                                            items=[('n_strong', 40)])
+    self.i_sigi_cutoff = gctr.OptionCtrl(self,
+                                         label='I/sig(I) cutoff:',
+                                         label_size=(160, -1),
+                                         ctrl_size=(30, -1),
+                                         items=[('isigi', 1)])
     self.run_numbers =  gctr.CheckListCtrl(self,
                                            label='Selected runs:',
                                            label_size=(200, -1),
@@ -1733,18 +1745,20 @@ class RunStatsTab(BaseTab):
     self.options_opt_sizer = wx.GridBagSizer(1, 1)
 
     self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
-                               flag=wx.ALL, border=10)
+                               flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.last_five_runs, pos=(1, 0),
-                               flag=wx.ALL, border=10)
+                               flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.plot_entire_expt, pos=(2, 0),
-                                   flag=wx.ALL, border=10)
+                                   flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.d_min_select, pos=(3, 0),
                                flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.ratio_cutoff, pos=(4, 0),
                                flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.n_strong_cutoff, pos=(5, 0),
                                flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(6, 1),
+    self.options_opt_sizer.Add(self.i_sigi_cutoff, pos=(6, 0),
+                               flag=wx.ALL, border=2)
+    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(7, 1),
                                flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
                                border=10)
     self.options_box_sizer.Add(self.options_opt_sizer)
@@ -1774,6 +1788,7 @@ class RunStatsTab(BaseTab):
     self.Bind(wx.EVT_TEXT_ENTER, self.onDMin, self.d_min_select.d_min)
     self.Bind(wx.EVT_TEXT_ENTER, self.onRatioCutoff, self.ratio_cutoff.ratio)
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.i_sigi_cutoff.isigi)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -1868,6 +1883,9 @@ class RunStatsTab(BaseTab):
           self.all_runs.append(r)
 
   def plot_static_runstats(self):
+    import time
+    from xfel.ui.components.timeit import duration
+    t1 = time.time()
     if self.png is not None:
       if self.static_bitmap is not None:
         self.static_bitmap.Destroy()
@@ -1878,6 +1896,8 @@ class RunStatsTab(BaseTab):
       self.runstats_panel.SetSizer(self.runstats_sizer)
       self.runstats_panel.Layout()
       # self.figure_panel.SetupScrolling(scrollToTop=False)
+    t2 = time.time()
+    print "plot_static_runstats (GUI main thread) took %s" % duration(t1, t2)
 
   def print_should_have_indexed_paths(self):
     try:
@@ -1925,6 +1945,13 @@ class RunStatsTab(BaseTab):
     n_strong = self.n_strong_cutoff.n_strong.GetValue()
     if n_strong.isdigit():
       self.n_strong = int(n_strong)
+
+  def onIsigICutoff(self, e):
+    try:
+      isigi = float(self.i_sigi_cutoff.isigi.GetValue())
+      self.i_sigi = isigi
+    except ValueError:
+      pass
 
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
@@ -2234,8 +2261,8 @@ class MergeTab(BaseTab):
 
 
     self.Bind(wx.EVT_TEXT, self.onInput, self.input_list)
-    self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
-    self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
+    #self.Bind(wx.EVT_BUTTON, self.onIsoRef, self.prime_panel.ref_box.btn_browse)
+    #self.Bind(wx.EVT_TEXT, self.onIsoRef, self.prime_panel.ref_box.ctr)
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)

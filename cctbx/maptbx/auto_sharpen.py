@@ -30,6 +30,13 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Map coeffs label
       .style = renderer:draw_map_arrays_widget
 
+    pdb_file = None
+      .type = path
+      .help = If a model is supplied, the map will be adjusted to \
+                maximize map-model correlation.  This can be used \
+                to improve a map in regions where no model is yet \
+                built.
+      .short_caption = Model file
   }
 
   output_files
@@ -132,6 +139,13 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Sharpen d_min ratio
        .help = Sharpening will be applied using d_min equal to \
              d_min_ratio times resolution. Default is 0.833
+
+     rmsd = None
+       .type = float
+       .short_caption = RMSD of model
+       .help = RMSD of model to true model (if supplied).  Used to \
+             estimate expected fall-of with resolution of correct part \
+             of model-based map. If None, assumed to be resolution/3.
 
      auto_sharpen = None
        .type = bool
@@ -278,6 +292,7 @@ def get_params(args,out=sys.stdout):
   command_line = iotbx.phil.process_command_line_with_files(
     reflection_file_def="input_files.map_coeffs_file",
     map_file_def="input_files.map_file",
+    pdb_file_def="input_files.pdb_file",
     args=args,
     master_phil=master_phil)
 
@@ -309,7 +324,7 @@ def get_map_coeffs_from_file(
       if not map_coeffs_labels or labels==map_coeffs_labels:  # take it
          return ma
 
-def get_map(params=None,out=sys.stdout):
+def get_map_and_model(params=None,out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
   if params.input_files.map_file:
@@ -348,7 +363,14 @@ def get_map(params=None,out=sys.stdout):
   if params.crystal_info.resolution is None:
     raise Sorry("Need resolution if map is supplied")
 
-  return map_data,crystal_symmetry,acc
+  if params.input_files.pdb_file: # get model
+    if not os.path.isfile(params.input_files.pdb_file):
+      raise Sorry("Missing the model file: %s" %(params.input_files.pdb_file))
+    pdb_inp=iotbx.pdb.input(file_name=params.input_files.pdb_file)
+  else:
+    pdb_inp=None
+
+  return pdb_inp,map_data,crystal_symmetry,acc
 
 
 def run(args,out=sys.stdout):
@@ -357,7 +379,7 @@ def run(args,out=sys.stdout):
 
   # get map_data and crystal_symmetry
 
-  map_data,crystal_symmetry,acc=get_map(params=params,out=out)
+  pdb_inp,map_data,crystal_symmetry,acc=get_map_and_model(params=params,out=out)
 
   # NOTE: map_data is now relative to origin at (0,0,0).
   # Use map_data.reshape(acc) to put it back where it was if acc is not None
@@ -390,6 +412,8 @@ def run(args,out=sys.stdout):
         b_sharpen=params.map_modification.b_sharpen,
         resolution_dependent_b=\
            params.map_modification.resolution_dependent_b,
+        pdb_inp=pdb_inp,
+        rmsd=params.map_modification.rmsd,
         out=out)
 
   # get map_data and map_coeffs of final map

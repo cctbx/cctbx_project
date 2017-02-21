@@ -1657,7 +1657,7 @@ class process_command_line_args(object):
     self.reflection_file_server = None
     self.ccp4_map = None
     self.ccp4_map_file_name = None
-    crystal_symmetries = []
+    crystal_symmetries = {'from_coordinate_files':[], 'from_reflection_files':[]}
     if(master_params is not None):
       assert home_scope is None
       parameter_interpreter = master_params.command_line_argument_interpreter(
@@ -1671,19 +1671,14 @@ class process_command_line_args(object):
       if(arg.count("=")==1):
         arg_file = arg[arg.index("=")+1:]
         is_parameter = True
-      #
-      if(self.cmd_cs is not None and self.cmd_cs.unit_cell() is not None):
-        crystal_symmetries.append(["cmd_line", self.cmd_cs])
-      #
       if(os.path.isfile(arg_file)):
-        arg_added_to_crystal_symmetry=False
         # Get crystal symmetry
-        cs = crystal_symmetry_from_any.extract_from(arg_file)
-        if(cs is not None and cs.unit_cell() is not None):
-          crystal_symmetries.append([arg_file, cs])
-          arg_added_to_crystal_symmetry=True
-
         af = any_file(file_name = arg_file)
+        cs = None
+        try:
+          cs = af.crystal_symmetry()
+        except NotImplementedError as e:
+          pass
         #### NEW, no idea why this does not work.
         #if(af.file_type=="phil"):
         #  params = af.file_content.objects
@@ -1703,27 +1698,28 @@ class process_command_line_args(object):
           parsed_params.append(params)
           arg_is_processed = True
           self.phil_file_names.append(arg_file)
-          #print parsed_params, "'%s'"%params.name, "'%s'"%str(master_params.name), arg_file
         elif(af.file_type=="pdb"): # which may be mmcif too!
           if(not is_parameter):
             self.pdb_file_names.append(arg_file)
             arg_is_processed = True
+            crystal_symmetries['from_coordinate_files'].append(cs)
         elif(af.file_type=="ccp4_map"):
           self.ccp4_map = af.file_content
           self.ccp4_map_file_name = arg_file
-          if not arg_added_to_crystal_symmetry:
-            crystal_symmetries.append([arg_file, af.crystal_symmetry()])
+          crystal_symmetries['from_reflection_files'].append(cs)
           arg_is_processed = True
         elif(af.file_type=="hkl"):
           self.reflection_files.append(af.file_content)
           self.reflection_file_names.append(arg)
           arg_is_processed = True
+          crystal_symmetries['from_reflection_files'].append(cs)
         elif(af.file_type=="cif"):
           cif_object = af.file_object.model()
           if(len(cif_object) > 0):
             self.cif_objects.append((arg_file, cif_object))
             self.cif_file_names.append(os.path.abspath(arg_file))
             arg_is_processed = True
+            crystal_symmetries['from_reflection_files'].append(cs)
       if(master_params is not None and is_parameter):
         try:
           params = parameter_interpreter.process(arg = arg)
@@ -1748,37 +1744,20 @@ class process_command_line_args(object):
     else:
       assert len(command_line_params) == 0
     # Crystal symmetry: validate and finalize consensus object
-    ### Filter nonsense
-    tmp_=[]
-    for cs in crystal_symmetries:
-      ucp = cs[1].unit_cell().parameters()
-      if(abs(1.-ucp[0])<1.e-3 and
-         abs(1.-ucp[1])<1.e-3 and
-         abs(1.-ucp[2])<1.e-3): continue
-      if(abs(1.-ucp[3])<1.e-3 and
-         abs(1.-ucp[4])<1.e-3 and
-         abs(1.-ucp[5])<1.e-3): continue
-      if(abs(0.-ucp[3])<1.e-3 and
-         abs(0.-ucp[4])<1.e-3 and
-         abs(0.-ucp[5])<1.e-3): continue
-      tmp_.append(cs)
-    crystal_symmetries = tmp_[:]
-    ###
-    if(len(crystal_symmetries)>1):
-      assert self.crystal_symmetry is None # make sure it's undefined from start
-      cs0, cs0_source = crystal_symmetries[0][1], crystal_symmetries[0][0]
-      for cs in crystal_symmetries:
-         is_similar_cs = cs0.is_similar_symmetry(cs[1],
-           absolute_angle_tolerance=self.absolute_angle_tolerance,
-           absolute_length_tolerance=self.absolute_angle_tolerance)
-         if(not is_similar_cs and not suppress_symmetry_related_errors):
-           print >> self.log, cs0_source, cs0.unit_cell(), cs0.space_group_info()
-           print >> self.log, cs[0], cs[1].unit_cell(), cs[1].space_group_info()
-           msg = "Crystal symmetry mismatch between different files."
-           raise Sorry("%s\n"%(msg))
-      self.crystal_symmetry = cs0
-    elif(len(crystal_symmetries) == 1):
-      self.crystal_symmetry = crystal_symmetries[0][1]
+    try:
+      self.crystal_symmetry = crystal.select_crystal_symmetry(
+          from_command_line     = self.cmd_cs,
+          from_parameter_file   = None,
+          from_coordinate_files = crystal_symmetries['from_coordinate_files'],
+          from_reflection_files = crystal_symmetries['from_reflection_files'],
+          enforce_similarity    = not suppress_symmetry_related_errors,
+          absolute_angle_tolerance  =self.absolute_angle_tolerance,
+          absolute_length_tolerance =self.absolute_length_tolerance)
+    except AssertionError as e:
+      if len(e.args)>0 and e.args[0].startswith("No unit cell and symmetry information supplied"):
+        pass
+      else:
+        raise e
 
   def get_reflection_file_server (self) :
     if (self.reflection_file_server is None) :

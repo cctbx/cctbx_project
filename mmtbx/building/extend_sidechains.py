@@ -155,13 +155,6 @@ def extend_residue(
   clusters = generate_sidechain_clusters(
     residue     = new_residue,
     mon_lib_srv = mon_lib_srv)
-  #print clusters
-
-  #clusters = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
-  #  residue         = residue,
-  #  mon_lib_srv     = mon_lib_srv,
-  #  backbone_sample = True)
-
   scorer = conformation_scorer(
     old_residue = residue,
     new_residue = new_residue)

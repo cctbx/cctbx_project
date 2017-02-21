@@ -42,7 +42,7 @@ class merge_data_handler(object):
     return flex.sum(self.multiplicities)/self.get_size() if self.get_size() else 0
 
   def get_r_meas(self):
-    return flex.sum(self.r_meas_div)/ flex.sum(self.r_meas_divisor) if self.get_size() else 0
+    return flex.sum(self.r_meas_div)/ flex.sum(self.r_meas_divisor) if flex.sum(self.r_meas_divisor) else 0
 
   def get_r_split(self):
     try:

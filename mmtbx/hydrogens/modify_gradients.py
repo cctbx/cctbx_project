@@ -39,7 +39,7 @@ def modify_gradients(sites_cart, h_parameterization, grads):
       continue
     a0, a1, a2 = hp.a0, hp.a1, hp.a2
     a, b, h  = hp.a, hp.b, hp.h
-    dh = hp.dist_h
+    dh = hp.disth
     rh = matrix.col(sites_cart[ih])
     r0 = matrix.col(sites_cart[a0])
     GH = matrix.col(grads[ih])

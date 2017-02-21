@@ -144,7 +144,7 @@ class Script(DialsScript, Processor):
     # Do the processing
     observed = self.find_spots(datablock)
     experiments, indexed = self.index(datablock, observed)
-    experiments = self.refine(experiments, indexed)
+    experiments, indexed = self.refine(experiments, indexed)
     integrated = self.integrate(experiments, indexed)
 
     # Total Time

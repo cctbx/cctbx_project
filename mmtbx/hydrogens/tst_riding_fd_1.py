@@ -1,15 +1,11 @@
 from __future__ import division
 import time
-#import sys
 from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens import riding
-from mmtbx.hydrogens import parameterization
-#from mmtbx.hydrogens import modify_gradients
-#from scitbx import matrix
 
 #-----------------------------------------------------------------------------
 # Finite difference test for modified gradients of riding H
@@ -33,60 +29,32 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
   xray_structure = processed_pdb_file.xray_structure()
   sites_cart = xray_structure.sites_cart()
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  #sites_cart = pdb_hierarchy.atoms().extract_xyz()
 
   hd_selection = xray_structure.hd_selection()
   geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = 5.0)
-#
+
   riding_h_manager = riding.manager(
     pdb_hierarchy          = pdb_hierarchy,
     geometry_restraints    = geometry,
     use_ideal_bonds_angles = use_ideal_bonds_angles)
 
-  h_parameterization = riding_h_manager.h_parameterization
+  riding_h_manager.idealize_hydrogens_inplace_cpp(
+      pdb_hierarchy  = pdb_hierarchy,
+      xray_structure = xray_structure)
 
-  #ih = h_parameterization.keys()[0]
-  for hp in h_parameterization:
-    if (hp is not None):
-      ih = hp.ih
+  sites_cart = xray_structure.sites_cart()
 
-  rh_calc = parameterization.compute_H_position(
-    sites_cart = sites_cart,
-    hp         = h_parameterization[ih])
-  #print 'distance before changing H', \
-  #  (rh_calc - matrix.col(sites_cart[ih])).length()
-
-  sites_cart[ih] = tuple(rh_calc)
-  xray_structure.set_sites_cart(sites_cart)
-  #rh_calc = parameterization.compute_H_position(
-  #  ih         = ih,
-  #  sites_cart = sites_cart,
-  #  hp         = h_parameterization[ih])
-  #print 'distance H_calc - H_mod', \
-  # (rh_calc - matrix.col(sites_cart[ih])).length()
-
-  #for i in g_analytical:
-  #  print i
-  #print '----------'
   g_analytical = geometry.energies_sites(
     sites_cart = sites_cart,
     compute_gradients = True).gradients
 
-  #modify_gradients.modify_gradients(
-  #  sites_cart         = sites_cart,
-  #  h_parameterization = h_parameterization,
-  #  grads              = g_analytical)
   g_analytical_reduced = riding_h_manager.gradients_reduced(
     sites_cart          = sites_cart,
     grads               = g_analytical,
     hd_selection        = hd_selection)
 
-  #print len(g_analytical)
-  #sites_cart_non_H = sites_cart.select(~hd_selection)
-
-   #
   ex = [eps,0,0]
   ey = [0,eps,0]
   ez = [0,0,eps]
@@ -97,16 +65,14 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
       ts = []
       for sign in [-1,1]:
         sites_cart_ = sites_cart.deep_copy()
+        xray_structure_ = xray_structure.deep_copy_scatterers()
         sites_cart_[i_site] = [
           sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
+        xray_structure_.set_sites_cart(sites_cart_)
         # after shift, recalculate H position
-        for hp in h_parameterization:
-          if (hp == None): continue
-          ih = hp.ih
-          rh_calc = parameterization.compute_H_position(
-            sites_cart = sites_cart_,
-            hp         = h_parameterization[ih])
-          sites_cart_[ih] = tuple(rh_calc)
+        riding_h_manager.idealize_hydrogens_inplace_cpp(
+          xray_structure=xray_structure_)
+        sites_cart_ = xray_structure_.sites_cart()
         ts.append(geometry.energies_sites(
           sites_cart = sites_cart_,
           compute_gradients = False).target)
@@ -114,11 +80,9 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
     g_fd.append(g_fd_i)
 
   g_fd_reduced = g_fd.select(~hd_selection)
-  #
+
   for g1, g2 in zip(g_analytical_reduced, g_fd_reduced):
-    #print g1,g2
     assert approx_equal(g1,g2, 1.e-4)
-  #print '*'*79
 
 # alg2a shaked
 pdb_str_00 = """
@@ -304,5 +268,4 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  #run(sys.argv[1:])
   print "OK. Time:", round(time.time()-t0, 2), "seconds"

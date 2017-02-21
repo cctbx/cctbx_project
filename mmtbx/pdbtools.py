@@ -1304,8 +1304,9 @@ class interpreter:
         unit_cell = self.params.input.crystal_symmetry.unit_cell,
         space_group_info = self.params.input.crystal_symmetry.space_group),
       from_coordinate_files=crystal_symmetries_from_coordinate_file)
-    if (   self.crystal_symmetry.unit_cell() is None
-        or self.crystal_symmetry.space_group_info() is None):
+    if ( self.crystal_symmetry is None or
+        self.crystal_symmetry.is_empty() or
+        self.crystal_symmetry.is_nonsence()):
       self.fake_crystal_symmetry = True
       print >> self.log, "*** No input crystal symmetry found. ***"
       print >> self.log,"Functionality requiring crystal symmetry unavailable."

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 01/17/2017
+Last Changed: 02/14/2017
 Description : IOTA GUI Dialogs
 '''
 
@@ -974,8 +974,9 @@ class DIALSOptions(BaseDialog):
     self.params = phil.extract()
     self.proc_phil = None
 
+
     # Create options panel (all objects should be called as self.options.object)
-    self.options = ScrolledPanel(self, size=(-1, 120))
+    self.options = ScrolledPanel(self, size=(200, 120))
     options_sizer = wx.BoxSizer(wx.VERTICAL)
     self.options.SetSizer(options_sizer)
 
@@ -1017,7 +1018,7 @@ class DIALSOptions(BaseDialog):
     # Add all to sizers
     options_sizer.Add(dials_box_sizer, flag=wx.ALL | wx.EXPAND, border=10)
     self.main_sizer.Add(phil_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.options, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.options, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(dialog_box,
                    flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
@@ -1029,6 +1030,8 @@ class DIALSOptions(BaseDialog):
 
     self.Layout()
     self.options.SetupScrolling()
+
+    self.read_param_phil()
 
   def onImportPHIL(self, e):
     dlg = wx.FileDialog(
@@ -1067,8 +1070,10 @@ class DIALSOptions(BaseDialog):
       self.phil.ctr.SetValue('')
 
     # DIALS options
-    self.min_spot_size.min_spot_size.SetValue(self.params.dials.min_spot_size)
-    self.global_threshold.threshold.SetValue(self.params.dials.global_threshold)
+    self.min_spot_size.min_spot_size.SetValue(
+      str(self.params.dials.min_spot_size))
+    self.global_threshold.threshold.SetValue(
+      str(self.params.dials.global_threshold))
 
   def onOK(self, e):
     ''' Populate param PHIL file for DIALS options '''
@@ -1086,9 +1091,13 @@ class DIALSOptions(BaseDialog):
       self.target_phil = self.phil.ctr.GetValue()
 
     dials_phil_text = '\n'.join([
-      'min_spot_size = {}'.format(self.min_spot_size.min_spot_size.GetValue()),
-      'global_threshold = {}'.format(
+      'dials',
+      '{',
+      '  min_spot_size = {}'.format(
+        self.min_spot_size.min_spot_size.GetValue()),
+      '  global_threshold = {}'.format(
         self.global_threshold.threshold.GetValue()),
+      '}'
     ])
 
     self.proc_phil = ip.parse(dials_phil_text)
@@ -1168,11 +1177,16 @@ class AnalysisWindow(BaseDialog):
   def read_param_phil(self):
     ''' Read in parameters from IOTA parameter PHIL'''
 
-    if self.params.analysis.run_clustering:
-      self.clustering.toggle.SetValue(True)
-      self.clustering.ctr.SetValue(self.params.analysis.cluster_threshold)
+    if self.params.advanced.integrate_with == 'dials':
+      self.clustering.toggle_boxes(flag_on=False)
+      self.clustering.Disable()
+    else:
+      if self.params.analysis.run_clustering:
+        self.clustering.toggle_boxes(flag_on=True)
+        self.clustering.threshold.SetValue(
+          str(self.params.analysis.cluster_threshold))
 
-    viz_idx = self.visualization.ctr.FindString(self.params.analysis.viz)
+    viz_idx = self.visualization.ctr.FindString(str(self.params.analysis.viz))
     if str(self.params.analysis.viz).lower() == 'none':
       viz_idx = 0
     self.visualization.ctr.SetSelection(viz_idx)
@@ -1186,12 +1200,15 @@ class AnalysisWindow(BaseDialog):
     viz = self.visualization.ctr.GetString(self.visualization.ctr.GetSelection())
 
     analysis_phil_txt = '\n'.join([
-      'run_clustering = {}'.format(self.clustering.toggle.GetValue()),
-      'cluster_threshold = {}'.format(noneset(
-        self.clustering.threshold.GetValue())),
-      'viz = {}'.format(viz),
-      'charts = {}'.format(self.proc_charts.GetValue()),
-      'summary_graphs = {}'.format(self.summary_graphs.GetValue())
+      'analysis',
+      '{',
+      ' run_clustering = {}'.format(self.clustering.toggle.GetValue()),
+      ' cluster_threshold = {}'.format(noneset(
+          self.clustering.threshold.GetValue())),
+      ' viz = {}'.format(viz),
+      ' charts = {}'.format(self.proc_charts.GetValue()),
+      ' summary_graphs = {}'.format(self.summary_graphs.GetValue()),
+      '}'
     ])
 
     self.viz_phil = ip.parse(analysis_phil_txt)
@@ -1307,3 +1324,98 @@ class TextFileView(BaseDialog):
     self.txt_panel.SetupScrolling()
     self.main_sizer.Add(self.txt_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
+
+    # Dialog control
+    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK),
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+
+class ViewerWarning(BaseDialog):
+  def __init__(self, parent,
+               img_list_length = None,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
+    BaseDialog.__init__(self, parent, style=dlg_style,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(400, 400),
+                        *args, **kwargs)
+
+    self.img_list_length = img_list_length
+    self.no_images = 0
+
+    self.opt_sizer = wx.FlexGridSizer(6, 3, 10, 10)
+
+    self.rb1_img_view = wx.RadioButton(self, label='First 1 image',
+                                       style=wx.RB_GROUP)
+    self.rb2_img_view = wx.RadioButton(self, label='First 10 images')
+    self.rb3_img_view = wx.RadioButton(self, label='First 50 images')
+    self.rb4_img_view = wx.RadioButton(self, label='First 100 images')
+    self.rb5_img_view = wx.RadioButton(self, label='All images')
+    self.rb_custom = wx.RadioButton(self, label='Other: ')
+    self.opt_custom = wx.TextCtrl(self, size=(100, -1))
+    self.opt_custom.Disable()
+    self.txt_custom = wx.StaticText(self, label='images')
+    self.txt_custom.Disable()
+
+    self.opt_sizer.AddMany([self.rb1_img_view, (0, 0), (0, 0),
+                            self.rb2_img_view, (0, 0), (0, 0),
+                            self.rb3_img_view, (0, 0), (0, 0),
+                            self.rb4_img_view, (0, 0), (0, 0),
+                            self.rb5_img_view, (0, 0), (0, 0),
+                            self.rb_custom, self.opt_custom, self.txt_custom])
+
+    # Grey out irrelevant radio buttons
+    if self.img_list_length < 100:
+      self.rb4_img_view.Disable()
+    if self.img_list_length < 50:
+      self.rb3_img_view.Disable()
+    if self.img_list_length < 10:
+      self.rb3_img_view.Disable()
+
+    self.main_sizer.Add(self.opt_sizer, flag=wx.ALL, border=10)
+
+    # Dialog control
+    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL),
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+    self.rb1_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb2_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb3_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb4_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb5_img_view.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+    self.rb_custom.Bind(wx.EVT_RADIOBUTTON, self.onCustom)
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onCustom(self, e):
+    if self.rb_custom.GetValue():
+      self.txt_custom.Enable()
+      self.opt_custom.Enable()
+      if self.img_list_length < 25:
+        value = str(self.img_list_length)
+      else:
+        value = '25'
+      self.opt_custom.SetValue(value)
+    else:
+      self.txt_custom.Disable()
+      self.opt_custom.Disable()
+      self.opt_custom.SetValue('')
+
+  def onOK(self, e):
+    if self.rb1_img_view.GetValue():
+      self.no_images = 1
+    elif self.rb2_img_view.GetValue():
+      self.no_images = 10
+    elif self.rb3_img_view.GetValue():
+      self.no_images = 50
+    elif self.rb4_img_view.GetValue():
+      self.no_images = 100
+    elif self.rb5_img_view.GetValue():
+      self.no_images = self.img_list_length
+    elif self.rb_custom.GetValue():
+      self.no_images = int(self.opt_custom.GetValue())
+    e.Skip()

@@ -309,3 +309,9 @@ class SingleFrame(InputFrame):
       e = 2 * uc[0] * uc[2] * math.cos(uc[4])
       f = 2 * uc[0] * uc[1] * math.cos(uc[5])
       return [a, b, c, d, e, f]
+
+class SingleDialsFrame(SingleFrame):
+  def __init__(self, refls_path=None, expts_path=None, **kwargs):
+    from xfel.command_line.frame_extractor import ConstructFrameFromFiles
+    frame = ConstructFrameFromFiles(refls_path, expts_path).make_frame()
+    SingleFrame.__init__(self, dicti=frame, path=" ".join((refls_path, expts_path)), **kwargs)

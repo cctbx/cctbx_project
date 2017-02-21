@@ -405,7 +405,15 @@ class ThreeProteinResidues(list):
         if esd: angle_proxy.weight = esd_factor * 1/restraint_values[i+1]**2
       elif len(names)==2:
         bond=self.bond_params_table.lookup(*names)
-        assert bond, "No bond between %s" % names
+        if not bond:
+          atoms = []
+          for atom in self.atoms():
+            if atom.i_seq in names: atoms.append(atom)
+          outl = 'CDL error: bond not found between %s - %s' % (
+            atoms[0].quote(),
+            atoms[1].quote(),
+            )
+          raise Sorry(outl)
         if verbose:
           print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
             names,

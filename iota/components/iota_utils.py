@@ -144,7 +144,11 @@ class GenerateInput():
         return 'text'
 
     except Exception:
-      return 'text'
+      pickle_test_result = self.test_pickle(filepath)
+      if pickle_test_result == 'not image':
+        return 'text'
+      else:
+        return pickle_test_result
 
 
   def get_folder_type(self, path):
@@ -220,11 +224,10 @@ class GenerateInput():
     if self.is_text(path):
       with open(path, 'r') as tf:
         contents = tf.readlines()
-
       contents = [i.replace('\n', '') for i in contents]
 
       if os.path.isfile(contents[0]):
-        if self.test_pickle(contents[0]) == 'image pickle':
+        if self.test_pickle(contents[0]) in ('image pickle', 'raw image'):
           return 'image list'
         elif self.test_pickle(contents[0]) == 'processed pickle':
           return 'processed pickles list'

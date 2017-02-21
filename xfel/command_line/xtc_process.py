@@ -47,6 +47,9 @@ xtc_phil_str = '''
     index = True
       .type = bool
       .help = Attempt to index images
+    refine = True
+      .type = bool
+      .help = If True, after indexing, refine the experimental models
     integrate = True
       .type = bool
       .help = Integrated indexed images. Ignored if index=False
@@ -244,6 +247,21 @@ extra_dials_phil_str = '''
    .help = The verbosity level
   border_mask {
     include scope dials.util.masking.phil_scope
+  }
+
+  joint_reintegration {
+    enable = False
+      .type = bool
+      .help = If enabled, after processing the data, do a joint refinement and \
+              re-integration
+    minimum_results = 30
+      .type = int
+      .help = Minimum number of integration results needed for joint reintegration
+    maximum_results_per_chunk = 500
+      .type = int
+
+    include scope dials.algorithms.refinement.refiner.phil_scope
+    include scope dials.algorithms.integration.integrator.phil_scope
   }
 '''
 
@@ -546,9 +564,9 @@ class InMemScript(DialsProcessScript):
 
           mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
           if i < 50:
-            print "Mem test rank %03d"%rank, i, mem
+            #print "Mem test rank %03d"%rank, i, mem
             continue
-          print "Mem test rank %03d"%rank, 'Cycle %6d total %7dkB increase %4dkB' % (i, mem, mem - last)
+          #print "Mem test rank %03d"%rank, 'Cycle %6d total %7dkB increase %4dkB' % (i, mem, mem - last)
           if not first:
             first = mem
           last = mem
@@ -556,6 +574,89 @@ class InMemScript(DialsProcessScript):
 
       run.end()
     ds.end()
+
+    if params.joint_reintegration.enable:
+      if rank == 0:
+	reint_dir = os.path.join(params.output.output_dir, "reint")
+	if not os.path.exists(reint_dir):
+	  os.makedirs(reint_dir)
+	images = []
+	experiment_jsons = []
+	indexed_tables = []
+	for filename in os.listdir(params.output.output_dir):
+	  if not filename.endswith("_indexed.pickle"):
+	    continue
+	  experiment_jsons.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + "_refined_experiments.json"))
+	  indexed_tables.append(os.path.join(params.output.output_dir, filename))
+          if params.format.file_format == "cbf":
+	    images.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + ".cbf"))
+          elif params.format.file_format == "pickle":
+	    images.append(os.path.join(params.output.output_dir, filename.split("_indexed.pickle")[0] + ".pickle"))
+
+        if len(images) < params.joint_reintegration.minimum_results:
+	  pass # print and return
+
+        # TODO: maximum_results_per_chunk = 500
+	combo_input = os.path.join(reint_dir, "input.phil")
+	f = open(combo_input, 'w')
+	for json, indexed in zip(experiment_jsons, indexed_tables):
+	  f.write("input {\n")
+	  f.write("  experiments = %s\n"%json)
+	  f.write("  reflections = %s\n"%indexed)
+	  f.write("}\n")
+	f.close()
+
+	combined_experiments_file = os.path.join(reint_dir, "combined_experiments.json")
+	combined_reflections_file = os.path.join(reint_dir, "combined_reflections.pickle")
+	command = "dials.combine_experiments reference_from_experiment.average_detector=True %s output.reflections=%s output.experiments=%s"% \
+	  (combo_input, combined_reflections_file, combined_experiments_file)
+	print command
+	from libtbx import easy_run
+	easy_run.fully_buffered(command).raise_if_errors().show_stdout()
+
+        from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+
+	combined_experiments = ExperimentListFactory.from_json_file(combined_experiments_file, check_format=False)
+	combined_reflections = easy_pickle.load(combined_reflections_file)
+
+	from dials.algorithms.refinement import RefinerFactory
+
+	refiner = RefinerFactory.from_parameters_data_experiments(
+	  params.joint_reintegration, combined_reflections, combined_experiments)
+
+	refiner.run()
+	experiments = refiner.get_experiments()
+	reflections = combined_reflections.select(refiner.selection_used_for_refinement())
+
+	from dxtbx.model.experiment.experiment_list import ExperimentList, ExperimentListDumper
+	dump = ExperimentListDumper(experiments)
+	dump.as_json(os.path.join(reint_dir, "refined_experiments.json"))
+	reflections.as_pickle(os.path.join(reint_dir, "refined_reflections.pickle"))
+
+	from dxtbx.datablock import DataBlockFactory
+	for expt_id, (expt, img_file) in enumerate(zip(experiments, images)):
+	  try:
+	    refls = reflections.select(reflections['id'] == expt_id)
+	    refls['id'] = flex.int(len(refls), 0)
+	    datablock = DataBlockFactory.from_filenames([img_file])[0]
+	    imgset = datablock.extract_imagesets()[0]
+	    imgset.set_detector(expt.detector)
+	    imgset.set_beam(expt.beam)
+	    imgset.set_scan(expt.scan)
+	    imgset.set_goniometer(expt.goniometer)
+	    expt.imageset = imgset
+	    base_name = os.path.splitext(os.path.basename(img_file))[0]
+	    self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.pickle")
+
+	    expts = ExperimentList([expt])
+	    self.integrate(expts, refls)
+	    dump = ExperimentListDumper(expts)
+	    dump.as_json(os.path.join(reint_dir, base_name + "_refined_experiments.json"))
+	  except Exception, e:
+	    print "Couldn't reintegrate", img_file, str(e)
+
+        #  from IPython import embed; embed()
+
 
   def process_event(self, run, timestamp):
     """
@@ -661,6 +762,9 @@ class InMemScript(DialsProcessScript):
       from dials.command_line.estimate_gain import estimate_gain
       estimate_gain(imgset)
       return
+
+    imgsum = sum([flex.sum(cspad_img.get_raw_data()[i]) for i in xrange(64)]) / 25
+    print "IMGSUM", imgsum
 
     if not self.params.dispatch.find_spots:
       self.debug_write("data_loaded", "done")

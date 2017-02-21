@@ -342,7 +342,7 @@ ATOM      4  O   GLY A  34     -72.196  12.128 -25.997  1.00  0.00           O
   base_arg = ["tmp_exercise_corrupt_cryst1.pdb"]
   for extra_arg in [[], ["bla=bla"], ["bla"]]:
     o = utils.process_command_line_args(args=base_arg+extra_arg)
-    assert o.crystal_symmetry is None
+    assert o.crystal_symmetry is None, o.crystal_symmetry
     o = utils.process_command_line_args(args=extra_arg+base_arg)
     assert o.crystal_symmetry is None
 

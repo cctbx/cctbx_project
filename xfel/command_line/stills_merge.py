@@ -20,20 +20,22 @@ import sys
 op = os.path
 
 def eval_ending (file_name):
-  endings_mapping = {"experiments.json"          : "integrated.pickle",
-                     "_experiments.json"         : "_integrated.pickle",
-                     "_refined_experiments.json" : "_integrated.pickle"}
+  ordered_endings_mapping = [
+    ("refined_experiments.json", "integrated.pickle"),
+    ("experiments.json", "integrated.pickle"),
+    ]
   dir_name = os.path.dirname(file_name)
   basename = os.path.basename(file_name)
-  for ending in endings_mapping:
-    try:
-      final_digit = int(basename.split(ending)[0][-1])
-      num_part = basename.split(ending)[0]
-      expt_name = os.path.join(dir_name, basename)
-      refl_name = os.path.join(dir_name, num_part + endings_mapping[ending])
-      return (num_part, expt_name, refl_name)
-    except Exception:
-      continue
+  for pair in ordered_endings_mapping:
+    if basename.endswith(pair[0]):
+      refl_name = os.path.join(dir_name, basename.split(pair[0])[0] + pair[1])
+      fragment = basename.split(pair[0])[0]
+      digit = "0" # if fragment contains no digit
+      for i in xrange(len(fragment)):
+        if fragment[-i-1].isdigit():
+          digit = fragment[-i-1]
+          break
+      return (digit, file_name, refl_name)
   return None
 
 def get_observations (data_dirs,data_subset):

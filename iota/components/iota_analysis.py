@@ -634,8 +634,12 @@ class Analyzer(object):
         prints out a starting PHIL file to be used with PRIME
     """
 
-    img_pickle = self.final_objects[0].final['img']
-    pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
+    if self.params.advanced.integrate_with == 'cctbx':
+      img_pickle = self.final_objects[0].final['img']
+      pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
+    elif self.params.advanced.integrate_with == 'dials':
+      proc_pickle = self.final_objects[0].final['final']
+      pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
 
     triclinic = ['P1']
     monoclinic = ['C2', 'P2']

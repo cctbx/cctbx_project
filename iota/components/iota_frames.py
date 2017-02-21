@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 01/17/2017
+Last Changed: 02/14/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -209,31 +209,6 @@ class FileListCtrl(ct.CustomListCtrl):
     self.Bind(wx.EVT_BUTTON, self.onAddFile, self.btn_add_file)
     self.Bind(wx.EVT_BUTTON, self.onAddFolder, self.btn_add_dir)
 
-  def view_all_images(self):
-    if self.ctr.GetItemCount() > 0:
-      file_list = []
-      for i in range(self.ctr.GetItemCount()):
-        type_ctrl = self.ctr.GetItemWindow(i, col=1).type
-        type_choice = type_ctrl.GetString(type_ctrl.GetSelection())
-        if type_choice in ('raw images folder', 'image pickles folder'):
-          for root, dirs, files in os.walk(self.ctr.GetItemText(i)):
-            for filename in files:
-              file_list.append(os.path.join(root, filename))
-        if type_choice in ('image pickle', 'raw image'):
-          file_list.append(self.ctr.GetItemText(i))
-        if type_choice == 'image list':
-          with open(self.ctr.GetItemText(i), 'r') as lf:
-            file_list.append(lf.readlines())
-
-      try:
-        file_string = ' '.join(file_list)
-        easy_run.fully_buffered('cctbx.image_viewer {}'.format(file_string))
-      except Exception, e:
-        print e
-
-    else:
-      wx.MessageBox('No data found', 'Error', wx.OK | wx.ICON_ERROR)
-
   def onAddFile(self, e):
     file_dlg = wx.FileDialog(self,
                              message="Load File",
@@ -323,7 +298,7 @@ class FileListCtrl(ct.CustomListCtrl):
           self.all_data_images[item.path] = items
         else:
           self.all_data_images[item.path] = [item.path]
-      if item.type.type.GetString(inp_sel) in ('image pickle', 'raw image'):
+      if "image" in item.type.type.GetString(inp_sel):
         view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer16')
         item.buttons.btn_mag.SetBitmapLabel(view_bmp)
     else:
@@ -384,28 +359,42 @@ class FileListCtrl(ct.CustomListCtrl):
       if ginp.get_file_type(path) in ('raw image', 'image pickle'):
         self.view_images(path)
       elif ginp.is_text(path):
+        type = item_obj.type.type.GetString(item_obj.type.type.GetSelection())
         with open(path, 'r') as f:
-          msg = f.read()
-        textview = dlg.TextFileView(self, title=path, contents=msg)
-        textview.ShowModal()
+          file_list = f.readlines()
+        if type == 'image list':
+          view_warning = dlg.ViewerWarning(self, len(file_list))
+          print 'DEBUG: {} FILES IN LIST'.format(len(file_list))
+          if (view_warning.ShowModal() == wx.ID_OK):
+            file_string = ' '.join(file_list[:view_warning.no_images]).replace('\n', '')
+            self.view_images(file_string)
+        else:
+          msg = ' '.join(file_list)
+          textview = dlg.TextFileView(self, title=path, contents=msg)
+          textview.ShowModal()
       elif ginp.get_file_type(path) == 'binary':
         wx.MessageBox('Unknown binary file', 'Warning',
                       wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
-      file_list = ''
+      file_list = []
       for root, dirs, files in os.walk(path):
         for filename in files:
           found_file = os.path.join(root, filename)
-          file_list += '{}\n'.format(found_file)
-      filelistview = dlg.TextFileView(self, title=path, contents=file_list)
-      filelistview.ShowModal()
+          file_list.append(found_file)
+      view_warning = dlg.ViewerWarning(self, len(file_list))
+      if (view_warning.ShowModal() == wx.ID_OK):
+        file_string = ' '.join(file_list[:view_warning.no_images])
+        self.view_images(file_string)
 
-  def view_images(self, img_list):
-    ''' Launches image viewer (depending on backend) with either one image,
-    multiple images, or many images (100 limit)'''
-    file_string = ' '.join(img_list)
-    backend = str(self.parent.gparams.advanced.integrate_with).lower()
-    easy_run.fully_buffered('{}.image_viewer {}'.format(backend, file_string))
+      #filelistview = dlg.TextFileView(self, title=path, contents=file_list)
+      #filelistview.ShowModal()
+
+  def view_images(self, img_string):
+    ''' Launches image viewer (depending on backend) '''
+    backend = self.parent.int_box.ctr.GetString(
+      self.parent.int_box.ctr.GetSelection()).lower()
+    command = '{}.image_viewer {}'.format(backend, img_string)
+    easy_run.fully_buffered(command)
 
 
   def onDelButton(self, e):
@@ -1392,4 +1381,7 @@ class ProcWindow(wx.Frame):
         self.plot_integration()
         self.analyze_results()
 
-      shutil.rmtree(self.init.tmp_base)
+      try:
+        shutil.rmtree(self.init.tmp_base)
+      except OSError:
+        pass

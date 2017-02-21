@@ -1,18 +1,20 @@
 from __future__ import division
 import time
-from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens import riding
+from mmtbx.hydrogens import parameterization
+#--------------------------------------------
+from scitbx import matrix
+from mmtbx_hydrogens_ext import *
 
-#-----------------------------------------------------------------------------
-# This finite difference test checks transformation of riding H gradients
-# for all amino acids, one by one
-#-----------------------------------------------------------------------------
-#
-def exercise(pdb_str, eps):
+# -----------------------------------------------------------------
+# This test is temporary, to make sure that intermediate steps
+# during conversion to c++ work fine
+# -----------------------------------------------------------------
+
+def exercise(pdb_str):
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -22,62 +24,52 @@ def exercise(pdb_str, eps):
       force_symmetry = True)
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   xray_structure = processed_pdb_file.xray_structure()
-
+  sites_cart = xray_structure.sites_cart()
   geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = 5.0)
+
+  es = geometry.energies_sites(
+    sites_cart = sites_cart,
+    compute_gradients = True)
+  g_analytical = es.gradients
 #
   riding_h_manager = riding.manager(
-    pdb_hierarchy       = pdb_hierarchy,
-    geometry_restraints = geometry)
+    pdb_hierarchy          = pdb_hierarchy,
+    geometry_restraints    = geometry)
 
-  riding_h_manager.idealize_hydrogens_inplace_cpp(
-      pdb_hierarchy  = pdb_hierarchy,
-      xray_structure = xray_structure)
+  h_parameterization = riding_h_manager.h_parameterization
 
-  sites_cart = xray_structure.sites_cart()
+#--------------------------------------------------------
+# test 1
+#--------------------------------------------------------
+#  print 'Test if c++ class is available in python code.'
+## fill in values in c++ object
+#  rc = riding_coefficients(htype='flat_2neigbs', ih = 6, a0=5, a1=2, a2=3, a3=6,
+#    a=3.467, b=5.4, h=3.58, n=2, disth=0.887)
+## print the values
+#  print rc.htype, rc.a0, rc.a1, rc.a2, rc.a3, rc.a, rc.b, rc.h,\
+#    rc.n, rc.disth
 
-  g_analytical = geometry.energies_sites(
-    sites_cart = sites_cart,
-    compute_gradients = True).gradients
+  for hp in h_parameterization:
+    if (hp == None): continue
+    ih = hp.ih
+    #print 'hydrogen atom index number: ', ih
+    # fill in c++ object
+    rc = riding_coefficients(
+      htype=hp.htype, ih = hp.ih, a0=hp.a0, a1=hp.a1, a2=hp.a2, a3=hp.a3,
+      a=hp.a, b=hp.b, h=hp.h, n=hp.n, disth=hp.disth)
+    # H position with C++ code
+    rh_calc_cpp = compute_h_position(
+      riding_coefficients = rc,
+      sites_cart          = sites_cart)
+    # H position with python code
+    rh_calc = parameterization.compute_H_position(
+      sites_cart = sites_cart,
+      hp         = hp)
 
-  hd_selection = xray_structure.hd_selection()
-  g_analytical_reduced = riding_h_manager.gradients_reduced(
-    sites_cart   = sites_cart,
-    grads        = g_analytical,
-    hd_selection = hd_selection)
-
-  #
-  ex = [eps,0,0]
-  ey = [0,eps,0]
-  ez = [0,0,eps]
-  g_fd = flex.vec3_double()
-  for i_site in xrange(sites_cart.size()):
-    g_fd_i = []
-    for e in [ex,ey,ez]:
-      ts = []
-      for sign in [-1,1]:
-        sites_cart_ = sites_cart.deep_copy()
-        xray_structure_ = xray_structure.deep_copy_scatterers()
-        sites_cart_[i_site] = [
-          sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
-        xray_structure_.set_sites_cart(sites_cart_)
-        # after shift, recalculate H position
-        riding_h_manager.idealize_hydrogens_inplace_cpp(
-          xray_structure=xray_structure_)
-        sites_cart_ = xray_structure_.sites_cart()
-        ts.append(geometry.energies_sites(
-          sites_cart = sites_cart_,
-          compute_gradients = False).target)
-      g_fd_i.append((ts[1]-ts[0])/(2*eps))
-    g_fd.append(g_fd_i)
-
-  g_fd_reduced = g_fd.select(~hd_selection)
-
-  for g1, g2 in zip(g_analytical_reduced, g_fd_reduced):
-    #print g1,g2
-    assert approx_equal(g1,g2, 1.e-4)
-
+    difference = (rh_calc - matrix.col(rh_calc_cpp)).length()
+    assert (difference < 0.0001), 'Problem in computing H atom position in c++'
 
 #Alanine
 pdb_str_01 = """
@@ -545,15 +537,11 @@ pdb_list_name = ['pdb_str_01', 'pdb_str_02', 'pdb_str_03', 'pdb_str_04', 'pdb_st
   'pdb_str_12', 'pdb_str_13', 'pdb_str_14', 'pdb_str_15', 'pdb_str_16', 'pdb_str_17',
   'pdb_str_18', 'pdb_str_19', 'pdb_str_20']
 
-#pdb_list = [pdb_str_02]
-#pdb_list_name = ['pdb_str_02']
-
 def run():
   #for use_ideal_bonds_angles in [True, False]:
   for pdb_str, str_name in zip(pdb_list,pdb_list_name):
       #print 'pdb_string:', str_name, 'idealize =', idealize
-    exercise(pdb_str=pdb_str, eps=1.e-4)
-
+    exercise(pdb_str=pdb_str)
 
 if (__name__ == "__main__"):
   t0 = time.time()

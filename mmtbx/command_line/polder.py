@@ -348,7 +348,8 @@ def cmd_run(args, validated=False, out=sys.stdout):
   print >> log, "input parameters:\n", args
   parsed = master_params
   inputs = mmtbx.utils.process_command_line_args(args = args,
-    master_params = parsed)
+    master_params = parsed,
+    suppress_symmetry_related_errors=True)
   #inputs.params.show() #check
   params = inputs.params.extract()
   # check model file
@@ -372,6 +373,8 @@ def cmd_run(args, validated=False, out=sys.stdout):
   # crystal symmetry
   crystal_symmetry = None
   crystal_symmetry = inputs.crystal_symmetry
+  print >> out, "Working crystal symmetry after inspecting all inputs:"
+  crystal_symmetry.show_summary(f=out, prefix="  ")
   if (crystal_symmetry is None):
     crystal_symmetries = []
     for f in [str(params.model_file_name), str(params.reflection_file_name)]:
@@ -399,7 +402,9 @@ def cmd_run(args, validated=False, out=sys.stdout):
     reflection_file_server = rfs,
     parameters             = parameters,
     keep_going             = True,
-    log                    = StringIO())
+    working_point_group = crystal_symmetry.space_group().build_derived_point_group(),
+    log                    = StringIO(),
+    symmetry_safety_check  = True)
   f_obs = determined_data_and_flags.f_obs
   if (params.data_labels is None):
     params.data_labels = f_obs.info().label_string()

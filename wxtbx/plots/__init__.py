@@ -13,6 +13,13 @@ if (sys.version_info[2] >= 6) :
   warnings.simplefilter('ignore', DeprecationWarning)
   warnings.simplefilter('ignore', UserWarning) # for matplotlib 1.5.1
 
+# explicitly set locale for matplotlib 2.0.0, otherwise, on macOS,
+# locale.getpreferredencoding(do_setlocale=False) returns an empty string
+# for consistency, set locale according to LC_ALL for both linux and macOS
+if (sys.platform != 'win32'):
+  import locale
+  locale.setlocale(locale.LC_ALL, '')
+
 class plot_container (wx.BoxSizer, wxtbx.MouseWheelTransparencyMixin) :
   def __init__ (self,
                 parent,

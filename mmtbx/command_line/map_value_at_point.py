@@ -76,9 +76,9 @@ def map_from_reflection_file(reflection_files, params):
     if(ma.info().labels[0].lower() != params.label.lower()):
       raise Sorry("Specified label 'label=%s' does not match any label in input file."%params.label)
   elif(len(miller_arrays)>1 and params.label is not None):
-    for ma in miller_arrays:
-      if(ma.info().labels[0].lower() == params.label.lower()):
-        break
+    found = filter(lambda ma: ma.info().labels[0].lower() == params.label.lower(), miller_arrays)
+    if not found: raise Sorry("Specified label not found.")
+    ma = found[0]
   if(not ma.is_complex_array()):
     raise Sorry("Data must be complex type (real provided).")
   print "Input reflection data (Fourier map coefficients):"

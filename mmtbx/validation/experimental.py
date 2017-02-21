@@ -296,8 +296,8 @@ def merging_and_model_statistics (
     raise Sorry("R-free array does not select any reflections.  To calculate "+
       "CC* and related statistics, a valid set of R-free flags must be used.")
   work_sel = free_sel.customized_copy(data=~free_sel.data())
-  i_obs, f_model = i_obs.common_sets(other=f_model)
   i_obs, f_obs = i_obs.common_sets(other=f_obs)
+  i_obs, f_model = i_obs.common_sets(other=f_model)
   i_obs, work_sel = i_obs.common_sets(other=work_sel)
   i_obs, free_sel = i_obs.common_sets(other=free_sel)
   i_calc = abs(f_model).f_as_f_sq()

@@ -262,7 +262,8 @@ class _Tiles(object):
             show_untrusted=self.show_untrusted
           )
 
-        self.flex_image.adjust(color_scheme=self.current_color_scheme)
+        if self.zoom_level >= 0:
+          self.flex_image.adjust(color_scheme=self.current_color_scheme)
 
     def set_image_data(self, raw_image_data):
       self.reset_the_cache()

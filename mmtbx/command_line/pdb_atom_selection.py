@@ -3,7 +3,7 @@ from __future__ import division
 
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import server
-from iotbx.option_parser import option_parser
+import argparse
 from cctbx.array_family import flex
 from libtbx.utils import plural_s
 from libtbx.str_utils import show_string
@@ -12,45 +12,45 @@ from iotbx.pdb import write_whole_pdb_file
 import sys
 
 def run(args, command_name=libtbx.env.dispatcher_name):
-  if (len(args) == 0): args = ["--help"]
-  command_line = (option_parser(
-    usage='%s pdb_file "atom_selection" [...]' % command_name)
-    .option(None, "--write_pdb_file",
+  parser = argparse.ArgumentParser(
+      prog=command_name,
+      usage='%s pdb_file "atom_selection" [...]' % command_name)
+  parser.add_argument(
+      "file_name",
+      nargs=1,
+      help="File name of the model file")
+  parser.add_argument(
+      "inselections",
+      help="Atom selection strings",
+      nargs='+',
+      )
+  parser.add_argument(
+      "--write-pdb-file",
       action="store",
-      type="string",
-      default=None,
       help="write selected atoms to new PDB file",
-      metavar="FILE")
-    .option(None, "--cryst1_replacement_buffer_layer",
+      default=None)
+  parser.add_argument(
+      "--cryst1-replacement-buffer-layer",
       action="store",
-      type="float",
-      default=None,
+      type=float,
       help="replace CRYST1 with pseudo unit cell covering the selected"
         " atoms plus a surrounding buffer layer",
-      metavar="WIDTH")
-  ).process(args=args, min_nargs=2)
-  co = command_line.options
+      default=None)
+  co = parser.parse_args(args)
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
   processed_pdb_file = pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
-    file_name=command_line.args[0],
+    file_name=co.file_name[0],
     log=sys.stdout)
   print
   acp = processed_pdb_file.all_chain_proxies
 
-  hierarchy=acp.pdb_hierarchy
-  asc=hierarchy.atom_selection_cache()
-  sel=asc.selection(string = "chain 'A' and resid 1 through 8 and icode ' '")
-  h1=hierarchy.select(sel)  # keep original hierarchy too
-  print h1.as_pdb_string()
-
-
   selection_cache = acp.pdb_hierarchy.atom_selection_cache()
   atoms = acp.pdb_atoms
   all_bsel = flex.bool(atoms.size(), False)
-  for selection_string in command_line.args[1:]:
+  for selection_string in co.inselections:
     print selection_string
     isel = acp.iselection(string=selection_string, cache=selection_cache)
     all_bsel.set_selected(isel, True)

@@ -19,16 +19,28 @@ cctbx.xfel.plot_run_stats_from_experiments . d_min=2.0
 """
 
 phil_str = """
-  hit_cutoff = 30
-    .type = int
-    .help = Number of reflections to consider an image a hit. Estimate by looking at plot of strong reflections/image.
   d_min = None
     .type = float
-    .help = Highest resolution to consider for I/sigI plot
+    .help = High resolution bin for the I/sig(I) plot and per-run statistics.
+  n_strong_cutoff = 40
+    .type = int
+    .help = Number of strong spots to consider an image a hit.
+  i_sigi_cutoff = 1
+    .type = float
+    .help = Avg. I/sig(I) in a bin to reach the cutoff for producing a spot (low or high res) in the third plot.
+  run_tags = None
+    .type = str
+    .help = Space-delimited string of tags to be applied as labels to the runs.
+  minimalist = False
+    .type = bool
+    .help = Generate final plot without run tags, per-run text summaries or vertical lines between runs.
   compress_runs = True
     .type = bool
     .help = When plotting multiple runs, adjust timestamps so there is no blank space between them.
-    .help = Thise mode is not compatible with fetching events from timestamps.
+    .help = This mode is not compatible with fetching events from timestamps.
+  title = None
+    .type = str
+    .help = Plot title.
 """
 phil_scope = parse(phil_str)
 
@@ -95,7 +107,7 @@ def run(args):
       d = uc.d(reflections['miller_index'])
 
       # Bin the reflections possibly present in this space group/cell so that we can report average I/sigma
-      # in the highest and lowest resolution cell
+      # in the highest requested and lowest resolution bins
       from cctbx.crystal import symmetry
       cs = symmetry(unit_cell = uc, space_group_info=crystal.get_space_group().info())
       mset = cs.build_miller_set(anomalous_flag=False, d_min=params.d_min)
@@ -111,8 +123,10 @@ def run(args):
 
     all_results.append((timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high))
 
-  plot_multirun_stats(all_results, runs, params.d_min, n_strong_cutoff=params.hit_cutoff, \
-    interactive=True, compress_runs=params.compress_runs)
+  plot_multirun_stats(all_results, runs, params.d_min, n_strong_cutoff=params.n_strong_cutoff, \
+    i_sigi_cutoff=params.i_sigi_cutoff, run_tags=params.run_tags.split(" "), \
+    minimalist=params.minimalist, interactive=True, compress_runs=params.compress_runs, \
+    title=params.title)
 
 if __name__ == "__main__":
   run(sys.argv[1:])

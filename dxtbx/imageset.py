@@ -201,6 +201,13 @@ class SingleFileReader(ReaderBase):
     ''' Return if single file reader '''
     return True
 
+  def __deepcopy__(self, memo):
+    '''
+    Override deep copy behaviour to use same format instance
+
+    '''
+    return SingleFileReader(self.get_format())
+
 
 class MultiFileState(object):
   '''A class to keep track of multi file reader state.'''

@@ -1,16 +1,16 @@
 from __future__ import division
 from cctbx.array_family import flex
-from cctbx import miller
+from cctbx import miller, crystal
 import cPickle as pickle
 from mod_leastsqr import leastsqr_handler
 from mod_results import postref_results
 from cctbx.crystal import symmetry
-import math
 from scitbx.matrix import sqr
 from cctbx import statistics
 from mod_partiality import partiality_handler
 from mod_lbfgs_partiality import lbfgs_partiality_handler
 from mod_mx import mx_handler
+import math, os
 
 class postref_handler(object):
   """
@@ -28,6 +28,7 @@ class postref_handler(object):
     """Given the pickle file, extract and prepare observations object and
     the alpha angle (meridional to equatorial).
     """
+    #get general parameters
     if iparams.isoform_name is not None:
       if "identified_isoform" not in observations_pickle:
         return None, "No identified isoform"
@@ -41,22 +42,57 @@ class postref_handler(object):
     else:
       target_anomalous_flag = iparams.target_anomalous_flag
     img_filename_only = ''
-    if pickle_filename is not None:
-      pickle_filepaths = pickle_filename.split('/')
-      img_filename_only = pickle_filepaths[len(pickle_filepaths)-1]
+    if pickle_filename: img_filename_only = os.path.basename(pickle_filename)
     txt_exception = ' {0:40} ==> '.format(img_filename_only)
-    observations = observations_pickle["observations"][0]
-    detector_distance_mm = observations_pickle['distance']
-    mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
-    xbeam = observations_pickle["xbeam"]
-    ybeam = observations_pickle["ybeam"]
-    alpha_angle_obs = flex.double([math.atan(abs(pred[0]-xbeam)/abs(pred[1]-ybeam)) \
-                                   for pred in mm_predictions])
-    spot_pred_x_mm = flex.double([pred[0]-xbeam for pred in mm_predictions])
-    spot_pred_y_mm = flex.double([pred[1]-ybeam for pred in mm_predictions])
-    #Polarization correction
-    wavelength = observations_pickle["wavelength"]
-    if iparams.flag_LP_correction:
+    #for dials integration pickles - also look for experimentxxx.json
+    if "miller_index" in observations_pickle:
+      from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+      exp_json_file = os.path.join(os.path.dirname(pickle_filename),img_filename_only.split('_')[0]+'_refined_experiments.json')
+      if os.path.isfile(exp_json_file):
+        experiments = ExperimentListFactory.from_json_file(exp_json_file)
+        dials_crystal = experiments[0].crystal
+        detector = experiments[0].detector
+        beam = experiments[0].beam
+        crystal_symmetry = crystal.symmetry(
+            unit_cell=dials_crystal.get_unit_cell().parameters(),
+            space_group_symbol=iparams.target_space_group)
+        miller_set_all=miller.set(
+                    crystal_symmetry=crystal_symmetry,
+                    indices=observations_pickle['miller_index'],
+                    anomalous_flag=target_anomalous_flag)
+        observations = miller_set_all.array(
+                  data=observations_pickle['intensity.sum.value'],
+                  sigmas=flex.sqrt(observations_pickle['intensity.sum.variance'])).set_observation_type_xray_intensity()
+        detector_distance_mm = detector[0].get_distance()
+        alpha_angle_obs = flex.double([0]*len(observations.data()))
+        wavelength = beam.get_wavelength()
+        spot_pred_x_mm = observations_pickle['s1'] #a disguise of s1
+        spot_pred_y_mm = flex.double([0]*len(observations.data()))
+        #calculate the crystal orientation
+        O = sqr(dials_crystal.get_unit_cell().orthogonalization_matrix()).transpose()
+        R = sqr(dials_crystal.get_U()).transpose()
+        from cctbx.crystal_orientation import crystal_orientation, basis_type
+        crystal_init_orientation = crystal_orientation(O*R, basis_type.direct)
+      else:
+        txt_exception += exp_json_file+' not found'
+        print txt_exception
+        return None, txt_exception
+    else:
+      #for cctbx.xfel proceed as usual
+      observations = observations_pickle["observations"][0]
+      detector_distance_mm = observations_pickle['distance']
+      mm_predictions = iparams.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
+      xbeam = observations_pickle["xbeam"]
+      ybeam = observations_pickle["ybeam"]
+      alpha_angle_obs = flex.double([math.atan(abs(pred[0]-xbeam)/abs(pred[1]-ybeam)) \
+                                     for pred in mm_predictions])
+      spot_pred_x_mm = flex.double([pred[0]-xbeam for pred in mm_predictions])
+      spot_pred_y_mm = flex.double([pred[1]-ybeam for pred in mm_predictions])
+      #Polarization correction
+      wavelength = observations_pickle["wavelength"]
+      crystal_init_orientation = observations_pickle["current_orientation"][0]
+    #continue reading...
+    if iparams.flag_LP_correction and "observations" in observations_pickle:
       fx = 1 - iparams.polarization_horizontal_fraction
       fy = 1 - fx
       if fx > 1.0 or fx < 0:
@@ -105,7 +141,6 @@ class postref_handler(object):
     alpha_angle_obs = alpha_angle_obs.select(sys_absent_negate_flags)
     spot_pred_x_mm = spot_pred_x_mm.select(sys_absent_negate_flags)
     spot_pred_y_mm = spot_pred_y_mm.select(sys_absent_negate_flags)
-    import os.path
     #remove observations from rejection list
     if os.path.isfile(iparams.run_no+'/rejections.txt'):
       txt_out = pickle_filename + ' \nN_before_rejection: ' + str(len(observations.data())) + '\n'
@@ -172,7 +207,7 @@ class postref_handler(object):
     #replacing sigI (if set)
     if iparams.flag_replace_sigI:
       observations = observations.customized_copy(sigmas=flex.sqrt(observations.data()))
-    inputs = observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm
+    inputs = observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, wavelength, crystal_init_orientation
     return inputs, 'OK'
 
   def get_observations_non_polar(self, observations_original, pickle_filename, iparams):
@@ -190,14 +225,12 @@ class postref_handler(object):
   def postrefine_by_frame(self, frame_no, pickle_filename, iparams, miller_array_ref, pres_in, avg_mode):
     #1. Prepare data
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
-    crystal_init_orientation = observations_pickle["current_orientation"][0]
-    wavelength = observations_pickle["wavelength"]
     pickle_filepaths = pickle_filename.split('/')
     img_filename_only = pickle_filepaths[len(pickle_filepaths)-1]
     txt_exception = ' {0:40} ==> '.format(img_filename_only)
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     if inputs is not None:
-      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
+      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, wavelength, crystal_init_orientation = inputs
     else:
       txt_exception += txt_organize_input + '\n'
       return None, txt_exception
@@ -206,28 +239,18 @@ class postref_handler(object):
     matches = miller.match_multi_indices(
                   miller_indices_unique=miller_array_ref.indices(),
                   miller_indices=observations_non_polar.indices())
-    I_ref_match = flex.double([miller_array_ref.data()[pair[0]] for pair in matches.pairs()])
-    miller_indices_ref_match = flex.miller_index((miller_array_ref.indices()[pair[0]] for pair in matches.pairs()))
-    I_obs_match = flex.double([observations_non_polar.data()[pair[1]] for pair in matches.pairs()])
-    sigI_obs_match = flex.double([observations_non_polar.sigmas()[pair[1]] for pair in matches.pairs()])
-    miller_indices_original_obs_match = flex.miller_index((observations_original.indices()[pair[1]] \
-                                                           for pair in matches.pairs()))
-    miller_indices_non_polar_obs_match = flex.miller_index((observations_non_polar.indices()[pair[1]] \
-                                                           for pair in matches.pairs()))
-    alpha_angle_set = flex.double([alpha_angle[pair[1]] for pair in matches.pairs()])
-    spot_pred_x_mm_set = flex.double([spot_pred_x_mm[pair[1]] for pair in matches.pairs()])
-    spot_pred_y_mm_set = flex.double([spot_pred_y_mm[pair[1]] for pair in matches.pairs()])
-    references_sel = miller_array_ref.customized_copy(data=I_ref_match, indices=miller_indices_ref_match)
-    observations_original_sel = observations_original.customized_copy(data=I_obs_match,
-                                                                      sigmas=sigI_obs_match,
-                                                                      indices=miller_indices_original_obs_match)
-    observations_non_polar_sel = observations_non_polar.customized_copy(data=I_obs_match,
-                                                                       sigmas=sigI_obs_match,
-                                                                       indices=miller_indices_non_polar_obs_match)
+    pair_0 = flex.size_t([pair[0] for pair in matches.pairs()])
+    pair_1 = flex.size_t([pair[1] for pair in matches.pairs()])
+    references_sel = miller_array_ref.select(pair_0)
+    observations_original_sel = observations_original.select(pair_1)
+    observations_non_polar_sel = observations_non_polar.select(pair_1)
+    alpha_angle_set = alpha_angle.select(pair_1)
+    spot_pred_x_mm_set = spot_pred_x_mm.select(pair_1)
+    spot_pred_y_mm_set = spot_pred_y_mm.select(pair_1)
     #4. Do least-squares refinement
     lsqrh = leastsqr_handler()
     try:
-      refined_params, stats, n_refl_postrefined = lsqrh.optimize(I_ref_match,
+      refined_params, stats, n_refl_postrefined = lsqrh.optimize(references_sel.data(),
                                                                    observations_original_sel, wavelength,
                                                                    crystal_init_orientation, alpha_angle_set,
                                                                    spot_pred_x_mm_set, spot_pred_y_mm_set,
@@ -242,7 +265,7 @@ class postref_handler(object):
     G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, voigt_nu_fin, \
         a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = refined_params
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
-    observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
+    observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, wavelength, crystal_init_orientation = inputs
     observations_non_polar, index_basis_name = self.get_observations_non_polar(observations_original, pickle_filename, iparams)
     from cctbx.uctbx import unit_cell
     uc_fin = unit_cell((a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin))
@@ -302,12 +325,11 @@ class postref_handler(object):
 
   def calc_mean_intensity(self, pickle_filename, iparams, avg_mode):
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
-    wavelength = observations_pickle["wavelength"]
     pickle_filepaths = pickle_filename.split('/')
     txt_exception = ' {0:40} ==> '.format(pickle_filepaths[len(pickle_filepaths)-1])
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     if inputs is not None:
-      observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
+      observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, wavelength, crystal_init_orientation = inputs
     else:
       txt_exception += txt_organize_input + '\n'
       return None, txt_exception
@@ -327,12 +349,10 @@ class postref_handler(object):
     inputs, txt_organize_input = self.organize_input(observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename)
     txt_exception = ' {0:40} ==> '.format(img_filename_only)
     if inputs is not None:
-      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = inputs
+      observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, wavelength, crystal_init_orientation = inputs
     else:
       txt_exception += txt_organize_input + '\n'
       return None, txt_exception
-    wavelength = observations_pickle["wavelength"]
-    crystal_init_orientation = observations_pickle["current_orientation"][0]
     #select only reflections matched with scale input params.
     #filter by resolution
     i_sel_res = observations_original.resolution_filter_selection(d_min=iparams.scale.d_min,

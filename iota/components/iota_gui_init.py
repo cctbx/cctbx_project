@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 01/06/2017
+Last Changed: 02/14/2017
 Description : IOTA GUI Initialization module
 '''
 
@@ -246,6 +246,7 @@ class MainWindow(wx.Frame):
     :param e: event object for self.input_window.opt_btn_analysis
     :return: modifies self.iota_phil with updated parameters
     '''
+
     an_dialog = dlg.AnalysisWindow(self,
                                    phil=self.iota_phil,
                                    title='Dataset Analysis Options',
@@ -410,7 +411,7 @@ class MainWindow(wx.Frame):
     if self.gparams.advanced.integrate_with == 'cctbx':
       target = self.gparams.cctbx.target
     elif self.gparams.advanced.integrate_with == 'dials':
-      target = self.gparams.cctbx.dials
+      target = self.gparams.dials.target
 
     if target is not None:
       try:
@@ -560,7 +561,7 @@ class InitAll(object):
           with open(input_entry, 'r') as listfile:
             listfile_contents = listfile.read()
           input_list.extend(listfile_contents.splitlines())
-        elif input_entry.endswith(('pickle', 'mccd', 'cbf', 'img')):
+        elif any (x in input_entry for x in ('pickle', 'mccd', 'cbf', 'img')):
           input_list.append(input_entry)  # read in image directly
 
       elif os.path.isdir(input_entry):
@@ -568,7 +569,7 @@ class InitAll(object):
         for root, dirs, files in os.walk(abs_inp_path):
           for filename in files:
             found_file = os.path.join(root, filename)
-            if found_file.endswith(('pickle', 'mccd', 'cbf', 'img')):
+            if any (x in found_file for x in ('pickle', 'mccd', 'cbf', 'img')):
               input_list.append(found_file)
 
     # Pick a randomized subset of images

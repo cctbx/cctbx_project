@@ -392,6 +392,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
       args=command_line.args,
       cmd_cs=command_line.symmetry,
       master_params=fo_minus_fo_master_params(),
+      suppress_symmetry_related_errors = False,
       absolute_angle_tolerance=5,
       absolute_length_tolerance=1,
       log=StringIO())

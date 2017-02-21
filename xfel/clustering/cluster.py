@@ -13,7 +13,7 @@ from cctbx.array_family import flex
 import os
 import math
 import logging
-from xfel.clustering.singleframe import SingleFrame
+from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame
 from cctbx.uctbx.determine_unit_cell import NCDist
 import numpy as np
 import matplotlib.patheffects as patheffects
@@ -114,7 +114,8 @@ class Cluster:
   @classmethod
   def from_directories(cls, path_to_integration_dir,
                        _prefix='cluster_from_dir',
-                       n_images = None,
+                       n_images=None,
+                       dials=False,
                        **kwargs):
     """Constructor to get a cluster from pickle files, from the recursively
     walked paths. Can take more than one argument for multiple folders.
@@ -122,48 +123,109 @@ class Cluster:
     :param path_to_integration_dir: list of directories containing pickle files.
     Will be searched recursively.
     :param n_images: find at most this number of images.
-    :param use_b: Boolean. If True, intialise Scale and B. If false, use only
+    :param use_b: Boolean. If True, intialise Scale and B. If False, use only
     mean intensity scalling.
     """
+    if dials:
+      dials_refls = []
+      dials_expts = []
+      pickles = None
+      for arg in path_to_integration_dir:
+        for (dirpath, dirnames, filenames) in os.walk(arg):
+          for filename in filenames:
+            path = os.path.join(dirpath, filename)
+            if path.endswith("integrated.pickle"):
+              dials_refls.append(path)
+            elif path.endswith("experiments.json"):
+              dials_expts.append(path)
+
+    else:
+      pickles = []
+      dials_refls = None
+      dials_expts = None
+      for arg in path_to_integration_dir:
+        for (dirpath, dirnames, filenames) in os.walk(arg):
+          for filename in filenames:
+            path = os.path.join(dirpath, filename)
+            if path.endswith(".pickle"):
+              print path, "ends with .pickle"
+              pickles.append(path)
+
+    return Cluster.from_files(pickle_list=pickles, dials_refls=dials_refls,
+      dials_expts=dials_expts, _prefix=_prefix,
+      _message='Made from files in {}'.format(path_to_integration_dir[:]),
+      dials=dials, n_images=n_images, **kwargs)
+
+  @classmethod
+  def from_files(cls,
+                 raw_input=None,
+                 pickle_list=[],
+                 dials_refls=[],
+                 dials_expts=[],
+                 _prefix='cluster_from_file',
+                 _message='Made from list of individual files',
+                 n_images=None,
+                 dials=False,
+                 **kwargs):
+    """Constructor to get a cluster from a list of individual files.
+    :param pickle_list: list of pickle files
+    :param dials_refls: list of DIALS integrated reflections
+    :param dials_expts: list of DIALS experiment jsons
+    :param n_images: find at most this number of images
+    :param dials: use the dials_refls and dials_expts arguments to construct the clusters (default: False)
+    :param use_b: Boolean. If True, intialise Scale and B. If False, use only
+    mean intensity scalling.
+    """
+
     data = []
+
+    def sort_dials_raw_input(raw):
+      expts = []
+      refls = []
+      for path in raw:
+        if path.endswith(".pickle"):
+          refls.append(path)
+        elif path.endswith(".json"):
+          expts.append(path)
+      return (refls, expts)
+
     def done():
       if n_images is None:
         return False
       return len(data) >= n_images
 
-    for arg in path_to_integration_dir:
-      for (dirpath, dirnames, filenames) in os.walk(arg):
-        for filename in filenames:
-          path = os.path.join(dirpath, filename)
-          this_frame = SingleFrame(path, filename, **kwargs)
-          if hasattr(this_frame, 'miller_array'):
-            data.append(this_frame)
-          else:
-            logging.info('skipping file {}'.format(filename))
-          if done(): break
-        if done(): break
-      if done(): break
-    return cls(data, _prefix,
-               'Made from files in {}'.format(path_to_integration_dir[:]))
+    if dials:
+      if raw_input is not None:
+        r, e = sort_dials_raw_input(raw_input)
+        dials_refls.extend(r)
+        dials_expts.extend(e)
+      dials_refls_ids = [os.path.join(os.path.dirname(r), os.path.basename(r).split("_")[0])
+                         for r in dials_refls]
+      dials_expts_ids = [os.path.join(os.path.dirname(e), os.path.basename(e).split("_")[0])
+                         for e in dials_expts]
+      matches = [(dials_refls[i], dials_expts[dials_expts_ids.index(dials_refls_ids[i])])
+                  for i in xrange(len(dials_refls_ids)) if dials_refls_ids[i] in dials_expts_ids]
+      for (r, e) in matches:
+        this_frame = SingleDialsFrame(refls_path=r, expts_path=e, **kwargs)
+        if hasattr(this_frame, 'miller_array'):
+          data.append(this_frame)
+          if done():
+            break
+        else:
+          logging.info('skipping reflections {} and experiments {}'.format(r, e))
+    else:
+      if raw_input is not None:
+        pickle_list.extend(raw_input)
+      for path in pickle_list:
+        this_frame = SingleFrame(path, os.path.basename(path), **kwargs)
+        if hasattr(this_frame, 'miller_array'):
+          data.append(this_frame)
+          if done():
+            break
+        else:
+          logging.info('skipping file {}'.format(os.path.basename(path)))
 
-  @classmethod
-  def from_files(cls, pickle_list,
-                       _prefix='cluster_from_file',
-                       use_b=True):
-    """Constructor to get a cluster from a list of pickle files.
-    :param pickle_list: list of pickle files
-    :param use_b: Boolean. If True, intialise Scale and B. If false, use only
-    mean intensity scalling.
-    """
-    data = []
-    for filename in pickle_list:
-      name_only = filename.split('/')[-1]
-      this_frame = SingleFrame(filename, name_only, use_b=use_b)
-      if hasattr(this_frame, 'name'):
-        data.append(this_frame)
-      else:
-        logging.info('skipping file {}'.format(filename))
-    return cls(data, _prefix, 'Made by Cluster.from_files')
+    return cls(data, _prefix, _message)
 
   def make_sub_cluster(self, new_members, new_prefix, new_info):
     """ Make a sub-cluster from a list of SingleFrame objects from the old
