@@ -205,8 +205,8 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   else:
     b_eff=8*3.14159*si.rmsd**2
     print >>out,\
-     "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1 A" \
-       %( b_eff,rmsd)
+     "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
+       %( b_eff,si.rmsd)
 
 
   # create model map using same coeffs
