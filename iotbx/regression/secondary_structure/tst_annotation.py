@@ -1420,6 +1420,70 @@ HELIX  238 238 LEU Z  125  ALA Z  136  1                                  12
   h_sizes = [x.length for x in ann.helices]
   assert h_sizes == [32, 29, 40, 12], h_sizes
 
+def tst_concatenate_consecutive_helices2():
+  """ Very tight turn between two consecutive helices results in their
+  concatenation. """
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "Skipped: required module ksdssp not present"
+    return
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="cctbx_project/iotbx/regression/secondary_structure/5a63_chainCp.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print 'WARNING: Skipping tst_concatenate_consecutive_helices2("%s"): input file not available' % file_path
+    return
+  inp = iotbx.pdb.input(file_name=file_path)
+  original_ann = inp.extract_secondary_structure()
+  assert original_ann.get_n_helices() == 2
+  assert original_ann.get_n_sheets() == 0
+  assert original_ann.helices[0].get_start_resseq_as_int() == 155
+  assert original_ann.helices[0].get_end_resseq_as_int() == 185
+  assert original_ann.helices[1].get_start_resseq_as_int() == 186
+  assert original_ann.helices[1].get_end_resseq_as_int() == 206
+  h = inp.construct_hierarchy()
+  ann = original_ann.deep_copy()
+  ann.concatenate_consecutive_helices(hierarchy=h)
+  assert ann.get_n_helices() == 2
+  assert ann.get_n_sheets() == 0
+  # and make sure they got 'spreaded'
+  assert ann.helices[0].get_start_resseq_as_int() == 155
+  assert ann.helices[0].get_end_resseq_as_int() == 184
+  assert ann.helices[1].get_start_resseq_as_int() == 187
+  assert ann.helices[1].get_end_resseq_as_int() == 206
+  # print ann
+
+def tst_concatenate_consecutive_helices3():
+  """ Very tight turn between two consecutive helices. They are separated
+  by PRO residue, but this is not enough, they should be spreaded like in
+  previous test. """
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "Skipped: required module ksdssp not present"
+    return
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="cctbx_project/iotbx/regression/secondary_structure/5a63_chainBp.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print 'WARNING: Skipping tst_concatenate_consecutive_helices2("%s"): input file not available' % file_path
+    return
+  inp = iotbx.pdb.input(file_name=file_path)
+  original_ann = inp.extract_secondary_structure()
+  assert original_ann.get_n_helices() == 2
+  assert original_ann.get_n_sheets() == 0
+  assert original_ann.helices[0].get_start_resseq_as_int() == 218
+  assert original_ann.helices[0].get_end_resseq_as_int() == 241
+  assert original_ann.helices[1].get_start_resseq_as_int() == 242
+  assert original_ann.helices[1].get_end_resseq_as_int() == 260
+  h = inp.construct_hierarchy()
+  ann = original_ann.deep_copy()
+  ann.concatenate_consecutive_helices(hierarchy=h)
+  assert ann.get_n_helices() == 2
+  assert ann.get_n_sheets() == 0
+  # and make sure they got 'spreaded'
+  assert ann.helices[0].get_start_resseq_as_int() == 218
+  assert ann.helices[0].get_end_resseq_as_int() == 240
+  assert ann.helices[1].get_start_resseq_as_int() == 243
+  assert ann.helices[1].get_end_resseq_as_int() == 260
+
 def tst_simple_elements():
   ann_str = """\
 HELIX    3 AA3 SER B   26  LYS B   30  5                                   5
@@ -1588,6 +1652,8 @@ if (__name__ == "__main__"):
   tst_split_helices_with_prolines_3()
   tst_remove_short_annotations()
   tst_concatenate_consecutive_helices()
+  tst_concatenate_consecutive_helices2()
+  tst_concatenate_consecutive_helices3()
   tst_filter_sheets_with_long_hbonds()
   tst_filter_sheets_with_long_hbonds2()
   tst_reset_sheet_ids()

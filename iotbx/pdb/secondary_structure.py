@@ -690,7 +690,7 @@ class annotation(structure_base):
 
   def concatenate_consecutive_helices(self, hierarchy=None, asc=None):
     # also should divide them
-    from mmtbx.command_line.angle import calculate_axes_and_angle
+    from mmtbx.command_line.angle import calculate_axes_and_angle_directional
     if asc is None and hierarchy is not None:
       asc = hierarchy.atom_selection_cache()
     concatenations_made = True
@@ -706,19 +706,21 @@ class annotation(structure_base):
         if hierarchy is not None:
           h1_hierarchy = hierarchy.select(asc.selection(self.helices[i-1].as_atom_selections()[0]))
           h2_hierarchy = hierarchy.select(asc.selection(self.helices[i].as_atom_selections()[0]))
-          a1, a2, angle = calculate_axes_and_angle(
-              h1_hierarchy.extract_xray_structure(),
-              h2_hierarchy.extract_xray_structure())
+          xrs1 = h1_hierarchy.extract_xray_structure()
+          xrs2 = h2_hierarchy.extract_xray_structure()
+          a1, a2, angle = calculate_axes_and_angle_directional(
+              xrs1,
+              xrs2)
         # print "angle between '%s', '%s': %.2f" % (
         #     self.helices[i-1].as_pdb_str()[7:40],
         #     self.helices[i].as_pdb_str()[7:40],
         #     angle)
         if (new_helices[-1].end_chain_id == self.helices[i].start_chain_id and
-            abs(new_helices[-1].get_end_resseq_as_int() - self.helices[i].get_start_resseq_as_int()) < 2 and
-            new_helices[-1].end_resname != "PRO" and
-            self.helices[i].start_resname != "PRO"):
+            abs(new_helices[-1].get_end_resseq_as_int() - self.helices[i].get_start_resseq_as_int()) < 2):
             # helices are next to each other, so we will either
-          if angle < 15:
+          if (angle < 15 and
+              new_helices[-1].end_resname != "PRO" and
+              self.helices[i].start_resname != "PRO"):
             # concatenate
             new_helices[-1].end_resname = self.helices[i].start_resname
             new_helices[-1].set_end_resseq(self.helices[i].get_end_resseq_as_int())

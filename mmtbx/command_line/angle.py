@@ -64,6 +64,13 @@ def process_args(args):
         "Atom selection '%s' selects less than two points."%ls)
   return ph, asc, sel1, sel2
 
+def vector_from_two_points(s1, s2):
+  a = [s2[0]-s1[0], s2[1]-s1[1], s2[2]-s1[2]]
+  norm = math.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
+  if(abs(norm)<1.e-9):
+    raise Sorry("Two points defining axis coincide.")
+  return matrix.col((a[0]/norm, a[1]/norm, a[2]/norm))
+
 def get_axis_from_xrs(xrs):
   if xrs.scatterers().size() > 2:
     sites_cart_moving = xrs.sites_cart()-xrs.center_of_mass()
@@ -75,16 +82,30 @@ def get_axis_from_xrs(xrs):
     sites_cart = xrs.sites_cart()
     assert sites_cart.size() == 2
     s1,s2 = sites_cart[0], sites_cart[1]
-    a = [s2[0]-s1[0], s2[1]-s1[1], s2[2]-s1[2]]
-    norm = math.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
-    if(abs(norm)<1.e-9):
-      raise Sorry("Two points defining axis coincide.")
-    return matrix.col((a[0]/norm, a[1]/norm, a[2]/norm))
+    return vector_from_two_points(s1, s2)
   return None
 
 def calculate_axes_and_angle(xrs1, xrs2):
   a1 = get_axis_from_xrs(xrs1)
   a2 = get_axis_from_xrs(xrs2)
+  angle = a1.angle(a2)*180./math.pi
+  return a1, a2, angle
+
+def calculate_axes_and_angle_directional(xrs1, xrs2):
+  """ The same as above, but check the direction of vectors assuming that
+  atoms in xrs1 and xrs2 are ordered from N to C terminus. This will enable
+  the function to produce angles > 90 degrees.
+  Uses rough estimate of direction of xrs using the first and the last atom
+  and inverting vectors a1 and a2 when necessary.
+  Used in iotbx.pdb.secondary_structure:concatenate_consecutive_helices()"""
+  a1 = get_axis_from_xrs(xrs1)
+  a2 = get_axis_from_xrs(xrs2)
+  v1 = vector_from_two_points(xrs1.sites_cart()[0], xrs1.sites_cart()[-1])
+  v2 = vector_from_two_points(xrs2.sites_cart()[0], xrs2.sites_cart()[-1])
+  if a1.angle(v1)*180./math.pi > 90:
+    a1 = -a1
+  if a2.angle(v2)*180./math.pi > 90:
+    a2 = -a2
   angle = a1.angle(a2)*180./math.pi
   return a1, a2, angle
 
