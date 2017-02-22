@@ -149,26 +149,46 @@ af::shared<vec3<double> > apply_new_H_positions(
   return sites_cart_new;
 }
 
-//af::shared<scitbx::vec3<double> > modify_gradients_cpp(
-//                   af::shared<scitbx::vec3<double> > const& gradients,
-//                   boost::python::list const& parameterization_)
-//  {
-//    std::cout << "length of parameterization: " << len(parameterization_) << "\n";
-//    af::shared<riding_coefficients> parameterization;
-//    af::shared<scitbx::vec3<double> > gradients_new;
-//    gradients_new = gradients;
-//    for(std::size_t i=0;i<boost::python::len(parameterization_);i++) {
-//      parameterization.push_back(
-//          boost::python::extract<riding_coefficients>(parameterization_[i])());
-//    }
-//    for(int i=0; i < parameterization.size(); i++) {
-//      riding_coefficients rc = parameterization[i];
-//      int ih = rc.ih;
-//      std::cout << "ih: " << ih << "  Gx: " << gradients[ih][0] << "\n";
-//    }
-//  return gradients_new;
-//}
+vec3<double> G_unitvector(
+                   vec3<double> Gu,
+                   vec3<double> r)
+{
+  vec3<double> Gr;
+  double Gx, Gy, Gz;
+  double x = r[0], y = r[1], z = r[2];
+  double Gxu = Gu[0], Gyu = Gu[1], Gzu = Gu[2];
+  double denom = pow(r.length(),3);
+  MMTBX_ASSERT(denom > 0.);
+  Gx = ((pow(y,2) + pow(z,2)) * Gu[0] - x*y*Gu[1] - x*z*Gu[2]) / denom;
+  Gy = ( -x*y*Gu[0] + (pow(x,2) + pow(z,2))*Gu[1] - y*z*Gu[2]) / denom;
+  Gz = ( -x*z*Gu[0] - y*z*Gu[1] + (pow(x,2) + pow(y,2))*Gu[2]) / denom;
+  Gr[0] = Gx;
+  Gr[1] = Gy;
+  Gr[2] = Gz;
+  return Gr;
+}
 
+// transformation for the derivative of a cross product
+af::shared<vec3<double> > G_crossproduct(
+                   vec3<double> Gv,
+                   vec3<double> r1,
+                   vec3<double> r2)
+{
+  af::shared<vec3<double> > G_r1_r2;
+  vec3<double> Gr1, Gr2;
+  double x1 = r1[0], y1 = r1[1], z1 = r1[2];
+  double x2 = r2[0], y2 = r2[1], z2 = r2[2];
+  double Gx_v = Gv[0], Gy_v = Gv[1], Gz_v = Gv[2];
+  Gr1[0] = -z2 * Gy_v + y2 * Gz_v;
+  Gr1[1] =  z2 * Gx_v - x2 * Gz_v;
+  Gr1[2] = -y2 * Gx_v + x2 * Gy_v;
+  Gr2[0] =  z1 * Gy_v - y1 * Gz_v;
+  Gr2[1] = -z1 * Gx_v + x1 * Gz_v;
+  Gr2[2] =  y1 * Gx_v - x1 * Gy_v;
+  G_r1_r2[0] = Gr1;
+  G_r1_r2[1] = Gr2;
+  return G_r1_r2;
+}
 
 }} // namespace mmtbx::riding_h
 

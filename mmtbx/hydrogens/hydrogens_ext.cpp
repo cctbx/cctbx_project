@@ -59,13 +59,23 @@ namespace {
                    arg("parameterization")))
     ;
 
-    //def("modify_gradients_cpp",
-    //      (af::shared<scitbx::vec3<double> >(*)
-    //          (af::shared<scitbx::vec3<double> >,
-    //           boost::python::list const& )) modify_gradients_cpp,
-    //             (arg("gradients"),
-    //              arg("parameterization")))
-    //;
+    def("G_unitvector",
+         (vec3<double>(*)
+               (vec3<double>,
+                vec3<double>)) G_unitvector,
+                  (arg("Gu"),
+                   arg("r")))
+    ;
+
+    def("G_crossproduct",
+         (vec3<double>(*)
+               (vec3<double>,
+                vec3<double>,
+                vec3<double>)) G_crossproduct,
+                  (arg("Gv"),
+                   arg("r1"),
+                   arg("r2")))
+    ;
 
   }
 
