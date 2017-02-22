@@ -912,7 +912,7 @@ class annotation(structure_base):
   def remove_3_10_helices(self):
     filtered_helices = []
     for h in self.helices:
-      if h.get_class_as_str == 5:
+      if h.get_class_as_int() == 5:
         continue
       else:
         filtered_helices.append(h)

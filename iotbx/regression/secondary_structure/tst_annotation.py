@@ -1402,6 +1402,15 @@ def tst_remove_short_annotations():
   # print ann
   assert nstr == [5,3,2], nstr
 
+def tst_remove_3_10_helices():
+  ann = annotation.from_records(pdb_records_2.split("\n"))
+  assert ann.get_n_helices() == 7
+  assert ann.get_n_sheets() == 4
+  ann.remove_3_10_helices()
+  assert ann.get_n_helices() == 6, ann.get_n_helices()
+  assert ann.get_n_sheets() == 4, ann.get_n_sheets()
+  # print ann
+
 def tst_concatenate_consecutive_helices():
   ann_str = """\
 HELIX  233 233 PHE Z   12  CYS Z   43  1                                  32
@@ -1651,6 +1660,7 @@ if (__name__ == "__main__"):
   tst_split_helices_with_prolines_2()
   tst_split_helices_with_prolines_3()
   tst_remove_short_annotations()
+  tst_remove_3_10_helices()
   tst_concatenate_consecutive_helices()
   tst_concatenate_consecutive_helices2()
   tst_concatenate_consecutive_helices3()
