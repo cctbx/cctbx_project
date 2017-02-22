@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 06/19/2016
+Last Changed: 02/21/2017
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -305,44 +305,46 @@ class Analyzer(object):
     self.logfile = init.logfile
     self.prime_data_path = None
 
-    # Analyze image objects
-    self.all_objects = all_objects
-    self.final_objects = [i for i in all_objects if i.fail == None]
-    self.sorted_final_images = sorted(self.final_objects,
-                                      key=lambda i: i.final['mos'])
-    self.no_diff_objects = [i for i in self.all_objects if
-                            i.fail == 'failed triage']
-    self.diff_objects = [i for i in self.all_objects if
-                         i.fail != 'failed triage']
-    if self.params.advanced.integrate_with == 'cctbx':
-      self.not_int_objects = [i for i in self.all_objects if
-                              i.fail == 'failed grid search']
-      self.filter_fail_objects = [i for i in self.all_objects if
-                                  i.fail == 'failed prefilter']
-    elif self.params.advanced.integrate_with == 'dials':
-      self.not_spf_objects = [i for i in self.all_objects if
-                              i.fail == 'failed spotfinding']
-      self.not_idx_objects = [i for i in self.all_objects if
-                              i.fail == 'failed indexing']
-      self.not_int_objects = [i for i in self.all_objects if
-                              i.fail == 'failed integration']
-
     self.cons_pg = None
     self.cons_uc = None
 
-    self.pickles = [i.final['final'] for i in self.final_objects]
-    self.hres = [i.final['res'] for i in self.final_objects]
-    self.lres = [i.final['lres'] for i in self.final_objects]
-    self.spots = [i.final['strong'] for i in self.final_objects]
-    self.mos = [i.final['mos'] for i in self.final_objects]
-    if self.params.advanced.integrate_with == 'cctbx':
-      self.h = [i.final['sph'] for i in self.final_objects]
-      self.s = [i.final['sih'] for i in self.final_objects]
-      self.a = [i.final['spa'] for i in self.final_objects]
-    else:
-      self.s = [0]
-      self.h = [0]
-      self.a = [0]
+    # Analyze image objects
+    self.all_objects = all_objects
+    self.final_objects = [i for i in all_objects if i.fail == None]
+
+    if self.final_objects is not None:
+      self.sorted_final_images = sorted(self.final_objects,
+                                        key=lambda i: i.final['mos'])
+      self.no_diff_objects = [i for i in self.all_objects if
+                              i.fail == 'failed triage']
+      self.diff_objects = [i for i in self.all_objects if
+                           i.fail != 'failed triage']
+      if self.params.advanced.integrate_with == 'cctbx':
+        self.not_int_objects = [i for i in self.all_objects if
+                                i.fail == 'failed grid search']
+        self.filter_fail_objects = [i for i in self.all_objects if
+                                    i.fail == 'failed prefilter']
+      elif self.params.advanced.integrate_with == 'dials':
+        self.not_spf_objects = [i for i in self.all_objects if
+                                i.fail == 'failed spotfinding']
+        self.not_idx_objects = [i for i in self.all_objects if
+                                i.fail == 'failed indexing']
+        self.not_int_objects = [i for i in self.all_objects if
+                                i.fail == 'failed integration']
+
+      self.pickles = [i.final['final'] for i in self.final_objects]
+      self.hres = [i.final['res'] for i in self.final_objects]
+      self.lres = [i.final['lres'] for i in self.final_objects]
+      self.spots = [i.final['strong'] for i in self.final_objects]
+      self.mos = [i.final['mos'] for i in self.final_objects]
+      if self.params.advanced.integrate_with == 'cctbx':
+        self.h = [i.final['sph'] for i in self.final_objects]
+        self.s = [i.final['sih'] for i in self.final_objects]
+        self.a = [i.final['spa'] for i in self.final_objects]
+      else:
+        self.s = [0]
+        self.h = [0]
+        self.a = [0]
 
 
   def print_results(self):
@@ -354,47 +356,48 @@ class Analyzer(object):
 
     final_table = []
     final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
-    #final_table.append("Total images:          {}".format(len(
-    # self.final_objects)))
 
-    if self.params.advanced.integrate_with == 'cctbx':
-      final_table.append("Avg. signal height:    {:<8.3f}  std. dev:    {:<6.2f}"\
-                         "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
-                         "".format(np.mean(self.s), np.std(self.s),
-                                   max(self.s), min(self.s), cons_s))
-      final_table.append("Avg. spot height:      {:<8.3f}  std. dev:    {:<6.2f}"\
-                         "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
-                         "".format(np.mean(self.h), np.std(self.h),
-                                   max(self.h), min(self.h), cons_h))
-      final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:    {:<6.2f}"\
-                        "  max: {:<3}  min: {:<3}  consensus: {:<3}"\
-                        "".format(np.mean(self.a), np.std(self.a),
-                                  max(self.a), min(self.a), cons_a))
-    final_table.append("Avg. resolution:       {:<8.3f}  std. dev:    {:<6.2f}"\
-                       "  lowest: {:<6.3f}  highest: {:<6.3f}"\
-                      "".format(np.mean(self.hres), np.std(self.hres),
-                                max(self.hres), min(self.hres)))
-    final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:    {:<6.2f}"\
-                      "".format(np.mean(self.spots), np.std(self.spots)))
-    final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:    {:<6.2f}"\
-                      "".format(np.mean(self.mos), np.std(self.mos)))
+    # In case no images were integrated
+    if self.final_objects is None:
+      final_table.append('NO IMAGES INTEGRATED!')
+    else:
+      if self.params.advanced.integrate_with == 'cctbx':
+        final_table.append("Avg. signal height:    {:<8.3f}  std. dev:   "
+                           "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
+                           "".format(np.mean(self.s), np.std(self.s),
+                                     max(self.s), min(self.s), cons_s))
+        final_table.append("Avg. spot height:      {:<8.3f}  std. dev:   "
+                           "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
+                           "".format(np.mean(self.h), np.std(self.h),
+                                     max(self.h), min(self.h), cons_h))
+        final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:   "
+                           "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
+                          "".format(np.mean(self.a), np.std(self.a),
+                                    max(self.a), min(self.a), cons_a))
+      final_table.append("Avg. resolution:       {:<8.3f}  std. dev:   "
+                         "{:<6.2f}  lowest: {:<6.3f}  highest: {:<6.3f}"
+                        "".format(np.mean(self.hres), np.std(self.hres),
+                                  max(self.hres), min(self.hres)))
+      final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:   {:<6.2f}"
+                        "".format(np.mean(self.spots), np.std(self.spots)))
+      final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:   {:<6.2f}"
+                        "".format(np.mean(self.mos), np.std(self.mos)))
 
-    # If more than one integrated image, plot various summary graphs
-    if len(self.final_objects) > 1 and self.params.analysis.summary_graphs:
-      plot = Plotter(self.params, self.final_objects, self.viz_dir)
-      if ( self.params.advanced.integrate_with == 'cctbx' and
-             self.params.cctbx.grid_search.type != None
-          ):
-        plot.plot_spotfinding_heatmap(write_files=True)
-      plot.plot_res_histogram(write_files=True)
-      med_beamX, med_beamY = plot.plot_beam_xy(write_files=True,
-                                               return_values=True)
-      final_table.append("Median Beam Center:    X = {:<4.2f}, Y = {:<4.2f}"\
-                         "".format(med_beamX, med_beamY))
+      # If more than one integrated image, plot various summary graphs
+      if len(self.final_objects) > 1 and self.params.analysis.summary_graphs:
+        plot = Plotter(self.params, self.final_objects, self.viz_dir)
+        if ( self.params.advanced.integrate_with == 'cctbx' and
+               self.params.cctbx.grid_search.type != None
+            ):
+          plot.plot_spotfinding_heatmap(write_files=True)
+        plot.plot_res_histogram(write_files=True)
+        med_beamX, med_beamY = plot.plot_beam_xy(write_files=True,
+                                                 return_values=True)
+        final_table.append("Median Beam Center:    X = {:<4.2f}, Y = {:<4.2f}"
+                           "".format(med_beamX, med_beamY))
 
     for item in final_table:
         misc.main_log(self.logfile, item, (not self.gui_mode))
-
 
   def unit_cell_analysis(self,
                          write_files=True):
@@ -404,7 +407,15 @@ class Analyzer(object):
         integration without target unit cell specified. """
 
     # Will not run clustering if only one integration result found or if turned off
-    if len(self.final_objects) == 1:
+    if self.final_objects is None:
+      self.cons_uc = None
+      self.cons_pg = None
+      misc.main_log(self.logfile,
+                    "\n\n{:-^80}\n".format(' UNIT CELL ANALYSIS '), True)
+      misc.main_log(self.logfile,
+                    '\n UNIT CELL CANNOT BE DETERMINED!', True)
+
+    elif len(self.final_objects) == 1:
       unit_cell = (self.final_objects[0].final['a'],
                    self.final_objects[0].final['b'],
                    self.final_objects[0].final['c'],

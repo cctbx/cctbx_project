@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 08/22/2016
+Last Changed: 02/21/2017
 Description : IOTA command-line module.
 '''
 
@@ -161,7 +161,9 @@ class XTermIOTA():
   def run_analysis(self):
     ''' Run analysis of integrated images '''
     cmd.Command.start("Analyzing results ")
-    analysis = Analyzer(self.init, self.img_objects, iota_version)
+    analysis = Analyzer(init=self.init,
+                        all_objects=self.img_objects,
+                        gui_mode=False)
     cmd.Command.end("Analyzing results -- DONE")
     analysis.print_results()
     analysis.unit_cell_analysis()

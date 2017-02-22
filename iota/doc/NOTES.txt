@@ -1,14 +1,6 @@
-IOTA v1.1.002 - GUI / DIALS updates
+IOTA v1.1.003 - IOTA-DIALS bugfixes
 
-Features:
-
-1. Image viewer callup update:
-    a. now works for all image entries (single, folders, list files, etc.)
-    b. cctbx.- or dials.image_viewer used depending on backend chosen
-    c. If list file / folder viewed, dialog pops up allowing user to choose a
-     subset of images to view (useful for large datasets)
-2. DIALS bug fixes
-    a. unit cell clustering automatically greyed out (doesn't work yet)
-    b. Updated defaults
-3. New DIALS defaults derived from Aaron's scripts
-4. Assorted GUI bugfixes, especially in input type identification
+1. Fixed bug when running the DIALS stills processor; the 'refine' function
+returns two variables, not one.
+2. Fixed crash in XTerm mode when DIALS failed to process images
+3. Fixed bug in XTerm mode where run summary was not printed to screen

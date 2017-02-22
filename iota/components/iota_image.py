@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/30/2017
+Last Changed: 02/21/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -294,6 +294,7 @@ class SingleImage(object):
     top = beam_y
     bottom = height - beam_y
     new_pixels = pixels.deep_copy()
+    new_size = None
 
     # the new image will be twice the size as the smallest distance between the
     # beam center and one of the edges of the images
@@ -312,26 +313,23 @@ class SingleImage(object):
     elif self.params.image_conversion.square_mode == 'pad':
       new_half_size = max([right, left, top, bottom])
       new_size = new_half_size * 2
-      min_x = 0
-      min_y = 0
       delta_x = new_half_size - beam_x
       delta_y = new_half_size - beam_y
       new_beam_x = data['BEAM_CENTER_X'] + delta_x * pixel_size
       new_beam_y = data['BEAM_CENTER_Y'] + delta_y * pixel_size
-
       new_pixels.resize(flex.grid(new_size, new_size))
       new_pixels.fill(-2)
 
       new_pixels.matrix_paste_block_in_place(pixels, delta_y, delta_x)
 
-
     # save the results
-    data['DATA'] = new_pixels
-    data['SIZE1'] = new_size
-    data['SIZE2'] = new_size
-    data['BEAM_CENTER_X'] = new_beam_x
-    data['BEAM_CENTER_Y'] = new_beam_y
-    data['ACTIVE_AREAS'] = flex.int([0 , 0, new_size, new_size])
+    if new_size is not None:
+      data['DATA'] = new_pixels
+      data['SIZE1'] = new_size
+      data['SIZE2'] = new_size
+      data['BEAM_CENTER_X'] = new_beam_x
+      data['BEAM_CENTER_Y'] = new_beam_y
+      data['ACTIVE_AREAS'] = flex.int([0 , 0, new_size, new_size])
 
     return data
 
@@ -420,7 +418,7 @@ class SingleImage(object):
 
       # Generate converted image pickle filename
       rename_choice = str(self.params.image_conversion.rename_pickle).lower()
-      if rename_choice == "keep_file_structure":
+      if rename_choice in ("keep_file_structure", "none"):
         img_path = misc.make_image_path(self.raw_img, self.input_base,
                                         self.conv_base)
         img_filename = os.path.basename(self.raw_img).split('.')[0] + ".pickle"
@@ -454,7 +452,7 @@ class SingleImage(object):
         img_data['BEAM_CENTER_Y'] = int(round(beam_center[1] * pixel_size))
       if distance != 0:
         img_data['DISTANCE'] = distance
-      if square != "None":
+      if square in ('crop', 'pad'):
         img_data = self.square_pickle(img_data)
       if beamstop != 0:
         img_data = self.mask_image(img_data)
@@ -476,7 +474,7 @@ class SingleImage(object):
       ep.dump(self.conv_img, img_data)
 
     # Triage image (i.e. check for usable diffraction, using selected method)
-    if str(self.params.image_triage.type).lower() != 'no_triage':
+    if str(self.params.image_triage.type).lower() in ('simple', 'grid_search'):
       if self.params.advanced.integrate_with == 'cctbx':
         from iota.components.iota_cctbx import Triage
         triage = Triage(self.conv_img, self.gain, self.params)
@@ -494,9 +492,13 @@ class SingleImage(object):
 
     # Generate integration result dictionary for cctbx.xfel or DIALS
     if self.params.advanced.integrate_with == 'cctbx':
-      if self.params.cctbx.grid_search.type == 'smart':
+      gs_type = str(self.params.cctbx.grid_search.type).lower()
+      if gs_type == 'smart':
         self.hrange = 1
         self.arange = 1
+      elif gs_type in ('none', 'no_grid_search'):
+        self.hrange = 0
+        self.arange = 0
       else:
         self.hrange = self.params.cctbx.grid_search.height_range
         self.arange = self.params.cctbx.grid_search.area_range
@@ -524,7 +526,7 @@ class SingleImage(object):
       self.viz_file = os.path.join(self.viz_path,
             "int_{}.png".format(os.path.basename(self.conv_img).split('.')[0]))
 
-      # Create actual folders (if necessary)
+      # Create actual folders (if necessary)f
       try:
         if not os.path.isdir(self.obj_path):
           os.makedirs(self.obj_path)

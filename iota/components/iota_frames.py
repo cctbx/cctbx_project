@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 02/14/2017
+Last Changed: 02/21/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -364,7 +364,6 @@ class FileListCtrl(ct.CustomListCtrl):
           file_list = f.readlines()
         if type == 'image list':
           view_warning = dlg.ViewerWarning(self, len(file_list))
-          print 'DEBUG: {} FILES IN LIST'.format(len(file_list))
           if (view_warning.ShowModal() == wx.ID_OK):
             file_string = ' '.join(file_list[:view_warning.no_images]).replace('\n', '')
             self.view_images(file_string)
@@ -376,11 +375,9 @@ class FileListCtrl(ct.CustomListCtrl):
         wx.MessageBox('Unknown binary file', 'Warning',
                       wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
-      file_list = []
-      for root, dirs, files in os.walk(path):
-        for filename in files:
-          found_file = os.path.join(root, filename)
-          file_list.append(found_file)
+      ignore_ext = ('txt', 'log', 'lst', 'seq', 'phil', 'param', 'inp',
+                    'int', 'tmp', 'png', 'jpg', 'jpeg')
+      file_list = get_file_list(path, ignore_ext=ignore_ext)
       view_warning = dlg.ViewerWarning(self, len(file_list))
       if (view_warning.ShowModal() == wx.ID_OK):
         file_string = ' '.join(file_list[:view_warning.no_images])

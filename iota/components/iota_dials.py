@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/16/2016
+Last Changed: 02/21/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -146,8 +146,8 @@ class Integrator(object):
 
   def refine(self):
     # Run refinement
-    self.experiments = self.processor.refine(experiments=self.experiments,
-                                             centroids=self.indexed)
+    self.experiments, self.indexed = self.processor.refine(
+      experiments=self.experiments, centroids=self.indexed)
 
   def integrate(self):
     # Run integration
