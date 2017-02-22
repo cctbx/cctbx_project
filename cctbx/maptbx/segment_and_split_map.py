@@ -318,6 +318,13 @@ master_phil = iotbx.phil.parse("""
              estimate expected fall-of with resolution of correct part \
              of model-based map. If None, assumed to be resolution/3.
 
+     fraction_complete = None
+       .type = float
+       .short_caption = Completeness model
+       .help = Completness of model (if supplied).  Used to \
+             estimate correct part \
+             of model-based map. If None, estimated from max(FSC).
+
      auto_sharpen = True
        .type = bool
        .short_caption = Automatically determine sharpening
@@ -1220,6 +1227,7 @@ class sharpening_info:
       d_min=None,
       d_min_ratio=None,
       rmsd=None,
+      fraction_complete=None,
       wrapping=None,
       sharpening_target=None,
       residual_target=None,
@@ -1319,6 +1327,7 @@ class sharpening_info:
       self.max_regions_to_test=params.map_modification.max_regions_to_test
       self.d_min_ratio=params.map_modification.d_min_ratio
       self.rmsd=params.map_modification.rmsd
+      self.fraction_complete=params.map_modification.fraction_complete
       self.resolution=params.crystal_info.resolution  # changed from d_cut
       #  NOTE:
       #  resolution=X-ray resolution or nominal resolution of cryoEM map
@@ -1458,9 +1467,9 @@ class sharpening_info:
     return self
 
   def show_score(self,out=sys.stdout):
-        print >>out,\
-          "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
-          self.adjusted_sa,self.kurtosis,self.score)
+    print >>out,\
+       "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
+       self.adjusted_sa,self.kurtosis,self.score)
 
   def is_resolution_dependent_sharpening(self):
     if self.sharpening_method=='resolution_dependent':
@@ -1671,11 +1680,18 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb",out=sys.stdout):
   f.close()
   print >>out,"Atoms written to %s" %file_name
 
-def get_b_iso(miller_array):
+def get_b_iso(miller_array,d_min=None):
+
+  if d_min:
+    res_cut_array=miller_array.resolution_filter(d_max=None,
+       d_min=d_min)
+  else:
+    res_cut_array=miller_array
+  
   from mmtbx.scaling import absolute_scaling
   try:
     aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
-      miller_array=miller_array, n_residues=200, n_bases=0)
+      miller_array=res_cut_array, n_residues=200, n_bases=0)
     b_cart=aniso_scale_and_b.b_cart
   except Exception,e:
     b_cart=[0,0,0]
@@ -1804,8 +1820,7 @@ def apply_sharpening(map_coeffs=None,
       data_array=data_array*scale_array
       f_array_sharpened=f_array.customized_copy(data=data_array)
 
-    res_cut_array=f_array_sharpened.resolution_filter(d_max=None, d_min=d_min)
-    actual_b_iso=get_b_iso(res_cut_array)
+    actual_b_iso=get_b_iso(f_array_sharpened,d_min=d_min)
     print >>out, "B-iso after sharpening by b_sharpen=%6.1f is %7.2f\n" %(
       b_sharpen,actual_b_iso)
     sharpened_map_coeffs=f_array_sharpened.phase_transfer(
@@ -5469,6 +5484,7 @@ def auto_sharpen_map_or_map_coeffs(
         map_coeffs=None,
         pdb_inp=None,
         rmsd=None,
+        fraction_complete=None,
         n_real=None,
         solvent_content=None,
         region_weight=None,
@@ -5528,6 +5544,7 @@ def auto_sharpen_map_or_map_coeffs(
         max_regions_to_test,
         fraction_occupied,
         rmsd,
+        fraction_complete,
           ],
       ['box_in_auto_sharpen','resolution','d_min_ratio',
        'max_box_fraction','k_sharpen',
@@ -5542,6 +5559,7 @@ def auto_sharpen_map_or_map_coeffs(
        'max_regions_to_test',
        'fraction_occupied',
        'rmsd',
+       'fraction_complete',
          ],):
      if x is not None:
        args.append("%s=%s" %(param,x))
@@ -5565,8 +5583,10 @@ def auto_sharpen_map_or_map_coeffs(
       auto_sharpen_methods=local_params.map_modification.auto_sharpen_methods,
       out=out)
     si.sharpen_and_score_map(map_data=map,pdb_inp=pdb_inp,
-          out=out).show_score(out=out)
-    si.show_summary(out=out)
+          out=out)
+    if not si.is_model_sharpening():
+      si.show_score(out=out)
+      si.show_summary(out=out)
     return si 
 
 def run_auto_sharpen(
@@ -5632,8 +5652,11 @@ def run_auto_sharpen(
     best_si.show_summary(out=out)
 
   else:
-    print >>out,"\nTesting sharpening methods with target of %s" %(
-       best_si.sharpening_target)
+    if best_si.is_model_sharpening():
+      print >>out,"\nApplying model sharpening"
+    else:
+      print >>out,"\nTesting sharpening methods with target of %s" %(
+        best_si.sharpening_target)
     if not auto_sharpen_methods or auto_sharpen_methods==['None']:
       auto_sharpen_methods=['no_sharpening']
     for m in auto_sharpen_methods:
@@ -5644,7 +5667,7 @@ def run_auto_sharpen(
         b_n=1
         k_sharpen=0.
         delta_b=0
-        if m=='resolution_dependent':
+        if m in ['resolution_dependent','model_sharpening']:
           pass # print out later
         else:
           print >>out,\
@@ -5744,35 +5767,38 @@ def run_auto_sharpen(
         # ============================================
 
 
-      if local_best_si.sharpening_method=='resolution_dependent':
-        print >>out,"\nBest scores for sharpening with "+\
-          "b[0]=%6.2f b[1]=%6.2f b[2]=%6.2f: " %(
-          local_best_si.resolution_dependent_b[0],
-          local_best_si.resolution_dependent_b[1],
-          local_best_si.resolution_dependent_b[2])
-      else:
-        print >>out,"\nBest scores for sharpening with "+\
-          "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
-          local_best_si.b_iso,local_best_si.b_sharpen,
-           local_best_si.k_sharpen)
+      if not local_best_si.is_model_sharpening():
+        if local_best_si.sharpening_method=='resolution_dependent':
+          print >>out,"\nBest scores for sharpening with "+\
+            "b[0]=%6.2f b[1]=%6.2f b[2]=%6.2f: " %(
+            local_best_si.resolution_dependent_b[0],
+            local_best_si.resolution_dependent_b[1],
+            local_best_si.resolution_dependent_b[2])
+        else:
+          print >>out,"\nBest scores for sharpening with "+\
+            "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
+            local_best_si.b_iso,local_best_si.b_sharpen,
+             local_best_si.k_sharpen)
 
-      local_best_si.show_summary(out=out)
+        local_best_si.show_summary(out=out)
 
-      print >>out,\
-        "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
-        local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
+        print >>out,\
+         "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
+         local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
 
       if best_si.score is None or local_best_si.score > best_si.score:
         best_si=local_best_si
         best_map_data=local_best_map_data
-        print >>out,"This is the current best score\n"
+        if not best_si.is_model_sharpening():
+          print >>out,"This is the current best score\n"
 
 
-  print >>out,"\nOverall best sharpening method: %s Score: %7.3f\n" %(
+  if not best_si.is_model_sharpening():
+    print >>out,"\nOverall best sharpening method: %s Score: %7.3f\n" %(
        best_si.sharpening_method,best_si.score)
-  best_si.show_summary(out=out)
+    best_si.show_summary(out=out)
 
-  if null_si:
+  if (not best_si.is_model_sharpening()) and null_si:
     if best_si.score>null_si.score:  # we improved them..
       print >>out,"Improved score with sharpening..."
     else:
@@ -5815,9 +5841,7 @@ def get_effective_b_iso(map_data=None,tracking_data=None,
        out=out)
 
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
-    res_cut_array=f_array.resolution_filter(d_max=None,
-       d_min=d_min)
-    b_iso=get_b_iso(res_cut_array)
+    b_iso=get_b_iso(f_array,d_min=d_min)
     print >>out,"\nEffective B-iso = %7.2f" %(b_iso)
     return b_iso,map_coeffs,f_array,phases
 

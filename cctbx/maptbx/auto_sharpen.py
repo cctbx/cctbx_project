@@ -147,6 +147,13 @@ master_phil = iotbx.phil.parse("""
              estimate expected fall-of with resolution of correct part \
              of model-based map. If None, assumed to be resolution/3.
 
+     fraction_complete = None
+       .type = float
+       .short_caption = Completeness model
+       .help = Completness of model (if supplied).  Used to \
+             estimate correct part \
+             of model-based map. If None, estimated from max(FSC).
+
      auto_sharpen = None
        .type = bool
        .short_caption = Automatically determine sharpening
@@ -414,6 +421,7 @@ def run(args,out=sys.stdout):
            params.map_modification.resolution_dependent_b,
         pdb_inp=pdb_inp,
         rmsd=params.map_modification.rmsd,
+        fraction_complete=params.map_modification.fraction_complete,
         out=out)
 
   # get map_data and map_coeffs of final map
@@ -421,11 +429,12 @@ def run(args,out=sys.stdout):
   new_map_data=si.as_map_data()
   new_map_coeffs=si.as_map_coeffs()
 
-  print >>out
-  print >>out,80*"=","\n",80*"="
-  print >>out,"\n           Final sharpening information\n "
-  si.show_summary(verbose=params.control.verbose,out=out)
-  print >>out,80*"=","\n",80*"="
+  if not si.is_model_sharpening():
+    print >>out
+    print >>out,80*"=","\n",80*"="
+    print >>out,"\n           Final sharpening information\n "
+    si.show_summary(verbose=params.control.verbose,out=out)
+    print >>out,80*"=","\n",80*"="
 
   # write out the new map_coeffs and map if requested:
 

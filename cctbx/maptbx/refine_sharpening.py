@@ -170,6 +170,7 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
 
 def scale_amplitudes(pdb_inp=None,map_coeffs=None,
     si=None,resolution=None,overall_b=None,
+    fraction_complete=None,
     out=sys.stdout):
 
   # Figure out resolution_dependent sharpening to optimally
@@ -205,9 +206,8 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   else:
     b_eff=8*3.14159*si.rmsd**2
     print >>out,\
-     "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
+    "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
        %( b_eff,si.rmsd)
-
 
   # create model map using same coeffs
   model_map_coeffs=get_f_phases_from_model(
@@ -220,25 +220,29 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   model_f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
   model_f_array_normalized=quasi_normalize_structure_factors(
         model_f_array,set_to_minimum=0.01)
+
   # Set overall_b....
-  starting_b_iso=get_b_iso(model_f_array)
-  normalized_b_iso=get_b_iso(model_f_array_normalized)
+  starting_b_iso=get_b_iso(model_f_array,d_min=resolution)
+  normalized_b_iso=get_b_iso(model_f_array_normalized,d_min=resolution)
   model_f_array_normalized=\
    model_f_array_normalized.apply_debye_waller_factors(
       b_iso=overall_b-normalized_b_iso)
-  final_b_iso=get_b_iso(model_f_array_normalized)
-  print "Effective b_iso of initial and adjusted model map: %6.1f A**2  %6.1f A**2" %(
-     starting_b_iso,final_b_iso)
+  final_b_iso=get_b_iso(model_f_array_normalized,d_min=resolution)
+  print "Effective b_iso of initial and "+\
+     "adjusted model map: %6.1f A**2  %6.1f A**2" %(starting_b_iso,final_b_iso)
   model_map_coeffs_normalized=model_f_array_normalized.phase_transfer(
      phase_source=model_phases,deg=True)
 
   # get f and model_f vs resolution and FSC vs resolution and apply
   # scale to f_array and return sharpened map
   dsd = f_array.d_spacings().data()
-  target_scale_factors=flex.double()
+
+  ratio_list=flex.double()
   target_sthol2=flex.double()
+  cc_list=flex.double()
+  d_min_list=flex.double()
   rms_fo_list=flex.double()
-  max_scale=None
+  max_possible_cc=None
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
     d         = dsd.select(sel)
@@ -255,21 +259,56 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
     rms_fc=f_array_fc.data().norm()
     rms_fo=f_array_fo.data().norm()
     sthol2=0.25/d_avg**2
+    ratio_list.append(rms_fc/rms_fo)
+    target_sthol2.append(sthol2)
+    cc_list.append(cc)
+    d_min_list.append(d_min)
+    rms_fo_list.append(rms_fo)
     if b_eff is not None:
-      scale_on_fo=(rms_fc/rms_fo) * min(1.,
-        max(0.00001,cc) * math.exp(min(20.,sthol2*b_eff)) )
+      max_cc_estimate=cc* math.exp(min(20.,sthol2*b_eff))
     else:
-      scale_on_fo=(rms_fc/rms_fo) * min(1.,max(0.00001,cc))
-    if d_min >= resolution:
+      max_cc_estimate=cc
+    max_cc_estimate=max(0.,min(1.,max_cc_estimate))
+    if max_possible_cc is None or (max_cc_estimate > max_possible_cc):
+      max_possible_cc=max_cc_estimate
+
+  # Define overall CC based on model completeness (CC=sqrt(fraction_complete))
+  if fraction_complete is None:
+    fraction_complete=max_possible_cc**2
+
+    print >>out,\
+      "Estimated fraction complete is is %5.2f based on low_res CC of %5.2f" %(
+        fraction_complete,max_possible_cc)
+  else:
+    print >>out,"Using fraction complete value of %5.2f "  %(fraction_complete)
+    max_possible_cc=fraction_complete**0.5
+
+
+  target_scale_factors=flex.double()
+  max_scale=None
+  for i_bin in f_array.binner().range_used():
+    index=i_bin-1
+    ratio=ratio_list[index]
+    cc=cc_list[index]
+    sthol2=target_sthol2[index]
+    d_min=d_min_list[index]
+    corrected_cc=max(0.00001,min(1.,cc/max_possible_cc))
+    if b_eff is not None:
+      scale_on_fo=ratio * min(1.,
+        max(0.00001,corrected_cc) * math.exp(min(20.,sthol2*b_eff)) )
+    else:
+      scale_on_fo=ratio * min(1.,max(0.00001,corrected_cc))
+
+    if max_scale is None or d_min >= resolution:
       max_scale=scale_on_fo
     else: # at less than resolution don't allow any bigger scale than last one
       scale_on_fo=min(scale_on_fo,max_scale)
 
-    target_sthol2.append(sthol2)
     target_scale_factors.append(scale_on_fo)
-    rms_fo_list.append(rms_fo)
+
+
   target_scale_factors=\
-     target_scale_factors/target_scale_factors.min_max_mean().mean
+     target_scale_factors/target_scale_factors.min_max_mean().max
   print >>out,"\nScale factors vs resolution:"
   for sthol2,scale,rms_fo in zip(
      target_sthol2,target_scale_factors,rms_fo_list):
@@ -286,14 +325,20 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   si.target_scale_factors=target_scale_factors
   si.target_sthol2=target_sthol2
 
-  si.show_summary()
   scale_array=flex.double(f_array.data().size()*(-1.,))
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
     scale_array.set_selected(sel,target_scale_factors[i_bin-1])
   assert scale_array.count(-1.)==0
 
+  f_array_b_iso=get_b_iso(f_array,d_min=resolution)
+
   scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
+  scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
+  print >>out,"\nInitial b_iso for "+\
+      "map: %5.1f A**2     After adjustment: %5.1f A**2" %(
+      f_array_b_iso,scaled_f_array_b_iso)
+
   assert si.n_real is not None
   new_map_coeffs=scaled_f_array.phase_transfer(phase_source=phases,deg=True)
   return calculate_map(map_coeffs=new_map_coeffs,n_real=si.n_real)
@@ -313,7 +358,10 @@ def get_sharpened_map(ma=None,phases=None,b=None,resolution=None,
   new_map_coeffs=sharpened_ma.phase_transfer(phase_source=phases,deg=True)
   return calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
 
-def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resolution=None,d_min_ratio=None,rmsd=None):
+def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resolution=None,d_min_ratio=None,rmsd=None,fraction_complete=None):
+
+  if fraction_complete is None:
+    pass # XXX not implemented for fraction_complete
 
   if rmsd is None:
     b_eff=None
@@ -408,6 +456,7 @@ class refinery:
     target_scale_factors=None,
     d_min_ratio=None,
     rmsd=None,
+    fraction_complete=None,
     dummy_run=False):
 
     self.ma=ma
@@ -416,6 +465,7 @@ class refinery:
     self.resolution=resolution
     self.d_min_ratio=d_min_ratio
     self.rmsd=rmsd
+    self.fraction_complete=fraction_complete
 
     self.target_sthol2=target_sthol2
     self.target_scale_factors=target_scale_factors
@@ -486,7 +536,8 @@ class refinery:
         b=b,
         resolution=self.resolution,
         d_min_ratio=self.d_min_ratio,
-        rmsd=self.rmsd)
+        rmsd=self.rmsd,
+        fraction_complete=self.complete)
    
     else:
       raise Sorry("residual_target must be kurtosis or adjusted_sa or match_target")
@@ -539,6 +590,7 @@ def run(map_coeffs=None,
   target_scale_factors=None,
   d_min_ratio=None,
   rmsd=None,
+  fraction_complete=None,
   out=sys.stdout):
 
   if sharpening_info_obj:
@@ -553,6 +605,7 @@ def run(map_coeffs=None,
     resolution=sharpening_info_obj.resolution
     d_min_ratio=sharpening_info_obj.d_min_ratio
     rmsd=sharpening_info_obj.rmsd
+    fraction_complete=sharpening_info_obj.fraction_complete
     eps=sharpening_info_obj.eps
     n_bins=sharpening_info_obj.n_bins
   else:
@@ -579,6 +632,9 @@ def run(map_coeffs=None,
     eps=0.01
   elif eps is None:
     eps=0.5
+
+  if fraction_complete is None:
+    pass # XXX not implemented
 
   if rmsd is None:
     rmsd=resolution/3.
@@ -609,6 +665,7 @@ def run(map_coeffs=None,
     target_scale_factors=target_scale_factors, 
     d_min_ratio=d_min_ratio,
     rmsd=rmsd,
+    fraction_complete=fraction_complete,
     eps=eps)
 
 
@@ -636,6 +693,7 @@ def run(map_coeffs=None,
     target_scale_factors=target_scale_factors, 
     d_min_ratio=d_min_ratio,
     rmsd=rmsd,
+    fraction_complete=fraction_complete,
     eps=eps)
 
   starting_normalized_result=refined.show_result(out=out)
