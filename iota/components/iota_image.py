@@ -375,6 +375,22 @@ class SingleImage(object):
       self.log_info.append('FAILED TO IMPORT')
       self.status = 'failed import'
       self.fail = 'failed import'
+
+      if not self.params.image_conversion.convert_only:
+        self.obj_path = misc.make_image_path(self.conv_img, self.input_base,
+                                             self.obj_base)
+        rej_name = filter(None, os.path.basename(self.conv_img).split('.'))[
+                     0] + '_reject.int'
+        self.obj_file = os.path.abspath(os.path.join(self.obj_path, rej_name))
+
+        try:
+          if not os.path.isdir(self.obj_path):
+            os.makedirs(self.obj_path)
+        except OSError:
+          pass
+
+        ep.dump(self.obj_file, self)
+
       return self
 
     # if DIALS is selected, change image type to skip conversion step
@@ -767,11 +783,14 @@ class SingleImage(object):
         self.fail = 'aborted'
         return self
 
-      if self.fail is None:
+      if self.fail is not None:
+        self.status = 'final'
+        ep.dump(self.obj_file, self)
+      else:
         # Create DIALS integrator object
         from iota.components.iota_dials import Integrator
         integrator = Integrator(self.conv_img,
-                                self.obj_base,
+                                self.obj_path,
                                 #self.fin_base,
                                 self.fin_file,
                                 self.final,
@@ -792,7 +811,7 @@ class SingleImage(object):
         final_int_log = self.int_log.split('.')[0] + ".log"
         os.rename(self.int_log, final_int_log)
 
-    self.status = 'final'
-    ep.dump(self.obj_file, self)
+        self.status = 'final'
+        ep.dump(self.obj_file, self)
 
 # **************************************************************************** #

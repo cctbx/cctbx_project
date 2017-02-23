@@ -15,7 +15,7 @@ from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
 from libtbx import easy_run
 
-from iota.components.iota_utils import GenerateInput
+from iota.components.iota_utils import GenerateInput, get_file_list
 import iota.components.iota_image as img
 
 # -------------------------------- Threading --------------------------------- #
@@ -178,8 +178,8 @@ class ObjectFinderThread(Thread):
     self.read_objects = read_objects
 
   def run(self):
-    img_object_files = [os.path.join(self.object_folder, i) for i in
-                        os.listdir(self.object_folder) if i.endswith('int')]
+    object_files = get_file_list(self.object_folder, ext_only='int')
+    img_object_files = [i for i in object_files]
     new_objects = [ep.load(i) for i in img_object_files if i not in
                     self.read_objects]
 

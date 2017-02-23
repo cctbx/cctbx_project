@@ -416,7 +416,7 @@ class FileListCtrl(ct.CustomListCtrl):
       item_data.id = i
       item_data.buttons.index = i
       item_data.type.index = i
-      type_choice = self.ctr.GetItemWindow(i, col=1)
+      type_choice = self.ctr.GetItemWindow(i, col=2)
       type_selection = item_data.type.type.GetSelection()
       type_choice.type.SetSelection(type_selection)
       self.ctr.SetItemData(i, item_data)
@@ -1297,8 +1297,11 @@ class ProcWindow(wx.Frame):
 
     if len(self.finished_objects) > 0:
       for obj in self.finished_objects:
-        self.nref_list[obj.img_index - 1] = obj.final['strong']
-        self.res_list[obj.img_index - 1] = obj.final['res']
+        try:
+          self.nref_list[obj.img_index - 1] = obj.final['strong']
+          self.res_list[obj.img_index - 1] = obj.final['res']
+        except Exception:
+          pass
 
     if len(self.finished_objects) > self.obj_counter:
       self.plot_integration()
@@ -1322,6 +1325,7 @@ class ProcWindow(wx.Frame):
 
     # Update log
     self.display_log()
+
 
     # Run an instance of new image finder on a separate thread
     if self.find_new_images:
