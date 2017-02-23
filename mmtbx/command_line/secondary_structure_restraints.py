@@ -53,6 +53,7 @@ choosen format instead.
 Usage examples:
   phenix.secondary_structure_restraints model.pdb
   phenix.secondary_structure_restraints model.pdb format=phenix_refine
+  phenix.secondary_structure_restraints model.pdb ignore_annotation_in_file=True
   phenix.secondary_structure_restraints model.pdb search_method=from_ca
 
 Full scope of parameters:
