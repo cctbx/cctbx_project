@@ -1250,6 +1250,7 @@ class sharpening_info:
       box_sharpening_info_obj=None,
       chain_type=None,
       model_sharpening_scale=None,
+      pdb_inp=None,
         ):
 
     from libtbx import adopt_init_args
@@ -1270,6 +1271,11 @@ class sharpening_info:
       assert self.sharpening_type is None # XXX may want to print out error
       self.sharpening_type='model_sharpening'
 
+    if pdb_inp:
+        self.sharpening_method='model_sharpening'
+        self.box_in_auto_sharpen=False
+        self.sharpening_target='model'
+   
   def set_resolution_dependent_b(self,
     resolution_dependent_b=None,
     sharpening_method='resolution_dependent'):
@@ -2917,7 +2923,7 @@ def get_connectivity(b_vs_region=None,
       raise Sorry("No threshold found...try with density_threshold=xxx")
     else: # on iteration...ok
       print >>out,"Note: No threshold found"
-      return None,None,None,None,None,None
+      return None,None,None,None,None,None,None,None
   else:
     starting_density_threshold=best_threshold
     # try it next time
@@ -4809,6 +4815,7 @@ def apply_origin_shift(origin_shift=None,
     shifted_pdb_file=None,
     shifted_ncs_file=None,
     tracking_data=None,
+    sharpening_target_pdb_inp=None,
     out=sys.stdout):
 
   if shifted_map_file:
@@ -4830,6 +4837,13 @@ def apply_origin_shift(origin_shift=None,
        crystal_symmetry=tracking_data.crystal_symmetry,
        pdb_hierarchy=pdb_hierarchy,
        out=out)
+
+    if sharpening_target_pdb_inp:
+      sharpening_target_pdb_inp=apply_shift_to_pdb_hierarchy(
+       origin_shift=origin_shift,
+       crystal_symmetry=tracking_data.crystal_symmetry,
+       pdb_hierarchy=sharpening_target_pdb_inp.construct_hierarchy(),
+       out=out).as_pdb_input()
 
     if target_hierarchy:
       target_hierarchy=apply_shift_to_pdb_hierarchy(
@@ -4870,7 +4884,8 @@ def apply_origin_shift(origin_shift=None,
         is_helical_symmetry=tracking_data.input_ncs_info.is_helical_symmetry)
       tracking_data.shifted_ncs_info.show_summary(out=out)
 
-  return ncs_object,pdb_hierarchy,target_hierarchy,tracking_data
+  return ncs_object,pdb_hierarchy,target_hierarchy,tracking_data,\
+     sharpening_target_pdb_inp
 
 def restore_pdb(params,tracking_data=None,out=sys.stdout):
   if not params.output_files.restored_pdb:
@@ -5598,7 +5613,7 @@ def run_auto_sharpen(
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
-  if si.box_in_auto_sharpen:
+  if si.box_in_auto_sharpen and (not pdb_inp):
     print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
 
@@ -5978,6 +5993,7 @@ def run(args,
      is_iteration=False,
      pdb_hierarchy=None,
      target_xyz=None,
+     sharpening_target_pdb_inp=None,
      out=sys.stdout):
 
   if is_iteration:
@@ -6007,7 +6023,8 @@ def run(args,
     if not map_data:
        raise Sorry("Need map data for segment_and_split_map")
 
-    ncs_obj,pdb_hierarchy,target_hierarchy,tracking_data=apply_origin_shift(
+    ncs_obj,pdb_hierarchy,target_hierarchy,\
+      tracking_data,sharpening_target_pdb_inp=apply_origin_shift(
         shifted_map_file=os.path.join(
           tracking_data.params.output_files.output_directory,
           params.output_files.shifted_map_file),
@@ -6023,6 +6040,7 @@ def run(args,
         target_hierarchy=target_hierarchy,
         map_data=map_data,
         tracking_data=tracking_data,
+        sharpening_target_pdb_inp=sharpening_target_pdb_inp,
         out=out)
 
     if target_hierarchy:
@@ -6041,16 +6059,22 @@ def run(args,
       # Sharpen the map
 
       null_si=sharpening_info(tracking_data=tracking_data,
+          pdb_inp=sharpening_target_pdb_inp,
           n_real=map_data.all())
       si=sharpening_info(tracking_data=tracking_data,
+          pdb_inp=sharpening_target_pdb_inp,
         n_real=map_data.all())  # new si
 
       if params.map_modification.auto_sharpen:
         print >>out,"\nCarrying out auto-sharpening of map"
         print>>out,"Starting sharpening info:"
-        auto_sharpen_methods=\
-         tracking_data.params.map_modification.auto_sharpen_methods
+        if sharpening_target_pdb_inp: # use model in sharpening
+          auto_sharpen_methods=['model_sharpening']
+        else:
+          auto_sharpen_methods=\
+            tracking_data.params.map_modification.auto_sharpen_methods
         null_si.sharpen_and_score_map(map_data=map_data,
+          pdb_inp=sharpening_target_pdb_inp,
           out=out).show_score(out=out)
         null_si.show_summary(out=out)
 
@@ -6058,6 +6082,7 @@ def run(args,
            si=si,
            map_data=map_data,
            auto_sharpen_methods=auto_sharpen_methods,
+           pdb_inp=sharpening_target_pdb_inp,
            out=out)
       else:
          check_si=set_up_sharpening(si=si,map_data=map_data,out=out)
@@ -6065,9 +6090,11 @@ def run(args,
       if check_si:
         print >>out,"\nFinal sharpening info:"
         check_si.sharpen_and_score_map(map_data=map_data,
+          pdb_inp=sharpening_target_pdb_inp,
           out=out).show_score(out=out)
         check_si.show_summary(out=out)
-        if  params.map_modification.auto_sharpen and \
+        if  (not sharpening_target_pdb_inp) and \
+            params.map_modification.auto_sharpen and \
             params.map_modification.require_improvement and \
             check_si.score <= null_si.score:
           print >>out,"\nSharpening did not improve map ("+\
