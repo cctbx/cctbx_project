@@ -622,7 +622,7 @@ def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
     if f_end_res_num == hy36decode(4, center_resnum):
       f_end_res_num += 1
     if f_start_res_num == hy36decode(4,center_resnum):
-      f_end_res_num -= 1
+      f_start_res_num -= 1
     return hy36encode(4, f_start_res_num), hy36encode(4, f_end_res_num)
   else:
     res = []

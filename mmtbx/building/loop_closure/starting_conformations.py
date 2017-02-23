@@ -82,13 +82,16 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
 def get_all_starting_conformations(moving_h, change_radius,
     direction_forward=True, cutoff=50, change_all=True, log=null_out()):
   variants = []
+  result = []
   r = rama_eval()
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
+  if len(phi_psi_atoms) == 0:
+    print "Strange input to starting conformations!!!"
+    return result
   n_rama = len(phi_psi_atoms)
   change_angles = [None]
   if change_all:
     change_angles = range((n_rama)//2-change_radius, (n_rama)//2+change_radius+1)
-  # print "  change_angles", change_angles
   for i, (phi_psi_pair, rama_key) in enumerate(phi_psi_atoms):
     angle_is_outlier = utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER
     if angle_is_outlier:
@@ -105,7 +108,6 @@ def get_all_starting_conformations(moving_h, change_radius,
   for comb in all_angles_combination:
     if is_not_none_combination(comb):
       all_angles_combination_f.append(comb)
-  result = []
   n_added = 0
   n_all_combination = len(all_angles_combination_f)
   i_max = min(cutoff, n_all_combination)
