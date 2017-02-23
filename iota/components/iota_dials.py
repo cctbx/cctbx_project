@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/21/2017
+Last Changed: 02/22/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress

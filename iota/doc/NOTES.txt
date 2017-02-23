@@ -1,6 +1,28 @@
-IOTA v1.1.003 - IOTA-DIALS bugfixes
+IOTA v1.1.004 - More bugfixes and GUI changes
 
-1. Fixed bug when running the DIALS stills processor; the 'refine' function
-returns two variables, not one.
-2. Fixed crash in XTerm mode when DIALS failed to process images
-3. Fixed bug in XTerm mode where run summary was not printed to screen
+1. Added a column to input box that shows how many images are read in
+2. Input box columns now automatically resized when added
+3. Moved image object polling to separate thread, so GUI does not lock up
+during runs with lots of images (> 3000).
+
+
+
+TO DO:
+
+1. Wild-card processing results in a list, which makes IOTA confused. Resolve.
+
+2. Clustering now works for DIALS output, but barfs (causes boost error) for
+some reason.
+
+3. IOTA Xterm INIT doesn't seem to interpret image types as well as the GUI.
+Implement that, or it is behind.
+
+4. XTerm version also fails to understand some of the new options.
+
+5. Figure out why IOTA GUI is so slow when processing large datasets
+    a. is it the graphics?
+    b. is it the filesystem examination? -> yes it is! Two solutions:
+       - poll filesystem on a separate thread so as not to lock down GUI
+       - save intermediate image objects on /tmp. Retain only if wanted (w/
+       DIALS, won't be wanted, so make an option in Preferences) and then
+       move to processed folder.

@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 02/21/2017
+Last Changed: 02/22/2017
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/21/2017
+Last Changed: 02/22/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -767,29 +767,30 @@ class SingleImage(object):
         self.fail = 'aborted'
         return self
 
-      # Create DIALS integrator object
-      from iota.components.iota_dials import Integrator
-      integrator = Integrator(self.conv_img,
-                              self.obj_base,
-                              #self.fin_base,
-                              self.fin_file,
-                              self.final,
-                              self.int_log,
-                              self.gain,
-                              self.params)
+      if self.fail is None:
+        # Create DIALS integrator object
+        from iota.components.iota_dials import Integrator
+        integrator = Integrator(self.conv_img,
+                                self.obj_base,
+                                #self.fin_base,
+                                self.fin_file,
+                                self.final,
+                                self.int_log,
+                                self.gain,
+                                self.params)
 
-      # Run DIALS
-      self.fail, self.final, int_log = integrator.run()
-      if self.fail != None:
-        self.status = 'final'
-      self.log_info.append(int_log)
-      log_entry = "\n".join(self.log_info)
-      misc.main_log(self.main_log, log_entry)
-      misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
+        # Run DIALS
+        self.fail, self.final, int_log = integrator.run()
+        if self.fail != None:
+          self.status = 'final'
+        self.log_info.append(int_log)
+        log_entry = "\n".join(self.log_info)
+        misc.main_log(self.main_log, log_entry)
+        misc.main_log(self.main_log, '\n{:-^100}\n'.format(''))
 
-      # Make a temporary process log into a final process log
-      final_int_log = self.int_log.split('.')[0] + ".log"
-      os.rename(self.int_log, final_int_log)
+        # Make a temporary process log into a final process log
+        final_int_log = self.int_log.split('.')[0] + ".log"
+        os.rename(self.int_log, final_int_log)
 
     self.status = 'final'
     ep.dump(self.obj_file, self)

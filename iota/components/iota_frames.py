@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 02/21/2017
+Last Changed: 02/22/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -191,10 +191,11 @@ class FileListCtrl(ct.CustomListCtrl):
     self.all_proc_pickles = {}
 
     # Generate columns
-    self.ctr.InsertColumn(0, "Path")
-    self.ctr.InsertColumn(1, "Input Type")
-    self.ctr.InsertColumn(2, "Action")
-    self.ctr.setResizeColumn(1)
+    self.ctr.InsertColumn(0, "")
+    self.ctr.InsertColumn(1, "Input Path")
+    self.ctr.InsertColumn(2, "Input Type")
+    self.ctr.InsertColumn(3, "Action")
+    self.ctr.setResizeColumn(2)
 
     # Add file / folder buttons
     self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -274,9 +275,10 @@ class FileListCtrl(ct.CustomListCtrl):
     self.Bind(wx.EVT_BUTTON, self.onInfoButton, item.buttons.btn_info)
 
     # Insert list item
-    idx = self.ctr.InsertStringItem(self.ctr.GetItemCount() + 1, item.path)
-    self.ctr.SetItemWindow(idx, 1, item.type, expand=True)
-    self.ctr.SetItemWindow(idx, 2, item.buttons, expand=True)
+    idx = self.ctr.InsertStringItem(self.ctr.GetItemCount() + 1, '')
+    self.ctr.SetStringItem(idx, 1, item.path)
+    self.ctr.SetItemWindow(idx, 2, item.type, expand=True)
+    self.ctr.SetItemWindow(idx, 3, item.buttons, expand=True)
 
     # Set drop-down selection, check it for data and open other tabs
     item.type.type.SetSelection(inp_sel)
@@ -298,6 +300,10 @@ class FileListCtrl(ct.CustomListCtrl):
           self.all_data_images[item.path] = items
         else:
           self.all_data_images[item.path] = [item.path]
+
+      # Calculate # of images and display w/ item
+      self.ctr.SetStringItem(idx, 0, str(len(self.all_data_images[item.path])))
+
       if "image" in item.type.type.GetString(inp_sel):
         view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer16')
         item.buttons.btn_mag.SetBitmapLabel(view_bmp)
@@ -314,20 +320,19 @@ class FileListCtrl(ct.CustomListCtrl):
     item.type_selection = inp_sel
 
     # Resize columns to fit content
-    col1_width = max([self.ctr.GetItemWindow(s, col=1).type.GetSize()[0]
-                      for s in range(self.ctr.GetItemCount())]) + 5
-    col2_width = item.buttons.GetSize()[0] + 15
-    col0_width = self.ctr.GetSize()[0] - col1_width - col2_width
-    self.ctr.SetColumnWidth(0, col0_width)
-    self.ctr.SetColumnWidth(1, col1_width)
-    self.ctr.SetColumnWidth(2, col2_width)
+    self.ctr.SetColumnWidth(0, width=-1)
+    self.ctr.SetColumnWidth(2, width=-1)
+    self.ctr.SetColumnWidth(3, width=-1)
+    self.ctr.SetColumnWidth(1, width=-3)
 
     # Make sure all the choice lists are the same size
-    if item.type.type.GetSize()[0] < col1_width - 5:
-      item.type.type.SetSize((col1_width - 5, -1))
+    if item.type.type.GetSize()[0] < self.ctr.GetColumnWidth(2) - 5:
+       item.type.type.SetSize((self.ctr.GetColumnWidth(2) - 5, -1))
 
     # Attach data object to item
     self.ctr.SetItemData(item.id, item)
+
+    self.main_window.Layout()
 
   def onTypeChoice(self, e):
     type = e.GetEventObject().GetParent()
@@ -754,6 +759,7 @@ class ProcWindow(wx.Frame):
     self.monitor_mode_timeout = None
     self.timeout_start = None
     self.new_images = []
+    self.new_objects = []
     self.find_new_images = True
 
     self.main_panel = wx.Panel(self)
@@ -825,6 +831,7 @@ class ProcWindow(wx.Frame):
     # Event bindings
     self.Bind(thr.EVT_ALLDONE, self.onFinishedProcess)
     self.Bind(thr.EVT_IMGDONE, self.onFinishedImageFinder)
+    self.Bind(thr.EVT_OBJDONE, self.onFinishedObjectFinder)
     self.sb.Bind(wx.EVT_SIZE, self.onStatusBarResize)
     self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
 
@@ -1277,10 +1284,16 @@ class ProcWindow(wx.Frame):
     if os.path.isfile(self.tmp_abort_file):
       self.finish_process()
 
-    img_object_files = [os.path.join(self.init.obj_base, i) for i in os.listdir(self.init.obj_base) if i.endswith('int')]
-    new_objects = [ep.load(i) for i in img_object_files if i not in self.read_object_files]
-    self.finished_objects.extend([i for i in new_objects if i.status == 'final'])
-    self.read_object_files = [i.obj_file for i in self.finished_objects]
+    if len(self.new_objects) == 0:
+      object_finder = thr.ObjectFinderThread(self,
+                                             object_folder=self.init.obj_base,
+                                             read_objects=self.read_object_files)
+      object_finder.start()
+
+    if len(self.new_objects) > 0:
+      self.finished_objects.extend([i for i in self.new_objects if i.status == 'final'])
+      self.read_object_files = [i.obj_file for i in self.finished_objects]
+      self.new_objects = []
 
     if len(self.finished_objects) > 0:
       for obj in self.finished_objects:
@@ -1351,6 +1364,9 @@ class ProcWindow(wx.Frame):
   def onFinishedImageFinder(self, e):
     self.new_images = self.new_images + e.GetValue()
     self.find_new_images = True
+
+  def onFinishedObjectFinder(self, e):
+    self.new_objects = e.GetValue()
 
   def finish_process(self):
     import shutil

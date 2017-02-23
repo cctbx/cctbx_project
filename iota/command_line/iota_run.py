@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 02/21/2017
+Last Changed: 02/22/2017
 Description : IOTA command-line module.
 '''
 
@@ -80,7 +80,6 @@ class XTermIOTA():
         else:
           img_object = img.SingleImage(input_entry, self.init)
           img_object.import_image()
-          print 'debug: {}'.format(img_object.status)
         img_object.process()
     except Exception, e:
       pass

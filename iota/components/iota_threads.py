@@ -27,6 +27,9 @@ EVT_ALLDONE = wx.PyEventBinder(tp_EVT_ALLDONE, 1)
 tp_EVT_IMGDONE = wx.NewEventType()
 EVT_IMGDONE = wx.PyEventBinder(tp_EVT_IMGDONE, 1)
 
+tp_EVT_OBJDONE = wx.NewEventType()
+EVT_OBJDONE = wx.PyEventBinder(tp_EVT_OBJDONE, 1)
+
 class ImageFinderAllDone(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
   def __init__(self, etype, eid, image_list=None):
@@ -34,6 +37,14 @@ class ImageFinderAllDone(wx.PyCommandEvent):
     self.image_list = image_list
   def GetValue(self):
     return self.image_list
+
+class ObjectFinderAllDone(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, obj_list=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.obj_list = obj_list
+  def GetValue(self):
+    return self.obj_list
 
 class AllDone(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
@@ -152,4 +163,25 @@ class ImageFinderThread(Thread):
       tested_file_list, len(old_file_list) + 1)]
 
     evt = ImageFinderAllDone(tp_EVT_IMGDONE, -1, image_list=new_img)
+    wx.PostEvent(self.parent, evt)
+
+class ObjectFinderThread(Thread):
+  ''' Worker thread that polls filesystem on timer for image objects. Will
+  collect and extract info on images processed so far'''
+  def __init__(self,
+               parent,
+               object_folder,
+               read_objects):
+    Thread.__init__(self)
+    self.parent = parent
+    self.object_folder = object_folder
+    self.read_objects = read_objects
+
+  def run(self):
+    img_object_files = [os.path.join(self.object_folder, i) for i in
+                        os.listdir(self.object_folder) if i.endswith('int')]
+    new_objects = [ep.load(i) for i in img_object_files if i not in
+                    self.read_objects]
+
+    evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=new_objects)
     wx.PostEvent(self.parent, evt)
