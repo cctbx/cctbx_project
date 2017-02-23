@@ -44,10 +44,14 @@ def exercise(pdb_str, eps):
     sites_cart        = sites_cart,
     compute_gradients = True).gradients
   hd_selection = xray_structure.hd_selection()
-  g_analytical_reduced = riding_h_manager.gradients_reduced(
+  g_analytical_reduced = riding_h_manager.gradients_reduced_cpp(
+    gradients    = g_analytical,
     sites_cart   = sites_cart,
-    grads        = g_analytical,
     hd_selection = hd_selection)
+  #g_analytical_reduced = riding_h_manager.gradients_reduced(
+  #  sites_cart   = sites_cart,
+  #  grads        = g_analytical,
+  #  hd_selection = hd_selection)
   #
   ex = [eps,0,0]
   ey = [0,eps,0]

@@ -108,6 +108,14 @@ class manager(object):
     grads = grads.select(~hd_selection)
     return grads
 
+  def gradients_reduced_cpp(self, gradients, sites_cart, hd_selection):
+    new_gradients = modify_gradients_cpp(
+      gradients         = gradients,
+      sites_cart        = sites_cart,
+      parameterization  = self.parameterization_cpp)
+    new_gradients = new_gradients.select(~hd_selection)
+    return new_gradients
+
   def diagnostics(self, sites_cart, threshold):
     h_parameterization = self.h_parameterization
     h_connectivity     = self.h_connectivity
