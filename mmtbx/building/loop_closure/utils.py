@@ -62,15 +62,18 @@ def pair_selection(phi_psi_pair, margin=1):
   return "(chain %s and resid %s:%s)" % (phi_psi_pair[0][2].parent().parent().parent().id,
       resnum-margin, resnum+margin)
 
-def rama_outliers_selection(hierarchy, r=None, margin=1):
+def rama_score_selection(hierarchy, r=None, score="outlier",margin=1):
+  assert score in ["outlier", "allowed"]
+  test = ramalyze.RAMALYZE_OUTLIER
+  if score == "allowed":
+    test = ramalyze.RAMALYZE_ALLOWED
   if r is None:
     r = rama_eval()
-
   out_sel = []
   phi_psi_atoms = get_phi_psi_atoms(hierarchy)
   for phi_psi_pair, rama_key in phi_psi_atoms:
     rama_score = get_rama_score(phi_psi_pair, r, rama_key)
-    if rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
+    if rama_evaluate(phi_psi_pair, r, rama_key) == test:
       out_sel.append(pair_selection(phi_psi_pair, margin))
   out_sel_txt = " or ".join(out_sel)
   return out_sel_txt

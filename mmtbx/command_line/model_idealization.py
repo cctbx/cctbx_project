@@ -246,7 +246,29 @@ class model_idealization():
     # new_h = pdb_h.deep_copy()
     # truncate_to_poly_gly(new_h)
     # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
+    asc = pdb_h.atom_selection_cache()
+    outlier_selection_txt = mmtbx.building.loop_closure.utils. \
+          rama_score_selection(pdb_h, self.rama_manager, "outlier",1)
+    print >> self.log, "rama outlier selection:", outlier_selection_txt
+    rama_out_sel = asc.selection(outlier_selection_txt)
+
+    allowed_selection_txt = mmtbx.building.loop_closure.utils. \
+          rama_score_selection(pdb_h, self.rama_manager, "allowed",0)
+    print >> self.log, "rama allowed selection:", allowed_selection_txt
+    rama_allowed_sel = asc.selection(allowed_selection_txt)
+
+
+    # side_chain_no_cb_selection = ~ xrs.main_chain_selection()
+    side_chain_no_cb_selection = ~ xrs.backbone_selection()
+    sc_rama_out = rama_out_sel & side_chain_no_cb_selection
+    sc_rama_allowed =rama_allowed_sel & side_chain_no_cb_selection
     xrs=xrs.set_b_iso(value=10)
+    xrs = xrs.set_b_iso(value=20, selection=side_chain_no_cb_selection)
+    xrs = xrs.set_b_iso(value=25, selection=rama_allowed_sel)
+    xrs = xrs.set_b_iso(value=50, selection=rama_out_sel)
+    xrs = xrs.set_b_iso(value=40, selection=sc_rama_allowed)
+    xrs = xrs.set_b_iso(value=70, selection=rama_out_sel)
+
     crystal_gridding = maptbx.crystal_gridding(
         unit_cell        = xrs.unit_cell(),
         space_group_info = xrs.space_group_info(),
@@ -311,7 +333,7 @@ class model_idealization():
     """ with ramachandran outliers """
     print >> self.log, "Preparing reference map, method 3"
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-          rama_outliers_selection(pdb_h, self.rama_manager, 1)
+          rama_score_selection(pdb_h, self.rama_manager, "outlier",1)
     asc = pdb_h.atom_selection_cache()
     print >> self.log, "rama outlier selection:", outlier_selection_txt
     rama_out_sel = asc.selection(outlier_selection_txt)
@@ -552,7 +574,7 @@ class model_idealization():
       negate_selection = None
       if self.reference_map is None:
         outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-          rama_outliers_selection(self.working_pdb_h, self.rama_manager, 1)
+          rama_score_selection(self.working_pdb_h, self.rama_manager, "outlier",1)
         print >> self.log, "outlier_selection_txt", outlier_selection_txt
         negate_selection = "all"
         if outlier_selection_txt != "" and outlier_selection_txt is not None:

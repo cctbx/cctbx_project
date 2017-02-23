@@ -521,13 +521,14 @@ class minimize_wrapper_with_map():
               geometry_restraints_manager = grm,
               rms_bonds_limit             = 0.015,
               rms_angles_limit            = 1.0)
-          # division is to put more weight onto restraints. Checked. Works.
-          self.w = self.weight.weight/3.0
-          # self.w = self.weight.weight
-          # self.w =2
-          # print >> self.log, self.w
           for s in self.weight.msg_strings:
             print >> self.log, s
+          # division is to put more weight onto restraints. Checked. Works.
+          self.w = self.weight.weight/3.0
+          # self.w = self.weight.weight/15.0
+          # self.w = 0
+          # self.w = self.weight.weight
+          # print >> self.log, self.w
         print >> self.log, "  Minimizing..."
         print >> self.log, "     with weight %f" % self.w
         self.log.flush()

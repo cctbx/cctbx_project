@@ -17,7 +17,7 @@ def run(args):
   # print dir(pdb_inp)
   xrs = pdb_h.extract_xray_structure()
   outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-    rama_outliers_selection(ref_h, None, 1)
+    rama_score_selection(ref_h, None, "outlier", 1)
   negate_selection = "all"
   # asc = ref_h.atom_selection_cache()
   if outlier_selection_txt != "" and outlier_selection_txt is not None:

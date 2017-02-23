@@ -80,6 +80,7 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
 
 # Refactoring idea: combine these two functions
 def get_all_starting_conformations(moving_h, change_radius,
+    n_outliers,
     direction_forward=True, cutoff=50, change_all=True, log=null_out()):
   variants = []
   result = []
@@ -89,14 +90,16 @@ def get_all_starting_conformations(moving_h, change_radius,
     print "Strange input to starting conformations!!!"
     return result
   n_rama = len(phi_psi_atoms)
+  # print "n_rama", n_rama
   change_angles = [None]
   if change_all:
-    change_angles = range((n_rama)//2-change_radius, (n_rama)//2+change_radius+1)
+    change_angles = range((n_rama)//2-change_radius-n_outliers//2, (n_rama)//2+change_radius+1+n_outliers//2)
   for i, (phi_psi_pair, rama_key) in enumerate(phi_psi_atoms):
     angle_is_outlier = utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER
-    if angle_is_outlier:
+    print "in cycle, N, outlier?, change?", i, angle_is_outlier, i in change_angles
+    if angle_is_outlier and n_outliers < 3:
       vs = get_sampled_rama_favored_angles(rama_key, r)
-    elif (i in change_angles):
+    elif (i in change_angles) or angle_is_outlier:
       vs = ramalyze.get_favored_regions(rama_key)
     else:
       vs = [(None, None)]
@@ -104,19 +107,25 @@ def get_all_starting_conformations(moving_h, change_radius,
   print >> log, "variants", variants
   all_angles_combination = list(itertools.product(*variants))
   # filter none combinations
+  # print "len(all_angles_combination)", len(all_angles_combination)
   all_angles_combination_f = []
   for comb in all_angles_combination:
     if is_not_none_combination(comb):
       all_angles_combination_f.append(comb)
-  n_added = 0
-  n_all_combination = len(all_angles_combination_f)
-  i_max = min(cutoff, n_all_combination)
-  assert i_max > 0
-  step = float(n_all_combination-1)/float(i_max-1)
-  if step < 1:
-    step = 1
-  for i in range(i_max):
-    comb = all_angles_combination_f[int(round(step*i))]
-    result.append(set_rama_angles(moving_h, list(comb),direction_forward=direction_forward))
-    print >> log, "Model %d, angles:" % i, comb
-  return result
+  print "len(all_angles_combination_f)", len(all_angles_combination_f)
+  return all_angles_combination_f
+  # if len(all_angles_combination_f) == 0:
+  #   print "In starting conformations - outlier was fixed?"
+  #   return result
+  # n_added = 0
+  # n_all_combination = len(all_angles_combination_f)
+  # i_max = min(cutoff, n_all_combination)
+  # assert i_max > 0
+  # step = float(n_all_combination-1)/float(i_max-1)
+  # if step < 1:
+  #   step = 1
+  # for i in range(i_max):
+  #   comb = all_angles_combination_f[int(round(step*i))]
+  #   result.append(set_rama_angles(moving_h, list(comb),direction_forward=direction_forward))
+  #   print >> log, "Model %d, angles:" % i, comb
+  # return result
