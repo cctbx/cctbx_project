@@ -80,74 +80,41 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
 
 # Refactoring idea: combine these two functions
 def get_all_starting_conformations(moving_h, change_radius,
-    direction_forward=True, cutoff=50, log=null_out()):
+    direction_forward=True, cutoff=50, change_all=True, log=null_out()):
   variants = []
   r = rama_eval()
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
   n_rama = len(phi_psi_atoms)
-  change_angles = range((n_rama)//2-change_radius, (n_rama)//2+change_radius+1)
+  change_angles = [None]
+  if change_all:
+    change_angles = range((n_rama)//2-change_radius, (n_rama)//2+change_radius+1)
   # print "  change_angles", change_angles
   for i, (phi_psi_pair, rama_key) in enumerate(phi_psi_atoms):
-    if i in change_angles or (utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER):
-      if utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER:
-        vs = get_sampled_rama_favored_angles(rama_key, r)
-      else:
-        vs = ramalyze.get_favored_regions(rama_key)
-      variants.append(vs)
-      # variants.append(ramalyze.get_favored_regions(rama_key))
-    else:
-      variants.append([(None, None)])
-  print >> log, "variants", variants
-  all_angles_combination = list(itertools.product(*variants))
-  result = []
-  i = 0
-  n_added = 0
-  n_all_combination = len(all_angles_combination)
-  i_max = min(cutoff, n_all_combination)
-  while n_added < i_max:
-    comb = all_angles_combination[i]
-    if is_not_none_combination(comb):
-      result.append(set_rama_angles(moving_h, list(comb),direction_forward=direction_forward))
-      print >> log, "Model %d, angles:" % i, comb
-      n_added += 1
-    i += 1
-  # STOP()
-  return result
-
-def get_starting_conformations(moving_h, direction_forward=True, cutoff=50, log=null_out()):
-  """
-  modify only ramachandran outliers.
-  """
-  variants = []
-  r = rama_eval()
-  phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
-  for phi_psi_pair, rama_key in phi_psi_atoms:
-    if (utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER):
+    angle_is_outlier = utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER
+    if angle_is_outlier:
       vs = get_sampled_rama_favored_angles(rama_key, r)
-      # print len(vs)
-      # print vs
-      # STOP()
-      variants.append(vs)
-      # variants.append(ramalyze.get_favored_regions(rama_key))
+    elif (i in change_angles):
+      vs = ramalyze.get_favored_regions(rama_key)
     else:
-      variants.append([(None, None)])
-  result = []
+      vs = [(None, None)]
+    variants.append(vs)
   print >> log, "variants", variants
-  if variants.count([(None, None)]) == len(variants):
-    print "Nothing to CCD"
-    return result
   all_angles_combination = list(itertools.product(*variants))
-  i = 0
-  n_added = 0
-  n_all_combination = len(all_angles_combination)
-  i_max = min(cutoff, n_all_combination)
-  while n_added < i_max:
-    comb = all_angles_combination[i]
+  # filter none combinations
+  all_angles_combination_f = []
+  for comb in all_angles_combination:
     if is_not_none_combination(comb):
-      result.append(set_rama_angles(moving_h, list(comb),direction_forward=direction_forward))
-      print >> log, "Model %d, angles:" % i, comb, direction_forward
-      n_added += 1
-      # result[-1].write_pdb_file(file_name="start_h_%s_%d.pdb" % (direction_forward, i))
-    i += 1
-  # STOP()
+      all_angles_combination_f.append(comb)
+  result = []
+  n_added = 0
+  n_all_combination = len(all_angles_combination_f)
+  i_max = min(cutoff, n_all_combination)
+  assert i_max > 0
+  step = float(n_all_combination-1)/float(i_max-1)
+  if step < 1:
+    step = 1
+  for i in range(i_max):
+    comb = all_angles_combination_f[int(round(step*i))]
+    result.append(set_rama_angles(moving_h, list(comb),direction_forward=direction_forward))
+    print >> log, "Model %d, angles:" % i, comb
   return result
