@@ -69,13 +69,27 @@ namespace {
 
     def("G_crossproduct",
          (vec3<double>(*)
-               (vec3<double>,
+               (int,
+                vec3<double>,
                 vec3<double>,
                 vec3<double>)) G_crossproduct,
-                  (arg("Gv"),
+                  (arg("vecout"),
+                   arg("Gv"),
                    arg("r1"),
                    arg("r2")))
     ;
+
+    def("modify_gradients_cpp",
+          (af::shared<scitbx::vec3<double> >(*)
+              (af::shared<scitbx::vec3<double> >,
+               af::shared<vec3<double> > const&,
+               boost::python::list const& )) modify_gradients_cpp,
+                 (arg("gradients"),
+                  arg("sites_cart"),
+                  arg("parameterization")))
+    ;
+
+
 
   }
 
