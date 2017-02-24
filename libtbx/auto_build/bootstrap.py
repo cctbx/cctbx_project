@@ -22,6 +22,7 @@ rosetta_version_tar_bundle="rosetta_src_3.7_bundle"
 rosetta_version_directory='rosetta_src_2016.32.58837_bundle'
 # LICENSE REQUIRED
 afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
+amber_version='linux-64.ambertools-17.0.0-py27' # same as circle download file
 envs = {
   "AMBERHOME"           : ["modules", "amber"],
   "PHENIX_ROSETTA_PATH" : ["modules", "rosetta"],
@@ -505,11 +506,8 @@ class cleanup_ext_class(object):
     print "\n  removing %s files in %s" % (self.filename_ext, os.getcwd())
     i=0
     for root, dirs, files in os.walk(".", topdown=False):
-      print 'root',root
       for name in files:
-        print name, self.filename_ext
         if name.endswith(self.filename_ext):
-          print 'removing'
           os.remove(os.path.join(root, name))
           i+=1
     os.chdir(cwd)
@@ -1762,7 +1760,6 @@ class PhenixExternalRegression(PhenixBuilder):
     ]
 
   def cleanup(self, dirs=None):
-    print 'cleanup'
     self.add_step(cleanup_ext_class(".bz2", "modules"))
     lt = time.localtime()
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
@@ -1843,11 +1840,11 @@ class PhenixExternalRegression(PhenixBuilder):
          ['modules'],
         ],
         ['Amber bzip2 -d',
-         ['bzip2', '-d', '-f', 'linux-64.ambertools-17.0.0-py27_0.tar.bz2'],
+         ['bzip2', '-d', '-f', '%s.tar.bz2' % amber_version],
          ['modules'],
           ],
         ['Amber - untar',
-         ['tar', 'xvf', 'linux-64.ambertools-17.0.0-py27_0.tar'],
+         ['tar', 'xvf', '%s.tar' % amber_version],
          ['modules'],
           ],
         #['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
