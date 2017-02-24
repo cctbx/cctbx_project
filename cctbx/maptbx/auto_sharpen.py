@@ -371,9 +371,22 @@ def get_map_and_model(params=None,out=sys.stdout):
     raise Sorry("Need resolution if map is supplied")
 
   if params.input_files.pdb_file: # get model
-    if not os.path.isfile(params.input_files.pdb_file):
-      raise Sorry("Missing the model file: %s" %(params.input_files.pdb_file))
-    pdb_inp=iotbx.pdb.input(file_name=params.input_files.pdb_file)
+    model_file=params.input_files.pdb_file
+    if not os.path.isfile(model_file):
+      raise Sorry("Missing the model file: %s" %(model_file))
+    pdb_inp=iotbx.pdb.input(file_name=model_file)
+    if origin_frac != (0,0,0):
+      print >>out,"Shifting model by %s" %(str(origin_frac))
+      from cctbx.maptbx.segment_and_split_map import \
+         apply_shift_to_pdb_hierarchy
+      origin_shift=crystal_symmetry.unit_cell().orthogonalize(
+         (-origin_frac[0],-origin_frac[1],-origin_frac[2]))
+      pdb_inp=apply_shift_to_pdb_hierarchy(
+       origin_shift=origin_shift,
+       crystal_symmetry=crystal_symmetry,
+       pdb_hierarchy=pdb_inp.construct_hierarchy(),
+       out=out).as_pdb_input()
+
   else:
     pdb_inp=None
 
@@ -386,7 +399,8 @@ def run(args,out=sys.stdout):
 
   # get map_data and crystal_symmetry
 
-  pdb_inp,map_data,crystal_symmetry,acc=get_map_and_model(params=params,out=out)
+  pdb_inp,map_data,crystal_symmetry,acc=get_map_and_model(
+     params=params,out=out)
 
   # NOTE: map_data is now relative to origin at (0,0,0).
   # Use map_data.reshape(acc) to put it back where it was if acc is not None
