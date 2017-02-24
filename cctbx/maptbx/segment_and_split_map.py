@@ -5744,7 +5744,7 @@ def run_auto_sharpen(
           local_si.b_sharpen=original_b_iso-b_iso
           local_si.b_iso=b_iso
 
-        print >>out,"\nAbout to apply sharpening with b_iso=%6.1f A**2\n" %(b_iso)
+        #print >>out,"\nAbout to apply sharpening with b_iso=%6.1f A**2\n" %(b_iso)
         local_map_data=apply_sharpening(
             f_array=local_f_array,phases=local_phases,
             sharpening_info_obj=local_si,
