@@ -1,12 +1,10 @@
 from __future__ import division
 import time
-#import sys
 from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
-#from scitbx import matrix
 from mmtbx.hydrogens import riding
 
 
@@ -43,15 +41,12 @@ def exercise(pdb_str, eps):
   g_analytical = geometry.energies_sites(
     sites_cart        = sites_cart,
     compute_gradients = True).gradients
+
   hd_selection = xray_structure.hd_selection()
   g_analytical_reduced = riding_h_manager.gradients_reduced_cpp(
     gradients    = g_analytical,
     sites_cart   = sites_cart,
     hd_selection = hd_selection)
-  #g_analytical_reduced = riding_h_manager.gradients_reduced(
-  #  sites_cart   = sites_cart,
-  #  grads        = g_analytical,
-  #  hd_selection = hd_selection)
   #
   ex = [eps,0,0]
   ey = [0,eps,0]
@@ -80,9 +75,7 @@ def exercise(pdb_str, eps):
   g_fd_reduced = g_fd.select(~hd_selection)
 
   for g1, g2 in zip(g_analytical_reduced, g_fd_reduced):
-    #print g1,g2
     assert approx_equal(g1,g2, 1.e-4)
-  #print '*'*79
 
 # flat 2 neighbors
 pdb_str_01 = """
@@ -326,5 +319,4 @@ def run():
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  #run(sys.argv[1:])
   print "OK. Time:", round(time.time()-t0, 2), "seconds"

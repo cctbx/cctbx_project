@@ -30,7 +30,6 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
   sites_cart = xray_structure.sites_cart()
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
 
-  hd_selection = xray_structure.hd_selection()
   geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = 5.0)
@@ -50,11 +49,7 @@ def exercise(pdb_str, eps, use_ideal_bonds_angles):
     sites_cart = sites_cart,
     compute_gradients = True).gradients
 
-  #g_analytical_reduced = riding_h_manager.gradients_reduced(
-  #  sites_cart          = sites_cart,
-  #  grads               = g_analytical,
-  #  hd_selection        = hd_selection)
-
+  hd_selection = xray_structure.hd_selection()
   g_analytical_reduced = riding_h_manager.gradients_reduced_cpp(
     gradients    = g_analytical,
     sites_cart   = sites_cart,

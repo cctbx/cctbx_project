@@ -100,14 +100,6 @@ class manager(object):
     if pdb_hierarchy is not None:
       pdb_hierarchy.adopt_xray_structure(xray_structure)
 
-  def gradients_reduced(self, grads, sites_cart, hd_selection):
-    modify_gradients.modify_gradients(
-      sites_cart          = sites_cart,
-      h_parameterization  = self.parameterization_cpp,
-      grads               = grads)
-    grads = grads.select(~hd_selection)
-    return grads
-
   def gradients_reduced_cpp(self, gradients, sites_cart, hd_selection):
     new_gradients = modify_gradients_cpp(
       gradients         = gradients,
