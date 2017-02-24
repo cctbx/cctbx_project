@@ -23,7 +23,7 @@ phil_str = """
     .type = int
   rungroup = None
     .type = int
-  d_min = None
+  d_min = 2.0
     .type = float
     .help = High resolution bin for the I/sig(I) plot and per-run statistics.
   n_strong_cutoff = 40
@@ -34,7 +34,8 @@ phil_str = """
     .help = Avg. I/sig(I) in a bin to reach the cutoff for producing a spot (low or high res) in the third plot.
   run_tags = None
     .type = str
-    .help = Space-delimited string of tags to be applied as labels to the runs.
+    .multiple = True
+    .help = Tags to be applied as labels to the runs.
   minimalist = False
     .type = bool
     .help = Generate final plot without run tags, per-run text summaries or vertical lines between runs.
@@ -74,7 +75,7 @@ def run(args):
       runs.append(run_no)
       all_results.append(HitrateStats(app, run_no, params.trial, params.rungroup, params.d_min)())
   plot_multirun_stats(all_results, runs, params.d_min, n_strong_cutoff=params.n_strong_cutoff, \
-    i_sigi_cutoff=params.i_sigi_cutoff, run_tags=params.run_tags.split(" "), title=params.title, \
+    i_sigi_cutoff=params.i_sigi_cutoff, run_tags=params.run_tags, title=params.title, \
     minimalist=params.minimalist, interactive=True, compress_runs=params.compress_runs)
 
 if __name__ == "__main__":
