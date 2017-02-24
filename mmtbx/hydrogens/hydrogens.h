@@ -15,7 +15,6 @@ using scitbx::mat3;
 using scitbx::sym_mat3;
 
 
-//template <typename FloatType=double>
 class riding_coefficients
 {
   public:
@@ -121,6 +120,9 @@ vec3<double> compute_h_position(
     return rh_calc;
 } // compute_H_position
 
+//------------------------
+// APPLY_NEW_H_POSITIONS
+//------------------------
 // returns new sites_cart (does not overwrite input sites_cart)
 af::shared<vec3<double> > apply_new_H_positions(
     af::shared<vec3<double> > const& sites_cart,
@@ -167,15 +169,16 @@ vec3<double> G_unitvector(
   return Gr;
 }
 
-
 // transformation for the derivative of a cross product
-vec3<double> G_crossproduct(
-                   int vecout,
+// INPUT: Gv, r1, r2
+// Gr1, Gr2 are modified by reference
+void G_crossproduct(
                    vec3<double> Gv,
                    vec3<double> r1,
-                   vec3<double> r2)
+                   vec3<double> r2,
+                   vec3<double> & Gr1,
+                   vec3<double> & Gr2)
 {
-  vec3<double> Gr1, Gr2;
   double x1 = r1[0], y1 = r1[1], z1 = r1[2];
   double x2 = r2[0], y2 = r2[1], z2 = r2[2];
   double Gv_x = Gv[0], Gv_y = Gv[1], Gv_z = Gv[2];
@@ -185,13 +188,7 @@ vec3<double> G_crossproduct(
   Gr2[0] =  z1 * Gv_y - y1 * Gv_z;
   Gr2[1] = -z1 * Gv_x + x1 * Gv_z;
   Gr2[2] =  y1 * Gv_x - x1 * Gv_y;
-  if (vecout == 1) {
-    return Gr1;
-  } else  {
-    return Gr2;
-  }
 }
-
 
 af::shared<scitbx::vec3<double> > modify_gradients_cpp(
                    af::shared<scitbx::vec3<double> > const& gradients,
@@ -256,8 +253,8 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
           vec3<double> Gu10_1 = a * Gd;
           vec3<double> Gu20_1 = b * Gd;
           // step 5
-          vec3<double> Gu10_2 = G_crossproduct(1, Gv, u10, u20);
-          vec3<double> Gu20_2 = G_crossproduct(2, Gv, u10, u20);
+          vec3<double> Gu10_2, Gu20_2;
+          G_crossproduct(Gv, u10, u20, Gu10_2, Gu20_2);
           Gu10 = Gu10_1 + Gu10_2;
           Gu20 = Gu20_1 + Gu20_2;
         } else if (rc.htype == "2neigbs") {
@@ -275,8 +272,8 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
           // step 3
           vec3<double> Gv = G_unitvector(Gv0,v);
           // step 4
-          vec3<double> Gu10_2 = G_crossproduct(1, Gv, u10, u20);
-          vec3<double> Gu20_2 = G_crossproduct(2, Gv, u10, u20);
+          vec3<double> Gu10_2, Gu20_2;
+          G_crossproduct(Gv, u10, u20, Gu10_2, Gu20_2);
           Gu10 = Gu10_1 + Gu10_2;
           Gu20 = Gu20_1 + Gu20_2;
         }
@@ -349,8 +346,8 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
         vec3<double> Gu2_1 = k2 * GuH0;
         vec3<double> Gu3   = k3 * GuH0;
         // step 3
-        vec3<double> Gu1_2 = G_crossproduct(1, Gu3, u1, u2);
-        vec3<double> Gu2_2 = G_crossproduct(2, Gu3, u1, u2);
+        vec3<double> Gu1_2, Gu2_2;
+        G_crossproduct(Gu3, u1, u2, Gu1_2, Gu2_2);
         vec3<double> Gu2 = Gu2_1 + Gu2_2;
         // step 4
         vec3<double> Gv2 = G_unitvector(Gu2, v2);

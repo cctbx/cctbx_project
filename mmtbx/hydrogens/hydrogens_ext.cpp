@@ -59,26 +59,6 @@ namespace {
                    arg("parameterization")))
     ;
 
-    def("G_unitvector",
-         (vec3<double>(*)
-               (vec3<double>,
-                vec3<double>)) G_unitvector,
-                  (arg("Gu"),
-                   arg("r")))
-    ;
-
-    def("G_crossproduct",
-         (vec3<double>(*)
-               (int,
-                vec3<double>,
-                vec3<double>,
-                vec3<double>)) G_crossproduct,
-                  (arg("vecout"),
-                   arg("Gv"),
-                   arg("r1"),
-                   arg("r2")))
-    ;
-
     def("modify_gradients_cpp",
           (af::shared<scitbx::vec3<double> >(*)
               (af::shared<scitbx::vec3<double> >,
@@ -88,8 +68,6 @@ namespace {
                   arg("sites_cart"),
                   arg("parameterization")))
     ;
-
-
 
   }
 
