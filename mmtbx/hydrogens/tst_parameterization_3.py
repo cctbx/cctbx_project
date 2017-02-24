@@ -5,7 +5,6 @@ import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
 from mmtbx.hydrogens import riding
-from mmtbx.hydrogens import parameterization
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for planar X-H2 groups
