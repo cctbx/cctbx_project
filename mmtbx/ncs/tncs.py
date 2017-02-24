@@ -496,5 +496,3 @@ if __name__ == '__main__':
   hroot = xtal.construct_hierarchy()
   xtalsym = xtal.crystal_symmetry()
   groups(hroot, xtalsym, float(sys.argv[2]))
-
-

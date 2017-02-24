@@ -1392,7 +1392,7 @@ class sharpening_info:
        'no_sharpening':"No sharpening",
        None:"No sharpening",
         }
-   
+
     target_summary_dict={
        'adjusted_sa':"Adjusted surface area",
        'kurtosis':"Map kurtosis",
@@ -1419,7 +1419,7 @@ class sharpening_info:
         tuple(self.resolution_dependent_b))
 
       print >>out,"Effective b_iso vs resolution obtained:"
-      from cctbx.maptbx.refine_sharpening import get_effective_b_values  
+      from cctbx.maptbx.refine_sharpening import get_effective_b_values
       d_min_values,b_values=get_effective_b_values(
         d_min_ratio=self.d_min_ratio,
          resolution_dependent_b=self.resolution_dependent_b,
@@ -1693,7 +1693,7 @@ def get_b_iso(miller_array,d_min=None):
        d_min=d_min)
   else:
     res_cut_array=miller_array
-  
+
   from mmtbx.scaling import absolute_scaling
   try:
     aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
@@ -1722,8 +1722,8 @@ def map_coeffs_to_fp(map_coeffs):
 def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
      out=sys.stdout):
   xray_structure=pdb_inp.construct_hierarchy().extract_xray_structure(
-     crystal_symmetry=f_array.crystal_symmetry()) 
-       
+     crystal_symmetry=f_array.crystal_symmetry())
+
   model_f_array=f_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
   return model_f_array
@@ -5538,7 +5538,7 @@ def auto_sharpen_map_or_map_coeffs(
       return_as_map=False
 
     # Determine if we are running model_sharpening
-    if pdb_inp: 
+    if pdb_inp:
       auto_sharpen_methods=['model_sharpening']
 
     # run auto_sharpening
@@ -5584,7 +5584,7 @@ def auto_sharpen_map_or_map_coeffs(
       solvent_fraction=solvent_content,
       pdb_inp=pdb_inp,
       )
-    
+
     if si.solvent_fraction is None:
       si.solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=crystal_symmetry,
@@ -5602,7 +5602,7 @@ def auto_sharpen_map_or_map_coeffs(
     if not si.is_model_sharpening():
       si.show_score(out=out)
       si.show_summary(out=out)
-    return si 
+    return si
 
 def run_auto_sharpen(
       si=None,

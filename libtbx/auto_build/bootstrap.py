@@ -18,14 +18,16 @@ import zipfile
 
 windows_remove_list = []
 
-rosetta_version="rosetta_src_2016.02.58402_bundle"
+rosetta_version_tar_bundle="rosetta_src_3.7_bundle"
+rosetta_version_directory='rosetta_src_2016.32.58837_bundle'
 # LICENSE REQUIRED
 afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
 envs = {
   "AMBERHOME"           : ["modules", "amber"],
   "PHENIX_ROSETTA_PATH" : ["modules", "rosetta"],
-  "ROSETTA_BIN"         : ["modules", "rosetta", "main", "source", "bin"],
-  "ROSETTA3_DB"         : ["modules", "rosetta", "main", "database"],
+  # not required
+  #"ROSETTA_BIN"         : ["modules", "rosetta", "main", "source", "bin"],
+  #"ROSETTA3_DB"         : ["modules", "rosetta", "main", "database"],
   "OE_EXE"              : ["modules", "openeye", "bin"],
   "OE_LICENSE"          : ["oe_license.txt"], # needed for license
 }
@@ -503,8 +505,11 @@ class cleanup_ext_class(object):
     print "\n  removing %s files in %s" % (self.filename_ext, os.getcwd())
     i=0
     for root, dirs, files in os.walk(".", topdown=False):
+      print 'root',root
       for name in files:
+        print name, self.filename_ext
         if name.endswith(self.filename_ext):
+          print 'removing'
           os.remove(os.path.join(root, name))
           i+=1
     os.chdir(cwd)
@@ -643,11 +648,11 @@ class rosetta_class(SourceModule):
   module = 'rosetta'
   authenticated = [
     'rsync',
-    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/'+rosetta_version+'/',
+    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/externals/'+rosetta_version_tar_bundle+'/',
   ]
   authenticated = [
     'scp',
-    '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+rosetta_version+'.tgz']
+    '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/'+rosetta_version_tar_bundle+'.tgz']
 
 class afitt_class(SourceModule):
   module = 'afitt'
@@ -1757,14 +1762,13 @@ class PhenixExternalRegression(PhenixBuilder):
     ]
 
   def cleanup(self, dirs=None):
+    print 'cleanup'
+    self.add_step(cleanup_ext_class(".bz2", "modules"))
     lt = time.localtime()
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
     if lt.tm_wday==5: # do a completer build on Saturday night
       cleaning += ['base', 'build']
     PhenixBuilder.cleanup(self, cleaning)
-
-  def add_tests(self):
-    pass
 
   def get_environment(self, add_build_python_to_path=True):
     #  "AMBERHOME"           : amberhome, # used to trigger Property on slave
@@ -1832,37 +1836,45 @@ class PhenixExternalRegression(PhenixBuilder):
         ['AFITT - untar',
          ['tar', 'xvf', '%s.gz' % afitt_version],
          ['modules']],
-        ['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
-        #['Amber edit', ["sed",
-        #                '''s/"read answer"/"answer='n'"/''',
-        #                "configure2",
-        #                "|",
-        #                "tee",
-        #                "junk"],
-        # ["modules", "amber", "AmberTools", "src"]],
-        ['Amber copy',
-         ["cp", "../../../../amber_configure2", "configure2"],
-         ["modules", "amber", "AmberTools", "src"]],
-        ['Amber configure',
-          ["./configure",
-           "--no-updates",
-           "-noX11",
-           "-macAccelerate", # ignored if not on Mac
-           "-nofftw3", # because compilers on slave are 4.1 not 4.3
-           #"-noamber", # this is for the "real" amber
-           amber_c_comp,
-           ],
-          [env["AMBERHOME"]]],
-        ['Amber compile',
-         ["make", "-j", self.nproc, "install"],
-         [env["AMBERHOME"]]],
+        ['Amber download bzip2',
+         [self.python_base, #'python',
+          '/home/builder/download_circleci_AmberTools.py',
+          ],
+         ['modules'],
+        ],
+        ['Amber bzip2 -d',
+         ['bzip2', '-d', '-f', 'linux-64.ambertools-17.0.0-py27_0.tar.bz2'],
+         ['modules'],
+          ],
+        ['Amber - untar',
+         ['tar', 'xvf', 'linux-64.ambertools-17.0.0-py27_0.tar'],
+         ['modules'],
+          ],
+        #['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
+        #['Amber configure',
+        #  ["./configure",
+        #   "--no-updates",
+        #   "-noX11",
+        #   "-macAccelerate", # ignored if not on Mac
+        #   "-nofftw3", # because compilers on slave are 4.1 not 4.3
+        #   #"-noamber", # this is for the "real" amber
+        #   amber_c_comp,
+        #   ],
+        #  [env["AMBERHOME"]]],
+        #['Amber compile',
+        # ["make", "-j", self.nproc, "install"],
+        # [env["AMBERHOME"]]],
         #['Amber clean',   ["make", "clean"], [env["AMBERHOME"]]],
         ['Rosetta - untar',
-         ['tar', 'xvf', '%s.tgz' % rosetta_version],
+         ['tar', 'xvf', '%s.tgz' % rosetta_version_tar_bundle],
+         ['modules']],
+        ['Rosetta - rm link',
+         # not windows compatible
+         ['rm', '-f', "rosetta"],
          ['modules']],
         ['Rosetta - link',
          # not windows compatible
-         ['ln', '-sf', '%s' % rosetta_version, "rosetta"],
+         ['ln', '-sf', '%s' % rosetta_version_directory, "rosetta"],
          ['modules']],
         #['Rosetta compile', # not really needed
         # ["./scons.py",
@@ -1921,8 +1933,9 @@ class PhenixExternalRegression(PhenixBuilder):
     # MR rosetta
     if self.subcategory in [None, "rosetta"]:
       self.add_test_command(
-        'phenix_regression.wizards.test_command_line_rosetta_quick',
-        name="test rosetta quick all",
+        'phenix_regression.wizards.run_wizard_test',
+        args=['test_prerefine'],
+        name="test MR rosetta quick",
         env = self.get_environment()
       )
     # afitt

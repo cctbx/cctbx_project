@@ -127,10 +127,10 @@ def get_effective_b_values(d_min_ratio=None,resolution_dependent_b=None,
   #  Scale factor is exp(b3_use) at res_3 for example
   #  f=exp(-b sthol2)
   #  b= - ln(f)/sthol2
-  b1=-b1/sthol2_1 
-  b2=-b2/sthol2_2 
-  b3_use=-b3_use/sthol2_3 
-  
+  b1=-b1/sthol2_1
+  b2=-b2/sthol2_2
+  b3_use=-b3_use/sthol2_3
+
 
   return [res_1,res_2,res_3],[b1,b2,b3_use]
 
@@ -176,9 +176,9 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   # Figure out resolution_dependent sharpening to optimally
   #  match map and model. Then apply it as usual.
   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
-  from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model 
+  from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model
   from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
-  import math 
+  import math
 
   f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
@@ -379,10 +379,10 @@ def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resoluti
   b3_use=b3+b2
 
   resid=0.
-  import math 
+  import math
   value_list=flex.double()
   scale_factor_list=flex.double()
-  
+
   for sthol2,scale_factor in zip(target_sthol2,target_scale_factors):
     if sthol2 > sthol2_2:
       value=b2+(sthol2-sthol2_2)*(b3_use-b2)/(sthol2_3-sthol2_2)
@@ -390,7 +390,7 @@ def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resoluti
       value=b1+(sthol2-sthol2_1)*(b2-b1)/(sthol2_2-sthol2_1)
     else:
       value=b0+(sthol2-0.)*(b1-b0)/(sthol2_1-0.)
-    
+
     value=math.exp(value)
     if b_eff is not None:
       value=value*math.exp(-sthol2*b_eff)
@@ -538,7 +538,7 @@ class refinery:
         d_min_ratio=self.d_min_ratio,
         rmsd=self.rmsd,
         fraction_complete=self.complete)
-   
+
     else:
       raise Sorry("residual_target must be kurtosis or adjusted_sa or match_target")
 
@@ -662,7 +662,7 @@ def run(map_coeffs=None,
     wrapping=wrapping,
     n_real=n_real,
     target_sthol2=target_sthol2,
-    target_scale_factors=target_scale_factors, 
+    target_scale_factors=target_scale_factors,
     d_min_ratio=d_min_ratio,
     rmsd=rmsd,
     fraction_complete=fraction_complete,
@@ -690,7 +690,7 @@ def run(map_coeffs=None,
     wrapping=wrapping,
     n_real=n_real,
     target_sthol2=target_sthol2,
-    target_scale_factors=target_scale_factors, 
+    target_scale_factors=target_scale_factors,
     d_min_ratio=d_min_ratio,
     rmsd=rmsd,
     fraction_complete=fraction_complete,
