@@ -50,7 +50,7 @@ class riding_coefficients
 };
 
 vec3<double> compute_h_position(
-                   riding_coefficients rc,
+                   riding_coefficients const& rc,
                    af::shared<vec3<double> > const& sites_cart)
   {
     vec3<double> r0 = sites_cart[rc.a0];
@@ -123,7 +123,7 @@ vec3<double> compute_h_position(
 //------------------------
 // APPLY_NEW_H_POSITIONS
 //------------------------
-// returns new sites_cart (does not overwrite input sites_cart)
+// returns new sites_cart
 af::shared<vec3<double> > apply_new_H_positions(
     af::shared<vec3<double> > const& sites_cart,
     boost::python::list const& parameterization_)
@@ -208,10 +208,9 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
 
     for(int i=0; i < parameterization.size(); i++) {
       riding_coefficients rc = parameterization[i];
-      int ih = rc.ih;
-      int a0 = rc.a0, a1 = rc.a1, a2 = rc.a2, a3 = rc.a3;
-      double a = rc.a, b = rc.b, dh = rc.disth;
-      vec3<double> r0 = sites_cart[rc.a0];
+      int ih = rc.ih, a0 = rc.a0, a1 = rc.a1, a2 = rc.a2, a3 = rc.a3;
+      double a = rc.a, b = rc.b, h = rc.h, dh = rc.disth;
+      vec3<double> r0 = sites_cart[a0];
       vec3<double> rh = sites_cart[rc.ih];
       vec3<double> r1 = sites_cart[rc.a1];
       vec3<double> GH = gradients_new[ih];
@@ -240,7 +239,7 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
           Gu10 = a * multiplier1 - u20 * multiplier2;
           Gu20 = b * multiplier1 - u10 * multiplier2;
         } else if (rc.htype == "2tetra") {
-          double alpha = rc.h;
+          double alpha = h;
           vec3<double> v = u10.cross(u20);
           vec3<double> d = a * u10 + b * u20;
           // step 2
@@ -258,7 +257,6 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
           Gu10 = Gu10_1 + Gu10_2;
           Gu20 = Gu20_1 + Gu20_2;
         } else if (rc.htype == "2neigbs") {
-          double h = rc.h;
           vec3<double> v = u10.cross(u20);
           vec3<double> v0 = v.normalize();
           vec3<double> rh0 = a * u10 + b * u20 + h * v0;
@@ -280,21 +278,13 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
         // step 5
         Gr10 = G_unitvector(Gu10, r10);
         Gr20 = G_unitvector(Gu20, r20);
-        gradients_new[a0][0] = G0[0] + GH[0] - Gr10[0] - Gr20[0];
-        gradients_new[a0][1] = G0[1] + GH[1] - Gr10[1] - Gr20[1];
-        gradients_new[a0][2] = G0[2] + GH[2] - Gr10[2] - Gr20[2];
-        gradients_new[a1][0] = G1[0] + Gr10[0];
-        gradients_new[a1][1] = G1[1] + Gr10[1];
-        gradients_new[a1][2] = G1[2] + Gr10[2];
-        gradients_new[a2][0] = G2[0] + Gr20[0];
-        gradients_new[a2][1] = G2[1] + Gr20[1];
-        gradients_new[a2][2] = G2[2] + Gr20[2];
+        gradients_new[a0] = G0 + GH - Gr10 - Gr20;
+        gradients_new[a1] = G1 + Gr10;
+        gradients_new[a2] = G2 + Gr20;
       } else if (rc.htype == "3neigbs") {
-        int a3 = rc.a3;
-        double h = rc.h;
-        vec3<double> G3 = gradients_new[rc.a3];
-        vec3<double> r2 = sites_cart[rc.a2];
-        vec3<double> r3 = sites_cart[rc.a3];
+        vec3<double> G3 = gradients_new[a3];
+        vec3<double> r2 = sites_cart[a2];
+        vec3<double> r3 = sites_cart[a3];
         vec3<double> r10 = (r1-r0), r20 = (r2-r0), r30 = (r3-r0);
         vec3<double> u10 = r10.normalize();
         vec3<double> u20 = r20.normalize();
@@ -315,21 +305,13 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
         Gr10 = G_unitvector(Gu10, r10);
         Gr20 = G_unitvector(Gu20, r20);
         Gr30 = G_unitvector(Gu30, r30);
-        gradients_new[a0][0] = G0[0] + GH[0] - Gr10[0] - Gr20[0] - Gr30[0];
-        gradients_new[a0][1] = G0[1] + GH[1] - Gr10[1] - Gr20[1] - Gr30[1];
-        gradients_new[a0][2] = G0[2] + GH[2] - Gr10[2] - Gr20[2] - Gr30[2];
-        gradients_new[a1][0] = G1[0] + Gr10[0];
-        gradients_new[a1][1] = G1[1] + Gr10[1];
-        gradients_new[a1][2] = G1[2] + Gr10[2];
-        gradients_new[a2][0] = G2[0] + Gr20[0];
-        gradients_new[a2][1] = G2[1] + Gr20[1];
-        gradients_new[a2][2] = G2[2] + Gr20[2];
-        gradients_new[a3][0] = G3[0] + Gr30[0];
-        gradients_new[a3][1] = G3[1] + Gr30[1];
-        gradients_new[a3][2] = G3[2] + Gr30[2];
+        gradients_new[a0] = G0 + GH - Gr10 - Gr20 -Gr30;
+        gradients_new[a1] = G1 + Gr10;
+        gradients_new[a2] = G2 + Gr20;
+        gradients_new[a3] = G3 + Gr30;
       } else if (rc.htype == "alg1b" || rc.htype=="prop" || rc.htype=="alg1a") {
         vec3<double> rb1 = sites_cart[a2];
-        double alpha = rc.a, phi = rc.b, n = rc.n;
+        double alpha = a, phi = b, n = rc.n;
         double k1 = -cos(alpha);
         double k2 = sin(alpha) * cos(phi + n * 2 * scitbx::constants::pi/3.0);
         double k3 = sin(alpha) * sin(phi + n * 2 * scitbx::constants::pi/3.0);
@@ -352,19 +334,13 @@ af::shared<scitbx::vec3<double> > modify_gradients_cpp(
         // step 4
         vec3<double> Gv2 = G_unitvector(Gu2, v2);
         // step 5
-        vec3<double> Gu1 = Gu1_1 + Gu1_2 - ((rb10 * u1) * Gv2) - ((u1 * Gv2) * rb10);
+        vec3<double> Gu1 = Gu1_1 + Gu1_2 - ((rb10*u1) * Gv2) - ((u1*Gv2) * rb10);
         vec3<double> Grb1 = Gv2 - (u1 * Gv2) * u1;
         // step 6
         vec3<double> Gr01 = G_unitvector(Gu1, r01);
-        gradients_new[a0][0] = G0[0] + GH[0] + Gr01[0];
-        gradients_new[a0][1] = G0[1] + GH[1] + Gr01[1];
-        gradients_new[a0][2] = G0[2] + GH[2] + Gr01[2];
-        gradients_new[a1][0] = G1[0] - Gr01[0] - Grb1[0];
-        gradients_new[a1][1] = G1[1] - Gr01[1] - Grb1[1];
-        gradients_new[a1][2] = G1[2] - Gr01[2] - Grb1[2];
-        gradients_new[a2][0] = G2[0] + Grb1[0];
-        gradients_new[a2][1] = G2[1] + Grb1[1];
-        gradients_new[a2][2] = G2[2] + Grb1[2];
+        gradients_new[a0] = G0 + GH + Gr01;
+        gradients_new[a1] = G1 - Gr01 - Grb1;
+        gradients_new[a2] = G2 + Grb1;
       }
 
     }
