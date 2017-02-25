@@ -54,10 +54,11 @@ def exercise_1():
   assert approx_equal(map_stats2.cc, map_stats.cc, 0.01)
   # XXX other code outside cctbx depends on the current API - do not simply
   # change the test if this breaks!
-  results = real_space_correlation.simple(
+  overall_cc, results = real_space_correlation.simple(
     fmodel=fmodel,
     pdb_hierarchy=hierarchy,
     log=null_out())
+  assert isinstance(overall_cc, float)
   assert isinstance(results, list)
   assert isinstance(results[0], group_args)
   assert (results[0].n_atoms == 1)
