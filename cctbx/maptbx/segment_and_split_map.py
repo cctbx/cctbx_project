@@ -5654,6 +5654,39 @@ def run_auto_sharpen(
 
   # Try various methods for sharpening.
 
+
+  maximum_low_b_adjusted_sa=0.
+  if maximum_low_b_adjusted_sa is not None and not si.sharpening_is_defined(): 
+    # Make sure at highest sharpening the region_weight is high enough to
+    #  give adjusted_sa of zero or less
+
+    local_si=deepcopy(si).update_with_box_sharpening_info(
+      box_sharpening_info_obj=box_sharpening_info_obj)
+    b_iso=min(original_b_iso,si.search_b_min)
+    local_si.b_sharpen=original_b_iso-b_iso
+    local_si.b_iso=b_iso
+    local_si.sharpening_target='b_iso'
+    local_si.k_sharpen=0.
+
+    local_map_data=apply_sharpening(
+          f_array=f_array,phases=phases,
+          sharpening_info_obj=local_si,
+          crystal_symmetry=local_si.crystal_symmetry,
+          out=null_out())
+    local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
+        out=null_out())
+    print >>out,\
+         " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
+          local_si.b_sharpen,local_si.b_iso,
+           local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
+          "  %7.3f         %7.3f" %(
+           local_si.sa_ratio,local_si.normalized_regions)
+    if local_si.adjusted_sa > maximum_low_b_adjusted_sa:  # adjust the weight
+      region_weight=local_si.sa_ratio/max(1.e-10,local_si.normalized_regions)
+      print >>out,"\nRegion weight adjusted to %5.1f" %(region_weight)
+      si.region_weight=region_weight
+      
+
   null_si=None
   best_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
@@ -5674,6 +5707,8 @@ def run_auto_sharpen(
         best_si.sharpening_target)
     if not auto_sharpen_methods or auto_sharpen_methods==['None']:
       auto_sharpen_methods=['no_sharpening']
+
+     
     for m in auto_sharpen_methods:
       # ------------------------
       if m in ['no_sharpening','resolution_dependent','model_sharpening']:
@@ -5713,7 +5748,6 @@ def run_auto_sharpen(
             "\nB-sharpen   B-iso   k_sharpen   SA   "+\
              "Kurtosis  sa_ratio  Normalized regions"
       # ------------------------
-
       local_best_map_data=None
       local_best_si=deepcopy(si).update_with_box_sharpening_info(
         box_sharpening_info_obj=box_sharpening_info_obj)
