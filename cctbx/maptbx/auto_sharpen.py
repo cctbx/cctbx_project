@@ -194,6 +194,13 @@ master_phil = iotbx.phil.parse("""
            transition is applied and all data is sharpened or blurred. \
            Default is 10.
 
+
+     maximum_low_b_adjusted_sa = 0.
+       .type = float
+       .short_caption = Max low-B adjusted_sa
+       .help = Require adjusted surface area to be this value or less \
+               when map is highly sharpened (at value of search_b_min).
+
      search_b_min = None
        .type = float
        .short_caption = Low bound for b_iso search
@@ -429,6 +436,8 @@ def run(args,out=sys.stdout):
         search_b_min=params.map_modification.search_b_min,
         search_b_max=params.map_modification.search_b_max,
         search_b_n=params.map_modification.search_b_n,
+        maximum_low_b_adjusted_sa=\
+           params.map_modification.maximum_low_b_adjusted_sa,
         b_iso=params.map_modification.b_iso,
         b_sharpen=params.map_modification.b_sharpen,
         resolution_dependent_b=\

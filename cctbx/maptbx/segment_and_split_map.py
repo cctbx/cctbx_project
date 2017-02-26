@@ -365,6 +365,12 @@ master_phil = iotbx.phil.parse("""
            transition is applied and all data is sharpened or blurred. \
            Note 3: only used if b_iso is set.
 
+     maximum_low_b_adjusted_sa = 0.
+       .type = float
+       .short_caption = Max low-B adjusted_sa
+       .help = Require adjusted surface area to be this value or less \
+               when map is highly sharpened (at value of search_b_min).
+
      search_b_min = -100
        .type = float
        .short_caption = Low bound for b_iso search
@@ -1247,6 +1253,7 @@ class sharpening_info:
       search_b_min=None,
       search_b_max=None,
       search_b_n=None,
+      maximum_low_b_adjusted_sa=None,
       box_sharpening_info_obj=None,
       chain_type=None,
       model_sharpening_scale=None,
@@ -1358,6 +1365,8 @@ class sharpening_info:
       self.search_b_min=params.map_modification.search_b_min
       self.search_b_max=params.map_modification.search_b_max
       self.search_b_n=params.map_modification.search_b_n
+      self.maximum_low_b_adjusted_sa=\
+         params.map_modification.maximum_low_b_adjusted_sa
       self.verbose=params.control.verbose
 
       if pdb_inp or self.sharpening_method=='model_sharpening':
@@ -5520,6 +5529,7 @@ def auto_sharpen_map_or_map_coeffs(
         search_b_min=None,
         search_b_max=None,
         search_b_n=None,
+        maximum_low_b_adjusted_sa=None,
         b_iso=None, # if set, use it
         b_sharpen=None, # if set, use it
         resolution_dependent_b=None, # if set, use it
@@ -5550,7 +5560,7 @@ def auto_sharpen_map_or_map_coeffs(
       [box_in_auto_sharpen,resolution,d_min_ratio,
         max_box_fraction,k_sharpen,
         residual_target,sharpening_target,
-        search_b_min,search_b_max,search_b_n,
+        search_b_min,search_b_max,search_b_n,maximum_low_b_adjusted_sa,
         b_iso,b_sharpen,resolution_dependent_b,
         region_weight,
         sa_percent,
@@ -5564,7 +5574,7 @@ def auto_sharpen_map_or_map_coeffs(
       ['box_in_auto_sharpen','resolution','d_min_ratio',
        'max_box_fraction','k_sharpen',
         'residual_target','sharpening_target',
-       'search_b_min','search_b_max','search_b_n',
+       'search_b_min','search_b_max','search_b_n','maximum_low_b_adjusted_sa',
        'b_iso','b_sharpen',
        'resolution_dependent_b',
        'region_weight',
@@ -5655,8 +5665,8 @@ def run_auto_sharpen(
   # Try various methods for sharpening.
 
 
-  maximum_low_b_adjusted_sa=0.
-  if maximum_low_b_adjusted_sa is not None and not si.sharpening_is_defined(): 
+  if si.maximum_low_b_adjusted_sa is not None and (
+      not si.sharpening_is_defined()): 
     # Make sure at highest sharpening the region_weight is high enough to
     #  give adjusted_sa of zero or less
 
@@ -5681,8 +5691,9 @@ def run_auto_sharpen(
            local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
           "  %7.3f         %7.3f" %(
            local_si.sa_ratio,local_si.normalized_regions)
-    if local_si.adjusted_sa > maximum_low_b_adjusted_sa:  # adjust the weight
-      region_weight=local_si.sa_ratio/max(1.e-10,local_si.normalized_regions)
+    if local_si.adjusted_sa > local_si.maximum_low_b_adjusted_sa: # adjust weight
+      region_weight=(local_si.sa_ratio-local_si.maximum_low_b_adjusted_sa)/max(
+         1.e-10,local_si.normalized_regions)
       print >>out,"\nRegion weight adjusted to %5.1f" %(region_weight)
       si.region_weight=region_weight
       
