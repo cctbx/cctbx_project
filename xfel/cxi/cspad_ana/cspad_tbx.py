@@ -1267,7 +1267,7 @@ def evt_wavelength(evt, delta_k=0):
   from beam energy in MeV and the electron rest mass, K is a
   dimensionless "undulator parameter", and L is the macroscopic
   undulator period in Ångström.  See also
-  http://ast.coe.berkeley.edu/srms/2007/Lec10.pdf.
+  https://people.eecs.berkeley.edu/~attwood/srms/2007/Lec10.pdf
 
   @param evt     Event data object, a configure object
   @param delta_k Optional K-value correction
