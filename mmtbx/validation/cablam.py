@@ -1078,6 +1078,7 @@ class cablamalyze(validation):
     cablam_disfavored = 0
     ca_geom_outliers = 0
     prev_result_id = None
+    is_residue = 0
     is_cablam_outlier = 0
     is_cablam_disfavored = 0
     is_ca_geom_outlier = 0
