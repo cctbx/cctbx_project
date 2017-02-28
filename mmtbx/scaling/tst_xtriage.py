@@ -130,6 +130,7 @@ END
     "log=tst_xtriage_1.log",
     "l_test_dhkl=2,2,2",
     "completeness_as_non_anomalous=True",
+    "json=xtriage.json"
   ]
   result = xtriage.run(args=xtriage_args, out=null_out())
   test_pickle_consistency_and_size(result)
@@ -225,6 +226,15 @@ Centric reflections:
   #assert (result.relative_wilson.n_outliers() == 0)
   #show_pickled_object_sizes(result)
   #
+  assert os.path.exists("xtriage.json")
+  with open("xtriage.json", "rb") as f:
+    import json
+    d = json.load(f)
+    expected_keys = [
+      u'matthews', u'wilson_scaling', u'twinning', u'data_summary',
+      u'data_strength_and_completeness']
+    for k in expected_keys:
+      assert k in d, k
 
   # check with completeness_as_non_anomalous=False
 
