@@ -1,4 +1,5 @@
 import os, sys
+import StringIO
 
 from libtbx import easy_run
 
@@ -236,14 +237,20 @@ def run():
     f.write(text)
     f.close()
   cmd = 'phenix.geometry_minimization %(preamble)s.pdb %(preamble)s_01.cif' % {'preamble' : preamble}
-  rc = easy_run.call(cmd)
-  print 'rc',rc
-  assert rc==1
+  print cmd
+  ero = easy_run.fully_buffered(command=cmd)
+  err = StringIO.StringIO()
+  ero.show_stderr(out=err)
+  assert err.getvalue()
+  print 'ok'
   cmd += ' %(preamble)s.eff' % {'preamble' : preamble}
-  rc = easy_run.call(cmd)
-  print 'rc',rc
-  assert rc==0
-  return rc
+  print cmd
+  ero = easy_run.fully_buffered(command=cmd)
+  err = StringIO.StringIO()
+  ero.show_stderr(out=err)
+  assert not err.getvalue()
+  print 'ok'
+  return err.getvalue()
 
 if __name__=="__main__":
   run()#sys.argv[1])
