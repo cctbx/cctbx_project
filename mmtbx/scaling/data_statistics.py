@@ -130,6 +130,14 @@ reliable than the values calculated from the raw intensities.
 """ % self.resolution_at_least
     out.show_text(message)
 
+  def as_dict(self):
+    return {
+      'isigi_cut': self.isigi_cut,
+      'completeness_cut': self.completeness_cut,
+      'resolution_cut': self.resolution_cut,
+      'resolution_at_least': self.resolution_at_least,
+      'table': self.table.export_rows()
+    }
 
 # XXX where is this used?
 class completeness_enforcement(object):
@@ -232,6 +240,14 @@ uncorrected reflections in the PDB, not the truncated data.""")
     else :
       out.show_text("""Resolution limits are within expected tolerances.""")
 
+  def as_dict(self):
+    return {
+      'd_min_overall': self.d_min_overall,
+      'd_min_a_star': self.d_min_a,
+      'd_min_b_star': self.d_min_b,
+      'd_min_c_star': self.d_min_c,
+      'd_min_max_delta': self.d_min_max_delta,
+    }
 
 class log_binned_completeness (scaling.xtriage_analysis) :
   """
@@ -269,6 +285,11 @@ the entire resolution range but on a logarithmic scale.  This is more sensitive
 to missing low-resolution data (and is complementary to the separate table
 showing low-resolution completeness only).""")
     out.show_table(self.table)
+
+  def as_dict(self):
+    return {
+      'table': self.table.export()
+    }
 
 #-----------------------------------------------------------------------
 # OUTLIER FILTERING
@@ -429,6 +450,13 @@ class possible_outliers (scaling.xtriage_analysis):
     else :
       return [(0, "The fraction of outliers in the data is less than 0.1%.",
         "Possible outliers")]
+
+  def as_dict(self):
+    d = {
+      'acentric_outliers_table': self.acentric_outliers_table.export_rows(),
+      'centric_outliers_table': self.centric_outliers_table.export_rows(),
+    }
+    return d
 
 #-----------------------------------------------------------------------
 # ICE RINGS
@@ -615,6 +643,17 @@ class ice_ring_checker(scaling.xtriage_analysis):
     else :
       return [(0, "Ice rings do not appear to be present.",
         "Ice ring related problems")]
+
+  def as_dict(self):
+    d = {
+      'mean_z_score': self.mean_z_score,
+      'rmsd_z_score': self.std_z_score,
+      'mean_completeness': self.mean_comp,
+      'rmsd_completeness': self.std_comp,
+      'table': self.table.export_rows(),
+      'n_warnings': self.warnings,
+    }
+    return d
 
 #-----------------------------------------------------------------------
 # ANOMALOUS MEASURABILITY
@@ -862,6 +901,21 @@ or omission of reflections by data-processing software.""")
       issues.append((0, "The overall completeness in low-resolution shells "+
         "is at least 90%.", "Low resolution completeness analyses"))
     return issues
+
+  def as_dict(self):
+    d = {
+      'issues': self.summarize_issues(),
+      'log_binned_completeness': self.log_binned.as_dict(),
+    }
+    if self.d_min_directional is not None:
+      d.update(self.d_min_directional.as_dict())
+    if self.data_strength is not None:
+      d.update(self.data_strength.as_dict())
+    if self.low_resolution_completeness is not None:
+      d.update({
+        'low_resolution_completness': self.low_resolution_completeness.export()
+      })
+    return d
 
 class anomalous (scaling.xtriage_analysis) :
   def __init__ (self, miller_array, merging_stats=None) :
@@ -1196,3 +1250,20 @@ class wilson_scaling (scaling.xtriage_analysis) :
     self.iso_scale_and_b.scat_info = None
     self.aniso_scale_and_b.scat_info = None
     return self.__dict__
+
+  def as_dict(self):
+    from cStringIO import StringIO
+    s = StringIO()
+    self.show(out=s)
+    d = {
+      'issues': self.summarize_issues(),
+      'iso_scale_and_b': self.iso_scale_and_b.as_dict(),
+      'aniso_scale_and_b': self.aniso_scale_and_b.as_dict(),
+      'outliers': self.outliers.as_dict(),
+      'wilson_table': self.wilson_table.export_rows(),
+      'n_worrisome': self.n_worrisome,
+      'outlier_shell_table': self.outlier_shell_table.export_rows()
+    }
+    if self.ice_rings is not None:
+      d['ice_rings'] = self.ice_rings.as_dict(),
+    return d

@@ -170,6 +170,9 @@ input {
         .style = hidden
       loggraphs = False
         .type = bool
+      json = None
+        .type = path
+        .help = Filename for optional json output of results.
     }
 
     merging
@@ -473,6 +476,28 @@ that the useful resolution range may be lower than that of the input data.""")
         "Dataset consistency") ]
     return []
 
+  def as_dict(self):
+    s = StringIO()
+    self.show(out=s)
+    d = {
+      'issues': self.summarize_issues(),
+      'summary': s.getvalue(),
+      'r_merge': self.overall.r_merge,
+      'r_meas': self.overall.r_meas,
+      'r_pim': self.overall.r_pim,
+      'i_mean': self.overall.i_mean,
+      'i_over_sigma_mean': self.overall.i_over_sigma_mean,
+      'completeness': self.overall.completeness,
+      'mean_redundancy': self.overall.mean_redundancy,
+      'n_uniq': self.overall.n_uniq,
+      'n_obs': self.overall.n_obs,
+      'd_max': self.overall.d_max,
+      'd_min': self.overall.d_min,
+      'signal_table': self.signal_table.export_rows(),
+      'quality_table': self.quality_table.export_rows(),
+    }
+    return d
+
 class data_summary (mmtbx.scaling.xtriage_analysis) :
   """
   Basic info about the input data (somewhat redundant at the moment).
@@ -495,6 +520,10 @@ class data_summary (mmtbx.scaling.xtriage_analysis) :
       self.completeness_merged = non_anom.completeness(
         as_non_anomalous_array=False)
       self.anomalous_completeness = miller_array.anomalous_completeness()
+    self.source = getattr(self.info, "source", None)
+    if (self.source is not None) and (os.path.isfile(self.source)):
+      self.source = os.path.basename(self.source)
+    self.label_string = getattr(self.info, "label_string", lambda: None)()
 
   def _show_impl (self, out) :
     out.show_header("Input data")
@@ -503,14 +532,10 @@ class data_summary (mmtbx.scaling.xtriage_analysis) :
       out.show_text("""\
 The original dataset contained unmerged intensities; the statistics below
 are for the merged data.""")
-    source = getattr(self.info, "source", None)
-    label_string = getattr(self.info, "label_string", lambda: None)
-    if (source is not None):
-      if (os.path.isfile(source)):
-        source = os.path.basename(source)
+
     lines = [
-      ("File name:", str(source)),
-      ("Data labels:", str(label_string())),
+      ("File name:", str(self.source)),
+      ("Data labels:", str(self.label_string)),
       ("Space group:", str(self.space_group)),
       ("Unit cell:", "%.6g, %.6g, %.6g, %.6g, %.6g, %.6g" % self.unit_cell),
       ("Data type:", str(self.obs_type)),
@@ -592,6 +617,30 @@ are for the merged data.""")
       else :
         issues.append((0, message, 'Summary'))
     return issues
+
+  def as_dict(self):
+    s = StringIO()
+    self.show(out=s)
+    d = {
+      'issues': self.summarize_issues(),
+      'summary': s.getvalue(),
+      'source': self.source,
+      'labels': self.label_string,
+      'unit_cell': self.unit_cell,
+      'observation_type': str(self.obs_type),
+      'space_group': str(self.space_group),
+      'n_indices': self.n_indices,
+      'anomalous': self.anomalous_flag,
+      'completeness': self.completeness,
+      'd_max_min': self.d_max_min,
+    }
+    if self.anomalous_flag:
+      d.update({
+        'completeness_non_anom': self.completeness_merged,
+        'completeness_anom': self.anomalous_completeness,
+        'n_indices_non_anom': self.n_indices_merged,
+      })
+    return d
 
 class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
   """
@@ -962,6 +1011,31 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     if (self.anomalous_info is not None) :
       pass
     return summary(issues)
+
+  def as_dict(self):
+    d = {
+      'data_summary': self.data_summary.as_dict(),
+      'data_strength_and_completeness': self.data_strength_and_completeness.as_dict(),
+      'merging_statistics': self.merging_stats.as_dict(),
+      'matthews': self.matthews.as_dict(),
+      'wilson_scaling': self.wilson_scaling.as_dict(),
+    }
+    #if self.relative_wilson is not None:
+      #d['relative_wilson'] = self.relative_wilson.as_dict(),
+    if self.anomalous_info is not None:
+      d['anomalous_info'] = self.anomalous_info.as_dict(),
+    if self.twin_results is not None:
+      d['twinning'] = self.twin_results.as_dict()
+
+    return d
+
+  def as_json(self, filename=None, compact=False):
+    import json
+    json_str = json.dumps(self.as_dict(), indent=(2 if not compact else None))
+    if filename is not None:
+      with open(filename, 'wb') as f:
+        print >> f, json_str
+    return json_str
 
 class summary (mmtbx.scaling.xtriage_analysis) :
   def __init__ (self, issues, sort=True) :
@@ -1349,13 +1423,15 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       output_type=params2.hklout_type,
       label_extension=params2.label_extension)
 
-
   if (data_file_name is not None) :
     from libtbx import easy_pickle
     easy_pickle.dump(data_file_name, raw_data)
   if (params.scaling.input.parameters.reporting.loggraphs) :
     graph_out = mmtbx.scaling.loggraph_output(output_file)
     xtriage_results.show(out=graph_out)
+  if (params.scaling.input.parameters.reporting.json):
+    xtriage_results.as_json(
+      filename=params.scaling.input.parameters.reporting.json)
   return xtriage_results
 
 def change_symmetry (miller_array, space_group_symbol, file_name=None,

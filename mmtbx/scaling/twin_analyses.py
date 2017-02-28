@@ -298,6 +298,19 @@ expressed in the setting desired.  Becasue of this, a full coset table cannot
 be produced. Working with the data in the reduced cell will solve this.
 """)
 
+  def as_dict(self):
+    operators = []
+    for op in self.operators:
+      operators.append({
+        'twin_type': op.twin_type,
+        'axis_type': op.axis_type,
+        'delta_santoro': op.delta_santoro,
+        'delta_lebedev': op.delta_lebedev,
+        'delta_le_page': op.delta_le_page,
+        'twin_law': op.operator.r().as_hkl()
+      })
+    return {'operators': operators}
+
 def get_twin_laws (miller_array) :
   """
   Convenience method for getting a list of twin law operators (as strings)
@@ -706,6 +719,32 @@ class wilson_moments(scaling.xtriage_analysis) :
        self.centric_e_sq_minus_one_library[1]))
     # TODO explanation, citation?
 
+  def as_dict(self):
+    d = {
+      'acentric_i_ratio': self.acentric_i_ratio,
+      'acentric_i_ratio_untwinned': self.acentric_i_ratio_library[0],
+      'acentric_i_ratio_perfect_twin': self.acentric_i_ratio_library[1],
+      'acentric_f_ratio': self.acentric_f_ratio,
+      'acentric_f_ratio_untwinned': self.acentric_f_ratio_library[0],
+      'acentric_f_ratio_perfect_twin': self.acentric_f_ratio_library[1],
+      'acentric_abs_e_sq_minus_one': self.acentric_abs_e_sq_minus_one,
+      'acentric_abs_e_sq_minus_one_untwinned': self.acentric_e_sq_minus_one_library[0],
+      'acentric_abs_e_sq_minus_one_perfect_twin': self.acentric_e_sq_minus_one_library[1],
+    }
+    if self.centric_present:
+      d.update({
+        'centric_i_ratio': self.centric_i_ratio,
+        'centric_i_ratio_untwinned': self.centric_i_ratio_library[0],
+        'centric_i_ratio_perfect_twin': self.centric_i_ratio_library[1],
+        'centric_f_ratio': self.centric_f_ratio,
+        'centric_f_ratio_untwinned': self.centric_f_ratio_library[0],
+        'centric_f_ratio_perfect_twin': self.centric_f_ratio_library[1],
+        'centric_abs_e_sq_minus_one': self.centric_abs_e_sq_minus_one,
+        'centric_abs_e_sq_minus_one_untwinned': self.centric_e_sq_minus_one_library[0],
+        'centric_abs_e_sq_minus_one_perfect_twin': self.centric_e_sq_minus_one_library[1],
+      })
+    return d
+
 class n_z_test (scaling.xtriage_analysis):
   def __init__(self,
                normalised_acentric,
@@ -809,6 +848,20 @@ considered.
     else :
       out.show_table(self.table)
 
+  def as_dict(self):
+    d = {
+      'max_diff_acentric': self.max_diff_ac,
+      'max_diff_centric': self.max_diff_c,
+      'mean_diff_acentric': self.mean_diff_ac,
+      'mean_diff_centric': self.mean_diff_c,
+      'z': tuple(self.z),
+      'acentric_observed': tuple(self.ac_obs),
+      'acentric_untwinned': tuple(self.ac_untwinned),
+      'centric_observed': tuple(self.c_obs),
+      'centric_untwinned': tuple(self.c_untwinned),
+    }
+    return d
+
 class l_test (scaling.xtriage_analysis):
   """
   Implementation of:
@@ -896,6 +949,19 @@ class l_test (scaling.xtriage_analysis):
   robustness to anisotropy and pseudo-centering and utility for detecting
   twinning. Acta Crystallogr. D59, 1124-30, 2003.
 """)
+
+  def as_dict(self):
+    d = {
+      'parity_hkl': (self.parity_h, self.parity_k, self.parity_l),
+      'l_mean': self.mean_l,
+      'l_sq_mean': self.mean_l2,
+      'ml_alpha': self.ml_alpha,
+      'l_values': tuple(self.l_values),
+      'l_cumulative': tuple(self.l_cumul),
+      'l_cumulative_untwinned': tuple(self.l_cumul_untwinned),
+      'l_cumuluative_perfect_twin': tuple(self.l_cumul_perfect_twin)
+    }
+    return d
 
 ########################################################################
 # TWIN LAW-DEPENDENT TESTS
@@ -1738,6 +1804,24 @@ If the data are (almost) perfectly twinned, the symmetry will appear to be
 higher than it actually is.
 """)
 
+  def as_dict(self):
+    d = {
+      'pg_input': self.pg_input_name,
+      'pg_niggli': self.pg_low_prim_set_name,
+      'pg_lattice': self.pg_lattice_name,
+      'pg_choice': self.pg_choice,
+      'table': self.table.export_rows(),
+    }
+    sg_possibilities = []
+    for sg in self.sg_possibilities:
+      sg_possibilities.append({
+        'unit_cell': sg[0].unit_cell().parameters(),
+        'space_group': str(sg[0].space_group_info()),
+        'cb_op': sg[1].as_hkl()
+      })
+    d['sg_possibilities'] = sg_possibilities
+    return d
+
 
 class r_values (scaling.xtriage_analysis) :
   def __init__(self,
@@ -2210,6 +2294,26 @@ refinement might provide an answer.
         "Patterson analyses"))
     return issues
 
+  def as_dict(self):
+    d = {
+      'maha_l': self.maha_l,
+      'maha_l_cut': self.maha_l_cut,
+      'twin_laws': self.twin_laws,
+      'twin_law_type': self.twin_law_type,
+      'r_obs': self.r_obs,
+      'britton_alpha': self.britton_alpha,
+      'h_alpha': self.h_alpha,
+      'murry_rust_alpha': self.murray_rust_alpha,
+      'has_pseudo_translational_symmetry': self.has_pseudo_translational_symmetry(),
+      'patterson_height': self.patterson_height,
+      'patterson_p_value': self.patterson_p_value,
+      'has_higher_symmetry': self.has_higher_symmetry(),
+      'input_point_group': self.input_point_group,
+      'suspected_point_group': self.suspected_point_group,
+      'most_worrysome_twin_law': self.most_worrysome_twin_law,
+    }
+    return d
+
 class twin_analyses (scaling.xtriage_analysis):
   """Perform various twin related tests"""
   def __init__(self,
@@ -2459,6 +2563,34 @@ class twin_analyses (scaling.xtriage_analysis):
       self.check_sg.miller_array = None
     self.normalised_intensities = None
     return self.__dict__
+
+  def as_dict(self):
+    from cStringIO import StringIO
+    s = StringIO()
+    self.show(out=s)
+    d = {
+      'issues': self.twin_summary.summarize_issues(),
+      'summary': s.getvalue(),
+      'd_max': self.d_max,
+      'd_min': self.d_min,
+      'wilson_moments': self.wilson_moments.as_dict(),
+      'nz_test': self.nz_test.as_dict(),
+      'possible_twin_laws': self.possible_twin_laws.as_dict(),
+    }
+    d.update(self.twin_summary.as_dict())
+    if self.abs_sg_anal is not None:
+      d['absences_sg_analysis'] = self.abs_sg_anal.as_dict()
+    #if self.translational_pseudo_symmetry is not None:
+      #d['translational_pseudo_symmetry'] = self.translational_pseudo_symmetry.as_dict()
+    if self.l_test is not None:
+      d['l_test'] = self.l_test.as_dict()
+    #if self.n_twin_laws > 0:
+      #d['twin_tests'] = []
+      #for twin_tests in self.twin_law_dependent_analyses:
+        #d['twin_tests'].append(twin_tests.as_dict())
+    if self.check_sg is not None:
+      d['check_sg'] = self.check_sg.as_dict()
+    return d
 
 def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None,
     sigma_inflation=1.0, check_absences=True):

@@ -242,6 +242,18 @@ class matthews_rupp (scaling.xtriage_analysis) :
       if (self.n_possible_contents > 1) :
         show_warning()
 
+  def as_dict(self):
+    from cStringIO import StringIO
+    s = StringIO()
+    self.show(out=s)
+    return {
+      'summary': s.getvalue(),
+      'table': self.table.export_rows(),
+      'n_residues': self.n_residues,
+      'n_bases': self.n_bases,
+      'n_copies': self.n_copies,
+    }
+
 ########################################################################
 # REGRESSION
 def exercise () :

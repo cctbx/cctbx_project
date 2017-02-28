@@ -562,6 +562,13 @@ class ml_iso_absolute_scaling (scaling.xtriage_analysis):
         "Maximum likelihood isotropic Wilson scaling")]
     return []
 
+  def as_dict(self):
+    d = {
+      'b_wilson': self.b_wilson,
+      'p_scale': self.p_scale,
+    }
+    return d
+
 class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
   """
   Maximum likelihood anisotropic wilson scaling.
@@ -939,6 +946,17 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
     else :
       return [(0, "The data are not significantly anisotropic.",
         "Maximum likelihood anisotropic Wilson scaling")]
+
+  def as_dict(self):
+    # Possibly want to include more here?
+    d = {
+      'b_cart': self.b_cart,
+      'u_cif': self.u_cif,
+      'eigen_values': tuple(self.eigen_values),
+      'eigen_vectors': tuple(self.eigen_vectors),
+      'p_scale': self.p_scale,
+    }
+    return d
 
 class kernel_normalisation(object):
   def __init__(self,

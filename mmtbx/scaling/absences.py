@@ -604,6 +604,13 @@ for the number of violations in the non-absent class.
         column_headers=table_labels,
         table_rows=table_rows)
 
+  def as_dict(self):
+    d = {
+      'isigi_cut': self.cut,
+      'table': self.table.export_rows(),
+    }
+    return d
+
 class sgi_iterator(object):
   def __init__(self,chiral=True, crystal_system=None, intensity_symmetry=None):
     self.chiral = chiral
@@ -740,6 +747,13 @@ information, rather then as enforcing that absence in the space group choices.
     if (getattr(self, "absences_list", None) is not None) : # backwards compat.
       if (self.absences_list.n_possible_max > 0) :
         self.absences_list.show(out)
+
+  def as_dict(self):
+    d = {
+      'sg_table': self.sorted_table.export_rows(),
+    }
+    d.update(self.absences_table.as_dict())
+    return d
 
   def suggest_likely_candidates( self, acceptable_violations = 1e+90 ):
     used = flex.bool( len(self.sg_choices), False )
