@@ -747,7 +747,7 @@ class InMemScript(DialsProcessScript):
       from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
       cspad_img = FormatPYunspecifiedStillInMemory(image_dict)
 
-    cspad_img.timestamp = s
+    self.tag = s # used when writing integration pickle
 
     if self.params.dispatch.dump_all:
       self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "shot-" + s))
@@ -857,7 +857,7 @@ class InMemScript(DialsProcessScript):
 
     self.debug_write("refine_start")
     try:
-      experiments = self.refine(experiments, indexed)
+      experiments, indexed = self.refine(experiments, indexed)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
