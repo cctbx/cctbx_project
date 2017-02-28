@@ -1016,14 +1016,15 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     d = {
       'data_summary': self.data_summary.as_dict(),
       'data_strength_and_completeness': self.data_strength_and_completeness.as_dict(),
-      'merging_statistics': self.merging_stats.as_dict(),
       'matthews': self.matthews.as_dict(),
       'wilson_scaling': self.wilson_scaling.as_dict(),
     }
+    if self.merging_stats is not None:
+      d['merging_statistics'] = self.merging_stats.as_dict()
     #if self.relative_wilson is not None:
       #d['relative_wilson'] = self.relative_wilson.as_dict(),
-    if self.anomalous_info is not None:
-      d['anomalous_info'] = self.anomalous_info.as_dict(),
+    #if self.anomalous_info is not None:
+      #d['anomalous_info'] = self.anomalous_info.as_dict(),
     if self.twin_results is not None:
       d['twinning'] = self.twin_results.as_dict()
 

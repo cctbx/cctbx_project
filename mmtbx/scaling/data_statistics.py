@@ -452,10 +452,11 @@ class possible_outliers (scaling.xtriage_analysis):
         "Possible outliers")]
 
   def as_dict(self):
-    d = {
-      'acentric_outliers_table': self.acentric_outliers_table.export_rows(),
-      'centric_outliers_table': self.centric_outliers_table.export_rows(),
-    }
+    d = {}
+    if self.acentric_outlier_miller.size():
+      d['acentric_outliers_table'] = self.acentric_outliers_table.export_rows()
+    if self.centric_outlier_miller.size():
+      d['centric_outliers_table'] = self.centric_outliers_table.export_rows()
     return d
 
 #-----------------------------------------------------------------------
