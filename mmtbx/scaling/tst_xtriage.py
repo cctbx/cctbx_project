@@ -452,12 +452,15 @@ def exercise_analyze_resolution_limits () :
 
 # real data
 def exercise_2 () :
-  hkl_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/p9_se_w2.sca",
-    test=os.path.isfile)
-  if (hkl_file is None) :
+  if not libtbx.env.has_module("phenix_regression"):
     warnings.warn("phenix_regression not available, skipping test")
     return
+
+  relative_path = "phenix_regression/wizards/help_tests/test_help/p9_se_w2.sca"
+  hkl_file = libtbx.env.find_in_repositories(
+    relative_path=relative_path,
+    test=os.path.isfile)
+  assert hkl_file is not None, relative_path
   hkl_in = file_reader.any_file(hkl_file).assert_file_type("hkl")
   i_obs_raw = hkl_in.file_object.as_miller_arrays(
     merge_equivalents=False,
