@@ -12,6 +12,25 @@ namespace cctbx { namespace xray { namespace minimization {
 
   template <typename FloatType>
   void
+  damp_shifts(
+    af::const_ref<FloatType> const& previous,
+    af::ref<FloatType> current,
+    FloatType const& max_value)
+  {
+    CCTBX_ASSERT(previous.size() == current.size());
+    for(std::size_t i=0; i<previous.size(); i++) {
+      FloatType p = previous[i];
+      FloatType c = current[i];
+      FloatType delta = c-p;
+      if(std::abs(delta)>max_value) {
+        if(delta>=0) current[i] = p+max_value;
+        if(delta< 0) current[i] = p-max_value;
+      }
+    }
+  }
+
+  template <typename FloatType>
+  void
   truncate_shifts(
     af::ref<FloatType> shifts,
     FloatType const& min_value,

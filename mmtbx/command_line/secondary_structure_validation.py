@@ -178,6 +178,7 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
   atoms = pdb_h.atoms()
   ss_log = cStringIO.StringIO()
   try:
+    if(pdb_inp is not None): pdb_structure = pdb_inp
     ss_annot = pdb_structure.extract_secondary_structure(log=ss_log)
   except Sorry as e:
     print >> out, " Syntax error in SS: %s" % e.message

@@ -3,6 +3,7 @@ from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from libtbx import adopt_init_args
+from cctbx import xray
 
 class target_and_gradients(object):
 
@@ -111,6 +112,7 @@ class lbfgs(object):
       assert selection_variable_real_space.size() == sites_cart.size()
     else:
       selection_variable_real_space = flex.bool(sites_cart.size(), True)
+    O.x_previous = None
     O.states_collector = states_collector
     O.density_map = density_map
     O.weight_map = weight_map
@@ -150,7 +152,16 @@ class lbfgs(object):
       O.number_of_function_evaluations += 1
       return O.f_start, O.g_start
     O.number_of_function_evaluations += 1
-    O.sites_cart_variable = flex.vec3_double(O.x)
+    #
+    x_current = O.x
+    if(O.x_previous is None):
+      O.x_previous = x_current.deep_copy()
+    else:
+      xray.ext.damp_shifts(previous=O.x_previous, current=x_current,
+        max_value=10.)
+      O.x_previous = x_current.deep_copy()
+    #
+    O.sites_cart_variable = flex.vec3_double(x_current)
     if (O.real_space_target_weight == 0):
       rs_f = 0.
       rs_g = flex.vec3_double(O.sites_cart_variable.size(), (0,0,0))

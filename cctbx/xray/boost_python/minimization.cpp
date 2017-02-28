@@ -38,6 +38,15 @@ namespace cctbx { namespace xray { namespace boost_python {
   {
     using namespace boost::python;
 
+    def("damp_shifts",
+      (void(*)(
+        af::const_ref<double> const&,
+        af::ref<double>,
+        double const&)) minimization::damp_shifts, (
+          arg("previous"),
+          arg("current"),
+          arg("max_value")));
+
     def("truncate_shifts",
       (void(*)(
         af::ref<double>,
