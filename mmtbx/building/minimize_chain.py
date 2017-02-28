@@ -260,6 +260,7 @@ def run_one_cycle(
     map_data           = map_data,
     restraints_manager = restraints_manager,
     states             = states,
+    resolution         = params.crystal_info.resolution,
     mode               = params.control.mode,
     nproc              = params.control.nproc,
     show               = False,

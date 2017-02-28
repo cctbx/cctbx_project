@@ -162,6 +162,7 @@ class run(object):
         pdb_hierarchy,
         map_data,
         restraints_manager,
+        resolution=None,
         mode="quick",
         target_bond_rmsd=0.02,
         target_angle_rmsd=2.0,
@@ -235,6 +236,7 @@ class run(object):
     from mmtbx.building.merge_models import run as merge_models
     pdb_hierarchy_merged = merge_models(
       map_data         = self.map_data,
+      resolution       = self.resolution,
       pdb_hierarchy    = pdb_hierarchy,
       crystal_symmetry = self.xray_structure.crystal_symmetry(),
       out              = self.log)
