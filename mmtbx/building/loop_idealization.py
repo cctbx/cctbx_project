@@ -359,22 +359,14 @@ class loop_idealization():
       # print "  moving_ref_atoms_iseqs", moving_ref_atoms_iseqs
       print "  moving_h resseqs:", [x.resseq for x in moving_h.residue_groups()]
       moving_h_set = None
-      if change_all:
-        moving_h_set = starting_conformations.get_all_starting_conformations(
-            moving_h,
-            change_radius,
-            direction_forward=direction_forward,
-            cutoff=self.params.variant_number_cutoff,
-            # log=self.log,
-            )
-      else:
-        moving_h_set = starting_conformations.get_starting_conformations(
-            moving_h,
-            direction_forward=direction_forward,
-            cutoff=self.params.variant_number_cutoff,
-            # log=self.log,
-            )
-
+      moving_h_set = starting_conformations.get_all_starting_conformations(
+          moving_h,
+          change_radius,
+          direction_forward=direction_forward,
+          cutoff=self.params.variant_number_cutoff,
+          change_all=change_all,
+          # log=self.log,
+          )
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
         # or there's a bug in get_starting_conformations
@@ -630,7 +622,7 @@ def get_res_nums_around(pdb_hierarchy, center_resnum, n_following, n_previous,
     if f_end_res_num == hy36decode(4, center_resnum):
       f_end_res_num += 1
     if f_start_res_num == hy36decode(4,center_resnum):
-      f_end_res_num -= 1
+      f_start_res_num -= 1
     return hy36encode(4, f_start_res_num), hy36encode(4, f_end_res_num)
   else:
     res = []

@@ -28,6 +28,9 @@ verbose = -1
   .style = hidden
 output_prefix = None
   .type = str
+ignore_annotation_in_file = False
+  .type = bool
+  .help = ignore annotation that is present in input file
 file_name = None
   .type = path
   .multiple = True
@@ -50,6 +53,7 @@ choosen format instead.
 Usage examples:
   phenix.secondary_structure_restraints model.pdb
   phenix.secondary_structure_restraints model.pdb format=phenix_refine
+  phenix.secondary_structure_restraints model.pdb ignore_annotation_in_file=True
   phenix.secondary_structure_restraints model.pdb search_method=from_ca
 
 Full scope of parameters:
@@ -133,7 +137,8 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")
   ss_from_file = None
-  if hasattr(pdb_structure, "extract_secondary_structure"):
+  if (hasattr(pdb_structure, "extract_secondary_structure") and
+      not work_params.ignore_annotation_in_file):
     ss_from_file = pdb_structure.extract_secondary_structure()
   m = manager(pdb_hierarchy=pdb_hierarchy,
     geometry_restraints_manager=geometry,

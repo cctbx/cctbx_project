@@ -437,7 +437,7 @@ in the input data.""")
 The correlation of half-datasets (CC1/2)in the outer resolution shell suggests
 that the useful resolution range may extend beyond the cutoff used in the input
 data.""")
-    elif (self.cc_one_half_outer > CC_ONE_HALF_OUTER_POOR) :
+    elif (self.cc_one_half_outer < CC_ONE_HALF_OUTER_POOR) :
       out.warn("""\
 The correlation of half-datasets (CC1/2)in the outer resolution shell suggests
 that the useful resolution range may be lower than that of the input data.""")

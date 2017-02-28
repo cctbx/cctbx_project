@@ -59,13 +59,15 @@ namespace {
                    arg("parameterization")))
     ;
 
-    //def("modify_gradients_cpp",
-    //      (af::shared<scitbx::vec3<double> >(*)
-    //          (af::shared<scitbx::vec3<double> >,
-    //           boost::python::list const& )) modify_gradients_cpp,
-    //             (arg("gradients"),
-    //              arg("parameterization")))
-    //;
+    def("modify_gradients_cpp",
+          (af::shared<scitbx::vec3<double> >(*)
+              (af::shared<scitbx::vec3<double> >,
+               af::shared<vec3<double> > const&,
+               boost::python::list const& )) modify_gradients_cpp,
+                 (arg("gradients"),
+                  arg("sites_cart"),
+                  arg("parameterization")))
+    ;
 
   }
 

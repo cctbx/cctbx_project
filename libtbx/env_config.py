@@ -1113,7 +1113,7 @@ Wait for the command to finish, then try again.""" % vars())
       if tmp_reloc.endswith('.py') and cmd.find('-Qnew')>-1:
         print >> f, 'elif [ -n "$LIBTBX__CPROFILE_FLAG__" ]; then'
         print >> f, '  exec %s "$@"' % cmd.replace(
-          '-Qnew', 
+          '-Qnew',
           '-Qnew -m cProfile -o %s.profile' % os.path.basename(target_file.relocatable),
           )
       print >> f, "elif [ $# -eq 0 ]; then"

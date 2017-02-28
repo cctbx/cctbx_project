@@ -19,7 +19,7 @@ cctbx.xfel.plot_run_stats_from_experiments . d_min=2.0
 """
 
 phil_str = """
-  d_min = None
+  d_min = 2.0
     .type = float
     .help = High resolution bin for the I/sig(I) plot and per-run statistics.
   n_strong_cutoff = 40
@@ -30,7 +30,8 @@ phil_str = """
     .help = Avg. I/sig(I) in a bin to reach the cutoff for producing a spot (low or high res) in the third plot.
   run_tags = None
     .type = str
-    .help = Space-delimited string of tags to be applied as labels to the runs.
+    .multiple = True
+    .help = Tags to be applied as labels to the runs.
   minimalist = False
     .type = bool
     .help = Generate final plot without run tags, per-run text summaries or vertical lines between runs.
@@ -124,7 +125,7 @@ def run(args):
     all_results.append((timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high))
 
   plot_multirun_stats(all_results, runs, params.d_min, n_strong_cutoff=params.n_strong_cutoff, \
-    i_sigi_cutoff=params.i_sigi_cutoff, run_tags=params.run_tags.split(" "), \
+    i_sigi_cutoff=params.i_sigi_cutoff, run_tags=params.run_tags, \
     minimalist=params.minimalist, interactive=True, compress_runs=params.compress_runs, \
     title=params.title)
 

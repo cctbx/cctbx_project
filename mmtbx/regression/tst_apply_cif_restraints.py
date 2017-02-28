@@ -5,27 +5,27 @@ from libtbx import easy_run
 preamble='apply_cif_restraints'
 
 files = {"%s.pdb" % preamble : '''
-HETATM    1  C01 LIG A   1      -1.100   0.000  -0.436  1.00 20.00      A    C  
-HETATM    2  C02 LIG A   1       0.428   0.000  -0.436  1.00 20.00      A    C  
-HETATM    3  C03 LIG A   1       1.007   0.000   0.977  1.00 20.00      A    C  
-HETATM    4  O04 LIG A   1       1.245  -1.090   1.560  1.00 20.00      A    O  
+HETATM    1  C01 LIG A   1      -1.100   0.000  -0.436  1.00 20.00      A    C
+HETATM    2  C02 LIG A   1       0.428   0.000  -0.436  1.00 20.00      A    C
+HETATM    3  C03 LIG A   1       1.007   0.000   0.977  1.00 20.00      A    C
+HETATM    4  O04 LIG A   1       1.245  -1.090   1.560  1.00 20.00      A    O
 HETATM    5  O07 LIG A   1       1.245   1.090   1.560  1.00 20.00      A    O-1
-HETATM    6 H011 LIG A   1      -1.461  -0.885   0.075  1.00 20.00      A    H  
-HETATM    7 H012 LIG A   1      -1.461   0.885   0.075  1.00 20.00      A    H  
-HETATM    8 H013 LIG A   1      -1.461   0.000  -1.457  1.00 20.00      A    H  
-HETATM    9 H021 LIG A   1       0.778   0.881  -0.959  1.00 20.00      A    H  
-HETATM   10 H022 LIG A   1       0.778  -0.881  -0.959  1.00 20.00      A    H  
-HETATM    1  C01 LIG B   1       9.290  -0.103  -0.646  1.00 20.00      A    C  
-HETATM    2  C02 LIG B   1      10.237  -0.103  -0.646  1.00 20.00      A    C  
-HETATM    3  C03 LIG B   1      10.816  -0.103   0.767  1.00 20.00      A    C  
-HETATM    4  O04 LIG B   1      10.767  -1.086   1.427  1.00 20.00      A    O  
-HETATM    5  O05 LIG B   1      11.405   1.058   1.282  1.00 20.00      A    O  
-HETATM    6 H011 LIG B   1       9.652  -1.043  -0.246  1.00 20.00      A    H  
-HETATM    7 H012 LIG B   1       9.652   0.713  -0.032  1.00 20.00      A    H  
-HETATM    8 H013 LIG B   1       9.652   0.020  -1.660  1.00 20.00      A    H  
-HETATM    9 H021 LIG B   1      10.588   0.778  -1.169  1.00 20.00      A    H  
-HETATM   10 H022 LIG B   1      10.588  -0.985  -1.169  1.00 20.00      A    H  
-HETATM   11 H051 LIG B   1      11.846   0.855   2.091  1.00 20.00      A    H  
+HETATM    6 H011 LIG A   1      -1.461  -0.885   0.075  1.00 20.00      A    H
+HETATM    7 H012 LIG A   1      -1.461   0.885   0.075  1.00 20.00      A    H
+HETATM    8 H013 LIG A   1      -1.461   0.000  -1.457  1.00 20.00      A    H
+HETATM    9 H021 LIG A   1       0.778   0.881  -0.959  1.00 20.00      A    H
+HETATM   10 H022 LIG A   1       0.778  -0.881  -0.959  1.00 20.00      A    H
+HETATM    1  C01 LIG B   1       9.290  -0.103  -0.646  1.00 20.00      A    C
+HETATM    2  C02 LIG B   1      10.237  -0.103  -0.646  1.00 20.00      A    C
+HETATM    3  C03 LIG B   1      10.816  -0.103   0.767  1.00 20.00      A    C
+HETATM    4  O04 LIG B   1      10.767  -1.086   1.427  1.00 20.00      A    O
+HETATM    5  O05 LIG B   1      11.405   1.058   1.282  1.00 20.00      A    O
+HETATM    6 H011 LIG B   1       9.652  -1.043  -0.246  1.00 20.00      A    H
+HETATM    7 H012 LIG B   1       9.652   0.713  -0.032  1.00 20.00      A    H
+HETATM    8 H013 LIG B   1       9.652   0.020  -1.660  1.00 20.00      A    H
+HETATM    9 H021 LIG B   1      10.588   0.778  -1.169  1.00 20.00      A    H
+HETATM   10 H022 LIG B   1      10.588  -0.985  -1.169  1.00 20.00      A    H
+HETATM   11 H051 LIG B   1      11.846   0.855   2.091  1.00 20.00      A    H
 ''',
   '%s_01.cif' % preamble : '''
 data_comp_list
@@ -114,7 +114,7 @@ _chem_comp_tor.value_angle
 _chem_comp_tor.value_angle_esd
 _chem_comp_tor.period
 LIG Var_01         O04     C03     C02     C01          90.00  30.0 2
-LIG Var_02        H011     C01     C02     C03         -60.00  30.0 3  
+LIG Var_02        H011     C01     C02     C03         -60.00  30.0 3
   ''',
   '%s_02.cif' % preamble : '''
 data_comp_list
@@ -223,7 +223,7 @@ LIG plan-1   H051 0.020
   '%s.eff' % preamble : '''
 pdb_interpretation {
   apply_cif_restraints {
-    restraints_file_name=%s_02.cif 
+    restraints_file_name=%s_02.cif
     residue_selection="chain B and resname LIG"
   }
 }
@@ -244,7 +244,6 @@ def run():
   print 'rc',rc
   assert rc==0
   return rc
-  
+
 if __name__=="__main__":
   run()#sys.argv[1])
-  

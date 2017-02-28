@@ -9,10 +9,8 @@ import mmtbx.refinement.geometry_minimization
 import scitbx.lbfgs
 import cctbx.geometry_restraints
 from mmtbx.hydrogens import riding
-from mmtbx.hydrogens import parameterization
 #from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 #import iotbx.phil
-
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for all H geometries
 # for each fragment, the coordinates are minimized before computation of

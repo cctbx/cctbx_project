@@ -30,6 +30,13 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Map coeffs label
       .style = renderer:draw_map_arrays_widget
 
+    pdb_file = None
+      .type = path
+      .help = If a model is supplied, the map will be adjusted to \
+                maximize map-model correlation.  This can be used \
+                to improve a map in regions where no model is yet \
+                built.
+      .short_caption = Model file
   }
 
   output_files
@@ -133,6 +140,20 @@ master_phil = iotbx.phil.parse("""
        .help = Sharpening will be applied using d_min equal to \
              d_min_ratio times resolution. Default is 0.833
 
+     rmsd = None
+       .type = float
+       .short_caption = RMSD of model
+       .help = RMSD of model to true model (if supplied).  Used to \
+             estimate expected fall-of with resolution of correct part \
+             of model-based map. If None, assumed to be resolution/3.
+
+     fraction_complete = None
+       .type = float
+       .short_caption = Completeness model
+       .help = Completness of model (if supplied).  Used to \
+             estimate correct part \
+             of model-based map. If None, estimated from max(FSC).
+
      auto_sharpen = None
        .type = bool
        .short_caption = Automatically determine sharpening
@@ -172,6 +193,13 @@ master_phil = iotbx.phil.parse("""
            strong.  Note 2: if k_sharpen is zero or None, then no \
            transition is applied and all data is sharpened or blurred. \
            Default is 10.
+
+
+     maximum_low_b_adjusted_sa = 0.
+       .type = float
+       .short_caption = Max low-B adjusted_sa
+       .help = Require adjusted surface area to be this value or less \
+               when map is highly sharpened (at value of search_b_min).
 
      search_b_min = None
        .type = float
@@ -278,6 +306,7 @@ def get_params(args,out=sys.stdout):
   command_line = iotbx.phil.process_command_line_with_files(
     reflection_file_def="input_files.map_coeffs_file",
     map_file_def="input_files.map_file",
+    pdb_file_def="input_files.pdb_file",
     args=args,
     master_phil=master_phil)
 
@@ -309,7 +338,7 @@ def get_map_coeffs_from_file(
       if not map_coeffs_labels or labels==map_coeffs_labels:  # take it
          return ma
 
-def get_map(params=None,out=sys.stdout):
+def get_map_and_model(params=None,out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
   if params.input_files.map_file:
@@ -348,7 +377,27 @@ def get_map(params=None,out=sys.stdout):
   if params.crystal_info.resolution is None:
     raise Sorry("Need resolution if map is supplied")
 
-  return map_data,crystal_symmetry,acc
+  if params.input_files.pdb_file: # get model
+    model_file=params.input_files.pdb_file
+    if not os.path.isfile(model_file):
+      raise Sorry("Missing the model file: %s" %(model_file))
+    pdb_inp=iotbx.pdb.input(file_name=model_file)
+    if origin_frac != (0,0,0):
+      print >>out,"Shifting model by %s" %(str(origin_frac))
+      from cctbx.maptbx.segment_and_split_map import \
+         apply_shift_to_pdb_hierarchy
+      origin_shift=crystal_symmetry.unit_cell().orthogonalize(
+         (-origin_frac[0],-origin_frac[1],-origin_frac[2]))
+      pdb_inp=apply_shift_to_pdb_hierarchy(
+       origin_shift=origin_shift,
+       crystal_symmetry=crystal_symmetry,
+       pdb_hierarchy=pdb_inp.construct_hierarchy(),
+       out=out).as_pdb_input()
+
+  else:
+    pdb_inp=None
+
+  return pdb_inp,map_data,crystal_symmetry,acc
 
 
 def run(args,out=sys.stdout):
@@ -357,7 +406,8 @@ def run(args,out=sys.stdout):
 
   # get map_data and crystal_symmetry
 
-  map_data,crystal_symmetry,acc=get_map(params=params,out=out)
+  pdb_inp,map_data,crystal_symmetry,acc=get_map_and_model(
+     params=params,out=out)
 
   # NOTE: map_data is now relative to origin at (0,0,0).
   # Use map_data.reshape(acc) to put it back where it was if acc is not None
@@ -386,10 +436,15 @@ def run(args,out=sys.stdout):
         search_b_min=params.map_modification.search_b_min,
         search_b_max=params.map_modification.search_b_max,
         search_b_n=params.map_modification.search_b_n,
+        maximum_low_b_adjusted_sa=\
+           params.map_modification.maximum_low_b_adjusted_sa,
         b_iso=params.map_modification.b_iso,
         b_sharpen=params.map_modification.b_sharpen,
         resolution_dependent_b=\
            params.map_modification.resolution_dependent_b,
+        pdb_inp=pdb_inp,
+        rmsd=params.map_modification.rmsd,
+        fraction_complete=params.map_modification.fraction_complete,
         out=out)
 
   # get map_data and map_coeffs of final map
@@ -397,11 +452,12 @@ def run(args,out=sys.stdout):
   new_map_data=si.as_map_data()
   new_map_coeffs=si.as_map_coeffs()
 
-  print >>out
-  print >>out,80*"=","\n",80*"="
-  print >>out,"\n           Final sharpening information\n "
-  si.show_summary(verbose=params.control.verbose,out=out)
-  print >>out,80*"=","\n",80*"="
+  if not si.is_model_sharpening():
+    print >>out
+    print >>out,80*"=","\n",80*"="
+    print >>out,"\n           Final sharpening information\n "
+    si.show_summary(verbose=params.control.verbose,out=out)
+    print >>out,80*"=","\n",80*"="
 
   # write out the new map_coeffs and map if requested:
 

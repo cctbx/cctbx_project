@@ -42,9 +42,9 @@ def exercise(pdb_str, eps):
     compute_gradients = True).gradients
 
   hd_selection = xray_structure.hd_selection()
-  g_analytical_reduced = riding_h_manager.gradients_reduced(
+  g_analytical_reduced = riding_h_manager.gradients_reduced_cpp(
+    gradients    = g_analytical,
     sites_cart   = sites_cart,
-    grads        = g_analytical,
     hd_selection = hd_selection)
 
   #
@@ -75,7 +75,6 @@ def exercise(pdb_str, eps):
   g_fd_reduced = g_fd.select(~hd_selection)
 
   for g1, g2 in zip(g_analytical_reduced, g_fd_reduced):
-    #print g1,g2
     assert approx_equal(g1,g2, 1.e-4)
 
 

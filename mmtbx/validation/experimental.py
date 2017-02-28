@@ -148,7 +148,7 @@ class real_space (validation) :
   """
 
   __slots__ = validation.__slots__ + \
-              [ 'everything', 'protein', 'other', 'water' ]
+              [ 'overall_rsc', 'everything', 'protein', 'other', 'water' ]
   program_description = "Analyze real space correlation"
   output_header = None
   gui_list_headers = [ "Residue", "B_iso", "Occupancy", "2Fo-Fc", "Fmodel", "CC" ]
@@ -173,6 +173,8 @@ class real_space (validation) :
     aa_codes = one_letter_given_three_letter.keys()
 
     # redo real_space_corelation.simple to use map objects instead of filenames
+    self.overall_rsc = None
+    rsc = None
     try :
       rsc_params = real_space_correlation.master_params().extract()
       rsc_params.detail="residue"
@@ -184,7 +186,7 @@ class real_space (validation) :
           molprobity_map_params.map_coefficients_file_name
         rsc_params.map_coefficients_label = \
           molprobity_map_params.map_coefficients_label
-      rsc = real_space_correlation.simple(
+      self.overall_rsc, rsc = real_space_correlation.simple(
         fmodel=fmodel,
         pdb_hierarchy=pdb_hierarchy,
         params=rsc_params,
@@ -192,6 +194,7 @@ class real_space (validation) :
     except Exception, e :
       raise
     else :
+      assert ( (self.overall_rsc is not None) and (rsc is not None) )
       for i, result_ in enumerate(rsc) :
         result = residue_real_space(
           chain_id=result_.chain_id,

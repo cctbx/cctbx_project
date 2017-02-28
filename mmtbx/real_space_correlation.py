@@ -483,7 +483,7 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
     hydrogen_atom_radius = hydrogen_atom_radius)
   if(show_results):
     show(log=log, results=results, params=params, detail=detail)
-  return results
+  return overall_cc, results
 
 def show(log, results, detail, params=None, map_1_name=None, map_2_name=None):
   assert params is not None or [map_1_name,map_2_name].count(None)==0

@@ -91,10 +91,10 @@ class lbfgs(object):
     # -----------------------------------------------------
     # if use_riding hydrogen, modify the gradients
       if self.use_riding:
-        self.grads = self.riding_h_manager.gradients_reduced(
-          sites_cart          = self.xray_structure.sites_cart(),
-          grads               = self.grads,
-          hd_selection        = self.hd_selection)
+        self.grads = self.riding_h_manager.gradients_reduced_cpp(
+          gradients    = self.grads,
+          sites_cart   = self.xray_structure.sites_cart(),
+          hd_selection = self.hd_selection)
     # -----------------------------------------------------
       self.g = self.grads.as_double()
 
