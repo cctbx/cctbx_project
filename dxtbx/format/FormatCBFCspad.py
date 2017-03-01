@@ -235,6 +235,8 @@ class FormatCBFCspadInMemory(FormatCBFCspad):
 
   def __setstate__(self, state):
     # For pickling and copying, don't carry the cbf_handle
+    self._goniometer_instance = None
+    self._scan_instance = None
     self._detector_instance = state[0]
     self._beam_instance = state[1]
     self._raw_data = state[2]
