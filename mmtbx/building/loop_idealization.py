@@ -207,13 +207,13 @@ class loop_idealization():
               grm=self.grm,
               ss_annotation=self.secondary_structure_annotation,
               log=self.log)
-        self.resulting_pdb_h.write_pdb_file(file_name="%d%s_all_minized.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
-        ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
-        self.p_after_minimiaztion_rama_outliers = ram.out_percent
-        berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
-        duke_count = ram.get_outliers_count_and_fraction()[0]
-        self.berkeley_p_after_minimiaztion_rama_outliers = \
-            berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
+      self.resulting_pdb_h.write_pdb_file(file_name="%d%s_all_minized.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
+      ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
+      self.p_after_minimiaztion_rama_outliers = ram.out_percent
+      berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+      duke_count = ram.get_outliers_count_and_fraction()[0]
+      self.berkeley_p_after_minimiaztion_rama_outliers = \
+          berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after min:", berkeley_count, duke_count
       else:
@@ -311,20 +311,22 @@ class loop_idealization():
     result = math.sqrt((a1[0]-a2[0])**2 + (a1[1]-a2[1])**2 )
     return result
 
-  def ccd_solution_is_ok(self,
-      anchor_rmsd, mc_rmsd, n_outliers, ccd_radius,
-      change_all_angles, change_radius,
+  def ccd_solution_is_duplicated(self,
       final_angles,
-      tried_final_rama_angles_for_chain,
-      contains_ss_element):
+      tried_final_rama_angles_for_chain):
     # first checking for repeated solutions:
     for rn, angles in final_angles:
       if rn in tried_final_rama_angles_for_chain.keys():
         for previous_angles in tried_final_rama_angles_for_chain[rn]:
           if self.rangle_decart_dist(angles, previous_angles) < 20:
             print "Rejecting the same solution:", angles, previous_angles
-            return False
+            return True
+    return False
 
+  def ccd_solution_is_ok(self,
+      anchor_rmsd, mc_rmsd, n_outliers, ccd_radius,
+      change_all_angles, change_radius,
+      contains_ss_element):
 
     # then checking rmsd
     adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0, 4:4.5, 5:5.5, 6:7.0, 7:8.5, 8:10.0}
@@ -598,8 +600,12 @@ class loop_idealization():
             # tried_rama_angles_for_chain[three[1].resseq].append(angle_pair)
             # print >> self.log, "Ended up with", three[1].resseq, "%.1f %.1f" % (ps_angles[0], ps_angles[1])
         # print "Updated tried_rama_angles_for_chain:", tried_rama_angles_for_chain
-
-        all_results.append((moved_with_side_chains_h.deep_copy(), mc_rmsd, resulting_rmsd, map_target, n_iter))
+        if (not self.ccd_solution_is_duplicated(
+            final_angles=final_angles,
+            tried_final_rama_angles_for_chain=tried_final_rama_angles_for_chain)):
+          all_results.append((moved_with_side_chains_h.deep_copy(), mc_rmsd, resulting_rmsd, map_target, n_iter))
+        else:
+          continue
         if self.ccd_solution_is_ok(
             anchor_rmsd=resulting_rmsd,
             mc_rmsd=mc_rmsd,
@@ -607,8 +613,6 @@ class loop_idealization():
             ccd_radius=ccd_radius,
             change_all_angles=change_all,
             change_radius=change_radius,
-            final_angles=final_angles,
-            tried_final_rama_angles_for_chain=tried_final_rama_angles_for_chain,
             contains_ss_element=contains_ss_element):
           print "Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter
           # Save to tried_ccds
@@ -672,7 +676,7 @@ class loop_idealization():
       # with the smallest rmsd given satisfactory closure
       print >> self.log, "Applying the best found variant:",
       i = 0
-      while i < len(all_results) and all_results[i][2] > 0.1:
+      while i < len(all_results) and all_results[i][2] > 1.5:
         i += 1
       # apply
       # === duplication!!!!
@@ -682,18 +686,28 @@ class loop_idealization():
           print >> self.log, "minimizing..."
           # all_results[i][0].write_pdb_file(
           #     file_name="%s_result_before_min_%d.pdb" % (prefix, i))
-          minimize_wrapper_for_ramachandran(
-              hierarchy=all_results[i][0],
-              xrs=xrs,
-              original_pdb_h=original_pdb_h,
-              log=self.log,
-              ss_annotation=self.secondary_structure_annotation)
+          if self.reference_map is None:
+            minimize_wrapper_for_ramachandran(
+                hierarchy=all_results[i][0],
+                xrs=xrs,
+                original_pdb_h=original_pdb_h,
+                log=self.log,
+                grm=self.grm,
+                ss_annotation=self.secondary_structure_annotation)
+          else:
+            mwwm = minimize_wrapper_with_map(
+                pdb_h=all_results[i][0],
+                xrs=xrs,
+                target_map=self.reference_map,
+                grm=self.grm,
+                ss_annotation=self.secondary_structure_annotation,
+                log=self.log)
         # all_results[i][0].write_pdb_file(
         #     file_name="%s_result_minimized_%d.pdb" % (prefix, i))
         final_rmsd = get_main_chain_rmsd_range(all_results[i][0],
             original_pdb_h, placing_range)
         print >> self.log, "FINAL RMSD after minimization:", final_rmsd
-        return moved_with_side_chains_h
+        return all_results[i][0]
       else:
         print >> self.log, " NOT FOUND!"
         for i in all_results:

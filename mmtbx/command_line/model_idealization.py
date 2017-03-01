@@ -451,6 +451,8 @@ class model_idealization():
         pdb_hierarchy=self.whole_pdb_h)
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
       self.ann = self.pdb_input.extract_secondary_structure()
+      if self.ann is not None:
+        self.ann.remove_empty_annotations(self.whole_pdb_h)
     self.filtered_whole_ann = None
     if self.ann is not None:
       self.filtered_whole_ann = self.ann.deep_copy()
@@ -895,7 +897,7 @@ class model_idealization():
       m_c_id = m_c.only_model().chains()[0].id
       for chain in whole_h.only_model().chains():
         if chain.id == m_c_id:
-          if chain.atoms_size() == master_iselection.size():
+          if chain.atoms_size() <= master_iselection.size():
             return True
           else:
             return False

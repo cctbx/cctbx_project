@@ -833,6 +833,7 @@ class annotation(structure_base):
     self.sheets = self.sheets + new_sheets
     if len(new_sheets) > 0:
       self.reset_sheet_ids()
+    self.remove_short_annotations()
 
   def reset_sheet_ids(self):
     import itertools, string

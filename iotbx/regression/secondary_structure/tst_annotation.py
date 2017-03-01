@@ -1536,9 +1536,9 @@ def tst_filter_sheets_with_long_hbonds():
   h = inp.construct_hierarchy()
   ann = original_ann.deep_copy()
   ann.filter_sheets_with_long_hbonds(hierarchy=h)
-  # print ann
-  assert ann.get_n_helices() == 1
-  assert ann.get_n_sheets() == 3
+  print ann
+  assert ann.get_n_helices() == 1, ann.get_n_helices()
+  assert ann.get_n_sheets() == 2, ann.get_n_sheets() # with filtering out short ones
 
 def tst_filter_sheets_with_long_hbonds2():
   """ bug found in 4a7h where ksdssp defines sheet 200 residues long sheet for
