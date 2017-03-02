@@ -77,8 +77,9 @@ class manager(object):
     return new_gradients
 
   def diagnostics(self, sites_cart, threshold):
-    #h_connectivity = self.h_connectivity
     h_distances = {}
+    unk_list = self.parameterization_manager.unk_list
+    unk_ideal_list = self.parameterization_manager.unk_ideal_list
     long_distance_list, list_h, type_list = [], [], []
     for rc in self.parameterization_cpp:
       ih = rc.ih
@@ -93,15 +94,21 @@ class manager(object):
       type_list.append(rc.htype)
       if (h_distance > threshold):
         long_distance_list.append(ih)
-    #set_temp = set(list_h)
+    all_h_in_para = list_h + unk_list + unk_ideal_list
+    list_h_connect = []
+    for item in self.h_connectivity:
+      if (item):
+        list_h_connect.append(item.ih)
     #set_temp = set(list(h_parameterization.keys()))
-    #slipped = [x for x in h_connectivity if x not in set_temp]
+    slipped = [x for x in list_h_connect if x not in set(all_h_in_para)]
     return group_args(
       h_distances        = h_distances,
-      unk_list           = self.parameterization_manager.unk_list,
-      unk_ideal_list     = self.parameterization_manager.unk_ideal_list,
+      unk_list           = unk_list,
+      unk_ideal_list     = unk_ideal_list,
       long_distance_list = long_distance_list,
-#      slipped            = slipped,
+      slipped            = slipped,
       type_list          = type_list,
       number_h_para      = len(list_h),
-      threshold          = threshold)
+      n_connect          = len(list_h_connect),
+      threshold          = threshold,
+      double_H           = self.double_H)
