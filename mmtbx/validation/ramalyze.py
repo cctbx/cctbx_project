@@ -471,9 +471,13 @@ def get_psi(atoms, next_atoms):
     return mmtbx.rotamer.psi_from_atoms(resN, resCA, resC, nextN)
 
 def get_omega_atoms(three):
-  ccn1, outl1 = get_c_ca_n(three[1])
-  ccn2, outl2 = get_c_ca_n(three[2])
-  ca1, c, n, ca2 = ccn1[1], ccn1[0], ccn2[2], ccn2[1]
+  ccn1, outl1 = get_c_ca_n(three[0])
+  ccn2, outl2 = get_c_ca_n(three[1])
+  if ccn1: ca1, c = ccn1[1], ccn1[0]
+  else: ca1, c = None, None
+  if ccn2: n, ca2 = ccn2[2], ccn2[1]
+  else: n, ca2 = None, None
+  #ca1, c, n, ca2 = ccn1[1], ccn1[0], ccn2[2], ccn2[1]
   omega_atoms = [ca1, c, n, ca2]
   return omega_atoms
 
