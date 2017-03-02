@@ -1729,12 +1729,26 @@ def map_coeffs_to_fp(map_coeffs):
   return amplitudes
 
 def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
-     out=sys.stdout):
+     k_sol=0.35, b_sol=50., out=sys.stdout):
   xray_structure=pdb_inp.construct_hierarchy().extract_xray_structure(
      crystal_symmetry=f_array.crystal_symmetry())
 
   model_f_array=f_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
+
+  # now apply k_sol b_sol
+  if k_sol:
+    from mmtbx.f_model import manager 
+    fmodel = manager(
+      xray_structure = xray_structure,
+      f_obs          = abs(model_f_array),
+      b_cart         = [0,0,0,0,0,0], # overall anisotropic scale matrix
+      k_sol          = k_sol,
+      b_sol          = b_sol)
+    model_f_array = fmodel.f_model()
+
+
+
   return model_f_array
 
 def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
