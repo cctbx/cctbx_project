@@ -272,6 +272,16 @@ master_phil = iotbx.phil.parse("""
         .short_caption = Shift used in calculation of derivatives for \
            sharpening maximization.  Default is 0.01 for kurtosis and 0.5 for \
            adjusted_sa.
+
+      k_sol = 0.35
+        .type = float
+        .help = k_sol value for model map calculation
+        .short_caption = k_sol
+  
+      b_sol = 50
+        .type = float
+        .help = b_sol value for model map calculation
+        .short_caption = b_sol
   }
 
    control
@@ -446,6 +456,8 @@ def run(args,out=sys.stdout):
            params.map_modification.resolution_dependent_b,
         pdb_inp=pdb_inp,
         rmsd=params.map_modification.rmsd,
+        b_sol=params.map_modification.b_sol,
+        k_sol=params.map_modification.k_sol,
         fraction_complete=params.map_modification.fraction_complete,
         out=out)
 

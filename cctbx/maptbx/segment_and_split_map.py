@@ -440,6 +440,16 @@ master_phil = iotbx.phil.parse("""
         .short_caption = Shift used in calculation of derivatives for \
            sharpening maximization.  Default is 0.01 for kurtosis and 0.5 for \
            adjusted_sa.
+
+      k_sol = 0.35
+        .type = float
+        .help = k_sol value for model map calculation
+        .short_caption = k_sol
+  
+      b_sol = 50
+        .type = float
+        .help = b_sol value for model map calculation
+        .short_caption = b_sol
   }
 
   segmentation {
@@ -1233,6 +1243,8 @@ class sharpening_info:
       d_min=None,
       d_min_ratio=None,
       rmsd=None,
+      k_sol=None,
+      b_sol=None,
       fraction_complete=None,
       wrapping=None,
       sharpening_target=None,
@@ -1340,6 +1352,8 @@ class sharpening_info:
       self.max_regions_to_test=params.map_modification.max_regions_to_test
       self.d_min_ratio=params.map_modification.d_min_ratio
       self.rmsd=params.map_modification.rmsd
+      self.k_sol=params.map_modification.k_sol
+      self.b_sol=params.map_modification.b_sol
       self.fraction_complete=params.map_modification.fraction_complete
       self.resolution=params.crystal_info.resolution  # changed from d_cut
       #  NOTE:
@@ -1729,7 +1743,7 @@ def map_coeffs_to_fp(map_coeffs):
   return amplitudes
 
 def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
-     k_sol=0.35, b_sol=50., out=sys.stdout):
+     k_sol=None, b_sol=None, out=sys.stdout):
   xray_structure=pdb_inp.construct_hierarchy().extract_xray_structure(
      crystal_symmetry=f_array.crystal_symmetry())
 
@@ -1746,8 +1760,6 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
       k_sol          = k_sol,
       b_sol          = b_sol)
     model_f_array = fmodel.f_model()
-
-
 
   return model_f_array
 
@@ -5522,6 +5534,8 @@ def auto_sharpen_map_or_map_coeffs(
         map_coeffs=None,
         pdb_inp=None,
         rmsd=None,
+        k_sol=None,
+        b_sol=None,
         fraction_complete=None,
         n_real=None,
         solvent_content=None,
@@ -5583,6 +5597,8 @@ def auto_sharpen_map_or_map_coeffs(
         max_regions_to_test,
         fraction_occupied,
         rmsd,
+        k_sol,
+        b_sol,
         fraction_complete,
           ],
       ['box_in_auto_sharpen','resolution','d_min_ratio',
@@ -5598,6 +5614,8 @@ def auto_sharpen_map_or_map_coeffs(
        'max_regions_to_test',
        'fraction_occupied',
        'rmsd',
+       'k_sol',
+       'b_sol',
        'fraction_complete',
          ],):
      if x is not None:

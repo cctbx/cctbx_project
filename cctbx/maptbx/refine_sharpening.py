@@ -215,6 +215,8 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
      pdb_inp=pdb_inp,
      f_array=f_array,
      overall_b=overall_b,
+     k_sol=si.k_sol,
+     b_sol=si.b_sol,
      out=out)
 
   model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)
