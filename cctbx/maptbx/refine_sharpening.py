@@ -171,6 +171,7 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
 def scale_amplitudes(pdb_inp=None,map_coeffs=None,
     si=None,resolution=None,overall_b=None,
     fraction_complete=None,
+    verbose=False,
     out=sys.stdout):
 
   # Figure out resolution_dependent sharpening to optimally
@@ -218,19 +219,16 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
 
   model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)
   model_f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
-  model_f_array_normalized=quasi_normalize_structure_factors(
-        model_f_array,set_to_minimum=0.01)
 
   # Set overall_b....
   starting_b_iso=get_b_iso(model_f_array,d_min=resolution)
-  normalized_b_iso=get_b_iso(model_f_array_normalized,d_min=resolution)
-  model_f_array_normalized=\
-   model_f_array_normalized.apply_debye_waller_factors(
-      b_iso=overall_b-normalized_b_iso)
-  final_b_iso=get_b_iso(model_f_array_normalized,d_min=resolution)
+  model_f_array=\
+   model_f_array.apply_debye_waller_factors(
+      b_iso=overall_b-starting_b_iso)
+  final_b_iso=get_b_iso(model_f_array,d_min=resolution)
   print "Effective b_iso of initial and "+\
      "adjusted model map: %6.1f A**2  %6.1f A**2" %(starting_b_iso,final_b_iso)
-  model_map_coeffs_normalized=model_f_array_normalized.phase_transfer(
+  model_map_coeffs_normalized=model_f_array.phase_transfer(
      phase_source=model_phases,deg=True)
 
   # get f and model_f vs resolution and FSC vs resolution and apply
@@ -271,6 +269,9 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
     max_cc_estimate=max(0.,min(1.,max_cc_estimate))
     if max_possible_cc is None or (max_cc_estimate > max_possible_cc):
       max_possible_cc=max_cc_estimate
+    if verbose:
+      print >>out,"d_min: %5.1f  FC: %7.1f  FOBS: %7.1f   CC: %5.2f" %(
+      d_avg,rms_fc,rms_fo,cc)
 
   # Define overall CC based on model completeness (CC=sqrt(fraction_complete))
   if fraction_complete is None:

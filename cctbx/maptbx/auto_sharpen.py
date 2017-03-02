@@ -341,6 +341,8 @@ def get_map_coeffs_from_file(
 def get_map_and_model(params=None,out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
+  origin_frac=(0,0,0)
+  acc=None
   if params.input_files.map_file:
     from cctbx.maptbx.segment_and_split_map import get_map_object
     map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc=\
