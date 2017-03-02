@@ -373,8 +373,6 @@ def cmd_run(args, validated=False, out=sys.stdout):
   # crystal symmetry
   crystal_symmetry = None
   crystal_symmetry = inputs.crystal_symmetry
-  print >> out, "Working crystal symmetry after inspecting all inputs:"
-  crystal_symmetry.show_summary(f=out, prefix="  ")
   if (crystal_symmetry is None):
     crystal_symmetries = []
     for f in [str(params.model_file_name), str(params.reflection_file_name)]:
@@ -387,6 +385,8 @@ def cmd_run(args, validated=False, out=sys.stdout):
       if(not crystal_symmetries[0].is_similar_symmetry(crystal_symmetries[1])):
         raise Sorry("Crystal symmetry mismatch between different files.")
       crystal_symmetry = crystal_symmetries[0]
+  print >> out, "Working crystal symmetry after inspecting all inputs:"
+  crystal_symmetry.show_summary(f=out, prefix="  ")
   f_obs, r_free_flags = None, None
   rfs = reflection_file_utils.reflection_file_server(
     crystal_symmetry = crystal_symmetry,
