@@ -52,33 +52,30 @@ class determine_connectivity(object):
       self.geometry_restraints.shell_sym_tables[0].full_simple_connectivity()
     self.n_atoms = self.pdb_hierarchy.atoms_size()
     self.hd_sel = self.hd_selection()
+    self.names = list(self.atoms.extract_name())
     # self.h_connectivity = [None for i in range(self.n_atoms)]
     # ~7 times faster:
     self.h_connectivity = [None]*self.n_atoms
-    self.names = list(self.atoms.extract_name())
-
-    # 1. make empty list for h_connectivity
-    # self.initialize_connectivity() - one liner used once is a bit excessive
-
-    # 2. find parent atoms and ideal A0-H bond distances
+    # 1. find parent atoms and ideal A0-H bond distances
     self.find_first_neighbors()
     # Check that H atoms in connectivity and total number of H atoms is the same
+    self.connectivity_slipped = []
     self.count_H()
-    # 3. find preliminary list of second neighbors
+    # 2. find preliminary list of second neighbors
     self.find_second_neighbors_raw()
 
-    # 4. process preliminary list to eliminate atoms in double conformation
+    # 3. process preliminary list to eliminate atoms in double conformation
     self.process_second_neighbors()
 
-    # 5. Find third neighbors via dihedral proxies
+    # 4. Find third neighbors via dihedral proxies
     self.find_third_neighbors()
 
-    # 6. Find angles involving a0 and covalently bound non-H atoms
+    # 5. Find angles involving a0 and covalently bound non-H atoms
     # also: find preliminary list of third neighbors in cases where no dihedral
     # proxy is present
     self.determine_a0_angles_and_third_neighbors_without_dihedral()
 
-    # 7. assign the angles found previously and process preliminary list of
+    # 6. assign the angles found previously and process preliminary list of
     # third neighbors
     self.process_a0_angles_and_third_neighbors_without_dihedral()
 
@@ -396,25 +393,34 @@ class determine_connectivity(object):
           alt_conf_neighbors_temp.append(index)
     return alt_conf_neighbors_reduced
 
-
-  # def initialize_connectivity(self):
-  #   """Get a an array for all scatterers of the structure.
-  #   :returns: an array containing None for every atom
-  #   :rtype: []
-  #   """
-  #   self.h_connectivity = [None for i in range(self.n_atoms)]
-
   def count_H(self):
     """# Check if number H/D atoms in the hd_selection (= in the model) and
     in h_connectivity are the same"""
     number_h_1 = 0
     for h_bool in self.hd_sel:
-      # what about short notation to look nicer?:
       if h_bool: number_h_1 += 1
     number_h_2 = 0
     for item in self.h_connectivity:
-      if item: number_h_2 = number_h_2 + 1
-    assert (number_h_1 == number_h_2)
+      if item: number_h_2 += 1
+    if (number_h_1 != number_h_2):
+      self.find_mismatch()
+    #assert (number_h_1 == number_h_2)
+
+  def find_mismatch(self):
+    list_H_connect = []
+    list_H = []
+    for item in self.h_connectivity:
+      if item: list_H_connect.append(item.ih)
+    for atom in (self.pdb_hierarchy.atoms()):
+      if (atom.element_is_hydrogen()):
+        list_H.append(atom.i_seq)
+    slipped = [x for x in list_H if x not in set(list_H_connect)]
+    for hatom in slipped:
+      #if (not self.fsc0[hatom]):
+      labels = self.atoms[hatom].fetch_labels()
+      print 'atom: %s residue: %s chain %s' % (self.atoms[hatom].name,
+        labels.resseq.strip(), labels.chain_id), list(self.fsc0[hatom])
+    self.connectivity_slipped = slipped
 
   def hd_selection(self):
     """Get a selector array for all hydrogen and deuterium scatterers of the structure.
@@ -429,19 +435,8 @@ class determine_connectivity(object):
     # size array and access by elements...
 
     result = flex.bool()
+    self.list_H = []
     for atom in (self.pdb_hierarchy.atoms()):
       result.append(atom.element_is_hydrogen())
     return result
 
-  # This function is not used anywhere, probably this is the reason it
-  # does not generate syntax error (missing self)
-  # def is_same_element(iseq1, iseq2, atoms):
-  #   """Get a boolean if atom iseq1 and iseq2 have the same element.
-  #   :returns: a boolean value
-  #   :rtype: boolean
-  #   """
-  #   if (atoms[iseq1].element == atoms[iseq2].element):
-  #     result = True
-  #   else:
-  #     result =False
-  #   return result

@@ -31,6 +31,7 @@ class manager(object):
       geometry_restraints = geometry_restraints)
     self.h_connectivity = self.connectivity_manager.h_connectivity
     self.double_H = self.connectivity_manager.double_H
+    self.connectivity_slipped = self.connectivity_manager.connectivity_slipped
     self.parameterization_manager = parameterization.manager(
       h_connectivity         = self.h_connectivity,
       sites_cart             = sites_cart,
@@ -102,13 +103,14 @@ class manager(object):
     #set_temp = set(list(h_parameterization.keys()))
     slipped = [x for x in list_h_connect if x not in set(all_h_in_para)]
     return group_args(
-      h_distances        = h_distances,
-      unk_list           = unk_list,
-      unk_ideal_list     = unk_ideal_list,
-      long_distance_list = long_distance_list,
-      slipped            = slipped,
-      type_list          = type_list,
-      number_h_para      = len(list_h),
-      n_connect          = len(list_h_connect),
-      threshold          = threshold,
-      double_H           = self.double_H)
+      h_distances          = h_distances,
+      unk_list             = unk_list,
+      unk_ideal_list       = unk_ideal_list,
+      long_distance_list   = long_distance_list,
+      slipped              = slipped,
+      type_list            = type_list,
+      number_h_para        = len(list_h),
+      n_connect            = len(list_h_connect),
+      threshold            = threshold,
+      double_H             = self.double_H,
+      connectivity_slipped = self.connectivity_slipped)
