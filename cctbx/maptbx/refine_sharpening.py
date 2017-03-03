@@ -171,6 +171,7 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
 def scale_amplitudes(pdb_inp=None,map_coeffs=None,
     si=None,resolution=None,overall_b=None,
     fraction_complete=None,
+    min_fraction_complete=0.05,
     verbose=False,
     out=sys.stdout):
 
@@ -336,9 +337,14 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
 
   f_array_b_iso=get_b_iso(f_array,d_min=resolution)
 
-  scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
-  scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
-  print >>out,"\nInitial b_iso for "+\
+  if fraction_complete < min_fraction_complete:
+    scaled_f_array=f_array
+    print >>out,"\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
+      fraction_complete,min_fraction_complete) + "\nSkipping scaling"
+  else:  # apply scaling
+    scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
+    scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
+    print >>out,"\nInitial b_iso for "+\
       "map: %5.1f A**2     After adjustment: %5.1f A**2" %(
       f_array_b_iso,scaled_f_array_b_iso)
 
