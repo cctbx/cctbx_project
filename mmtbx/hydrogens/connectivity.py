@@ -1,9 +1,9 @@
 from __future__ import division
-#import sys
 import math
 from cctbx import geometry_restraints
 #from libtbx.utils import Sorry
 #from scitbx import matrix
+#import time
 from scitbx.array_family import flex
 from scitbx.math import dihedral_angle
 
@@ -170,6 +170,7 @@ class determine_connectivity(object):
     for neighbors in self.h_connectivity:
       if neighbors is None: continue
       ih = neighbors.ih
+      if (ih != 1620): continue
       labels = self.atoms[ih].fetch_labels()
       i_a0 = neighbors.a0['iseq']
       i_a1 = neighbors.a1['iseq']
@@ -191,6 +192,12 @@ class determine_connectivity(object):
         stringb1 = 'n/a'
       output = output + (stringh,) + (stringb1,)#+ (self.third_neighbors_raw[i_a0],)
       print '%s %s (%s) , %s (%s) , %s , %s,%s' % output
+      print 'angle_a1a0a2', neighbors.a0['angle_a1a0a2']
+      print 'angle_ideal a1', neighbors.a1['angle_ideal']
+      print 'angle_ideal a2', neighbors.a2['angle_ideal']
+      STOP()
+
+
 
   def determine_a0_angles_and_third_neighbors_without_dihedral(self):
     """Loop through angle proxies to find angles involving a0 and second
@@ -414,12 +421,13 @@ class determine_connectivity(object):
     for atom in (self.pdb_hierarchy.atoms()):
       if (atom.element_is_hydrogen()):
         list_H.append(atom.i_seq)
-    slipped = [x for x in list_H if x not in set(list_H_connect)]
-    for hatom in slipped:
-      #if (not self.fsc0[hatom]):
-      labels = self.atoms[hatom].fetch_labels()
-      print 'atom: %s residue: %s chain %s' % (self.atoms[hatom].name,
-        labels.resseq.strip(), labels.chain_id), list(self.fsc0[hatom])
+    set_list_H_connect = set(list_H_connect)
+    slipped = [x for x in list_H if x not in set_list_H_connect]
+    #for hatom in slipped:
+    #  #if (not self.fsc0[hatom]):
+    #  labels = self.atoms[hatom].fetch_labels()
+    #  print 'atom: %s residue: %s chain %s' % (self.atoms[hatom].name,
+    #    labels.resseq.strip(), labels.chain_id), list(self.fsc0[hatom])
     self.connectivity_slipped = slipped
 
   def hd_selection(self):
