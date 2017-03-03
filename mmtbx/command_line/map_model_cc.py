@@ -5,6 +5,7 @@ from __future__ import division
 from scitbx.array_family import flex
 import sys
 import iotbx.pdb
+from libtbx import group_args
 from libtbx.utils import Sorry
 import mmtbx.utils
 import mmtbx.maps.correlation
@@ -41,7 +42,7 @@ def broadcast(m, log):
   print >> log, m
   print >> log, "*"*len(m)
 
-def run(args, log=sys.stdout):
+def run(args, pdb_hierarchy=None, crystal_symmetry=None, log=sys.stdout):
   print >> log, "-"*79
   print >> log, legend
   print >> log, "-"*79
@@ -49,12 +50,16 @@ def run(args, log=sys.stdout):
     master_params = master_params())
   params = inputs.params.extract()
   # model
-  broadcast(m="Input PDB:", log=log)
-  file_names = inputs.pdb_file_names
-  if(len(file_names) != 1): raise Sorry("PDB file has to given.")
-  pi = iotbx.pdb.input(file_name = file_names[0])
-  h = pi.construct_hierarchy()
-  xrs = h.extract_xray_structure(crystal_symmetry=inputs.crystal_symmetry)
+  h = pdb_hierarchy
+  if (h is None):
+    broadcast(m="Input PDB:", log=log)
+    file_names = inputs.pdb_file_names
+    if(len(file_names) != 1): raise Sorry("PDB file has to given.")
+    pi = iotbx.pdb.input(file_name = file_names[0])
+    h = pi.construct_hierarchy()
+  if (crystal_symmetry is None):
+    crystal_symmetry = inputs.crystal_symmetry
+  xrs = h.extract_xray_structure(crystal_symmetry=crystal_symmetry)
   xrs.scattering_type_registry(table = params.scattering_table)
   xrs.show_summary(f=log, prefix="  ")
   # map
@@ -96,10 +101,27 @@ def run(args, log=sys.stdout):
   broadcast(m="Map-model CC:", log=log)
   # per residue
   print >> log, "Per residue:"
+  residue_results = list()
   for rg in h.residue_groups():
     cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
+    chain_id = rg.parent().id
     print >> log, "  chain id: %s resid %s: %6.4f"%(
-      rg.parent().id, rg.resid(), cc)
+      chain_id, rg.resid(), cc)
+    # GUI output, use first conformer
+    residue = rg.conformers()[0].residues()[0]
+    residue_results.append( group_args(
+      residue = residue,
+      chain_id = chain_id,
+      id_str = "%2s %1s %3s %4s %1s"%(
+        chain_id, rg.conformers()[0].altloc, residue.resname, residue.resseq,
+        residue.icode),
+      cc = cc,
+      map_value_1 = None,
+      map_value_2 = None,
+      b = flex.mean(residue.atoms().extract_b()),
+      occupancy = flex.mean(residue.atoms().extract_occ()),
+      n_atoms = residue.atoms().size()
+    ) )
   # per chain
   print >> log, "Per chain:"
   for chain in h.chains():
@@ -109,9 +131,11 @@ def run(args, log=sys.stdout):
   # entire box
   print >> log, "         box: %6.4f"%cc_calculator.cc()
   # all atoms
-  print >> log, "around atoms: %6.4f"%cc_calculator.cc(
+  overall_cc = cc_calculator.cc(
     selection=flex.bool(xrs.scatterers().size(),True))
+  print >> log, "around atoms: %6.4f"%overall_cc
   #
+  return overall_cc, residue_results
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

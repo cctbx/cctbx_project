@@ -184,6 +184,30 @@ class molprobity (slots_getstate_setstate) :
     self.crystal_symmetry = crystal_symmetry
     if (crystal_symmetry is None) and (fmodel is not None) :
       self.crystal_symmetry = fmodel.f_obs().crystal_symmetry()
+
+    # use maps (fmodel is not used)
+    # run earlier since pdb_hierarchy gets modified
+    use_maps = False
+    if (map_params is not None):
+      use_maps = ( (map_params.input.maps.map_file_name) or
+                   ( (map_params.input.maps.map_coefficients_file_name) and
+                     (map_params.input.maps.map_coefficients_label) ) )
+    if (use_maps):
+      if (flags.real_space):
+        self.real_space = experimental.real_space(
+          fmodel=None,
+          pdb_hierarchy=pdb_hierarchy,
+          crystal_symmetry=self.crystal_symmetry,
+          cc_min=min_cc_two_fofc,
+          molprobity_map_params=map_params.input.maps)
+      if (flags.waters):
+        self.waters = waters.waters(
+          pdb_hierarchy=pdb_hierarchy,
+          xray_structure=xray_structure,
+          fmodel=None,
+          collect_all=True,
+          molprobity_map_params=map_params.input.maps)
+
     self.header_info = header_info
     if (flags is None) :
       flags = molprobity_flags()
@@ -257,27 +281,6 @@ class molprobity (slots_getstate_setstate) :
         log=null_out(),
         include_secondary_structure=True,
         extract_coordinates=True)
-
-    # use maps (fmodel is not used)
-    use_maps = False
-    if (map_params is not None):
-      use_maps = ( (map_params.input.maps.map_file_name) or
-                   ( (map_params.input.maps.map_coefficients_file_name) and
-                     (map_params.input.maps.map_coefficients_label) ) )
-    if (use_maps):
-      if (flags.real_space):
-        self.real_space = experimental.real_space(
-          fmodel=None,
-          pdb_hierarchy=pdb_hierarchy,
-          cc_min=min_cc_two_fofc,
-          molprobity_map_params=map_params.input.maps)
-      if (flags.waters):
-        self.waters = waters.waters(
-          pdb_hierarchy=pdb_hierarchy,
-          xray_structure=xray_structure,
-          fmodel=None,
-          collect_all=True,
-          molprobity_map_params=map_params.input.maps)
 
     if (fmodel is not None) :
       if (use_pdb_header_resolution_cutoffs) and (header_info is not None) :

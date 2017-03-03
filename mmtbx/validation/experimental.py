@@ -157,7 +157,7 @@ class real_space (validation) :
 
   def get_result_class (self) : return residue_real_space
 
-  def __init__ (self, fmodel, pdb_hierarchy, cc_min=0.8,
+  def __init__ (self, fmodel, pdb_hierarchy, crystal_symmetry, cc_min=0.8,
                 molprobity_map_params=None) :
 
     from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
@@ -180,17 +180,29 @@ class real_space (validation) :
       rsc_params.detail="residue"
       rsc_params.map_1.fill_missing_reflections = False
       rsc_params.map_2.fill_missing_reflections = False
+      use_maps = False
       if (molprobity_map_params is not None):
-        rsc_params.map_file_name = molprobity_map_params.map_file_name
         rsc_params.map_coefficients_file_name = \
           molprobity_map_params.map_coefficients_file_name
         rsc_params.map_coefficients_label = \
           molprobity_map_params.map_coefficients_label
-      self.overall_rsc, rsc = real_space_correlation.simple(
-        fmodel=fmodel,
-        pdb_hierarchy=pdb_hierarchy,
-        params=rsc_params,
-        log=null_out())
+        if (molprobity_map_params.map_file_name is not None):
+          use_maps = True
+      # use mmtbx/command_line/map_model_cc.py for maps
+      if (use_maps):
+        from mmtbx.command_line import map_model_cc
+        self.overall_rsc, rsc = map_model_cc.run(
+          args=[molprobity_map_params.map_file_name,
+                'resolution=' + str(molprobity_map_params.d_min)],
+          pdb_hierarchy=pdb_hierarchy, crystal_symmetry=crystal_symmetry)
+      # mmtbx/real_space_correlation.py for X-ray/neutron data and map
+      # coefficients
+      else:
+        self.overall_rsc, rsc = real_space_correlation.simple(
+          fmodel=fmodel,
+          pdb_hierarchy=pdb_hierarchy,
+          params=rsc_params,
+          log=null_out())
     except Exception, e :
       raise
     else :
