@@ -157,7 +157,7 @@ class real_space (validation) :
 
   def get_result_class (self) : return residue_real_space
 
-  def __init__ (self, fmodel, pdb_hierarchy, crystal_symmetry, cc_min=0.8,
+  def __init__ (self, fmodel, pdb_hierarchy, crystal_symmetry=None, cc_min=0.8,
                 molprobity_map_params=None) :
 
     from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
