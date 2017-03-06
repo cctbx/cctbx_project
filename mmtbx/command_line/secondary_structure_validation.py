@@ -25,6 +25,10 @@ show_all_params = False
   .style = hidden
 nproc = 1
   .type = int
+bad_hbond_cutoff = 3.5
+  .type = float
+mediocre_hbond_cutoff = 3.0
+  .type = float
 file_name = None
   .type = path
   .multiple = True
@@ -50,8 +54,15 @@ Full scope of parameters:
   master_phil.show()
 
 class gather_ss_stats(object):
-  def __init__(self, pdb_h, rama_eval_manager=None):
+  def __init__(
+        self,
+        pdb_h,
+        mediocre_hbond_cutoff=3.0,
+        bad_hbond_cutoff=3.5,
+        rama_eval_manager=None):
     self.pdb_h = pdb_h
+    self.bad_hbond_cutoff = bad_hbond_cutoff
+    self.mediocre_hbond_cutoff = mediocre_hbond_cutoff
     self.asc = self.pdb_h.atom_selection_cache()
     self.atoms = pdb_h.atoms()
     self.r = rama_eval_manager
@@ -80,8 +91,8 @@ class gather_ss_stats(object):
         log = ss_m_log)
     h_bond_proxies = ss_manager.create_protein_hbond_proxies(log=ss_m_log)
 
-    cutoff_bad = 3.5
-    cutoff_mediocre = 3.0
+    cutoff_bad = self.bad_hbond_cutoff
+    cutoff_mediocre = self.mediocre_hbond_cutoff
     n_hbonds = 0
     n_bad_hbonds = 0
     n_mediocre_hbonds = 0
@@ -146,7 +157,7 @@ def some_chains_are_ca(pdb_h):
     if chain.is_ca_only():
       return True
 
-def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params=None,
+def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
         out=sys.stdout, log=sys.stderr):
   if(pdb_hierarchy is None):
     assert args is not None
@@ -172,9 +183,10 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
       lines=flex.std_string(pdb_combined.raw_records))
     pdb_h = pdb_structure.construct_hierarchy()
   else:
-    work_params = master_phil.extract()
-    if(nproc is not None): work_params.nproc = nproc
-    pdb_h=pdb_hierarchy
+    work_params = params
+    if work_params is None:
+      work_params = master_phil.extract()
+    pdb_h = pdb_hierarchy
   atoms = pdb_h.atoms()
   ss_log = cStringIO.StringIO()
   try:
@@ -183,6 +195,8 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
   except Sorry as e:
     print >> out, " Syntax error in SS: %s" % e.message
     return
+  if work_params.nproc < 1:
+    work_params.nproc = 1
 
   ss_log_cont = ss_log.getvalue()
   n_bad_helices = ss_log_cont.count("Bad HELIX")
@@ -252,7 +266,10 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
     hsh_tuples.append(([h],[]))
   for sh in ss_annot.sheets:
     hsh_tuples.append(([],[sh]))
-  calc_ss_stats = gather_ss_stats(pdb_h)
+  calc_ss_stats = gather_ss_stats(
+      pdb_h,
+      mediocre_hbond_cutoff=work_params.mediocre_hbond_cutoff,
+      bad_hbond_cutoff=work_params.bad_hbond_cutoff)
   results = easy_mp.pool_map(
       processes=work_params.nproc,
       fixed_func=calc_ss_stats,
@@ -263,6 +280,9 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
   cumm_n_mediocre_hbonds = 0
   cumm_n_rama_out = 0
   cumm_n_wrong_reg = 0
+
+  n_elem_with_wrong_rama = 0
+  n_elem_with_rama_out = 0
   #
   # Hydrogen Bonds in Proteins: Role and Strength
   # Roderick E Hubbard, Muhammad Kamran Haider
@@ -277,6 +297,10 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
     cumm_n_mediocre_hbonds += n_mediocre_hbonds
     cumm_n_rama_out += n_outliers
     cumm_n_wrong_reg += n_wrong_region
+    if n_wrong_region > 0:
+      n_elem_with_wrong_rama += 1
+    if n_outliers > 0:
+      n_elem_with_rama_out += 1
     if n_bad_hbonds + n_outliers + n_wrong_region > 0:
       n_bad_helix_sheet_records += 1
     if n_bad_hbonds + n_mediocre_hbonds + n_outliers + n_wrong_region > 0:
@@ -287,19 +311,24 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
           n_hbonds, n_mediocre_hbonds, n_bad_hbonds, n_outliers, n_wrong_region)
       print >> out, "-"*80
 
-  # for r in results:
-  #   cumm_n_hbonds += r[0]
-  #   cumm_n_bad_hbonds += r[1]
-  #   cumm_n_mediocre_hbonds += r[2]
-  #   cumm_n_rama_out += r[4]
-  #   cumm_n_wrong_reg += r[5]
-  #   print >> individ_log, "%d, %d, %d, %s, %d, %d" % (r[0], r[1], r[2], r[3], r[4], r[5])
+  # n1 = percentage of bad SS elements (per given model);
+  # bad here means: n_bad_hbonds + n_outliers + n_wrong_region > 0
+  n1 = n_bad_helix_sheet_records/n_total_helix_sheet_records*100.
+  # n2 = percentage of SS elements that have at least one residue belonging to a wrong region of Ramachandran plot (per given model);
+  n2 = n_elem_with_wrong_rama/n_total_helix_sheet_records*100.
+  # n3 = percentage of SS elements that have at least one residue being a Ramachandran plot outlier (per given model);
+  n3 = n_elem_with_rama_out/n_total_helix_sheet_records*100.
+  # n4 = percentage of bad H bonds (per given model).
+  n4 =  cumm_n_bad_hbonds/cumm_n_hbonds*100. # No per SS element separation
   print >> out, "Overall info:"
   print >> out, "  Total HELIX+SHEET recods       :", n_total_helix_sheet_records
   print >> out, "  Total bad HELIX+SHEET recods   :", n_bad_helix_sheet_records
   print >> out, "  Total declared H-bonds         :", cumm_n_hbonds
-  print >> out, "  Total mediocre H-bonds (3-3.5A):", cumm_n_mediocre_hbonds
-  print >> out, "  Total bad H-bonds (> 3.5A)     :", cumm_n_bad_hbonds
+  print >> out, "  Total mediocre H-bonds (%.1f-%.1fA):" % (
+      work_params.mediocre_hbond_cutoff, work_params.bad_hbond_cutoff), \
+      cumm_n_mediocre_hbonds
+  print >> out, "  Total bad H-bonds (>%.1fA)      :" % work_params.bad_hbond_cutoff, \
+      cumm_n_bad_hbonds
   print >> out, "  Total Ramachandran outliers    :", cumm_n_rama_out
   print >> out, "  Total wrong Ramachandrans      :", cumm_n_wrong_reg
   print >> out, "All done."
@@ -310,7 +339,11 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, nproc=None, params
     n_mediocre_hbonds           = cumm_n_mediocre_hbonds,
     n_bad_hbonds                = cumm_n_bad_hbonds,
     n_rama_out                  = cumm_n_rama_out,
-    n_wrong_reg                 = cumm_n_wrong_reg)
+    n_wrong_reg                 = cumm_n_wrong_reg,
+    n1                          = n1,
+    n2                          = n2,
+    n3                          = n3,
+    n4                          = n4)
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
