@@ -985,7 +985,7 @@ class multi_criterion_view (slots_getstate_setstate) :
     import numpy
     values = []
     for outlier in self.data() :
-      values.append(outlier.get_real_space_plot_values())
+      values.append(outlier.get_real_space_plot_values(False))
     values = numpy.array(values).transpose()
     if (len(values) > 0):
       rho_min = min(min(values[2]), min(values[3]))
