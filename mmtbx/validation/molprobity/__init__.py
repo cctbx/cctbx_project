@@ -990,7 +990,6 @@ class multi_criterion_view (slots_getstate_setstate) :
     if (len(values) > 0):
       rho_min = min(min(values[2]), min(values[3]))
       rho_max = max(max(values[2]), max(values[3]))
-      print rho_min, rho_max
       return {
         "rho" : (rho_min, rho_max),
         "b" : (min(values[0]), max(values[0])),
