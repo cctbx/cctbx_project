@@ -686,7 +686,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return result
 
   def expand_to_p1(self, crystal_symmetry):
-    # ANISIU will be invalid
+    # ANISOU will be invalid
     import string
     import scitbx.matrix
     r = root()
@@ -696,7 +696,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     taken = [c.id for c in self.chains()]
     n_atoms = []
     for m_ in self.models():
-      for smx in crystal_symmetry.space_group().smx():
+      for smx in crystal_symmetry.space_group().all_ops():
         m3 = smx.r().as_double()
         m3 = scitbx.matrix.sqr(m3)
         t = smx.t().as_double()

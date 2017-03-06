@@ -6699,6 +6699,22 @@ ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
   result = [chain.is_ca_only() for chain in pdb_h.only_model().chains()]
   assert result == [True, False], result
 
+def exercise_expand_to_p1():
+  pdb_str = """
+CRYST1  194.707   61.015   92.246  90.00 116.65  90.00 C 1 2 1       8
+ATOM      1  N   ASP L   1      52.015   9.560  31.693  1.00 25.58           N
+END
+"""
+  pdb_inp = pdb.input(source_info=None, lines=pdb_str)
+  cs = pdb_inp.crystal_symmetry()
+  ph = pdb_inp.construct_hierarchy()
+  assert len(ph.atoms())==1
+  xyz_p1 = ph.extract_xray_structure(
+    crystal_symmetry=cs).expand_to_p1().sites_cart()
+  p1 = ph.expand_to_p1(crystal_symmetry=cs)
+  assert len(p1.atoms())==4
+  assert approx_equal(xyz_p1, p1.atoms().extract_xyz())
+
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
@@ -6713,6 +6729,7 @@ def exercise(args):
       prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
+    exercise_expand_to_p1()
     exercise_chunk_selections()
     exercise_set_i_seq()
     exercise_get_peptide_c_alpha_selection()
