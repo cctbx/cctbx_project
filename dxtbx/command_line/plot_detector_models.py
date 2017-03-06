@@ -95,11 +95,10 @@ def run(args):
 
     # read the data and get the detector models
     experiments = ExperimentListFactory.from_json_file(file_name, check_format=False)
-    detector = experiments.detectors()[0]
-
-    # plot the hierarchy
-    ax = fig.gca(projection='3d')
-    plot_group(detector.hierarchy(), color)
+    for detector in experiments.detectors():
+      # plot the hierarchy
+      ax = fig.gca(projection='3d')
+      plot_group(detector.hierarchy(), color)
 
   plt.show()
 
