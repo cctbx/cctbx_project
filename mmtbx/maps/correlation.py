@@ -11,6 +11,14 @@ cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 
 class d99(object):
   def __init__(self, map, crystal_symmetry):
+    # First thing first: shift origin if needed
+    shift_needed = not \
+      (map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based())
+    if(shift_needed):
+      if(not crystal_symmetry.space_group().type().number() in [0,1]):
+        raise RuntimeError("Not implemented")
+    map = map.shift_origin()
+    #
     n_real = map.focus()
     max_index = [(i-1)//2 for i in n_real]
     complete_set = miller.build_set(
@@ -60,6 +68,7 @@ class five_cc(object):
     fft_map = miller.fft_map(
       crystal_gridding     = self.crystal_gridding,
       fourier_coefficients = f_calc)
+    self.atom_radius = self._atom_radius()
     self.map_calc = fft_map.real_map_unpadded()
     self.bs_mask = masks.mask_from_xray_structure(
       xray_structure        = self.xray_structure,
@@ -78,18 +87,20 @@ class five_cc(object):
     # Free memory
     del self.bs_mask, self.sel_inside
 
-  def _cc_image(self):
+  def _atom_radius(self):
     b_iso = adptbx.u_as_b(
       flex.mean(self.xray_structure.extract_u_iso_or_u_equiv()))
     o = maptbx.atom_curves(scattering_type="C", scattering_table="electron")
-    atom_radius = o.image(d_min=self.d_min, b_iso=b_iso,
+    return o.image(d_min=self.d_min, b_iso=b_iso,
       radius_max=max(10.,self.d_min), radius_step=0.01).radius
+
+  def _cc_image(self):
     return from_map_map_atoms(
-      map_1=self.map,
-      map_2=self.map_calc,
-      sites_cart=self.xray_structure.sites_cart(),
-      unit_cell=self.xray_structure.unit_cell(),
-      radius=atom_radius)
+      map_1      = self.map,
+      map_2      = self.map_calc,
+      sites_cart = self.xray_structure.sites_cart(),
+      unit_cell  = self.xray_structure.unit_cell(),
+      radius     = self.atom_radius)
 
   def _cc_peaks(self):
     n_nodes_inside = self.sel_inside.size()
