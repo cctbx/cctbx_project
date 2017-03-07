@@ -60,9 +60,10 @@ class Detector(db_proxy):
 
 class Crystal(db_proxy):
   def __init__(self, app, crystal_id = None, crystal = None, **kwargs):
+    from scitbx import matrix
     assert [crystal_id, crystal].count(None) == 1
     if crystal is not None:
-      u = crystal.get_U()  # orientation matrix
+      u = matrix.sqr(crystal.get_U())  # orientation matrix
       for i in xrange(len(u)):
         kwargs['ori_%d' % (i + 1)] = u[i]
       kwargs['mosaic_block_rotation'] = crystal._ML_half_mosaicity_deg

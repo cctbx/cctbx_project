@@ -18,14 +18,14 @@ class TestExperiment(object):
 
   def tst_contains(self):
     from dxtbx.model import Beam, Detector, Goniometer, Scan
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
 
     # Create a load of models
     b1 = Beam()
     d1 = Detector()
     g1 = Goniometer()
     s1 = Scan()
-    c1 = crystal_model((1, 0, 0), (0, 1, 0), (0, 0, 1), 0)
+    c1 = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
     # Create an experiment
     e = Experiment(
@@ -44,7 +44,7 @@ class TestExperiment(object):
     d2 = Detector()
     g2 = Goniometer()
     s2 = Scan()
-    c2 = crystal_model((1, 0, 0), (0, 1, 0), (0, 0, 1), 0)
+    c2 = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
     # Check experiment doesn't contain model
     assert(b2 not in e)
@@ -59,21 +59,21 @@ class TestExperiment(object):
   def tst_equality(self):
 
     from dxtbx.model import Beam, Detector, Goniometer, Scan
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
 
     # Create a load of models
     b1 = Beam()
     d1 = Detector()
     g1 = Goniometer()
     s1 = Scan()
-    c1 = crystal_model((1, 0, 0), (0, 1, 0), (0, 0, 1), 0)
+    c1 = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
     # Create a load of models that look the same but aren't
     b2 = Beam()
     d2 = Detector()
     g2 = Goniometer()
     s2 = Scan()
-    c2 = crystal_model((1, 0, 0), (0, 1, 0), (0, 0, 1), 0)
+    c2 = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
     # Create an experiment
     e1 = Experiment(
@@ -514,14 +514,14 @@ class TestExperimentListFactory(object):
   def tst_from_imageset(self):
     from dxtbx.imageset import ImageSet, NullReader
     from dxtbx.model import Beam, Detector, Goniometer, Scan
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
 
     imageset = ImageSet(NullReader(["filename.cbf"]))
     imageset.set_beam(Beam(), 0)
     imageset.set_detector(Detector(), 0)
 
-    crystal = crystal_model(
-      (1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol=0)
+    crystal = Crystal(
+      (1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
     experiments = ExperimentListFactory.from_imageset_and_crystal(
       imageset, crystal)
@@ -538,7 +538,7 @@ class TestExperimentListFactory(object):
   def tst_from_sweep(self):
     from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
     from dxtbx.model import Beam, Detector, Goniometer, Scan
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
 
     imageset = ImageSweep(NullReader(SweepFileList("filename%01d.cbf", (0, 2))))
     imageset.set_beam(Beam())
@@ -546,7 +546,7 @@ class TestExperimentListFactory(object):
     imageset.set_goniometer(Goniometer())
     imageset.set_scan(Scan((1,2),(0,1)))
 
-    crystal = crystal_model((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol=0)
+    crystal = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
     experiments = ExperimentListFactory.from_imageset_and_crystal(
       imageset, crystal)
@@ -565,7 +565,7 @@ class TestExperimentListFactory(object):
     from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
     from dxtbx.model import Beam, Detector, Goniometer, Scan
     from dxtbx.datablock import DataBlockFactory
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
 
     imageset = ImageSweep(NullReader(SweepFileList("filename%01d.cbf", (0, 2))))
     imageset.set_beam(Beam())
@@ -573,7 +573,7 @@ class TestExperimentListFactory(object):
     imageset.set_goniometer(Goniometer())
     imageset.set_scan(Scan((1, 2), (0, 1)))
 
-    crystal = crystal_model((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol=0)
+    crystal = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
     datablock = DataBlockFactory.from_imageset(imageset)
 
@@ -654,7 +654,7 @@ class TestExperimentListDumper(object):
   def tst_dump_empty_sweep(self):
     from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
     from dxtbx.model import Beam, Detector, Goniometer, Scan
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
     from uuid import uuid4
 
     imageset = ImageSweep(NullReader(SweepFileList("filename%01d.cbf", (0, 3))))
@@ -663,7 +663,7 @@ class TestExperimentListDumper(object):
     imageset.set_goniometer(Goniometer())
     imageset.set_scan(Scan((1, 3), (0.0, 1.0)))
 
-    crystal = crystal_model((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol=1)
+    crystal = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
     experiments = ExperimentListFactory.from_imageset_and_crystal(
       imageset, crystal)
@@ -680,7 +680,7 @@ class TestExperimentListDumper(object):
   def tst_dump_with_lookup(self):
     from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
     from dxtbx.model import Beam, Detector, Goniometer, Scan
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
     from uuid import uuid4
     import libtbx.load_env
     import os
@@ -732,7 +732,7 @@ class TestExperimentListDumper(object):
   def tst_dump_with_bad_lookup(self):
     from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
     from dxtbx.model import Beam, Detector, Goniometer, Scan
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
     from uuid import uuid4
     import libtbx.load_env
     import os

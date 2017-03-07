@@ -88,7 +88,7 @@ def to_crystal(filename):
   '''
   from rstbx.cftbx.coordinate_frame_converter import \
       coordinate_frame_converter
-  from dxtbx.model.crystal import crystal_model
+  from dxtbx.model import Crystal
   from cctbx.sgtbx import space_group, space_group_symbols
 
   # Get the real space coordinate frame
@@ -101,13 +101,13 @@ def to_crystal(filename):
   mosaicity = cfc.get('mosaicity')
 
   # Return the crystal model
-  return crystal_model(
+  crystal = Crystal(
       real_space_a=real_space_a,
       real_space_b=real_space_b,
       real_space_c=real_space_c,
-      space_group=space_group,
-      mosaicity=mosaicity)
-
+      space_group=space_group)
+  crystal.set_mosaicity(mosaicity)
+  return crystal
 
 def xds_detector_name(dxtbx_name):
   '''Translate from a xia2 name from the detector library to an XDS detector

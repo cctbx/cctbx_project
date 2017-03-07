@@ -86,7 +86,7 @@ class ConstructFrame(object):
   # generate a crystal orientation object from the A* matrix
   def populate_orientation(self):
     assert self.xtal.get_A() is not None, "no crystal orientation matrix"
-    self.frame['current_orientation'] = [crystal_orientation(self.xtal.get_A().elems, True)]
+    self.frame['current_orientation'] = [crystal_orientation(self.xtal.get_A(), True)]
 
   # generate change-of-basis operation for current to primitive cell
   def populate_op_to_primitive(self):
@@ -100,8 +100,11 @@ class ConstructFrame(object):
 
   # get mosaicity
   def populate_mosaicity(self):
-    assert self.xtal.get_mosaicity() is not None, "no mosaicity"
-    self.frame['mosaicity'] = self.xtal.get_mosaicity()
+    try:
+      assert self.xtal.get_mosaicity() is not None, "no mosaicity"
+      self.frame['mosaicity'] = self.xtal.get_mosaicity()
+    except Exception:
+      pass
 
   # get any available ML values
   def populate_ML_values(self):

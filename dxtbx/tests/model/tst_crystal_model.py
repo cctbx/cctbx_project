@@ -4,8 +4,8 @@ from cStringIO import StringIO
 from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
 from cctbx import crystal, sgtbx, uctbx
-from dxtbx.model.crystal import crystal_model, \
-     crystal_model_from_mosflm_matrix
+from dxtbx.model import Crystal
+from dxtbx.model.crystal import crystal_model_from_mosflm_matrix
 
 def random_rotation():
   import random
@@ -33,22 +33,24 @@ def exercise_crystal_model():
   real_space_a = matrix.col((10,0,0))
   real_space_b = matrix.col((0,11,0))
   real_space_c = matrix.col((0,0,12))
-  model = crystal_model(real_space_a=(10,0,0),
+  model = Crystal(real_space_a=(10,0,0),
                         real_space_b=(0,11,0),
                         real_space_c=(0,0,12),
                         space_group_symbol="P 1")
-  assert isinstance(model.get_unit_cell(), uctbx.unit_cell)
+  # This doesn't work as python class uctbx.unit_cell(uctbx_ext.unit_cell)
+  # so C++ and python classes are different types
+  #assert isinstance(model.get_unit_cell(), uctbx.unit_cell)
   assert model.get_unit_cell().parameters() == (
     10.0, 11.0, 12.0, 90.0, 90.0, 90.0)
   assert approx_equal(model.get_A(), (1/10, 0, 0, 0, 1/11, 0, 0, 0, 1/12))
-  assert approx_equal(model.get_A().inverse(), (10, 0, 0, 0, 11, 0, 0, 0, 12))
+  assert approx_equal(matrix.sqr(model.get_A()).inverse(), (10, 0, 0, 0, 11, 0, 0, 0, 12))
   assert approx_equal(model.get_B(), model.get_A())
   assert approx_equal(model.get_U(), (1, 0, 0, 0, 1, 0, 0, 0, 1))
   assert approx_equal(model.get_real_space_vectors(),
                       (real_space_a, real_space_b, real_space_c))
   assert approx_equal(model.get_mosaicity(), 0)
 
-  model2 = crystal_model(real_space_a=(10,0,0),
+  model2 = Crystal(real_space_a=(10,0,0),
                          real_space_b=(0,11,0),
                          real_space_c=(0,0,12),
                          space_group_symbol="P 1")
@@ -72,7 +74,7 @@ def exercise_crystal_model():
   # B is unchanged
   assert approx_equal(model.get_B(), (1/10, 0, 0, 0, 1/11, 0, 0, 0, 1/12))
   assert approx_equal(model.get_U(), R)
-  assert approx_equal(model.get_A(), model.get_U() * model.get_B())
+  assert approx_equal(model.get_A(), matrix.sqr(model.get_U()) * matrix.sqr(model.get_B()))
   a_, b_, c_ = model.get_real_space_vectors()
   assert approx_equal(a_, R * real_space_a)
   assert approx_equal(b_, R * real_space_b)
@@ -106,17 +108,17 @@ Crystal:
   assert approx_equal(model.get_U(), U, 1e-4)
   assert approx_equal(model.get_B(), B, 1e-5)
 
-  model3 = crystal_model(
+  model3 = Crystal(
     real_space_a=(10,0,0),
     real_space_b=(0,11,0),
     real_space_c=(0,0,12),
-    space_group=sgtbx.space_group_info("P 222").group(),
-    mosaicity=0.01)
+    space_group=sgtbx.space_group_info("P 222").group())
+  model3.set_mosaicity(0.01)
   assert model3.get_space_group().type().hall_symbol() == " P 2 2"
   assert model != model3
   #
   sgi_ref = sgtbx.space_group_info(number=230)
-  model_ref = crystal_model(
+  model_ref = Crystal(
     real_space_a=(44,0,0),
     real_space_b=(0,44,0),
     real_space_c=(0,0,44),
@@ -126,12 +128,12 @@ Crystal:
   assert approx_equal(model_ref.get_A(), model_ref.get_B())
   assert approx_equal(model_ref.get_unit_cell().parameters(),
                       (44,44,44,90,90,90))
-  a_ref, b_ref, c_ref = model_ref.get_real_space_vectors()
+  a_ref, b_ref, c_ref = map(matrix.col, model_ref.get_real_space_vectors())
   cb_op_to_primitive = sgi_ref.change_of_basis_op_to_primitive_setting()
   model_primitive = model_ref.change_basis(cb_op_to_primitive)
   cb_op_to_reference = model_primitive.get_space_group().info()\
     .change_of_basis_op_to_reference_setting()
-  a_prim, b_prim, c_prim = model_primitive.get_real_space_vectors()
+  a_prim, b_prim, c_prim = map(matrix.col, model_primitive.get_real_space_vectors())
   #print cb_op_to_primitive.as_abc()
   ##'-1/2*a+1/2*b+1/2*c,1/2*a-1/2*b+1/2*c,1/2*a+1/2*b-1/2*c'
   assert approx_equal(a_prim, -1/2 * a_ref + 1/2 * b_ref + 1/2 * c_ref)
@@ -174,7 +176,7 @@ Crystal:
   B = matrix.sqr(uc.fractionalization_matrix()).transpose()
   U = random_rotation()
   direct_matrix = (U * B).inverse()
-  model = crystal_model(direct_matrix[:3],
+  model = Crystal(direct_matrix[:3],
                         direct_matrix[3:6],
                         direct_matrix[6:9],
                         space_group=sg)
@@ -187,7 +189,7 @@ Crystal:
   assert model_minimum == model
   #
   from scitbx.math import euler_angles
-  A_static = model.get_A()
+  A_static = matrix.sqr(model.get_A())
   A_as_scan_points = [A_static]
   num_scan_points = 11
   for i in range(num_scan_points-1):
@@ -199,25 +201,23 @@ Crystal:
   M = matrix.sqr(cb_op_to_minimum.c_inv().r().transpose().as_double())
   M_inv = M.inverse()
   for i in range(num_scan_points):
-    A_orig = model.get_A_at_scan_point(i)
-    A_min = model_minimum.get_A_at_scan_point(i)
+    A_orig = matrix.sqr(model.get_A_at_scan_point(i))
+    A_min = matrix.sqr(model_minimum.get_A_at_scan_point(i))
     assert A_min == A_orig * M_inv
 
 def exercise_similarity():
 
-  model_1 = crystal_model(real_space_a=(10,0,0),
+  model_1 = Crystal(real_space_a=(10,0,0),
                           real_space_b=(0,11,0),
                           real_space_c=(0,0,12),
-                          space_group_symbol="P 1",
-                          mosaicity=0.5)
-  model_2 = crystal_model(real_space_a=(10,0,0),
+                          space_group_symbol="P 1")
+  model_1.set_mosaicity(0.5)
+  model_2 = Crystal(real_space_a=(10,0,0),
                           real_space_b=(0,11,0),
                           real_space_c=(0,0,12),
-                          space_group_symbol="P 1",
-                          mosaicity=0.5)
+                          space_group_symbol="P 1")
+  model_2.set_mosaicity(0.5)
   assert model_1.is_similar_to(model_2)
-
-  # mosaicity tests
   model_1.set_mosaicity(-1)
   model_2.set_mosaicity(-0.5)
   assert model_1.is_similar_to(model_2) # test ignores negative mosaicity
@@ -225,10 +225,9 @@ def exercise_similarity():
   model_2.set_mosaicity(0.63) # outside tolerance
   assert not model_1.is_similar_to(model_2)
   model_2.set_mosaicity(0.625) #just inside tolerance
-  assert model_1.is_similar_to(model_2)
 
   # orientation tests
-  R = model_2.get_U()
+  R = matrix.sqr(model_2.get_U())
   dr1 = matrix.col((1, 0, 0)).axis_and_angle_as_r3_rotation_matrix(0.0101, deg=True)
   dr2 = matrix.col((1, 0, 0)).axis_and_angle_as_r3_rotation_matrix(0.0099, deg=True)
   model_2.set_U(dr1 * R)
@@ -239,10 +238,92 @@ def exercise_similarity():
   # unit_cell.is_similar_to is tested elsewhere
   return
 
+def exercise_check_old_vs_new():
+  from dxtbx.model.crystal import crystal_model_old
+
+  model_1 = Crystal(
+    real_space_a=(10, 0, 0),
+    real_space_b=(0, 11, 0),
+    real_space_c=(0, 0, 12),
+    space_group_symbol="P 1")
+
+  model_2 = crystal_model_old(
+    real_space_a=(10, 0, 0),
+    real_space_b=(0, 11, 0),
+    real_space_c=(0, 0, 12),
+    space_group_symbol="P 1")
+
+  cov_B = matrix.sqr([1]*(9*9))
+
+  model_1.set_B_covariance(cov_B)
+  model_2.set_B_covariance(cov_B)
+
+  A_list = [model_1.get_A() for i in range(20)]
+
+  model_1.set_A_at_scan_points(A_list)
+  model_2.set_A_at_scan_points(A_list)
+
+  cell_sd_1 = model_1.get_cell_parameter_sd()
+  cell_sd_2 = model_2.get_cell_parameter_sd()
+  cell_volume_sd_1 = model_1.get_cell_volume_sd()
+  cell_volume_sd_2 = model_2.get_cell_volume_sd()
+  covB1 = model_1.get_B_covariance()
+  covB2 = model_1.get_B_covariance()
+
+  A1 = model_1.get_A()
+  A2 = model_2.get_A()
+  U1 = model_1.get_U()
+  U2 = model_2.get_U()
+  B1 = model_1.get_B()
+  B2 = model_2.get_B()
+  UC1 = model_1.get_unit_cell()
+  UC2 = model_2.get_unit_cell()
+  RSV1 = model_1.get_real_space_vectors()
+  RSV2 = model_2.get_real_space_vectors()
+  SG1 = model_1.get_space_group()
+  SG2 = model_2.get_space_group()
+
+  assert model_1.num_scan_points == model_2.num_scan_points
+
+  A_list_1 = [model_1.get_A_at_scan_point(i) for i in range(model_1.get_num_scan_points())]
+  A_list_2 = [model_2.get_A_at_scan_point(i) for i in range(model_1.get_num_scan_points())]
+  B_list_1 = [model_1.get_B_at_scan_point(i) for i in range(model_1.get_num_scan_points())]
+  B_list_2 = [model_2.get_B_at_scan_point(i) for i in range(model_1.get_num_scan_points())]
+  U_list_1 = [model_1.get_U_at_scan_point(i) for i in range(model_1.get_num_scan_points())]
+  U_list_2 = [model_2.get_U_at_scan_point(i) for i in range(model_1.get_num_scan_points())]
+
+  cell_sd_1 = model_1.get_cell_parameter_sd()
+  cell_sd_2 = model_2.get_cell_parameter_sd()
+  cell_volume_sd_1 = model_1.get_cell_volume_sd()
+  cell_volume_sd_2 = model_2.get_cell_volume_sd()
+  covB1 = model_1.get_B_covariance()
+  covB2 = model_1.get_B_covariance()
+
+  assert approx_equal(A1, A2)
+  assert approx_equal(B1, B2)
+  assert approx_equal(U1, U2)
+  assert approx_equal(UC1.parameters(), UC2.parameters())
+  assert approx_equal(RSV1[0], RSV2[0])
+  assert approx_equal(RSV1[1], RSV2[1])
+  assert approx_equal(RSV1[2], RSV2[2])
+  assert str(SG1.info()) == str(SG2.info())
+
+  for i in range(model_1.get_num_scan_points()):
+    assert approx_equal(A_list_1[i], A_list_2[i])
+    assert approx_equal(B_list_1[i], B_list_2[i])
+    assert approx_equal(U_list_1[i], U_list_2[i])
+
+  assert approx_equal(covB1, covB2)
+  assert approx_equal(cell_volume_sd_1, cell_volume_sd_2)
+  assert approx_equal(cell_sd_1, cell_sd_2)
+
+  print 'OK'
+
 def run():
   exercise_crystal_model()
   exercise_crystal_model_from_mosflm_matrix()
   exercise_similarity()
+  exercise_check_old_vs_new()
 
 if __name__ == '__main__':
   from libtbx.utils import show_times_at_exit

@@ -60,6 +60,7 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
 
   env.Append(
     LIBS=env_etc.libm + [
+    "cctbx",
     "scitbx_boost_python",
     ]+env_etc.dxtbx_libs, LIBPATH=env_etc.dxtbx_lib_paths)
 
@@ -92,6 +93,7 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'model/boost_python/detector.cc',
       'model/boost_python/scan.cc',
       'model/boost_python/scan_helpers.cc',
+      'model/boost_python/crystal.cc',
       'model/boost_python/parallax_correction.cc',
       'model/boost_python/pixel_to_millimeter.cc',
       'model/boost_python/model_ext.cc'],

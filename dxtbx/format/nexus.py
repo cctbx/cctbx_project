@@ -1074,7 +1074,7 @@ class CrystalFactory(object):
   '''
 
   def __init__(self, obj):
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model import Crystal
     import cctbx.uctbx
     from scitbx import matrix
 
@@ -1094,7 +1094,7 @@ class CrystalFactory(object):
     space_group_symbol = obj.handle['unit_cell_group'][()]
 
     # Create the model
-    self.model = crystal_model(
+    self.model = Crystal(
       real_space_a,
       real_space_b,
       real_space_c,

@@ -31,6 +31,7 @@ class reduction(object):
     # simple view of post-integration, no longer need to know detector
 
   def get_delta_psi_deg(self):
+    from scitbx import matrix
     if self.stash_type is None:
        self.stash_type = self.experiment.crystal.get_space_group().type()
     UC = self.experiment.crystal.get_unit_cell()
@@ -47,7 +48,7 @@ class reduction(object):
     length = len(self.HKL)
     R= flex.reflection_table.empty_standard(length)
     R['miller_index'] = self.HKL
-    S.for_reflection_table(R,self.experiment.crystal.get_A())
+    S.for_reflection_table(R,matrix.sqr(self.experiment.crystal.get_A()))
     degrees = (180./math.pi)*R["delpsical.rad"]
     return degrees
 

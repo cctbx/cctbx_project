@@ -18,6 +18,7 @@
 #include <dxtbx/model/detector.h>
 #include <dxtbx/model/panel.h>
 #include <dxtbx/model/scan.h>
+#include <dxtbx/model/crystal.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
@@ -46,6 +47,9 @@ namespace dxtbx { namespace model { namespace boost_python {
   boost::python::dict to_dict<Scan>(const Scan &obj);
 
   template <>
+  boost::python::dict to_dict<Crystal>(const Crystal &obj);
+
+  template <>
   Beam* from_dict<Beam>(boost::python::dict obj);
 
   template <>
@@ -62,6 +66,9 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   template <>
   Scan* from_dict<Scan>(boost::python::dict obj);
+
+  template <>
+  Crystal* from_dict<Crystal>(boost::python::dict obj);
 
 }}} // namespace dxtbx::model::boost_python
 

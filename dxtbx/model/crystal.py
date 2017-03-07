@@ -4,8 +4,9 @@ from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import space_group as SG
 from cctbx.sgtbx import space_group_symbols
 from cctbx.crystal_orientation import crystal_orientation
+from dxtbx_model_ext import Crystal
 
-class crystal_model(object):
+class crystal_model_old(object):
   '''Simple model for the crystal lattice geometry and symmetry
 
   A crystal is initialised from the elements of its real space axes
@@ -764,4 +765,4 @@ def crystal_model_from_mosflm_matrix(mosflm_A_matrix,
   _b = rotate_mosflm_to_imgCIF * b
   _c = rotate_mosflm_to_imgCIF * c
 
-  return crystal_model(_a, _b, _c, space_group=space_group)
+  return Crystal(_a, _b, _c, space_group=space_group)
