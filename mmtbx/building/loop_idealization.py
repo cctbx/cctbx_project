@@ -74,7 +74,10 @@ class loop_idealization():
                rama_manager=None,
                rotamer_manager=None,
                log=null_out(),
-               verbose=False):
+               verbose=False,
+               tried_rama_angles={},
+               tried_final_rama_angles={},
+               n_run=0):
     if len(pdb_hierarchy.models()) > 1:
       raise Sorry("Multi-model files are not supported")
     self.original_pdb_h = pdb_hierarchy
@@ -89,6 +92,7 @@ class loop_idealization():
     self.verbose = verbose
     self.grm = grm
     self.r = rama_manager
+    self.n_run = n_run
     if self.r is None:
       self.r = rama_eval()
     self.rotamer_manager = rotamer_manager
@@ -108,8 +112,8 @@ class loop_idealization():
     # Nested dict. First level:
     # key: chain id, value: dict
     #   key: resid (string), value: list of tried variants.
-    self.tried_rama_angles = {}
-    self.tried_final_rama_angles = {}
+    self.tried_rama_angles = tried_rama_angles
+    self.tried_final_rama_angles = tried_final_rama_angles
 
     berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
     self.berkeley_p_before_minimization_rama_outliers = \
@@ -185,7 +189,7 @@ class loop_idealization():
       duke_count = ram.get_outliers_count_and_fraction()[0]
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count
-
+        self.resulting_pdb_h.write_pdb_file(file_name="%d%s_discrepancy.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
       if self.params.minimize_whole:
         print >> self.log, "minimizing whole chain..."
         print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
@@ -220,6 +224,7 @@ class loop_idealization():
         print >> self.log, "Number of Rama outliers after min:", berkeley_count
       self.number_of_ccd_trials += 1
     # return new_h
+    # return self.tried_rama_angles, self.tried_final_rama_angles
 
   def process_params(self, params):
     if params is None:
@@ -330,8 +335,9 @@ class loop_idealization():
 
     # then checking rmsd
     adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0, 4:4.5, 5:5.5, 6:7.0, 7:8.5, 8:10.0}
+    num_of_run = max(self.number_of_ccd_trials, self.n_run)
     for k in adaptive_mc_rmsd:
-      adaptive_mc_rmsd[k] = adaptive_mc_rmsd[k] * (1 + 0.3*self.number_of_ccd_trials)
+      adaptive_mc_rmsd[k] = adaptive_mc_rmsd[k] * (1 + 0.3*num_of_run)
     # print "adaptive_mc_rmsd", adaptive_mc_rmsd
     # adaptive_mc_rmsd = {1:2.5, 2:3.0, 3:3.5}
     ss_multiplier = 1
@@ -489,7 +495,7 @@ class loop_idealization():
             # if comb_pair in bad_pairs:
             if comb_pair_in_bad_pairs(comb_pair, bad_pairs):
               good = False
-              print "  Rejecting comb_pair", comb_pair
+              # print "  Rejecting comb_pair", comb_pair
               break
           if good:
             ff_all_angles.append(comb)
@@ -509,7 +515,7 @@ class loop_idealization():
                   moving_h,
                   list(comb),
                   direction_forward=direction_forward))
-          print >> self.log, "Model %d, angles:" % i, comb
+          # print >> self.log, "Model %d, angles:" % i, comb
 
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
