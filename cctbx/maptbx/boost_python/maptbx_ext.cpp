@@ -11,6 +11,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <cctbx/maptbx/histogram.h>
+#include <cctbx/maptbx/resolution.h>
 #include <cctbx/maptbx/sphericity.h>
 #include <cctbx/maptbx/mask.h>
 #include <cctbx/maptbx/utils.h>
@@ -151,6 +152,29 @@ namespace {
         .def("histogram_2", &w_t::histogram_2)
         .def("histogram_12", &w_t::histogram_12)
         .def("histogram_values", &w_t::histogram_values)
+      ;
+    }
+
+    {
+      typedef d99 w_t;
+
+      class_<w_t>("d99", no_init)
+        .def(init<
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<miller::index<> > const&,
+          double const&,
+          double const& >(
+                    (arg("f"),
+                     arg("d_spacings"),
+                     arg("hkl"),
+                     arg("d_min"),
+                     arg("d_max"))))
+        .def("ccs",         &w_t::ccs)
+        .def("d_mins",      &w_t::d_mins)
+        .def("d_min_cc9",   &w_t::d_min_cc9)
+        .def("d_min_cc99",  &w_t::d_min_cc99)
+        .def("d_min_cc999", &w_t::d_min_cc999)
       ;
     }
 
@@ -710,6 +734,21 @@ namespace {
       arg("map_1"),
       arg("map_2"),
       arg("cutoffs")));
+
+    def("cc_complex_complex",
+      (af::shared<double>(*)
+        (af::const_ref<std::complex<double> > const&,
+         af::const_ref<std::complex<double> > const&,
+         af::const_ref<double> const&,
+         af::const_ref<double> const&,
+         af::const_ref<double> const&,
+         double const&)) cc_complex_complex, (
+      arg("f_1"),
+      arg("f_2"),
+      arg("d_spacings"),
+      arg("ss"),
+      arg("d_mins"),
+      arg("b_iso")));
 
     def("cc_peak",
       (double(*)

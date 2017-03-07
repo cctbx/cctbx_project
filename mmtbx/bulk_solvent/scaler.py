@@ -260,6 +260,10 @@ class run(object):
       return bulk_solvent.r_factor(self.f_obs.data(),
         self.core.f_model.data(), self.selection_work.data(), 1)
 
+  def r_work(self):
+    return bulk_solvent.r_factor(self.f_obs.data(),
+      self.core.f_model.data(), ~self.r_free_flags.data())
+
   def _r_high(self):
     return bulk_solvent.r_factor(self.f_obs.data(),
       self.core.f_model.data(), self.high_resolution_selection, 1)

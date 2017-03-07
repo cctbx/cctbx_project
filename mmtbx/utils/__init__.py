@@ -21,7 +21,6 @@ from libtbx.utils import \
   Sorry, date_and_time, host_and_user, multi_out, null_out
 import iotbx.phil
 from iotbx import reflection_file_utils
-from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
 from iotbx import pdb
 from cStringIO import StringIO
@@ -2933,11 +2932,24 @@ class set_map_to_value(object):
       standard_deviation = -1)
 
 class shift_origin(object):
-  def __init__(self, map_data, pdb_hierarchy, crystal_symmetry):
+  def __init__(self, map_data, pdb_hierarchy=None, xray_structure=None,
+                     crystal_symmetry=None):
+    assert [pdb_hierarchy, xray_structure].count(None)==1
+    if(pdb_hierarchy is not None):
+      assert crystal_symmetry is not None
+      sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    if(xray_structure is not None):
+      sites_cart = xray_structure.sites_cart()
+      if(crystal_symmetry is not None):
+        assert crystal_symmetry.is_similar_symmetry(
+          xray_structure.crystal_symmetry())
+      crystal_symmetry = xray_structure.crystal_symmetry()
     self.pdb_hierarchy = pdb_hierarchy
+    self.xray_structure = xray_structure
     self.crystal_symmetry = crystal_symmetry
     self.map_data = map_data
-    self.shift = None
+    self.shift_cart = None
+    self.shift_frac = None
     shift_needed = not \
       (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
        map_data.is_0_based())
@@ -2946,44 +2958,35 @@ class shift_origin(object):
         raise RuntimeError("Not implemented")
       a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
       N = map_data.all()
-      O=map_data.origin()
-      sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      O = map_data.origin()
       fm = crystal_symmetry.unit_cell().fractionalization_matrix()
       self.map_data = self.map_data.shift_origin()
-      t_best=-9999.
-      sites_cart_best = None
-      for inc1 in [0]:#[-2,-1,0,1,2]:
-        for inc2 in [0]:#[-2,-1,0,1,2]:
-          N_ = (N[0]-inc1,N[1]-inc1,N[2]-inc1)
-          O_ = (O[0]-inc2,O[1]-inc2,O[2]-inc2)
-
-          sx,sy,sz = O_[0]/N_[0],O_[1]/N_[1], O_[2]/N_[2]
-          self.shift= crystal_symmetry.unit_cell().orthogonalize([sx,sy,sz])
-
-          sites_cart_shifted = sites_cart+\
-            flex.vec3_double(sites_cart.size(), [-self.shift[0],-self.shift[1],-self.shift[2]])
-          sites_frac_shifted = fm*sites_cart_shifted
-          t = maptbx.map_sum_at_sites_frac(map_data=self.map_data,
-            sites_frac=sites_frac_shifted)
-          #print inc1, inc2, t
-          if(t>t_best):
-            t_best=t
-            sites_cart_best=sites_cart_shifted.deep_copy()
-      if(sites_cart_best is not None):
-        self.pdb_hierarchy.atoms().set_xyz(sites_cart_best)
+      sx,sy,sz = O[0]/N[0],O[1]/N[1], O[2]/N[2]
+      self.shift_frac = [-sx,-sy,-sz]
+      self.shift_cart=crystal_symmetry.unit_cell().orthogonalize(self.shift_frac)
+      sites_cart_shifted = sites_cart+\
+        flex.vec3_double(sites_cart.size(), self.shift_cart)
+      if(self.pdb_hierarchy is not None):
+        self.pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
+      if(self.xray_structure is not None):
+        self.xray_structure.set_sites_cart(sites_cart=sites_cart_shifted)
 
   def shift_back(self, pdb_hierarchy):
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    shift_back = [-self.shift_cart[0], -self.shift_cart[1], -self.shift_cart[2]]
     sites_cart_shifted = sites_cart+\
-      flex.vec3_double(sites_cart.size(), self.shift)
+      flex.vec3_double(sites_cart.size(), shift_back)
     pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
-  def show_shifted(self):
-    self.pdb_hierarchy.write_pdb_file(file_name="origin_shifted.pdb",
+  def write_model_file(self, file_name):
+    assert self.pdb_hierarchy is not None
+    self.pdb_hierarchy.write_pdb_file(file_name=file_name,
       crystal_symmetry=self.crystal_symmetry)
+
+  def write_map_file(self, file_name):
     from iotbx import ccp4_map
     ccp4_map.write_ccp4_map(
-      file_name="origin_shifted.ccp4",
+      file_name=file_name,
       unit_cell=self.crystal_symmetry.unit_cell(),
       space_group=self.crystal_symmetry.space_group(),
       #gridding_first=(0,0,0),# This causes a bug (map gets shifted)
@@ -3006,27 +3009,12 @@ class extract_box_around_model_and_map(object):
     self.initial_shift = None
     self.initial_shift_cart = None
     self.total_shift_cart = None
-    ## Make sure map has origin at (0,0,0), that is zero_based. Otherwise shift
-    ## origin.
-    shift_needed = not \
-      (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
-       map_data.is_0_based())
-    if(shift_needed):
-      if(not cs.space_group().type().number() in [0,1]):
-        raise RuntimeError("Shift for space group other than 0 or 1 not implemented")
-      # Map origin is not at (0,0,0) and it is P1
-      # shifting map only
-      N_ = self.map_data.all()
-      O_ = self.map_data.origin()
-      sx,sy,sz = O_[0]/N_[0],O_[1]/N_[1], O_[2]/N_[2]
-      self.initial_shift  = [-sx,-sy,-sz]
-      self.initial_shift_cart = cs.unit_cell().orthogonalize(self.initial_shift)
-      self.map_data=self.map_data.shift_origin()
-      # shift model
-      sites_cart = xray_structure.sites_cart()
-      sites_cart_shifted = sites_cart+\
-          flex.vec3_double(sites_cart.size(), self.initial_shift_cart)
-      xray_structure.set_sites_cart(sites_cart = sites_cart_shifted)
+    soo = shift_origin(map_data=self.map_data,
+      xray_structure=self.xray_structure)
+    self.map_data = soo.map_data
+    self.initial_shift      = soo.shift_frac
+    self.initial_shift_cart = soo.shift_cart
+    xray_structure = soo.xray_structure
     if(selection is None):
       selection = flex.bool(xray_structure.scatterers().size(), True)
     xray_structure_selected = xray_structure.select(selection=selection)

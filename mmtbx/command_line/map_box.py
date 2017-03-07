@@ -99,7 +99,7 @@ Parameters:"""%h
     print_statistics.make_sub_header("CCP4 map", out=log)
     ccp4_map = inputs.ccp4_map
     ccp4_map.show_summary(prefix="  ",out=log)
-    map_data = ccp4_map.map_data()
+    map_data = ccp4_map.data#map_data()
     if inputs.ccp4_map_file_name.endswith(".ccp4"):
       map_or_map_coeffs_prefix=os.path.basename(
        inputs.ccp4_map_file_name[:-5])

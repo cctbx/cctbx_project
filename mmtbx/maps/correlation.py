@@ -9,7 +9,46 @@ import sys
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 
-class four_cc(object):
+class d99(object):
+  def __init__(self, map, crystal_symmetry):
+    n_real = map.focus()
+    max_index = [(i-1)//2 for i in n_real]
+    complete_set = miller.build_set(
+      crystal_symmetry = crystal_symmetry,
+      anomalous_flag   = False,
+      max_index        = max_index)
+    self.f = complete_set.structure_factors_from_map(
+      map            = map,
+      use_scale      = True,
+      anomalous_flag = False,
+      use_sg         = False)
+    ds = self.f.d_spacings().data()
+    d_max, d_min = flex.max(ds), flex.min(ds)
+    o = maptbx.d99(f=self.f.data(), d_spacings=ds,
+      hkl=self.f.indices(), d_min=d_min, d_max=d_max)
+    self.d_min_cc9, self.d_min_cc99, self.d_min_cc999=\
+      o.d_min_cc9(), o.d_min_cc99(), o.d_min_cc999()
+    self.ccs=o.ccs()
+    self.d_mins=o.d_mins()
+
+  def write_mtz_file(self, file_name):
+    mtz_dataset = self.f.as_mtz_dataset(column_root_label="F")
+    mtz_object = mtz_dataset.mtz_object()
+    mtz_object.write(file_name = file_name)
+
+  def write_log(self, file_name):
+    of=open(file_name,"w")
+    fmt = "%12.6f %8.6f"
+    for d_min, cc in zip(self.d_mins, self.ccs):
+      print >> of, fmt%(d_min, cc)
+    of.close()
+
+def get_selection_above_cutoff(m, n):
+  m_ = m.as_1d()
+  s = flex.sort_permutation(m_, reverse=True)
+  return m>=m_.select(s)[n]
+
+class five_cc(object):
   def __init__(self, map, xray_structure, d_min):
     adopt_init_args(self, locals())
     self.crystal_gridding = maptbx.crystal_gridding(
@@ -32,8 +71,9 @@ class four_cc(object):
     #
     self.cc_overall = from_map_map(map_1=self.map, map_2=self.map_calc)
     self.cc_image = self._cc_image()
-    self.cc_atoms = from_map_map_selection(
-      map_1=self.map, map_2=self.map_calc, selection = self.sel_inside)
+    self.cc_mask = from_map_map_selection(map_1=self.map, map_2=self.map_calc,
+      selection = self.sel_inside)
+    self.cc_peaks = self._cc_peaks()
     self.cc_volume = self._cc_volume()
     # Free memory
     del self.bs_mask, self.sel_inside
@@ -51,15 +91,23 @@ class four_cc(object):
       unit_cell=self.xray_structure.unit_cell(),
       radius=atom_radius)
 
-  def _cc_volume(self):
+  def _cc_peaks(self):
     n_nodes_inside = self.sel_inside.size()
-    def get_selection_above_cutoff(m, n):
-      m_ = m.as_1d()
-      s = flex.sort_permutation(m_, reverse=True)
-      return m>=m_.select(s)[n]
     s1 = get_selection_above_cutoff(m=self.map, n=n_nodes_inside)
     s2 = get_selection_above_cutoff(m=self.map_calc, n=n_nodes_inside)
     s = s1 | s2
+    #G = flex.double(flex.grid(self.map.all()), 0)
+    #G = G.set_selected(s, 1)
+    #ccp4_map(cg=self.crystal_gridding, file_name="m1.ccp4", map_data=self.map)
+    #ccp4_map(cg=self.crystal_gridding, file_name="m2.ccp4", map_data=self.map_calc)
+    #ccp4_map(cg=self.crystal_gridding, file_name="m3.ccp4", map_data=G)
+    return flex.linear_correlation(
+      x=self.map.select(s.iselection()).as_1d(),
+      y=self.map_calc.select(s.iselection()).as_1d()).coefficient()
+
+  def _cc_volume(self):
+    n_nodes_inside = self.sel_inside.size()
+    s = get_selection_above_cutoff(m=self.map_calc, n=n_nodes_inside)
     #G = flex.double(flex.grid(self.map.all()), 0)
     #G = G.set_selected(s, 1)
     #ccp4_map(cg=self.crystal_gridding, file_name="m1.ccp4", map_data=self.map)

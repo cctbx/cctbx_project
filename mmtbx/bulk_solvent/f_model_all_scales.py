@@ -261,7 +261,7 @@ class run(mmtbx.f_model.manager):
       # It must match at least up to 1.e-6.
       self.show(prefix = "add H (%4.2f, %6.2f)"%(kh, bh), log = log)
       if(fast):
-        assert approx_equal(result.r_factor(), self.r_work(), 1.e-4)
+        assert approx_equal(result.r_work(), self.r_work(), 1.e-4)
       else:
         assert approx_equal(self.r_all(), o.r()), [self.r_all(), o.r()]
     return group_args(

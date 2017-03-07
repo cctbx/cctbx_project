@@ -159,6 +159,60 @@ void hoppe_gassman_modification(af::ref<DataType, af::c_grid<3> > map_data,
   }
 }
 
+template <typename ComplexType, typename FloatType>
+af::shared<FloatType> cc_complex_complex(
+  af::const_ref<ComplexType> const& f_1,
+  af::const_ref<ComplexType> const& f_2,
+  af::const_ref<FloatType> const& d_spacings,
+  af::const_ref<FloatType> const& ss,
+  af::const_ref<FloatType> const& d_mins,
+  FloatType const& b_iso)
+{
+  CCTBX_ASSERT(f_1.size()==f_2.size());
+  CCTBX_ASSERT(f_1.size()==d_spacings.size());
+  CCTBX_ASSERT(f_1.size()==ss.size());
+  af::shared<FloatType> num_term(ss.size());
+  af::shared<FloatType> d2_term(ss.size());
+  af::shared<FloatType> f_1_i_sq(ss.size());
+  for(int i = 0; i < ss.size(); i++) {
+    FloatType f_2_scaled = std::abs(f_2[i] * std::exp(-b_iso*ss[i]));
+    FloatType f_1_abs = std::abs(f_1[i]);
+    FloatType f_1_arg = std::arg(f_1[i]);
+    FloatType f_2_arg = std::arg(f_2[i]);
+    num_term[i] = f_1_abs*f_2_scaled*std::cos(f_2_arg-f_1_arg);
+    d2_term[i] = f_2_scaled*f_2_scaled;
+    f_1_i_sq[i] = f_1_abs*f_1_abs;
+  }
+
+  FloatType cc_best=-1.;
+  FloatType d_min_best=-1.;
+  af::shared<FloatType> result;
+  int ss_size = ss.size();
+  for(int j = 0; j < d_mins.size(); j++) {
+    FloatType d_min = d_mins[j];
+    FloatType num = 0.;
+    FloatType den = 0.;
+    FloatType d1 = 0.;
+    FloatType d2 = 0.;
+    FloatType cc = 0.;
+    for(int i = 0; i < ss_size; i++) {
+      if(d_spacings[i]>d_min) {
+        num += num_term[i];
+        d2 += d2_term[i];
+      }
+      d1 += f_1_i_sq[i];
+    }
+    cc = num / (std::sqrt(d1*d2));
+    if(cc>cc_best) {
+      cc_best = cc;
+      d_min_best = d_min;
+    }
+  }
+  result.push_back(d_min_best);
+  result.push_back(cc_best);
+  return result;
+}
+
 /*
 Acta Cryst. (2014). D70, 2593-2606
 Metrics for comparison of crystallographic maps
