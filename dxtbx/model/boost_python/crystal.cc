@@ -102,14 +102,15 @@ namespace dxtbx { namespace model { namespace boost_python {
       return boost::python::make_tuple(
           obj.attr("__dict__"),
           crystal.get_A_at_scan_points(),
-          crystal.get_B_covariance());
+          crystal.get_B_covariance(),
+          crystal.get_mosaicity());
     }
 
     static
     void setstate(boost::python::object obj, boost::python::tuple state)
     {
       Crystal &crystal = boost::python::extract<Crystal&>(obj)();
-      DXTBX_ASSERT(boost::python::len(state) == 3);
+      DXTBX_ASSERT(boost::python::len(state) == 4);
 
       // restore the object's __dict__
       boost::python::dict d = boost::python::extract<boost::python::dict>(
@@ -121,8 +122,10 @@ namespace dxtbx { namespace model { namespace boost_python {
         scitbx::af::const_ref< mat3<double> > >(state[1]);
       scitbx::af::const_ref< double, scitbx::af::c_grid<2> > cov_B = boost::python::extract<
         scitbx::af::const_ref< double, scitbx::af::c_grid<2> > >(state[2]);
+      double mosaicity = boost::python::extract<double>(state[3]);
       crystal.set_A_at_scan_points(A_list);
       crystal.set_B_covariance(cov_B);
+      crystal.set_mosaicity(mosaicity);
     }
 
     static bool getstate_manages_dict() { return true; }
@@ -192,7 +195,8 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("other"),
             arg("angle_tolerance")=0.01,
             arg("uc_rel_length_tolerance")=0.01,
-            arg("uc_abs_angle_tolerance")=1.0))
+            arg("uc_abs_angle_tolerance")=1.0,
+            arg("mosaicity_tolerance")=0.8))
       .def("get_B_covariance", &Crystal::get_B_covariance)
       .def("set_B_covariance", &Crystal::set_B_covariance)
       .def("set_B_covariance", &Crystal_set_B_covariance_from_tuple)

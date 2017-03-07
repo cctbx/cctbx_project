@@ -239,7 +239,7 @@ def exercise_similarity():
   return
 
 def exercise_check_old_vs_new():
-  from dxtbx.model.crystal import crystal_model_old
+  from dxtbx.tests.model.crystal_model_old import crystal_model_old
 
   model_1 = Crystal(
     real_space_a=(10, 0, 0),

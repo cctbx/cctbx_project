@@ -187,7 +187,8 @@ namespace dxtbx { namespace model {
           other.A_at_scan_points_.end()),
         cov_B_(other.cov_B_.accessor()),
         cell_sd_(other.cell_sd_),
-        cell_volume_sd_(other.cell_volume_sd_) {
+        cell_volume_sd_(other.cell_volume_sd_),
+        mosaicity_(other.mosaicity_) {
       std::copy(
           other.cov_B_.begin(),
           other.cov_B_.end(),
@@ -206,7 +207,9 @@ namespace dxtbx { namespace model {
             const vec3<double> &real_space_b,
             const vec3<double> &real_space_c,
             const cctbx::sgtbx::space_group &space_group)
-      : space_group_(space_group) {
+      : space_group_(space_group),
+        cell_volume_sd_(0),
+        mosaicity_(0) {
 
       // Setting matrix at initialisation
       mat3<double> A = mat3<double>(
@@ -554,8 +557,10 @@ namespace dxtbx { namespace model {
           }
         }
       }
-      return (d_U <= eps &
-              d_B <= eps &
+      double d_mosaicity = std::abs(mosaicity_ - other.mosaicity_);
+      return (d_U <= eps &&
+              d_B <= eps &&
+              d_mosaicity <= eps &&
               space_group_ == other.space_group_);
     }
 
@@ -566,10 +571,24 @@ namespace dxtbx { namespace model {
         const Crystal &other,
         double angle_tolerance=0.01,
         double uc_rel_length_tolerance=0.01,
-        double uc_abs_angle_tolerance=1.0) const {
+        double uc_abs_angle_tolerance=1.0,
+        double mosaicity_tolerance=0.8) const {
 
       // space group test
       if (get_space_group() != other.get_space_group()) {
+        return false;
+      }
+
+      // mosaicity test
+      double m_a = get_mosaicity();
+      double m_b = other.get_mosaicity();
+      double min_m = std::min(m_a, m_b);
+      double max_m = std::max(m_a, m_b);
+      if (min_m <= 0) {
+        if (max_m > 0.0) {
+          return false;
+        }
+      } else if (min_m / max_m < mosaicity_tolerance) {
         return false;
       }
 
