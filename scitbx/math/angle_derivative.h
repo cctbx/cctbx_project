@@ -25,6 +25,7 @@ namespace scitbx { namespace math {
    * u and v with respect to each of the elements of u and v. The result is
    * returned in the form of a pair of vectors.
    */
+  inline
   af::tiny<vec3<double>, 2>
   angle_derivative_wrt_vectors(
       vec3<double> u,
