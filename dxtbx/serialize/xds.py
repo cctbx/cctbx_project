@@ -106,7 +106,8 @@ def to_crystal(filename):
       real_space_b=real_space_b,
       real_space_c=real_space_c,
       space_group=space_group)
-  crystal.set_mosaicity(mosaicity)
+  if (mosaicity is not None):
+    crystal.set_mosaicity(mosaicity)
   return crystal
 
 def xds_detector_name(dxtbx_name):
