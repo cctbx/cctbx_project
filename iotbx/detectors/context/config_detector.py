@@ -294,13 +294,20 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
     if imageobject.vendortype == "Pilatus" and \
        imageobject.size1==407 and imageobject.size2==487:
        imageobject.vendortype = "Pilatus-200K"
-    if imageobject.vendortype in ["Pilatus-6M","Pilatus-2M","Pilatus-300K","Pilatus-100K","Eiger-16M","Eiger-9M","Eiger-4M","Eiger-1M"]:
+    if imageobject.vendortype in ["Pilatus-6M","Pilatus-2M","Pilatus-300K","Pilatus-100K",]:
        beam_center_convention = 0
        set_convention(0,phil_params)
        if phil_params.distl.minimum_signal_height==None:
           phil_params.distl.minimum_signal_height=2.5
        if phil_params.distl.minimum_spot_area==None or \
           phil_params.distl.minimum_spot_area > 5:
+          phil_params.distl.minimum_spot_area=5
+    if imageobject.vendortype in ["Eiger-16M","Eiger-9M","Eiger-4M","Eiger-1M",]:
+       beam_center_convention = 0
+       set_convention(0,phil_params)
+       if phil_params.distl.minimum_signal_height==None:
+          phil_params.distl.minimum_signal_height=4.0
+       if phil_params.distl.minimum_spot_area==None:
           phil_params.distl.minimum_spot_area=5
 
     elif imageobject.vendortype == "Hamamatsu":
