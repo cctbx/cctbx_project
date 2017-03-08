@@ -170,26 +170,35 @@ class multi_criterion_plot_mixin (object) :
     self.figure.clear()
     bin = self.binner.get_bin(i_bin)
     self._current_bin = bin
-    n_plots = 2
     x = bin.x_values()
     # b_iso, cc, fmodel, two_fofc
     y = bin.get_real_space_plot_values()
     (b_iso, cc, fmodel, two_fofc) = bin.get_real_space_plot_values()
     # electron density (observed and calculated)
-    p1 = self.figure.add_subplot(n_plots, 1, n_plots)
-    p1.set_position([0.075, 0.625, 0.825, 0.325])
-    p1.plot(x, y[2], "-", linewidth=1, color="g")
-    p1.plot(x, y[3], "-", linewidth=1, color="k")
-    p1.set_title("Multi-criterion validation")
-    a1 = p1.get_axes()
-    a1.set_ylabel("Density", fontproperties=self.get_font("label"))
-    a1.set_xlim(-1, 101)
     rho_min, rho_max = self.y_limits["rho"]
-    a1.set_ylim(rho_min, rho_max)
-    a1.xaxis.set_major_formatter(self.null_fmt)
+    plot_density = not ( (rho_min is None) and (rho_max is None) )
+    top_position = [0.075, 0.625, 0.825, 0.325]
+    bot_position = [0.075, 0.075, 0.825, 0.55]
+    if (plot_density):
+      n_plots = 2
+      p1 = self.figure.add_subplot(n_plots, 1, n_plots)
+      p1.set_position(top_position)
+      p1.plot(x, y[2], "-", linewidth=1, color="g")
+      p1.plot(x, y[3], "-", linewidth=1, color="k")
+      p1.set_title("Multi-criterion validation")
+      a1 = p1.get_axes()
+      a1.set_ylabel("Density", fontproperties=self.get_font("label"))
+      a1.set_xlim(-1, 101)
+      a1.set_ylim(rho_min, rho_max)
+      a1.xaxis.set_major_formatter(self.null_fmt)
+    else:
+      n_plots = 1
     # CC
-    p2 = self.figure.add_subplot(n_plots, 1, n_plots - 1, sharex=p1)
-    p2.set_position([0.075, 0.075, 0.825, 0.55])
+    if (plot_density):
+      p2 = self.figure.add_subplot(n_plots, 1, n_plots - 1, sharex=p1)
+      p2.set_position(bot_position)
+    else:
+      p2 = self.figure.add_subplot(n_plots, 1, n_plots)
     p2.plot(x, y[1], "-", linewidth=1, color="b")
     a2 = p2.get_axes()
     a2.set_ylabel("Local real-space CC", fontproperties=self.get_font("label"),
@@ -200,7 +209,8 @@ class multi_criterion_plot_mixin (object) :
     a2.get_yticklabels()[-1].set_visible(False)
     # B_iso
     p3 = p2.twinx()
-    p3.set_position([0.075, 0.075, 0.825, 0.55])
+    if (plot_density):
+      p3.set_position(bot_position)
     p3.plot(x, y[0], "-", linewidth=1, color="r")
     a3 = p3.get_axes()
     a3.set_ylabel("B-factor", fontproperties=self.get_font("label"),
@@ -220,7 +230,12 @@ class multi_criterion_plot_mixin (object) :
     p2.plot(x, y2[1] * 0.98, "^")
     p2.plot(x, y2[2] * 0.97, "s")
     p2.plot(x, y2[3] * 0.96, "d")
-    self.figure.legend(p2.lines + p3.lines + p1.lines, ["CC", "Ramachandran",
-      "Rotamer", "C-beta", "Bad clash", "B-factor", "Fc", "2mFo-DFc"],
-      prop=self.get_font("legend"))
+    legend_lines = p2.lines + p3.lines
+    legend_labels = ["CC", "Ramachandran", "Rotamer", "C-beta", "Bad clash",
+                     "B-factor"]
+    if (plot_density):
+      legend_lines += p1.lines
+      legend_labels.extend(["Fc", "2mFo-DFc"])
+    self.figure.legend(legend_lines, legend_labels,
+                       prop=self.get_font("legend"))
     self.canvas.draw()
