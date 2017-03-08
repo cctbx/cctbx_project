@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division
 import boost.python
-import cctbx.uctbx
-import cctbx.sgtbx
+from cctbx import sgtbx # import dependency
+from cctbx.crystal_orientation import crystal_orientation # import dependency
 from dxtbx_model_ext import *
 from dxtbx.model.beam import *
 from dxtbx.model.goniometer import *

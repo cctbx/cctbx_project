@@ -2,8 +2,6 @@ from __future__ import absolute_import, division
 from scitbx import matrix
 from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import space_group as SG
-from cctbx.sgtbx import space_group_symbols
-from cctbx.crystal_orientation import crystal_orientation
 from dxtbx_model_ext import Crystal
 
 
