@@ -314,4 +314,7 @@ def beam_center_convention_from_image_object(imageobject,phil_params):
       beam_center_convention = 0
       set_convention(0,phil_params)
 
+    if phil_params.distl.minimum_spot_area == None:
+      phil_params.distl.minimum_spot_area = 10 # last-resort default formerly set in signal_strength.py
+
     return beam_center_convention

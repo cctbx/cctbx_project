@@ -6,7 +6,7 @@ from libtbx.utils import Sorry
 import sys, os
 additional_spotfinder_phil_defs ="""
 distl {
-  minimum_spot_area = 10
+  minimum_spot_area = None
     .type = int
     .help = "Override application default (PADs:5, others:10) set minimum spot area (in pixels) within spotfinder."
   minimum_signal_height = None

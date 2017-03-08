@@ -257,7 +257,7 @@ class spotfinder_image_files(image_files):
 
     #take care of unbinned Quantum 315
     if (self.phil_params.distl_permit_binning and \
-      imageobject.size1 > 4000) or \
+      imageobject.size1 > 4000 and imageobject.vendortype=="ADSC") or \
       self.phil_params.distl_force_binning:
       imageobject.setBin(2)
       self.phil_params.distl.minimum_spot_area = min(
