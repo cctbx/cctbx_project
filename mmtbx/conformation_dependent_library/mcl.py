@@ -1,4 +1,5 @@
 import os, sys
+import time
 
 from cctbx.array_family import flex
 from scitbx.math import superpose
@@ -51,6 +52,7 @@ def generate_sites_fixed(pdb_hierarchy, resname, element=None):
 
 def superpose_ideal_sf4_coordinates(pdb_hierarchy):
   from iotbx import pdb
+  t0=time.time()
   rmsd_list = {}
   ideal = pdb.input(lines=mcl_sf4_coordination.ideal_sf4,
                     source_info='ideal',
@@ -76,11 +78,11 @@ def superpose_ideal_sf4_coordinates(pdb_hierarchy):
           break
       else:
         assert 0, 'not all atoms updated'
-  outl = '\n  SF4 Regularisation'
+  outl = '  SF4 Regularisation'
   outl+= '\n    residue        rmsd'
   for id_str, rmsd in sorted(rmsd_list.items()):
     outl += '\n    "%s"   %0.1f' % (id_str, rmsd)
-  outl += '\n'
+  outl += '\n  Time to superpose : %0.2fs\n' % (time.time()-t0)
   return outl
 
 if __name__=="__main__":
