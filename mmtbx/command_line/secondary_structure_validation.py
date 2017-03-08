@@ -283,6 +283,7 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
 
   n_elem_with_wrong_rama = 0
   n_elem_with_rama_out = 0
+  n_elem_with_bad_hbond = 0
   #
   # Hydrogen Bonds in Proteins: Role and Strength
   # Roderick E Hubbard, Muhammad Kamran Haider
@@ -301,6 +302,8 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
       n_elem_with_wrong_rama += 1
     if n_outliers > 0:
       n_elem_with_rama_out += 1
+    if n_bad_hbonds > 0:
+      n_elem_with_bad_hbond += 1
     if n_bad_hbonds + n_outliers + n_wrong_region > 0:
       n_bad_helix_sheet_records += 1
     if n_bad_hbonds + n_mediocre_hbonds + n_outliers + n_wrong_region > 0:
@@ -320,6 +323,8 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
   n3 = n_elem_with_rama_out/n_total_helix_sheet_records*100.
   # n4 = percentage of bad H bonds (per given model).
   n4 =  cumm_n_bad_hbonds/cumm_n_hbonds*100. # No per SS element separation
+  # percentage of SS elements that have at least one bad H bond (per given model)
+  n5 = n_elem_with_bad_hbond/n_total_helix_sheet_records*100.
   print >> out, "Overall info:"
   print >> out, "  Total HELIX+SHEET recods       :", n_total_helix_sheet_records
   print >> out, "  Total bad HELIX+SHEET recods   :", n_bad_helix_sheet_records
@@ -343,7 +348,8 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
     n1                          = n1,
     n2                          = n2,
     n3                          = n3,
-    n4                          = n4)
+    n4                          = n4,
+    n5                          = n5)
 
 if __name__ == "__main__" :
   run(sys.argv[1:])
