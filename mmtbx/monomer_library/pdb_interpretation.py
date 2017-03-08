@@ -149,6 +149,9 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
+  regularise_sf4 = True
+    .type = bool
+    .short_caption = Substitute correctly oriented SF4 metal cluster
   flip_symmetric_amino_acids = False
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
@@ -2949,6 +2952,13 @@ class build_all_chain_proxies(linking_mixins):
         raw_records = flex.std_string(raw_records)
       self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
     self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
+    #
+    # optionally modify the model before processing
+    #
+    if self.params.regularise_sf4:
+      from mmtbx.conformation_dependent_library import mcl
+      info = mcl.superpose_ideal_sf4_coordinates(self.pdb_hierarchy)
+      if info: print >> log, info
     if self.params.flip_symmetric_amino_acids:
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()
       if info:
@@ -5441,6 +5451,14 @@ class process(object):
       # initializing grm
       self._geometry_restraints_manager.pair_proxies(
           sites_cart=self.all_chain_proxies.sites_cart)
+
+      # improved metal coordination
+      automatic_linking = self.all_chain_proxies.params.automatic_linking
+      if automatic_linking.link_metals:
+        from mmtbx.conformation_dependent_library import mcl
+        mcl.update(self._geometry_restraints_manager,
+                    self.all_chain_proxies.pdb_hierarchy,
+        )
 
       # Here we are going to add another needed restraints.
       # Ramachandran restraints

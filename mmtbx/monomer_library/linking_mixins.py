@@ -486,6 +486,15 @@ class linking_mixins(object):
                 ' '*6,
                 distance)
         continue
+      #
+      # moving sections of this to outside the loop
+      #  - SF4
+      #
+      if link_metals:
+        moved = ['SF4']
+        if ( atom1.parent().resname in moved or
+             atom2.parent().resname in moved
+             ): continue
       if verbose:
         print i_seq, j_seq, atom1.quote(),
         print atom2.quote(),
