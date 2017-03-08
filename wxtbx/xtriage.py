@@ -45,6 +45,8 @@ class wx_output_base (mmtbx.scaling.xtriage_output) :
   def add_panel (self, panel, title) :
     raise NotImplementedError()
 
+  def show_big_header (self, text) : pass
+
   def show_header (self, title) :
     """
     Creates a new notebook page with the specified title.  This will be the

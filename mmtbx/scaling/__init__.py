@@ -7,7 +7,7 @@ for displaying the results of Xtriage.
 
 from __future__ import division
 import cctbx.array_family.flex # import dependency
-from libtbx.str_utils import make_sub_header, make_header
+from libtbx.str_utils import make_sub_header, make_header, make_big_header
 from libtbx import slots_getstate_setstate
 from cStringIO import StringIO
 import sys
@@ -27,6 +27,13 @@ class xtriage_output (slots_getstate_setstate) :
   """
   # this is used to toggle behavior in some output methods
   gui_output = False
+
+  def show_big_header (self, title) :
+    """
+    Print a big header with the specified title.
+    """
+    raise NotImplementedError()
+
   def show_header (self, title) :
     """
     Start a new section with the specified title.
@@ -127,6 +134,9 @@ class printed_output (xtriage_output) :
     self.out = out
     self._warnings = []
 
+  def show_big_header (self, text) :
+    make_big_header(text, out=self.out)
+
   def show_header (self, text) :
     make_header(text, out=self.out)
 
@@ -189,6 +199,7 @@ class loggraph_output (xtriage_output) :
     assert hasattr(out, "write") and hasattr(out, "flush")
     self.out = out
 
+  def show_big_header (self, text) : pass
   def show_header (self, text) : pass
   def show_sub_header (self, title) : pass
   def show_text (self, text) : pass

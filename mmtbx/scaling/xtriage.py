@@ -21,7 +21,7 @@ import iotbx.phil
 from cctbx.array_family import flex
 from cctbx import crystal
 from libtbx.utils import Sorry, multi_out
-from libtbx.str_utils import StringIO, make_big_header, wordwrap
+from libtbx.str_utils import StringIO, wordwrap
 from libtbx.utils import null_out
 from libtbx import runtime_utils
 import libtbx.callbacks # import dependency
@@ -264,6 +264,14 @@ gui
 }
 }
 """, process_includes=True)
+
+
+def make_big_header(text, out):
+  if hasattr(out, 'show_big_header'):
+    out.show_big_header(text)
+  else:
+    from libtbx.str_utils import make_big_header as mbh
+    mbh(text, out)
 
 
 def print_banner(appl, out=None):
