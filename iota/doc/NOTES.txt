@@ -1,10 +1,9 @@
-IOTA v1.1.004 - More bugfixes and GUI changes
+IOTA v1.1.005 - Input handling update
 
-1. Added a column to input box that shows how many images are read in
-2. Input box columns now automatically resized when added
-3. Moved image object polling to separate thread, so GUI does not lock up
-during runs with lots of images (> 3000).
-4. Fixed a bug where multiple input entries failed to process
-5. With DIALS, intermediate pickles saved into correct image object folder
-6. Bad files (i.e. various txt, jpg, hidden files, etc.) generate objects
-now, but are bypassed in processing
+1. A new, faster input processing module for use in both GUI and Xterm versions
+2. New much faster file type identification
+3. Mac OS X bugfixes:
+    a. Moved calling of image viewer to separate thread (dialog allowing user
+     to select number of images to view would hang otherwise)
+    b. When exiting app, threads continued to run; now (mostly) fixed
+

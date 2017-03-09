@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 02/22/2017
+Last Changed: 03/09/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -26,9 +26,8 @@ from libtbx import easy_pickle as ep
 from libtbx.utils import to_unicode
 from cctbx import miller
 assert miller
-from libtbx import easy_run
 
-from iota.components.iota_utils import GenerateInput, get_file_list
+from iota.components.iota_utils import InputFinder
 from iota.components.iota_analysis import Analyzer, Plotter
 from iota.components.iota_misc import WxFlags, noneset
 import iota.components.iota_controls as ct
@@ -36,6 +35,7 @@ import iota.components.iota_threads as thr
 import iota.components.iota_dialogs as dlg
 
 f = WxFlags()
+ginp = InputFinder()
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -233,36 +233,27 @@ class FileListCtrl(ct.CustomListCtrl):
   def set_type_choices(self, path):
     # Determine what type of input this is and present user with choices
     # (this so far works for images ONLY)
-    ginp = GenerateInput()
     type_choices = ['[  SELECT INPUT TYPE  ]']
     preferred_selection = 0
+    inputs, input_type = ginp.get_input(path)
     if os.path.isdir(path):
-      type_choices.extend(['raw images folder', 'image pickles folder'])
-      dir_type = ginp.get_folder_type(path)
-      if dir_type in type_choices:
-        preferred_selection = type_choices.index(dir_type)
+      type_choices.extend(['raw image folder', 'image pickle folder'])
+      if input_type in type_choices:
+        preferred_selection = type_choices.index(input_type)
     elif os.path.isfile(path):
-      file_type = ginp.get_file_type(path)
-      if file_type in ('image pickle', 'raw image'):
+      if input_type in ('image pickle', 'raw image'):
         type_choices.extend(['raw image', 'image pickle'])
-        if file_type in type_choices:
-          preferred_selection = type_choices.index(file_type)
-      elif file_type == 'image list':
-        type_choices.extend(['image list'])
-        preferred_selection = type_choices.index('image list')
-      elif file_type in ('IOTA settings',
-                         'PRIME settings',
-                         'LABELIT target',
-                         'DIALS target'):
-        type_choices.extend(['IOTA settings', 'PRIME settings',
-                             'LABELIT target', 'DIALS target'])
-        preferred_selection = type_choices.index(file_type)
-
-    return type_choices, preferred_selection
+        if input_type in type_choices:
+          preferred_selection = type_choices.index(input_type)
+      elif input_type in ('raw image list', 'image pickle list'):
+        type_choices.extend(['raw image list', 'image pickle list'])
+        if input_type in type_choices:
+          preferred_selection = type_choices.index(input_type)
+    return inputs, type_choices, preferred_selection
 
   def add_item(self, path):
     # Generate item
-    inp_choices, inp_sel = self.set_type_choices(path)
+    inputs, inp_choices, inp_sel = self.set_type_choices(path)
     type_choice = ct.DataTypeChoice(self.ctr,
                                     choices=inp_choices)
     item = ct.InputListItem(path=path,
@@ -282,27 +273,17 @@ class FileListCtrl(ct.CustomListCtrl):
 
     # Set drop-down selection, check it for data and open other tabs
     item.type.type.SetSelection(inp_sel)
-    if item.type.type.GetString(inp_sel) in ['raw images folder',
-                                             'image pickles folder',
+    if item.type.type.GetString(inp_sel) in ['raw image folder',
+                                             'image pickle folder',
                                              'image pickle',
                                              'raw image',
-                                             'image list']:
+                                             'raw image list',
+                                             'image pickle list']:
       self.main_window.toolbar.EnableTool(self.main_window.tb_btn_run.GetId(), True)
-      if os.path.isdir(item.path):
-        ignore_ext = ('txt', 'log', 'lst', 'seq', 'phil', 'param', 'inp',
-                      'int', 'tmp', 'png', 'jpg', 'jpeg')
-        self.all_data_images[item.path] = get_file_list(item.path,
-                                                        ignore_ext=ignore_ext)
-      elif os.path.isfile(item.path):
-        if item.type.type.GetString(inp_sel) == 'image list':
-          with open(item.path, 'r') as f:
-            items = f.readlines()
-          self.all_data_images[item.path] = items
-        else:
-          self.all_data_images[item.path] = [item.path]
+      self.all_data_images[item.path] = [inputs]
 
       # Calculate # of images and display w/ item
-      self.ctr.SetStringItem(idx, 0, str(len(self.all_data_images[item.path])))
+      self.ctr.SetStringItem(idx, 0, str(len(inputs)))
 
       if "image" in item.type.type.GetString(inp_sel):
         view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer16')
@@ -358,45 +339,46 @@ class FileListCtrl(ct.CustomListCtrl):
     idx = e.GetEventObject().GetParent().index
     item_obj = self.ctr.GetItemData(idx)
     path = item_obj.path
-    ginp = GenerateInput()
+    type = item_obj.type.type.GetString(item_obj.type_selection)
 
     if os.path.isfile(path):
-      if ginp.get_file_type(path) in ('raw image', 'image pickle'):
-        self.view_images(path)
-      elif ginp.is_text(path):
-        type = item_obj.type.type.GetString(item_obj.type.type.GetSelection())
+      if type in ('raw image', 'image pickle'):
+        self.view_images([path])
+      elif type in ('raw image list', 'image pickle list'):
         with open(path, 'r') as f:
           file_list = f.readlines()
-        if type == 'image list':
-          view_warning = dlg.ViewerWarning(self, len(file_list))
-          if (view_warning.ShowModal() == wx.ID_OK):
-            file_string = ' '.join(file_list[:view_warning.no_images]).replace('\n', '')
-            self.view_images(file_string)
-        else:
+          self.view_images(file_list)
+      elif type == 'text':
+        with open(path, 'r') as f:
+          file_list = f.readlines()
           msg = ' '.join(file_list)
           textview = dlg.TextFileView(self, title=path, contents=msg)
           textview.ShowModal()
-      elif ginp.get_file_type(path) == 'binary':
-        wx.MessageBox('Unknown binary file', 'Warning',
+      else:
+        wx.MessageBox('Unknown file format', 'Warning',
                       wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
-      ignore_ext = ('txt', 'log', 'lst', 'seq', 'phil', 'param', 'inp',
-                    'int', 'tmp', 'png', 'jpg', 'jpeg')
-      file_list = get_file_list(path, ignore_ext=ignore_ext)
-      view_warning = dlg.ViewerWarning(self, len(file_list))
-      if (view_warning.ShowModal() == wx.ID_OK):
-        file_string = ' '.join(file_list[:view_warning.no_images])
-        self.view_images(file_string)
+      file_list, _ = ginp.get_input(path, filter=True)
+      self.view_images(file_list)
 
-      #filelistview = dlg.TextFileView(self, title=path, contents=file_list)
-      #filelistview.ShowModal()
-
-  def view_images(self, img_string):
+  def view_images(self, img_list):
     ''' Launches image viewer (depending on backend) '''
+    if len(img_list) > 10:
+      view_warning = dlg.ViewerWarning(self, len(img_list))
+      if view_warning.ShowModal() == wx.ID_OK:
+        file_string = ' '.join(img_list[:view_warning.no_images])
+      else:
+        return
+      view_warning.Close()
+    else:
+      file_string = ' '.join(img_list)
+
     backend = self.parent.int_box.ctr.GetString(
       self.parent.int_box.ctr.GetSelection()).lower()
-    command = '{}.image_viewer {}'.format(backend, img_string)
-    easy_run.fully_buffered(command)
+    viewer = thr.ImageViewerThread(self,
+                                   backend=backend,
+                                   file_string=file_string)
+    viewer.start()
 
 
   def onDelButton(self, e):
@@ -887,7 +869,6 @@ class ProcWindow(wx.Frame):
     os.remove(self.tmp_abort_file)
 
     # Re-generate new image info to include un-processed images
-    ginp = GenerateInput()
     input_entries = [i for i in self.gparams.input if i != None]
     ext_file_list = ginp.make_input_list(input_entries)
     old_file_list = [i.raw_img for i in self.finished_objects]
@@ -920,6 +901,7 @@ class ProcWindow(wx.Frame):
 
   def run(self, init):
     # Initialize IOTA parameters and log
+
     self.init = init
     good_init = self.init.run(self.gparams, target_phil=self.target_phil)
 
@@ -1374,7 +1356,7 @@ class ProcWindow(wx.Frame):
 
   def finish_process(self):
     import shutil
-
+    self.timer.Stop()
     if os.path.isfile(self.tmp_abort_file):
       self.gauge_process.Hide()
       font = self.sb.GetFont()
@@ -1382,7 +1364,6 @@ class ProcWindow(wx.Frame):
       self.status_txt.SetFont(font)
       self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('ABORTED BY USER')
-      self.timer.Stop()
       self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
       shutil.rmtree(self.init.tmp_base)
       return

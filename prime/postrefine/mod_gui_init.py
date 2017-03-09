@@ -181,8 +181,8 @@ class PRIMEWindow(wx.Frame):
 
     for i in items:
       inp_type = i.type.type.GetString(i.type_selection)
-      if inp_type in ('processed pickles list',
-                      'processed pickles folder',
+      if inp_type in ('processed pickle list',
+                      'processed pickle folder',
                       'processed pickle'):
         inputs.append(i.path)
       elif inp_type == 'reference MTZ':
@@ -202,32 +202,54 @@ class PRIMEWindow(wx.Frame):
     self.pparams.n_residues = self.input_window.opt_spc_nres.ctr.GetValue()
     self.pparams.n_processors = self.input_window.opt_spc_nproc.ctr.GetValue()
 
+  def sanity_check(self):
+    '''
+    Goes through and checks that the key parameters are populated; pops
+    up an error message if they are not
+    :return: True if satisfied, False if not
+    '''
+
+    # Check to see that pixel size is specified (PRIME won't run without it)
+    if self.pparams.pixel_size_mm is None:
+      warning = wx.MessageDialog(None,
+                                 caption='Warning!',
+                                 message='Pixel size not specified!',
+                                 style=wx.OK)
+      warning.ShowModal()
+      warning.Destroy()
+      return False
+
+    return True
+
+
   def onRun(self, e):
     # Run full processing
 
     self.init_settings()
-    prime_phil = master_phil.format(python_object=self.pparams)
+    print self.pparams.pixel_size_mm
+    if self.sanity_check():
+      prime_phil = master_phil.format(python_object=self.pparams)
 
-    with misc.Capturing() as output:
-      prime_phil.show()
+      with misc.Capturing() as output:
+        prime_phil.show()
 
-    txt_out = ''
-    for one_output in output:
-      txt_out += one_output + '\n'
+      txt_out = ''
+      for one_output in output:
+        txt_out += one_output + '\n'
 
-    prime_file = os.path.join(self.out_dir, self.prime_filename)
-    out_file = os.path.join(self.out_dir, 'stdout.log')
-    with open(prime_file, 'w') as pf:
-      pf.write(txt_out)
+      prime_file = os.path.join(self.out_dir, self.prime_filename)
+      out_file = os.path.join(self.out_dir, 'stdout.log')
+      with open(prime_file, 'w') as pf:
+        pf.write(txt_out)
 
-    self.prime_run_window = frm.PRIMERunWindow(self, -1,
-                                               title='PRIME Output',
-                                               params=self.pparams,
-                                               prime_file=prime_file,
-                                               out_file=out_file)
-    self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
-                                           ''.format(user, python)).stdout_lines
-    self.prime_run_window.Show(True)
+      self.prime_run_window = frm.PRIMERunWindow(self, -1,
+                                                 title='PRIME Output',
+                                                 params=self.pparams,
+                                                 prime_file=prime_file,
+                                                 out_file=out_file)
+      self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
+                                        ''.format(user, python)).stdout_lines
+      self.prime_run_window.Show(True)
 
   def onSequence(self, e):
     pass

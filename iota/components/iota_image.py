@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/22/2017
+Last Changed: 03/09/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -53,6 +53,7 @@ class SingleImage(object):
     self.obj_base = init.obj_base
     self.fin_base = init.fin_base
     self.viz_base = init.viz_base
+    self.log_base = init.log_base
     self.tmp_base = init.tmp_base
     self.abort_file = os.path.join(self.int_base, '.abort.tmp')
 
@@ -81,11 +82,13 @@ class SingleImage(object):
     self.int_base = init.int_base
     self.obj_base = init.obj_base
     self.fin_base = init.fin_base
+    self.log_base = init.log_base
     self.viz_base = init.viz_base
     self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
     self.obj_file = os.path.abspath(os.path.join(self.obj_path,
             os.path.basename(self.conv_img).split('.')[0] + ".int"))
     self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
+    self.log_path = misc.make_image_path(self.conv_img, self.input_base, self.log_base)
     self.fin_file = os.path.abspath(os.path.join(self.fin_path,
             os.path.basename(self.conv_img).split('.')[0] + "_int.pickle"))
     self.final['final'] = self.fin_file
@@ -106,7 +109,7 @@ class SingleImage(object):
       pass
 
     # Grid search / integration log file
-    self.int_log = os.path.join(self.fin_path,
+    self.int_log = os.path.join(self.log_path,
                           os.path.basename(self.conv_img).split('.')[0] + '.tmp')
 
     # Reset status to 'grid search' to pick up at selection (if no fail)
@@ -532,11 +535,12 @@ class SingleImage(object):
       self.obj_file = os.path.abspath(os.path.join(self.obj_path,
               os.path.basename(self.conv_img).split('.')[0] + ".int"))
       self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
+      self.log_path = misc.make_image_path(self.conv_img, self.input_base, self.log_base)
       self.fin_file = os.path.abspath(os.path.join(self.fin_path,
         "int_{}.pickle".format(os.path.basename(self.conv_img).split('.')[0])))
       self.final['final'] = self.fin_file
       self.final['img'] = self.conv_img
-      self.int_log = os.path.join(self.fin_path,
+      self.int_log = os.path.join(self.log_path,
                         os.path.basename(self.conv_img).split('.')[0] + '.tmp')
       self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
       self.viz_file = os.path.join(self.viz_path,
@@ -548,6 +552,8 @@ class SingleImage(object):
           os.makedirs(self.obj_path)
         if not os.path.isdir(self.fin_path):
           os.makedirs(self.fin_path)
+        if not os.path.isdir(self.log_path):
+          os.makedirs(self.log_path)
         if not os.path.isdir(self.viz_path):
           os.makedirs(self.viz_path)
       except OSError:
@@ -771,7 +777,7 @@ class SingleImage(object):
 
       # Make a temporary process log into a final process log
       if os.path.isfile(self.int_log):
-        final_int_log = os.path.join(self.fin_path,
+        final_int_log = os.path.join(self.log_path,
                                     os.path.basename(self.int_log).split('.')[0] + '.log')
         os.rename(self.int_log, final_int_log)
 
@@ -786,6 +792,7 @@ class SingleImage(object):
       if self.fail is not None:
         self.status = 'final'
         ep.dump(self.obj_file, self)
+        return self
       else:
         # Create DIALS integrator object
         from iota.components.iota_dials import Integrator
@@ -811,7 +818,7 @@ class SingleImage(object):
         final_int_log = self.int_log.split('.')[0] + ".log"
         os.rename(self.int_log, final_int_log)
 
-        self.status = 'final'
-        ep.dump(self.obj_file, self)
+    self.status = 'final'
+    ep.dump(self.obj_file, self)
 
 # **************************************************************************** #
