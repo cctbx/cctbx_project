@@ -9,6 +9,7 @@ from mmtbx.conformation_dependent_library.cdl_utils import get_c_ca_n
 import sys
 from scitbx.array_family import flex
 from mmtbx.validation import utils
+from mmtbx.validation.rotalyze import get_center
 import mmtbx.rotamer
 from mmtbx.rotamer import ramachandran_eval
 
@@ -559,13 +560,6 @@ def construct_complete_residues(res_group):
     if len(complete_dict) > 0:
       return complete_dict
   return None
-
-def get_center(ag):
-  coords = None
-  for atom in ag.atoms():
-    if (atom.name == " CA "):
-      coords = atom.xyz
-  return coords
 
 def isPrePro(residues, i):
   if (i < 0 or i >= len(residues) - 1): return False

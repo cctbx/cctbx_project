@@ -363,7 +363,7 @@ def get_center (residue):
   for atom in residue.atoms():
     if atom.name == " CA ":
       return atom.xyz
-  return None
+  return residue.atoms().extract_xyz().mean()
 
 def has_heavy_atoms(atoms):
   for atom in atoms:
