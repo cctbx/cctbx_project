@@ -26,6 +26,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   void export_crystal();
   void export_parallax_correction();
   void export_pixel_to_millimeter();
+  void export_experiment();
 
   BOOST_PYTHON_MODULE(dxtbx_model_ext)
   {
@@ -40,6 +41,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     export_crystal();
     export_parallax_correction();
     export_pixel_to_millimeter();
+    export_experiment();
   }
 
 }}} // namespace dxtbx::model::boost_python

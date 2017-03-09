@@ -135,6 +135,6 @@ def crystal(obj, outfile, compact=False):
 
 def experiment_list(obj, outfile):
   ''' Dump an experiment list. '''
-  from dxtbx.model.experiment.experiment_list import ExperimentListDumper
+  from dxtbx.model.experiment_list import ExperimentListDumper
   dumper = ExperimentListDumper(obj)
   dumper.as_file(outfile)

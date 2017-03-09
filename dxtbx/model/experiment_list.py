@@ -9,86 +9,87 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 from __future__ import absolute_import, division
+from dxtbx.model import Experiment
 
-class Experiment(object):
-  ''' A class to represent what's in an experiment.
+# class Experiment(object):
+#   ''' A class to represent what's in an experiment.
 
-  Contains:
-    - imageset Access to the image data
-    - beam The beam model
-    - detector The detector model
-    - goniometer The goniometer model
-    - scan The scan model
-    - crystal The crystal model
-    - profile The profile model
+#   Contains:
+#     - imageset Access to the image data
+#     - beam The beam model
+#     - detector The detector model
+#     - goniometer The goniometer model
+#     - scan The scan model
+#     - crystal The crystal model
+#     - profile The profile model
 
-  Some of these may be set to "None"
+#   Some of these may be set to "None"
 
-  '''
+#   '''
 
-  def __init__(self,
-               imageset=None,
-               beam=None,
-               detector=None,
-               goniometer=None,
-               scan=None,
-               crystal=None,
-               profile=None):
-    ''' Initialise the experiment with the given models. '''
-    self.imageset = imageset
-    self.beam = beam
-    self.detector = detector
-    self.goniometer = goniometer
-    self.scan = scan
-    self.crystal = crystal
-    self.profile = profile
+#   def __init__(self,
+#                imageset=None,
+#                beam=None,
+#                detector=None,
+#                goniometer=None,
+#                scan=None,
+#                crystal=None,
+#                profile=None):
+#     ''' Initialise the experiment with the given models. '''
+#     self.imageset = imageset
+#     self.beam = beam
+#     self.detector = detector
+#     self.goniometer = goniometer
+#     self.scan = scan
+#     self.crystal = crystal
+#     self.profile = profile
 
-  def __contains__(self, item):
-    ''' Check if the experiment contains the model. '''
-    return (item is self.imageset or
-            item is self.beam or
-            item is self.detector or
-            item is self.goniometer or
-            item is self.scan or
-            item is self.crystal or
-            item is self.profile)
+#   def __contains__(self, item):
+#     ''' Check if the experiment contains the model. '''
+#     return (item is self.imageset or
+#             item is self.beam or
+#             item is self.detector or
+#             item is self.goniometer or
+#             item is self.scan or
+#             item is self.crystal or
+#             item is self.profile)
 
-  def __eq__(self, other):
-    ''' Check if an experiment is the same as another. '''
-    if not isinstance(other, Experiment):
-      return False
-    return (self.imageset is other.imageset and
-            self.beam is other.beam and
-            self.detector is other.detector and
-            self.goniometer is other.goniometer and
-            self.scan is other.scan and
-            self.crystal is other.crystal and
-            self.profile is other.profile)
+#   def __eq__(self, other):
+#     ''' Check if an experiment is the same as another. '''
+#     if not isinstance(other, Experiment):
+#       return False
+#     return (self.imageset is other.imageset and
+#             self.beam is other.beam and
+#             self.detector is other.detector and
+#             self.goniometer is other.goniometer and
+#             self.scan is other.scan and
+#             self.crystal is other.crystal and
+#             self.profile is other.profile)
 
-  def __ne__(self, other):
-    ''' Check if an experiment not equal to another. '''
-    return not self.__eq__(other)
+#   def __ne__(self, other):
+#     ''' Check if an experiment not equal to another. '''
+#     return not self.__eq__(other)
 
-  def assert_is_consistent(self):
-    ''' If a scan is present, check that it makes sense with the imageset. '''
-    return True # XXX FIXME JAMES! 2014_02_04
-    #from dxtbx.imageset import ImageSweep
-    #if self.scan:
-      #if isinstance(self.imageset, ImageSweep):
-        #assert(len(self.imageset) == self.scan.get_num_images())
-        #assert(self.imageset.get_array_range() == self.scan.get_array_range())
-      #elif self.imageset is not None:
-        #assert((self.scan.get_num_images() == 1 and
-                #self.scan.get_oscillation()[1] == 0.0))
-        #assert(len(self.imageset.indices()) == 1)
+#   def assert_is_consistent(self):
+#     ''' If a scan is present, check that it makes sense with the imageset. '''
+#     return True # XXX FIXME JAMES! 2014_02_04
+#     #from dxtbx.imageset import ImageSweep
+#     #if self.scan:
+#       #if isinstance(self.imageset, ImageSweep):
+#         #assert(len(self.imageset) == self.scan.get_num_images())
+#         #assert(self.imageset.get_array_range() == self.scan.get_array_range())
+#       #elif self.imageset is not None:
+#         #assert((self.scan.get_num_images() == 1 and
+#                 #self.scan.get_oscillation()[1] == 0.0))
+#         #assert(len(self.imageset.indices()) == 1)
 
-  def is_consistent(self):
-    ''' If a scan is present, check that it makes sense with the imageset. '''
-    try:
-      self.assert_is_consistent()
-      return True
-    except Exception:
-      return False
+#   def is_consistent(self):
+#     ''' If a scan is present, check that it makes sense with the imageset. '''
+#     try:
+#       self.assert_is_consistent()
+#       return True
+#     except Exception:
+#       return False
 
 class ExperimentList(object):
   ''' The experiment list class. This class is used to manage all the
