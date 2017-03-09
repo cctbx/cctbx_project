@@ -84,6 +84,19 @@ public:
     return is_active_area(i/487,i%487);
   }
 };
+class ActiveAreaEiger: public ActiveAreaDefault {
+public:
+  inline virtual bool is_active_area(const int& x,const int& y){
+    /*
+    x, vertical, slow, size1:  8 blocks of 514, separated by 7 stripes of 37, giving 4371.
+    y  horizont, fast, size2:  4 blocks of 1030, separated by 3 stripes of 10, giving 4150.
+    */
+    return ( (x%551<514) && (y%1040<1030) );
+  }
+  inline virtual bool is_active_area_by_linear_index(const int& i){
+    return is_active_area(i/4150,i%4150);
+  }
+};
 
 inline int iround(double const& x)
     {if (x < 0) return static_cast<int>(x-0.5);
@@ -166,6 +179,9 @@ public:
       } else if (vendortype=="Pilatus-300K") {
         detector_location = ptr_area(new ActiveAreaPilatus300K());
         has_pilatus_inactive_flag = true;
+      } else if (vendortype=="Eiger-16M") {
+        detector_location = ptr_area(new ActiveAreaEiger());
+        has_pilatus_inactive_flag = true;
       }
       for (std::size_t i=0; i<raw.accessor()[0]; i++) {
         int slow = binning * i;
@@ -206,6 +222,8 @@ public:
         detector_location = ptr_area(new ActiveAreaPilatus2M());
       } else if (vendortype=="Pilatus-300K") {
         detector_location = ptr_area(new ActiveAreaPilatus300K());
+      } else if (vendortype=="Eiger-16M") {
+        detector_location = ptr_area(new ActiveAreaEiger());
       }
 
       af::shared<data_t> raw_active;
@@ -239,6 +257,8 @@ public:
         SCITBX_ASSERT( (active_count == 24*195*487 || active_count == 3*195*487) );
       } else if (vendortype=="Pilatus-300K") {
         SCITBX_ASSERT( (active_count == 3*195*487) );
+      } else if (vendortype=="Eiger-16M") {
+        SCITBX_ASSERT( (active_count == 32*514*1030 || active_count == 4*514*1030) );
       }
 
       double percentile = *(raw_active.begin()+nth_offset);
@@ -485,6 +505,8 @@ public:
       detector_location = ptr_area(new ActiveAreaPilatus2M());
     } else if (vendortype=="Pilatus-300K") {
       detector_location = ptr_area(new ActiveAreaPilatus300K());
+    } else if (vendortype=="Eiger-16M") {
+      detector_location = ptr_area(new ActiveAreaEiger());
     }
     export_s = "";
     export_s.reserve(export_size_cut1*export_size_cut2*3);
