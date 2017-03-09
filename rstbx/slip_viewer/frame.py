@@ -340,6 +340,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.pyslip.tiles.set_image(
       file_name_or_data=img, metrology_matrices=self.metrology_matrices,
       get_raw_data=get_raw_data)
+    if self.settings.color_scheme > 0:
+      self.pyslip.tiles.update_color_scheme(self.settings.color_scheme)
 
     # Initialise position zoom level for first image.  XXX Why do we
     # have to coll ZoomToLevel to refresh subsequent images?
