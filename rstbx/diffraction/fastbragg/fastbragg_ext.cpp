@@ -22,7 +22,7 @@ namespace boost_python { namespace {
   {
     return boost::python::make_tuple(1,2,3,4);
   }
-  
+
   static double
   get_distance_mm(camera const& c) { return c.distance*1000.; }
 
