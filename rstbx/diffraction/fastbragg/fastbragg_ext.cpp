@@ -22,6 +22,13 @@ namespace boost_python { namespace {
   {
     return boost::python::make_tuple(1,2,3,4);
   }
+  
+  static double
+  get_distance_mm(camera const& c) { return c.distance*1000.; }
+
+  static void
+  set_distance_mm(camera& c, double const& value) {
+      c.distance = value/1000.;}
 
   void
   init_module() {
@@ -57,6 +64,9 @@ namespace boost_python { namespace {
       .add_property("distance",
                      make_getter(&camera::distance,rbv()),
                      make_setter(&camera::distance,dcp()))
+      .add_property("distance_mm",
+                     make_function(&get_distance_mm,rbv()),
+                     make_function(&set_distance_mm,dcp()))
       .add_property("Ybeam",
                      make_getter(&camera::Ybeam,rbv()),
                      make_setter(&camera::Ybeam,dcp()))
