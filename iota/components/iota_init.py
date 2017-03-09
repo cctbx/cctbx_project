@@ -11,6 +11,7 @@ Description : Reads command line arguments. Initializes all IOTA starting
 import os
 import sys
 import argparse
+import time
 
 import iota.components.iota_input as inp
 import iota.components.iota_cmd as cmd

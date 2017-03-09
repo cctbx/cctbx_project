@@ -6,4 +6,5 @@ IOTA v1.1.005 - Input handling update
     a. Moved calling of image viewer to separate thread (dialog allowing user
      to select number of images to view would hang otherwise)
     b. When exiting app, threads continued to run; now (mostly) fixed
+4. Wildcard handling in XTerm IOTA input
 
