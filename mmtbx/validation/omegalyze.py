@@ -631,11 +631,10 @@ def get_highest_mc_b(prev_atoms, atoms):
   return highest_mc_b
 
 def get_center(ag):
-  coords = None
   for atom in ag.atoms():
     if (atom.name == " N  "):
-      coords = atom.xyz
-  return coords
+      return atom.xyz
+  return ag.atoms().extract_xyz().mean()
 
 def run (args, out=sys.stdout, quiet=False) :
   cmdline = iotbx.phil.process_command_line_with_files(
