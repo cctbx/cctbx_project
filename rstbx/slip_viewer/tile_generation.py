@@ -258,7 +258,7 @@ class _Tiles(object):
             brightness=self.current_brightness / 100,
             data=raw_data[0],
             saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
-            vendortype=self.raw_image.__class__.__name__,
+            vendortype=self.raw_image.get_detectorbase().vendortype,
             show_untrusted=self.show_untrusted
           )
 
@@ -286,7 +286,7 @@ class _Tiles(object):
           brightness=self.current_brightness / 100,
           data=raw_image_data,
           saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
-          vendortype=self.raw_image.__class__.__name__,
+          vendortype=self.raw_image.get_detectorbase().vendortype,
           show_untrusted=self.show_untrusted
         )
 
@@ -310,7 +310,7 @@ class _Tiles(object):
             brightness=b / 100,
             data=raw_data[0],
             saturation=self.raw_image.get_detector()[0].get_trusted_range()[1],
-            vendortype=self.raw_image.__class__.__name__,
+            vendortype=self.raw_image.get_detectorbase().vendortype,
             show_untrusted=self.show_untrusted
           )
 

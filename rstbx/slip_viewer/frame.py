@@ -655,7 +655,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
             brightness=self.settings.brightness / 100,
             data=data[0],
             saturation=detector[0].get_trusted_range()[1],
-            vendortype=raw_img.__class__.__name__)
+            vendortype=raw_img.get_detectorbase().vendortype)
 
         if flex_img.supports_rotated_tiles_antialiasing_recommended:
             currentZoom = self.pyslip.level
@@ -744,7 +744,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
             brightness=self.settings.brightness / 100,
             data=data[0],
             saturation=detector[0].get_trusted_range()[1],
-            vendortype=raw_img.__class__.__name__)
+            vendortype=raw_img.get_detectorbase().vendortype)
 
         flex_img.setWindow(0, 0, 1)
         flex_img.adjust(color_scheme=self.settings.color_scheme)
