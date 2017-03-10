@@ -614,7 +614,7 @@ class InMemScript(DialsProcessScript):
         from libtbx import easy_run
         easy_run.fully_buffered(command).raise_if_errors().show_stdout()
 
-        from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+        from dxtbx.model.experiment_list import ExperimentListFactory
 
         combined_experiments = ExperimentListFactory.from_json_file(combined_experiments_file, check_format=False)
         combined_reflections = easy_pickle.load(combined_reflections_file)
@@ -628,7 +628,8 @@ class InMemScript(DialsProcessScript):
         experiments = refiner.get_experiments()
         reflections = combined_reflections.select(refiner.selection_used_for_refinement())
 
-        from dxtbx.model.experiment.experiment_list import ExperimentList, ExperimentListDumper
+        from dxtbx.model.experiment_list import ExperimentListDumper
+        from dxtbx.model import ExperimentList
         dump = ExperimentListDumper(experiments)
         dump.as_json(os.path.join(reint_dir, "refined_experiments.json"))
         reflections.as_pickle(os.path.join(reint_dir, "refined_reflections.pickle"))

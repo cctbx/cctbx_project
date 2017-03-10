@@ -72,7 +72,7 @@ class Script(object):
   def run(self):
     ''' Parse the options. '''
     from dials.util.options import flatten_experiments, flatten_reflections
-    from dxtbx.model.experiment.experiment_list import ExperimentList
+    from dxtbx.model import ExperimentList
     from scitbx.math import five_number_summary
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
@@ -137,7 +137,7 @@ class Script(object):
       n_zero,
       len(experiments),
       100*((len(experiments)-len(filtered_experiments))/len(experiments)))
-    from dxtbx.model.experiment.experiment_list import ExperimentListDumper
+    from dxtbx.model.experiment_list import ExperimentListDumper
     dump = ExperimentListDumper(filtered_experiments)
     dump.as_json(params.output.filtered_experiments)
 

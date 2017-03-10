@@ -8,7 +8,7 @@ from libtbx.utils import Sorry
 from xfel.ui.components.run_stats_plotter import plot_multirun_stats
 import sys, os
 from scitbx.array_family import flex
-from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+from dxtbx.model.experiment_list import ExperimentListFactory
 from libtbx import easy_pickle
 
 """

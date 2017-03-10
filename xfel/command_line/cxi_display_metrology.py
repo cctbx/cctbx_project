@@ -48,7 +48,7 @@ if (__name__ == "__main__") :
       detector = reader(params.metrology).get_detector()
     except IOError:
       # See if it's a json file
-      from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+      from dxtbx.model.experiment_list import ExperimentListFactory
       try:
         experiments = ExperimentListFactory.from_json_file(params.metrology)
         assert len(experiments) == 1

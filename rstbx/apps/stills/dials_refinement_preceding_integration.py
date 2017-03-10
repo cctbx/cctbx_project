@@ -497,7 +497,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
       newB = matrix.sqr(isoform.fractionalization_matrix()).transpose()
       crystal.set_B(newB)
 
-    from dxtbx.model.experiment.experiment_list import Experiment, ExperimentList
+    from dxtbx.model import Experiment, ExperimentList
     experiments = ExperimentList()
     experiments.append(Experiment(beam=beam,
                                   detector=detector,

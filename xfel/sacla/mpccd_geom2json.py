@@ -83,7 +83,8 @@ def run(args):
   wavelength = params.wavelength
   beam = beam_factory.simple(wavelength)
 
-  from dxtbx.model.experiment.experiment_list import Experiment, ExperimentList, ExperimentListDumper
+  from dxtbx.model import Experiment, ExperimentList
+  from dxtbx.model.experiment_list import ExperimentListDumper
   experiments = ExperimentList()
   experiment = Experiment(detector = detector, beam = beam)
   experiments.append(experiment)

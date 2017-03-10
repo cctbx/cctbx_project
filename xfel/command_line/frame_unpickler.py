@@ -12,7 +12,7 @@ from libtbx.utils import Sorry
 from dials.util.options import OptionParser
 from dxtbx.model import beam, Crystal, detector, scan
 from dxtbx.format import FormatMultiImage
-from dxtbx.model.experiment import experiment_list
+from dxtbx.model import Experiment, ExperimentList
 from dxtbx import imageset
 import dxtbx
 import iotbx.phil
@@ -154,13 +154,13 @@ class construct_reflection_table_and_experiment_list(object):
     self.expt_gonio_maker()
     self.expt_imageset_maker()
     self.expt_scan_maker()
-    self.experiment = experiment_list.Experiment(beam = self.beam,
+    self.experiment = Experiment(beam = self.beam,
                                                  crystal=self.crystal,
                                                  detector=self.detector,
                                                  goniometer=self.goniometer,
                                                  imageset=self.imageset,
                                                  scan=self.scan)
-    self.experiment_list = experiment_list.ExperimentList([self.experiment])
+    self.experiment_list = ExperimentList([self.experiment])
 
   def experiments_to_json(self, path_name=None):
     if path_name is None:

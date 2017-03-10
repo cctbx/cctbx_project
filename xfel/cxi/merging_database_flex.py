@@ -158,7 +158,7 @@ class read_experiments(object):
     from dxtbx.model.detector import detector_factory
     from dxtbx.model.crystal import crystal_model
     from cctbx.crystal_orientation import crystal_orientation,basis_type
-    from dxtbx.model.experiment.experiment_list import Experiment, ExperimentList
+    from dxtbx.model import Experiment, ExperimentList
     from scitbx import matrix
     self.experiments = ExperimentList()
     self.unique_file_names = []

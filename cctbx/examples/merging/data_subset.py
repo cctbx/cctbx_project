@@ -43,7 +43,7 @@ def mapper_factory(base_class):
       if kwargs.has_key('experiments'):
         # XXX seems like we need to implement a proper select statement for ExperimentList
         # kwargs["experiments"] = kwargs["experiments"].select(G_visited==1)
-        from dxtbx.model.experiment.experiment_list import ExperimentList
+        from dxtbx.model import ExperimentList
         new_experiments = ExperimentList()
         for idx in xrange(len(G_visited)):
           if G_visited[idx]==1:

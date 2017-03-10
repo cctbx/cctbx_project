@@ -144,7 +144,7 @@ def trumpet_wrapper(result, postx, file_name, params, out):
       from scitbx import matrix
       from dxtbx.model.beam import beam_factory
       beam = beam_factory.make_beam(s0=(0,0,-1./result["wavelength"]))
-      from dxtbx.model.experiment import experiment_list
+      from dxtbx.model import Experiment, ExperimentList
       from dxtbx.model import crystal
 
       obs_to_plot = postx.observations_original_index_pair1_selected # XXX uses a private interface
@@ -157,7 +157,7 @@ def trumpet_wrapper(result, postx, file_name, params, out):
       real_c = direct_matrix[6:9]
       SG = obs_to_plot.space_group()
       crystal = crystal.crystal_model(real_a, real_b, real_c, space_group=SG)
-      q = experiment_list.Experiment(beam=beam, crystal=crystal)
+      q = Experiment(beam=beam, crystal=crystal)
 
       TPL = trumpet_plot()
       from xfel.cxi.data_utils import reduction
