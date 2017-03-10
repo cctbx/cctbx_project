@@ -20,7 +20,7 @@ pattern_general = re.compile(r'\A(?P<fileroot>.*)_(?P<otherstuff>.*)\.(?P<ext>.*
 class FileName:
   exts = ["img","tif","tiff","image","mccd",
           "mar1200","mar1800","mar1600","mar2400","mar2000","mar3000","mar2300","mar3450",
-          "cbf","osc","ipf","sfrm","edf","pickle","pkl"
+          "cbf","osc","ipf","sfrm","edf","pickle","pkl","h5"
          ] #Permissible filename extensions for pattern 1
   """attributes of this class are:
      base = the file name without directory path
@@ -126,6 +126,7 @@ class file_names:
       # Interface 3. File pathnames given on command line
       # if images are taken from command line, must recalculate
       #  DISTL_pickle because images might be different each time
+      print "INTERFACE3"
       self.interface3_parse_command()
 
   def interface3_FN_factory(self,absfile,error_message):
