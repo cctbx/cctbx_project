@@ -6,7 +6,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 06/01/2016
+Last Changed: 03/03/2017
 Description : IOTA GUI startup module.
 '''
 
@@ -18,9 +18,8 @@ class MainApp(wx.App):
   ''' App for the main GUI window  '''
   def OnInit(self):
     self.frame = MainWindow(None, -1, title='IOTA v.{}'.format(iota_version))
-    self.frame.SetSize((1000, 800))
-    self.frame.SetPosition((150, 150))
     self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
+    self.frame.SetPosition((150, 150))
     self.frame.Show(True)
     self.SetTopWindow(self.frame)
     return True

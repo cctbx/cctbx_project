@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 06/01/2015
+Last Changed: 03/09/2015
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -11,10 +11,14 @@ Description : Reads command line arguments. Initializes all IOTA starting
 import os
 import sys
 import argparse
+import time
 
 import iota.components.iota_input as inp
 import iota.components.iota_cmd as cmd
 import iota.components.iota_misc as misc
+from iota.components.iota_utils import InputFinder
+
+ginp = InputFinder()
 
 # --------------------------- Initialize IOTA -------------------------------- #
 
@@ -25,7 +29,7 @@ def parse_command_args(iver, help_message):
             formatter_class=argparse.RawDescriptionHelpFormatter,
             description=(help_message),
             epilog=('\n{:-^70}\n'.format('')))
-  parser.add_argument('path', type=str, nargs = '?', default = None,
+  parser.add_argument('path', type=str, nargs = '*', default = None,
             help = 'Path to data or file with IOTA parameters')
   parser.add_argument('--version', action = 'version',
             version = 'IOTA {}'.format(iver),
@@ -80,38 +84,15 @@ class InitAll(object):
     self.int_base = None
 
   def make_input_list(self):
-    """ Reads input directory or directory tree and makes lists of input images
-        (in pickle format) using absolute path for each file. If a separate file
-        with list of images is provided, parses that file and uses that as the
-        input list. If random input option is selected, pulls a specified number
-        of random images from the list and outputs that subset as the input list.
+    """ Reads input directory or directory tree and makes lists of input images.
+        Optional selection of a random subset
     """
+
+    # Read input from provided folder(s) or file(s)
+    cmd.Command.start("Reading input files")
     input_entries = [i for i in self.params.input if i != None]
-    input_list = []
-
-    # run through the list of multiple input entries (or just the one) and
-    # concatenate the input list
-    for input_entry in input_entries:
-      if os.path.isfile(input_entry):
-        if input_entry.endswith('.lst'):          # read from file list
-          cmd.Command.start("Reading input list from file")
-          with open(input_entry, 'r') as listfile:
-            listfile_contents = listfile.read()
-          input_list.extend(listfile_contents.splitlines())
-          cmd.Command.end("Reading input list from file -- DONE")
-        elif input_entry.endswith(('pickle', 'mccd', 'cbf', 'img')):
-          input_list.append(input_entry)             # read in image directly
-
-      elif os.path.isdir(input_entry):
-        abs_inp_path = os.path.abspath(input_entry)
-
-        cmd.Command.start("Reading files from data folder")
-        for root, dirs, files in os.walk(abs_inp_path):
-          for filename in files:
-            found_file = os.path.join(root, filename)
-            if found_file.endswith(('pickle', 'mccd', 'cbf', 'img')):
-              input_list.append(found_file)
-        cmd.Command.end("Reading files from data folder -- DONE")
+    input_list = ginp.make_input_list(input_entries)
+    cmd.Command.end("Reading input files -- DONE")
 
     if len(input_list) == 0:
       print "\nERROR: No data found!"
@@ -227,7 +208,7 @@ class InitAll(object):
                               self.help_message).parse_known_args()
 
     # Check for type of input
-    if self.args.path == None:                   # No input
+    if len(self.args.path) == 0 or self.args.path is None:  # No input
       parse_command_args(self.iver, self.help_message).print_help()
       if self.args.default:                      # Write out default params and exit
         help_out, txt_out = inp.print_params()
@@ -235,8 +216,20 @@ class InitAll(object):
         print help_out
         inp.write_defaults(os.path.abspath(os.path.curdir), txt_out)
       misc.iota_exit()
-    else:                                   # If input exists, check type
-      carg = os.path.abspath(self.args.path)
+    elif len(self.args.path) > 1:  # If multiple paths / wildcards
+      file_list = ginp.make_input_list(self.args.path)
+      list_file = os.path.join(os.path.abspath(os.path.curdir), 'input.lst')
+      with open(list_file, 'w') as lf:
+        lf.write('\n'.join(file_list))
+      msg = "\nIOTA will run in AUTO mode using wildcard datapath:\n" \
+            "{} files found, compiled in {}\n".format(len(file_list), list_file)
+      self.params, self.txt_out = inp.process_input(self.args,
+                                                    self.phil_args,
+                                                    list_file,
+                                                    'auto',
+                                                    self.now)
+    else:                                   # If single path, check type
+      carg = os.path.abspath(self.args.path[0])
       if os.path.exists(carg):
 
         # If user provided a parameter file
@@ -306,8 +299,15 @@ class InitAll(object):
 
     # Check for -l option, output list of input files and exit
     if self.args.list:
-      if list_file == None:
-        list_file = os.path.abspath("{}/input.lst".format(os.curdir))
+      list_file = os.path.abspath("{}/input.lst".format(os.curdir))
+
+      # Check if other files of this name exist under the current folder
+      list_folder = os.path.dirname(list_file)
+      list_files = [i for i in os.listdir(list_folder) if i.endswith(".lst")]
+      if len(list_files) > 0:
+        list_file = os.path.join(list_folder,
+                                 "input_{}.lst".format(len(list_files)))
+
       print '\nINPUT LIST ONLY option selected'
       print 'Input list in {} \n\n'.format(list_file)
       with open(list_file, "w") as lf:
@@ -328,13 +328,15 @@ class InitAll(object):
     self.int_base = misc.set_base_dir('integration', out_dir = self.params.output)
     self.obj_base = os.path.join(self.int_base, 'image_objects')
     self.fin_base = os.path.join(self.int_base, 'final')
-    self.tmp_base = os.path.join(self.int_base, 'tmp')
+    self.log_base = os.path.join(self.int_base, 'logs')
     self.viz_base = os.path.join(self.int_base, 'visualization')
+    self.tmp_base = os.path.join('/tmp', '{}_{}'.format(os.getlogin(), time.time()))
 
     # Generate base folders
     os.makedirs(self.int_base)
     os.makedirs(self.obj_base)
     os.makedirs(self.fin_base)
+    os.makedirs(self.log_base)
     os.makedirs(self.tmp_base)
 
     # Determine input base

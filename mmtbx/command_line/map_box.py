@@ -40,7 +40,11 @@ master_phil = libtbx.phil.parse("""
   ncs_file = None
     .type = path
     .help = NCS file (to be offset based on origin shift)
-
+  mask_atoms=False
+    .type=bool
+    .help = Set map values to 0 outside molecular mask
+  mask_atoms_atom_radius = 3.
+    .type=float
 """)
 
 def run(args, crystal_symmetry=None, log=None):
@@ -147,7 +151,9 @@ Parameters:"""%h
     box_cushion      = params.box_cushion,
     selection        = selection,
     density_select   = params.density_select,
-    threshold        = params.density_select_threshold)
+    threshold        = params.density_select_threshold,
+    mask_atoms       = params.mask_atoms,
+    mask_atoms_atom_radius = params.mask_atoms_atom_radius)
 
   if box.initial_shift_cart:
     print >>log,"\nInitial coordinate shift will be (%.1f,%.1f,%.1f)\n" %(

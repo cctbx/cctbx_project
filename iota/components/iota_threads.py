@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 02/14/2017
+Last Changed: 03/09/2017
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -15,8 +15,10 @@ from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
 from libtbx import easy_run
 
-from iota.components.iota_utils import GenerateInput, get_file_list
+from iota.components.iota_utils import InputFinder
 import iota.components.iota_image as img
+
+ginp = InputFinder()
 
 # -------------------------------- Threading --------------------------------- #
 
@@ -144,23 +146,18 @@ class ImageFinderThread(Thread):
 
   def run(self):
     # Poll filesystem and determine which files are new (if any)
-    ginp = GenerateInput()
 
-    input_entries = []
-    for path in self.image_paths:
-      if os.path.isdir(path):
-        input_entries.extend([i for i in path if i != None])
-    ext_file_list = ginp.make_input_list(input_entries)
+    ext_file_list = ginp.make_input_list(self.image_paths)
     old_file_list = [i[2] for i in self.image_list]
     new_file_list = [i for i in ext_file_list if i not in old_file_list]
 
-    # Test if file is an image pickle or raw image (may be slow!)
-    tested_file_list = [i for i in new_file_list if ginp.get_file_type(i) !=
-                        'not image']
+    # # Test if file is an image pickle or raw image (may be slow!)
+    # tested_file_list = [i for i in new_file_list if ginp.get_file_type(i) !=
+    #                     'not image']
 
     # Generate list of new images
     new_img = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
-      tested_file_list, len(old_file_list) + 1)]
+      new_file_list, len(old_file_list) + 1)]
 
     evt = ImageFinderAllDone(tp_EVT_IMGDONE, -1, image_list=new_img)
     wx.PostEvent(self.parent, evt)
@@ -178,10 +175,26 @@ class ObjectFinderThread(Thread):
     self.read_objects = read_objects
 
   def run(self):
-    object_files = get_file_list(self.object_folder, ext_only='int')
+    object_files = ginp.get_file_list(self.object_folder, ext_only='int')
     img_object_files = [i for i in object_files]
     new_objects = [ep.load(i) for i in img_object_files if i not in
                     self.read_objects]
 
     evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=new_objects)
     wx.PostEvent(self.parent, evt)
+
+class ImageViewerThread(Thread):
+  ''' Worker thread that will move the image viewer launch away from the GUI
+  and hopefully will prevent the image selection dialog freezing on MacOS'''
+  def __init__(self,
+               parent,
+               backend,
+               file_string):
+    Thread.__init__(self)
+    self.parent = parent
+    self.backend = backend
+    self.file_string = file_string
+
+  def run(self):
+    command = '{}.image_viewer {}'.format(self.backend, self.file_string)
+    easy_run.fully_buffered(command)

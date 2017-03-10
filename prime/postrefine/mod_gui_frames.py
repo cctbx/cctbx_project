@@ -26,11 +26,13 @@ from matplotlib.figure import Figure
 
 import iota.components.iota_misc as misc
 import iota.components.iota_controls as ct
-from iota.components.iota_utils import GenerateInput, get_file_list
+from iota.components.iota_utils import InputFinder
 
 import prime.postrefine.mod_gui_dialogs as dlg
 import prime.postrefine.mod_threads as thr
 from prime.postrefine.mod_input import master_phil
+
+ginp = InputFinder()
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -761,7 +763,7 @@ class FileListCtrl(ct.CustomListCtrl):
       for i in range(self.ctr.GetItemCount()):
         type_ctrl = self.ctr.GetItemWindow(i, col=1).type
         type_choice = type_ctrl.GetString(type_ctrl.GetSelection())
-        if type_choice in ('processed pickles folder'):
+        if type_choice in ('processed pickle folder'):
           for root, dirs, files in os.walk(self.ctr.GetItemText(i)):
             for filename in files:
               file_list.append(os.path.join(root, filename))
@@ -800,11 +802,10 @@ class FileListCtrl(ct.CustomListCtrl):
   def set_type_choices(self, path):
     # Determine what type of input this is and present user with choices
     # (this so far works for images ONLY)
-    ginp = GenerateInput()
     type_choices = ['[  SELECT INPUT TYPE  ]']
     preferred_selection = 0
     if os.path.isdir(path):
-      type_choices.extend(['processed pickles folder'])
+      type_choices.extend(['processed pickle folder'])
       dir_type = ginp.get_folder_type(path)
       if dir_type in type_choices:
         preferred_selection = type_choices.index(dir_type)
@@ -816,9 +817,9 @@ class FileListCtrl(ct.CustomListCtrl):
                              'sequence'])
         if file_type in type_choices:
           preferred_selection = type_choices.index(file_type)
-      elif file_type == 'processed pickles list':
-        type_choices.extend(['processed pickles list'])
-        preferred_selection = type_choices.index('processed pickles list')
+      elif file_type == 'processed pickle list':
+        type_choices.extend(['processed pickle list'])
+        preferred_selection = type_choices.index('processed pickle list')
       elif file_type in ('IOTA settings',
                          'PRIME settings',
                          'LABELIT target',
@@ -851,33 +852,14 @@ class FileListCtrl(ct.CustomListCtrl):
     # Set drop-down selection, check it for data and open other tabs
     item.type.type.SetSelection(inp_sel)
     if item.type.type.GetString(inp_sel) in ['processed pickle',
-                                             'processed pickles list',
-                                             'processed pickles folder',
-                                             'reference MTZ',
-                                             'sequence']:
-      if os.path.isdir(item.path):
-        ignore_ext = ('txt', 'log', 'lst', 'seq', 'phil', 'param', 'inp',
-                      'int', 'tmp', 'png', 'jpg', 'jpeg', 'mtz')
-        self.all_data_images[item.path] = get_file_list(item.path,
-                                                        ignore_ext=ignore_ext)
-        self.main_window.toolbar.EnableTool(
-          self.main_window.tb_btn_run.GetId(), True)
-      elif os.path.isfile(item.path):
-        if item.type.type.GetString(inp_sel) == 'processed pickles list':
-          with open(item.path, 'r') as f:
-            items = f.readlines()
-          self.all_data_images[item.path] = items
-          self.main_window.toolbar.EnableTool(
-            self.main_window.tb_btn_run.GetId(),True)
-        elif item.type.type.GetString(inp_sel) == 'reference MTZ':
-          self.input_window.opt_chk_useref.Enable()
-        elif item.type.type.GetString(inp_sel) == 'sequence':
-          pass
-        else:
-          self.all_data_images[item.path] = [item.path]
-      if 'image' in item.type.type.GetString(inp_sel):
-        view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer16')
-        item.buttons.btn_mag.SetBitmapLabel(view_bmp)
+                                           'processed pickle list',
+                                           'processed pickle folder']:
+      self.main_window.toolbar.EnableTool(
+        self.main_window.tb_btn_run.GetId(),True)
+    elif item.type.type.GetString(inp_sel) == 'reference MTZ':
+      self.input_window.opt_chk_useref.Enable()
+    elif item.type.type.GetString(inp_sel) == 'sequence':
+      pass
     else:
       warn_bmp = bitmaps.fetch_icon_bitmap('actions', 'status_unknown',
                                            size=16)
@@ -930,25 +912,22 @@ class FileListCtrl(ct.CustomListCtrl):
     idx = e.GetEventObject().GetParent().index
     item_obj = self.ctr.GetItemData(idx)
     path = item_obj.path
-    ginp = GenerateInput()
+    type = item_obj.type.type.GetString(item_obj.type_selection)
 
     if os.path.isfile(path):
-      if ginp.get_file_type(path) in ('raw image', 'image pickle'):
-        easy_run.fully_buffered('dials.image_viewer {}'.format(path))
-      elif ginp.is_text(path):
+      if type in ('processed pickle list', 'sequence', 'text'):
         with open(path, 'r') as f:
           msg = f.read()
         textview = dlg.TextFileView(self, title=path, contents=msg)
         textview.ShowModal()
-      elif ginp.get_file_type(path) == 'binary':
-        wx.MessageBox('Unknown binary file', 'Warning',
-                      wx.OK | wx.ICON_EXCLAMATION)
+      #TODO: when individual pickle, show pickle info; also include json files
+      # else:
+      #   wx.MessageBox('Unknown file type', 'Warning',
+      #                 wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
-      file_list = ''
-      for root, dirs, files in os.walk(path):
-        for filename in files:
-          found_file = os.path.join(root, filename)
-          file_list += '{}\n'.format(found_file)
+      inputs, _ = ginp.get_input(path, filter=False)
+      print inputs
+      file_list = '\n'.join(inputs)
       filelistview = dlg.TextFileView(self, title=path, contents=file_list)
       filelistview.ShowModal()
 

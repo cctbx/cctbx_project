@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 02/14/2017
+Last Changed: 03/09/2017
 Description : IOTA GUI Initialization module
 '''
 
@@ -16,14 +16,14 @@ import multiprocessing
 
 from iotbx import phil as ip
 
+from iota import iota_version
 import iota.components.iota_input as inp
 import iota.components.iota_misc as misc
 import iota.components.iota_frames as frm
 import iota.components.iota_dialogs as dlg
+from iota.components.iota_utils import InputFinder
 
-iota_version = misc.iota_version
-description = misc.gui_description
-license = misc.gui_description
+ginp = InputFinder()
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -543,34 +543,11 @@ class InitAll(object):
 
 
   def make_input_list(self):
-    """ Reads input directory or directory tree and makes lists of input images
-        (in pickle format) using absolute path for each file. If a separate file
-        with list of images is provided, parses that file and uses that as the
-        input list. If random input option is selected, pulls a specified number
-        of random images from the list and outputs that subset as the input list.
+    """ Reads input directory or directory tree and makes lists of input images.
+        Optional selection of a random subset
     """
     input_entries = [i for i in self.params.input if i != None]
-    input_list = []
-
-    # run through the list of multiple input entries (or just the one) and
-    # concatenate the input list (right now GUI only supplies folder, but
-    # this will change in future)
-    for input_entry in input_entries:
-      if os.path.isfile(input_entry):
-        if input_entry.endswith('.lst'):  # read from file list
-          with open(input_entry, 'r') as listfile:
-            listfile_contents = listfile.read()
-          input_list.extend(listfile_contents.splitlines())
-        elif any (x in input_entry for x in ('pickle', 'mccd', 'cbf', 'img')):
-          input_list.append(input_entry)  # read in image directly
-
-      elif os.path.isdir(input_entry):
-        abs_inp_path = os.path.abspath(input_entry)
-        for root, dirs, files in os.walk(abs_inp_path):
-          for filename in files:
-            found_file = os.path.join(root, filename)
-            if any (x in found_file for x in ('pickle', 'mccd', 'cbf', 'img')):
-              input_list.append(found_file)
+    input_list = ginp.make_input_list(input_entries)
 
     # Pick a randomized subset of images
     if self.params.advanced.random_sample.flag_on and \
@@ -724,14 +701,15 @@ class InitAll(object):
     self.int_base = misc.set_base_dir('integration', out_dir=self.params.output)
     self.obj_base = os.path.join(self.int_base, 'image_objects')
     self.fin_base = os.path.join(self.int_base, 'final')
-    # self.tmp_base = os.path.join(self.int_base, 'tmp')
-    self.tmp_base = os.path.join('/tmp', '{}_{}'.format(os.getlogin(), time.time()))
+    self.log_base = os.path.join(self.int_base, 'logs')
     self.viz_base = os.path.join(self.int_base, 'visualization')
+    self.tmp_base = os.path.join('/tmp', '{}_{}'.format(os.getlogin(), time.time()))
 
     # Generate base folders
     os.makedirs(self.int_base)
     os.makedirs(self.obj_base)
     os.makedirs(self.fin_base)
+    os.makedirs(self.log_base)
     os.makedirs(self.tmp_base)
 
     # Determine input base

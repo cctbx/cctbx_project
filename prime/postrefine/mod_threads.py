@@ -78,5 +78,3 @@ class PRIMEThread(Thread):
       cmd = self.command
 
     easy_run.fully_buffered(cmd, join_stdout_stderr=True)
-    #evt = AllDone(tp_EVT_ALLDONE, -1)
-    #wx.PostEvent(self.parent, evt)

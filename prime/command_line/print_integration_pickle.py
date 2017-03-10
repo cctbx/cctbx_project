@@ -8,143 +8,172 @@ Description : read integration pickles and view systemetic absences and beam X, 
 
 import cPickle as pickle
 from cctbx.array_family import flex
+from iotbx import reflection_file_reader
 import sys, os, math
 from scitbx.matrix import sqr
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
 from cctbx.uctbx import unit_cell
 from prime.postrefine.mod_leastsqr import good_unit_cell
-from prime.postrefine.mod_mx import mx_handler
 from cctbx import statistics
-import iotbx.phil
-from libtbx.utils import Usage, Sorry
-from prime.postrefine.mod_input import read_pickles
-
-master_phil = iotbx.phil.parse("""
-data = None
-  .type = path
-  .multiple = True
-  .help = Directory containing integrated data in pickle format.  Repeat to \
-    specify additional directories.
-hklisoin = None
-  .type = path
-  .help = Mtz file for the calculation of CCiso
-pixel_size_mm = None
-  .type = float
-  .help = Pixel size in mm. (MAR = 0.079346)
-  .optional = False
-target_unit_cell = None
-  .type = unit_cell
-  .help = Target unit-cell parameters are used to discard outlier cells.
-target_space_group = None
-  .type = str
-  .help = Target space group.
-target_anomalous_flag = False
-  .type = bool
-  .help = Target anomalous flag (False = Not anomalous data)
-flag_plot = False
-  .type = bool
-  .help = Normal plots.
-d_min = 0.1
-  .type = float
-  .help = Minimum resolution.
-d_max = 99
-  .type = float
-  .help = Maximum resolution.
-n_residues = None
-  .type = int
-  .help = No. of amino acid residues.
-frame_accept_min_cc = 0.25
-  .type = float
-  .help = CC cut-off for the rejection of frames for reporting only.
-beam_accept_offset_mm = 0.5
-  .type = float
-  .help = Beam center cut-off in mm. (calculated from mean values).
-uc_tolerance = 5
-  .type = float
-  .help = Unit-cell tolerance in percent.
-""")
-txt_help = """**************************************************************************************************
-
-prime.print_integration_pickle
-
-For viewing systematic absences and beam xy position from integration pickles.
-
-Usage: prime.print_integration_pickle parameter.phil
-
-With this command, you can specify all parameters required by prime in your parameter.phil file.
-To obtain the template of these parameters, you can perform a dry run (simply run prime.print_integration_pickle).
-You can then change the values of the parameters.
-
-For feedback, please contact monarin@stanford.edu.
-
-**************************************************************************************************
-
-List of available parameters:
-"""
 
 def calc_wilson(observations_full, n_residues):
   """
   Caculate isotropic Wilson G and B-factors
   """
-  G,B  = (0,0)
-  if n_residues:
-    mxh = mx_handler()
-    asu_contents = mxh.get_asu_contents(n_residues)
-    try:
-      observations_as_f = observations_full.as_amplitude_array()
-      binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
-      wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
-      G = wp.wilson_intensity_scale_factor
-      B = wp.wilson_b
-    except Exception, e:
-      print "Warning (Wilson Plot Calculation)", e
+  if n_residues == 0:
+    return 0, 0
+  from prime.postrefine.mod_util import mx_handler
+  mxh = mx_handler()
+  asu_contents = mxh.get_asu_contents(n_residues)
+  try:
+    observations_as_f = observations_full.as_amplitude_array()
+    binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
+    wp = statistics.wilson_plot(observations_as_f, asu_contents, e_statistics=True)
+    G = wp.wilson_intensity_scale_factor
+    B = wp.wilson_b
+  except Exception:
+    G,B  = (0,0)
   return G, B
 
+def get_miller_array_from_mtz(mtz_filename):
+  flag_hklisoin_found = False
+  miller_array_iso = None
+  if mtz_filename is not None:
+    flag_hklisoin_found = True
+    reflection_file_iso = reflection_file_reader.any_reflection_file(mtz_filename)
+    miller_arrays_iso=reflection_file_iso.as_miller_arrays()
+    is_found_iso_as_intensity_array = False
+    is_found_iso_as_amplitude_array = False
+    for miller_array in miller_arrays_iso:
+      if miller_array.is_xray_intensity_array():
+        miller_array_iso = miller_array.deep_copy()
+        is_found_iso_as_intensity_array = True
+        break
+      elif miller_array.is_xray_amplitude_array():
+        is_found_iso_as_amplitude_array = True
+        miller_array_converted_to_intensity = miller_array.as_intensity_array()
+    if is_found_iso_as_intensity_array == False:
+      if is_found_iso_as_amplitude_array:
+        miller_array_iso = miller_array_converted_to_intensity.deep_copy()
+      else:
+        flag_hklisoin_found = False
+  if miller_array_iso is not None:
+    perm = miller_array_iso.sort_permutation(by_value="resolution", reverse=True)
+    miller_array_iso = miller_array_iso.select(perm)
+  return flag_hklisoin_found, miller_array_iso
+
+def read_pickles(data):
+  frame_files = []
+  for p in data:
+    if os.path.isdir(p) == False:
+      #check if list-of-pickle text file is given
+      pickle_list_file = open(p,'r')
+      pickle_list = pickle_list_file.read().split("\n")
+      for pickle_filename in pickle_list:
+        if os.path.isfile(pickle_filename):
+          frame_files.append(pickle_filename)
+    else:
+      for pickle_filename in os.listdir(p):
+        if pickle_filename.endswith('.pickle'):
+          frame_files.append(p+'/'+pickle_filename)
+  #check if pickle_dir is given in input file instead of from cmd arguments.
+  if len(frame_files)==0:
+    print 'No pickle files found.'
+    exit()
+  return frame_files
+
+def read_input(args):
+  if len(args) == 0:
+    print "prime.print_integration_pickle: for viewing systematic absences and beam xy position from integration pickles."
+    print "usage: prime.print_integration_pickle data=integrated.lst pixel_size_mm=0.079346 check_sys_absent=True target_space_group=P212121"
+    exit()
+  data = []
+  hklrefin = None
+  pixel_size_mm = None
+  check_sys_absent = False
+  target_space_group = None
+  target_unit_cell = None
+  target_anomalous_flag = False
+  flag_plot = True
+  d_min = 0
+  d_max = 99
+  n_residues = 0
+  for i in range(len(args)):
+    pair=args[i].split('=')
+    if pair[0]=='data':
+      data.append(pair[1])
+    if pair[0]=='hklrefin':
+      hklrefin = pair[1]
+    if pair[0]=='pixel_size_mm':
+      pixel_size_mm = float(pair[1])
+    if pair[0]=='check_sys_absent':
+      check_sys_absent = bool(pair[1])
+    if pair[0]=='target_space_group':
+      target_space_group = pair[1]
+    if pair[0]=='target_unit_cell':
+      try:
+        tuc = pair[1].split(',')
+        a,b,c,alpha,beta,gamma = (float(tuc[0]), float(tuc[1]), float(tuc[2]), \
+          float(tuc[3]), float(tuc[4]), float(tuc[5]))
+        target_unit_cell = unit_cell((a,b,c,alpha,beta,gamma))
+      except Exception:
+        pass
+    if pair[0]=='target_anomalous_flag':
+      target_anomalous_flag = bool(pair[1])
+    if pair[0]=='flag_plot':
+      if pair[1] == 'False':
+        flag_plot = False
+    if pair[0]=='d_min':
+      d_min = float(pair[1])
+    if pair[0]=='d_max':
+      d_max = float(pair[1])
+    if pair[0]=='n_residues':
+      n_residues = int(pair[1])
+  if len(data)==0:
+    print "Please provide data path. (eg. data=/path/to/pickle/)"
+    exit()
+  if check_sys_absent:
+    if target_space_group is None:
+      print "Please provide target space group if you want to check systematic absence (eg. target_space_group=P212121)"
+      exit()
+  if pixel_size_mm is None:
+    print "Please specify pixel size (eg. pixel_size_mm=0.079346)"
+    exit()
+  return data, hklrefin, pixel_size_mm, check_sys_absent, target_unit_cell, target_space_group, target_anomalous_flag, flag_plot, d_min, d_max, n_residues
+
+
 if (__name__ == "__main__"):
-  #setup phil parameters
-  user_phil = []
-  if sys.argv[1:] == None:
-    master_phil.show()
-    raise Usage("Use the above list of parameters to generate your input file (.phil). For more information, run prime.print_integration_pickle -h.")
-  else:
-    for arg in sys.argv[1:]:
-      if os.path.isfile(arg):
-        user_phil.append(iotbx.phil.parse(open(arg).read()))
-      elif (os.path.isdir(arg)) :
-        user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
-      else :
-        if arg == '--help' or arg == '-h':
-          print txt_help
-          master_phil.show(attributes_level=1)
-          raise Usage("Run prime.print_integration_pickle to generate a list of initial parameters.")
-        else:
-          try:
-            user_phil.append(iotbx.phil.parse(arg))
-          except RuntimeError, e :
-            raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
-  working_phil = master_phil.fetch(sources=user_phil)
-  params = working_phil.extract()
-  if not params.data:
-    raise Usage("Error: Data is required. Please specify path to your data folder (data=/path/to/integration/results).")
-  if params.target_unit_cell:
-    if not params.target_space_group: raise Usage("Error: Please specify target space group (target_space_group=xx).")
-  if not params.pixel_size_mm:
-    raise Usage("Error: Please specify pixel size in mm. (pixel_size_mm=xx).")
+  cc_bin_low_thres = 0.25
+  beam_thres = 0.5
+  uc_tol = 20
   #0 .read input parameters and frames (pickle files)
-  frame_files = read_pickles(params.data)
-  xbeam_set,ybeam_set,sys_abs_all,cc_bin_low_set = (flex.double(),flex.double(),flex.double(),flex.double())
-  uc_a, uc_b, uc_c, dd_mm, wavelength_set = (flex.double(),flex.double(),flex.double(),flex.double(),flex.double())
-  sys_abs_set,cc_bins_set,d_bins_set,oodsqr_bins_set,flag_good_unit_cell_set = ([],[],[],[],[])
+  data, hklrefin, pixel_size_mm, check_sys_absent_input, target_unit_cell, \
+    target_space_group, target_anomalous_flag, flag_plot, d_min, d_max, n_residues = read_input(args = sys.argv[1:])
+  frame_files = read_pickles(data)
+  xbeam_set = flex.double()
+  ybeam_set = flex.double()
+  sys_abs_set = []
+  sys_abs_all = flex.double()
+  cc_bin_low_set = flex.double()
+  cc_bins_set = []
+  d_bins_set = []
+  oodsqr_bins_set = []
+  flag_good_unit_cell_set = []
   print 'Summary of integration pickles:'
   print '(image file, min. res., max. res, beamx, beamy, n_refl, cciso, <cciso_bin>, a, b, c, mosaicity, residual, dd_mm, wavelength, good_cell?, G, B)'
-  txt_out_sys_abs = '\nSummary of systematic absences:\n'
-  txt_out_sys_abs += 'Image File, Resolution, Original Index, Asym. Index, I, sigI, I/sigI\n'
+  uc_a = flex.double()
+  uc_b = flex.double()
+  uc_c = flex.double()
+  dd_mm = flex.double()
+  wavelength_set = flex.double()
   for pickle_filename in frame_files:
+    check_sys_absent = check_sys_absent_input
     observations_pickle = pickle.load(open(pickle_filename,"rb"))
-    pickle_filename_only = os.path.basename(pickle_filename)
-    mxh = mx_handler()
-    flag_hklisoin_found, miller_array_iso = mxh.get_miller_array_from_reflection_file(params.hklisoin)
+    pickle_filename_arr = pickle_filename.split('/')
+    pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
+    flag_hklisoin_found, miller_array_iso = get_miller_array_from_mtz(hklrefin)
     observations = observations_pickle["observations"][0]
     swap_dict = {'test_xx1.pickle':0, \
       'tes_xx2.pickle':0}
@@ -152,30 +181,38 @@ if (__name__ == "__main__"):
       from cctbx import sgtbx
       cb_op = sgtbx.change_of_basis_op('a,c,b')
       observations = observations.change_basis(cb_op)
-    if params.target_unit_cell:
+    #from cctbx import sgtbx
+    #cb_op = sgtbx.change_of_basis_op('c,b,a')
+    #observations = observations.change_basis(cb_op)
+    #apply constrain using the crystal system
+    #check systematic absent
+    if check_sys_absent:
       try:
         from cctbx.crystal import symmetry
         miller_set = symmetry(
             unit_cell=observations.unit_cell().parameters(),
-            space_group_symbol=params.target_space_group
+            space_group_symbol=target_space_group
           ).build_miller_set(
-            anomalous_flag=params.target_anomalous_flag,
+            anomalous_flag=target_anomalous_flag,
             d_min=observations.d_min())
-        observations = observations.customized_copy(anomalous_flag=params.target_anomalous_flag,
+        observations = observations.customized_copy(anomalous_flag=target_anomalous_flag,
                           crystal_symmetry=miller_set.crystal_symmetry())
       except Exception:
         print 'Cannot apply target space group: observed space group=', observations.space_group_info()
+        check_sys_absent = False
     #check if the uc is good
-    if params.target_unit_cell is None:
-      flag_good_unit_cell = True
-    else:
-      flag_good_unit_cell = good_unit_cell(observations.unit_cell().parameters(), None, params.uc_tolerance, target_unit_cell=params.target_unit_cell)
+    flag_good_unit_cell = False
+    if check_sys_absent:
+      if target_unit_cell is None:
+        flag_good_unit_cell = True
+      else:
+        flag_good_unit_cell = good_unit_cell(observations.unit_cell().parameters(), None, uc_tol, target_unit_cell=target_unit_cell)
     flag_good_unit_cell_set.append(flag_good_unit_cell)
     #calculate partiality
     wavelength = observations_pickle["wavelength"]
     crystal_init_orientation = observations_pickle["current_orientation"][0]
     detector_distance_mm = observations_pickle['distance']
-    mm_predictions = params.pixel_size_mm*(observations_pickle['mapped_predictions'][0])
+    mm_predictions = pixel_size_mm*(observations_pickle['mapped_predictions'][0])
     xbeam = observations_pickle["xbeam"]
     ybeam = observations_pickle["ybeam"]
     xbeam_set.append(xbeam)
@@ -192,7 +229,7 @@ if (__name__ == "__main__"):
       dd_mm.append(detector_distance_mm)
       wavelength_set.append(wavelength)
     #resoultion filter
-    i_sel_res = observations.resolution_filter_selection(d_min=params.d_min, d_max=params.d_max)
+    i_sel_res = observations.resolution_filter_selection(d_min=d_min, d_max=d_max)
     observations = observations.select(i_sel_res)
     alpha_angle = alpha_angle.select(i_sel_res)
     spot_pred_x_mm = spot_pred_x_mm.select(i_sel_res)
@@ -220,7 +257,7 @@ if (__name__ == "__main__"):
     I_full = observations.data()/ partiality_init
     sigI_full = observations.sigmas()/ partiality_init
     observations_full = observations.customized_copy(data=I_full, sigmas=sigI_full)
-    wilson_G, wilson_B = calc_wilson(observations_full, params.n_residues)
+    wilson_G, wilson_B = calc_wilson(observations_full, n_residues)
     #calculate R and cc with reference
     cc_iso, cc_full_iso, cc_bin_low, cc_bin_med = (0, 0, 0, 0)
     observations_asu = observations.map_to_asu()
@@ -255,7 +292,7 @@ if (__name__ == "__main__"):
       except Exception:
         pass
       #scatter plot
-      if params.flag_plot and len(frame_files)==1:
+      if flag_plot and len(frame_files)==1:
         plt.subplot(211)
         #plt.scatter(oodsqr_match, I_iso_match, s=10, marker='o', c='r')
         plt.plot(oodsqr_match, I_iso_match)
@@ -297,14 +334,14 @@ if (__name__ == "__main__"):
             cc_bin_low = cc_bin
           if i_bin == 5:
             cc_bin_med = cc_bin
-          if params.flag_plot and len(frame_files)==1:
+          if flag_plot and len(frame_files)==1:
             plt.subplot(2,5,i_bin+1)
             plt.scatter(I_iso_bin, I_bin,s=10, marker='o', c='r')
             plt.title('Bin %2.0f (%6.2f-%6.2f A) CC=%6.2f'%(i_bin+1, np.max(d_bin), np.min(d_bin), cc_bin))
             if i_bin == 0:
               plt.xlabel('I_ref')
               plt.ylabel('I_obs')
-        if params.flag_plot and len(frame_files)==1:
+        if flag_plot and len(frame_files)==1:
           plt.show()
       #print full detail if given a single file
       if len(frame_files) == 1:
@@ -320,17 +357,18 @@ if (__name__ == "__main__"):
     d_bins_set.append(d_bins)
     oodsqr_bins_set.append(oodsqr_bins)
     sys_abs_lst = flex.double()
-    if params.target_unit_cell:
+    if check_sys_absent:
       cn_refl = 0
       for sys_absent_flag, d_spacing, miller_index_ori, miller_index_asu, I, sigI in zip(observations.sys_absent_flags(), observations.d_spacings().data(), observations.indices(), observations_asu.indices(), observations.data(), observations.sigmas()):
         if sys_absent_flag[1]:
-          txt_out_sys_abs += '{9:40} {10:6.2f} {0:3},{1:3},{2:3} {3:3},{4:3},{5:3} {6:8.2f} {7:8.2f} {8:6.2f}\n'.format(miller_index_ori[0], miller_index_ori[1], miller_index_ori[2], miller_index_asu[0], miller_index_asu[1], miller_index_asu[2], I, sigI, I/sigI, pickle_filename_only, d_spacing)
+          txt_out = '{9:40} {10:6.2f} {0:3} {1:3} {2:3} {3:3} {4:3} {5:3} {6:8.2f} {7:8.2f} {8:6.2f}'.format(miller_index_ori[0], miller_index_ori[1], miller_index_ori[2], miller_index_asu[0], miller_index_asu[1], miller_index_asu[2], I, sigI, I/sigI, pickle_filename_only, d_spacing)
+          #if I/sigI > 1.5:
+          #  print txt_out
+          print txt_out
           cn_refl +=1
           sys_abs_lst.append(I/sigI)
           sys_abs_all.append(I/sigI)
     sys_abs_set.append(sys_abs_lst)
-  #report systematic absences
-  print txt_out_sys_abs
   #collect beamxy
   xbeam_mean = flex.mean(xbeam_set)
   xbeam_std = np.std(xbeam_set)
@@ -343,8 +381,8 @@ if (__name__ == "__main__"):
   txt_out = ''
   txt_out_mix = ''
   txt_out_uc = ''
-  txt_out_report_beam_filter = 'Images with beam center displaced > %6.2f mm.:\n'%(params.beam_accept_offset_mm)
-  txt_out_report_cc_filter = 'Images with cc < %6.2f:\n'%(params.frame_accept_min_cc)
+  txt_out_report_beam_filter = 'Images with beam center displaced > %6.2f mm.:\n'%(beam_thres)
+  txt_out_report_cc_filter = 'Images with cc < %6.2f:\n'%(cc_bin_low_thres)
   from scitbx.matrix import col
   for pickle_filename, xbeam, ybeam, sys_abs_lst, cc_bin_low, flag_good_unit_cell in \
     zip(frame_files, xbeam_set, \
@@ -355,13 +393,13 @@ if (__name__ == "__main__"):
     calc_xy = col((xbeam_mean, ybeam_mean))
     diff_xy = pred_xy - calc_xy
     txt_out_report_tmp = '{0:80} {1:6.2f} {2:6.2f} {3:6.2f} {4:6.4f}\n'.format(pickle_filename_only, xbeam, ybeam, cc_bin_low, diff_xy.length())
-    if diff_xy.length() < params.beam_accept_offset_mm:
+    if diff_xy.length() < beam_thres:
       xbeam_filtered_set.append(xbeam)
       ybeam_filtered_set.append(ybeam)
       frame_filtered_set.append(pickle_filename)
       txt_out += pickle_filename + '\n'
       sys_abs_all_filtered.extend(sys_abs_lst)
-      if cc_bin_low > params.frame_accept_min_cc and flag_good_unit_cell:
+      if cc_bin_low > cc_bin_low_thres and flag_good_unit_cell:
         txt_out_mix += pickle_filename + '\n'
       else:
         txt_out_report_cc_filter += txt_out_report_tmp
@@ -373,15 +411,14 @@ if (__name__ == "__main__"):
   print 'CC mean=%6.2f median=%6.2f std=%6.2f'%(flex.mean(cc_bin_low_set), np.median(cc_bin_low_set), np.std(cc_bin_low_set))
   print 'Xbeam mean=%8.4f std=%6.4f'%(xbeam_mean, xbeam_std)
   print 'Ybeam mean=%8.4f std=%6.4f'%(ybeam_mean, ybeam_std)
-  if uc_a:
-    print 'UC mean a=%8.4f (%8.4f) b=%8.4f (%8.4f) c=%9.4f (%8.4f)'%(flex.mean(uc_a), np.std(uc_a), flex.mean(uc_b), np.std(uc_b), flex.mean(uc_c), np.std(uc_c))
+  print 'UC mean a=%8.4f (%8.4f) b=%8.4f (%8.4f) c=%9.4f (%8.4f)'%(flex.mean(uc_a), np.std(uc_a), flex.mean(uc_b), np.std(uc_b), flex.mean(uc_c), np.std(uc_c))
   print 'Detector distance mean=%8.4f (%8.4f)'%(flex.mean(dd_mm), np.std(dd_mm))
   print 'Wavelength mean=%8.4f (%8.4f)'%(flex.mean(wavelength_set), np.std(wavelength_set))
   print 'No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f'%(len(frame_files), len(frame_files) - (len(txt_out.split('\n'))-1), len(frame_files) - (len(txt_out_mix.split('\n'))-1))
   print
   print 'Reporting outliers (image name, xbeam, ybeam, cciso, delta_xy)'
   print txt_out_report_beam_filter
-  if params.hklisoin: print txt_out_report_cc_filter
+  print txt_out_report_cc_filter
   #write out filtered beamxy pickle files
   f = open('integration_pickle_beam_filter.lst', 'w')
   f.write(txt_out)
@@ -394,7 +431,7 @@ if (__name__ == "__main__"):
   f = open('integration_pickle_beam_uc_filter.lst', 'w')
   f.write(txt_out_uc)
   f.close()
-  if params.flag_plot:
+  if flag_plot:
     plt.subplot(211)
     plt.plot(xbeam_set,ybeam_set,"r.")
     plt.xlim([xbeam_mean-2, xbeam_mean+2])
@@ -420,6 +457,10 @@ if (__name__ == "__main__"):
       sigma = np.std(x)
       num_bins = 25
       n, bins, patches = plt.hist(x, num_bins, normed=False, facecolor='blue', alpha=0.5)
+      #y = mlab.normpdf(bins, mu, sigma)
+      #plt.plot(bins, y, 'r--')
+      #plt.ylim([0,70])
+      #plt.xlim([-150,500])
       plt.ylabel('Frequencies')
       plt.grid()
       plt.title('Systematic absences with |I/sigI| > 2.0\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
@@ -431,6 +472,10 @@ if (__name__ == "__main__"):
       sigma = np.std(x)
       num_bins = 25
       n, bins, patches = plt.hist(x, num_bins, normed=False, facecolor='blue', alpha=0.5)
+      #y = mlab.normpdf(bins, mu, sigma)
+      #plt.plot(bins, y, 'r--')
+      #plt.ylim([0,70])
+      #plt.xlim([-150,500])
       plt.ylabel('Frequencies')
       plt.grid()
       plt.title('Systematic absences with |I/sigI| > 2.0 (After BeamXY filter)\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
@@ -439,29 +484,19 @@ if (__name__ == "__main__"):
     for cc_bins, d_bins, oodsqrt_bins, cc_bin_low, pickle_filename in zip(cc_bins_set, d_bins_set, oodsqr_bins_set, cc_bin_low_set, frame_files):
       pickle_filename_arr = pickle_filename.split('/')
       pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
-      if cc_bin_low < params.frame_accept_min_cc:
+      if cc_bin_low < cc_bin_low_thres:
         plt.subplot(2,1,1)
         plt.plot(oodsqrt_bins, cc_bins)
-        plt.title('CC by resolutions for cc < %6.2f'%(params.frame_accept_min_cc))
+        plt.title('CC by resolutions for cc < %6.2f'%(cc_bin_low_thres))
         plt.xlabel('1/d^2')
         plt.ylim([0,1])
         plt.grid(True)
       else:
         plt.subplot(2,1,2)
         plt.plot(oodsqrt_bins, cc_bins)
-        plt.title('CC by resolutions for cc > %6.2f'%(params.frame_accept_min_cc))
+        plt.title('CC by resolutions for cc > %6.2f'%(cc_bin_low_thres))
         plt.xlabel('1/d^2')
         plt.ylim([0,1])
         plt.grid(True)
         cn_i += 1
     plt.show()
-  #print twin operators
-  from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler
-  idah = indamb_handler()
-  print "\nReporting all images with alternative indexing choices:"
-  for pickle_filename in frame_files:
-    observations_pickle = pickle.load(open(pickle_filename,"rb"))
-    observations = observations_pickle["observations"][0]
-    operators = idah.generate_twin_operators(observations, flag_all=True)
-    ops_hkl = [op.operator.r().as_hkl() for op in operators]
-    print os.path.basename(pickle_filename), '%6.1f %6.1f %6.1f %6.1f %6.1f %6.1f'%observations.unit_cell().parameters(), ops_hkl

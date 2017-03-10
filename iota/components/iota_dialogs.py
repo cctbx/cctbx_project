@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 02/14/2017
+Last Changed: 03/09/2017
 Description : IOTA GUI Dialogs
 '''
 
@@ -1418,4 +1418,4 @@ class ViewerWarning(BaseDialog):
       self.no_images = self.img_list_length
     elif self.rb_custom.GetValue():
       self.no_images = int(self.opt_custom.GetValue())
-    e.Skip()
+    self.EndModal(wx.ID_OK)
