@@ -144,14 +144,22 @@ restraints_library_str = """
       .style = hidden
   }
 """
+ideal_ligands = ['SF4', 'F3S']
+ideal_ligands_str = ' '.join(ideal_ligands)
 master_params_str = """\
   %(restraints_library_str)s
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
-  regularise_sf4 = True
+  regularise_sf4 = False
     .type = bool
     .short_caption = Substitute correctly oriented SF4 metal cluster
+  regularise_f3s = False
+    .type = bool
+    .short_caption = Substitute correctly oriented F3S metal cluster
+  superpose_ideal_ligand = *None all %(ideal_ligands_str)s
+    .type = choice(multi=True)
+    .short_caption = Substitute correctly oriented F3S metal cluster
   flip_symmetric_amino_acids = False
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
@@ -2955,9 +2963,14 @@ class build_all_chain_proxies(linking_mixins):
     #
     # optionally modify the model before processing
     #
-    if self.params.regularise_sf4:
-      from mmtbx.conformation_dependent_library import mcl
-      info = mcl.superpose_ideal_sf4_coordinates(self.pdb_hierarchy)
+    if 'all' in self.params.superpose_ideal_ligand:
+      self.params.superpose_ideal_ligand = ideal_ligands
+    from mmtbx.conformation_dependent_library import mcl
+    for residue in self.params.superpose_ideal_ligand:
+      if residue in [None, 'None']: continue
+      info = mcl.superpose_ideal_residue_coordinates(self.pdb_hierarchy,
+                                                     resname=residue,
+                                                   )
       if info: print >> log, info
     if self.params.flip_symmetric_amino_acids:
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()

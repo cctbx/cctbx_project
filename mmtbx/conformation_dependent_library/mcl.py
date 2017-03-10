@@ -11,7 +11,7 @@ def update(grm,
            verbose=False,
            ):
   # SF4
-  rc = mcl_sf4_coordination.get_sf4_coordination(
+  rc = mcl_sf4_coordination.get_sulfur_iron_cluster_coordination(
     pdb_hierarchy=pdb_hierarchy,
     nonbonded_proxies=grm.pair_proxies(
       sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
@@ -50,18 +50,25 @@ def generate_sites_fixed(pdb_hierarchy, resname, element=None):
     if ag.resname.strip().upper()==resname.upper():
       yield _extract_sites_cart(ag, element), ag
 
-def superpose_ideal_sf4_coordinates(pdb_hierarchy):
+def superpose_ideal_sf4_coordinates(pdb_hierarchy, resname='SF4'):
   from iotbx import pdb
   t0=time.time()
   rmsd_list = {}
-  ideal = pdb.input(lines=mcl_sf4_coordination.ideal_sf4,
-                    source_info='ideal',
-                  )
+  if resname=='SF4':
+    ideal = pdb.input(lines=mcl_sf4_coordination.ideal_sf4,
+                      source_info='ideal',
+                    )
+  elif resname=='F3S':
+    ideal = pdb.input(lines=mcl_sf4_coordination.ideal_f3s,
+                      source_info='ideal',
+                    )
+  else:
+    assert 0
   ideal_hierarchy = ideal.construct_hierarchy()
   sites_moving = _extract_sites_cart(ideal_hierarchy, 'Fe')
   for ideal_ag in ideal_hierarchy.atom_groups(): break
-  for sites_fixed, ag in generate_sites_fixed(pdb_hierarchy, 'SF4', 'Fe'):
-    assert sites_fixed.size() == sites_moving.size(), 'SF4 residue is missing atoms'
+  for sites_fixed, ag in generate_sites_fixed(pdb_hierarchy, resname, 'Fe'):
+    assert sites_fixed.size() == sites_moving.size(), '%(resname)s residue is missing atoms' % locals()
     lsq_fit = superpose.least_squares_fit(
       reference_sites = sites_fixed,
       other_sites     = sites_moving)
@@ -77,13 +84,22 @@ def superpose_ideal_sf4_coordinates(pdb_hierarchy):
           atom1.xyz=atom2.xyz
           break
       else:
-        assert 0, 'not all atoms updated'
-  outl = '  SF4 Regularisation'
-  outl+= '\n    residue        rmsd'
-  for id_str, rmsd in sorted(rmsd_list.items()):
-    outl += '\n    "%s"   %0.1f' % (id_str, rmsd)
-  outl += '\n  Time to superpose : %0.2fs\n' % (time.time()-t0)
+        assert 0, 'not all atoms updated - missing %s' % atom1.quote()
+  outl = ''
+  if rmsd_list:
+    outl = '  %(resname)s Regularisation' % locals()
+    outl+= '\n    residue        rmsd'
+    for id_str, rmsd in sorted(rmsd_list.items()):
+      outl += '\n    "%s"   %0.1f' % (id_str, rmsd)
+    outl += '\n  Time to superpose : %0.2fs\n' % (time.time()-t0)
   return outl
+
+def superpose_ideal_residue_coordinates(pdb_hierarchy, resname='SF4'):
+  if resname in ['SF4', 'F3S']:
+    rc = superpose_ideal_sf4_coordinates(pdb_hierarchy, resname=resname)
+  else:
+    assert 0
+  return rc
 
 if __name__=="__main__":
   args = sys.argv[1:]

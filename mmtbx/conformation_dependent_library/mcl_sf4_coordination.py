@@ -17,17 +17,26 @@ HETATM    6  S2  SF4 A   1      -1.455   1.182  -0.289  1.00 20.00      A    S
 HETATM    7  S3  SF4 A   1      -0.302  -0.999   1.584  1.00 20.00      A    S  
 HETATM    8  S4  SF4 A   1       1.601   1.001   0.180  1.00 20.00      A    S  
 '''
+ideal_f3s = '''\
+HETATM    1 FE1  F3S A   1     -35.953  -8.236  12.596  1.00 20.00      A   FE  
+HETATM    2 FE3  F3S A   1     -36.669  -9.856  10.140  1.00 20.00      A   FE  
+HETATM    3 FE4  F3S A   1     -36.630 -11.203  12.847  1.00 20.00      A   FE  
+HETATM    4  S1  F3S A   1     -34.775  -8.401  10.634  1.00 20.00      A    S  
+HETATM    5  S2  F3S A   1     -34.733  -9.955  13.619  1.00 20.00      A    S  
+HETATM    6  S3  F3S A   1     -37.837  -9.484  11.958  1.00 20.00      A    S  
+HETATM    7  S4  F3S A   1     -35.596 -11.913  10.858  1.00 20.00      A    S  
+'''
 
 phil_str = '''
 '''
 
-def get_sf4_coordination(pdb_hierarchy,
-                         nonbonded_proxies,
-                         coordination_distance_cutoff=3.5,
-                         #params=None,
-                         log=sys.stdout,
-                         verbose=False,
-                         ):
+def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
+                                         nonbonded_proxies,
+                                         coordination_distance_cutoff=3.5,
+                                         #params=None,
+                                         log=sys.stdout,
+                                         verbose=False,
+                                       ):
   coordination = []
   done_aa = []
   atoms = pdb_hierarchy.atoms()
@@ -48,25 +57,26 @@ def get_sf4_coordination(pdb_hierarchy,
     ag1 = a1.parent()
     a2 = atoms[j_seq]
     ag2 = a2.parent()
-    if (ag1.resname=="SF4" and ag2.resname=="SF4"):
-      if ag1.id_str()!=ag2.id_str():
-        print >> log, 'Two SF4 residues are close enough to coordinate! ODD!'
-    elif (ag1.resname=="SF4" or ag2.resname=="SF4"):
-      sf4=a2
-      sf4g=ag2
-      aa=a1
-      aag=ag1
-      if ag1.resname=='SF4':
-        sf4=a1
+    for resname in ['SF4', 'F3S']:
+      if (ag1.resname==resname and ag2.resname==resname):
+        if ag1.id_str()!=ag2.id_str():
+          print >> log, 'Two %(resname)s residues are close enough to coordinate! ODD!' % locals()
+      elif (ag1.resname==resname or ag2.resname==resname):
+        sf4=a2
         sf4g=ag2
-        aa=a2
-        aag=ag2
-      if verbose: print 'SF4-aa',sf4.quote(),aa.quote(),dist
-      if sf4.element.lower()=="fe":
-        if aag.id_str() not in done_aa:
-          #coordination.append((i_seq, j_seq))
-          coordination.append((sf4, aa))
-          done_aa.append(aag.id_str())
+        aa=a1
+        aag=ag1
+        if ag1.resname==resname:
+          sf4=a1
+          sf4g=ag2
+          aa=a2
+          aag=ag2
+        if verbose: print '%s-aa' % resname,sf4.quote(),aa.quote(),dist
+        if sf4.element.lower()=="fe":
+          if aag.id_str() not in done_aa:
+            #coordination.append((i_seq, j_seq))
+            coordination.append((sf4, aa))
+            done_aa.append(aag.id_str())
     i += 1
   return coordination
 
@@ -74,13 +84,13 @@ def get_bond_proxies(coordination):
   bonds = []
   for a1, a2 in coordination:
     p = geometry_restraints.bond_simple_proxy(
-        i_seqs=[a1.i_seq, a2.i_seq],
-        distance_ideal=sf4_coordination[('FE', 'S')][0],
-        weight=1.0/sf4_coordination[('FE', 'S')][1]**2,
-        slack=0,
-        top_out=False,
-        limit=1,
-        origin_id=2)
+      i_seqs=[a1.i_seq, a2.i_seq],
+      distance_ideal=sf4_coordination[('FE', 'S')][0],
+      weight=1.0/sf4_coordination[('FE', 'S')][1]**2,
+      slack=0,
+      top_out=False,
+      limit=1,
+      origin_id=2)
     bonds.append(p)
   return bonds
 
@@ -88,7 +98,7 @@ def get_angle_proxies_for_bond(coordination):
   angles = []
   for a1, a2 in coordination:
     assert a1.name.find("FE")>-1
-    assert a1.parent().resname in ['SF4']
+    assert a1.parent().resname in ['SF4', 'F3S']
     ii=int(a1.name.strip()[-1])
     for i in range(1,5):
       if i==ii: continue
