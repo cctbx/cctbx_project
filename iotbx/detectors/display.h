@@ -105,15 +105,15 @@ public:
     EigerX-16M, FastModules=4
     x, vertical, slow, size1:  8 blocks of 514, separated by 7 stripes of 37, giving 4371.
     y  horizont, fast, size2:  4 blocks of 1030, separated by 3 stripes of 10, giving 4150.
-    
+
     EigerX-9M, FastModules=3
     x, vertical, slow, size1:  6 blocks of 514, separated by 5 stripes of 37, giving 3269.
     y  horizont, fast, size2:  3 blocks of 1030, separated by 2 stripes of 10, giving 3110.
-    
+
     EigerX=4M, FastModules=2
     x, vertical, slow, size1:  4 blocks of 514, separated by 3 stripes of 37, giving 2167.
     y  horizont, fast, size2:  2 blocks of 1030, separated by 1 stripes of 10, giving 2070.
-    
+
     EigerX-1M, FastModules=1
     x, vertical, slow, size1:  2 blocks of 514, separated by 1 stripes of 37, giving 1065.
     y  horizont, fast, size2:  1 blocks of 1030, separated by 0 stripes of 10, giving 1030.
@@ -331,22 +331,28 @@ public:
 
 public:
   inline
-  FlexImage(array_t rawdata,const double& brightness = 1.0, const DataType& saturation = 1.0,
-      const bool& show_untrusted = false):
+  FlexImage(array_t rawdata,
+            const double& brightness = 1.0,
+            const DataType& saturation = 1.0,
+            const bool& show_untrusted = false,
+            const int& color_scheme_state = COLOR_GRAY):
     rawdata(rawdata),
     brightness(brightness),saturation(saturation), nchannels(4),supports_rotated_tiles_antialiasing_recommended(false),
-    color_scheme_state(COLOR_GRAY),show_untrusted(show_untrusted){}
+    color_scheme_state(color_scheme_state),show_untrusted(show_untrusted){}
 
   inline
   FlexImage(array_t rawdata, const int& power_of_two,
-            const std::string& vendortype, const double& brightness = 1.0,
-            const DataType& saturation = 65535, const bool& show_untrusted = false):
+            const std::string& vendortype,
+            const double& brightness = 1.0,
+            const DataType& saturation = 65535,
+            const bool& show_untrusted = false,
+            const int& color_scheme_state = COLOR_GRAY):
     brightness(brightness),
     saturation(saturation),
     rawdata(rawdata),
     nchannels(4),
     supports_rotated_tiles_antialiasing_recommended(false),
-    color_scheme_state(COLOR_GRAY),
+    color_scheme_state(color_scheme_state),
     binning(power_of_two),
     vendortype(vendortype),
     show_untrusted(show_untrusted){
@@ -677,8 +683,11 @@ class generic_flex_image: public FlexImage<double>{
     const int& size2_readout,
     const double& brightness = 1.0,
     const double& saturation = 1.0,
-    const bool& show_untrusted = false)
-    : FlexImage<double>(rawdata, brightness, saturation, show_untrusted),
+    const bool& show_untrusted = false,
+    const int& color_scheme_state = COLOR_GRAY
+    )
+    : FlexImage<double>(rawdata, brightness, saturation, show_untrusted,
+                        color_scheme_state),
       size1_readout(size1_readout),
       size2_readout(size2_readout)
   {

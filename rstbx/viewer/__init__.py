@@ -298,7 +298,8 @@ class image (screen_params) :
       brightness=brightness / 100,
       rawdata=self._raw.get_raw_data(),
       saturation=int(round(self._raw.get_detector()[0].get_trusted_range()[1])),
-      vendortype=self._raw.__class__.__name__)
+      vendortype=self._raw.__class__.__name__,
+      color_scheme=color_scheme)
 
     #from scitbx.array_family import flex
     #print flex.max(self._raw.linearintdata), flex.min(self._raw.linearintdata)

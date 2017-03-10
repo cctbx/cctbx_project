@@ -88,7 +88,7 @@ class DetectorImageBase(object):
   def get_raw_data(self):
     return self.linearintdata
 
-  def get_flex_image(self,binning=1,brightness=1.0):
+  def get_flex_image(self, binning=1, brightness=1.0, color_scheme=0):
     datatype = self.get_data_type()
     if datatype=="int":
       from iotbx.detectors import FlexImage
@@ -99,7 +99,8 @@ class DetectorImageBase(object):
       binning=binning,
       vendortype=self.vendortype,
       brightness=brightness,
-      saturation=int(getattr(self, "saturation", 65535)))
+      saturation=int(getattr(self, "saturation", 65535)),
+      color_scheme=color_scheme)
 
   data_types = dict( SIZE1=int, SIZE2=int, PIXEL_SIZE=float,
                      DISTANCE=float, TWOTHETA=float, OSC_RANGE=float,

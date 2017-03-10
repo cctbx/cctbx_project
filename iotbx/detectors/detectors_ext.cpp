@@ -372,14 +372,15 @@ struct flex_image_wrapper {
 
     class_<w_t >(python_name, no_init)
       .def(init<array_t&, const int&, const std::string&,
-                double const&, long int const&, bool const& >(
+                double const&, long int const&, bool const& , int const&>(
             (
             arg_("rawdata"),
             arg_("binning"),
             arg_("vendortype"),
             arg_("brightness"),
             arg_("saturation"),
-            arg_("show_untrusted")=false
+            arg_("show_untrusted")=false,
+            arg_("color_scheme")=0
             )
           ))
       .def("spot_convention", &w_t::spot_convention)
@@ -402,6 +403,22 @@ struct flex_image_wrapper {
     ;
   }
 };
+
+
+af::shared<scitbx::vec2<double> > flex_image_tile_readout_to_picture_f_a(
+  iotbx::detectors::display::generic_flex_image const& self,
+  int const& tile,
+  af::const_ref<double> const& islow,
+  af::const_ref<double> const& ifast) {
+
+  af::shared<scitbx::vec2<double> > fpicture((af::reserve(islow.size())));
+  for (std::size_t i = 0; i < islow.size(); i++) {
+    fpicture[i] = self.transformations[tile].inverse() * (
+      scitbx::vec2<double>(islow[i], ifast[i]) - self.translations[tile]);
+  }
+
+  return fpicture;
+}
 
 BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 {
@@ -446,14 +463,15 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
 
   class_<iotbx::detectors::display::generic_flex_image,
          bases<iotbx::detectors::display::FlexImage<double> > >("generic_flex_image", no_init)
-      .def(init<af::versa<double, af::flex_grid<> >, const int&, const int&, const double&, const double&, const bool& >(
+      .def(init<af::versa<double, af::flex_grid<> >, const int&, const int&, const double&, const double&, const bool&, const int&>(
             (
             arg_("rawdata"),
             arg_("size1_readout"),
             arg_("size2_readout"),
             arg_("brightness"),
             arg_("saturation"),
-            arg_("show_untrusted")=false
+            arg_("show_untrusted")=false,
+            arg_("color_scheme")=0
             )
           ))
       .def("prep_string",&iotbx::detectors::display::generic_flex_image::prep_string)
@@ -462,6 +480,7 @@ BOOST_PYTHON_MODULE(iotbx_detectors_ext)
       .def("picture_to_readout",&iotbx::detectors::display::generic_flex_image::picture_to_readout_f)
       .def("setWindowCart", &iotbx::detectors::display::generic_flex_image::setWindowCart)
       .def("tile_readout_to_picture", &iotbx::detectors::display::generic_flex_image::tile_readout_to_picture_f)
+      .def("tile_readout_to_picture", &flex_image_tile_readout_to_picture_f_a)
       .def("followup_brightness_scale", &iotbx::detectors::display::generic_flex_image::followup_brightness_scale)
   ;
 
