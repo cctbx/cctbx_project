@@ -78,6 +78,15 @@ def format(rows,
     return "\n".join(
       [line.rstrip() for line in output.getvalue().splitlines()])
 
+def manage_columns (table_data, include_columns) :
+  for row in table_data:
+    assert len(row) == len(include_columns)
+  new_table = []
+  for row in table_data:
+    new_row = [row[idx] for idx in xrange(len(row)) if include_columns[idx]]
+    new_table.append(new_row)
+  return new_table
+
 class simple_table (object) :
   """
   Container for generic table contents, used in Xtriage and elsewhere.  The
