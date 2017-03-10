@@ -7,8 +7,15 @@ class EIGERImage(DetectorImageBase):
     self.vendortype = "Eiger-9M"
     self.supports_multiple_images = True
     self.img_number = 0 # 0-indexed to clients, internally 1-indexed
+    self.vendor_specific_null_value = -1
 
-  def readHeader(self,maxlength=12288): # XXX change maxlength!!!
+  mandatory_keys = ['PIXEL_SIZE_UNITS', 'DISTANCE', 'PHI', 'WAVELENGTH', 'SIZE1',
+    'SIZE2', 'TWOTHETA', 'DISTANCE_UNITS', 'OSC_RANGE',
+    'BEAM_CENTER_X', 'BEAM_CENTER_Y',
+    'CCD_IMAGE_SATURATION', 'OSC_START', 'DETECTOR_SN', 'PIXEL_SIZE',
+    'AXIS']
+
+  def readHeader(self,dxtbx_instance,maxlength=12288): # XXX change maxlength!!!
     self.parameters={'CCD_IMAGE_SATURATION':65535}
     if not self.parameters:
       import h5py
@@ -43,6 +50,11 @@ class EIGERImage(DetectorImageBase):
 
 
       self.parameters={'CCD_IMAGE_SATURATION':65535}
+      D = dxtbx_instance.get_detector()
+      self.parameters['PIXEL_SIZE'] = D[0].get_pixel_size()[0]
+      self.parameters['PIXEL_SIZE_UNITS'] = "mm"
+      self.parameters['DISTANCE'] = D[0].get_distance()
+      self.parameters['DISTANCE_UNITS'] = "mm"
 
       # XXX paramters listed as ? still need to be matched to metadata in the HDF5 file
       library = [
@@ -51,9 +63,7 @@ class EIGERImage(DetectorImageBase):
           ('SIZE2','x_pixels_in_detector',int),
           ('CCD_IMAGE_SATURATION','CCD_IMAGE_SATURATION',int),   # ?
           ('DETECTOR_SN','detector_number',str),
-          ('PIXEL_SIZE','x_pixel_size',float),                   # should account for x or y size
           ('OSC_START','OSC_START',float),                       # ?
-          ('DISTANCE','detector_distance',float),
           ('WAVELENGTH','wavelength',float),
           ('BEAM_CENTER_X','beam_center_x',float),
           ('BEAM_CENTER_Y','beam_center_y',float),
