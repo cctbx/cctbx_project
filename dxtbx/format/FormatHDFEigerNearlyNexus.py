@@ -355,8 +355,14 @@ class FormatEigerNearlyNexus(FormatHDF5):
   def get_image_file(self, index=None):
     return self._image_file
 
+  def detectorbase_start(self, index=None):
+    from iotbx.detectors.eiger import EIGERImage
+    self.detectorbase = EIGERImage(self._image_file)
+    self.detectorbase.readHeader(index)
+
   def get_detectorbase(self, index=None):
-    raise RuntimeError('Overload!')
+    self.detectorbase_start(index)
+    return self.detectorbase
 
 if __name__ == '__main__':
   import sys

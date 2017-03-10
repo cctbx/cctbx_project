@@ -4,11 +4,12 @@ from iotbx.detectors.detectorbase import DetectorImageBase
 class EIGERImage(DetectorImageBase):
   def __init__(self,filename):
     DetectorImageBase.__init__(self,filename)
-    self.vendortype = "EIGER"
+    self.vendortype = "Eiger-9M"
     self.supports_multiple_images = True
     self.img_number = 0 # 0-indexed to clients, internally 1-indexed
 
   def readHeader(self,maxlength=12288): # XXX change maxlength!!!
+    self.parameters={'CCD_IMAGE_SATURATION':65535}
     if not self.parameters:
       import h5py
 
