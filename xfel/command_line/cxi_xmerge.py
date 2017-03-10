@@ -401,6 +401,7 @@ def run(args):
     appropriate_min_corr = -1.1 # lowest possible c.c.
   else:
     appropriate_min_corr = work_params.min_corr
+  n_frames = (scaler.frames['cc'] > appropriate_min_corr).count(True)
   iselect = 1
   while iselect<work_params.output.n_bins:
     col_count1 = results.count_frames(appropriate_min_corr, miller_set_avg.binner().selection(iselect))
@@ -414,11 +415,10 @@ def run(args):
     col_legend = '%-13s' % miller_set_avg.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_bin_range=False,
       show_d_range=True, show_counts=False)
-    xpercent = results.count_frames(appropriate_min_corr, miller_set_avg.binner().selection(i_bin))/float(col_count1)
+    xpercent = results.count_frames(appropriate_min_corr, miller_set_avg.binner().selection(i_bin))/float(n_frames)
     percent = '%5.2f'% (100.*xpercent)
     table_data.append(['%3d' % i_bin, col_legend, col_count,percent])
 
-  n_frames = (scaler.frames['cc'] > appropriate_min_corr).count(True)
   table_data.append([""] * len(table_data[0]))
   table_data.append(["All", "", '%8d' % n_frames])
   print >> out
