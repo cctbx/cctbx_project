@@ -165,6 +165,13 @@ namespace dxtbx { namespace model {
    */
   class OffsetParallaxCorrectedPxMmStrategy : public ParallaxCorrectedPxMmStrategy {
   public:
+    /*
+     * dx, dy here are pixel offsets in fast, slow directions to map
+     * ideal readout position to true readout position - these are
+     * *added* to the real valued pixel position when going from mm
+     * to pixel
+     */
+
     OffsetParallaxCorrectedPxMmStrategy(
           double mu,
           double t0,
@@ -207,9 +214,6 @@ namespace dxtbx { namespace model {
     vec2<double> to_millimeter(const PanelData &panel,
         vec2<double> xy) const {
 
-      // Do the naive mapping
-      vec2<double> mm = ParallaxCorrectedPxMmStrategy::to_millimeter(panel, xy);
-
       // Apply the correction
       int i = (int)std::floor(xy[0]);
       int j = (int)std::floor(xy[1]);
@@ -219,10 +223,13 @@ namespace dxtbx { namespace model {
       if (j >= dx_.accessor()[0]) j = dx_.accessor()[0]-1;
       double dx = dx_(j,i);
       double dy = dy_(j,i);
-      mm[0] -= dx;
-      mm[1] -= dy;
 
-      // Return the mapping
+      xy[0] -= dx;
+      xy[1] -= dy;
+
+      // reverse the parallax correction
+      vec2<double> mm = ParallaxCorrectedPxMmStrategy::to_millimeter(panel, xy);
+
       return mm;
     }
 
@@ -250,11 +257,10 @@ namespace dxtbx { namespace model {
       if (j >= dx_.accessor()[0]) j = dx_.accessor()[0]-1;
       double dx = dx_(j,i);
       double dy = dy_(j,i);
-      xy[0] += dx;
-      xy[1] += dy;
+      px[0] += dx;
+      px[1] += dy;
 
-      // Do the parallax correction again
-      return ParallaxCorrectedPxMmStrategy::to_pixel(panel, xy);
+      return px;
     }
 
   protected:

@@ -150,6 +150,9 @@ class TestOffsetPxMmStrategy(object):
     from scitbx.array_family import flex
     import cPickle as pickle
 
+    # for future reference this is the array the same shape
+    # as the image in pixels with offsets in pixels
+
     dx = flex.double(flex.grid(10, 10), 1)
     dy = flex.double(flex.grid(10, 10), 1)
 
