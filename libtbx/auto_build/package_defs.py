@@ -130,10 +130,8 @@ dependency_tarballs = {
 }
 # External SVN repositories that may be required for certain components of
 # CCTBX to work.  This includes forked versions (with minimal changes) of the
-# core CCP4 libraries, MUSCLE, and ksDSSP, but also the development branch
-# of CBFLIB.
+# core CCP4 libraries, MUSCLE, and ksDSSP.
 subversion_repositories = {
-  "cbflib":"http://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge",
   "ccp4io": "http://cci.lbl.gov/svn/ccp4io/trunk",
   "ccp4io_adaptbx": "http://cci.lbl.gov/svn/ccp4io_adaptbx/trunk",
   "annlib_adaptbx": "http://cci.lbl.gov/svn/annlib_adaptbx/trunk",

@@ -674,9 +674,10 @@ class cctbx_module(SourceModule):
 
 class cbflib_module(SourceModule):
   module = 'cbflib'
-  anonymous = ['svn', 'svn://svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
-  authenticated = ['svn', '%(sfmethod)s://%(sfuser)s@svn.code.sf.net/p/cbflib/code-0/trunk/CBFlib_bleeding_edge']
-  authenticated = anonymous
+  anonymous = ['git',
+               'git@github.com:yayahjb/cbflib.git',
+               'https://github.com/yayahjb/cbflib.git',
+               'https://github.com/yayahjb/cbflib/archive/master.zip']
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
