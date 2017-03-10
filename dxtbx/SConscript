@@ -97,5 +97,6 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'model/boost_python/parallax_correction.cc',
       'model/boost_python/pixel_to_millimeter.cc',
       'model/boost_python/experiment.cc',
+      'model/boost_python/experiment_list.cc',
       'model/boost_python/model_ext.cc'],
       LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs, LIBPATH=env_etc.dxtbx_lib_paths)

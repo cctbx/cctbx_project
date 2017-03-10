@@ -9,7 +9,7 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 from __future__ import absolute_import, division
-from dxtbx.model import Experiment
+from dxtbx.model import Experiment, ExperimentList
 
 # class Experiment(object):
 #   ''' A class to represent what's in an experiment.
@@ -91,330 +91,330 @@ from dxtbx.model import Experiment
 #     except Exception:
 #       return False
 
-class ExperimentList(object):
-  ''' The experiment list class. This class is used to manage all the
-  experiments and contains methods to get groups of models etc. '''
+# class ExperimentList(object):
+#   ''' The experiment list class. This class is used to manage all the
+#   experiments and contains methods to get groups of models etc. '''
 
-  def __init__(self, item=None):
-    ''' Initialise the list. '''
-    if item is not None:
-      self._data = list(item)
-    else:
-      self._data = list()
+#   def __init__(self, item=None):
+#     ''' Initialise the list. '''
+#     if item is not None:
+#       self._data = list(item)
+#     else:
+#       self._data = list()
 
-  def __setitem__(self, index, item):
-    ''' Set an experiment. '''
-    if isinstance(item, Experiment):
-      self._data[index] = item
-    else:
-      raise TypeError('expected type Experiment, got %s' % type(item))
+#   def __setitem__(self, index, item):
+#     ''' Set an experiment. '''
+#     if isinstance(item, Experiment):
+#       self._data[index] = item
+#     else:
+#       raise TypeError('expected type Experiment, got %s' % type(item))
 
-  def __getitem__(self, index):
-    ''' Get an experiment. '''
-    if isinstance(index, slice):
-      return ExperimentList(self._data[index])
-    return self._data[index]
+#   def __getitem__(self, index):
+#     ''' Get an experiment. '''
+#     if isinstance(index, slice):
+#       return ExperimentList(self._data[index])
+#     return self._data[index]
 
-  def __delitem__(self, index):
-    ''' Delete an experiment. '''
-    del self._data[index]
+#   def __delitem__(self, index):
+#     ''' Delete an experiment. '''
+#     del self._data[index]
 
-  def __len__(self):
-    ''' Get the number of experiments. '''
-    return len(self._data)
+#   def __len__(self):
+#     ''' Get the number of experiments. '''
+#     return len(self._data)
 
-  def __iter__(self):
-    ''' Iterate through the experiments. '''
-    for e in self._data:
-      yield e
+#   def __iter__(self):
+#     ''' Iterate through the experiments. '''
+#     for e in self._data:
+#       yield e
 
-  def __contains__(self, item):
-    ''' Check if an item is contained in the list of experiments.
-    Also checks to see if a model is contained in an experiment. '''
-    return item in self._data or any(item in e for e in self._data)
+#   def __contains__(self, item):
+#     ''' Check if an item is contained in the list of experiments.
+#     Also checks to see if a model is contained in an experiment. '''
+#     return item in self._data or any(item in e for e in self._data)
 
-  def index(self, item):
-    ''' Get the index of an experiment. '''
-    return self._data.index(item)
+#   def index(self, item):
+#     ''' Get the index of an experiment. '''
+#     return self._data.index(item)
 
-  def append(self, item):
-    ''' Add a new experiment to the list. '''
-    if isinstance(item, Experiment):
-      self._data.append(item)
-    else:
-      raise TypeError('expected type Experiment, got %s' % type(item))
+#   def append(self, item):
+#     ''' Add a new experiment to the list. '''
+#     if isinstance(item, Experiment):
+#       self._data.append(item)
+#     else:
+#       raise TypeError('expected type Experiment, got %s' % type(item))
 
-  def extend(self, other):
-    ''' Add another experiment list to this one. '''
-    if isinstance(other, ExperimentList):
-      self._data.extend(other._data)
-    else:
-      raise TypeError('expected type ExperimentList, got %s' % type(item))
+#   def extend(self, other):
+#     ''' Add another experiment list to this one. '''
+#     if isinstance(other, ExperimentList):
+#       self._data.extend(other._data)
+#     else:
+#       raise TypeError('expected type ExperimentList, got %s' % type(item))
 
-  def replace(self, a, b):
-    ''' Replace all occurances of a with b. '''
-    for i in self.indices(a):
-      exp = self._data[i]
-      if   exp.imageset is a:   exp.imageset = b
-      elif exp.beam is a:       exp.beam = b
-      elif exp.detector is a:   exp.detector = b
-      elif exp.goniometer is a: exp.goniometer = b
-      elif exp.scan is a:       exp.scan = b
-      elif exp.crystal is a:    exp.crystal = b
-      elif exp.profile is a:    exp.profile = b
-      else: raise ValueError('unidentified model %s' % a)
+#   def replace(self, a, b):
+#     ''' Replace all occurances of a with b. '''
+#     for i in self.indices(a):
+#       exp = self._data[i]
+#       if   exp.imageset is a:   exp.imageset = b
+#       elif exp.beam is a:       exp.beam = b
+#       elif exp.detector is a:   exp.detector = b
+#       elif exp.goniometer is a: exp.goniometer = b
+#       elif exp.scan is a:       exp.scan = b
+#       elif exp.crystal is a:    exp.crystal = b
+#       elif exp.profile is a:    exp.profile = b
+#       else: raise ValueError('unidentified model %s' % a)
 
-  def remove(self, model):
-    ''' Remove all occurances of the model. '''
-    self.replace(model, None)
+#   def remove(self, model):
+#     ''' Remove all occurances of the model. '''
+#     self.replace(model, None)
 
-  def indices(self, model):
-    ''' Get the indices of the experiments which contains the model. '''
-    if isinstance(model, list) or isinstance(model, tuple):
-      return list(set.intersection(*[set(self.indices(m)) for m in model]))
-    else:
-      return [i for i, e in enumerate(self) if model in e]
+#   def indices(self, model):
+#     ''' Get the indices of the experiments which contains the model. '''
+#     if isinstance(model, list) or isinstance(model, tuple):
+#       return list(set.intersection(*[set(self.indices(m)) for m in model]))
+#     else:
+#       return [i for i, e in enumerate(self) if model in e]
 
-  def beams(self):
-    ''' Get a list of the unique beams (includes None). '''
-    from libtbx.containers import OrderedSet
-    return list(OrderedSet([e.beam for e in self]))
+#   def beams(self):
+#     ''' Get a list of the unique beams (includes None). '''
+#     from libtbx.containers import OrderedSet
+#     return list(OrderedSet([e.beam for e in self]))
 
-  def detectors(self):
-    ''' Get a list of the unique detectors (includes None). '''
-    from libtbx.containers import OrderedSet
-    return list(OrderedSet([e.detector for e in self]))
+#   def detectors(self):
+#     ''' Get a list of the unique detectors (includes None). '''
+#     from libtbx.containers import OrderedSet
+#     return list(OrderedSet([e.detector for e in self]))
 
-  def goniometers(self):
-    ''' Get a list of the unique goniometers (includes None). '''
-    from libtbx.containers import OrderedSet
-    return list(OrderedSet([e.goniometer for e in self]))
+#   def goniometers(self):
+#     ''' Get a list of the unique goniometers (includes None). '''
+#     from libtbx.containers import OrderedSet
+#     return list(OrderedSet([e.goniometer for e in self]))
 
-  def scans(self):
-    ''' Get a list of the unique scans (includes None). '''
-    from libtbx.containers import OrderedSet
-    return list(OrderedSet([e.scan for e in self]))
+#   def scans(self):
+#     ''' Get a list of the unique scans (includes None). '''
+#     from libtbx.containers import OrderedSet
+#     return list(OrderedSet([e.scan for e in self]))
 
-  def crystals(self):
-    ''' Get a list of the unique crystals (includes None). '''
-    from libtbx.containers import OrderedSet
-    return list(OrderedSet([e.crystal for e in self]))
+#   def crystals(self):
+#     ''' Get a list of the unique crystals (includes None). '''
+#     from libtbx.containers import OrderedSet
+#     return list(OrderedSet([e.crystal for e in self]))
 
-  def profiles(self):
-    ''' Get a list of the unique profile models (includes None). '''
-    from libtbx.containers import OrderedSet
-    return list(OrderedSet([e.profile for e in self]))
+#   def profiles(self):
+#     ''' Get a list of the unique profile models (includes None). '''
+#     from libtbx.containers import OrderedSet
+#     return list(OrderedSet([e.profile for e in self]))
 
-  def imagesets(self):
-    ''' Get a list of the unique imagesets (includes None).
+#   def imagesets(self):
+#     ''' Get a list of the unique imagesets (includes None).
 
-    This returns unique complete sets rather than partial.
-    '''
-    from libtbx.containers import OrderedSet
-    return list(OrderedSet([e.imageset for e in self if e.imageset is not None]))
-    # temp = OrderedDict([(e.imageset.reader(), i)
-    #   for i, e in enumerate(self) if e.imageset is not None])
-    # return OrderedDict([(self[i].imageset.complete_set(), None)
-    #   for i in temp.itervalues()]).keys()
+#     This returns unique complete sets rather than partial.
+#     '''
+#     from libtbx.containers import OrderedSet
+#     return list(OrderedSet([e.imageset for e in self if e.imageset is not None]))
+#     # temp = OrderedDict([(e.imageset.reader(), i)
+#     #   for i, e in enumerate(self) if e.imageset is not None])
+#     # return OrderedDict([(self[i].imageset.complete_set(), None)
+#     #   for i in temp.itervalues()]).keys()
 
-  def is_consistent(self):
-    ''' Check all the models are consistent. '''
-    return all(e.is_consistent() for e in self)
+#   def is_consistent(self):
+#     ''' Check all the models are consistent. '''
+#     return all(e.is_consistent() for e in self)
 
-  def all_stills(self):
-    ''' Check if all the experiments are stills '''
-    def is_still(e):
-      if e.goniometer is None or e.scan is None or e.scan.get_oscillation()[1] == 0:
-        return True
-      return False
-    assert(len(self) > 0)
-    result = True
-    for e in self:
-      if not is_still(e):
-        result = False
-        break
+#   def all_stills(self):
+#     ''' Check if all the experiments are stills '''
+#     def is_still(e):
+#       if e.goniometer is None or e.scan is None or e.scan.get_oscillation()[1] == 0:
+#         return True
+#       return False
+#     assert(len(self) > 0)
+#     result = True
+#     for e in self:
+#       if not is_still(e):
+#         result = False
+#         break
 
-    return result
+#     return result
 
-  def all_sweeps(self):
-    ''' Check if all the experiments are from sweeps '''
-    def is_still(e):
-      if e.goniometer is None or e.scan is None or e.scan.get_oscillation()[1] == 0:
-        return True
-      return False
-    assert(len(self) > 0)
-    result = True
-    for e in self:
-      if is_still(e):
-        result = False
-        break
-    return result
+#   def all_sweeps(self):
+#     ''' Check if all the experiments are from sweeps '''
+#     def is_still(e):
+#       if e.goniometer is None or e.scan is None or e.scan.get_oscillation()[1] == 0:
+#         return True
+#       return False
+#     assert(len(self) > 0)
+#     result = True
+#     for e in self:
+#       if is_still(e):
+#         result = False
+#         break
+#     return result
 
-  def where(self, crystal=None, imageset=None, detector=None, beam=None,
-            goniometer=None, scan=None, profile=None):
-    ''' Returns a list of indices to experiments containing the given models.'''
-    if [crystal, imageset, detector, beam, goniometer, scan, profile].count(None) == 7:
-      return []
-    expt_indices = []
-    for i_expt, expt in enumerate(self):
-      if crystal is not None and expt.crystal is not crystal:
-        continue
-      if imageset is not None and expt.imageset is not imageset:
-        continue
-      if detector is not None and expt.detector is not detector:
-        continue
-      if beam is not None and expt.beam is not beam:
-        continue
-      if goniometer is not None and expt.goniometer is not goniometer:
-        continue
-      if scan is not None and expt.scan is not scan:
-        continue
-      expt_indices.append(i_expt)
-    return expt_indices
+#   def where(self, crystal=None, imageset=None, detector=None, beam=None,
+#             goniometer=None, scan=None, profile=None):
+#     ''' Returns a list of indices to experiments containing the given models.'''
+#     if [crystal, imageset, detector, beam, goniometer, scan, profile].count(None) == 7:
+#       return []
+#     expt_indices = []
+#     for i_expt, expt in enumerate(self):
+#       if crystal is not None and expt.crystal is not crystal:
+#         continue
+#       if imageset is not None and expt.imageset is not imageset:
+#         continue
+#       if detector is not None and expt.detector is not detector:
+#         continue
+#       if beam is not None and expt.beam is not beam:
+#         continue
+#       if goniometer is not None and expt.goniometer is not goniometer:
+#         continue
+#       if scan is not None and expt.scan is not scan:
+#         continue
+#       expt_indices.append(i_expt)
+#     return expt_indices
 
-  def to_dict(self):
-    ''' Serialize the experiment list to dictionary. '''
-    from libtbx.containers import OrderedDict
-    from dxtbx.imageset import ImageSet, ImageSweep, MemImageSet, ImageGrid
-    from dxtbx.serialize.crystal import to_dict as crystal_to_dict
-    from dxtbx.format.FormatMultiImage import FormatMultiImage
+#   def to_dict(self):
+#     ''' Serialize the experiment list to dictionary. '''
+#     from libtbx.containers import OrderedDict
+#     from dxtbx.imageset import ImageSet, ImageSweep, MemImageSet, ImageGrid
+#     from dxtbx.serialize.crystal import to_dict as crystal_to_dict
+#     from dxtbx.format.FormatMultiImage import FormatMultiImage
 
-    # Check the experiment list is consistent
-    assert(self.is_consistent())
+#     # Check the experiment list is consistent
+#     assert(self.is_consistent())
 
-    # Get the list of unique models
-    blist = self.beams()
-    dlist = self.detectors()
-    glist = self.goniometers()
-    slist = self.scans()
-    clist = self.crystals()
-    ilist = self.imagesets()
-    plist = self.profiles()
+#     # Get the list of unique models
+#     blist = self.beams()
+#     dlist = self.detectors()
+#     glist = self.goniometers()
+#     slist = self.scans()
+#     clist = self.crystals()
+#     ilist = self.imagesets()
+#     plist = self.profiles()
 
-    # Create the output dictionary
-    result = OrderedDict()
-    result['__id__'] = 'ExperimentList'
-    result['experiment'] = []
+#     # Create the output dictionary
+#     result = OrderedDict()
+#     result['__id__'] = 'ExperimentList'
+#     result['experiment'] = []
 
-    # Function to find in list by reference
-    def find_index(l, m):
-      for i, mm in enumerate(l):
-        if mm is m:
-          return i
-      return -1
+#     # Function to find in list by reference
+#     def find_index(l, m):
+#       for i, mm in enumerate(l):
+#         if mm is m:
+#           return i
+#       return -1
 
-    # Add the experiments to the dictionary
-    for e in self:
-      obj = OrderedDict()
-      obj['__id__'] = 'Experiment'
-      if e.beam is not None:
-        obj['beam'] = find_index(blist, e.beam)
-      if e.detector is not None:
-        obj['detector'] = find_index(dlist, e.detector)
-      if e.goniometer is not None:
-        obj['goniometer'] = find_index(glist, e.goniometer)
-      if e.scan is not None:
-        obj['scan'] = find_index(slist, e.scan)
-      if e.crystal is not None:
-        obj['crystal'] = find_index(clist, e.crystal)
-      if e.profile is not None:
-        obj['profile'] = find_index(plist, e.profile)
-      if e.imageset is not None:
-        same = [e.imageset is imset for imset in ilist]
-        assert(same.count(True) == 1)
-        obj['imageset'] = same.index(True)
-        if e.scan is None and not isinstance(e.imageset, ImageSweep):
-          if len(e.imageset) != len(e.imageset.complete_set()):
-            obj['imageset'] = obj['imageset']
-      result['experiment'].append(obj)
+#     # Add the experiments to the dictionary
+#     for e in self:
+#       obj = OrderedDict()
+#       obj['__id__'] = 'Experiment'
+#       if e.beam is not None:
+#         obj['beam'] = find_index(blist, e.beam)
+#       if e.detector is not None:
+#         obj['detector'] = find_index(dlist, e.detector)
+#       if e.goniometer is not None:
+#         obj['goniometer'] = find_index(glist, e.goniometer)
+#       if e.scan is not None:
+#         obj['scan'] = find_index(slist, e.scan)
+#       if e.crystal is not None:
+#         obj['crystal'] = find_index(clist, e.crystal)
+#       if e.profile is not None:
+#         obj['profile'] = find_index(plist, e.profile)
+#       if e.imageset is not None:
+#         same = [e.imageset is imset for imset in ilist]
+#         assert(same.count(True) == 1)
+#         obj['imageset'] = same.index(True)
+#         if e.scan is None and not isinstance(e.imageset, ImageSweep):
+#           if len(e.imageset) != len(e.imageset.complete_set()):
+#             obj['imageset'] = obj['imageset']
+#       result['experiment'].append(obj)
 
-    def get_template(imset):
-      if imset.reader().get_format_class() is None:
-        try:
-          return imset.get_template()
-        except Exception:
-          pass
-        try:
-          return imset.reader().get_path()
-        except Exception:
-          pass
-        return 'none'
-      elif issubclass(imset.reader().get_format_class(), FormatMultiImage):
-        return imset.reader().get_path()
-      else:
-        return imset.get_template()
+#     def get_template(imset):
+#       if imset.reader().get_format_class() is None:
+#         try:
+#           return imset.get_template()
+#         except Exception:
+#           pass
+#         try:
+#           return imset.reader().get_path()
+#         except Exception:
+#           pass
+#         return 'none'
+#       elif issubclass(imset.reader().get_format_class(), FormatMultiImage):
+#         return imset.reader().get_path()
+#       else:
+#         return imset.get_template()
 
-    # Serialize all the imagesets
-    result['imageset'] = []
-    for imset in ilist:
-      if isinstance(imset, ImageSweep):
-        # FIXME_HACK
-        template = get_template(imset)
-        r = OrderedDict([
-          ('__id__', 'ImageSweep'),
-          ('template', template)])
-      elif isinstance(imset, MemImageSet):
-        r = OrderedDict([
-          ('__id__', 'MemImageSet')])
-      elif isinstance(imset, ImageSet):
-        r = OrderedDict([
-          ('__id__', 'ImageSet'),
-          ('images', imset.paths())])
-        if imset.reader().is_single_file_reader():
-          r['single_file_indices'] = imset.indices()
-      elif isinstance(imset, ImageGrid):
-        r = OrderedDict([
-          ('__id__', 'ImageGrid'),
-          ('images', imset.paths()),
-          ('grid_size', imset.get_grid_size())])
-        if imset.reader().is_single_file_reader():
-          r['single_file_indices'] = imset.indices()
-      else:
-        raise TypeError('expected ImageSet or ImageSweep, got %s' % type(imset))
-      r['mask'] = imset.external_lookup.mask.filename
-      r['gain'] = imset.external_lookup.gain.filename
-      r['pedestal'] = imset.external_lookup.pedestal.filename
-      r['params'] = imset.format_kwargs()
-      result['imageset'].append(r)
+#     # Serialize all the imagesets
+#     result['imageset'] = []
+#     for imset in ilist:
+#       if isinstance(imset, ImageSweep):
+#         # FIXME_HACK
+#         template = get_template(imset)
+#         r = OrderedDict([
+#           ('__id__', 'ImageSweep'),
+#           ('template', template)])
+#       elif isinstance(imset, MemImageSet):
+#         r = OrderedDict([
+#           ('__id__', 'MemImageSet')])
+#       elif isinstance(imset, ImageSet):
+#         r = OrderedDict([
+#           ('__id__', 'ImageSet'),
+#           ('images', imset.paths())])
+#         if imset.reader().is_single_file_reader():
+#           r['single_file_indices'] = imset.indices()
+#       elif isinstance(imset, ImageGrid):
+#         r = OrderedDict([
+#           ('__id__', 'ImageGrid'),
+#           ('images', imset.paths()),
+#           ('grid_size', imset.get_grid_size())])
+#         if imset.reader().is_single_file_reader():
+#           r['single_file_indices'] = imset.indices()
+#       else:
+#         raise TypeError('expected ImageSet or ImageSweep, got %s' % type(imset))
+#       r['mask'] = imset.external_lookup.mask.filename
+#       r['gain'] = imset.external_lookup.gain.filename
+#       r['pedestal'] = imset.external_lookup.pedestal.filename
+#       r['params'] = imset.format_kwargs()
+#       result['imageset'].append(r)
 
-    # Extract all the model dictionaries
-    result['beam']       = [b.to_dict() for b in blist if b is not None]
-    result['detector']   = [d.to_dict() for d in dlist if d is not None]
-    result['goniometer'] = [g.to_dict() for g in glist if g is not None]
-    result['scan']       = [s.to_dict() for s in slist if s is not None]
-    result['crystal']    = [crystal_to_dict(c) for c in clist if c is not None]
-    result['profile']    = [p.to_dict() for p in plist if p is not None]
+#     # Extract all the model dictionaries
+#     result['beam']       = [b.to_dict() for b in blist if b is not None]
+#     result['detector']   = [d.to_dict() for d in dlist if d is not None]
+#     result['goniometer'] = [g.to_dict() for g in glist if g is not None]
+#     result['scan']       = [s.to_dict() for s in slist if s is not None]
+#     result['crystal']    = [crystal_to_dict(c) for c in clist if c is not None]
+#     result['profile']    = [p.to_dict() for p in plist if p is not None]
 
-    # Return the dictionary
-    return result
+#     # Return the dictionary
+#     return result
 
-  def to_datablocks(self):
-    ''' Return the experiment list as a datablock list.
-    This assumes that the experiment contains 1 datablock.'''
-    from dxtbx.datablock import DataBlockFactory
+#   def to_datablocks(self):
+#     ''' Return the experiment list as a datablock list.
+#     This assumes that the experiment contains 1 datablock.'''
+#     from dxtbx.datablock import DataBlockFactory
 
-    # Convert the experiment list to dict
-    obj = self.to_dict()
+#     # Convert the experiment list to dict
+#     obj = self.to_dict()
 
-    # Convert the dictionary to a datablock dictionary
-    obj['__id__'] = 'DataBlock'
-    for e in obj['experiment']:
-      iid = e['imageset']
-      imageset = obj['imageset'][iid]
-      if 'beam' in e:
-        imageset['beam'] = e['beam']
-      if 'detector' in e:
-        imageset['detector'] = e['detector']
-      if 'goniometer' in e:
-        imageset['goniometer'] = e['goniometer']
-      if 'scan' in e:
-        imageset['scan'] = e['scan']
+#     # Convert the dictionary to a datablock dictionary
+#     obj['__id__'] = 'DataBlock'
+#     for e in obj['experiment']:
+#       iid = e['imageset']
+#       imageset = obj['imageset'][iid]
+#       if 'beam' in e:
+#         imageset['beam'] = e['beam']
+#       if 'detector' in e:
+#         imageset['detector'] = e['detector']
+#       if 'goniometer' in e:
+#         imageset['goniometer'] = e['goniometer']
+#       if 'scan' in e:
+#         imageset['scan'] = e['scan']
 
-    # Remove the experiments
-    del obj['experiment']
+#     # Remove the experiments
+#     del obj['experiment']
 
-    # Create the datablock
-    return DataBlockFactory.from_dict([obj])
+#     # Create the datablock
+#     return DataBlockFactory.from_dict([obj])
 
 
 class ExperimentListDict(object):

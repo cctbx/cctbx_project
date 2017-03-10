@@ -28,11 +28,29 @@
 
 namespace dxtbx { namespace model {
 
+  /**
+   * A class to represent what's in an experiment.
+   *
+   * Contains:
+   *   - imageset Access to the image data
+   *   - beam The beam model
+   *   - detector The detector model
+   *   - goniometer The goniometer model
+   *   - scan The scan model
+   *   - crystal The crystal model
+   *   - profile The profile model
+   *
+   * Some of these may be set to "None"
+   *
+   */
   class Experiment {
   public:
 
     Experiment() {}
 
+    /**
+     * Initialise the experiment with models
+     */
     Experiment(
           boost::shared_ptr<Beam> beam,
           boost::shared_ptr<Detector> detector,
@@ -49,26 +67,44 @@ namespace dxtbx { namespace model {
         profile_(profile),
         imageset_(imageset) {}
 
+    /**
+     * Check if the beam model is the same.
+     */
     bool contains(const boost::shared_ptr<Beam> &beam) const {
       return beam_ == beam;
     }
 
+    /**
+     * Check if the detector model is the same.
+     */
     bool contains(const boost::shared_ptr<Detector> &detector) const {
       return detector_ == detector;
     }
 
+    /**
+     * Check if the detector model is the same.
+     */
     bool contains(const boost::shared_ptr<Goniometer> &goniometer) const {
       return goniometer_ == goniometer;
     }
 
+    /**
+     * Check if the goniometer model is the same.
+     */
     bool contains(const boost::shared_ptr<Scan> &scan) const {
       return scan_ == scan;
     }
 
+    /**
+     * Check if the crystal model is the same.
+     */
     bool contains(const boost::shared_ptr<Crystal> &crystal) const {
       return crystal_ == crystal;
     }
 
+    /**
+     * Check models are the same.
+     */
     bool contains(boost::python::object obj) const {
       boost::python::extract< boost::shared_ptr<Beam> > get_beam(obj);
       boost::python::extract< boost::shared_ptr<Detector> > get_detector(obj);
@@ -89,6 +125,9 @@ namespace dxtbx { namespace model {
       return profile_ == obj || imageset_ == obj;
     }
 
+    /**
+     * Compare this experiment with another
+     */
     bool operator==(const Experiment &other) const {
       return imageset_   == other.imageset_
           && beam_       == other.beam_
@@ -98,62 +137,107 @@ namespace dxtbx { namespace model {
           && profile_    == other.profile_;
     }
 
+    /**
+     * Check that the experiment is consistent
+     */
     bool is_consistent() const {
       return true; // FIXME
     }
 
+    /**
+     * Set the beam model
+     */
     void set_beam(boost::shared_ptr<Beam> beam) {
       beam_ = beam;
     }
 
+    /**
+     * Get the beam model
+     */
     boost::shared_ptr<Beam> get_beam() const {
       return beam_;
     }
 
+    /**
+     * Get the detector model
+     */
     void set_detector(boost::shared_ptr<Detector> detector) {
       detector_ = detector;
     }
 
+    /**
+     * Get the detector model
+     */
     boost::shared_ptr<Detector> get_detector() const {
       return detector_;
     }
 
+    /**
+     * Get the goniometer model
+     */
     void set_goniometer(boost::shared_ptr<Goniometer> goniometer) {
       goniometer_ = goniometer;
     }
 
+    /**
+     * Get the goniometer model
+     */
     boost::shared_ptr<Goniometer> get_goniometer() const {
       return goniometer_;
     }
 
+    /**
+     * Get the scan model
+     */
     void set_scan(boost::shared_ptr<Scan> scan) {
       scan_ = scan;
     }
 
+    /**
+     * Get the scan model
+     */
     boost::shared_ptr<Scan> get_scan() const {
       return scan_;
     }
 
+    /**
+     * Get the crystal model
+     */
     void set_crystal(boost::shared_ptr<Crystal> crystal) {
       crystal_ = crystal;
     }
 
+    /**
+     * Get the crystal model
+     */
     boost::shared_ptr<Crystal> get_crystal() const {
       return crystal_;
     }
 
+    /**
+     * Get the profile model
+     */
     void set_profile(boost::python::object profile) {
       profile_ = profile;
     }
 
+    /**
+     * Get the profile model
+     */
     boost::python::object get_profile() const {
       return profile_;
     }
 
+    /**
+     * Get the imageset model
+     */
     void set_imageset(boost::python::object imageset) {
       imageset_ = imageset;
     }
 
+    /**
+     * Get the imageset model
+     */
     boost::python::object get_imageset() const {
       return imageset_;
     }
