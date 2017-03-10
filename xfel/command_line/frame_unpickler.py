@@ -114,7 +114,7 @@ class construct_reflection_table_and_experiment_list(object):
     self.crystal.set_mosaicity(self.data['mosaicity'])
     self.crystal._ML_half_mosaicity_deg = self.data['ML_half_mosaicity_deg'][0]
     self.crystal._ML_domain_size_ang = self.data['ML_domain_size_ang'][0]
-    if self.data['identified_isoform'] is not None:
+    if 'identified_isoform' in self.data.keys() and self.data['identified_isoform'] is not None:
       self.crystal.identified_isoform = self.data['identified_isoform']
 
   def expt_detector_maker(self):
