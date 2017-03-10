@@ -30,6 +30,9 @@ class FormatSMVADSC(FormatSMV):
     # do not understand JHSim images
     if header.get('BEAMLINE') == 'fake': return False
 
+    # do not understand Timepix_SU images
+    if header.get('BEAMLINE') == 'TimePix_SU': return False
+
     # this used to include TIME
     wanted_header_items = ['BEAM_CENTER_X', 'BEAM_CENTER_Y',
                            'DISTANCE', 'WAVELENGTH', 'PIXEL_SIZE',
