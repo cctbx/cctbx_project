@@ -28,7 +28,7 @@ def pypi_pkg_url(package):
 
 # OpenSSL - needed for Mac OS X 10.11
 BASE_OPENSSL_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/master/"
-OPENSSL_PKG = "openssl-1.0.2h.tar.gz"
+OPENSSL_PKG = "openssl-1.0.2k.tar.gz"
 
 # base packages updated on 2/15/2015 by bkpoon
 
