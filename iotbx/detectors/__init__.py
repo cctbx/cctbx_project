@@ -53,12 +53,12 @@ class SMVImage(ADSCImage):
 all_image_types = [EDFWrapper,SaturnImage,DIPImage,NoirImage,ADSCImage,HamamatsuImage,
                   MARImage,MARIPImage,DTREKImage,RAXISImage,
                   NonSquareRAXISImage,SMVImage,PilatusImage,EigerCBFImage,CBFImage,BrukerImage]
-try :
-  import h5py # special import
-except ImportError :
-  pass
-else :
-  all_image_types.insert(0, EIGERImage)
+#try :
+#  import h5py # special import
+#except ImportError :
+#  pass
+#else :
+all_image_types.insert(0, EIGERImage)
 
 all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url,
                  ADSC_module_from_file_url
