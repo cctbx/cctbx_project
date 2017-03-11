@@ -64,7 +64,7 @@ all_url_types = [pilatus_slice_from_file_url,pilatus_slice_from_http_url,
                  ADSC_module_from_file_url
 ]
 
-def ImageFactory(filename):
+def ImageFactory(filename,optional_index=None):
   from iotbx.detectors import url_support
   from libtbx.utils import Sorry
   if os.path.isfile(filename):
@@ -73,6 +73,8 @@ def ImageFactory(filename):
     from dxtbx.format.Registry import Registry
     format_instance = Registry.find(filename)
     instance = format_instance(filename)
+    if optional_index is not None:
+      return instance.get_detectorbase(optional_index)
     return instance.get_detectorbase()
   A = url_support.potential_url_request(filename)
   if A.is_url_request():

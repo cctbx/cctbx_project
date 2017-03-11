@@ -355,12 +355,15 @@ class FormatEigerNearlyNexus(FormatHDF5):
   def get_image_file(self, index=None):
     return self._image_file
 
-  def detectorbase_start(self, index=None):
+  def detectorbase_start(self, index=0):
     from iotbx.detectors.eiger import EIGERImage
-    self.detectorbase = EIGERImage(self._image_file)
-    self.detectorbase.readHeader(index)
+    self.detectorbase = EIGERImage(self._image_file,index=index)
+    self.detectorbase.readHeader(dxtbx_instance=self)
+    def model_get_raw_data(ptr,index):
+      return self.get_raw_data(index)
+    self.detectorbase.get_raw_data_callback = model_get_raw_data
 
-  def get_detectorbase(self, index=None):
+  def get_detectorbase(self, index=0):
     self.detectorbase_start(index)
     return self.detectorbase
 

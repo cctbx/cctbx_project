@@ -103,6 +103,9 @@ distl {
       .type = bool
       .help="Extend the binning all the way to detector corner, otherwise to outermost spot on first image"
   }
+  range = None
+    .type = ints (value_min = 0, size_max = 2)
+    .help = "For HDF5 data, specifies image index (0-based), or Python-style range (0,10 means first 10)"
 }
 
 %s

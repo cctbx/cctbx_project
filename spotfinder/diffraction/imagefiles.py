@@ -126,7 +126,6 @@ class file_names:
       # Interface 3. File pathnames given on command line
       # if images are taken from command line, must recalculate
       #  DISTL_pickle because images might be different each time
-      print "INTERFACE3"
       self.interface3_parse_command()
 
   def interface3_FN_factory(self,absfile,error_message):
@@ -195,16 +194,49 @@ class image_files:
       if self.filenames.frames()[s]==indexnumber:
         return self.filenames()[s]
 
-class spotfinder_image_files(image_files):
+class H5_aware_image_files(image_files):
+  def __init__(self,arg_module,phil_params,verbose=True):
+    # support the many-image-in-one-H5-container paradigm
+    if phil_params.distl.range is not None:  # range parameter only intended for H5 files
+      assert len(self.filenames())==1 # can be only one H5 master file if there is a range of image indices
+      if len(phil_params.distl.range)==1:  self.unrolled_range = phil_params.distl.range
+      else:
+        self.unrolled_range = range(phil_params.distl.range[0],phil_params.distl.range[1])
+        self.filenames.FN = [self.filenames.FN[0]]*len(self.unrolled_range)
+      self.frames = self.h5_frames
+      self.imageindex = self.h5_imageindex
+      self.imagepath = self.h5_imagepath
+      import copy
+      for indx,name in enumerate(self.filenames()):
+        if indx==0:
+          A = ImageFactory(name,optional_index=self.unrolled_range[indx])
+          self.site_modifications(A,self.filenames.FN[indx])
+          self.images.append(A)
+        else:
+          Acopy = copy.deepcopy(A)
+          Acopy.img_number = self.unrolled_range[indx]
+          self.images.append(Acopy)
+    else:  # range is not present; normal behavior for non-H5 images
+      for indx,name in enumerate(self.filenames()):
+        A = ImageFactory(name)
+        self.site_modifications(A,self.filenames.FN[indx])
+        self.images.append(A)
+
+  def h5_frames(self,wedgelimit=None): return list(self.unrolled_range)
+
+  def h5_imageindex(self,indexnumber): # gives the actual image
+    return self.images[self.unrolled_range.index(indexnumber)]
+
+  def h5_imagepath(self,indexnumber): #convenience function for finding filename
+    return self.filenames()[self.unrolled_range.index(indexnumber)]
+
+class spotfinder_image_files(H5_aware_image_files):
   def __init__(self,arg_module,phil_params,verbose=True):
     self.verbose = verbose
     self.filenames = file_names(arg_module)
     self.phil_params = phil_params
     self.images = []
-    for indx,name in enumerate(self.filenames()):
-        A = ImageFactory(name)
-        self.site_modifications(A,self.filenames.FN[indx])
-        self.images.append(A)
+    H5_aware_image_files.__init__(self,arg_module,phil_params,verbose=True)
     self.acceptable_use_tests_basic()
 
   def acceptable_use_tests_basic(self):
