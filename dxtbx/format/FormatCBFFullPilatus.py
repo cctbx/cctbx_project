@@ -107,6 +107,11 @@ class FormatCBFFullPilatus(FormatCBFFull):
     if m and m.group(1):
       panel.set_identifier(m.group(1))
 
+    size = detector[0].get_image_size()
+    if size==(2463,2527):  self.vendortype = "Pilatus-6M"
+    elif size==(1475,1679):  self.vendortype = "Pilatus-2M"
+    elif size==(487,619):  self.vendortype = "Pilatus-300K"
+
     return detector
 
   def read_cbf_image(self, cbf_image):

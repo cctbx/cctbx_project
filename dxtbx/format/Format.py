@@ -202,6 +202,8 @@ class Format(object):
     class _detectorbase_proxy(object):
       def __init__(self, format_instance):
         self._fi = format_instance
+        if not hasattr(self, "vendortype"):
+          self.vendortype = "generic"
 
       def __getattribute__(self, name):
         if name == '__class__':
