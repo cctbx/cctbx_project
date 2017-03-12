@@ -27,9 +27,9 @@ class EIGERImage(DetectorImageBase):
       self.parameters['SIZE1'] = D[0].get_image_size()[1]
       self.parameters['SIZE2'] = D[0].get_image_size()[0]
       B = dxtbx_instance.get_beam()
-      beam_center = D[0].get_beam_centre_lab(B.get_s0())
-      self.parameters['BEAM_CENTER_X'] = beam_center[1]
-      self.parameters['BEAM_CENTER_Y'] = beam_center[0]
+      origin = D[0].get_origin()
+      self.parameters['BEAM_CENTER_X'] = origin[1]
+      self.parameters['BEAM_CENTER_Y'] = origin[0]
       self._image_count = dxtbx_instance.get_num_images()
       self.parameters['WAVELENGTH'] = B.get_wavelength()
       from scitbx.matrix import col
