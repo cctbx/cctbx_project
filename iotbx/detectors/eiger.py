@@ -39,6 +39,7 @@ class EIGERImage(DetectorImageBase):
       self.parameters['TWOTHETA'] = 0.0
 
       S = dxtbx_instance.get_scan()
+      self.zero_oscillation = S.get_oscillation()[0]
       osc_range = S.get_oscillation()[1]
       self.parameters['OSC_RANGE'] = osc_range
       self.parameters['OSC_START'] = S.get_oscillation()[0] + self.img_number*osc_range
