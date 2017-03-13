@@ -226,7 +226,6 @@ class PRIMEWindow(wx.Frame):
     # Run full processing
 
     self.init_settings()
-    print self.pparams.pixel_size_mm
     if self.sanity_check():
       prime_phil = master_phil.format(python_object=self.pparams)
 

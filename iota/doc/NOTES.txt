@@ -1,10 +1,6 @@
-IOTA v1.1.005 - Input handling update
+IOTA v1.1.006 - GUI bugfixes to IOTA and PRIME
 
-1. A new, faster input processing module for use in both GUI and Xterm versions
-2. New much faster file type identification
-3. Mac OS X bugfixes:
-    a. Moved calling of image viewer to separate thread (dialog allowing user
-     to select number of images to view would hang otherwise)
-    b. When exiting app, threads continued to run; now (mostly) fixed
-4. Wildcard handling in XTerm IOTA input
+1. Several cosmetic bugfixes to PRIME
+2. Fixed IOTA bug which duplicated some finished images, and missed others...
+3. ... which fixed a gauge bug that prevented runs from finishing
 

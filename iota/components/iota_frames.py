@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 03/09/2017
+Last Changed: 03/13/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -730,19 +730,20 @@ class ProcWindow(wx.Frame):
                       style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER)
 
     self.logtext = ''
-    self.finished_objects = []
-    self.read_object_files = []
     self.obj_counter = 0
     self.bookmark = 0
     self.gparams = phil.extract()
     self.target_phil = target_phil
     self.state = 'process'
+
     self.monitor_mode = False
     self.monitor_mode_timeout = None
     self.timeout_start = None
-    self.new_images = []
-    self.new_objects = []
     self.find_new_images = True
+    self.start_object_finder = True
+    self.finished_objects = []
+    self.read_object_files = []
+    self.new_images = []
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -931,22 +932,14 @@ class ProcWindow(wx.Frame):
     self.status_txt.SetForegroundColour('black')
 
     if self.init.params.cctbx.selection.select_only.flag_on:
-      self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for i, j in enumerate(self.init.gs_img_objects, 1)]
+      self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for
+                       i, j in enumerate(self.init.gs_img_objects, 1)]
       iterable = self.img_list
       type = 'object'
       self.status_txt.SetLabel('Re-running selection...')
     else:
       type = 'image'
-      if self.state == 'process':
-        self.img_list = [[i, len(self.init.input_list) + 1, j] for i, j in enumerate(self.init.input_list, 1)]
-        iterable = self.img_list
-        self.status_summary = [0] * len(self.img_list)
-        self.nref_list = [0] * len(self.img_list)
-        self.nref_xaxis = [i[0] for i in self.img_list]
-        self.res_list = [0] * len(self.img_list)
-        self.status_txt.SetLabel('Processing {} images...'
-                                 ''.format(len(self.img_list)))
-      elif self.state == 'new images':
+      if self.state == 'new images':
         iterable = self.new_images
         self.img_list.extend(self.new_images)
         self.new_images = []
@@ -968,6 +961,16 @@ class ProcWindow(wx.Frame):
         self.res_list = [0] * len(self.img_list)
         self.status_txt.SetLabel('Processing {} remaining images ({} total)...'
                                  ''.format(len(iterable), len(self.img_list)))
+      else:
+        self.img_list = [[i, len(self.init.input_list) + 1, j] for
+                         i, j in enumerate(self.init.input_list, 1)]
+        iterable = self.img_list
+        self.status_summary = [0] * len(self.img_list)
+        self.nref_list = [0] * len(self.img_list)
+        self.nref_xaxis = [i[0] for i in self.img_list]
+        self.res_list = [0] * len(self.img_list)
+        self.status_txt.SetLabel('Processing {} images...'
+                                 ''.format(len(self.img_list)))
 
     self.gauge_process.SetRange(len(self.img_list))
     img_process = thr.ProcThread(self, self.init, iterable, input_type=type)
@@ -978,7 +981,7 @@ class ProcWindow(wx.Frame):
     if len(self.final_objects) == 0:
       self.display_log()
       self.plot_integration()
-      self.status_txt.SetForegroundColor('red')
+      self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('No images successfully integrated')
 
     elif not self.gparams.image_conversion.convert_only:
@@ -1266,16 +1269,24 @@ class ProcWindow(wx.Frame):
     if os.path.isfile(self.tmp_abort_file):
       self.finish_process()
 
-    if len(self.new_objects) == 0:
+    if self.start_object_finder:
+      self.start_object_finder = False
       object_finder = thr.ObjectFinderThread(self,
-                                             object_folder=self.init.obj_base,
-                                             read_objects=self.read_object_files)
+                                             object_folder=self.init.obj_base)
       object_finder.start()
 
-    if len(self.new_objects) > 0:
-      self.finished_objects.extend([i for i in self.new_objects if i.status == 'final'])
-      self.read_object_files = [i.obj_file for i in self.finished_objects]
-      self.new_objects = []
+    # if len(self.new_objects) == 0:
+    #   object_finder = thr.ObjectFinderThread(self,
+    #                                          object_folder=self.init.obj_base,
+    #                                          read_objects=self.read_object_files)
+    #   object_finder.start()
+    #
+    # if len(self.new_objects) > 0:
+    #   new_finished_objects = [i for i in self.new_objects if i.status == 'final']
+    #
+    #   self.finished_objects.extend(new_finished_objects)
+    #   self.read_object_files = [i.obj_file for i in self.finished_objects]
+    #   self.new_objects = []
 
     if len(self.finished_objects) > 0:
       for obj in self.finished_objects:
@@ -1307,7 +1318,6 @@ class ProcWindow(wx.Frame):
 
     # Update log
     self.display_log()
-
 
     # Run an instance of new image finder on a separate thread
     if self.find_new_images:
@@ -1348,11 +1358,15 @@ class ProcWindow(wx.Frame):
     #   self.finish_process()
 
   def onFinishedImageFinder(self, e):
-    self.new_images = self.new_images + e.GetValue()
+    new_img = e.GetValue()
+    #current_gauge = self.gauge_process.GetRange()
+    #self.gauge_process.SetRange(current_gauge + len(new_img))
+    self.new_images = self.new_images + new_img
     self.find_new_images = True
 
   def onFinishedObjectFinder(self, e):
-    self.new_objects = e.GetValue()
+    self.finished_objects = e.GetValue()
+    self.start_object_finder = True
 
   def finish_process(self):
     import shutil

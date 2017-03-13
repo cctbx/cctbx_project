@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/09/2017
+Last Changed: 03/13/2017
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -167,21 +167,26 @@ class ObjectFinderThread(Thread):
   collect and extract info on images processed so far'''
   def __init__(self,
                parent,
-               object_folder,
-               read_objects):
+               object_folder):
     Thread.__init__(self)
     self.parent = parent
     self.object_folder = object_folder
-    self.read_objects = read_objects
 
   def run(self):
     object_files = ginp.get_file_list(self.object_folder, ext_only='int')
-    img_object_files = [i for i in object_files]
-    new_objects = [ep.load(i) for i in img_object_files if i not in
-                    self.read_objects]
+    new_objects = [self.read_object_file(i) for i in object_files]
+    new_finished_objects = [i for i in new_objects if
+                            i is not None and i.status == 'final']
 
-    evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=new_objects)
+    evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=new_finished_objects)
     wx.PostEvent(self.parent, evt)
+
+  def read_object_file(self, filepath):
+    try:
+      object = ep.load(filepath)
+      return object
+    except EOFError:
+      pass
 
 class ImageViewerThread(Thread):
   ''' Worker thread that will move the image viewer launch away from the GUI

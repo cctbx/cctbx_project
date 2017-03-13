@@ -41,8 +41,8 @@ class Plotter(object):
     res_total = '{:4.2f} - {:4.2f}'.format(self.info['total_res_max'][-1],
                                            self.info['total_res_min'][-1])
     res_last_shell = '{:4.2f} - {:4.2f}' \
-                     ''.format(self.info['binned_resolution'][-1][-1],
-                               self.info['binned_resolution'][-1][-2])
+                     ''.format(self.info['binned_resolution'][-1][-2],
+                               self.info['binned_resolution'][-1][-1])
     t1_rlabels = [u.to_unicode(u'No. of images'),
                   u.to_unicode(u'Space Group'),
                   u.to_unicode(u'Cell dimensions'),
@@ -69,7 +69,7 @@ class Plotter(object):
                ['{:4.2f} ({:4.2f})'.format(self.info['total_i_o_sigi'][-1],
                                         self.info['binned_i_o_sigi'][-1][-1])],
                ['{:4.2f} ({:4.2f})'.format(self.info['total_cc12'][-1],
-                                          self.info['binned_cc12'][-1][-1])],
+                                          self.info['binned_cc12'][-1][-1]*100)],
                ['{:4.2f} ({:4.2f})'.format(self.info['total_rmerge'][-1],
                                           self.info['binned_rmerge'][-1][-1])]
                ]

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/09/2017
+Last Changed: 03/13/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -140,7 +140,7 @@ class SingleImage(object):
     try:
       with misc.Capturing() as junk_output:
         loaded_img = dxtbx.load(self.raw_img)
-    except IOError, e:
+    except Exception, e:
       print e
       loaded_img = None
       pass
@@ -372,8 +372,12 @@ class SingleImage(object):
     img_data, img_type = self.load_image()
     self.status = 'loaded'
 
-
     if img_data is None:
+      self.log_path = misc.make_image_path(self.conv_img, self.input_base,
+                                           self.log_base)
+      self.int_log = os.path.join(self.log_path,
+                                  os.path.basename(self.conv_img).split('.')[
+                                    0] + '.tmp')
       self.log_info.append('\n{:-^100}\n'.format(self.raw_img))
       self.log_info.append('FAILED TO IMPORT')
       self.status = 'failed import'
