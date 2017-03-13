@@ -338,11 +338,12 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("set_type", &VirtualPanel::set_type)
       .def("__eq__", &VirtualPanel::operator==)
       .def("__ne__", &VirtualPanel::operator!=)
-      .def("to_dict", &to_dict<VirtualPanel>)
-      .def("from_dict", &from_dict<VirtualPanel>,
-        return_value_policy<manage_new_object>())
-      .staticmethod("from_dict")
-      .def_pickle(VirtualPanelPickleSuite());
+      /* .def("to_dict", &to_dict<VirtualPanel>) */
+      /* .def("from_dict", &from_dict<VirtualPanel>, */
+      /*   return_value_policy<manage_new_object>()) */
+      /* .staticmethod("from_dict") */
+      /* .def_pickle(VirtualPanelPickleSuite()) */
+      ;
 
     class_<PanelData, bases<VirtualPanel> >("Panel")
       .def(init<std::string,

@@ -103,6 +103,12 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   }
 
+
+  static
+  Detector detector_deepcopy(const Detector &detector, boost::python::object dict) {
+    return Detector(detector);
+  }
+
   template <>
   boost::python::dict to_dict<Detector>(const Detector &obj) {
     boost::python::dict result;
@@ -386,6 +392,8 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("angle"),
             arg("deg")=true))
       .def("__str__", &detector_to_string)
+      .def("__deepcopy__", &detector_deepcopy)
+      .def("__copy__", &detector_deepcopy)
       .def("to_dict", &to_dict<Detector>)
       .def("from_dict", &from_dict<Detector>,
         return_value_policy<manage_new_object>())

@@ -510,10 +510,41 @@ namespace dxtbx { namespace model {
     };
 
     /**
+     * Copy the detector node
+     */
+    void copy_node(Node::pointer self, Node::const_pointer other) {
+      for (Node::const_iterator it = other->begin(); it != other->end(); ++it) {
+        if (it->is_panel()) {
+          self->add_panel(*it, it->index());
+        } else {
+          copy_node(self->add_group(*it), &*it);
+        }
+      }
+    }
+
+
+    /**
      * Initialise the detector
      */
     Detector()
       : data_(boost::make_shared<DetectorData>(this)) {}
+
+    /**
+     * Copy the detector
+     */
+    Detector(const Detector &other)
+      : data_(boost::make_shared<DetectorData>(this)) {
+      Node::pointer self = root();
+      Node::const_pointer node = other.root();
+      Panel *self_panel_data = (Panel *)self;
+      const Panel *other_panel_data = (const Panel *)node;
+      *self_panel_data = *other_panel_data;
+      copy_node(self, node);
+      DXTBX_ASSERT(size() == other.size());
+      for (std::size_t i = 0; i < size(); ++i) {
+        DXTBX_ASSERT(at(i) != NULL);
+      }
+    }
 
     /**
      * Construct with a single panel
