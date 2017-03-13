@@ -48,17 +48,6 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   };
 
-  template <>
-  boost::python::dict to_dict<ExperimentList>(const ExperimentList &obj) {
-    boost::python::dict result;
-    return result;
-  }
-
-  template <>
-  ExperimentList* from_dict<ExperimentList>(boost::python::dict obj) {
-    return new ExperimentList();
-  }
-
   /**
    * Return function pointers to overrides for different types
    */
@@ -267,10 +256,6 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("imageset")   = boost::python::object()))
       .def("is_consistent", &ExperimentList::is_consistent)
       .def("__len__", &ExperimentList::size)
-      .def("to_dict", &to_dict<ExperimentList>)
-      .def("from_dict", &from_dict<ExperimentList>,
-        return_value_policy<manage_new_object>())
-      .staticmethod("from_dict")
       .def_pickle(ExperimentListPickleSuite());
   }
 
