@@ -180,13 +180,13 @@ class XrayFrame (AppFrame,XFBaseClass) :
     self.Bind(wx.EVT_MENU, self.OnLoadIntegration, item)
     item = file_menu.Append(-1, "Open image...")
     self.Bind(wx.EVT_MENU, self.OnLoadFile, item)
-    actions_menu = wx.Menu()
-    self.mb.Append(actions_menu, "Actions")
-    #item = actions_menu.Append(-1, "Change beam center...")
+    self._actions_menu = wx.Menu()
+    self.mb.Append(self._actions_menu, "Actions")
+    #item = self._actions_menu.Append(-1, "Change beam center...")
     #self.Bind(wx.EVT_MENU, self.OnChangeBeamCenter, item)
-    #item = actions_menu.Append(-1, "Reset beam center to header value")
+    #item = self._actions_menu.Append(-1, "Reset beam center to header value")
     #self.Bind(wx.EVT_MENU, lambda evt: self.viewer.ResetBeamCenter(), item)
-    item = actions_menu.Append(-1, "Save As...")
+    item = self._actions_menu.Append(-1, "Save As...")
     self.Bind(wx.EVT_MENU, self.OnSaveAs, item)
 
     # Known wxWidgets/wxPython issue
@@ -194,28 +194,28 @@ class XrayFrame (AppFrame,XFBaseClass) :
     # expected for zero-length text.  Work around by making text
     # contain single space. XXX Placement
     self._id_calibration = wx.NewId()
-    item = actions_menu.Append(self._id_calibration, " ")
+    item = self._actions_menu.Append(self._id_calibration, " ")
     self.Bind(wx.EVT_MENU, self.OnCalibration, source=item)
 
     # XXX Placement
     self._id_ring = wx.NewId()
-    item = actions_menu.Append(self._id_ring, " ")
+    item = self._actions_menu.Append(self._id_ring, " ")
     self.Bind(wx.EVT_MENU, self.OnRing, source=item)
 
     # XXX Placement
     self._id_uc = wx.NewId()
-    item = actions_menu.Append(self._id_uc, " ")
+    item = self._actions_menu.Append(self._id_uc, " ")
     self.Bind(wx.EVT_MENU, self.OnUC, source=item)
 
     # XXX Placement
     self._id_score = wx.NewId()
-    item = actions_menu.Append(self._id_score, " ")
+    item = self._actions_menu.Append(self._id_score, " ")
     self.Bind(wx.EVT_MENU, self.OnScore, source=item)
 
     self._id_plugins = {}
     for p in self.plugins:
       self._id_plugins[p] = wx.NewId()
-      item = actions_menu.Append(self._id_plugins[p], " ")
+      item = self._actions_menu.Append(self._id_plugins[p], " ")
       self.Bind(wx.EVT_MENU, self.OnPluginWrapper(p), source=item)
 
   def has_four_quadrants(self):
