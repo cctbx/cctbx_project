@@ -51,16 +51,16 @@ class cbeta (residue) :
       self.ideal_xyz[0], self.ideal_xyz[1], self.ideal_xyz[2])
 
   def as_table_row_phenix (self) :
-    return [ self.chain_id, "%s %s" % (self.resname, self.resid), self.altloc,
+    return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname, self.resid),
              self.deviation, self.dihedral_NABB ]
 
 class cbetadev (validation) :
   __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs"]
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
-  gui_list_headers = ["Chain", "Residue","Altloc","Deviation","Angle"]
-  gui_formats = ["%s", "%s", "%s", "%.3f", "%.2f"]
-  wx_column_widths = [100, 200, 100, 100, 100]
+  gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
+  gui_formats = ["%s", "%s", "%.3f", "%.2f"]
+  wx_column_widths = [100, 200, 100, 100]
 
   def get_result_class (self) : return cbeta
 
