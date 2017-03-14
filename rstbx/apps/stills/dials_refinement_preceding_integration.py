@@ -485,7 +485,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
       )
 
     direct = matrix.sqr(setting_specific_ai.getOrientation().direct_matrix())
-    from dxtbx.model.crystal import Crystal
+    from dxtbx.model import Crystal
     crystal = Crystal(
       real_space_a = matrix.row(direct[0:3]),
       real_space_b = matrix.row(direct[3:6]),
