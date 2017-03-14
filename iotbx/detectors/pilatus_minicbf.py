@@ -3,6 +3,15 @@ import copy,re
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors import ImageException
 
+try:
+  import bz2
+except: # intentional
+  bz2 = None
+
+try:
+  import gzip
+except: # intentional
+  gzip = None
 
 class PilatusImage(DetectorImageBase):
   def __init__(self,filename):
@@ -21,6 +30,46 @@ class PilatusImage(DetectorImageBase):
 
   def getEndian(self):
     raise ImageException("endian-ness not computed for miniCBF")
+
+  @staticmethod
+  def is_bz2(filename):
+    '''Check if a file pointed at by filename is bzip2 format.'''
+
+    if not '.bz2' in filename[-4:]:
+      return False
+
+    return 'BZh' in open(filename, 'rb').read(3)
+
+  @staticmethod
+  def is_gzip(filename):
+    '''Check if a file pointed at by filename is gzip compressed.'''
+
+    if not '.gz' in filename[-3:]:
+      return False
+
+    magic = open(filename, 'rb').read(2)
+
+    return ord(magic[0]) == 0x1f and ord(magic[1]) == 0x8b
+
+  @classmethod
+  def open_file(cls, filename, mode='rb'):
+    '''Open file for reading, decompressing silently if necessary,
+       caching transparently if possible.'''
+
+    if PilatusImage.is_bz2(filename):
+      if bz2 is None:
+        raise RuntimeError, 'bz2 file provided without bz2 module'
+      fh_func = lambda: bz2.BZ2File(filename, mode)
+
+    elif PilatusImage.is_gzip(filename):
+      if gzip is None:
+        raise RuntimeError, 'gz file provided without gzip module'
+      fh_func = lambda: gzip.GzipFile(filename, mode)
+
+    else:
+      fh_func = lambda: open(filename, mode)
+
+    return fh_func()
 
   def endian_swap_required(self):
     return False
@@ -50,7 +99,7 @@ class PilatusImage(DetectorImageBase):
 
   def readHeader(self,maxlength=12288): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
-      rawdata = open(self.filename,"rb").read(maxlength)
+      rawdata = self.open_file(self.filename,"rb").read(maxlength)
 
       # The tag _array_data.header_convention "SLS_1.0" could be with/without quotes "..."
       SLS_pattern = re.compile(r'''_array_data.header_convention[ "]*SLS''')
