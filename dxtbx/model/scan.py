@@ -18,9 +18,36 @@ from dxtbx.model.scan_helpers import scan_helper_image_files
 from dxtbx.model.scan_helpers import scan_helper_image_formats
 
 
-class scan_factory:
+class ScanFactory:
   '''A factory for scan instances, to help with constructing the classes
   in a set of common circumstances.'''
+
+  @staticmethod
+  def from_dict(d, t=None):
+    ''' Convert the dictionary to a scan model
+
+    Params:
+        d The dictionary of parameters
+        t The template dictionary to use
+
+    Returns:
+        The scan model
+
+    '''
+    from dxtbx.model import Scan
+    from scitbx.array_family import flex # import dependency
+
+    # If None, return None
+    if d == None:
+      if t == None: return None
+      else: return from_dict(t, None)
+    elif t != None:
+      d = dict(t.items() + d.items())
+    if not isinstance(d['exposure_time'], list):
+      d['exposure_time'] = [d['exposure_time']]
+
+    # Create the model from the dictionary
+    return Scan.from_dict(d)
 
   @staticmethod
   def make_scan(image_range, exposure_times, oscillation, epochs, deg=True):
@@ -56,7 +83,7 @@ class scan_factory:
     index = scan_helper_image_files.image_to_index(os.path.split(filename)[-1])
     if epoch is None:
       epoch = 0.0
-    return scan_factory.make_scan(
+    return ScanFactory.make_scan(
                 (index, index), exposure_times, (osc_start, osc_width),
                 {index:epoch})
 
@@ -67,7 +94,7 @@ class scan_factory:
     cbf_handle = pycbf.cbf_handle_struct()
     cbf_handle.read_file(cif_file, pycbf.MSG_DIGEST)
 
-    return scan_factory.imgCIF_H(cif_file, cbf_handle)
+    return ScanFactory.imgCIF_H(cif_file, cbf_handle)
 
   @staticmethod
   def imgCIF_H(cif_file, cbf_handle):
@@ -89,7 +116,7 @@ class scan_factory:
 
     gonio.__swig_destroy__(gonio)
 
-    return scan_factory.make_scan(
+    return ScanFactory.make_scan(
         (index, index), exposure, angles, {index:timestamp})
 
   @staticmethod

@@ -4,8 +4,7 @@ from cStringIO import StringIO
 from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
 from cctbx import crystal, sgtbx, uctbx
-from dxtbx.model import Crystal
-from dxtbx.model.crystal import crystal_model_from_mosflm_matrix
+from dxtbx.model import Crystal, CrystalFactory
 
 def random_rotation():
   import random
@@ -24,7 +23,7 @@ def exercise_crystal_model_from_mosflm_matrix():
        0.000       0.000       0.000'''.split())
   A = mosflm_matrix[:9]
   unit_cell = uctbx.unit_cell(mosflm_matrix[21:27])
-  cm = crystal_model_from_mosflm_matrix(A, unit_cell=unit_cell)
+  cm = CrystalFactory.from_mosflm_matrix(A, unit_cell=unit_cell)
   assert approx_equal(cm.get_unit_cell().parameters(),
                       unit_cell.parameters(), eps=1.0e-2)
 

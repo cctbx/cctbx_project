@@ -34,7 +34,6 @@ def basic_imageset_to_dict(imageset):
 
   '''
   from libtbx.containers import OrderedDict
-  from dxtbx.serialize import beam, detector
 
   # Return the dictionary representation
   return OrderedDict([
@@ -57,7 +56,6 @@ def imagesweep_to_dict(sweep):
 
   '''
   from libtbx.containers import OrderedDict
-  from dxtbx.serialize import beam, detector, goniometer, scan
 
   # Return the dictionary representation
   return OrderedDict([
@@ -93,8 +91,8 @@ def imageset_to_dict(imageset):
 
 def basic_imageset_from_dict(d):
   ''' Construct an ImageSet class from the dictionary.'''
+  from dxtbx.model import BeamFactory, DetectorFactory
   from dxtbx.imageset import ImageSetFactory
-  from dxtbx.serialize import beam, detector
   from dxtbx.serialize.filename import load_path
 
   # Get the filename list and create the imageset
@@ -116,12 +114,12 @@ def basic_imageset_from_dict(d):
       imageset.external_lookup.pedestal.data = pickle.load(infile)
 
   # Get the existing models as dictionaries
-  beam_dict = beam.to_dict(imageset.get_beam())
-  detector_dict = detector.to_dict(imageset.get_detector())
+  beam_dict = imageset.get_beam().to_dict()
+  detector_dict = imageset.get_detector().to_dict()
 
   # Set models
-  imageset.set_beam(beam.from_dict(d.get('beam'), beam_dict))
-  imageset.set_detector(detector.from_dict(d.get('detector'), detector_dict))
+  imageset.set_beam(BeamFactory.from_dict(d.get('beam'), beam_dict))
+  imageset.set_detector(DetectorFactory.from_dict(d.get('detector'), detector_dict))
 
   # Return the imageset
   return imageset
@@ -129,7 +127,7 @@ def basic_imageset_from_dict(d):
 def imagesweep_from_dict(d, check_format=True):
   '''Construct and image sweep from the dictionary.'''
   from dxtbx.imageset import ImageSetFactory
-  from dxtbx.serialize import beam, detector, goniometer, scan
+  from dxtbx.model import BeamFactory, DetectorFactory, GoniometerFactory, ScanFactory
   from dxtbx.serialize.filename import load_path
 
   # Get the template (required)
@@ -148,10 +146,10 @@ def imagesweep_from_dict(d, check_format=True):
       template, image_range, check_format=check_format)[0]
 
     # Get the existing models as dictionaries
-    beam_dict = beam.to_dict(sweep.get_beam())
-    gonio_dict = goniometer.to_dict(sweep.get_goniometer())
-    detector_dict = detector.to_dict(sweep.get_detector())
-    scan_dict = scan.to_dict(sweep.get_scan())
+    beam_dict = sweep.get_beam().to_dict()
+    gonio_dict = sweep.get_goniometer().to_dict()
+    detector_dict = sweep.get_detector().to_dict()
+    scan_dict = sweep.get_scan().to_dict()
   except Exception:
     indices = range(image_range[0], image_range[1] + 1)
     sweep = ImageSetFactory.make_sweep(
@@ -176,10 +174,10 @@ def imagesweep_from_dict(d, check_format=True):
       sweep.external_lookup.pedestal.data = pickle.load(infile)
 
   # Set the models with the exisiting models as templates
-  sweep.set_beam(beam.from_dict(d.get('beam'), beam_dict))
-  sweep.set_goniometer(goniometer.from_dict(d.get('goniometer'), gonio_dict))
-  sweep.set_detector(detector.from_dict(d.get('detector'), detector_dict))
-  sweep.set_scan(scan.from_dict(d.get('scan'), scan_dict))
+  sweep.set_beam(BeamFactory.from_dict(d.get('beam'), beam_dict))
+  sweep.set_goniometer(GoniometerFactory.from_dict(d.get('goniometer'), gonio_dict))
+  sweep.set_detector(DetectorFactory.from_dict(d.get('detector'), detector_dict))
+  sweep.set_scan(ScanFactory.from_dict(d.get('scan'), scan_dict))
 
   # Return the sweep
   return sweep

@@ -16,7 +16,7 @@ from dxtbx_model_ext import Goniometer, MultiAxisGoniometer
 
 import scitbx.math # import dependency
 
-class goniometer_factory:
+class GoniometerFactory:
   '''A factory class for goniometer objects, which will encapsulate
   some standard goniometer designs to make it a little easier to get
   started with all of this - for cases when we are not using a CBF.
@@ -25,6 +25,32 @@ class goniometer_factory:
 
   def __init__(self):
     pass
+
+  @staticmethod
+  def from_dict(d, t=None):
+    ''' Convert the dictionary to a goniometer model
+
+    Params:
+        d The dictionary of parameters
+        t The template dictionary to use
+
+    Returns:
+        The goniometer model
+
+    '''
+    from dxtbx.model import Goniometer, MultiAxisGoniometer
+
+    # If None, return None
+    if d == None:
+      if t == None: return None
+      else: return from_dict(t, None)
+    elif t != None:
+      d = dict(t.items() + d.items())
+
+    # Create the model from the dictionary
+    if 'axes' in d and 'angles' in d and 'scan_axis' in d:
+      return MultiAxisGoniometer.from_dict(d)
+    return Goniometer.from_dict(d)
 
   @staticmethod
   def make_goniometer(rotation_axis, fixed_rotation):
@@ -61,7 +87,7 @@ class goniometer_factory:
     axes = flex.vec3_double((phi_axis, kappa_axis, omega_axis))
     angles = flex.double((phi, kappa, omega))
     names = flex.std_string(("PHI", "KAPPA", "OMEGA"))
-    return goniometer_factory.make_multi_axis_goniometer(
+    return GoniometerFactory.make_multi_axis_goniometer(
       axes, angles, names, scan_axis)
 
   @staticmethod
@@ -76,7 +102,7 @@ class goniometer_factory:
     axis = (1, 0, 0)
     fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
-    return goniometer_factory.make_goniometer(axis, fixed)
+    return GoniometerFactory.make_goniometer(axis, fixed)
 
   @staticmethod
   def single_axis_reverse():
@@ -86,7 +112,7 @@ class goniometer_factory:
     axis = (-1, 0, 0)
     fixed = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
-    return goniometer_factory.make_goniometer(axis, fixed)
+    return GoniometerFactory.make_goniometer(axis, fixed)
 
   @staticmethod
   def known_axis(axis):
@@ -111,7 +137,7 @@ class goniometer_factory:
     rotation axes and then composing them to the scan axis and fixed
     component of the rotation.'''
 
-    return goniometer_factory.make_kappa_goniometer(alpha, omega, kappa,
+    return GoniometerFactory.make_kappa_goniometer(alpha, omega, kappa,
         phi, direction, scan_axis)
 
   @staticmethod
@@ -119,7 +145,7 @@ class goniometer_factory:
     '''
     '''
 
-    return goniometer_factory.make_multi_axis_goniometer(
+    return GoniometerFactory.make_multi_axis_goniometer(
       axes, angles, names, scan_axis)
 
   @staticmethod
@@ -131,7 +157,7 @@ class goniometer_factory:
     cbf_handle = pycbf.cbf_handle_struct()
     cbf_handle.read_file(cif_file, pycbf.MSG_DIGEST)
 
-    return goniometer_factory.imgCIF_H(cbf_handle)
+    return GoniometerFactory.imgCIF_H(cbf_handle)
 
   @staticmethod
   def imgCIF_H(cbf_handle):
@@ -198,5 +224,5 @@ class goniometer_factory:
     scan_axis = axes.size() - scan_axis - 1
 
     # construct a multi-axis goniometer
-    gonio = goniometer_factory.multi_axis(axes, angles, axis_names, scan_axis)
+    gonio = GoniometerFactory.multi_axis(axes, angles, axis_names, scan_axis)
     return gonio

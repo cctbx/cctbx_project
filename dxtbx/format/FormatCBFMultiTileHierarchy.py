@@ -208,7 +208,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     for panel_name in panel_names:
       cbf_detector = cbf.construct_detector(panel_names_detectororder.index(panel_name))
 
-      # code adapted below from dxtbx.model.detector.detector_factory.imgCIF_H
+      # code adapted below from dxtbx.model.detector.DetectorFactory.imgCIF_H
       pixel = (cbf_detector.get_inferred_pixel_size(1),
                cbf_detector.get_inferred_pixel_size(2))
 

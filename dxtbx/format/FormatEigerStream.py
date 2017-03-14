@@ -50,7 +50,7 @@ class FormatEigerStream(Format, FormatMultiImage):
 
     '''
     from scitbx import matrix
-    from dxtbx.model.detector import detector_factory
+    from dxtbx.model.detector import DetectorFactory
     configuration = self.header['configuration']
 
     # Set the trusted range
@@ -82,7 +82,7 @@ class FormatEigerStream(Format, FormatMultiImage):
     #origin = matrix.col(configuration['detector_translation']) + matrix.col((0,0,-distance))
 
     # Create the detector model
-    return detector_factory.make_detector(
+    return DetectorFactory.make_detector(
       'SENSOR_PAD',
       fast_axis,
       slow_axis,
@@ -101,24 +101,24 @@ class FormatEigerStream(Format, FormatMultiImage):
     Create the beam model
 
     '''
-    from dxtbx.model.beam import beam_factory
+    from dxtbx.model.beam import BeamFactory
     configuration = self.header['configuration']
-    return beam_factory.simple(configuration['wavelength'])
+    return BeamFactory.simple(configuration['wavelength'])
 
   def _goniometer(self):
     '''
     Create the goniometer model
 
     '''
-    from dxtbx.model.goniometer import goniometer_factory
-    return goniometer_factory.single_axis()
+    from dxtbx.model.goniometer import GoniometerFactory
+    return GoniometerFactory.single_axis()
 
   def _scan(self):
     '''
     Create the scan object
 
     '''
-    from dxtbx.model.scan import scan_factory
+    from dxtbx.model.scan import ScanFactory
     configuration = self.header['configuration']
     kappa_start = configuration['kappa_start']
     kappa_increment = configuration['kappa_increment']
@@ -129,7 +129,7 @@ class FormatEigerStream(Format, FormatMultiImage):
     two_theta_start = configuration['two_theta_start']
     two_theta_increment = configuration['two_theta_increment']
     nimages = configuration['nimages']
-    return scan_factory.make_scan(
+    return ScanFactory.make_scan(
       image_range    = (1, nimages),
       exposure_times = [0] * nimages,
       oscillation    = (phi_start, phi_increment),

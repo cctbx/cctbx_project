@@ -95,15 +95,16 @@ def crystal(infile):
       The models
 
   '''
-  from dxtbx.serialize.crystal import from_string
+  import json
+  from dxtbx.model.crystal import CrystalFactory
   # If the input is a string then open and read from that file
   if isinstance(infile, str):
     with open(infile, 'r') as infile:
-      return from_string(infile.read())
+      return CrystalFactory.from_dict(json.loads(infile.read()))
 
   # Otherwise assume the input is a file and read from it
   else:
-    return from_string(infile.read())
+    return CrystalFactory.from_dict(json.loads(infile.read()))
 
 def experiment_list(infile, check_format=True):
   ''' Load an experiment list from a serialzied format. '''

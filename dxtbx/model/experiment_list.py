@@ -281,32 +281,32 @@ class ExperimentListDict(object):
   @staticmethod
   def _beam_from_dict(obj):
     ''' Get a beam from a dictionary. '''
-    from dxtbx.model import Beam
-    return Beam.from_dict(obj)
+    from dxtbx.model import BeamFactory
+    return BeamFactory.from_dict(obj)
 
   @staticmethod
   def _detector_from_dict(obj):
     ''' Get the detector from a dictionary. '''
-    from dxtbx.model import Detector
-    return Detector.from_dict(obj)
+    from dxtbx.model import DetectorFactory
+    return DetectorFactory.from_dict(obj)
 
   @staticmethod
   def _goniometer_from_dict(obj):
     ''' Get the goniometer from a dictionary. '''
-    from dxtbx.serialize import goniometer
-    return goniometer.from_dict(obj)
+    from dxtbx.model import GoniometerFactory
+    return GoniometerFactory.from_dict(obj)
 
   @staticmethod
   def _scan_from_dict(obj):
     ''' Get the scan from a dictionary. '''
-    from dxtbx.model import Scan
-    return Scan.from_dict(obj)
+    from dxtbx.model import ScanFactory
+    return ScanFactory.from_dict(obj)
 
   @staticmethod
   def _crystal_from_dict(obj):
     ''' Get the crystal from a dictionary. '''
-    from dxtbx.serialize.crystal import from_dict
-    return from_dict(obj)
+    from dxtbx.model import CrystalFactory
+    return CrystalFactory.from_dict(obj)
 
   @staticmethod
   def _profile_from_dict(obj):

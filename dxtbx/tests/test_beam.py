@@ -8,7 +8,7 @@ from __future__ import absolute_import, division
 #
 # Tests for the beam class.
 
-from dxtbx.model.beam import beam_factory
+from dxtbx.model.beam import BeamFactory
 
 def test_beam():
   '''A test class for the beam class.'''
@@ -19,7 +19,7 @@ def test_beam():
   dxtbx_dir = libtbx.env.dist_path('dxtbx')
 
   image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
-  cbf = beam_factory.imgCIF(image)
+  cbf = BeamFactory.imgCIF(image)
 
   print 'OK'
 

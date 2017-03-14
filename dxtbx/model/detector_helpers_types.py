@@ -15,7 +15,7 @@ import os
 import sys
 
 from dxtbx.model.detector_helpers import detector_helper_sensors
-from dxtbx.model.detector import detector_factory
+from dxtbx.model.detector import DetectorFactory
 
 class detector_helpers_types:
   '''A singleton class to help with identifying specific detectors used for
@@ -48,7 +48,7 @@ class detector_helpers_types:
 
       assert(len(tokens) == 6)
 
-      sensor = detector_factory.sensor(tokens[0])
+      sensor = DetectorFactory.sensor(tokens[0])
       fast, slow, df, ds = map(int, tokens[1:5])
 
       self._detectors[(sensor, fast, slow, df, ds)] = tokens[5]
@@ -62,7 +62,7 @@ class detector_helpers_types:
     If the sensor is unknown, all sensor types will be tested - be warned
     if there are duplicates.'''
 
-    sensor = detector_factory.sensor(sensor)
+    sensor = DetectorFactory.sensor(sensor)
 
     if sensor == detector_helper_sensors.SENSOR_UNKNOWN:
       for s in detector_helper_sensors.all():

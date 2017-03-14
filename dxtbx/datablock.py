@@ -662,8 +662,8 @@ class DataBlockDictImporter(object):
     ''' Create the datablock from a dictionary. '''
     from libtbx.containers import OrderedDict
     from dxtbx.format.Registry import Registry
-    from dxtbx.model import Beam, Detector, Scan
-    from dxtbx.model import Detector
+    from dxtbx.model import BeamFactory, DetectorFactory
+    from dxtbx.model import GoniometerFactory, ScanFactory
     from dxtbx.serialize.filename import load_path
     from dxtbx.imageset import ImageSetFactory, ImageGrid
 
@@ -682,21 +682,20 @@ class DataBlockDictImporter(object):
 
     def load_models(obj):
       try:
-        beam = Beam.from_dict(blist[obj['beam']])
+        beam = BeamFactory.from_dict(blist[obj['beam']])
       except Exception:
         beam = None
       try:
         dobj = dlist[obj['detector']]
-        detector = Detector.from_dict(dobj)
+        detector = DetectorFactory.from_dict(dobj)
       except Exception:
         detector = None
       try:
-        from dxtbx.serialize import goniometer
-        gonio = goniometer.from_dict(glist[obj['goniometer']])
+        gonio = GoniometerFactory.from_dict(glist[obj['goniometer']])
       except Exception:
         gonio = None
       try:
-        scan = Scan.from_dict(slist[obj['scan']])
+        scan = ScanFactory.from_dict(slist[obj['scan']])
       except Exception:
         scan = None
       return beam, detector, gonio, scan

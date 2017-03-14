@@ -11,44 +11,44 @@
 
 from __future__ import absolute_import, division
 
-def to_dict(detector):
-  ''' Convert the detector model to a dictionary
+# def to_dict(detector):
+#   ''' Convert the detector model to a dictionary
 
-  Params:
-      detector The detector model
+#   Params:
+#       detector The detector model
 
-  Returns:
-      A dictionary of the parameters
+#   Returns:
+#       A dictionary of the parameters
 
-  '''
-  if detector == None:
-    return None
-  return detector.to_dict()
+#   '''
+#   if detector == None:
+#     return None
+#   return detector.to_dict()
 
-def from_dict(d, t=None):
-  ''' Convert the dictionary to a detector model
+# def from_dict(d, t=None):
+#   ''' Convert the dictionary to a detector model
 
-  Params:
-      d The dictionary of parameters
-      t The template dictionary to use
+#   Params:
+#       d The dictionary of parameters
+#       t The template dictionary to use
 
-  Returns:
-      The detector model
+#   Returns:
+#       The detector model
 
-  '''
-  from dxtbx.model import Detector
+#   '''
+#   from dxtbx.model import Detector
 
-  # If None, return None
-  if d == None:
-    if t == None: return None
-    else: return from_dict(t, None)
-  elif t != None:
-    if isinstance(d, list):
-      d = { 'panels' : d }
-    d2 = dict(t.items() + d.items())
-  else:
-    if isinstance(d, list):
-      d = { 'panels' : d }
+#   # If None, return None
+#   if d == None:
+#     if t == None: return None
+#     else: return from_dict(t, None)
+#   elif t != None:
+#     if isinstance(d, list):
+#       d = { 'panels' : d }
+#     d2 = dict(t.items() + d.items())
+#   else:
+#     if isinstance(d, list):
+#       d = { 'panels' : d }
 
-  # Create the model from the dictionary
-  return Detector.from_dict(d)
+#   # Create the model from the dictionary
+#   return Detector.from_dict(d)

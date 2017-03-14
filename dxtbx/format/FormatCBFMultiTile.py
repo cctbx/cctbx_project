@@ -116,7 +116,7 @@ class FormatCBFMultiTile(FormatCBFFull):
       p = d.add_panel()
       p.set_name(array_id)
 
-      # code adapted below from dxtbx.model.detector.detector_factory.imgCIF_H
+      # code adapted below from dxtbx.model.detector.DetectorFactory.imgCIF_H
       pixel = (cbf_detector.get_inferred_pixel_size(1),
                cbf_detector.get_inferred_pixel_size(2))
 

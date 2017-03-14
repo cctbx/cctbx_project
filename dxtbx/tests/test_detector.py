@@ -10,15 +10,15 @@ from __future__ import absolute_import, division
 
 from scitbx import matrix
 
-from dxtbx.model.detector import detector_factory
+from dxtbx.model.detector import DetectorFactory
 from dxtbx.model.detector_helpers import compute_frame_rotation
 
 def test_detector():
   '''A test class for the detector class.'''
 
-  d = detector_factory.simple('CCD', 100.0, (45.0, 52.0), '+x', '-y',
+  d = DetectorFactory.simple('CCD', 100.0, (45.0, 52.0), '+x', '-y',
                               (0.172, 0.172), (516, 590), (0, 1024), [])
-  t = detector_factory.two_theta(
+  t = DetectorFactory.two_theta(
       'CCD', 60.0, (35.0, 34.0), '+x', '+y', '+x', 30,
       (0.07, 0.07), (1042, 1042), (0, 1024), [])
 
@@ -30,15 +30,15 @@ def test_detector():
   image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
   xparm = os.path.join(dxtbx_dir, 'tests', 'example-xparm.xds')
 
-  c = detector_factory.imgCIF(image, 'CCD')
-  #x = detector_factory.XDS(xparm)
+  c = DetectorFactory.imgCIF(image, 'CCD')
+  #x = DetectorFactory.XDS(xparm)
 
   print 'OK'
 
 def work_detector():
 
   for j in range(10000):
-    c = detector_factory.imgCIF('phi_scan.cbf')
+    c = DetectorFactory.imgCIF('phi_scan.cbf')
 
 def work_detector_helpers():
   compute_frame_rotation((matrix.col((1, 0, 0)),

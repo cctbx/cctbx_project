@@ -11,7 +11,7 @@ from __future__ import absolute_import, division
 import math
 
 from dxtbx.model.goniometer import Goniometer, MultiAxisGoniometer
-from dxtbx.model.goniometer import goniometer_factory
+from dxtbx.model.goniometer import GoniometerFactory
 from libtbx import easy_pickle
 from libtbx.test_utils import Exception_expected
 
@@ -40,7 +40,7 @@ def test_goniometer():
   assert(compare_tuples(xg.get_rotation_axis(), axis))
   assert(compare_tuples(xg.get_fixed_rotation(), fixed))
 
-  single = goniometer_factory.single_axis()
+  single = GoniometerFactory.single_axis()
 
   assert(len(single.get_rotation_axis()) == 3)
   assert(len(single.get_fixed_rotation()) == 9)
@@ -48,22 +48,14 @@ def test_goniometer():
   assert(compare_tuples(single.get_rotation_axis(), axis))
   assert(compare_tuples(single.get_fixed_rotation(), fixed))
 
-  kappa = goniometer_factory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'omega')
+  kappa = GoniometerFactory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'omega')
 
   assert(len(kappa.get_rotation_axis()) == 3)
   assert(len(kappa.get_fixed_rotation()) == 9)
   assert(compare_tuples(kappa.get_rotation_axis(), axis))
   assert(compare_tuples(kappa.get_fixed_rotation(), fixed))
 
-  kappa = goniometer_factory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'omega')
-
-  assert(len(kappa.get_rotation_axis()) == 3)
-  assert(len(kappa.get_fixed_rotation()) == 9)
-
-  assert(compare_tuples(kappa.get_rotation_axis(), axis))
-  assert(compare_tuples(kappa.get_fixed_rotation(), fixed))
-
-  kappa = goniometer_factory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'phi')
+  kappa = GoniometerFactory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'omega')
 
   assert(len(kappa.get_rotation_axis()) == 3)
   assert(len(kappa.get_fixed_rotation()) == 9)
@@ -71,7 +63,15 @@ def test_goniometer():
   assert(compare_tuples(kappa.get_rotation_axis(), axis))
   assert(compare_tuples(kappa.get_fixed_rotation(), fixed))
 
-  kappa = goniometer_factory.kappa(50.0, 0.0, 30.0, 0.0, '-y', 'omega')
+  kappa = GoniometerFactory.kappa(50.0, 0.0, 0.0, 0.0, '-y', 'phi')
+
+  assert(len(kappa.get_rotation_axis()) == 3)
+  assert(len(kappa.get_fixed_rotation()) == 9)
+
+  assert(compare_tuples(kappa.get_rotation_axis(), axis))
+  assert(compare_tuples(kappa.get_fixed_rotation(), fixed))
+
+  kappa = GoniometerFactory.kappa(50.0, 0.0, 30.0, 0.0, '-y', 'omega')
 
   assert(len(kappa.get_rotation_axis()) == 3)
   assert(len(kappa.get_fixed_rotation()) == 9)
@@ -85,18 +85,18 @@ def test_goniometer():
   dxtbx_dir = libtbx.env.dist_path('dxtbx')
 
   image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
-  cbf = goniometer_factory.imgCIF(image)
+  cbf = GoniometerFactory.imgCIF(image)
 
-  kappa = goniometer_factory.kappa(50.0, -10.0, 30.0, 0.0, '-y', 'phi')
+  kappa = GoniometerFactory.kappa(50.0, -10.0, 30.0, 0.0, '-y', 'phi')
 
   s = easy_pickle.dumps(kappa)
   kappa2 = easy_pickle.loads(s)
   assert kappa == kappa2
 
   image = os.path.join(dxtbx_dir, 'tests', 'omega_scan.cbf')
-  cbf = goniometer_factory.imgCIF(image)
+  cbf = GoniometerFactory.imgCIF(image)
 
-  kappa = goniometer_factory.kappa(50.0, -10.0, 30.0, 20.0, '-y', 'omega')
+  kappa = GoniometerFactory.kappa(50.0, -10.0, 30.0, 20.0, '-y', 'omega')
 
   s = easy_pickle.dumps(kappa)
   kappa2 = easy_pickle.loads(s)
@@ -128,7 +128,7 @@ def test_multi_axis_goniometer():
   names = flex.std_string(('phi', 'kappa', 'omega'))
   scan_axis = 2
 
-  multi_axis_omega_scan = goniometer_factory.multi_axis(
+  multi_axis_omega_scan = GoniometerFactory.multi_axis(
     axes, angles, names, scan_axis)
   assert approx_equal(multi_axis_omega_scan.get_fixed_rotation(), kappa_omega_scan.get_fixed_rotation())
   assert approx_equal(multi_axis_omega_scan.get_rotation_axis(), kappa_omega_scan.get_rotation_axis())
@@ -143,7 +143,7 @@ def test_multi_axis_goniometer():
     alpha, omega, kappa, phi, direction, 'phi')
 
   scan_axis = 0
-  multi_axis_phi_scan = goniometer_factory.multi_axis(
+  multi_axis_phi_scan = GoniometerFactory.multi_axis(
     axes, angles, names, scan_axis)
   assert approx_equal(multi_axis_phi_scan.get_fixed_rotation(), kappa_phi_scan.get_fixed_rotation())
   from scitbx import matrix
@@ -174,12 +174,12 @@ def test_multi_axis_goniometer():
   assert approx_equal(recycle.get_axes(), new_axes)
 
   # Check exception is raised if scan axis is out range
-  try: goniometer_factory.multi_axis(axes, angles, names, 3)
+  try: GoniometerFactory.multi_axis(axes, angles, names, 3)
   except RuntimeError, e: pass
   else: raise Exception_expected
 
   # Single axis is just a special case of a multi axis goniometer
-  single_axis = goniometer_factory.multi_axis(
+  single_axis = GoniometerFactory.multi_axis(
     flex.vec3_double(((1,0,0),)), flex.double((0,)), flex.std_string(('PHI',)), 0)
   assert single_axis.get_fixed_rotation() == (1,0,0,0,1,0,0,0,1)
   assert single_axis.get_setting_rotation() == (1,0,0,0,1,0,0,0,1)

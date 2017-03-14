@@ -10,8 +10,7 @@ class Test(object):
     self.tst_crystal_with_scan_points()
 
   def tst_crystal(self):
-    from dxtbx.serialize.crystal import to_dict, from_dict
-    from dxtbx.model import Crystal
+    from dxtbx.model import Crystal, CrystalFactory
     from scitbx import matrix
 
     real_space_a = matrix.col((35.2402102454, -7.60002142787, 22.080026774))
@@ -25,8 +24,8 @@ class Test(object):
         space_group_symbol="P 1 2/m 1")
     c1.set_mosaicity(0.1)
 
-    d = to_dict(c1)
-    c2 = from_dict(d)
+    d = c1.to_dict()
+    c2 = CrystalFactory.from_dict(d)
     eps = 1e-7
     assert(abs(matrix.col(d['real_space_a']) - real_space_a) <= eps)
     assert(abs(matrix.col(d['real_space_b']) - real_space_b) <= eps)
@@ -37,8 +36,7 @@ class Test(object):
     print 'OK'
 
   def tst_crystal_with_scan_points(self):
-    from dxtbx.serialize.crystal import to_dict, from_dict
-    from dxtbx.model import Crystal
+    from dxtbx.model import Crystal, CrystalFactory
     from scitbx import matrix
 
     real_space_a = matrix.col((35.2402102454, -7.60002142787, 22.080026774))
@@ -54,8 +52,8 @@ class Test(object):
     A = c1.get_A()
     c1.set_A_at_scan_points([A for i in range(5)])
 
-    d = to_dict(c1)
-    c2 = from_dict(d)
+    d = c1.to_dict()
+    c2 = CrystalFactory.from_dict(d)
     eps = 1e-9
     for Acomp in (d['A_at_scan_points']):
       for e1, e2 in zip(A, Acomp):

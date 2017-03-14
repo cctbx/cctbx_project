@@ -14,13 +14,38 @@ import math
 import pycbf
 from dxtbx_model_ext import Beam
 
-class beam_factory:
+class BeamFactory:
   '''A factory class for beam objects, which encapsulate standard beam
   models. In cases where a full cbf description is available this
   will be used, otherwise simplified descriptions can be applied.'''
 
   def __init__(self):
     pass
+
+  @staticmethod
+  def from_dict(d, t=None):
+    ''' Convert the dictionary to a beam model
+
+    Params:
+        d The dictionary of parameters
+        t The template dictionary to use
+
+    Returns:
+        The beam model
+
+    '''
+    from dxtbx.model import Beam
+
+    # If None, return None
+    if d == None:
+      if t == None: return None
+      else: return from_dict(t, None)
+    elif t != None:
+      d = dict(t.items() + d.items())
+
+    # Create the model from the dictionary
+    return Beam.from_dict(d)
+
 
   @staticmethod
   def make_beam(sample_to_source=None, wavelength=None,
@@ -94,7 +119,7 @@ class beam_factory:
     with the +z axis, as is quite normal. Also assume the beam has
     polarization fraction 0.999 and is polarized in the x-z plane.'''
 
-    return beam_factory.make_beam(
+    return BeamFactory.make_beam(
         sample_to_source=(0.0, 0.0, 1.0),
         wavelength=wavelength)
 
@@ -102,7 +127,7 @@ class beam_factory:
   def simple_directional(sample_to_source, wavelength):
     '''Construct a beam with direction and wavelength.'''
 
-    return beam_factory.make_beam(
+    return BeamFactory.make_beam(
         sample_to_source=sample_to_source,
         wavelength=wavelength)
 
@@ -112,7 +137,7 @@ class beam_factory:
     '''Full access to the constructor for cases where we do know everything
     that we need...'''
 
-    return beam_factory.make_polarized_beam(
+    return BeamFactory.make_polarized_beam(
         sample_to_source=sample_to_source,
         wavelength=wavelength,
         polarization=polarization_plane_normal,
@@ -158,7 +183,7 @@ class beam_factory:
     polar_plane_normal = (
         math.sin(polar_angle * d2r), math.cos(polar_angle * d2r), 0.0)
 
-    return beam_factory.make_polarized_beam(
+    return BeamFactory.make_polarized_beam(
             sample_to_source=direction,
             wavelength=wavelength,
             polarization=polar_plane_normal,
@@ -202,7 +227,7 @@ class beam_factory:
     polar_plane_normal = (
         math.sin(polar_angle * d2r), math.cos(polar_angle * d2r), 0.0)
 
-    return beam_factory.make_polarized_beam(
+    return BeamFactory.make_polarized_beam(
         sample_to_source=direction,
         wavelength=wavelength,
         polarization=polar_plane_normal,

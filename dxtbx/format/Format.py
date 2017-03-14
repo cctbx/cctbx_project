@@ -31,10 +31,10 @@ import exceptions
 
 # import access to all of the factories that we will be needing
 
-from dxtbx.model.goniometer import Goniometer, goniometer_factory
-from dxtbx.model.detector import Detector, detector_factory
-from dxtbx.model.beam import Beam, beam_factory
-from dxtbx.model.scan import Scan, scan_factory
+from dxtbx.model.goniometer import Goniometer, GoniometerFactory
+from dxtbx.model.detector import Detector, DetectorFactory
+from dxtbx.model.beam import Beam, BeamFactory
+from dxtbx.model.scan import Scan, ScanFactory
 
 class _MetaFormat(type):
   '''A metaclass for the Format base class (and hence all format classes)
@@ -111,10 +111,10 @@ class Format(object):
     self._beam_instance = None
     self._scan_instance = None
 
-    self._goniometer_factory = goniometer_factory
-    self._detector_factory = detector_factory
-    self._beam_factory = beam_factory
-    self._scan_factory = scan_factory
+    self._goniometer_factory = GoniometerFactory
+    self._detector_factory = DetectorFactory
+    self._beam_factory = BeamFactory
+    self._scan_factory = ScanFactory
 
     self.setup()
 
