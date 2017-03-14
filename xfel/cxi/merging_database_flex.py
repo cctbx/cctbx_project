@@ -154,8 +154,8 @@ order_dict = {'wavelength': 0,
 class read_experiments(object):
   def __init__(self,params):
     import cPickle as pickle
-    from dxtbx.model.beam import beam_factory
-    from dxtbx.model.detector import detector_factory
+    from dxtbx.model import BeamFactory
+    from dxtbx.model import DetectorFactory
     from dxtbx.model.crystal import crystal_model
     from cctbx.crystal_orientation import crystal_orientation,basis_type
     from dxtbx.model import Experiment, ExperimentList
@@ -171,10 +171,10 @@ class read_experiments(object):
       tokens = item.split(' ')
       wavelength = float(tokens[order_dict["wavelength"]])
 
-      beam = beam_factory.simple(wavelength = wavelength)
+      beam = BeamFactory.simple(wavelength = wavelength)
 
-      detector = detector_factory.simple(
-        sensor = detector_factory.sensor("PAD"), # XXX shouldn't hard code for XFEL
+      detector = DetectorFactory.simple(
+        sensor = DetectorFactory.sensor("PAD"), # XXX shouldn't hard code for XFEL
         distance = float(tokens[order_dict["distance"]]),
         beam_centre = [float(tokens[order_dict["beam_x"]]), float(tokens[order_dict["beam_y"]])],
         fast_direction = "+x",

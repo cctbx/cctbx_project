@@ -12,7 +12,7 @@ from scitbx.matrix import sqr, col
 #from xfel.Toy_Network.generate_toy_data import ImageNode
 from xfel.clustering.singleframe import ImageNode
 from dials.array_family import flex
-from dxtbx.model.detector import detector_factory
+from dxtbx.model import DetectorFactory
 
 import random
 import cPickle
@@ -66,7 +66,7 @@ def run(args):
   image_size = (1765, 1765)
   wavelength = args.w or 1.0
   # 1. Make a dummy detector
-  detector = detector_factory.simple('SENSOR_UNKNOWN', # Sensor
+  detector = DetectorFactory.simple('SENSOR_UNKNOWN', # Sensor
                                           distance,
                                           centre,
                                           '+x','-y', # fast/slow direction

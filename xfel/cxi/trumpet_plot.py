@@ -142,8 +142,8 @@ class trumpet_plot(object):
 
 def trumpet_wrapper(result, postx, file_name, params, out):
       from scitbx import matrix
-      from dxtbx.model.beam import beam_factory
-      beam = beam_factory.make_beam(s0=(0,0,-1./result["wavelength"]))
+      from dxtbx.model import BeamFactory
+      beam = BeamFactory.make_beam(s0=(0,0,-1./result["wavelength"]))
       from dxtbx.model import Experiment, ExperimentList
       from dxtbx.model import crystal
 

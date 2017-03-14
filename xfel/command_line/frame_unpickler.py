@@ -10,7 +10,7 @@ from scitbx.array_family import flex as sciflex
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 from dials.util.options import OptionParser
-from dxtbx.model import beam, Crystal, detector, scan
+from dxtbx.model import BeamFactory, Crystal, DetectorFactory, Scan
 from dxtbx.format import FormatMultiImage
 from dxtbx.model import Experiment, ExperimentList
 from dxtbx import imageset
@@ -100,7 +100,7 @@ class construct_reflection_table_and_experiment_list(object):
   # construct the experiments and experiment_list objects
   def expt_beam_maker(self):
     """Construct the beam object for the experiments file."""
-    self.beam = beam.beam_factory.simple(self.wavelength)
+    self.beam = BeamFactory.simple(self.wavelength)
 
   def expt_crystal_maker(self):
     """Construct the crystal object for the experiments file."""
@@ -125,7 +125,7 @@ class construct_reflection_table_and_experiment_list(object):
     if len(self.img_location) > 0 and not dxtbx.load(self.img_location[0])._image_file.endswith("_00000.pickle"):
       self.detector = dxtbx.load(self.img_location[0])._detector()
     else:
-      self.detector = detector.detector_factory.simple('SENSOR_UNKNOWN',self.distance,(self.xbeam, self.ybeam),'+x','-y',
+      self.detector = DetectorFactory.simple('SENSOR_UNKNOWN',self.distance,(self.xbeam, self.ybeam),'+x','-y',
       (self.pixel_size, self.pixel_size),(1765,1765))
 
   def expt_gonio_maker(self):

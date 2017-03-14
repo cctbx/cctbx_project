@@ -18,9 +18,9 @@ class reduction(object):
     self.stash_type = None
     self.stash_res_filter = None
 
-    from dxtbx.model.detector import detector_factory
-    self.dummy_detector = detector_factory.simple(
-      sensor = detector_factory.sensor("PAD"),
+    from dxtbx.model import DetectorFactory
+    self.dummy_detector = DetectorFactory.simple(
+      sensor = DetectorFactory.sensor("PAD"),
       distance = 100,
       beam_centre = [1000, 1000],
       fast_direction = "+x",

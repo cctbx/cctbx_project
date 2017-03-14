@@ -70,11 +70,11 @@ if (__name__ == "__main__") :
 
   from xfel.cftbx.detector.cspad_cbf_tbx import read_slac_metrology, get_cspad_cbf_handle
   from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
-  from dxtbx.model.beam import beam_factory
+  from dxtbx.model import BeamFactory
   metro = read_slac_metrology(path = params.optical_metrology_path)
   cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, params.distance, verbose = True, header_only = True)
   img = FormatCBFCspadInMemory(cbf)
-  beam = beam_factory.simple(params.wavelength).get_s0()
+  beam = BeamFactory.simple(params.wavelength).get_s0()
   beam_center = (0,0)
 
   data = numpy.zeros((11840,194))

@@ -62,19 +62,19 @@ class _Format(FormatPYunspecified):
 
     from copy import deepcopy
 
-    from dxtbx.model.beam import Beam, beam_factory
-    from dxtbx.model.detector import Detector, detector_factory
-    from dxtbx.model.goniometer import Goniometer, goniometer_factory
-    from dxtbx.model.scan import Scan, scan_factory
+    from dxtbx.model.beam import Beam, BeamFactory
+    from dxtbx.model.detector import Detector, DetectorFactory
+    from dxtbx.model.goniometer import Goniometer, GoniometerFactory
+    from dxtbx.model import Scan, ScanFactory
 
     from spotfinder.applications.xfel import cxi_phil
     from iotbx.detectors.cspad_detector_formats import detector_format_version
 
     # From Format.__init__().
-    self._goniometer_factory = goniometer_factory
-    self._detector_factory = detector_factory
-    self._beam_factory = beam_factory
-    self._scan_factory = scan_factory
+    self._goniometer_factory = GoniometerFactory
+    self._detector_factory = DetectorFactory
+    self._beam_factory = BeamFactory
+    self._scan_factory = ScanFactory
 
     # From FormatPYunspecified._start().  Split the keyworded
     # arguments into a parameter dictionary suitable for
