@@ -13,7 +13,6 @@
 #include <string>
 #include <sstream>
 #include <dxtbx/model/crystal.h>
-#include <dxtbx/model/boost_python/to_from_dict.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
@@ -131,17 +130,6 @@ namespace dxtbx { namespace model { namespace boost_python {
     static bool getstate_manages_dict() { return true; }
   };
 
-  template <>
-  boost::python::dict to_dict<Crystal>(const Crystal &obj) {
-    boost::python::dict result;
-    return result;
-  }
-
-  template <>
-  Crystal* from_dict<Crystal>(boost::python::dict obj) {
-    return NULL;
-  }
-
 
   void export_crystal()
   {
@@ -209,10 +197,6 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("mosaicity"),
             arg("deg")=true))
       .def("__eq__", &Crystal::operator==)
-      .def("to_dict", &to_dict<Crystal>)
-      .def("from_dict", &from_dict<Crystal>,
-        return_value_policy<manage_new_object>())
-      .staticmethod("from_dict")
       .def_pickle(CrystalPickleSuite());
   }
 
