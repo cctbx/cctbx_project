@@ -31,14 +31,14 @@ def create_Bmat():
   """Create a random crystal model, in P1 for maximum generality. Return the
   B matrix of this crystal"""
 
-  from dxtbx.model.crystal import crystal_model
+  from dxtbx.model import Crystal
 
   vecs = map(random_vector_close_to,
              [(20, 0, 0),
               (0, 20, 0),
               (0, 0, 20)])
 
-  return crystal_model(*vecs, space_group_symbol = "P 1").get_B()
+  return matrix.sqr(Crystal(*vecs, space_group_symbol = "P 1").get_B())
 
 def create_sig_mat(mat, fraction_sd=0.01):
   """Create a matrix of errors of the elements of mat, where each error is a
