@@ -265,7 +265,7 @@ class omega_result(residue):
 
   def as_table_row_phenix(self):
     #'%4s%1s' string formatting for previous residue matched string formatting within self.resid
-    return [ self.chain_id, "%s %4s%1s to %s %s" % (self.prev_resname, self.prev_resseq, self.prev_icode, self.resname, self.resid),
+    return [ self.chain_id, "%1s%s %4s%1s to %1s%s %s" % (self.prev_altloc, self.prev_resname, self.prev_resseq, self.prev_icode, self.altloc, self.resname, self.resid),
              res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
 
 #the ramachandran_ensemble class is only called in mmtbx/validation/ensembles

@@ -62,7 +62,7 @@ class rotamer (residue) :
 
   # GUI output
   def as_table_row_phenix (self) :
-    return [ self.chain_id, "%s %s" % (self.resname, self.resid),
+    return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid),
              self.score ] + list(self.chi_angles)
 
 class rotamer_ensemble (residue) :
