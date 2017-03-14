@@ -470,12 +470,12 @@ class integrate_one_frame(IntegrationMetaProcedure):
 
   def prepare_dxtbx_models(self,setting_specific_ai,sg,isoform=None):
 
-    from dxtbx.model.beam import beam_factory
-    beam = beam_factory.simple(wavelength = self.inputai.wavelength)
+    from dxtbx.model import BeamFactory
+    beam = BeamFactory.simple(wavelength = self.inputai.wavelength)
 
-    from dxtbx.model.detector import detector_factory
-    detector = detector_factory.simple(
-      sensor = detector_factory.sensor("PAD"),
+    from dxtbx.model import DetectorFactory
+    detector = DetectorFactory.simple(
+      sensor = DetectorFactory.sensor("PAD"),
       distance = setting_specific_ai.distance(),
       beam_centre = [setting_specific_ai.xbeam(), setting_specific_ai.ybeam()],
       fast_direction = "+x",

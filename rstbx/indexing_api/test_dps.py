@@ -53,8 +53,8 @@ def test_dps_single_panel_labelit_input_optimal_origin(process_dictionary,data,p
     assert detector_d2.length() == 1.0
     assert detector_d1.dot(detector_d2) == 0.0
 
-    from dxtbx.model.detector import detector_factory
-    detector = detector_factory.make_detector(
+    from dxtbx.model import DetectorFactory
+    detector = DetectorFactory.make_detector(
       stype = "indexing",
       fast_axis = detector_d1,
       slow_axis = detector_d2,
