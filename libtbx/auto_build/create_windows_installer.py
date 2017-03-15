@@ -74,6 +74,10 @@ def run (args, out=sys.stdout) :
   logfname = os.path.join(options.outdir, "MakeWindowsInstaller.log")
   print "Writing log file to", logfname
   #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+  if options.productname.lower() != "phenix":
+    print >> out, "There is no NSIS installer script for " + options.productname.lower()
+    return 1 # currently we only have NSIS installer scripts for Phenix
+
   scriptname = WriteNSISpreamble(options.productname, options.version,
                     options.company, options.website, options.sourcedir,
                     options.tmpdir, options.mainNSISscript)

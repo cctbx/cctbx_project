@@ -347,9 +347,9 @@ class SetupInstaller(object):
     mainscript = os.path.join(self.dest_dir, "lib","libtbx",
                                 "auto_build", "mainphenixinstaller.nsi")
     create_windows_installer.run(args=[
-      "--productname", "Phenix",
+      "--productname", self.installer.product_name,
       "--version", self.version,
-      "--company", "PHENIX Industrial Consortium",
+      "--company", self.installer.organization,
       "--website", "http://www.phenix-online.org/",
       "--sourcedir", os.path.basename(self.dest_dir),
       "--tmpdir", os.path.normpath(os.path.join(self.dist_dir, "..", "..","tmp")), # location of sourcedir
