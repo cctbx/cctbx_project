@@ -23,7 +23,6 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     crystal_symmetry_builder.__init__(self, cif_block)
 
     self.hierarchy = hierarchy.root()
-
     # These items are mandatory for the _atom_site loop, all others are optional
     type_symbol = cif_block.get("_atom_site.type_symbol")
     atom_labels = cif_block.get("_atom_site.auth_atom_id")
@@ -60,7 +59,6 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     cart_z = flex.double(cif_block.get("_atom_site.Cartn_z"))
     occu = flex.double(cif_block.get("_atom_site.occupancy"))
     formal_charge = cif_block.get("_atom_site.pdbx_formal_charge")
-
     # anisotropic b-factors
     # TODO: read esds
     anisotrop_id = cif_block.get("_atom_site_anisotrop.id")
@@ -85,14 +83,17 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         except ValueError, e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
         adps = flex.sym_mat3_double(*adps)
-
+    py_adps = {}
+    if anisotrop_id is not None and adps is not None:
+      for an_id, adp in zip(list(anisotrop_id), list(adps)):
+        py_adps[an_id] = adp
     current_model_id = None
     current_label_asym_id = None
     current_auth_asym_id = None
     current_residue_id = None
     current_ins_code = None
 
-    for i_atom in range(atom_labels.size()):
+    for i_atom in xrange(atom_labels.size()):
       # model(s)
       last_model_id = current_model_id
       current_model_id = model_ids[i_atom]
@@ -137,7 +138,6 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           icode=current_ins_code)
         chain.append_residue_group(residue_group)
         atom_groups = OrderedDict() # reset atom_groups cache
-
       # atom_group(s)
       # defined by resname and altloc id
       current_altloc = alt_id[i_atom]
@@ -192,17 +192,12 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         if fdp not in ("?", "."):
           atom.set_fdp(new_fdp=float(fdp))
       if anisotrop_id is not None and adps is not None:
-        u_ij_index = flex.first_index(anisotrop_id, atom.serial.strip())
-        if u_ij_index is not None:
-          u_ij = adps[u_ij_index]
-          atom.set_uij(u_ij)
-        else:
-          pass
-
+        py_u_ij = py_adps.get(atom.serial.strip(), None)
+        if py_u_ij is not None:
+          atom.set_uij(py_u_ij)
     if len(self.hierarchy.models()) == 1:
       # for compatibility with single-model PDB files
       self.hierarchy.models()[0].id = ""
-
 
 def format_pdb_atom_name(atom_name, atom_type):
   # The PDB-format atom name is 4 characters long (columns 13 - 16):
