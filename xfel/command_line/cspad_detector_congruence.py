@@ -255,6 +255,7 @@ class Script(object):
     pg_f_offset_sigmas = flex.double()
     pg_s_offset_sigmas = flex.double()
     pg_z_offset_sigmas = flex.double()
+    pg_offset_sigmas = flex.double()
     all_weights = flex.double()
 
     congruence_table_data = []
@@ -481,7 +482,7 @@ class Script(object):
       if 0 in pg_weights:
         dist_m = dist_s = norm_angle_m = norm_angle_s = rnorm_angle_m = rnorm_angle_s = 0
         tnorm_angle_m = tnorm_angle_s = rotz_m = rotz_s = 0
-        fo_m = fo_s = so_m = so_s = zo_m = zo_s = 0
+        fo_m = fo_s = so_m = so_s = zo_m = zo_s = o_s = 0
 
       else:
         stats = flex.mean_and_variance(dists, pg_weights)
@@ -514,6 +515,8 @@ class Script(object):
         zo_m = stats.mean()
         zo_s = stats.gsl_stats_wsd()
 
+        o_s = math.sqrt(fo_s**2+so_s**2+zo_s**2)
+
       pg_bc_dists.append(dist_m)
       all_bc_dist.extend(dists)
       pg_normal_angle_sigmas.append(norm_angle_s)
@@ -523,6 +526,7 @@ class Script(object):
       pg_f_offset_sigmas.append(fo_s)
       pg_s_offset_sigmas.append(so_s)
       pg_z_offset_sigmas.append(zo_s)
+      pg_offset_sigmas.append(o_s)
       z_offsets_d[pg1.get_name()] = zo_m
 
       congruence_table_data.append(["%d"%pg_id, "%5.1f"%dist_m, #"%.4f"%dist_s,
@@ -538,7 +542,7 @@ class Script(object):
                                   #"%9.1f"%so_m, "%5.3f"%so_s,
                                   "%9.3f"%fo_s,
                                   "%9.3f"%so_s,
-                                  "%9.1f"%zo_m, "%9.1f"%zo_s, "%6d"%total_refls])
+                                  "%9.1f"%zo_m, "%9.1f"%zo_s, "%9.3f"%o_s, "%6d"%total_refls])
 
     # Set up table output
     table_d = {d:row for d, row in zip(pg_bc_dists, congruence_table_data)}
@@ -549,9 +553,9 @@ class Script(object):
     congruence_table_data.extend([table_d[key] for key in sorted(table_d)])
 
     table_d = {d:row for d, row in zip(pg_bc_dists, detector_table_data)}
-    table_header = ["PanelG","Dist","Normal","Normal","RNormal","RNormal","TNormal","TNormal","RotZ", "RotZ","F Offset","S Offset","Z Offset","Z Offset","N"]
-    table_header2 = ["Id","","","Sigma","","Sigma","","Sigma","","Sigma","Sigma","Sigma","","Sigma","Refls"]
-    table_header3 = ["", "(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(microns)","(microns)","(microns)","(microns)",""]
+    table_header = ["PanelG","Dist","Normal","Normal","RNormal","RNormal","TNormal","TNormal","RotZ", "RotZ","F Offset","S Offset","Z Offset","Z Offset","Offset","N"]
+    table_header2 = ["Id","","","Sigma","","Sigma","","Sigma","","Sigma","Sigma","Sigma","","Sigma","Sigma","Refls"]
+    table_header3 = ["", "(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)","(microns)","(microns)","(microns)","(microns)","(microns)",""]
     detector_table_data = [table_header, table_header2, table_header3]
     detector_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -638,7 +642,8 @@ class Script(object):
                                  #[all_s_offsets,           all_weights.as_double(),     "%9.1f"],
                                  [pg_s_offset_sigmas,      all_refls_count.as_double(), "%9.3f"],
                                  [all_z_offsets,           all_weights.as_double(),     "%9.1f"],
-                                 [pg_z_offset_sigmas,      all_refls_count.as_double(), "%9.1f"]]:
+                                 [pg_z_offset_sigmas,      all_refls_count.as_double(), "%9.1f"],
+                                 [pg_offset_sigmas,        all_refls_count.as_double(), "%9.1f"]]:
 
         r2.append("")
         if data is None and weights is None:
@@ -665,6 +670,7 @@ class Script(object):
     print "F Offset: offset of panel group along the detector's fast axis"
     print "S Offset: offset of panel group along the detector's slow axis"
     print "Z Offset: offset of panel group along the detector normal"
+    print "Offset: offset of panel group in F,S,Z space. Sigma is F, S, Z offset sigmas summed in quadrature."
     print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
     print "All: weighted mean of the values shown"
     print
