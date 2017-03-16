@@ -75,10 +75,11 @@ class FormatSMVTimePix_SU(FormatSMV):
       self.detectorbase.readHeader()
 
   def _goniometer(self):
-    '''Return a model for a simple single-axis goniometer. This should
-    probably be checked against the image header.'''
+    '''Return a model for a simple single-axis goniometer. For this beamline
+    this should be close to the provided values and neither aligned with the
+    detector slow or fast axes.'''
 
-    return self._goniometer_factory.single_axis()
+    return self._goniometer_factory.known_axis((-0.755, -0.656, 0.0))
 
   def _detector(self):
     '''4 panel detector, 55 micron pixels except for pixels at the outer
