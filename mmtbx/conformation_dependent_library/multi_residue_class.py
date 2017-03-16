@@ -102,7 +102,7 @@ class ThreeProteinResidues(list):
     cis_peptide_bond = False
     omega = self.get_omega_value(omega_cdl=omega_cdl)
     if omega is None: return None
-    if (180.-abs(omega))>limit:
+    if abs(omega) < limit:
       cis_peptide_bond = True
     if verbose:
       if cis_peptide_bond:
