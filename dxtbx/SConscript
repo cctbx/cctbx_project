@@ -14,7 +14,7 @@ env_etc.dxtbx_common_includes = [env_etc.base_include,
                                  env_etc.dxtbx_include]
 env_etc.dxtbx_libs = []
 env_etc.dxtbx_hdf5_libs = ["hdf5"]
-env_etc.dxtbx_lib_paths = [env_etc.base_lib]
+env_etc.dxtbx_lib_paths = [env_etc.base_lib, env_etc.libtbx_lib]
 env_etc.dxtbx_hdf5_lib_paths = []
 if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
   env_etc.dxtbx_libs = ["boost_python"]
@@ -99,4 +99,4 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'model/boost_python/experiment.cc',
       'model/boost_python/experiment_list.cc',
       'model/boost_python/model_ext.cc'],
-      LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs, LIBPATH=env_etc.dxtbx_lib_paths)
+      LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs + env["LIBS"] , LIBPATH=env_etc.dxtbx_lib_paths)

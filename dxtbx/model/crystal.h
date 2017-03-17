@@ -66,16 +66,17 @@ namespace dxtbx { namespace model {
      * ABAT[1] = A[ar, ac] * B[ac, bc] * A[ar, ac].transpose()
      */
     template <typename FloatType>
-    double multiply_A_B_AT(
+    FloatType multiply_A_B_AT(
         const FloatType *A,
         const FloatType *B,
         std::size_t ar,
         std::size_t ac,
         std::size_t bc) {
-      double ABAT = 0;
-      double AB[ar*bc];
-      scitbx::matrix::multiply(A, B, ar, ac, bc, AB);
-      scitbx::matrix::multiply_transpose(AB, A, ar, bc, ar, &ABAT);
+      FloatType ABAT = 0;
+      FloatType *AB = new FloatType[ar*bc];
+      scitbx::matrix::multiply<FloatType, FloatType, FloatType>(A, B, ar, ac, bc, AB);
+      scitbx::matrix::multiply_transpose<FloatType, FloatType, FloatType>(AB, A, ar, bc, ar, &ABAT);
+      delete[] AB;
       return ABAT;
     }
 
@@ -764,15 +765,15 @@ namespace dxtbx { namespace model {
 
       // For cell length |a|, F = sqrt(a1^2 + a2^2 + a3^2)
       double jacobian1[9] = { vec_a[0]/a, 0, 0, vec_a[1]/a, 0, 0, vec_a[2]/a, 0, 0 };
-      double var_a = detail::multiply_A_B_AT(jacobian1, &cov_O[0], 1, 9, 9);
+      double var_a = detail::multiply_A_B_AT<double>(jacobian1, &cov_O[0], 1, 9, 9);
 
       // For cell length |b|, F = sqrt(b1^2 + b2^2 + b3^2)
       double jacobian2[9] = { 0, vec_b[0]/b, 0, 0, vec_b[1]/b, 0, 0, vec_b[2]/b, 0 };
-      double var_b = detail::multiply_A_B_AT(jacobian2, &cov_O[0], 1, 9, 9);
+      double var_b = detail::multiply_A_B_AT<double>(jacobian2, &cov_O[0], 1, 9, 9);
 
       // For cell length |c|, F = sqrt(c1^2 + c2^2 + c3^2)
       double jacobian3[9] = { 0, 0, vec_c[0]/c, 0, 0, vec_c[1]/c, 0, 0, vec_c[2]/c };
-      double var_c = detail::multiply_A_B_AT(jacobian3, &cov_O[0], 1, 9, 9);
+      double var_c = detail::multiply_A_B_AT<double>(jacobian3, &cov_O[0], 1, 9, 9);
 
       // For cell volume (a X b).c,
       // F = c1(a2*b3 - b2*a3) + c2(a3*b1 - b3*a1) + c3(a1*b2 - b1*a2)
@@ -794,7 +795,7 @@ namespace dxtbx { namespace model {
                              a2*b3 - b2*a3,
                              a3*b1 - b3*a1,
                              a1*b2 - b1*a2};
-      double var_V = detail::multiply_A_B_AT(jacobian4, &cov_O[0], 1, 9, 9);
+      double var_V = detail::multiply_A_B_AT<double>(jacobian4, &cov_O[0], 1, 9, 9);
       cell_volume_sd_ = std::sqrt(var_V);
 
       // For the unit cell angles we need to calculate derivatives of the angles
@@ -817,21 +818,21 @@ namespace dxtbx { namespace model {
         0, dalpha_db[0], dalpha_dc[0],
         0, dalpha_db[1], dalpha_dc[1],
         0, dalpha_db[2], dalpha_dc[2]};
-      double var_alpha = detail::multiply_A_B_AT(jacobian5, &cov_O[0], 1, 9, 9);
+      double var_alpha = detail::multiply_A_B_AT<double>(jacobian5, &cov_O[0], 1, 9, 9);
 
       // For angle beta, F = acos( a.c / |a||c|)
       double jacobian6[9] = {
         dbeta_da[0], 0, dbeta_dc[0],
         dbeta_da[1], 0, dbeta_dc[1],
         dbeta_da[2], 0, dbeta_dc[2] };
-      double var_beta = detail::multiply_A_B_AT(jacobian6, &cov_O[0], 1, 9, 9);
+      double var_beta = detail::multiply_A_B_AT<double>(jacobian6, &cov_O[0], 1, 9, 9);
 
       // For angle gamma, F = acos( a.b / |a||b|)
       double jacobian7[9] = {
         dgamma_da[0], dgamma_db[0], 0,
         dgamma_da[1], dgamma_db[1], 0,
         dgamma_da[2], dgamma_db[2], 0 };
-      double var_gamma = detail::multiply_A_B_AT(jacobian7, &cov_O[0], 1, 9, 9);
+      double var_gamma = detail::multiply_A_B_AT<double>(jacobian7, &cov_O[0], 1, 9, 9);
 
       // Symmetry constraints may mean variances of the angles should be zero.
       // Floating point error could lead to negative variances. Ensure these are
