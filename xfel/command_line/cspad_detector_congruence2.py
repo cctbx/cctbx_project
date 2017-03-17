@@ -14,7 +14,7 @@
 #
 from __future__ import division
 from dials.array_family import flex
-from scitbx.matrix import col
+from scitbx.matrix import col, sqr
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.colors import Normalize
@@ -300,6 +300,12 @@ class Script(object):
     pg_lab_x_sigmas = flex.double()
     pg_lab_y_sigmas = flex.double()
     pg_lab_z_sigmas = flex.double()
+    all_rotX = flex.double()
+    all_rotY = flex.double()
+    all_rotZ = flex.double()
+    pg_rotX_sigmas = flex.double()
+    pg_rotY_sigmas = flex.double()
+    pg_rotZ_sigmas = flex.double()
 
     # Data for RMSD table
     rmsds_table_data = []
@@ -346,6 +352,9 @@ class Script(object):
       lab_x = flex.double()
       lab_y = flex.double()
       lab_z = flex.double()
+      rot_X = flex.double()
+      rot_Y = flex.double()
+      rot_Z = flex.double()
 
       for pg, r in zip([pg1, pg2], [root1, root2]):
         bc = col(pg.get_beam_centre_lab(s0))
@@ -358,14 +367,29 @@ class Script(object):
         lab_y.append(ori_lab[1])
         lab_z.append(ori_lab[2])
 
+        f = col(pg.get_fast_axis())
+        s = col(pg.get_slow_axis())
+        n = col(pg.get_normal())
+        basis = sqr([f[0], s[0], n[0],
+                     f[1], s[1], n[1],
+                     f[2], s[2], n[2]])
+        rotX, rotY, rotZ = basis.r3_rotation_matrix_as_x_y_z_angles(deg=True)
+        rot_X.append(rotX)
+        rot_Y.append(rotY)
+        rot_Z.append(rotZ)
+
       all_lab_x.extend(lab_x)
-      all_lab_y.extend(lab_x)
-      all_lab_z.extend(lab_x)
+      all_lab_y.extend(lab_y)
+      all_lab_z.extend(lab_z)
+      all_rotX.extend(rot_X)
+      all_rotY.extend(rot_Y)
+      all_rotZ.extend(rot_Z)
 
       pg_weights = flex.double([pg1_refls, pg2_refls])
       if 0 in pg_weights:
         dist_m = dist_s = 0
         lx_m = lx_s = ly_m = ly_s = lz_m = lz_s = 0
+        lrx_m = lrx_s = lry_m = lry_s = lrz_m = lrz_s = 0
       else:
         stats = flex.mean_and_variance(dists, pg_weights)
         dist_m = stats.mean()
@@ -383,22 +407,40 @@ class Script(object):
         lz_m = stats.mean()
         lz_s = stats.gsl_stats_wsd()
 
+        stats = flex.mean_and_variance(rot_X, pg_weights)
+        lrx_m = stats.mean()
+        lrx_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(rot_Y, pg_weights)
+        lry_m = stats.mean()
+        lry_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(rot_Z, pg_weights)
+        lrz_m = stats.mean()
+        lrz_s = stats.gsl_stats_wsd()
+
       pg_bc_dists.append(dist_m)
       pg_lab_x_sigmas.append(lx_s)
       pg_lab_y_sigmas.append(ly_s)
       pg_lab_z_sigmas.append(lz_s)
+      pg_rotX_sigmas.append(lrx_s)
+      pg_rotY_sigmas.append(lry_s)
+      pg_rotZ_sigmas.append(lrz_s)
 
       lab_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
                              "%9.3f"%lx_m, "%9.3f"%lx_s,
                              "%9.3f"%ly_m, "%9.3f"%ly_s,
                              "%9.3f"%lz_m, "%9.3f"%lz_s,
+                             "%9.3f"%lrx_m, "%9.3f"%lrx_s,
+                             "%9.3f"%lry_m, "%9.3f"%lry_s,
+                             "%9.3f"%lrz_m, "%9.3f"%lrz_s,
                              "%6d"%total_refls])
 
     # Set up table output, starting with lab table
     table_d = {d:row for d, row in zip(pg_bc_dists, lab_table_data)}
-    table_header = ["PanelG","Radial","Lab X","Lab X","Lab Y","Lab Y","Lab Z","Lab Z","N"]
-    table_header2 = ["Id","Dist","","Sigma","","Sigma","","Sigma","","Sigma","Sigma","Sigma","","Sigma","Sigma","Refls"]
-    table_header3 = ["", "(mm)","(mm)","(mm)","(mm)","(mm)","(mm)",""]
+    table_header = ["PanelG","Radial","Lab X","Lab X","Lab Y","Lab Y","Lab Z","Lab Z","Rot X","Rot X","Rot Y","Rot Y","Rot Z","Rot Z","N"]
+    table_header2 = ["Id","Dist","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","Refls"]
+    table_header3 = ["", "(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)",""]
     lab_table_data = [table_header, table_header2, table_header3]
     lab_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -409,9 +451,15 @@ class Script(object):
                                  [all_lab_x,               all_weights.as_double(),     "%9.3f"],
                                  [pg_lab_x_sigmas,         all_refls_count.as_double(), "%9.3f"],
                                  [all_lab_y,               all_weights.as_double(),     "%9.3f"],
-                                 [pg_lab_x_sigmas,         all_refls_count.as_double(), "%9.3f"],
-                                 [all_lab_y,               all_weights.as_double(),     "%9.3f"],
-                                 [pg_lab_x_sigmas,         all_refls_count.as_double(), "%9.3f"]]:
+                                 [pg_lab_y_sigmas,         all_refls_count.as_double(), "%9.3f"],
+                                 [all_lab_z,               all_weights.as_double(),     "%9.3f"],
+                                 [pg_lab_z_sigmas,         all_refls_count.as_double(), "%9.3f"],
+                                 [all_rotX,                all_weights.as_double(),     "%9.3f"],
+                                 [pg_rotX_sigmas,          all_refls_count.as_double(), "%9.3f"],
+                                 [all_rotY,                all_weights.as_double(),     "%9.3f"],
+                                 [pg_rotY_sigmas,          all_refls_count.as_double(), "%9.3f"],
+                                 [all_rotZ,                all_weights.as_double(),     "%9.3f"],
+                                 [pg_rotZ_sigmas,          all_refls_count.as_double(), "%9.3f"]]:
         r2.append("")
         if data is None and weights is None:
           r1.append("")
@@ -429,7 +477,10 @@ class Script(object):
     print table_utils.format(lab_table_data,has_header=3,justify='center',delim=" ")
     print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
     print "Radial dist: distance from center of panel group to the beam center"
-    print "Lab X, Y and Z: Mean coordinate in lab space"
+    print "Lab X, Y and Z: mean coordinate in lab space"
+    print "Rot X, Y and Z: rotation of panel group around lab X, Y and Z axes"
+    print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
+    print "All: weighted mean of the values shown"
     print
 
     #RMSD table
