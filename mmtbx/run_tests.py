@@ -311,6 +311,7 @@ tst_list = (
   #
   "$D/regression/tst_cis_trans_peptide_link.py",
   "$D/regression/tst_apply_cif_restraints.py",
+  "$D/regression/tst_multi_residue_class.py",
   )
 
 def run():
