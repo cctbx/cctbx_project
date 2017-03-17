@@ -1725,8 +1725,9 @@ def get_b_iso(miller_array,d_min=None):
   except Exception,e:
     b_cart=[0,0,0]
   b_aniso_mean=0.
-  for k in [0,1,2]:
-    b_aniso_mean+=b_cart[k]
+  if b_cart:
+    for k in [0,1,2]:
+      b_aniso_mean+=b_cart[k]
   return b_aniso_mean/3.0
 
 def map_coeffs_as_fp_phi(map_coeffs):
@@ -1750,8 +1751,8 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
   model_f_array=f_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
 
-  # now apply k_sol b_sol
-  if k_sol:
+  # now apply k_sol b_sol XXX not used...can cause problems with low-res
+  if 0 and k_sol:
     from mmtbx.f_model import manager 
     fmodel = manager(
       xray_structure = xray_structure,
@@ -5077,6 +5078,7 @@ def get_ncs_mask(map_data=None,unit_cell=None,ncs_object=None,
 def renormalize_map_data(
   map_data=None,solvent_fraction=None):
   sd=max(0.0001,map_data.sample_standard_deviation())
+  if solvent_fraction >= 10.: solvent_fraction=solvent_fraction/100.
   assert solvent_fraction > 0 and solvent_fraction < 1
   scaled_sd=sd/(1-solvent_fraction)**0.5
   map_data=(map_data-map_data.as_1d().min_max_mean().mean)/scaled_sd
