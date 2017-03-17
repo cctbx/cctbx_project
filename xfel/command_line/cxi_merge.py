@@ -59,6 +59,12 @@ filename_extension = "pickle"
 data_subset = 0
   .type = int
   .help = 0: use all data / 1: use odd-numbered frames / 2: use even-numbered frames
+validation {
+  exclude_CSPAD_sensor = None
+    .type = int
+    .help = Index in range(32) of a sensor on the CSPAD to exclude from merging, for the purposes
+    .help = of testing whether an individual sensor is poorly calibrated.
+}
 model = None
   .type = str
   .help = PDB filename containing atomic coordinates & isomorphous cryst1 record
@@ -377,6 +383,17 @@ class WrongBravaisError (Exception) :
 class OutlierCellError (Exception) :
   pass
 
+def get_boundaries_from_sensor_ID (sensor_ID,
+                                   detector_version_phil=None,
+                                   image_with_header=None) :
+  if detector_version_phil is not None and image_with_header is not None:
+    from xfel.command_line.cctbx_integration_pickle_viewer import get_CSPAD_active_areas
+    active_areas = get_CSPAD_active_areas(image_with_header, detector_version_phil)
+  else:
+    from xfel.command_line.cctbx_integration_pickle_viewer import LG36_active_areas
+    active_areas = LG36_active_areas
+  return active_areas[8*sensor_ID:8*sensor_ID+8]
+
 def load_result (file_name,
                  ref_bravais_type,
                  reference_cell,
@@ -384,7 +401,8 @@ def load_result (file_name,
                  reindex_op,
                  out,
                  get_predictions_to_edge=False,
-                 image_info=None) :
+                 image_info=None,
+                 exclude_CSPAD_sensor=None) :
   # If @p file_name cannot be read, the load_result() function returns
   # @c None.
 
@@ -478,6 +496,27 @@ def load_result (file_name,
   # XXX don't force reference setting here, it will be done later, after the
   # original unit cell is recorded
 
+  #Remove observations on a selected sensor if requested
+  if exclude_CSPAD_sensor is not None:
+    print >> out, "excluding CSPAD sensor %d" % exclude_CSPAD_sensor
+    fast_min1, slow_min1, fast_max1, slow_max1, \
+    fast_min2, slow_min2, fast_max2, slow_max2 = \
+      get_boundaries_from_sensor_ID(exclude_CSPAD_sensor)
+    fast_min = min(fast_min1, fast_min2)
+    slow_min = min(slow_min1, slow_min2)
+    fast_max = max(fast_max1, fast_max2)
+    slow_max = max(slow_max1, slow_max2)
+    accepted = flex.bool()
+    px_preds = obj['mapped_predictions'][0]
+    for idx in xrange(px_preds.size()):
+      pred_fast, pred_slow = px_preds[idx]
+      if (pred_fast < fast_min) or (pred_fast > fast_max) or (pred_slow < slow_min) or (pred_slow > slow_max):
+        accepted.append(True)
+      else:
+        accepted.append(False)
+    obj['mapped_predictions'][0] = obj['mapped_predictions'][0].select(accepted)
+    obj['observations'][0] = obj['observations'][0].select(accepted)
+    obj['cos_two_polar_angle'] = obj["cos_two_polar_angle"].select(accepted)
   if not 'indices_to_edge' in obj.keys():
     if get_predictions_to_edge:
       from xfel.merging.predictions_to_edges import extend_predictions
@@ -1219,7 +1258,8 @@ class scaling_manager (intensity_data) :
         reindex_op = reindex_op,
         out=out,
         get_predictions_to_edge=self.params.predictions_to_edge.apply,
-        image_info=image_info)
+        image_info=image_info,
+        exclude_CSPAD_sensor=self.params.validation.exclude_CSPAD_sensor)
       if result is None:
         return null_data(
           file_name=file_name, log_out=out.getvalue(), file_error=True)
