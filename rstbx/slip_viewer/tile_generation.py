@@ -98,6 +98,21 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0,
     color_scheme=color_scheme
   )
 
+  # Calculate the center of mass of the panels, in meters.
+  center_of_mass = col((0, 0, 0))
+  mass_tot = 0
+  for panel in panels:
+    fast = (data.focus()[1] - 1) / 2 \
+           * panel.get_pixel_size()[0] \
+           * col(panel.get_fast_axis())
+    slow = (data.focus()[0] - 1) / 2 \
+           * panel.get_pixel_size()[1] \
+           * col(panel.get_slow_axis())
+
+    center_of_mass += data.size() * (col(panel.get_origin()) + slow + fast)
+    mass_tot += data.size()
+  center_of_mass /= mass_tot / 1e-3
+
   # XXX If a point is contained in two panels simultaneously, it will
   # be assigned to the panel defined first.  XXX Use a Z-buffer
   # instead?
@@ -138,17 +153,16 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0,
 
     # Get unit vectors in the fast and slow directions, as well as the
     # the locations of the origin and the center of the panel, in
-    # meters.
+    # meters.  The origin is taken w.r.t. to the center of mass of all
+    # panels.  This avoids excessive translations that can result from
+    # rotations around the laboratory origin.  Another possibility
+    # would have been to calculate the transformation w.r.t. the beam
+    # center, but s0 is not known to this function.
     fast = col(panel.get_fast_axis())
     slow = col(panel.get_slow_axis())
-    origin = col(panel.get_origin()) * 1e-3
+    origin = col(panel.get_origin()) * 1e-3  - center_of_mass
 
-    # Viewer will show an orthographic projection of the data onto a plane perpendicular to 0 0 1
-    projection_normal = col((0.,0.,1.))
-    beam_to_origin_proj = origin.dot(projection_normal)*projection_normal
-    projected_origin = origin - beam_to_origin_proj
-
-    center = projected_origin \
+    center = origin \
              + (data.focus()[0] - 1) / 2 * pixel_size[1] * slow \
              + (data.focus()[1] - 1) / 2 * pixel_size[0] * fast
     normal = slow.cross(fast).normalize()
@@ -193,8 +207,6 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0,
     R = sqr((T(0, 0), T(0, 1),
              T(1, 0), T(1, 1)))
     t = col((T(0, 2), T(1, 2)))
-    #print i,R[0],R[1],R[2],R[3],t[0],t[1]
-
     my_flex_image.add_transformation_and_translation(R, t)
   my_flex_image.followup_brightness_scale()
   return my_flex_image
@@ -389,7 +401,7 @@ class _Tiles(object):
 
         n  The required level
 
-        Returns a tuple (map_width, map_height, ppd_x, ppd_y) if succesful,
+        Returns a tuple (map_width, map_height, ppd_x, ppd_y) if successful,
         else None.  The width/height values are pixels.  The ppd_? values are
         pixels-per-degree values for X and Y direction.
         """
