@@ -345,6 +345,7 @@ def run(args):
     table1 = show_overall_observations(
       obs=miller_set_avg,
       redundancy=scaler.completeness,
+      redundancy_to_edge=None,
       summed_wt_I=scaler.summed_wt_I,
       summed_weight=scaler.summed_weight,
       ISIGI=scaler.ISIGI,
@@ -352,6 +353,8 @@ def run(args):
       title="Statistics for all reflections",
       out=out,
       work_params=work_params)
+    if table1 is None:
+      raise Exception("table could not be constructed")
     print >> out, ""
     if work_params.scaling.algorithm == 'mark0':
       n_refl, corr = scaler.get_overall_correlation(sum_I)
@@ -361,6 +364,7 @@ def run(args):
     table2 = show_overall_observations(
       obs=miller_set_avg,
       redundancy=scaler.summed_N,
+      redundancy_to_edge=None,
       summed_wt_I=scaler.summed_wt_I,
       summed_weight=scaler.summed_weight,
       ISIGI=scaler.ISIGI,
@@ -368,6 +372,8 @@ def run(args):
       title="Statistics for reflections where I > 0",
       out=out,
       work_params=work_params)
+    if table2 is None:
+      raise Exception("table could not be constructed")
 
     print >> out, ""
     mtz_file, miller_array = scaler.finalize_and_save_data()

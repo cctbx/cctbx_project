@@ -35,6 +35,19 @@ data = None
   .multiple = True
   .help = Directory containing integrated data in pickle format.  Repeat to \
     specify additional directories.
+predictions_to_edge {
+  apply = False
+    .type = bool
+    .help = If True and key 'indices_to_edge' not found in integration pickles, predictions
+    .help = will be made to the edge of the detector based on current unit cell, orientation,
+    .help = and mosaicity.
+  image = None
+    .type = path
+    .help = Path to an example image from which to extract active areas and pixel size.
+  detector_phil = None
+    .type = path
+    .help = Path to the detector version phil file used to generate the selected data.
+}
 a_list = None
   .type = path
   .multiple = False # for now XXX possibly make it multiple later
@@ -369,7 +382,9 @@ def load_result (file_name,
                  reference_cell,
                  params,
                  reindex_op,
-                 out) :
+                 out,
+                 get_predictions_to_edge=False,
+                 image_info=None) :
   # If @p file_name cannot be read, the load_result() function returns
   # @c None.
 
@@ -462,6 +477,13 @@ def load_result (file_name,
   result_array.show_summary(f=out, prefix="  ")
   # XXX don't force reference setting here, it will be done later, after the
   # original unit cell is recorded
+
+  if not 'indices_to_edge' in obj.keys():
+    if get_predictions_to_edge:
+      from xfel.merging.predictions_to_edges import extend_predictions
+      extend_predictions(obj, file_name, image_info, dmin=1.5, dump=False)
+    else:
+      obj['indices_to_edge'] = None
   return obj
 
 from xfel.cxi.merging_utils import intensity_data, frame_data, null_data
@@ -562,6 +584,7 @@ class scaling_manager (intensity_data) :
     self.n_low_corr = 0
     self.failure_modes = {}
     self.observations = flex.int()
+    self.predictions_to_edge = flex.int()
     self.corr_values = flex.double()
     self.rejected_fractions = flex.double()
     self.uc_values = unit_cell_distribution()
@@ -711,6 +734,9 @@ class scaling_manager (intensity_data) :
     if (data.accept) :
       self.n_accepted    += 1
       self.completeness  += data.completeness
+      #print "observations count increased by %d" % flex.sum(data.completeness)
+      self.completeness_predictions += data.completeness_predictions
+      #print "predictions count increased by %d" % flex.sum(data.completeness_predictions)
       self.summed_N      += data.summed_N
       self.summed_weight += data.summed_weight
       self.summed_wt_I   += data.summed_wt_I
@@ -754,6 +780,9 @@ class scaling_manager (intensity_data) :
         self.ISIGI[index] = isigi
 
     self.completeness += data.completeness
+    #print "observations count increased by %d" % flex.sum(data.completeness)
+    self.completeness_predictions += data.completeness_predictions
+    #print "predictions count increased by %d" % flex.sum(data.completeness_predictions)
     self.summed_N += data.summed_N
     self.summed_weight += data.summed_weight
     self.summed_wt_I += data.summed_wt_I
@@ -1176,6 +1205,11 @@ class scaling_manager (intensity_data) :
       reindex_op = self.reverse_lookup.get(file_name, None)
       if reindex_op is None:
         return null_data(file_name=file_name, log_out=out.getvalue(), file_error=True)
+    if (self.params.predictions_to_edge.apply) and (self.params.predictions_to_edge.image is not None):
+      from xfel.merging.predictions_to_edges import ImageInfo
+      image_info = ImageInfo(self.params.predictions_to_edge.image, detector_phil=self.params.predictions_to_edge.detector_phil)
+    else:
+      image_info = None
     try :
       result = load_result(
         file_name=file_name,
@@ -1183,7 +1217,9 @@ class scaling_manager (intensity_data) :
         ref_bravais_type=self.ref_bravais_type,
         params=self.params,
         reindex_op = reindex_op,
-        out=out)
+        out=out,
+        get_predictions_to_edge=self.params.predictions_to_edge.apply,
+        image_info=image_info)
       if result is None:
         return null_data(
           file_name=file_name, log_out=out.getvalue(), file_error=True)
@@ -1213,6 +1249,7 @@ class scaling_manager (intensity_data) :
 
     observations = result["observations"][0]
     cos_two_polar_angle = result["cos_two_polar_angle"]
+    indices_to_edge = result["indices_to_edge"]
 
     assert observations.size() == cos_two_polar_angle.size()
     tt_vec = observations.two_theta(wavelength)
@@ -1258,6 +1295,15 @@ class scaling_manager (intensity_data) :
     # Now manipulate the data to conform to unit cell, asu, and space group
     # of reference.  The resolution will be cut later.
     # Only works if there is NOT an indexing ambiguity!
+    if indices_to_edge is not None:
+      predictions = self.miller_set.customized_copy(
+        anomalous_flag=not self.params.merge_anomalous,
+        crystal_symmetry=self.miller_set.crystal_symmetry(),
+        indices=indices_to_edge
+        ).map_to_asu()
+    else:
+      predictions = None
+
     observations = observations.customized_copy(
       anomalous_flag=not self.params.merge_anomalous,
       crystal_symmetry=self.miller_set.crystal_symmetry()
@@ -1287,6 +1333,8 @@ class scaling_manager (intensity_data) :
          N_bins_large_set, 1]
       )
       print >> out, "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
+      if indices_to_edge is not None:
+        print >> out, "Total preds %d to edge of detector"%indices_to_edge.size()
       bin_results = show_observations(observations, out=out, n_bins=N_bins)
 
       if result.get("fuller_kapton_absorption_correction", None) is not None:
@@ -1356,6 +1404,8 @@ class scaling_manager (intensity_data) :
           print >> out, "New resolution filter at %7.2f"%imposed_res_filter,file_name
         print >> out, "N acceptable bins",N_acceptable_bins
       print >> out, "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,observations.size())
+      if indices_to_edge is not None:
+        print >> out, "Total preds %d to edge of detector"%indices_to_edge.size()
       # Finished applying the binwise I/sigma filter---------------------------------------
     if self.params.raw_data.sdfac_auto is True:
       I_over_sig = observations.data()/observations.sigmas()
@@ -1399,6 +1449,17 @@ class scaling_manager (intensity_data) :
     matches = miller.match_multi_indices(
       miller_indices_unique=self.miller_set.indices(),
       miller_indices=observations.indices())
+
+    if predictions is not None:
+      matches_predictions = miller.match_multi_indices(
+        miller_indices_unique=self.miller_set.indices(),
+        miller_indices=predictions.indices())
+    else:
+      matches_predictions = None
+
+    # matches_preds_obs = miller.match_multi_indices(
+    #   miller_indices_unique=indices_to_edge,
+    #   miller_indices=observations_original_index.indices())
 
     use_weights = False # New facility for getting variance-weighted correlation
     if self.params.scaling.algorithm in ['mark1','levmar']:
@@ -1476,6 +1537,12 @@ class scaling_manager (intensity_data) :
     # Update the count for each matched reflection.  This counts
     # reflections with non-positive intensities, too.
     data.completeness += matches.number_of_matches(0).as_int()
+    if matches_predictions is not None:
+      data.completeness_predictions += matches_predictions.number_of_matches(0).as_int()
+    # print "updated observations count by %d and preds count by %d" % \
+    #   (flex.sum(matches.number_of_matches(0).as_int()), flex.sum(matches_predictions.number_of_matches(0).as_int()))
+    # print "preds matching indices:", len(matches_predictions.pairs())
+    # print "preds total:", len(indices_to_edge)
     data.corr = corr
     data.wavelength = wavelength
 
@@ -1715,6 +1782,7 @@ def run(args):
   table1 = show_overall_observations(
     obs=miller_set_avg,
     redundancy=scaler.completeness,
+    redundancy_to_edge=scaler.completeness_predictions,
     summed_wt_I=scaler.summed_wt_I,
     summed_weight=scaler.summed_weight,
     ISIGI=scaler.ISIGI,
@@ -1731,6 +1799,7 @@ def run(args):
   table2 = show_overall_observations(
     obs=miller_set_avg,
     redundancy=scaler.summed_N,
+    redundancy_to_edge=scaler.completeness_predictions,
     summed_wt_I=scaler.summed_wt_I,
     summed_weight=scaler.summed_weight,
     ISIGI=scaler.ISIGI,
@@ -1749,9 +1818,10 @@ def run(args):
     easy_pickle.dump("scaler_%d.pickle"%work_params.data_subsubsets.subsubset, scaler)
   explanation = """
 Explanation:
-Completeness      = # unique Miller indices present in data / # Miller indices theoretical in asymmetric unit
-Asu. Multiplicity = # measurements / # Miller indices theoretical in asymmetric unit
-Obs. Multiplicity = # measurements / # unique Miller indices present in data"""
+Completeness       = # unique Miller indices present in data / # Miller indices theoretical in asymmetric unit
+Asu. Multiplicity  = # measurements / # Miller indices theoretical in asymmetric unit
+Obs. Multiplicity  = # measurements / # unique Miller indices present in data
+Pred. Multiplicity = # predictions on all accepted images / # Miller indices theoretical in asymmetric unit"""
   print >> out, explanation
   mtz_file, miller_array = scaler.finalize_and_save_data()
   #table_pickle_file = "%s_graphs.pkl" % work_params.output.prefix
@@ -1775,7 +1845,8 @@ Obs. Multiplicity = # measurements / # unique Miller indices present in data"""
   return result
 
 def show_overall_observations(
-  obs, redundancy, summed_wt_I, summed_weight, ISIGI, n_bins=15, out=None, title=None, work_params=None):
+  obs, redundancy, redundancy_to_edge, summed_wt_I, summed_weight, ISIGI,
+  n_bins=15, out=None, title=None, work_params=None):
   if out is None:
     out = sys.stdout
   obs.setup_binner(d_max=100000, d_min=work_params.d_min, n_bins=n_bins)
@@ -1783,6 +1854,8 @@ def show_overall_observations(
 
   cumulative_unique = 0
   cumulative_meas   = 0
+  cumulative_n_pred = 0
+  cumulative_pred   = 0
   cumulative_theor  = 0
   cumulative_In     = 0
   cumulative_I      = 0.0
@@ -1796,6 +1869,10 @@ def show_overall_observations(
     d_range = obs.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_counts=False)
     sel_redundancy = redundancy.select(sel_w)
+    if redundancy_to_edge is not None:
+      sel_redundancy_pred = redundancy_to_edge.select(sel_w)
+    else:
+      sel_redundancy_pred = None
     sel_absent = sel_redundancy.count(0)
     n_present = sel_redundancy.size() - sel_absent
     sel_complete_tag = "[%d/%d]" % (n_present, sel_redundancy.size())
@@ -1809,6 +1886,10 @@ def show_overall_observations(
     val_redundancy_obs = 0
     if n_present > 0:
       val_redundancy_obs = flex.sum(sel_redundancy) / n_present
+    # Repeat on the full set of predictions, calculated w.r.t. the asymmetric unit
+    val_redundancy_pred = 0
+    if redundancy_to_edge is not None and n_present > 0:
+      val_redundancy_pred = flex.sum(sel_redundancy_pred) / sel_redundancy.size()
 
     # Per-bin sum of I and I/sig(I).  For any reflection, the weight
     # of the merged intensity must be positive for this to make sense.
@@ -1859,14 +1940,19 @@ def show_overall_observations(
         d_min=obs.binner().bin_d_min(i_bin),
         redundancy_asu=flex.mean(sel_redundancy.as_double()),
         redundancy_obs=val_redundancy_obs,
+        redundancy_to_edge=val_redundancy_pred,
         complete_tag=sel_complete_tag,
         completeness=n_present / sel_redundancy.size(),
         measurements=sel_measurements,
+        predictions=sel_redundancy_pred,
         mean_I=mean_I,
         mean_I_sigI=mean_I_sigI)
       result.append(bin)
     cumulative_unique += n_present
     cumulative_meas   += sel_measurements
+    if redundancy_to_edge is not None:
+      cumulative_n_pred += flex.sum(sel_redundancy_pred)
+      cumulative_pred   += redundancy_to_edge
     cumulative_theor  += sel_redundancy.size()
     cumulative_In     += I_n
     cumulative_I      += I_sum
@@ -1875,8 +1961,11 @@ def show_overall_observations(
   if (title is not None) :
     print >> out, title
   from libtbx import table_utils
-  table_header = ["","","","","<asu","<obs","","","",""]
-  table_header2 = ["Bin","Resolution Range","Completeness","%","multi>","multi>","n_meas","<I>","<I/sig(I)>"]
+  table_header = ["","","","","<asu","<obs","<pred","","","",""]
+  table_header2 = ["Bin","Resolution Range","Completeness","%","multi>","multi>","multi>",
+    "n_meas", "n_pred","<I>","<I/sig(I)>"]
+  use_preds = (redundancy_to_edge is not None and flex.sum(redundancy_to_edge) > 0)
+  include_columns = [True, True, True, True, True, True, use_preds, True, use_preds, True, True]
   table_data = []
   table_data.append(table_header)
   table_data.append(table_header2)
@@ -1888,10 +1977,15 @@ def show_overall_observations(
     table_row.append("%5.2f" % (100*bin.completeness))
     table_row.append("%6.2f" % bin.redundancy_asu)
     table_row.append("%6.2f" % bin.redundancy_obs)
+    table_row.append("%6.2f" % (0 if redundancy_to_edge is None else bin.redundancy_to_edge))
     table_row.append("%6d" % bin.measurements)
+    table_row.append("%6d" % (0 if redundancy_to_edge is None else flex.sum(bin.predictions)))
     table_row.append("%8.0f" % bin.mean_I)
     table_row.append("%8.3f" % bin.mean_I_sigI)
     table_data.append(table_row)
+  if len(table_data) <= 2:
+    print >>out,"Table could not be constructed -- no bins accepted."
+    return
   table_data.append([""]*len(table_header))
   table_data.append(  [
       format_value("%3s",   "All"),
@@ -1900,10 +1994,13 @@ def show_overall_observations(
       format_value("%5.2f", 100*(cumulative_unique/cumulative_theor)),
       format_value("%6.2f", cumulative_meas/cumulative_theor),
       format_value("%6.2f", cumulative_meas/cumulative_unique),
+      format_value("%6.2f", (0 if redundancy_to_edge is None else cumulative_n_pred/cumulative_unique)),
       format_value("%6d",   cumulative_meas),
+      format_value("%6d",   (0 if redundancy_to_edge is None else flex.sum(redundancy_to_edge))),
       format_value("%8.0f", cumulative_I/cumulative_In),
       format_value("%8.3f", cumulative_Isigma/cumulative_In),
   ])
+  table_data = table_utils.manage_columns(table_data, include_columns)
 
   print
   print >>out,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
@@ -1952,10 +2049,12 @@ class resolution_bin(object):
                d_min=None,
                redundancy_asu=None,
                redundancy_obs=None,
+               redundancy_to_edge=None,
                absent=None,
                complete_tag=None,
                completeness=None,
                measurements=None,
+               predictions=None,
                mean_I=None,
                mean_I_sigI=None,
                sigmaa=None):

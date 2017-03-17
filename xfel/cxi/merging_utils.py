@@ -13,6 +13,7 @@ class intensity_data (object) :
   def initialize (self) :
     self.ISIGI        = {}
     self.completeness = flex.int(self.n_refl, 0)
+    self.completeness_predictions = flex.int(self.n_refl, 0)
     self.summed_N     = flex.int(self.n_refl, 0)
     self.summed_weight= flex.double(self.n_refl, 0.)
     self.summed_wt_I  = flex.double(self.n_refl, 0.)
