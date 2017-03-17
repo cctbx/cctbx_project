@@ -490,9 +490,3 @@ if __name__=="__main__":
     print "  rama    %s" % threes.get_ramalyze_key()
     print '  conf    %s' % threes.is_pure_main_conf()
   print "OK"
-  if 1: # test omega
-    for i in range(0,181,10):
-      print "  %3d %s, %s" % (i,
-                              threes._define_omega_a_la_duke_using_limit(i),
-                              threes._define_omega_a_la_duke_using_limit(i, limit=30),
-                              )
