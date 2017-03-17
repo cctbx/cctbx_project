@@ -1,7 +1,6 @@
 from __future__ import division
-from dials.array_family import flex # dependency
-import libtbx.load_env
-from xfel.util.image_pickle_locator import get_image_filename, find_image_in_dirs
+from dials.array_family import flex # implicit dependency
+import libtbx.load_env # implicit dependency
 import cPickle as pickle
 from cctbx.crystal import symmetry
 from scitbx.matrix import col
@@ -62,7 +61,7 @@ def extend_predictions(pdata, int_pickle_path, image_info, dmin=1.5, dump=False,
   xbeam = pdata['xbeam']
   ybeam = pdata['ybeam']
   wavelength = pdata['wavelength']
-  
+
   if 'effective_tiling' in pdata.keys():
     tm_int = pdata['effective_tiling']
   else:
