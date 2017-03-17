@@ -115,6 +115,22 @@ def get_center(pg):
     s = pg.get_image_size()
     return col(pg.get_pixel_lab_coord((s[0]/2, s[1]/2)))
 
+def get_center_lab(pg):
+  """ Find the center of a panel group pg in lab space """
+  if pg.is_group():
+    # find the average center of all this group's children
+    children_center = col((0,0,0))
+    count = 0
+    for p in iterate_panels(pg):
+      children_center += get_center(p)
+      count += 1
+    children_center /= count
+
+    return children_center
+  else:
+    s = pg.get_image_size()
+    return col(pg.get_pixel_lab_coord((s[0]/2, s[1]/2)))
+
 def get_bounds(root, pg):
   """ Find the max extent of the panel group pg, projected onto the fast/slow plane of root """
   def panel_bounds(root, panel):
@@ -266,15 +282,30 @@ class Script(object):
       tmp_refls.append(refls)
     reflections = tmp_refls
 
+    # storage for plots
     refl_counts = {}
-    rmsds_table_data = []
+
+    # Data for all tables
     pg_bc_dists = flex.double()
     root1 = detectors[0].hierarchy()
     root2 = detectors[1].hierarchy()
+    all_weights = flex.double()
+    all_refls_count = flex.int()
+
+    # Data for lab space table
+    lab_table_data = []
+    all_lab_x = flex.double()
+    all_lab_y = flex.double()
+    all_lab_z = flex.double()
+    pg_lab_x_sigmas = flex.double()
+    pg_lab_y_sigmas = flex.double()
+    pg_lab_z_sigmas = flex.double()
+
+    # Data for RMSD table
+    rmsds_table_data = []
 
     for pg_id, (pg1, pg2) in enumerate(zip(iterate_detector_at_level(root1, 0, params.hierarchy_level),
                                            iterate_detector_at_level(root2, 0, params.hierarchy_level))):
-      """ First compute statistics for detector congruence """
       # Count up the number of reflections in this panel group pair for use as a weighting scheme
       total_refls = 0
       pg1_refls = 0
@@ -288,10 +319,14 @@ class Script(object):
       if pg1_refls == 0 and pg2_refls == 0:
         print "No reflections on panel group", pg_id
         continue
+      all_refls_count.append(total_refls)
+      all_weights.append(pg1_refls)
+      all_weights.append(pg2_refls)
 
       assert pg1.get_name() == pg2.get_name()
       refl_counts[pg1.get_name()] = total_refls
 
+      # Compute RMSDs
       row = ["%d"%pg_id]
       for pg, refls, det in zip([pg1, pg2], reflections, detectors):
         pg_refls = flex.reflection_table()
@@ -308,23 +343,96 @@ class Script(object):
       rmsds_table_data.append(row)
 
       dists = flex.double()
+      lab_x = flex.double()
+      lab_y = flex.double()
+      lab_z = flex.double()
+
       for pg, r in zip([pg1, pg2], [root1, root2]):
         bc = col(pg.get_beam_centre_lab(s0))
         ori = get_center(pg)
 
         dists.append((ori-bc).length())
 
+        ori_lab = get_center_lab(pg)
+        lab_x.append(ori_lab[0])
+        lab_y.append(ori_lab[1])
+        lab_z.append(ori_lab[2])
+
+      all_lab_x.extend(lab_x)
+      all_lab_y.extend(lab_x)
+      all_lab_z.extend(lab_x)
+
       pg_weights = flex.double([pg1_refls, pg2_refls])
       if 0 in pg_weights:
         dist_m = dist_s = 0
+        lx_m = lx_s = ly_m = ly_s = lz_m = lz_s = 0
       else:
         stats = flex.mean_and_variance(dists, pg_weights)
         dist_m = stats.mean()
         dist_s = stats.gsl_stats_wsd()
 
+        stats = flex.mean_and_variance(lab_x, pg_weights)
+        lx_m = stats.mean()
+        lx_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(lab_y, pg_weights)
+        ly_m = stats.mean()
+        ly_s = stats.gsl_stats_wsd()
+
+        stats = flex.mean_and_variance(lab_z, pg_weights)
+        lz_m = stats.mean()
+        lz_s = stats.gsl_stats_wsd()
+
       pg_bc_dists.append(dist_m)
+      pg_lab_x_sigmas.append(lx_s)
+      pg_lab_y_sigmas.append(ly_s)
+      pg_lab_z_sigmas.append(lz_s)
 
+      lab_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
+                             "%9.3f"%lx_m, "%9.3f"%lx_s,
+                             "%9.3f"%ly_m, "%9.3f"%ly_s,
+                             "%9.3f"%lz_m, "%9.3f"%lz_s,
+                             "%6d"%total_refls])
 
+    # Set up table output, starting with lab table
+    table_d = {d:row for d, row in zip(pg_bc_dists, lab_table_data)}
+    table_header = ["PanelG","Radial","Lab X","Lab X","Lab Y","Lab Y","Lab Z","Lab Z","N"]
+    table_header2 = ["Id","Dist","","Sigma","","Sigma","","Sigma","","Sigma","Sigma","Sigma","","Sigma","Sigma","Refls"]
+    table_header3 = ["", "(mm)","(mm)","(mm)","(mm)","(mm)","(mm)",""]
+    lab_table_data = [table_header, table_header2, table_header3]
+    lab_table_data.extend([table_d[key] for key in sorted(table_d)])
+
+    if len(all_weights) > 1:
+      r1 = ["All"]
+      r2 = ["Mean"]
+      for data, weights, fmt in [[None,None,None],
+                                 [all_lab_x,               all_weights.as_double(),     "%9.3f"],
+                                 [pg_lab_x_sigmas,         all_refls_count.as_double(), "%9.3f"],
+                                 [all_lab_y,               all_weights.as_double(),     "%9.3f"],
+                                 [pg_lab_x_sigmas,         all_refls_count.as_double(), "%9.3f"],
+                                 [all_lab_y,               all_weights.as_double(),     "%9.3f"],
+                                 [pg_lab_x_sigmas,         all_refls_count.as_double(), "%9.3f"]]:
+        r2.append("")
+        if data is None and weights is None:
+          r1.append("")
+          continue
+        stats = flex.mean_and_variance(data, weights)
+        r1.append(fmt%stats.mean())
+
+      r1.append("")
+      r2.append("%6.1f"%flex.mean(all_refls_count.as_double()))
+      lab_table_data.append(r1)
+      lab_table_data.append(r2)
+
+    from libtbx import table_utils
+    print "Detector statistics relative to lab origin"
+    print table_utils.format(lab_table_data,has_header=3,justify='center',delim=" ")
+    print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
+    print "Radial dist: distance from center of panel group to the beam center"
+    print "Lab X, Y and Z: Mean coordinate in lab space"
+    print
+
+    #RMSD table
     table_d = {d:row for d, row in zip(pg_bc_dists, rmsds_table_data)}
     table_header = ["PanelG"]
     table_header2 = ["Id"]
@@ -345,7 +453,6 @@ class Script(object):
       row.append("%8d"%len(refls))
     rmsds_table_data.append(row)
 
-    from libtbx import table_utils
     print "RMSDs by detector number"
     print table_utils.format(rmsds_table_data,has_header=3,justify='center',delim=" ")
     print "PanelG Id: panel group id or panel id, depending on hierarchy_level"
