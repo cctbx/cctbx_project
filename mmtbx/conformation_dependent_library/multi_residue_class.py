@@ -95,6 +95,14 @@ class ThreeProteinResidues(list):
       omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
       return omega
 
+  def _define_omega_a_la_duke_using_limit(self,
+                                          omega,
+                                          limit=45,
+                                          ):
+    if abs(omega)<limit: return 'cis'
+    elif 180-abs(omega)<limit: return 'trans'
+    else: return 'twisted'
+
   def cis_group(self,
                 limit=45.,
                 omega_cdl=False, # need last not middle
@@ -102,13 +110,23 @@ class ThreeProteinResidues(list):
     cis_peptide_bond = False
     omega = self.get_omega_value(omega_cdl=omega_cdl)
     if omega is None: return None
-    if abs(omega) < limit:
+    if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='cis':
       cis_peptide_bond = True
     if verbose:
       if cis_peptide_bond:
         print 'cis peptide bond', cis_peptide_bond, omega
         print self
     return cis_peptide_bond
+
+  def trans_group(self,
+                  limit=45.,
+                  verbose=False,
+                  ):
+    omega = self.get_omega_value() #omega_cdl=omega_cdl)
+    if omega is None: return None
+    if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='trans':
+      return True
+    return False
 
   def is_pure_main_conf(self):
     tmp = [rg.is_pure_main_conf for rg in self]
@@ -466,7 +484,15 @@ if __name__=="__main__":
                                         #verbose=verbose,
                                         ):
     print threes
-    print "  cis? %s" % threes.cis_group()
-    print "  rama %s" % threes.get_ramalyze_key()
-    print '  conf %s' % threes.is_pure_main_conf()
+    print '  omega   %5.1f' % threes.get_omega_value()
+    print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
+    print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
+    print "  rama    %s" % threes.get_ramalyze_key()
+    print '  conf    %s' % threes.is_pure_main_conf()
   print "OK"
+  if 1: # test omega
+    for i in range(0,181,10):
+      print "  %3d %s, %s" % (i,
+                              threes._define_omega_a_la_duke_using_limit(i),
+                              threes._define_omega_a_la_duke_using_limit(i, limit=30),
+                              )
