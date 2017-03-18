@@ -356,7 +356,7 @@ class Script(object):
       rot_Y = flex.double()
       rot_Z = flex.double()
 
-      for pg, r in zip([pg1, pg2], [root1, root2]):
+      for pg in [pg1, pg2]:
         bc = col(pg.get_beam_centre_lab(s0))
         ori = get_center(pg)
 
@@ -436,6 +436,101 @@ class Script(object):
                              "%9.3f"%lrz_m, "%9.3f"%lrz_s,
                              "%6d"%total_refls])
 
+    if params.hierarchy_level > 0:
+      # Data for local table
+      local_table_data = []
+      all_local_x = flex.double()
+      all_local_y = flex.double()
+      all_local_z = flex.double()
+      pg_local_x_sigmas = flex.double()
+      pg_local_y_sigmas = flex.double()
+      pg_local_z_sigmas = flex.double()
+      all_local_rotX = flex.double()
+      all_local_rotY = flex.double()
+      all_local_rotZ = flex.double()
+      pg_local_rotX_sigmas = flex.double()
+      pg_local_rotY_sigmas = flex.double()
+      pg_local_rotZ_sigmas = flex.double()
+
+      for pg_id, (pg1, pg2) in enumerate(zip(iterate_detector_at_level(root1, 0, params.hierarchy_level),
+                                             iterate_detector_at_level(root2, 0, params.hierarchy_level))):
+        local_x = flex.double()
+        local_y = flex.double()
+        local_z = flex.double()
+        l_rot_X = flex.double()
+        l_rot_Y = flex.double()
+        l_rot_Z = flex.double()
+
+        for pg in [pg1, pg2]:
+
+          l_ori = pg.get_local_origin()
+          local_x.append(l_ori[0])
+          local_y.append(l_ori[1])
+          local_z.append(l_ori[2])
+
+          f = col(pg.get_local_fast_axis())
+          s = col(pg.get_local_slow_axis())
+          n = f.cross(s)
+          basis = sqr([f[0], s[0], n[0],
+                       f[1], s[1], n[1],
+                       f[2], s[2], n[2]])
+          rotX, rotY, rotZ = basis.r3_rotation_matrix_as_x_y_z_angles(deg=True)
+          l_rot_X.append(rotX)
+          l_rot_Y.append(rotY)
+          l_rot_Z.append(rotZ)
+
+        all_local_x.extend(local_x)
+        all_local_y.extend(local_y)
+        all_local_z.extend(local_z)
+        all_local_rotX.extend(l_rot_X)
+        all_local_rotY.extend(l_rot_Y)
+        all_local_rotZ.extend(l_rot_Z)
+
+        pg_weights = flex.double([pg1_refls, pg2_refls])
+        if 0 in pg_weights:
+          lx_m = lx_s = ly_m = ly_s = lz_m = lz_s = 0
+          lrx_m = lrx_s = lry_m = lry_s = lrz_m = lrz_s = 0
+        else:
+          stats = flex.mean_and_variance(local_x, pg_weights)
+          lx_m = stats.mean()
+          lx_s = stats.gsl_stats_wsd()
+
+          stats = flex.mean_and_variance(local_y, pg_weights)
+          ly_m = stats.mean()
+          ly_s = stats.gsl_stats_wsd()
+
+          stats = flex.mean_and_variance(local_z, pg_weights)
+          lz_m = stats.mean()
+          lz_s = stats.gsl_stats_wsd()
+
+          stats = flex.mean_and_variance(l_rot_X, pg_weights)
+          lrx_m = stats.mean()
+          lrx_s = stats.gsl_stats_wsd()
+
+          stats = flex.mean_and_variance(l_rot_Y, pg_weights)
+          lry_m = stats.mean()
+          lry_s = stats.gsl_stats_wsd()
+
+          stats = flex.mean_and_variance(l_rot_Z, pg_weights)
+          lrz_m = stats.mean()
+          lrz_s = stats.gsl_stats_wsd()
+
+        pg_local_x_sigmas.append(lx_s)
+        pg_local_y_sigmas.append(ly_s)
+        pg_local_z_sigmas.append(lz_s)
+        pg_local_rotX_sigmas.append(lrx_s)
+        pg_local_rotY_sigmas.append(lry_s)
+        pg_local_rotZ_sigmas.append(lrz_s)
+
+        local_table_data.append(["%d"%pg_id, "%5.1f"%pg_bc_dists[pg_id],
+                               "%9.3f"%lx_m, "%9.3f"%lx_s,
+                               "%9.3f"%ly_m, "%9.3f"%ly_s,
+                               "%9.3f"%lz_m, "%9.3f"%lz_s,
+                               "%9.3f"%lrx_m, "%9.3f"%lrx_s,
+                               "%9.3f"%lry_m, "%9.3f"%lry_s,
+                               "%9.3f"%lrz_m, "%9.3f"%lrz_s,
+                               "%6d"%all_refls_count[pg_id]])
+
     # Set up table output, starting with lab table
     table_d = {d:row for d, row in zip(pg_bc_dists, lab_table_data)}
     table_header = ["PanelG","Radial","Lab X","Lab X","Lab Y","Lab Y","Lab Z","Lab Z","Rot X","Rot X","Rot Y","Rot Y","Rot Z","Rot Z","N"]
@@ -482,6 +577,54 @@ class Script(object):
     print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
     print "All: weighted mean of the values shown"
     print
+
+    if params.hierarchy_level > 0:
+      # Local table
+      table_d = {d:row for d, row in zip(pg_bc_dists, local_table_data)}
+      table_header = ["PanelG","Radial","Lab X","Lab X","Lab Y","Lab Y","Lab Z","Lab Z","Rot X","Rot X","Rot Y","Rot Y","Rot Z","Rot Z","N"]
+      table_header2 = ["Id","Dist","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","Refls"]
+      table_header3 = ["", "(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)",""]
+      local_table_data = [table_header, table_header2, table_header3]
+      local_table_data.extend([table_d[key] for key in sorted(table_d)])
+
+      if len(all_weights) > 1:
+        r1 = ["All"]
+        r2 = ["Mean"]
+        for data, weights, fmt in [[None,None,None],
+                                   [all_local_x,               all_weights.as_double(),     "%9.3f"],
+                                   [pg_local_x_sigmas,         all_refls_count.as_double(), "%9.3f"],
+                                   [all_local_y,               all_weights.as_double(),     "%9.3f"],
+                                   [pg_local_y_sigmas,         all_refls_count.as_double(), "%9.3f"],
+                                   [all_local_z,               all_weights.as_double(),     "%9.3f"],
+                                   [pg_local_z_sigmas,         all_refls_count.as_double(), "%9.3f"],
+                                   [all_local_rotX,            all_weights.as_double(),     "%9.3f"],
+                                   [pg_local_rotX_sigmas,      all_refls_count.as_double(), "%9.3f"],
+                                   [all_local_rotY,            all_weights.as_double(),     "%9.3f"],
+                                   [pg_local_rotY_sigmas,      all_refls_count.as_double(), "%9.3f"],
+                                   [all_local_rotZ,            all_weights.as_double(),     "%9.3f"],
+                                   [pg_local_rotZ_sigmas,      all_refls_count.as_double(), "%9.3f"]]:
+          r2.append("")
+          if data is None and weights is None:
+            r1.append("")
+            continue
+          stats = flex.mean_and_variance(data, weights)
+          r1.append(fmt%stats.mean())
+
+        r1.append("")
+        r2.append("%6.1f"%flex.mean(all_refls_count.as_double()))
+        local_table_data.append(r1)
+        local_table_data.append(r2)
+
+      from libtbx import table_utils
+      print "Detector statistics in local frame of each panel group"
+      print table_utils.format(local_table_data,has_header=3,justify='center',delim=" ")
+      print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
+      print "Radial dist: distance from center of panel group to the beam center"
+      print "Lab X, Y and Z: mean coordinate in relative to parent panel group"
+      print "Rot X, Y and Z: rotation of panel group around parent panel group X, Y and Z axes"
+      print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
+      print "All: weighted mean of the values shown"
+      print
 
     #RMSD table
     table_d = {d:row for d, row in zip(pg_bc_dists, rmsds_table_data)}
