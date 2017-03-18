@@ -581,7 +581,7 @@ class Script(object):
     if params.hierarchy_level > 0:
       # Local table
       table_d = {d:row for d, row in zip(pg_bc_dists, local_table_data)}
-      table_header = ["PanelG","Radial","Lab X","Lab X","Lab Y","Lab Y","Lab Z","Lab Z","Rot X","Rot X","Rot Y","Rot Y","Rot Z","Rot Z","N"]
+      table_header = ["PanelG","Radial","Local X","Local X","Local Y","Local Y","Local Z","Local Z","Rot X","Rot X","Rot Y","Rot Y","Rot Z","Rot Z","N"]
       table_header2 = ["Id","Dist","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","Refls"]
       table_header3 = ["", "(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)",""]
       local_table_data = [table_header, table_header2, table_header3]
