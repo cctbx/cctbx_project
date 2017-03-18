@@ -329,6 +329,21 @@ def prepare_f_obs_and_flags(f_obs, r_free_flags):
   f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
   return f_obs, r_free_flags
 
+def result_message(cc12, cc13, cc23):
+  if (cc13 < 0.7 or
+      (cc23 > cc12 and cc23 > cc13) or (cc13 < cc12 and cc13 < cc23)):
+    msg = 'Polder map is likely to show noise.'
+  elif (cc13 >= 0.8):
+    msg = 'The polder map is very likely to show the ligand.'
+  elif (cc13 >= 0.7 and cc13 < 0.8):
+    if (cc23 < 0.7*cc13):
+      msg = """The polder map is likely to show the ligand.
+But it is recommended to inspect the maps to make a clear decision."""
+    else:
+      msg = """The polder map resembles bulk solvent.
+But it is recommended to inspect the maps to make a clear decision."""
+  return msg
+
 # parse through command line arguments
 def cmd_run(args, validated=False, out=sys.stdout):
   if (len(args) == 0):
@@ -516,17 +531,20 @@ def cmd_run(args, validated=False, out=sys.stdout):
   print >> log, "Map 1: calculated Fobs with ligand"
   print >> log, "Map 2: calculated Fobs without ligand"
   print >> log, "Map 3: real Fobs data"
-  print >>log, "CC(1,2): %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient()
-  print >>log, "CC(1,3): %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient()
-  print >>log, "CC(2,3): %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient()
+  cc12 = flex.linear_correlation(x=b1,y=b2).coefficient()
+  cc13 = flex.linear_correlation(x=b1,y=b3).coefficient()
+  cc23 = flex.linear_correlation(x=b2,y=b3).coefficient()
+  print >>log, "CC(1,2): %6.4f"%cc12
+  print >>log, "CC(1,3): %6.4f"%cc13
+  print >>log, "CC(2,3): %6.4f"%cc23
   ### D-function
   b1 = maptbx.volume_scale_1d(map=b1, n_bins=10000).map_data()
   b2 = maptbx.volume_scale_1d(map=b2, n_bins=10000).map_data()
   b3 = maptbx.volume_scale_1d(map=b3, n_bins=10000).map_data()
   print >> log, "Peak CC:"
-  print >>log, "CC(1,2): %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient()
-  print >>log, "CC(1,3): %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient()
-  print >>log, "CC(2,3): %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient()
+  print >>log, "CC(1,2) peak: %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient()
+  print >>log, "CC(1,3) peak: %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient()
+  print >>log, "CC(2,3) peak: %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient()
   cutoffs = flex.double(
     [i/10. for i in range(1,10)]+[i/100 for i in range(91,100)])
   d12 = maptbx.discrepancy_function(map_1=b1, map_2=b2, cutoffs=cutoffs)
@@ -549,6 +567,9 @@ def cmd_run(args, validated=False, out=sys.stdout):
   if (params.output_file_name_prefix is not None):
     polder_file_name = params.output_file_name_prefix + "_" + polder_file_name
   #
+  print >> log, '*' * 79
+  message = result_message(cc12 = cc12, cc13 = cc13, cc23 = cc23)
+  print >>log, message
   print >> log, '*' * 79
   print >> log, 'File %s was written.' % polder_file_name
   print >> log, "Finished."
