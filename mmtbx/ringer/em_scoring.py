@@ -13,6 +13,7 @@ Reference:
 from __future__ import division
 from mmtbx.ringer import Peak, Peaklist
 from libtbx import easy_pickle
+from libtbx.utils import Sorry
 from libtbx.math_utils import iceil
 from collections import OrderedDict
 import math
@@ -96,6 +97,10 @@ def process_raw_results (ringer_result, out=sys.stdout) :
   max_max = max(maxima)
   avg_avg = np.average(averages)
   thresholds = [avg_avg+i*(max_max-avg_avg)/20 for i in range(20)]
+  if min(thresholds) == max(thresholds):
+    raise Sorry("""No features could be detected in the density around the model, so EMRinger can't
+       proceed. This can be confirmed in pymol or coot. If features are present, raise
+       the scale of the map values and try EMRinger again.""")
   print >> out, "Threshold list: %s" % thresholds
   print >> out, "===== Pickle Parsed ====="
   return waves, thresholds
@@ -212,6 +217,9 @@ class main (object) :
         print >> out, "Saved plot to %s" % out_file
       # plot_rotamers(binned_peaks[threshold], file, threshold, args.first_rotamer)
     #   print "Outliers at threshold %.2f: %s" % (threshold, str(Weird_residues[threshold]))
+    if len(self.zscores) == 0:
+      raise Sorry("""No scores could be calculated at any threshold for this map. This could be because the
+       map is not sufficiently featured, or because of data corruption in the map.""")
     if (not quiet) :
       print >> out, ""
       print >> out, "===== Plotting Statistics Across Thresholds ====="

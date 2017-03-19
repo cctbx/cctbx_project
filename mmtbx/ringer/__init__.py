@@ -196,6 +196,7 @@ class iterate_over_residues (object) :
                 pdb_hierarchy,
                 params,
                 map_coeffs=None,
+                crystal_symmetry_model=None,
                 difference_map_coeffs=None,
                 ccp4_map=None,
                 unit_cell=None,
@@ -227,9 +228,28 @@ class iterate_over_residues (object) :
       assert (ccp4_map is not None)
       print >> self.log, "CCP4 map statistics:"
       ccp4_map.show_summary(out=self.log, prefix="  ")
-      self.real_map = ccp4_map.data.as_double()
+      space_group_number = ccp4_map.space_group_number
+      from cctbx import crystal
+      crystal_symmetry_map = crystal.symmetry(ccp4_map.unit_cell().parameters(), space_group_number)
+      if not crystal_symmetry_model:
+        print >> self.log, """Warning: the model does not contain symmetry information. Using map information."""
+      elif not crystal_symmetry_map.is_similar_symmetry(crystal_symmetry_model):
+        print >> self.log, """Warning: The map and model appear to have different crystal symmetry information.
+          EMRinger will assume the map symmetry data is correct and process."""
+      # assert crystal_symmetry_map.is_similar_symmetry(crystal_symmetry_model)
+      import mmtbx.utils
+      shift_manager = mmtbx.utils.shift_origin(
+      map_data = ccp4_map.data.as_double(),
+      pdb_hierarchy = pdb_hierarchy,
+      crystal_symmetry = crystal_symmetry_map)
+      if not shift_manager.shift_cart == None:
+        print >> self.log, "Warning: Model and Map use different origin. Applying origin shift to compensate."
+      pdb_hierarchy = shift_manager.pdb_hierarchy # gives you shifted model
+
+      self.real_map = shift_manager.map_data # gives you shifted map
       # XXX assume that the map is already scaled properly (in the original
       # unit cell)
+      models = pdb_hierarchy.models()
       self.sigma = 1 #ccp4_map.statistics().sigma()
       # XXX the unit cell that we need for the non-crystallographic
       # interpolation is not what comes out of the map - it's the
@@ -268,6 +288,12 @@ class iterate_over_residues (object) :
       self.results = []
       for i_res in range(len(self.residue_groups)) :
         self.results.extend(self.__sample_density(i_res, verbose=True))
+    if len(self.results) == 0:
+      raise Sorry("""No residues could be scanned by EMRinger, so scores cannot be generated.
+      There are a few problems that can lead to this, including not having
+      modeled side chains (poly-A or poly-G models), mismatches between the map
+      and model grid, or corrupted map density values. These problems can often
+      be assessed with molecular graphics tools such as pymol or coot.""")
 
   def __sample_density (self, i_res, verbose=False) :
     import iotbx.pdb
@@ -301,10 +327,12 @@ class iterate_over_residues (object) :
           try :
             atoms = self.angle_lookup.extract_chi_atoms("chi%d" % i, residue)
           except AttributeError as e :
+            print >> self.log, "Warning: Could not load chi {} atoms".format(i)
             pass
           else :
             try :
               if (atoms is None) :
+                print >> self.log, "Warning: No side chain atoms detected in model"
                 break
               i_seqs = [ atom.i_seq for atom in atoms ]
               sites_chi = [ self.sites_cart[i_seq] for i_seq in i_seqs ]
@@ -339,7 +367,8 @@ class iterate_over_residues (object) :
                 sampling=self.params.sampling_angle)
             except Exception as e :
               pass
-        results.append(res_out)
+        if not len(res_out._angles) == 0:
+          results.append(res_out)
     return results
 
 class Peak (object) :

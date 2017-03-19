@@ -98,6 +98,7 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   pdb_in = cmdline.get_file(params.model)
   pdb_in.check_file_type("pdb")
   hierarchy = pdb_in.file_object.construct_hierarchy()
+  crystal_symmetry_model = pdb_in.file_object.crystal_symmetry()
   hierarchy.atoms().reset_i_seq()
   map_coeffs = ccp4_map = None
   if (params.map_coeffs is not None) :
@@ -133,6 +134,8 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     ccp4_map_in = cmdline.get_file(params.map_file)
     ccp4_map_in.check_file_type("ccp4_map")
     ccp4_map = ccp4_map_in.file_object
+
+
   make_header("Iterating over residues", out=out)
   t1 = time.time()
   from mmtbx.ringer import iterate_over_residues
@@ -140,6 +143,7 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     pdb_hierarchy=hierarchy,
     map_coeffs=map_coeffs,
     ccp4_map=ccp4_map,
+    crystal_symmetry_model=crystal_symmetry_model,
     params=params,
     log=out).results
   t2 = time.time()
