@@ -310,6 +310,7 @@ class Script(object):
     all_delta_x = flex.double()
     all_delta_y = flex.double()
     all_delta_z = flex.double()
+    all_delta_xy = flex.double()
     all_delta_xyz = flex.double()
 
     if params.hierarchy_level > 0:
@@ -331,6 +332,7 @@ class Script(object):
       all_local_delta_x = flex.double()
       all_local_delta_y = flex.double()
       all_local_delta_z = flex.double()
+      all_local_delta_xy = flex.double()
       all_local_delta_xyz = flex.double()
 
     # Data for RMSD table
@@ -384,6 +386,7 @@ class Script(object):
       delta_x = flex.double()
       delta_y = flex.double()
       delta_z = flex.double()
+      delta_xy = flex.double()
       delta_xyz = flex.double()
 
       for pg in [pg1, pg2]:
@@ -420,7 +423,7 @@ class Script(object):
         dist_m = dist_s = 0
         lx_m = lx_s = ly_m = ly_s = lz_m = lz_s = 0
         lrx_m = lrx_s = lry_m = lry_s = lrz_m = lrz_s = 0
-        dx = dy = dz = dxyz = 0
+        dx = dy = dz = dxy = dxyz = 0
       else:
         stats = flex.mean_and_variance(dists, pg_weights)
         dist_m = stats.mean()
@@ -450,9 +453,10 @@ class Script(object):
         lrz_m = stats.mean()
         lrz_s = stats.gsl_stats_wsd()
 
-        dx = abs(lab_x[0] - lab_x[1])
-        dy = abs(lab_y[0] - lab_y[1])
-        dz = abs(lab_z[0] - lab_z[1])
+        dx = lab_x[0] - lab_x[1]
+        dy = lab_y[0] - lab_y[1]
+        dz = lab_z[0] - lab_z[1]
+        dxy = math.sqrt(dx**2+dy**2)
         dxyz = math.sqrt(dx**2+dy**2+dz**2)
 
       pg_bc_dists.append(dist_m)
@@ -465,6 +469,7 @@ class Script(object):
       all_delta_x.append(dx)
       all_delta_y.append(dy)
       all_delta_z.append(dz)
+      all_delta_xy.append(dxy)
       all_delta_xyz.append(dxyz)
 
       lab_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
@@ -477,7 +482,7 @@ class Script(object):
                              "%6d"%total_refls])
 
       lab_delta_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
-                                   "%9.3f"%dx, "%9.3f"%dy, "%9.3f"%dz, "%9.3f"%dxyz,
+                                   "%9.3f"%dx, "%9.3f"%dy, "%9.3f"%dz, "%9.3f"%dxy, "%9.3f"%dxyz,
                                    "%6d"%total_refls])
 
       if params.hierarchy_level > 0:
@@ -490,6 +495,7 @@ class Script(object):
         l_dx = flex.double()
         l_dy = flex.double()
         l_dz = flex.double()
+        l_dxy = flex.double()
         l_dxyz = flex.double()
 
         for pg in [pg1, pg2]:
@@ -521,7 +527,7 @@ class Script(object):
         if 0 in pg_weights:
           lx_m = lx_s = ly_m = ly_s = lz_m = lz_s = 0
           lrx_m = lrx_s = lry_m = lry_s = lrz_m = lrz_s = 0
-          ldx = ldy = ldz = ldxyz = 0
+          ldx = ldy = ldz = ldxy = ldxyz = 0
         else:
           stats = flex.mean_and_variance(local_x, pg_weights)
           lx_m = stats.mean()
@@ -547,9 +553,10 @@ class Script(object):
           lrz_m = stats.mean()
           lrz_s = stats.gsl_stats_wsd()
 
-          ldx = abs(local_x[0] - local_x[1])
-          ldy = abs(local_y[0] - local_y[1])
-          ldz = abs(local_z[0] - local_z[1])
+          ldx = local_x[0] - local_x[1]
+          ldy = local_y[0] - local_y[1]
+          ldz = local_z[0] - local_z[1]
+          ldxy = math.sqrt(ldx**2+ldy**2)
           ldxyz = math.sqrt(ldx**2+ldy**2+ldz**2)
 
         pg_local_x_sigmas.append(lx_s)
@@ -561,6 +568,7 @@ class Script(object):
         all_local_delta_x.append(ldx)
         all_local_delta_y.append(ldy)
         all_local_delta_z.append(ldz)
+        all_local_delta_xy.append(ldxy)
         all_local_delta_xyz.append(ldxyz)
 
         local_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
@@ -573,14 +581,14 @@ class Script(object):
                                "%6d"%total_refls])
 
         local_delta_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
-                                       "%9.3f"%ldx, "%9.3f"%ldy, "%9.3f"%ldz, "%9.3f"%ldxyz,
+                                       "%9.3f"%ldx, "%9.3f"%ldy, "%9.3f"%ldz, "%9.3f"%ldxy, "%9.3f"%ldxyz,
                                        "%6d"%total_refls])
 
     # Set up table output, starting with lab table
     table_d = {d:row for d, row in zip(pg_bc_dists, lab_table_data)}
     table_header = ["PanelG","Radial","Lab X","Lab X","Lab Y","Lab Y","Lab Z","Lab Z","Rot X","Rot X","Rot Y","Rot Y","Rot Z","Rot Z","N"]
     table_header2 = ["Id","Dist","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","Refls"]
-    table_header3 = ["", "(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)",""]
+    table_header3 = ["","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)",""]
     lab_table_data = [table_header, table_header2, table_header3]
     lab_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -625,9 +633,9 @@ class Script(object):
 
     # Next, deltas in lab space
     table_d = {d:row for d, row in zip(pg_bc_dists, lab_delta_table_data)}
-    table_header = ["PanelG","Radial","Lab dX","Lab dY","Lab dZ","Lab dXYZ","N"]
-    table_header2 = ["Id","Dist","","","","","Refls"]
-    table_header3 = ["", "(mm)","(mm)","(mm)","(mm)",""]
+    table_header = ["PanelG","Radial","Lab dX","Lab dY","Lab dZ","Lab dXY","Lab dXYZ","N"]
+    table_header2 = ["Id","Dist","","","","","","Refls"]
+    table_header3 = ["","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)",""]
     lab_delta_table_data = [table_header, table_header2, table_header3]
     lab_delta_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -638,6 +646,7 @@ class Script(object):
                                  [all_delta_x,               all_refls_count.as_double(),     "%9.3f"],
                                  [all_delta_y,               all_refls_count.as_double(),     "%9.3f"],
                                  [all_delta_z,               all_refls_count.as_double(),     "%9.3f"],
+                                 [all_delta_xy,              all_refls_count.as_double(),     "%9.3f"],
                                  [all_delta_xyz,             all_refls_count.as_double(),     "%9.3f"]]:
         r2.append("")
         if data is None and weights is None:
@@ -665,7 +674,7 @@ class Script(object):
       table_d = {d:row for d, row in zip(pg_bc_dists, local_table_data)}
       table_header = ["PanelG","Radial","Local X","Local X","Local Y","Local Y","Local Z","Local Z","Rot X","Rot X","Rot Y","Rot Y","Rot Z","Rot Z","N"]
       table_header2 = ["Id","Dist","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","","Sigma","Refls"]
-      table_header3 = ["", "(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)",""]
+      table_header3 = ["","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(deg)","(deg)","(deg)","(deg)","(deg)","(deg)",""]
       local_table_data = [table_header, table_header2, table_header3]
       local_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -709,9 +718,9 @@ class Script(object):
 
       # Next, deltas in local space
       table_d = {d:row for d, row in zip(pg_bc_dists, local_delta_table_data)}
-      table_header = ["PanelG","Radial","Local dX","Local dY","Local dZ","Local dXYZ","N"]
-      table_header2 = ["Id","Dist","","","","","Refls"]
-      table_header3 = ["", "(mm)","(mm)","(mm)","(mm)",""]
+      table_header = ["PanelG","Radial","Local dX","Local dY","Local dZ","Local dXY","Local dXYZ","N"]
+      table_header2 = ["Id","Dist","","","","","","Refls"]
+      table_header3 = ["","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)",""]
       local_delta_table_data = [table_header, table_header2, table_header3]
       local_delta_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -722,6 +731,7 @@ class Script(object):
                                    [all_local_delta_x,               all_refls_count.as_double(),     "%9.3f"],
                                    [all_local_delta_y,               all_refls_count.as_double(),     "%9.3f"],
                                    [all_local_delta_z,               all_refls_count.as_double(),     "%9.3f"],
+                                   [all_local_delta_xy,              all_refls_count.as_double(),     "%9.3f"],
                                    [all_local_delta_xyz,             all_refls_count.as_double(),     "%9.3f"]]:
           r2.append("")
           if data is None and weights is None:
