@@ -80,13 +80,11 @@ def run(args):
       z = zip(p0,p1,p2,p3,p0)
       ax.plot(z[0], z[1], z[2], color=color)
 
-      # Annotation code, not used now
-      #v1 = p1-p0
-      #v2 = p3-p0
-      #vcen = ((v2/2) + (v1/2)) + p0
-      #from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-      #ax.add_collection3d(Poly3DCollection([p0.elems,p1.elems,p2.elems,p3.elems]))
-      #ax.annotate(i, vcen[0:2])
+      # Annotate with panel numbers
+      v1 = p1-p0
+      v2 = p3-p0
+      vcen = ((v2/2) + (v1/2)) + p0
+      ax.text(vcen[0], vcen[1], vcen[2], '%d'%g.index())
 
   fig = plt.figure()
   colormap = plt.cm.gist_ncar
