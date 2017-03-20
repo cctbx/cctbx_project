@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 06/19/2016
+Last Changed: 03/20/2017
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -227,6 +227,9 @@ advanced
   prime_prefix = prime
     .type = str
     .help = Prefix for the PRIME script filename
+  temporary_output_folder = None
+    .type = path
+    .help = If None, temp output goes to <output>/integration/###/tmp/
   random_sample
     .help = Use a randomized subset of images (or -r <number> option)
   {

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/09/2017
+Last Changed: 03/20/2017
 Description : IOTA GUI Initialization module
 '''
 
@@ -24,6 +24,12 @@ import iota.components.iota_dialogs as dlg
 from iota.components.iota_utils import InputFinder
 
 ginp = InputFinder()
+pid = os.getpid()
+
+try:
+  user = os.getlogin()
+except OSError:
+  user = 'iota'
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -32,18 +38,20 @@ if wx.Platform == '__WXGTK__':
   button_font_size = 12
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
+  python = 'python'
 elif wx.Platform == '__WXMAC__':
   norm_font_size = 12
   button_font_size = 14
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
+  python = "Python"
 elif (wx.Platform == '__WXMSW__'):
   norm_font_size = 9
   button_font_size = 11
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
+  python = "Python"    #TODO: make sure it's right!
 
-icons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/')
 
 # ------------------------------- Main Window -------------------------------- #
 
@@ -57,6 +65,14 @@ class MainWindow(wx.Frame):
     self.iota_phil = inp.master_phil
     self.prefs_phil = None
     self.target_phil = None
+
+    # Create some defaults on startup
+    # Figure out temp folder
+    self.iparams = self.iota_phil.extract()
+    tmp_folder = '/tmp/{}_{}'.format(user, pid)
+    self.iparams.advanced.temporary_output_folder = tmp_folder
+
+    self.iota_phil = self.iota_phil.format(python_object=self.iparams)
 
     # Menu bar
     menubar = wx.MenuBar()
@@ -703,14 +719,21 @@ class InitAll(object):
     self.fin_base = os.path.join(self.int_base, 'final')
     self.log_base = os.path.join(self.int_base, 'logs')
     self.viz_base = os.path.join(self.int_base, 'visualization')
-    self.tmp_base = os.path.join('/tmp', '{}_{}'.format(os.getlogin(), time.time()))
+    if str(self.params.advanced.temporary_output_folder).lower() in ('none',''):
+      self.tmp_base = os.path.join(self.int_base, 'tmp')
+    else:
+      self.tmp_base = os.path.join(self.params.advanced.temporary_output_folder)
 
     # Generate base folders
     os.makedirs(self.int_base)
     os.makedirs(self.obj_base)
     os.makedirs(self.fin_base)
     os.makedirs(self.log_base)
-    os.makedirs(self.tmp_base)
+    try:
+      if not os.path.isdir(self.tmp_base):
+        os.makedirs(self.tmp_base)
+    except OSError:
+      pass
 
     # Determine input base
     self.input_base = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))

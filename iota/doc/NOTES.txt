@@ -1,6 +1,6 @@
-IOTA v1.1.006 - GUI bugfixes to IOTA and PRIME
+IOTA v1.1.007 - minor tweaks
 
-1. Several cosmetic bugfixes to PRIME
-2. Fixed IOTA bug which duplicated some finished images, and missed others...
-3. ... which fixed a gauge bug that prevented runs from finishing
-
+1. Temp folder path can be set by user (prevents errors when running on LCLS
+lsf queueing system)
+2. Minor change to integration subfolder numbering system
+3. Removed max limit on nproc spin control

@@ -3,8 +3,8 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 07/08/2016
-Description : iXFEL GUI controls
+Last Changed: 03/20/2017
+Description : IOTA GUI controls
 '''
 
 import wx
@@ -378,7 +378,7 @@ class SpinCtrl(CtrlBase):
                label_style='normal',
                ctrl_size=(60, -1),
                ctrl_value='3',
-               ctrl_max=10,
+               ctrl_max=999999,
                ctrl_min=0,
                ctrl_step=1,
                ctrl_digits=0):

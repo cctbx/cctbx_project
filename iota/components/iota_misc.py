@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 01/06/2017
+Last Changed: 03/20/2017
 Description : Module with miscellaneous useful functions and classes
 '''
 
@@ -113,11 +113,11 @@ def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
   else:
     path = os.path.join(os.path.abspath(out_dir), dirname)
   if os.path.isdir(path):
-    num_dirs = len([dir for dir in os.listdir(path) if check_dirname(path, dir)])
+    n_top = max([int(d) for d in os.listdir(path) if check_dirname(path, d)])
     if sel_flag:
-      new_path = "{}/{:03d}".format(path, num_dirs)
+      new_path = "{}/{:03d}".format(path, n_top)
     else:
-      new_path = "{}/{:03d}".format(path, num_dirs + 1)
+      new_path = "{}/{:03d}".format(path, n_top + 1)
   else:
     new_path = "{}/001".format(path)
   return new_path

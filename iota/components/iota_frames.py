@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 03/13/2017
+Last Changed: 03/20/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -23,6 +23,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from libtbx import easy_pickle as ep
+from libtbx import easy_run
 from libtbx.utils import to_unicode
 from cctbx import miller
 assert miller
@@ -44,16 +45,19 @@ if wx.Platform == '__WXGTK__':
   button_font_size = 12
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
+  python = 'python'
 elif wx.Platform == '__WXMAC__':
   norm_font_size = 12
   button_font_size = 14
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
+  python = "Python"
 elif (wx.Platform == '__WXMSW__'):
   norm_font_size = 9
   button_font_size = 11
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
+  python = "Python"  # TODO: make sure it's right!
 
 # ------------------------------ Input Window -------------------------------- #
 
@@ -121,7 +125,6 @@ class InputWindow(BasePanel):
     self.opt_spc_nprocs = ct.SpinCtrl(self,
                                       label='No. Processors: ',
                                       label_size=(120, -1),
-                                      ctrl_max = total_procs,
                                       ctrl_min = 1,
                                       ctrl_value = str(int(total_procs / 2)))
     self.opt_btn_import = wx.Button(self, label='Import options...')
