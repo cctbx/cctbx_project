@@ -612,8 +612,15 @@ master_phil = iotbx.phil.parse("""
 
     exclude_points_in_ncs_copies = True
       .type = bool
-      .help = Exclude points that are in NCS copies when creating NCS au
+      .help = Exclude points that are in NCS copies when creating NCS au. \
+               Does not apply if add_neighbors=True
       .short_caption = Exclude points in NCS copies
+
+    add_neighbors = False 
+      .type = bool
+      .help = Add neighboring regions around the NCS au. Turns off \
+           exclude_points_in_ncs_copies also.
+      .short_caption = Add neighbors 
   }
 
    control {
@@ -3859,6 +3866,62 @@ def get_effective_radius(ncs_group_obj=None,
   effective_radius=(rms+wrg*rad_gyr)/(1.+wrg)
   return effective_radius
 
+def add_neighbors(params,
+      selected_regions=None,
+      max_length_of_group=None,
+      target_scattered_points=None,
+      tracking_data=None,
+      ncs_group_obj=None):
+
+  #   Add neighboring regions on to selected_regions. 
+  #   Same rules as select_from_seed
+
+  selected_regions=single_list(deepcopy(selected_regions))
+
+  added_regions=[]
+  start_dist=get_effective_radius(ncs_group_obj=ncs_group_obj,
+        target_scattered_points=target_scattered_points,
+        weight_rad_gyr=params.segmentation.weight_rad_gyr,
+        selected_regions=selected_regions)
+  resolution=params.crystal_info.resolution
+  if not resolution: resolution=4.
+  delta_dist=resolution/max(1.,len(selected_regions)) # 
+  max_dist=start_dist+delta_dist
+
+  for x in selected_regions:  # delete, add in alternatives one at a time and
+    #  keep all the ok ones
+    ncs_groups_to_use=get_ncs_related_regions(
+      ncs_group_obj=ncs_group_obj,
+      selected_regions=[x],
+      include_self=False)
+
+    for x in ncs_groups_to_use: # try adding from each group
+      if x in selected_regions+added_regions:
+        continue
+      ncs_group=[[x]]
+      current_scattered_points_list=get_scattered_points_list(selected_regions,
+        region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
+
+      for ncs_set in ncs_group: # pick the best ncs_set from this group
+        if has_intersection(ncs_group_obj.bad_region_list,ncs_set): 
+          continue
+
+        dist=get_effective_radius(ncs_group_obj=ncs_group_obj,
+          target_scattered_points=target_scattered_points,
+          weight_rad_gyr=params.segmentation.weight_rad_gyr,
+          selected_regions=selected_regions+ncs_set)
+
+        if dist <= max_dist:
+          added_regions.append(x)
+
+  selected_regions=selected_regions+added_regions
+  dist=get_effective_radius(ncs_group_obj=ncs_group_obj,
+          target_scattered_points=target_scattered_points,
+          weight_rad_gyr=params.segmentation.weight_rad_gyr,
+          selected_regions=selected_regions)
+
+  return selected_regions,dist
+
 def select_from_seed(params,
       starting_regions,
       target_scattered_points=None,
@@ -4127,8 +4190,16 @@ def select_regions_in_au(params,
   rms=get_closest_neighbor_rms(ncs_group_obj=ncs_group_obj,
     selected_regions=selected_regions,verbose=False,out=out)
 
+  if params.segmentation.add_neighbors:
+    print >>out,"\nAdding neighbor groups..."
+    selected_regions,rms=add_neighbors(params,
+          selected_regions=selected_regions,
+          max_length_of_group=max_length_of_group,
+          target_scattered_points=target_scattered_points,
+          tracking_data=tracking_data,
+          ncs_group_obj=ncs_group_obj)
 
-  print >>out,"\nFinal selected regions: ",
+  print >>out,"\nFinal selected regions with rms of %6.2f: " %(rms),
   for x in selected_regions:
     print >>out,x,
   print >>out
@@ -4248,7 +4319,8 @@ def get_selected_and_related_regions(params,
      expand_size=params.segmentation.expand_size+\
       params.segmentation.mask_additional_expand_size)
   # and all points in NCS-related copies (to be excluded)
-  if params.segmentation.exclude_points_in_ncs_copies:
+  if params.segmentation.exclude_points_in_ncs_copies and (
+     not params.segmentation.add_neighbors):
     bool_ncs_related_mask=get_bool_mask_of_regions(ncs_group_obj=ncs_group_obj,
        region_list=ncs_group_obj.ncs_related_regions)
      # NOTE: using ncs_related_regions here NOT self_and_ncs_related_regions
