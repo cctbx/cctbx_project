@@ -294,6 +294,7 @@ class Script(object):
 
     # Data for lab space table
     lab_table_data = []
+    lab_delta_table_data = []
     all_lab_x = flex.double()
     all_lab_y = flex.double()
     all_lab_z = flex.double()
@@ -306,10 +307,15 @@ class Script(object):
     pg_rotX_sigmas = flex.double()
     pg_rotY_sigmas = flex.double()
     pg_rotZ_sigmas = flex.double()
+    all_delta_x = flex.double()
+    all_delta_y = flex.double()
+    all_delta_z = flex.double()
+    all_delta_xyz = flex.double()
 
     if params.hierarchy_level > 0:
       # Data for local table
       local_table_data = []
+      local_delta_table_data = []
       all_local_x = flex.double()
       all_local_y = flex.double()
       all_local_z = flex.double()
@@ -322,6 +328,10 @@ class Script(object):
       pg_local_rotX_sigmas = flex.double()
       pg_local_rotY_sigmas = flex.double()
       pg_local_rotZ_sigmas = flex.double()
+      all_local_delta_x = flex.double()
+      all_local_delta_y = flex.double()
+      all_local_delta_z = flex.double()
+      all_local_delta_xyz = flex.double()
 
     # Data for RMSD table
     rmsds_table_data = []
@@ -371,6 +381,10 @@ class Script(object):
       rot_X = flex.double()
       rot_Y = flex.double()
       rot_Z = flex.double()
+      delta_x = flex.double()
+      delta_y = flex.double()
+      delta_z = flex.double()
+      delta_xyz = flex.double()
 
       for pg in [pg1, pg2]:
         bc = col(pg.get_beam_centre_lab(s0))
@@ -406,6 +420,7 @@ class Script(object):
         dist_m = dist_s = 0
         lx_m = lx_s = ly_m = ly_s = lz_m = lz_s = 0
         lrx_m = lrx_s = lry_m = lry_s = lrz_m = lrz_s = 0
+        dx = dy = dz = dxyz = 0
       else:
         stats = flex.mean_and_variance(dists, pg_weights)
         dist_m = stats.mean()
@@ -435,6 +450,11 @@ class Script(object):
         lrz_m = stats.mean()
         lrz_s = stats.gsl_stats_wsd()
 
+        dx = abs(lab_x[0] - lab_x[1])
+        dy = abs(lab_y[0] - lab_y[1])
+        dz = abs(lab_z[0] - lab_z[1])
+        dxyz = math.sqrt(dx**2+dy**2+dz**2)
+
       pg_bc_dists.append(dist_m)
       pg_lab_x_sigmas.append(lx_s)
       pg_lab_y_sigmas.append(ly_s)
@@ -442,6 +462,10 @@ class Script(object):
       pg_rotX_sigmas.append(lrx_s)
       pg_rotY_sigmas.append(lry_s)
       pg_rotZ_sigmas.append(lrz_s)
+      all_delta_x.append(dx)
+      all_delta_y.append(dy)
+      all_delta_z.append(dz)
+      all_delta_xyz.append(dxyz)
 
       lab_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
                              "%9.3f"%lx_m, "%9.3f"%lx_s,
@@ -452,6 +476,10 @@ class Script(object):
                              "%9.3f"%lrz_m, "%9.3f"%lrz_s,
                              "%6d"%total_refls])
 
+      lab_delta_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
+                                   "%9.3f"%dx, "%9.3f"%dy, "%9.3f"%dz, "%9.3f"%dxyz,
+                                   "%6d"%total_refls])
+
       if params.hierarchy_level > 0:
         local_x = flex.double()
         local_y = flex.double()
@@ -459,6 +487,10 @@ class Script(object):
         l_rot_X = flex.double()
         l_rot_Y = flex.double()
         l_rot_Z = flex.double()
+        l_dx = flex.double()
+        l_dy = flex.double()
+        l_dz = flex.double()
+        l_dxyz = flex.double()
 
         for pg in [pg1, pg2]:
 
@@ -489,6 +521,7 @@ class Script(object):
         if 0 in pg_weights:
           lx_m = lx_s = ly_m = ly_s = lz_m = lz_s = 0
           lrx_m = lrx_s = lry_m = lry_s = lrz_m = lrz_s = 0
+          ldx = ldy = ldz = ldxyz = 0
         else:
           stats = flex.mean_and_variance(local_x, pg_weights)
           lx_m = stats.mean()
@@ -514,12 +547,21 @@ class Script(object):
           lrz_m = stats.mean()
           lrz_s = stats.gsl_stats_wsd()
 
+          ldx = abs(local_x[0] - local_x[1])
+          ldy = abs(local_y[0] - local_y[1])
+          ldz = abs(local_z[0] - local_z[1])
+          ldxyz = math.sqrt(ldx**2+ldy**2+ldz**2)
+
         pg_local_x_sigmas.append(lx_s)
         pg_local_y_sigmas.append(ly_s)
         pg_local_z_sigmas.append(lz_s)
         pg_local_rotX_sigmas.append(lrx_s)
         pg_local_rotY_sigmas.append(lry_s)
         pg_local_rotZ_sigmas.append(lrz_s)
+        all_local_delta_x.append(ldx)
+        all_local_delta_y.append(ldy)
+        all_local_delta_z.append(ldz)
+        all_local_delta_xyz.append(ldxyz)
 
         local_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
                                "%9.3f"%lx_m, "%9.3f"%lx_s,
@@ -529,6 +571,10 @@ class Script(object):
                                "%9.3f"%lry_m, "%9.3f"%lry_s,
                                "%9.3f"%lrz_m, "%9.3f"%lrz_s,
                                "%6d"%total_refls])
+
+        local_delta_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
+                                       "%9.3f"%ldx, "%9.3f"%ldy, "%9.3f"%ldz, "%9.3f"%ldxyz,
+                                       "%6d"%total_refls])
 
     # Set up table output, starting with lab table
     table_d = {d:row for d, row in zip(pg_bc_dists, lab_table_data)}
@@ -577,6 +623,43 @@ class Script(object):
     print "All: weighted mean of the values shown"
     print
 
+    # Next, deltas in lab space
+    table_d = {d:row for d, row in zip(pg_bc_dists, lab_delta_table_data)}
+    table_header = ["PanelG","Radial","Lab dX","Lab dY","Lab dZ","Lab dXYZ","N"]
+    table_header2 = ["Id","Dist","","","","","Refls"]
+    table_header3 = ["", "(mm)","(mm)","(mm)","(mm)",""]
+    lab_delta_table_data = [table_header, table_header2, table_header3]
+    lab_delta_table_data.extend([table_d[key] for key in sorted(table_d)])
+
+    if len(all_weights) > 1:
+      r1 = ["All"]
+      r2 = ["Mean"]
+      for data, weights, fmt in [[None,None,None],
+                                 [all_delta_x,               all_refls_count.as_double(),     "%9.3f"],
+                                 [all_delta_y,               all_refls_count.as_double(),     "%9.3f"],
+                                 [all_delta_z,               all_refls_count.as_double(),     "%9.3f"],
+                                 [all_delta_xyz,             all_refls_count.as_double(),     "%9.3f"]]:
+        r2.append("")
+        if data is None and weights is None:
+          r1.append("")
+          continue
+        stats = flex.mean_and_variance(data, weights)
+        r1.append(fmt%stats.mean())
+
+      r1.append("")
+      r2.append("%6.1f"%flex.mean(all_refls_count.as_double()))
+      lab_delta_table_data.append(r1)
+      lab_delta_table_data.append(r2)
+
+    print "Detector deltas in lab space"
+    print table_utils.format(lab_delta_table_data,has_header=3,justify='center',delim=" ")
+    print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
+    print "Radial dist: distance from center of panel group to the beam center"
+    print "Lab dX, dY and dZ: delta between X, Y and Z coordinates in lab space"
+    print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
+    print "All: weighted mean of the values shown"
+    print
+
     if params.hierarchy_level > 0:
       # Local table
       table_d = {d:row for d, row in zip(pg_bc_dists, local_table_data)}
@@ -614,13 +697,49 @@ class Script(object):
         local_table_data.append(r1)
         local_table_data.append(r2)
 
-      from libtbx import table_utils
       print "Detector statistics in local frame of each panel group"
       print table_utils.format(local_table_data,has_header=3,justify='center',delim=" ")
       print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
       print "Radial dist: distance from center of panel group to the beam center"
       print "Lab X, Y and Z: mean coordinate in relative to parent panel group"
       print "Rot X, Y and Z: rotation of panel group around parent panel group X, Y and Z axes"
+      print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
+      print "All: weighted mean of the values shown"
+      print
+
+      # Next, deltas in local space
+      table_d = {d:row for d, row in zip(pg_bc_dists, local_delta_table_data)}
+      table_header = ["PanelG","Radial","Local dX","Local dY","Local dZ","Local dXYZ","N"]
+      table_header2 = ["Id","Dist","","","","","Refls"]
+      table_header3 = ["", "(mm)","(mm)","(mm)","(mm)",""]
+      local_delta_table_data = [table_header, table_header2, table_header3]
+      local_delta_table_data.extend([table_d[key] for key in sorted(table_d)])
+
+      if len(all_weights) > 1:
+        r1 = ["All"]
+        r2 = ["Mean"]
+        for data, weights, fmt in [[None,None,None],
+                                   [all_local_delta_x,               all_refls_count.as_double(),     "%9.3f"],
+                                   [all_local_delta_y,               all_refls_count.as_double(),     "%9.3f"],
+                                   [all_local_delta_z,               all_refls_count.as_double(),     "%9.3f"],
+                                   [all_local_delta_xyz,             all_refls_count.as_double(),     "%9.3f"]]:
+          r2.append("")
+          if data is None and weights is None:
+            r1.append("")
+            continue
+          stats = flex.mean_and_variance(data, weights)
+          r1.append(fmt%stats.mean())
+
+        r1.append("")
+        r2.append("%6.1f"%flex.mean(all_refls_count.as_double()))
+        local_delta_table_data.append(r1)
+        local_delta_table_data.append(r2)
+
+      print "Detector deltas relative to panel group origin"
+      print table_utils.format(local_delta_table_data,has_header=3,justify='center',delim=" ")
+      print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
+      print "Radial dist: distance from center of panel group to the beam center"
+      print "Local dX, dY and dZ: delta between X, Y and Z coordinates in the local frame of the panel group"
       print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
       print "All: weighted mean of the values shown"
       print
