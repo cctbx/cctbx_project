@@ -97,6 +97,10 @@ refinement {
 }
 """)
 
+def is_even(filename):
+  import re
+  return int(re.findall(r'\d+', filename)[-1][-1]) % 2 == 0
+
 refine_scope = parse("""
   include scope dials.command_line.refine.phil_scope
 """, process_includes=True)
@@ -142,13 +146,12 @@ def run(args):
       all_ref.extend(ref)
 
     if params.split_dataset:
-      import re
       even_exp = []
       odd_exp = []
       even_ref = []
       odd_ref = []
       for exp, ref in zip(all_exp, all_ref):
-        if int(re.findall(r'\d+', exp)[-1][-1]) % 2 == 0:
+        if is_even(exp):
           even_exp.append(exp)
           even_ref.append(ref)
         else:
@@ -188,8 +191,50 @@ def run(args):
   else:
     assert len(paths) == 0
     assert params.n_subset is None
-    assert not params.split_dataset
-    refine(params, merged_scope, params.data_phil)
+    if params.split_dataset:
+      print "Refining full dataset using tag", params.tag
+      refine(params, merged_scope, params.data_phil)
+
+      input_scope = parse("""
+        input {
+          experiments = None
+            .type = str
+            .multiple = True
+            .help = "The experiment list file path"
+          reflections = None
+            .type = str
+            .multiple = True
+            .help = "The reflection table file path"
+        }
+        """)
+      input_params = input_scope.fetch(parse(file_name = params.data_phil)).extract()
+      even_exp = []
+      odd_exp = []
+      even_ref = []
+      odd_ref = []
+      for f in input_params.input.experiments:
+        if is_even(f):
+          even_exp.append(f)
+        else:
+          odd_exp.append(f)
+      for f in input_params.input.reflections:
+        if is_even(f):
+          even_ref.append(f)
+        else:
+          odd_ref.append(f)
+      base_tag = params.tag
+      params.tag = base_tag + "_1"
+      odd_combine_phil = write_combine_phil(params, odd_exp, odd_ref)
+      params.tag = base_tag + "_2"
+      even_combine_phil = write_combine_phil(params, even_exp, even_ref)
+
+      params.tag = base_tag + "_1"
+      print "Refining odd numbered data using tag", params.tag
+      refine(params, merged_scope, odd_combine_phil)
+
+      params.tag = base_tag + "_2"
+      print "Refining even numbered data using tag", params.tag
+      refine(params, merged_scope, even_combine_phil)
 
 def find_files(path, reflections):
   all_exp = []
