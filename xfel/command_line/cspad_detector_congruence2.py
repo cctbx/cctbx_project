@@ -307,6 +307,22 @@ class Script(object):
     pg_rotY_sigmas = flex.double()
     pg_rotZ_sigmas = flex.double()
 
+    if params.hierarchy_level > 0:
+      # Data for local table
+      local_table_data = []
+      all_local_x = flex.double()
+      all_local_y = flex.double()
+      all_local_z = flex.double()
+      pg_local_x_sigmas = flex.double()
+      pg_local_y_sigmas = flex.double()
+      pg_local_z_sigmas = flex.double()
+      all_local_rotX = flex.double()
+      all_local_rotY = flex.double()
+      all_local_rotZ = flex.double()
+      pg_local_rotX_sigmas = flex.double()
+      pg_local_rotY_sigmas = flex.double()
+      pg_local_rotZ_sigmas = flex.double()
+
     # Data for RMSD table
     rmsds_table_data = []
 
@@ -436,24 +452,7 @@ class Script(object):
                              "%9.3f"%lrz_m, "%9.3f"%lrz_s,
                              "%6d"%total_refls])
 
-    if params.hierarchy_level > 0:
-      # Data for local table
-      local_table_data = []
-      all_local_x = flex.double()
-      all_local_y = flex.double()
-      all_local_z = flex.double()
-      pg_local_x_sigmas = flex.double()
-      pg_local_y_sigmas = flex.double()
-      pg_local_z_sigmas = flex.double()
-      all_local_rotX = flex.double()
-      all_local_rotY = flex.double()
-      all_local_rotZ = flex.double()
-      pg_local_rotX_sigmas = flex.double()
-      pg_local_rotY_sigmas = flex.double()
-      pg_local_rotZ_sigmas = flex.double()
-
-      for pg_id, (pg1, pg2) in enumerate(zip(iterate_detector_at_level(root1, 0, params.hierarchy_level),
-                                             iterate_detector_at_level(root2, 0, params.hierarchy_level))):
+      if params.hierarchy_level > 0:
         local_x = flex.double()
         local_y = flex.double()
         local_z = flex.double()
@@ -522,14 +521,14 @@ class Script(object):
         pg_local_rotY_sigmas.append(lry_s)
         pg_local_rotZ_sigmas.append(lrz_s)
 
-        local_table_data.append(["%d"%pg_id, "%5.1f"%pg_bc_dists[pg_id],
+        local_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
                                "%9.3f"%lx_m, "%9.3f"%lx_s,
                                "%9.3f"%ly_m, "%9.3f"%ly_s,
                                "%9.3f"%lz_m, "%9.3f"%lz_s,
                                "%9.3f"%lrx_m, "%9.3f"%lrx_s,
                                "%9.3f"%lry_m, "%9.3f"%lry_s,
                                "%9.3f"%lrz_m, "%9.3f"%lrz_s,
-                               "%6d"%all_refls_count[pg_id]])
+                               "%6d"%total_refls])
 
     # Set up table output, starting with lab table
     table_d = {d:row for d, row in zip(pg_bc_dists, lab_table_data)}
