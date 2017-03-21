@@ -4193,7 +4193,8 @@ def select_regions_in_au(params,
   rms=get_closest_neighbor_rms(ncs_group_obj=ncs_group_obj,
     selected_regions=selected_regions,verbose=False,out=out)
 
-  if params.segmentation.add_neighbors:
+  if params.segmentation.add_neighbors and \
+       ncs_group_obj.ncs_obj.max_operators()>1:
     print >>out,"\nAdding neighbor groups..."
     selected_regions,rms=add_neighbors(params,
           selected_regions=selected_regions,
