@@ -77,9 +77,6 @@ class Script(object):
       raise Sorry("Please ensure moving has only 1 detector model")
     moving = moving_experiments.detectors()[0]
 
-    reference_sites = flex.vec3_double()
-    moving_sites = flex.vec3_double()
-
     # Get list of panels to compare
     if params.panel_list is None or len(params.panel_list) == 0:
       assert len(reference) == len(moving), "Detectors not same length"
@@ -90,18 +87,25 @@ class Script(object):
       assert max_p_id < len(moving), "Moving detector must be at least %d panels long given the panel list"%(max_p_id+1)
       panel_ids = params.panel_list
 
-    # Treat panels a a list of 4 sites for use with lsq superpose
+    # Treat panels as a list of 4 sites for use with lsq superpose
+    reference_sites = flex.vec3_double()
+    moving_sites = flex.vec3_double()
     for panel_id in panel_ids:
       for detector, sites in zip([reference, moving], [reference_sites, moving_sites]):
         panel = detector[panel_id]
         size = panel.get_image_size()
-        for point in [(0,0),(0,size[1]),(size[0],0),(size[0],size[1])]:
+        for point in [(0,0),(0,size[1]-1),(size[0]-1,size[1]-1),(size[0]-1,0)]:
           sites.append(panel.get_pixel_lab_coord(point))
 
     # Compute super position
+    rmsd = 1000*math.sqrt((reference_sites-moving_sites).sum_sq()/len(reference_sites))
+    print "RMSD before fit: %.1f microns"%rmsd
     lsq = least_squares_fit(reference_sites, moving_sites)
     rmsd = 1000*math.sqrt((reference_sites-lsq.other_sites_best_fit()).sum_sq()/len(reference_sites))
     print "RMSD of fit: %.1f microns"%rmsd
+    angle, axis = lsq.r.r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(deg=True)
+    print "Axis and angle of rotation: (%.3f, %.3f, %.3f), %.2f degrees"%(axis[0], axis[1], axis[2], angle)
+    print "Translation (x, y, z, in microns): (%.3f, %.3f, %.3f)"% (1000 * lsq.t).elems
 
     # Apply the shifts
     if params.apply_at_hierarchy_level == None:
@@ -114,10 +118,25 @@ class Script(object):
       slow = col(group.get_slow_axis())
       ori = col(group.get_origin())
 
-      group.set_frame(lsq.r * fast, lsq.r * slow, ori + lsq.t)
+      group.set_frame(lsq.r * fast, lsq.r * slow, (lsq.r*ori) + lsq.t)
+
+      fast = col(group.get_fast_axis())
+      slow = col(group.get_slow_axis())
+      ori = col(group.get_origin())
 
     from dxtbx.serialize import dump
     dump.experiment_list(moving_experiments, "superposed_experiments.json")
+
+    moved_sites = flex.vec3_double()
+    for panel_id in panel_ids:
+      panel = moving[panel_id]
+      size = panel.get_image_size()
+      for point in [(0,0),(0,size[1]-1),(size[0]-1,size[1]-1),(size[0]-1,0)]:
+        moved_sites.append(panel.get_pixel_lab_coord(point))
+
+    # Re-compute RMSD after moving detector components
+    rmsd = 1000*math.sqrt((reference_sites-moved_sites).sum_sq()/len(reference_sites))
+    print "RMSD of fit after movement: %.1f microns"%rmsd
 
 if __name__ == '__main__':
   from dials.util import halraiser
