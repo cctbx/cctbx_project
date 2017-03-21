@@ -654,8 +654,9 @@ class Script(object):
     lab_delta_table_data.extend([table_d[key] for key in sorted(table_d)])
 
     if len(all_weights) > 1:
-      r1 = ["All"]
-      r2 = ["Mean"]
+      r1 = ["WMean"]
+      r2 = ["WStddev"]
+      r3 = ["Mean"]
       for data, weights, fmt in [[None,None,None],
                                  [all_delta_x,               all_refls_count.as_double(),     "%9.3f"],
                                  [all_delta_y,               all_refls_count.as_double(),     "%9.3f"],
@@ -664,17 +665,21 @@ class Script(object):
                                  [all_delta_xyz,             all_refls_count.as_double(),     "%9.3f"],
                                  [all_delta_r,               all_refls_count.as_double(),     "%9.3f"],
                                  [all_delta_t,               all_refls_count.as_double(),     "%9.3f"]]:
-        r2.append("")
+        r3.append("")
         if data is None and weights is None:
           r1.append("")
+          r2.append("")
           continue
         stats = flex.mean_and_variance(data, weights)
         r1.append(fmt%stats.mean())
+        r2.append(fmt%stats.gsl_stats_wsd())
 
       r1.append("")
-      r2.append("%6.1f"%flex.mean(all_refls_count.as_double()))
+      r2.append("")
+      r3.append("%6.1f"%flex.mean(all_refls_count.as_double()))
       lab_delta_table_data.append(r1)
       lab_delta_table_data.append(r2)
+      lab_delta_table_data.append(r3)
 
     print "Detector deltas in lab space"
     print table_utils.format(lab_delta_table_data,has_header=3,justify='center',delim=" ")
@@ -683,7 +688,9 @@ class Script(object):
     print "Lab dX, dY and dZ: delta between X, Y and Z coordinates in lab space"
     print "Lab dR, dT and dZ: radial and transverse components of dXY in lab space"
     print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
-    print "All: weighted mean of the values shown"
+    print "WMean: weighted mean of the values shown"
+    print "WStddev: weighted standard deviation of the values shown"
+    print "Mean: mean of the values shown"
     print
 
     if params.hierarchy_level > 0:
@@ -742,25 +749,30 @@ class Script(object):
       local_delta_table_data.extend([table_d[key] for key in sorted(table_d)])
 
       if len(all_weights) > 1:
-        r1 = ["All"]
-        r2 = ["Mean"]
+        r1 = ["WMean"]
+        r2 = ["WStddev"]
+        r3 = ["Mean"]
         for data, weights, fmt in [[None,None,None],
                                    [all_local_delta_x,               all_refls_count.as_double(),     "%9.3f"],
                                    [all_local_delta_y,               all_refls_count.as_double(),     "%9.3f"],
                                    [all_local_delta_z,               all_refls_count.as_double(),     "%9.3f"],
                                    [all_local_delta_xy,              all_refls_count.as_double(),     "%9.3f"],
                                    [all_local_delta_xyz,             all_refls_count.as_double(),     "%9.3f"]]:
-          r2.append("")
+          r3.append("")
           if data is None and weights is None:
             r1.append("")
+            r2.append("")
             continue
           stats = flex.mean_and_variance(data, weights)
           r1.append(fmt%stats.mean())
+          r2.append(fmt%stats.gsl_stats_wsd())
 
         r1.append("")
-        r2.append("%6.1f"%flex.mean(all_refls_count.as_double()))
+        r2.append("")
+        r3.append("%6.1f"%flex.mean(all_refls_count.as_double()))
         local_delta_table_data.append(r1)
         local_delta_table_data.append(r2)
+        local_delta_table_data.append(r3)
 
       print "Detector deltas relative to panel group origin"
       print table_utils.format(local_delta_table_data,has_header=3,justify='center',delim=" ")
