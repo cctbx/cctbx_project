@@ -1893,7 +1893,8 @@ def chain_type_and_residues(text=None,chain_type=None):
     if let in all_letters:
       new_text+=let
   text=new_text
-
+  if not text:
+    return None,None
   # See which chain_type matches best
   count_dict={}
   non_allowed_count_dict={}
