@@ -139,6 +139,12 @@ xtc_phil_str = '''
       .type = int
       .help = Optional. Useful for organizing runs with similar parameters into logical \
               groupings.
+    known_orientations_folder = None
+      .type = str
+      .expert_level = 2
+      .help = Folder with previous processing results including crystal orientations. \
+              If specified, images will not be re-indexed, but instead the known \
+              orientations will be used.
  }
   format {
     file_format = *cbf pickle
@@ -776,6 +782,17 @@ class InMemScript(DialsProcessScript):
       self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
     if "%s" in self.reindexedstrong_filename_template:
       self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
+
+    if self.params.input.known_orientations_folder is not None:
+      expected_orientation_path = os.path.join(self.params.input.known_orientations_folder, os.path.basename(self.params.output.refined_experiments_filename))
+      if os.path.exists(expected_orientation_path):
+        print "Known orientation found"
+        from dxtbx.model.experiment_list import ExperimentListFactory
+        self.known_crystal_models = ExperimentListFactory.from_json_file(expected_orientation_path, check_format=False).crystals()
+      else:
+        print "Image not previously indexed, skipping."
+        self.debug_write("not_previously_indexed", "stop")
+        return
 
     # Load a dials mask from the trusted range and psana mask
     from dials.util.masking import MaskGenerator
