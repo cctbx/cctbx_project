@@ -621,6 +621,11 @@ master_phil = iotbx.phil.parse("""
       .help = Add neighboring regions around the NCS au. Turns off \
            exclude_points_in_ncs_copies also.
       .short_caption = Add neighbors 
+
+    add_neighbors_dist = 1.
+      .type = float
+      .help = Max increase in radius of gyration by adding region to keep it.
+      .short_caption = Add neighbors dist
   }
 
    control {
@@ -3883,9 +3888,7 @@ def add_neighbors(params,
         target_scattered_points=target_scattered_points,
         weight_rad_gyr=params.segmentation.weight_rad_gyr,
         selected_regions=selected_regions)
-  resolution=params.crystal_info.resolution
-  if not resolution: resolution=4.
-  delta_dist=resolution/max(1.,len(selected_regions)) # 
+  delta_dist=params.segmentation.add_neighbors_dist
   max_dist=start_dist+delta_dist
 
   for x in selected_regions:  # delete, add in alternatives one at a time and
