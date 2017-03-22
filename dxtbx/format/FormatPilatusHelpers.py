@@ -81,3 +81,19 @@ def determine_pilatus_mask(xdetector):
 
   return mask
 
+def get_vendortype(xdetector):
+  array = xdetector[0].get_image_size()
+  if array == (2463,2527): return "Pilatus-6M"
+  elif array == (2463,195): return "Pilatus-6M" # special treatment of Pilatus-12M, treat as -6M for the viewer
+  elif array == (1475,1679): return "Pilatus-2M"
+  elif array == (487,619): return "Pilatus-300K"
+  return "Undetermined Pilatus size"
+
+def get_vendortype_eiger(xdetector):
+  array = xdetector[0].get_image_size()
+  print array,
+  if array == (4150,4371): return "Eiger-16M"
+  elif array == (3110,3269): return "Eiger-9M"
+  elif array == (2070,2167): return "Eiger-4M"
+  elif array == (1030,1065): return "Eiger-1M"
+  return "Undetermined EigerX size"

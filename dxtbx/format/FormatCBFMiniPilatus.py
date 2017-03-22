@@ -240,6 +240,10 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     self.detectorbase = PilatusImage(self._image_file)
     self.detectorbase.readHeader() # necessary for LABELIT
 
+  def get_vendortype(self):
+    from dxtbx.format.FormatPilatusHelpers import get_vendortype as gv
+    return gv(self.get_detector())
+
   @staticmethod
   def as_file(detector,beam,gonio,scan,data,path):
     """Note to developers: first attempt to write a miniCBF given a dxtbx-style experiment,

@@ -177,6 +177,10 @@ class FormatCBFFullPilatus(FormatCBFFull):
     # of the trusted range)
     return tuple([m & tm for m, tm in zip(mask, trusted_mask)])
 
+  def get_vendortype(self):
+    from dxtbx.format.FormatPilatusHelpers import get_vendortype as gv
+    return gv(self.get_detector())
+
 if __name__ == '__main__':
 
   import sys

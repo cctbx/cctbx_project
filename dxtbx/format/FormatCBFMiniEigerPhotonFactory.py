@@ -141,6 +141,10 @@ class FormatCBFMiniEigerPhotonFactory(FormatCBFMini):
     self.detectorbase.parameters['SIZE1'] = 2167
     self.detectorbase.parameters['SIZE2'] = 2070
 
+  def get_vendortype(self):
+    from dxtbx.format.FormatPilatusHelpers import get_vendortype_eiger as gv
+    return gv(self.get_detector())
+
 if __name__ == '__main__':
 
   import sys

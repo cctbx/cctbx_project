@@ -253,6 +253,10 @@ class FormatCBFMiniEiger(FormatCBFMini):
     self.detectorbase = EigerCBFImage(self._image_file)
     self.detectorbase.readHeader()
 
+  def get_vendortype(self):
+    from dxtbx.format.FormatPilatusHelpers import get_vendortype_eiger as gv
+    return gv(self.get_detector())
+
 if __name__ == '__main__':
 
   import sys

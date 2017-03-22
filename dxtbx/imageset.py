@@ -44,6 +44,9 @@ class ReaderBase(object):
   def get_detectorbase(self, index=None):
     pass
 
+  def get_vendortype(self, index=None):
+    pass
+
   def get_detector(self, index=None):
     pass
 
@@ -180,6 +183,9 @@ class SingleFileReader(ReaderBase):
   def get_detectorbase(self, index=None):
     '''Get the detector base instance.'''
     return self.get_format().get_detectorbase(index)
+
+  def get_vendortype(self, index=None):
+    return self.get_format().get_vendortype()
 
   def get_detector(self, index=None):
     '''Get the detector instance.'''
@@ -332,6 +338,9 @@ class MultiFileReader(ReaderBase):
     '''Get the detector base instance at given index.'''
     return self.get_format(index).get_detectorbase()
 
+  def get_vendortype(self, index=None):
+    return self.get_format(index).get_vendortype()
+
   def get_detector(self, index=None):
     '''Get the detector instance at given index.'''
     return self.get_format(index).get_detector()
@@ -433,6 +442,9 @@ class MemReader(ReaderBase):
 
   def get_detectorbase(self, index=None):
     return self._images[index].get_detectorbase()
+
+  def get_vendortype(self, index=None):
+    return self._images[index].get_vendortype()
 
   def get_detector(self, index=None):
     return self._images[index].get_detector()
@@ -744,6 +756,10 @@ class ImageSet(object):
   def get_detectorbase(self, index):
     ''' Get the detector base instance for the given index. '''
     return self.reader().get_detectorbase(self._image_index(index))
+
+  def get_vendortype(self, index):
+    ''' Get the vendor information. '''
+    return self.reader().get_vendortype()
 
   def reader(self):
     ''' Return the image set reader. '''

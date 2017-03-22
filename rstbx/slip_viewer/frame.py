@@ -43,6 +43,9 @@ class chooser_wrapper(object):
   def get_detectorbase(self):
     return self.image_set.get_detectorbase(self.index)
 
+  def get_vendortype(self):
+    return self.image_set.get_vendortype(self.index)
+
   def show_header(self):
     return self.image_set.get_detectorbase(self.index).show_header()
 
@@ -655,7 +658,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
             brightness=self.settings.brightness / 100,
             data=data[0],
             saturation=detector[0].get_trusted_range()[1],
-            vendortype=raw_img.get_detectorbase().vendortype)
+            vendortype=raw_img.get_vendortype())
 
         if flex_img.supports_rotated_tiles_antialiasing_recommended:
             currentZoom = self.pyslip.level
@@ -744,7 +747,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
             brightness=self.settings.brightness / 100,
             data=data[0],
             saturation=detector[0].get_trusted_range()[1],
-            vendortype=raw_img.get_detectorbase().vendortype)
+            vendortype=raw_img.get_vendortype())
 
         flex_img.setWindow(0, 0, 1)
         flex_img.adjust(color_scheme=self.settings.color_scheme)

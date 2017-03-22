@@ -367,6 +367,10 @@ class FormatEigerNearlyNexus(FormatHDF5):
     self.detectorbase_start(index)
     return self.detectorbase
 
+  def get_vendortype(self):
+    from dxtbx.format.FormatPilatusHelpers import get_vendortype_eiger as gv
+    return gv(self.get_detector())
+
 if __name__ == '__main__':
   import sys
 
