@@ -59,6 +59,7 @@ class reindexing_operators(object):
         try: common_lattice_group.expand_smx(s)
         except RuntimeError:
           common_lattice_group=None
+          break
       if  common_lattice_group is not None:
         common_lattice_group.make_tidy()
 
