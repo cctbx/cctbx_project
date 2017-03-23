@@ -202,7 +202,7 @@ Crystal:
   for i in range(num_scan_points):
     A_orig = matrix.sqr(model.get_A_at_scan_point(i))
     A_min = matrix.sqr(model_minimum.get_A_at_scan_point(i))
-    assert A_min == A_orig * M_inv
+    assert approx_equal(A_min, A_orig * M_inv)
 
 def exercise_similarity():
 
@@ -223,7 +223,7 @@ def exercise_similarity():
   model_1.set_mosaicity(0.5)
   model_2.set_mosaicity(0.63) # outside tolerance
   assert not model_1.is_similar_to(model_2)
-  model_2.set_mosaicity(0.625) #just inside tolerance
+  model_2.set_mosaicity(0.62) #just inside tolerance
 
   # orientation tests
   R = matrix.sqr(model_2.get_U())
