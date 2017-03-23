@@ -332,16 +332,16 @@ def prepare_f_obs_and_flags(f_obs, r_free_flags):
 def result_message(cc12, cc13, cc23):
   if (cc13 < 0.7 or
       (cc23 > cc12 and cc23 > cc13) or (cc13 < cc12 and cc13 < cc23)):
-    msg = 'Polder map is likely to show noise.'
+    msg = """The polder map is very likely to show bulk-solvent or noise."""
   elif (cc13 >= 0.8):
-    msg = 'The polder map is very likely to show the ligand.'
+    msg = 'The polder map is likely to show the ligand.'
   elif (cc13 >= 0.7 and cc13 < 0.8):
     if (cc23 < 0.7*cc13):
-      msg = """The polder map is likely to show the ligand.
-But it is recommended to inspect the maps to make a clear decision."""
+      msg = """The polder map is more likely to show ligand than bulk solvent.
+But it is recommended to inspect the maps to confirm."""
     else:
-      msg = """The polder map resembles bulk solvent.
-But it is recommended to inspect the maps to make a clear decision."""
+      msg = """The polder map is more likely to show bulk-solvent or noise
+instead of the ligand. But it is recommended to inspect the maps to confirm."""
   return msg
 
 # parse through command line arguments
