@@ -6202,6 +6202,10 @@ def run(args,
       target_xyz=target_hierarchy.atoms().extract_xyz()
       del target_hierarchy
 
+    # We can use params.input_files.target_ncs_au_file here to define ncs au
+    if target_xyz and not target_scattered_points: 
+       target_scattered_points=target_xyz # ZZZ
+
     # get the chain types and therefore (using ncs_copies) volume fraction
     tracking_data=get_solvent_fraction(params,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)

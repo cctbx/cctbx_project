@@ -371,20 +371,24 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       coordinate_offset=None,
       new_unit_cell=None,
       scale_factor=None,
+      ops_to_keep=None,
       hierarchy_to_match_order=None):  # make full copy;
     # optionally apply change-of-basis operator (requires old, new unit cells)
     # optionally apply coordinate_offset (adding coordinate_offset to coords)
     # optionally sort operators to match order in hierarchy
     # optionally apply scale factor (magnification)
+    # optionally keep only ops_to_keep operators
 
-    # Can do only one of the above four things
+    # Can do only one of the above five things at most
     assert [change_of_basis_operator,scale_factor,
-      coordinate_offset,hierarchy_to_match_order].count(None)>=3
+      coordinate_offset,ops_to_keep,hierarchy_to_match_order].count(None)>=4
 
     if hierarchy_to_match_order and self._chain_residue_id is not None:
-
       return self.deep_copy_order(
-        hierarchy_to_match_order=hierarchy_to_match_order)
+         hierarchy_to_match_order=hierarchy_to_match_order)
+
+    if ops_to_keep:
+      return self.deep_copy_ops_to_keep(ops_to_keep=ops_to_keep)
 
     from mmtbx.ncs.ncs import ncs
     from copy import deepcopy
@@ -415,6 +419,50 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new._cc=deepcopy(self._cc)
     new._exclude_h=self._exclude_h
     new._exclude_d=self._exclude_d
+    return new
+
+  def deep_copy_ops_to_keep(self,ops_to_keep=None):
+    # keep only ops_to_keep operators
+    assert ops_to_keep is not None
+
+    new=self.deep_copy() # exact copy.  Now remove all except ops_to_keep
+
+    new._n_ncs_oper=0
+    new._rota_matrices=[]
+    new._rota_matrices_inv=[]
+    new._translations_orth=[]
+    new._translations_orth_inv=[]
+    new._residues_in_common_list=[]
+    new._centers=[]
+
+    new._rmsd_list=[]
+    new._residues_in_common_list=[]
+
+    if self._chain_residue_id:
+      [group,residue_range_list]=self._chain_residue_id
+    else:
+      group=self._n_ncs_oper*[None]
+      residue_range_list=self._n_ncs_oper*[None]
+    new_residue_range_list=[]
+    new_group=[]
+    
+    for i in xrange(self._n_ncs_oper):
+      if i in ops_to_keep:
+        new._n_ncs_oper+=1
+        new._rota_matrices.append(self.rota_matrices()[i])
+        new._rota_matrices_inv.append(self.rota_matrices_inv()[i])
+        new._translations_orth.append(self.translations_orth()[i])
+        new._translations_orth_inv.append(self.translations_orth_inv()[i])
+        new._rmsd_list.append(self._rmsd_list[i])
+        new._residues_in_common_list.append(self._residues_in_common_list[i])
+        new._centers.append(self._centers[i])
+        new_residue_range_list.append(residue_range_list[i])
+        new_group.append(group[i])
+
+    if self._chain_residue_id:
+      new._chain_residue_id=[new_group,new_residue_range_list]
+    else:
+      new._chain_residue_id=None
     return new
 
   def get_order_dict(self,hierarchy_to_match_order=None):
@@ -1213,6 +1261,7 @@ class ncs:
       coordinate_offset=None,
       scale_factor=None,
       new_unit_cell=None,
+      ops_to_keep=None,
       hierarchy_to_match_order=None):  # make a copy
     from mmtbx.ncs.ncs import ncs
 
@@ -1222,12 +1271,15 @@ class ncs:
     new._ncs_read=self._ncs_read
     # deep_copy over all the ncs groups:
     for ncs_group in self._ncs_groups:
-      new._ncs_groups.append(ncs_group.deep_copy(
+      new_group=ncs_group.deep_copy(
          change_of_basis_operator=change_of_basis_operator,
          coordinate_offset=coordinate_offset,
          scale_factor=scale_factor,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell,
-         hierarchy_to_match_order=hierarchy_to_match_order))
+         ops_to_keep=ops_to_keep,
+         hierarchy_to_match_order=hierarchy_to_match_order)
+
+      new._ncs_groups.append(new_group)
     return new
 
   def change_of_basis(self,change_of_basis_operator=None,unit_cell=None,
@@ -1890,3 +1942,14 @@ if __name__=="__main__":
       print ncs_object.is_point_group_symmetry()
       print "IS helical:",
       print ncs_object.is_helical_along_z()
+    if 1:
+      file3='OUTPUT2.NCS'
+      new_ncs_object=ncs_object.deep_copy(ops_to_keep=[0,1,6])
+      text=new_ncs_object.format_all_for_group_specification(file_name=file3)
+      print text
+      print "IS point-group: ",
+      print new_ncs_object.is_point_group_symmetry()
+      print "IS helical:",
+      print new_ncs_object.is_helical_along_z()
+
+  
