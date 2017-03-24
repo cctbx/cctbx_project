@@ -183,7 +183,12 @@ class torsion_ncs(object):
             for rg1, rg2 in zip(ic.residue_groups(), jc.residue_groups()):
               resname1 = rg1.atom_groups()[0].resname
               resname2 = rg2.atom_groups()[0].resname
-              if resname1 != resname2:
+              if (resname1 != resname2 and
+                  # This excludes the case when in one NCS copy residue is MET
+                  # and in another - MSE. They will be excluded without
+                  # raising Sorry. They could matched, but it is difficult
+                  # to figure out in this code how to make it happen.
+                  not (resname1 in ["MET", "MSE"] and resname1 in ["MET", "MSE"])):
                 msg = "Error in matching procedure: matching "
                 msg += "'%s %s' and '%s %s'.\n" % (
                     resname1, rg1.id_str(), resname2, rg2.id_str())
