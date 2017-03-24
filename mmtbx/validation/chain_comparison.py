@@ -27,6 +27,12 @@ master_phil = iotbx.phil.parse("""
       .help = Use only unique chains in query
       .short_caption = Unique only
 
+    unique_target_pdb_in = None
+      .type = path
+      .help = Target model to choose which element is selected with \
+           unique_only. NOTE: must be specified by keyword.
+      .short_caption = Target model
+
     query_dir = None
       .type = path
       .help = directory containing query PDB files (any number)
@@ -208,13 +214,23 @@ def get_match_percent(seq1,seq2):
   match_percent=100.*match_n/len(seq1)
   return match_n,match_percent
 
-def extract_unique_part_of_hierarchy(ph,out=sys.stdout):
+def extract_unique_part_of_hierarchy(ph,target_ph=None,out=sys.stdout):
   new_hierarchy=iotbx.pdb.input(
     source_info="Model",lines=flex.split_lines("")).construct_hierarchy()
   mm=iotbx.pdb.hierarchy.model()
   new_hierarchy.append_model(mm)
 
+  if target_ph:
+    target_centroid_list=flex.vec3_double()
+    for model in target_ph.models()[:1]:
+      for chain in model.chains():
+        target_centroid_list.append(chain.atoms().extract_xyz().mean())
+  else:
+    target_centroid_list=None
+
   unique_sequences=[]
+  best_chain_dict={}
+  best_chain_dist_dict={}
   for model in ph.models()[:1]:
     for chain in model.chains():
       try:
@@ -223,10 +239,28 @@ def extract_unique_part_of_hierarchy(ph,out=sys.stdout):
         seq="XXX"
       if not seq in unique_sequences:
         unique_sequences.append(seq)
-        mm.append_chain(chain.detached_copy())
-        print >>out,"Adding chain %s" %(chain.id)
+      if target_centroid_list:
+        xx=flex.vec3_double()
+        xx.append(chain.atoms().extract_xyz().mean())
+        dist=xx.min_distance_between_any_pair(target_centroid_list)
       else:
-        print >>out,"Skipping chain %s" %(chain.id)
+        dist=0.
+      best_dist=best_chain_dist_dict.get(seq)
+      if best_dist is None or dist<best_dist:
+        best_chain_dist_dict[seq]=dist
+        best_chain_dict[seq]=chain
+
+  for seq in best_chain_dist_dict.keys():
+    chain=best_chain_dict[seq]
+    if not chain:
+      print >>out,"Mising chain for sequence %s" %(seq)
+    else:
+      mm.append_chain(chain.detached_copy())
+      print >>out, "Adding chain %s: %s (%s): %7.2f" %(
+         chain.id,seq.replace("X",""),str(chain.atoms().extract_xyz()[0]),
+         best_chain_dist_dict[seq])
+
+
   return new_hierarchy
 
 def run_all(params=None,out=sys.stdout):
@@ -305,6 +339,9 @@ def run(args=None,
     pass # it is fine
   else:
     raise Sorry("Need target model (pdb_in)")
+  if params.input_files.unique_target_pdb_in and params.input_files.unique_only:
+    print >>out,"Using %s as target for unique chains" %(
+       params.input_files.unique_target_pdb_in)
   if params.input_files.query_dir and \
       os.path.isdir(params.input_files.query_dir):
     print >>out,"\nUsing all files in %s as queries\n" %(
@@ -341,13 +378,18 @@ def run(args=None,
   if not chain_hierarchy or not target_hierarchy:
     assert chain_file and target_file
     pdb_inp=get_pdb_inp(file_name=chain_file  )
+    if params.input_files.unique_target_pdb_in:
+      target_unique_hierarchy=get_pdb_inp(
+        file_name=params.input_files.unique_target_pdb_in).construct_hierarchy()
+    else:
+      target_unique_hierarchy=None
     if not crystal_symmetry:
       crystal_symmetry=pdb_inp.crystal_symmetry_from_cryst1()
     chain_hierarchy=pdb_inp.construct_hierarchy()
     if params.input_files.unique_only:
       print >>out,"\nUsing only unique part of query\n"
       chain_hierarchy=extract_unique_part_of_hierarchy(
-        chain_hierarchy,out=local_out)
+        chain_hierarchy,target_ph=target_unique_hierarchy,out=local_out)
     target_pdb_inp=get_pdb_inp(file_name=target_file)
     if not crystal_symmetry or not crystal_symmetry.unit_cell():
       crystal_symmetry=target_pdb_inp.crystal_symmetry_from_cryst1()

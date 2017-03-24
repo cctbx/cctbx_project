@@ -105,6 +105,11 @@ master_phil = iotbx.phil.parse("""
       .help = NCS information shifted to new origin.
       .short_caption = Output NCS info file
 
+    shifted_used_ncs_file = shifted_used_ncs.ncs_spec
+      .type = path
+      .help = NCS information (just the part that is used) shifted \
+               to new origin.
+      .short_caption = Output used NCS info file
 
     output_directory = segmented_maps
       .type = path
@@ -616,7 +621,7 @@ master_phil = iotbx.phil.parse("""
                Does not apply if add_neighbors=True
       .short_caption = Exclude points in NCS copies
 
-    add_neighbors = False 
+    add_neighbors = True
       .type = bool
       .help = Add neighboring regions around the NCS au. Turns off \
            exclude_points_in_ncs_copies also.
@@ -965,6 +970,7 @@ class info_object:
       shifted_pdb_info=None,
       shifted_map_info=None,
       shifted_ncs_info=None,
+      shifted_used_ncs_info=None,
       n_residues=None,
       solvent_fraction=None,
       output_ncs_au_map_info=None,
@@ -1058,9 +1064,17 @@ class info_object:
     self.shifted_pdb_info=pdb_info_object(file_name=file_name,
      n_residues=n_residues)
 
-  def set_shifted_ncs_info(self,file_name=None,number_of_operators=None,is_helical_symmetry=None):
+  def set_shifted_ncs_info(self,file_name=None,number_of_operators=None,
+       is_helical_symmetry=None):
     self.shifted_ncs_info=ncs_info_object(file_name=file_name,
-      number_of_operators=number_of_operators,is_helical_symmetry=is_helical_symmetry)
+      number_of_operators=number_of_operators,
+      is_helical_symmetry=is_helical_symmetry)
+
+  def set_shifted_used_ncs_info(self,file_name=None,number_of_operators=None,
+       is_helical_symmetry=None):
+    self.shifted_used_ncs_info=ncs_info_object(file_name=file_name,
+      number_of_operators=number_of_operators,
+      is_helical_symmetry=is_helical_symmetry)
 
   def set_solvent_fraction(self,solvent_fraction):
     self.solvent_fraction=solvent_fraction
@@ -1538,6 +1552,7 @@ class sharpening_info:
 class ncs_group_object:
   def __init__(self,
       ncs_obj=None,
+      ncs_ops_used=None,
       ncs_group_list=None,
       edited_mask=None,
       crystal_symmetry=None,
@@ -1590,6 +1605,10 @@ class ncs_group_object:
       original_id_from_id=self.original_id_from_id,
       map_files_written=self.map_files_written,
      )
+
+  def set_ncs_ops_used(self,ncs_ops_used):
+    self.ncs_ops_used=deepcopy(ncs_ops_used)
+
   def set_selected_regions(self,selected_regions):
     self.selected_regions=deepcopy(selected_regions)
 
@@ -3550,7 +3569,7 @@ def identify_ncs_regions(params,
     max_regions_to_consider)
   if max_regions_to_consider<1:
     print >>out,"\nUnable to identify any NCS regions"
-    return None,tracking_data
+    return None,tracking_data,None
 
   # Go through all grid points; discard if not in top regions
   #  Renumber regions in order of decreasing size
@@ -3659,7 +3678,7 @@ def identify_ncs_regions(params,
      region_scattered_points_dict=region_scattered_points_dict,
      region_centroid_dict=region_centroid_dict)
 
-  return ncs_group_obj,tracking_data
+  return ncs_group_obj,tracking_data,equiv_dict_ncs_copy
 
 def get_center_list(regions,
     region_centroid_dict=None):
@@ -3876,6 +3895,7 @@ def add_neighbors(params,
       max_length_of_group=None,
       target_scattered_points=None,
       tracking_data=None,
+      equiv_dict_ncs_copy=None,
       ncs_group_obj=None):
 
   #   Add neighboring regions on to selected_regions. 
@@ -3890,6 +3910,8 @@ def add_neighbors(params,
         selected_regions=selected_regions)
   delta_dist=params.segmentation.add_neighbors_dist
   max_dist=start_dist+delta_dist
+
+  starting_selected_regions=deepcopy(selected_regions)
 
   for x in selected_regions:  # delete, add in alternatives one at a time and
     #  keep all the ok ones
@@ -3923,7 +3945,39 @@ def add_neighbors(params,
           weight_rad_gyr=params.segmentation.weight_rad_gyr,
           selected_regions=selected_regions)
 
-  return selected_regions,dist
+  # Identify all the NCS operators required to map final to starting
+  # equiv_dict_ncs_copy[id][id1]=ncs_copy of id that corresponds to id1
+  ncs_group=ncs_group_obj.ncs_obj.ncs_groups()[0]
+  identity_op=ncs_group.identity_op_id()
+  ncs_ops_used=[identity_op]
+  
+  did_not_find_list=[]
+  for id in selected_regions:
+    related_regions=get_ncs_related_regions(
+      ncs_group_obj=ncs_group_obj,
+      selected_regions=[id],
+      include_self=False)
+    for id1 in selected_regions:
+      if not id1 in related_regions: continue 
+      ncs_copy1=equiv_dict_ncs_copy.get(id,{}).get(id1,None)
+      ncs_copy2=equiv_dict_ncs_copy.get(id1,{}).get(id,None)
+      for a in [ncs_copy1,ncs_copy2]:
+        if a is None:
+          x=[id,id1]
+          x.sort()
+          x="%s_%s" %(tuple(x))
+          if not x in did_not_find_list: 
+            did_not_find_list.append(x)
+            print "DID NOT FIND: ",x
+        else:
+          if not a in ncs_ops_used:
+            ncs_ops_used.append(a)
+  selected_regions.sort()
+  ncs_ops_used.sort()
+  for x in selected_regions:
+    print "GROUP ",x,":",ncs_group_obj.shared_group_dict.get(x,[])
+
+  return selected_regions,dist,ncs_ops_used
 
 def select_from_seed(params,
       starting_regions,
@@ -4078,6 +4132,7 @@ def select_regions_in_au(params,
      ncs_group_obj=None,
      target_scattered_points=None,
      unique_expected_regions=None,
+     equiv_dict_ncs_copy=None,
      tracking_data=None,
      out=sys.stdout):
   # Choose one region or set of regions from each ncs_group
@@ -4196,17 +4251,22 @@ def select_regions_in_au(params,
   if params.segmentation.add_neighbors and \
        ncs_group_obj.ncs_obj.max_operators()>1:
     print >>out,"\nAdding neighbor groups..."
-    selected_regions,rms=add_neighbors(params,
+    selected_regions,rms,ncs_ops_used=add_neighbors(params,
           selected_regions=selected_regions,
           max_length_of_group=max_length_of_group,
           target_scattered_points=target_scattered_points,
+          equiv_dict_ncs_copy=equiv_dict_ncs_copy,
           tracking_data=tracking_data,
           ncs_group_obj=ncs_group_obj)
 
   print >>out,"\nFinal selected regions with rms of %6.2f: " %(rms),
   for x in selected_regions:
     print >>out,x,
+  print >>out,"\nNCS operators used: ",
+  for op in ncs_ops_used:  print >>out, op,
   print >>out
+  # Save an ncs object containing just the ncs_ops_used
+  ncs_group_obj.set_ncs_ops_used(ncs_ops_used)
 
   # Identify scattered points for all selected regions:
 
@@ -6148,6 +6208,7 @@ def run(args,
      is_iteration=False,
      pdb_hierarchy=None,
      target_xyz=None,
+     target_hierarchy=None,
      sharpening_target_pdb_inp=None,
      out=sys.stdout):
 
@@ -6169,8 +6230,6 @@ def run(args,
       import iotbx.pdb
       target_hierarchy=iotbx.pdb.input(
          file_name=params.input_files.target_ncs_au_file).construct_hierarchy()
-    else:
-      target_hierarchy=None
 
     print >>out,"\nShifting map, model and NCS based on origin shift (if any)"
     print >>out,"Coordinate shift is (%7.2f,%7.2f,%7.2f)" %(
@@ -6333,7 +6392,7 @@ def run(args,
     # Check to see which regions are in more than one au of the NCS
     #   and set them aside.  Group ncs-related regions together
 
-    ncs_group_obj,tracking_data=identify_ncs_regions(
+    ncs_group_obj,tracking_data,equiv_dict_ncs_copy=identify_ncs_regions(
        params,sorted_by_volume=sorted_by_volume,
        co=co,
        min_b=min_b,
@@ -6376,6 +6435,7 @@ def run(args,
      select_regions_in_au(
      params,
      ncs_group_obj=ncs_group_obj,
+     equiv_dict_ncs_copy=equiv_dict_ncs_copy,
      tracking_data=tracking_data,
      target_scattered_points=target_scattered_points,
      unique_expected_regions=unique_expected_regions,
@@ -6405,6 +6465,26 @@ def run(args,
   else:
     remainder_ncs_group_obj=None
 
+  # collect all NCS ops that are needed to relate all the regions
+  #  that are used
+  ncs_ops_used=ncs_group_obj.ncs_ops_used
+  if remainder_ncs_group_obj:
+    for x in remainder_ncs_group_obj.ncs_ops_used:
+      if not x in ncs_ops_used: ncs_ops_used.append(x)
+  ncs_ops_used.sort()
+  print >>out,"Final NCS ops used: ",ncs_ops_used
+
+  # Save the used NCS ops
+  ncs_used_obj=ncs_group_obj.ncs_obj.deep_copy(ops_to_keep=ncs_ops_used) 
+  shifted_used_ncs_file=os.path.join(
+    tracking_data.params.output_files.output_directory,
+    params.output_files.shifted_used_ncs_file)
+  ncs_used_obj.format_all_for_group_specification(
+         file_name=shifted_used_ncs_file)
+  tracking_data.set_shifted_used_ncs_info(file_name=shifted_used_ncs_file,
+    number_of_operators=ncs_used_obj.max_operators(),
+    is_helical_symmetry=tracking_data.input_ncs_info.is_helical_symmetry)
+  tracking_data.shifted_used_ncs_info.show_summary(out=out)
 
   # Write out final maps and dummy atom files
   if params.output_files.write_output_maps:
