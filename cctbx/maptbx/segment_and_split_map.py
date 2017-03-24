@@ -4258,13 +4258,16 @@ def select_regions_in_au(params,
           equiv_dict_ncs_copy=equiv_dict_ncs_copy,
           tracking_data=tracking_data,
           ncs_group_obj=ncs_group_obj)
+  else:
+    ncs_ops_used=None
 
   print >>out,"\nFinal selected regions with rms of %6.2f: " %(rms),
   for x in selected_regions:
     print >>out,x,
-  print >>out,"\nNCS operators used: ",
-  for op in ncs_ops_used:  print >>out, op,
-  print >>out
+  if ncs_ops_used:
+    print >>out,"\nNCS operators used: ",
+    for op in ncs_ops_used:  print >>out, op,
+    print >>out
   # Save an ncs object containing just the ncs_ops_used
   ncs_group_obj.set_ncs_ops_used(ncs_ops_used)
 
@@ -6468,11 +6471,12 @@ def run(args,
   # collect all NCS ops that are needed to relate all the regions
   #  that are used
   ncs_ops_used=ncs_group_obj.ncs_ops_used
-  if remainder_ncs_group_obj:
+  if remainder_ncs_group_obj and remainder_ncs_group_obj.ncs_ops_used:
     for x in remainder_ncs_group_obj.ncs_ops_used:
       if not x in ncs_ops_used: ncs_ops_used.append(x)
-  ncs_ops_used.sort()
-  print >>out,"Final NCS ops used: ",ncs_ops_used
+  if ncs_ops_used:
+    ncs_ops_used.sort()
+    print >>out,"Final NCS ops used: ",ncs_ops_used
 
   # Save the used NCS ops
   ncs_used_obj=ncs_group_obj.ncs_obj.deep_copy(ops_to_keep=ncs_ops_used) 
