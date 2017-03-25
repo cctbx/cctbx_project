@@ -18,13 +18,15 @@ def metrology2phil(calib_dir, verbose):
   around!  XXX Note that this is all SLAC-specific (as is the whole
   thing, I guess).
   """
-
-  from xfel.cftbx.detector.metrology import master_phil
-
   # XXX Can this fail?  How?
   sections = calib2sections(calib_dir)
   if (sections is None):
     return (None)
+
+  return sections2phil(sections, verbose)
+
+def sections2phil(sections, verbose):
+  from xfel.cftbx.detector.metrology import master_phil
 
   # Properties of CSPad pixels (Philipp et al., 2007).  The counters
   # are 14 bits wide, and the pixels are square with a side length of
