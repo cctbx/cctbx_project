@@ -164,6 +164,26 @@ ATOM   1147  CG  LEU B 158      11.380  -2.482  18.634  1.00 11.09      B    C
 ATOM   1148  CD1 LEU B 158       9.897  -2.151  18.478  1.00 11.88      B    C
 ATOM   1149  CD2 LEU B 158      11.900  -3.216  17.391  1.00 15.14      B    C
 ''',
+  'VAL' : '''
+HETATM    1  N   VAL A   1      -0.458  -1.800  -0.548  1.00 20.00      A    N  
+HETATM    2  CA  VAL A   1      -0.329  -0.702   0.393  1.00 20.00      A    C  
+HETATM    3  C   VAL A   1      -1.671  -0.463   1.082  1.00 20.00      A    C  
+HETATM    4  O   VAL A   1      -2.646  -0.015   0.423  1.00 20.00      A    O  
+HETATM    5  CB  VAL A   1       0.092   0.561  -0.354  1.00 20.00      A    C  
+HETATM    6  CG2 VAL A   1       0.584   1.604   0.647  1.00 20.00      A    C  
+HETATM    7  CG1 VAL A   1       1.215   0.224  -1.332  1.00 20.00      A    C  
+HETATM    8  OXT VAL A   1      -1.802  -0.713   2.309  1.00 20.00      A    O-1
+HETATM    9  H   VAL A   1      -1.391  -2.165  -0.511  1.00 20.00      A    H  
+HETATM   10  H2  VAL A   1       0.193  -2.524  -0.308  1.00 20.00      A    H  
+HETATM   11  HA  VAL A   1       0.419  -0.949   1.136  1.00 20.00      A    H  
+HETATM   12  HB  VAL A   1      -0.755   0.957  -0.900  1.00 20.00      A    H  
+HETATM   13 HG21 VAL A   1      -0.219   1.854   1.334  1.00 20.00      A    H  
+HETATM   14 HG22 VAL A   1       0.897   2.498   0.115  1.00 20.00      A    H  
+HETATM   15 HG23 VAL A   1       1.426   1.202   1.204  1.00 20.00      A    H  
+HETATM   16 HG11 VAL A   1       0.813  -0.349  -2.162  1.00 20.00      A    H  
+HETATM   17 HG12 VAL A   1       1.975  -0.362  -0.822  1.00 20.00      A    H  
+HETATM   18 HG13 VAL A   1       1.657   1.143  -1.707  1.00 20.00      A    H  
+''',
 }
 
 geo_strs = {
@@ -198,10 +218,15 @@ geo_strs = {
            pdb=" CG  PHE A 217 "
            pdb=" CD1 PHE A 217 "
 """,
-  'LEU' : '''  chirality pdb=" CG  LEU B 158 " segid="B   "
+  'LEU' : '''chirality pdb=" CG  LEU B 158 " segid="B   "
             pdb=" CB  LEU B 158 " segid="B   "
             pdb=" CD1 LEU B 158 " segid="B   "
             pdb=" CD2 LEU B 158 " segid="B   "
+''',
+  'VAL' : '''chirality pdb=" CB  VAL A   1 " segid="A   "
+            pdb=" CA  VAL A   1 " segid="A   "
+            pdb=" CG1 VAL A   1 " segid="A   "
+            pdb=" CG2 VAL A   1 " segid="A   "
 ''',
 }
 values = {
@@ -214,6 +239,7 @@ values = {
   "PHE_2" : [97,   -7,  -79,  -11],
   # chiral
   'LEU' : [2.65, -5.24, -2.65, 0.06],
+  'VAL' : [2.65, -5.37, -2.75, 0.11],
 }
 
 def largest_torsion(s, f, i):
@@ -248,6 +274,7 @@ def largest_chiral(s, f, i):
 
 def run():
   for code, lines in pdbs.items():
+    #if code!='VAL': continue
     print ('-%s- ' % code)*10
     f=file("tst_symmetric_flips_%s.pdb" % code, "wb").write(lines)
     cmd = "phenix.pdb_interpretation tst_symmetric_flips_%s.pdb" % code
@@ -256,7 +283,7 @@ def run():
     out = StringIO()
     ero.show_stdout(out=out)
     i=0
-    if code in ['LEU']:
+    if code in ['LEU', 'VAL']:
       d = largest_chiral(out.getvalue(),
                          geo_strs[code],
                          i+2)
@@ -269,7 +296,7 @@ def run():
       print 'torsion',d
       assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
     i+=1
-    if code in ['LEU']:
+    if code in ['LEU', 'VAL']:
       d = largest_chiral(out.getvalue(),
                          geo_strs[code],
                          i+2)
@@ -294,7 +321,7 @@ def run():
     ero.show_stdout(out=out)
 
     i+=1
-    if code in ['LEU']:
+    if code in ['LEU', 'VAL']:
       d = largest_chiral(out.getvalue(),
                          geo_strs[code],
                          i)
@@ -307,7 +334,7 @@ def run():
       print 'torsion',d
       assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
     i+=1
-    if code in ['LEU']:
+    if code in ['LEU', 'VAL']:
       d = largest_chiral(out.getvalue(),
                          geo_strs[code],
                          i)
