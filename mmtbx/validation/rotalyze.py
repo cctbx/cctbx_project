@@ -113,7 +113,7 @@ class rotalyze (validation) :
     from mmtbx.validation import utils
     self.data_version = data_version
 #   if self.data_version == "500":    self.outlier_threshold = 0.01
-    if self.data_version == "8000": self.outlier_threshold = 0.003
+    if self.data_version == "8000": self.outlier_threshold = OUTLIER_THRESHOLD
     else: raise ValueError(
       "data_version given to RotamerEval not recognized (%s)." % data_version)
     sidechain_angles = SidechainAngles(show_errors)
