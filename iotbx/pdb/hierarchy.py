@@ -1403,6 +1403,23 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
                              ["HE1", "HE2"],
                             ],
              },
+      # even less symmetric flips - based on chirals
+      'VAL' : {'chiral' : ['CB', 'CA', 'CG1', 'CG2'],
+               'value'  : [-2.5, False, 1],
+               'pairs'  : [['CG1', 'CG2'],
+                           ['HG11','HG21'],
+                           ['HG12','HG22'],
+                           ['HG13','HG23'],
+                           ],
+               },
+      'LEU' : {'chiral' : ['CG', 'CB', 'CD1', 'CD2'],
+               'value'  : [-2.5, False, 1],
+               'pairs'  : [['CD1', 'CD2'],
+                           ['HD11','HD21'],
+                           ['HD12','HD22'],
+                           ['HD13','HD23'],
+                           ],
+               },
     }
     data["TYR"]=data["PHE"]
 
@@ -1413,23 +1430,47 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       for ag in rg.atom_groups():
         flip_data = data.get(ag.resname, None)
         if flip_data is None: continue
-        dihedral_i_seqs = []
-        for d in flip_data["dihedral"]:
-          atom = ag.get_atom(d)
-          if atom is None: break
-          dihedral_i_seqs.append(atom.i_seq)
-        if len(dihedral_i_seqs)!=4: continue
-        proxy = geometry_restraints.dihedral_proxy(
-          i_seqs=dihedral_i_seqs,
-          angle_ideal=flip_data["value"][0],
-          weight=flip_data["value"][1],
-          periodicity=1
-        )
-        dihedral = geometry_restraints.dihedral(
-          sites_cart=sites_cart,
-          proxy=proxy,
-        )
-        if abs(dihedral.delta)>360./flip_data["value"][1]/4: # does this work
+        assert not ('dihedral' in flip_data and 'chiral' in flip_data)
+        flip_it=False
+        if 'dihedral' in flip_data:
+          dihedral_i_seqs = []
+          for d in flip_data["dihedral"]:
+            atom = ag.get_atom(d)
+            if atom is None: break
+            dihedral_i_seqs.append(atom.i_seq)
+          if len(dihedral_i_seqs)!=4: continue
+          proxy = geometry_restraints.dihedral_proxy(
+            i_seqs=dihedral_i_seqs,
+            angle_ideal=flip_data["value"][0],
+            weight=flip_data["value"][1],
+            periodicity=1
+          )
+          dihedral = geometry_restraints.dihedral(
+            sites_cart=sites_cart,
+            proxy=proxy,
+          )
+          if abs(dihedral.delta)>360./flip_data["value"][1]/4: # does this work
+            flip_it=True
+        elif 'chiral' in flip_data:
+          chiral_i_seqs = []
+          for d in flip_data["chiral"]:
+            atom = ag.get_atom(d)
+            if atom is None: break
+            chiral_i_seqs.append(atom.i_seq)
+          if len(chiral_i_seqs)!=4: continue
+          proxy = geometry_restraints.chirality_proxy(
+            i_seqs=chiral_i_seqs,
+            volume_ideal=flip_data["value"][0],
+            both_signs=flip_data['value'][1],
+            weight=flip_data["value"][2],
+          )
+          chiral = geometry_restraints.chirality(
+            sites_cart=sites_cart,
+            proxy=proxy,
+          )
+          if abs(chiral.delta)>2.: # does this work
+            flip_it=True
+        if flip_it:
           info += '    Residue "%s %s %s":' % (
             rg.parent().id,
             ag.resname,

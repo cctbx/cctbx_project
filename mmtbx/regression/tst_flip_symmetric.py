@@ -154,6 +154,16 @@ ATOM   3282  HE2 PHE A 217      29.101 -23.038 -18.600  1.00 18.29           H
 ATOM   3283  HZ  PHE A 217      28.992 -22.626 -16.313  1.00 21.58           H
 ATOM   4166  CD1 TYR A 277      41.891 -14.126 -14.217  1.00 26.09           C
 """,
+  'LEU' : '''
+ATOM   1142  N   LEU B 158      12.672  -5.202  21.045  1.00 12.10      B    N
+ATOM   1143  CA  LEU B 158      12.719  -4.364  19.855  1.00  9.96      B    C
+ATOM   1144  C   LEU B 158      14.074  -3.681  19.767  1.00 13.93      B    C
+ATOM   1145  O   LEU B 158      14.542  -3.091  20.750  1.00 10.55      B    O
+ATOM   1146  CB  LEU B 158      11.594  -3.321  19.891  1.00  9.63      B    C
+ATOM   1147  CG  LEU B 158      11.380  -2.482  18.634  1.00 11.09      B    C
+ATOM   1148  CD1 LEU B 158       9.897  -2.151  18.478  1.00 11.88      B    C
+ATOM   1149  CD2 LEU B 158      11.900  -3.216  17.391  1.00 15.14      B    C
+''',
 }
 
 geo_strs = {
@@ -188,6 +198,11 @@ geo_strs = {
            pdb=" CG  PHE A 217 "
            pdb=" CD1 PHE A 217 "
 """,
+  'LEU' : '''  chirality pdb=" CG  LEU B 158 " segid="B   "
+            pdb=" CB  LEU B 158 " segid="B   "
+            pdb=" CD1 LEU B 158 " segid="B   "
+            pdb=" CD2 LEU B 158 " segid="B   "
+''',
 }
 values = {
   "ASP" : [ 152,  -82, -999, -999],
@@ -197,6 +212,8 @@ values = {
   "ARG" : [-179,  179, -999, -999],
   "PHE_missing_CE2" : [-999,-999,-999,-999],
   "PHE_2" : [97,   -7,  -79,  -11],
+  # chiral
+  'LEU' : [2.65, -5.24, -2.65, 0.06],
 }
 
 def largest_torsion(s, f, i):
@@ -204,6 +221,21 @@ def largest_torsion(s, f, i):
   if len(t)==1: return -999
   s=t[1].splitlines()
   f="ideal   model   delta sinusoidal    sigma   weight residual"
+  reading = False
+  for line in s:
+    print line
+    if reading: break
+    if line.find(f)>-1:
+      reading=True
+  d=line.split()
+  print d
+  return float(d[i])
+
+def largest_chiral(s, f, i):
+  t = s.split(f)
+  if len(t)==1: return -999
+  s=t[1].splitlines()
+  f="both_signs  ideal   model   delta    sigma   weight residual"
   reading = False
   for line in s:
     print line
@@ -224,17 +256,31 @@ def run():
     out = StringIO()
     ero.show_stdout(out=out)
     i=0
-    d = largest_torsion(out.getvalue(),
-                        geo_strs[code],
-                        i+1)
-    print 'torsion',d
-    assert abs(d-values[code][i])<1
+    if code in ['LEU']:
+      d = largest_chiral(out.getvalue(),
+                         geo_strs[code],
+                         i+2)
+      print 'chiral',d
+      assert abs(d-values[code][i])<.1, '%s %s' % (d, values[code][i])
+    else:
+      d = largest_torsion(out.getvalue(),
+                          geo_strs[code],
+                          i+1)
+      print 'torsion',d
+      assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
     i+=1
-    d = largest_torsion(out.getvalue(),
-                        geo_strs[code],
-                        i+1)
-    print 'delta',d
-    assert abs(d-values[code][i])<1
+    if code in ['LEU']:
+      d = largest_chiral(out.getvalue(),
+                         geo_strs[code],
+                         i+2)
+      print 'delta',d
+      assert abs(d-values[code][i])<.1, '%s %s' % (d, values[code][i])
+    else:
+      d = largest_torsion(out.getvalue(),
+                          geo_strs[code],
+                          i+1)
+      print 'delta',d
+      assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
 
     pdb_inp = iotbx.pdb.input('tst_symmetric_flips_%s.pdb' % code)
     hierarchy = pdb_inp.construct_hierarchy()
@@ -248,17 +294,31 @@ def run():
     ero.show_stdout(out=out)
 
     i+=1
-    d = largest_torsion(out.getvalue(),
-                        geo_strs[code],
-                        i-1)
-    print 'torsion',d,values[code],i
-    assert abs(d-values[code][i])<1
+    if code in ['LEU']:
+      d = largest_chiral(out.getvalue(),
+                         geo_strs[code],
+                         i)
+      print 'chiral',d
+      assert abs(d-values[code][i])<.1, '%s %s' % (d, values[code][i])
+    else:
+      d = largest_torsion(out.getvalue(),
+                          geo_strs[code],
+                          i-1)
+      print 'torsion',d
+      assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
     i+=1
-    d = largest_torsion(out.getvalue(),
-                        geo_strs[code],
-                        i-1)
-    print 'delta',d
-    assert abs(d-values[code][i])<1
+    if code in ['LEU']:
+      d = largest_chiral(out.getvalue(),
+                         geo_strs[code],
+                         i)
+      print 'delta',d
+      assert abs(d-values[code][i])<.1, '%s %s' % (d, values[code][i])
+    else:
+      d = largest_torsion(out.getvalue(),
+                          geo_strs[code],
+                          i-1)
+      print 'delta',d
+      assert abs(d-values[code][i])<1, '%s %s' % (d, values[code][i])
 
 if __name__=="__main__":
   args = sys.argv[1:]
