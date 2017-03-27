@@ -20,9 +20,9 @@ corrections_phil = None
   .type = str
   .help = Phil file with quad/unit pixel translations and optionally subpixel metrology
   .optional = True
-round_and_orthagonalize = True
+round_and_orthogonalize = True
   .type = str
-  .help = Use if supplying a corrections phil. Quad and unit pixel translations assume an orthagonalized \
+  .help = Use if supplying a corrections phil. Quad and unit pixel translations assume an orthogonalized \
           and rounded detector, meaning the angles are multiples of 90 and the pixel values are ints. \
           If False, the optical metrology tilts and subpixel measurements are preserved when adding quad \
           and unit pixel corrections
@@ -87,7 +87,7 @@ if (__name__ == "__main__") :
               corrections_params.distl.tile_translations[4 * itile + 1]
       s.center = tuple(c)
 
-    if params.round_and_orthagonalize:
+    if params.round_and_orthogonalize:
       # In order to match the image pickle metrology, we have to discard the tilts and offets in the
       # section objects, and instead use the active areas returned by corners_asic as the tile
       # locations.
