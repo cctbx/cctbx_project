@@ -1214,13 +1214,12 @@ class torsion_ncs(object):
                               log=None,
                               quiet=False):
     self.last_round_rotamer_changes = 0
-    if self.rotamer_search_manager is None:
-      self.rotamer_search_manager = rotamer_search.manager(
-                                      pdb_hierarchy=pdb_hierarchy,
-                                      xray_structure=xray_structure,
-                                      name_hash=self.name_hash,
-                                      selection=self.selection,
-                                      log=self.log)
+    self.rotamer_search_manager = rotamer_search.manager(
+                                    pdb_hierarchy=pdb_hierarchy,
+                                    xray_structure=xray_structure,
+                                    name_hash=self.name_hash,
+                                    selection=self.selection,
+                                    log=self.log)
     if self.unit_cell is None:
       self.unit_cell = xray_structure.unit_cell()
     sites_cart = xray_structure.sites_cart()
