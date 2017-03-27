@@ -16,6 +16,7 @@ from libtbx.utils import Sorry
 
 from matplotlib.patches import FancyArrowPatch
 
+from dxtbx.datablock import DataBlockFactory
 from dxtbx.model.experiment_list import ExperimentListFactory
 
 phil_scope = parse("""
@@ -34,6 +35,7 @@ class Arrow3D(FancyArrowPatch):
     self._verts3d = xs, ys, zs
 
   def draw(self, renderer):
+    from mpl_toolkits.mplot3d import proj3d
     xs3d, ys3d, zs3d = self._verts3d
     xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, renderer.M)
     self.set_positions((xs[0],ys[0]),(xs[1],ys[1]))
@@ -103,8 +105,16 @@ def run(args):
   for file_name, color, in zip(files, colors):
 
     # read the data and get the detector models
-    experiments = ExperimentListFactory.from_json_file(file_name, check_format=False)
-    for detector in experiments.detectors():
+    try:
+      datablocks = DataBlockFactory.from_json_file(file_name, check_format=False)
+    except Exception, e:
+      experiments = ExperimentListFactory.from_json_file(file_name, check_format=False)
+      detectors = experiments.detectors()
+    else:
+      detectors = []
+      for datablock in datablocks:
+        detectors.extend(datablock.unique_detectors())
+    for detector in detectors:
       # plot the hierarchy
       if params.orthographic:
         ax = fig.gca()
