@@ -1214,6 +1214,8 @@ class torsion_ncs(object):
                               log=None,
                               quiet=False):
     self.last_round_rotamer_changes = 0
+    # Removed check for existence to prevent a bug. See commit
+    # 67af93785e4 for more info.
     self.rotamer_search_manager = rotamer_search.manager(
                                     pdb_hierarchy=pdb_hierarchy,
                                     xray_structure=xray_structure,
