@@ -20,6 +20,10 @@ phil_scope = parse('''
       .help = If not specified, process all events. Otherwise, only process this many
   }
   input {
+    cfg = None
+      .type = str
+      .help = Path to psana config file. Genearlly not needed for CBFs. For image pickles, \
+              the psana config file should have a mod_image_dict module.
     experiment = None
       .type = str
       .help = Experiment identifier, e.g. cxi84914
@@ -35,9 +39,6 @@ phil_scope = parse('''
       .type = choice
       .help = Output file format, 64 tile segmented CBF or image pickle
     pickle {
-      cfg = None
-        .type = str
-        .help = Path to psana config file with a mod_image_dict module
       out_key = cctbx.xfel.image_dict
         .type = str
         .help = Key name that mod_image_dict uses to put image data in each psana event
@@ -92,7 +93,7 @@ class Script(object):
       if params.format.cbf.detz_offset is None:
         raise Usage(self.usage)
     elif params.format.file_format == "pickle":
-      if params.format.pickle.cfg is None:
+      if params.input.cfg is None:
         raise Usage(self.usage)
     else:
       raise Usage(self.usage)
@@ -110,8 +111,8 @@ class Script(object):
     size = comm.Get_size() # size: number of processes running in this job
 
     # set up psana
-    if params.format.file_format == "pickle":
-      psana.setConfigFile(params.format.pickle.cfg)
+    if params.input.cfg is not None:
+      psana.setConfigFile(params.input.cfg)
 
     dataset_name = "exp=%s:run=%s:idx"%(params.input.experiment,params.input.run_num)
     ds = psana.DataSource(dataset_name)
@@ -149,6 +150,11 @@ class Script(object):
         if timestamp is None:
           print "No timestamp, skipping shot"
           continue
+
+        if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
+          print "Skipping event",timestamp
+          continue
+
         t = timestamp
         s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
         print "Processing shot", s
