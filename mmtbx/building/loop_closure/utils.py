@@ -7,6 +7,7 @@ import math
 from cStringIO import StringIO
 from mmtbx.validation.ramalyze import res_types
 from scitbx.math import dihedral_angle
+from libtbx.test_utils import approx_equal
 # from scitbx.matrix import _dihedral_angle # python implementation, but on flex arrays
 
 import boost.python
@@ -27,6 +28,57 @@ def get_phi_psi_atoms(hierarchy):
     # print "rama_key", rama_key
     phi_psi_atoms.append(([phi_atoms, psi_atoms],rama_key))
   return phi_psi_atoms
+
+def py_dihedral_angle2(sites, deg=True):
+  def dot_product(a,b):
+    return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
+  def cross_product(a,b):
+    return (a[1] * b[2] - b[1] * a[2],
+            a[2] * b[0] - b[2] * a[0],
+            a[0] * b[1] - b[0] * a[1])
+  """ sites = [(vec3),(vec3),(vec3),(vec3)]
+  # supposed to be fast dihedral calculation, taken from here:
+  # http://stackoverflow.com/a/34245697
+  # Pure python
+  Praxeolitic formula
+  1 sqrt, 1 cross product
+  2.5 times slower than dihedral_angle in cpp
+  """
+
+  p0 = sites[0]
+  p1 = sites[1]
+  p2 = sites[2]
+  p3 = sites[3]
+
+  b0 = (p0[0]-p1[0], p0[1]-p1[1], p0[2]-p1[2])
+  b1 = (p2[0]-p1[0], p2[1]-p1[1], p2[2]-p1[2])
+  b2 = (p3[0]-p2[0], p3[1]-p2[1], p3[2]-p2[2])
+
+  # normalize b1 so that it does not influence magnitude of vector
+  # rejections that come next
+  # b1 /= np.linalg.norm(b1)
+  b1_norm = math.sqrt(b1[0]*b1[0]+b1[1]*b1[1]+b1[2]*b1[2])
+  b1 = (b1[0]/b1_norm, b1[1]/b1_norm, b1[2]/b1_norm)
+
+  # vector rejections
+  # v = projection of b0 onto plane perpendicular to b1
+  #   = b0 minus component that aligns with b1
+  # w = projection of b2 onto plane perpendicular to b1
+  #   = b2 minus component that aligns with b1
+  b0_dp_b1 = dot_product(b0, b1)
+  b2_dp_b1 = dot_product(b2, b1)
+  v = (b0[0]-b0_dp_b1*b1[0],
+       b0[1]-b0_dp_b1*b1[1],
+       b0[2]-b0_dp_b1*b1[2])
+  w = (b2[0]-b2_dp_b1*b1[0],
+       b2[1]-b2_dp_b1*b1[1],
+       b2[2]-b2_dp_b1*b1[2])
+  # angle between v and w in a plane is the torsion angle
+  # v and w may not be normalized but that's fine since tan is y/x
+  x = dot_product(v, w)
+  b1_cross_v = cross_product(b1, v)
+  y = dot_product(b1_cross_v, w)
+  return math.degrees(math.atan2(y, x))
 
 def get_dihedral_angle(atoms, round_coords=False):
   # round here is to emulate rounding when dumping to pdb, to get more
