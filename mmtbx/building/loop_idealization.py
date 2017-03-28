@@ -92,6 +92,7 @@ class loop_idealization():
     self.verbose = verbose
     self.grm = grm
     self.r = rama_manager
+    self.ideal_res_dict = idealized_aa.residue_dict()
     self.n_run = n_run
     if self.r is None:
       self.r = rama_eval()
@@ -383,6 +384,7 @@ class loop_idealization():
 
     original_pdb_h = pdb_hierarchy.deep_copy()
     original_pdb_h.reset_atom_i_seqs()
+    original_pdb_h_asc = original_pdb_h.atom_selection_cache()
     chain_id = original_pdb_h.only_model().only_chain().id
     all_results = []
     # only forward
@@ -577,8 +579,8 @@ class loop_idealization():
             n_previous=ccd_radius,
             include_intermediate=True,
             avoid_ss_annot=ss_annotation)
-        place_side_chains(moved_with_side_chains_h, original_pdb_h,
-            self.rotamer_manager, placing_range)
+        place_side_chains(moved_with_side_chains_h, original_pdb_h, original_pdb_h_asc,
+            self.rotamer_manager, placing_range, self.ideal_res_dict)
         # moved_with_side_chains_h.write_pdb_file(
         #     file_name="%s_after_sc_placement_%d.pdb" % (prefix, i))
 
@@ -749,10 +751,10 @@ class loop_idealization():
     return result
 
 
-def place_side_chains(hierarchy, original_h,
-    rotamer_manager, placing_range):
-  ideal_res_dict = idealized_aa.residue_dict()
-  asc = original_h.atom_selection_cache()
+def place_side_chains(hierarchy, original_h, original_h_asc,
+    rotamer_manager, placing_range, ideal_res_dict):
+  # ideal_res_dict = idealized_aa.residue_dict()
+  # asc = original_h.atom_selection_cache()
   gly_atom_names = set([" N  ", " CA ", " C  ", " O  "])
   for rg in hierarchy.residue_groups():
     if rg.resseq in placing_range:
@@ -762,7 +764,7 @@ def place_side_chains(hierarchy, original_h,
         if (atom.name not in gly_atom_names):
           ag.remove_atom(atom=atom)
       # get ag from original hierarchy
-      orig_ag = original_h.select(asc.selection("resseq %s" % rg.resseq)
+      orig_ag = original_h.select(original_h_asc.selection("resseq %s" % rg.resseq)
           ).models()[0].chains()[0].residue_groups()[0].atom_groups()[0]
       # get ideal
       # ideal_ag = ideal_res_dict[ag.resname.lower()].models()[0].chains()[0].\
