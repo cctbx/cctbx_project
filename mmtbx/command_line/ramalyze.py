@@ -14,6 +14,9 @@ def get_master_phil():
     plot = False
       .type = bool
       .help = Create graphics of plots (if Matplotlib is installed)
+    show_labels = True
+      .type = bool
+      .help = Show labels on outlier residues
     wxplot = False
       .type = bool
       .help = Display interactive plots (requires wxPython and Matplotlib)
@@ -56,7 +59,10 @@ def run (args, out=sys.stdout, quiet=False) :
     result.show_old_output(out=out, verbose=True)
   if params.plot :
     plot_file_base = os.path.splitext(os.path.basename(params.model))[0]
-    result.write_plots(plot_file_base=plot_file_base, out=out)
+    result.write_plots(
+        plot_file_base=plot_file_base,
+        out=out,
+        show_labels=params.show_labels)
   if params.wxplot :
     try :
       import wxtbx.app

@@ -244,7 +244,7 @@ class ramalyze (validation) :
     self.out_percent = out_percent * 100.0
     self.fav_percent = fav_percent * 100.0
 
-  def write_plots (self, plot_file_base, out) :
+  def write_plots (self, plot_file_base, out, show_labels=True) :
     """
     Write a set of six PNG images representing the plots for each residue type.
 
@@ -265,7 +265,8 @@ class ramalyze (validation) :
         rotarama_data=stats,
         position_type=pos,
         title=format_ramachandran_plot_title(pos, '*'),
-        file_name=plot_file_name)
+        file_name=plot_file_name,
+        show_labels=show_labels)
       print >> out, "  wrote %s" % plot_file_name
 
   def display_wx_plots (self, parent=None,
@@ -637,6 +638,7 @@ def draw_ramachandran_plot (points,
     stats=rotarama_data,
     title=title,
     points=points,
+    show_labels=show_labels,
     colormap="Blues",
     contours=contours)
   p.save_image(file_name)
