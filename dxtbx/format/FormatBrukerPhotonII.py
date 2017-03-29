@@ -67,6 +67,9 @@ class FormatBrukerPhotonII(FormatBruker):
       else:
         self.header_dict[k] = v
 
+    from iotbx.detectors.bruker import BrukerImage
+    self.detectorbase = BrukerImage(self._image_file)
+
     return
 
   def _goniometer(self):
