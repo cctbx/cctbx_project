@@ -40,6 +40,10 @@ iqr_multiplier = 1.5
 show_plots = False
   .type = bool
   .help = Show some plots
+max_delta = None
+  .type = float
+  .help = Before filtering, throw out all reflections with obs-pred greater \
+          that max_delta mm.
 output {
   filtered_experiments = filtered_experiments.json
     .type = str
@@ -85,6 +89,11 @@ class Script(object):
     print "Found", len(reflections), "reflections", "and", len(experiments), "experiments"
 
     difference_vector_norms = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
+
+    if params.max_delta is not None:
+      sel = difference_vector_norms <= params.max_delta
+      reflections = reflections.select(sel)
+      difference_vector_norms = difference_vector_norms.select(sel)
 
     data = flex.double()
     counts = flex.double()
