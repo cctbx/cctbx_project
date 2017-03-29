@@ -52,6 +52,8 @@ class ScanFactory:
 
     '''
     if reference is None:
+      if params.scan.image_range is None and params.scan.oscillation is None:
+        return None
       if params.scan.image_range is None:
         raise RuntimeError('No image range set')
       if params.scan.oscillation is None:
