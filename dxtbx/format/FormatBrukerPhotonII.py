@@ -26,7 +26,9 @@ class FormatBrukerPhotonII(FormatBruker):
     header_dic = {}
 
     for l in header_lines:
-      k, v = [v.strip() for v in l.split(':', 1)]
+      k_v = l.split(':', 1)
+      if len(k_v) == 1: continue
+      k, v = [v.strip() for v in k_v]
       if k in header_dic:
         header_dic[k] = header_dic[k] + "\n" + v
       else:
