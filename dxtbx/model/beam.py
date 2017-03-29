@@ -13,6 +13,26 @@ from __future__ import absolute_import, division
 import math
 import pycbf
 from dxtbx_model_ext import Beam
+import libtbx.phil
+
+beam_phil_scope = libtbx.phil.parse('''
+  beam
+    .expert_level = 1
+    .short_caption = "Beam overrides"
+  {
+
+    wavelength = None
+      .type = float
+      .help = "Override the beam wavelength"
+
+    direction = None
+      .type = floats(size=3)
+      .help = "Override the sample to source direction"
+      .short_caption = "Sample to source direction"
+
+  }
+''')
+
 
 class BeamFactory:
   '''A factory class for beam objects, which encapsulate standard beam
@@ -21,6 +41,31 @@ class BeamFactory:
 
   def __init__(self):
     pass
+
+  @staticmethod
+  def from_phil(params, reference=None):
+    '''
+    Convert the phil parameters into a beam model
+
+    '''
+    # Check the input
+    if reference is None:
+      beam = Beam()
+    else:
+      beam = reference
+
+    # Set the parameters
+    if params.beam.wavelength is not None:
+      beam.set_wavelength(params.beam.wavelength)
+    elif reference is None:
+      raise RuntimeError("No wavelength set")
+    if params.beam.direction is not None:
+      beam.set_direction(params.beam.direction)
+    elif reference is None:
+      raise RuntimeError("No beam direction set")
+
+    # Return the model
+    return beam
 
   @staticmethod
   def from_dict(d, t=None):
