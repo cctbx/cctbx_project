@@ -15,6 +15,44 @@ class FormatBruker(Format):
   '''
 
   @staticmethod
+  def read_header_lines(image_path, max_bytes=512*50):
+    '''Attempt to read the whole Bruker header into a list of lines of 80 char
+    length. Finish reading lines when either the amount of data determined by
+    HDRBLKS is consumed, or if max_bytes is reached, or a line contains a
+    non-ASCII character. HDRBLKS is interpreted as being an integer number
+    of 512 byte blocks. HDRBLKS must be divisible by 5, so that the total
+    number of bytes in the header is divisible by 80.'''
+
+    hdr_lines = []
+    max_bytes = (max_bytes // 80) * 80
+    with FormatBruker.open_file(image_path, 'rb') as f:
+      while True:
+
+        # read a line and look for HDRBLKS
+        line = f.read(80)
+        if not line: break
+        if line.startswith('HDRBLKS'):
+          try:
+            val = int(line.split(':', 1)[1])
+            if val % 5 == 0:
+              max_bytes = min(val * 512, max_bytes)
+          except ValueError:
+            pass
+
+        try:
+          line.decode('ascii')
+        except UnicodeDecodeError:
+          break
+
+        # looks like a valid line
+        hdr_lines.append(line)
+
+        if max_bytes is not None:
+          if f.tell() >= max_bytes: break
+
+    return hdr_lines
+
+  @staticmethod
   def understand(image_file):
     try:
       tag = FormatBruker.open_file(image_file, 'rb').read(1024)
