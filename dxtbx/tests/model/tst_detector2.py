@@ -41,6 +41,7 @@ class Test2:
     self.tst_get_valid_D_matrix()
     self.tst_copy_and_reference()
     self.tst_pickle()
+    self.tst_from_phil()
 
   def tst_flat(self):
     ''' Test the flat hierarchy. '''
@@ -302,6 +303,203 @@ class Test2:
     assert(p2.is_(new_detector[1]))
     assert(p3.is_(new_detector[2]))
     assert(p4.is_(new_detector[3]))
+
+    print 'OK'
+
+  def tst_from_phil(self):
+    from dxtbx.model.detector import detector_phil_scope
+    from dxtbx.model.detector import DetectorFactory, ParallaxCorrectedPxMmStrategy
+    from libtbx.phil import parse
+    from dxtbx.model import Beam
+
+    beam = Beam((0, 0, 1))
+
+    params = detector_phil_scope.fetch(parse('''
+      detector {
+        panel {
+          id = 0
+          origin = (1, 1, 1)
+          pixel_size = (0.001,0.001)
+          image_size = (1000,1000)
+          trusted_range = (-1, 1000)
+          material = "Si"
+          thickness = 0.01
+          parallax_correction = True
+        }
+        panel {
+          id = 1
+          origin = (2, 2, 2)
+          pixel_size = (0.001,0.001)
+          image_size = (1000,1000)
+          trusted_range = (-1, 1000)
+        }
+        panel {
+          id = 2
+          origin = (3, 3, 3)
+          pixel_size = (0.001,0.001)
+          image_size = (1000,1000)
+          trusted_range = (-1, 1000)
+        }
+        panel {
+          id = 3
+          origin = (4, 4, 4)
+          pixel_size = (0.001,0.001)
+          image_size = (1000,1000)
+          trusted_range = (-1, 1000)
+        }
+      
+        hierarchy {
+          name = "Root"
+          origin = (100, 100, 100)
+          group {
+            id = 0
+            origin = (10, 10, 10)
+          }
+          group {
+            id = 0,0
+            origin = (1, 1, 1)
+            panel = 0
+          }
+          group {
+            id = 0,1
+            origin = (2, 2, 2)
+            panel = 1
+          }
+          group {
+            id = 1
+            origin = (20, 20, 20)
+          }
+          group {
+            id = 1,0
+            origin = (1, 1, 1)
+            panel = 2
+          }
+          group {
+            id = 1,1
+            origin = (2, 2, 2)
+            panel = 3
+          }
+        }
+      }
+    ''')).extract()
+
+    # Test create model
+    d1 = DetectorFactory.from_phil(params, beam=beam)
+
+    root = d1.hierarchy()
+
+    # Check hierarchy origins
+    assert root.get_origin() == (100, 100, 100)
+    assert root[0].get_origin() == (110, 110, 110)
+    assert root[1].get_origin() == (120, 120, 120)
+    assert root[0][0].get_origin() == (111, 111, 111)
+    assert root[0][1].get_origin() == (112, 112, 112)
+    assert root[1][0].get_origin() == (121, 121, 121)
+    assert root[1][1].get_origin() == (122, 122, 122)
+    assert root[0][0][0].get_origin() == (112, 112, 112)
+    assert root[0][1][0].get_origin() == (114, 114, 114)
+    assert root[1][0][0].get_origin() == (124, 124, 124)
+    assert root[1][1][0].get_origin() == (126, 126, 126)
+
+    # Check panels are correct in hierarchy
+    assert root[0][0][0].is_(d1[0]) 
+    assert root[0][1][0].is_(d1[1]) 
+    assert root[1][0][0].is_(d1[2]) 
+    assert root[1][1][0].is_(d1[3]) 
+
+    # Check panel attributes
+    assert d1[0].get_image_size() == (1000, 1000)
+    assert d1[0].get_pixel_size() == (0.001, 0.001)
+    assert d1[0].get_trusted_range() == (-1, 1000)
+    assert d1[0].get_material() == "Si"
+    assert d1[0].get_thickness() == 0.01
+    assert isinstance(d1[0].get_px_mm_strategy(), ParallaxCorrectedPxMmStrategy)
+
+    assert d1[1].get_image_size() == (1000, 1000)
+    assert d1[1].get_pixel_size() == (0.001, 0.001)
+    assert d1[1].get_trusted_range() == (-1, 1000)
+
+    assert d1[2].get_image_size() == (1000, 1000)
+    assert d1[2].get_pixel_size() == (0.001, 0.001)
+    assert d1[2].get_trusted_range() == (-1, 1000)
+    
+    assert d1[3].get_image_size() == (1000, 1000)
+    assert d1[3].get_pixel_size() == (0.001, 0.001)
+    assert d1[3].get_trusted_range() == (-1, 1000)
+    
+    params = detector_phil_scope.fetch(parse('''
+      detector {
+        panel {
+          id = 0
+          parallax_correction = False
+        }
+        panel {
+          id = 1
+          material = "Si"
+          thickness = 0.01
+          parallax_correction = True
+        }
+      
+        hierarchy {
+          name = "Root"
+          origin = (200, 200, 200)
+          group {
+            id = 0
+            origin = (20, 20, 20)
+          }
+          group {
+            id = 0,0
+            origin = (2, 2, 2)
+          }
+          group {
+            id = 0,1
+            origin = (3, 3, 3)
+          }
+          group {
+            id = 1
+            origin = (30, 30, 30)
+          }
+          group {
+            id = 1,0
+            origin = (2, 2, 2)
+          }
+          group {
+            id = 1,1
+            origin = (3, 3, 3)
+          }
+        }
+      }
+    ''')).extract()
+   
+    # Test overwrite model
+    d2 = DetectorFactory.from_phil(params, reference=d1, beam=beam)
+    
+    root = d2.hierarchy()
+
+    # Check hierarchy origins
+    assert root.get_origin() == (200, 200, 200)
+    assert root[0].get_origin() == (220, 220, 220)
+    assert root[1].get_origin() == (230, 230, 230)
+    assert root[0][0].get_origin() == (222, 222, 222)
+    assert root[0][1].get_origin() == (223, 223, 223)
+    assert root[1][0].get_origin() == (232, 232, 232)
+    assert root[1][1].get_origin() == (233, 233, 233)
+    assert root[0][0][0].get_origin() == (223, 223, 223)
+    assert root[0][1][0].get_origin() == (225, 225, 225)
+    assert root[1][0][0].get_origin() == (235, 235, 235)
+    assert root[1][1][0].get_origin() == (237, 237, 237)
+
+    # Check panels are correct in hierarchy
+    assert root[0][0][0].is_(d2[0]) 
+    assert root[0][1][0].is_(d2[1]) 
+    assert root[1][0][0].is_(d2[2]) 
+    assert root[1][1][0].is_(d2[3]) 
+
+    # Check panel attributes
+    assert not isinstance(d2[0].get_px_mm_strategy(), ParallaxCorrectedPxMmStrategy)
+    assert d2[1].get_material() == "Si"
+    assert d2[1].get_thickness() == 0.01
+    assert isinstance(d2[1].get_px_mm_strategy(), ParallaxCorrectedPxMmStrategy)
 
     print 'OK'
 
