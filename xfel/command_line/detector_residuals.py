@@ -139,7 +139,8 @@ class Script(DCScript):
     if vmax is None:
       vmax = flex.max(data)
     if vmin is None:
-      vmin = flex.min(data)
+      vmin = min(flex.min(data), 0)
+    assert vmax > vmin
 
     # initialize the color map
     norm = Normalize(vmin=vmin, vmax=vmax)
