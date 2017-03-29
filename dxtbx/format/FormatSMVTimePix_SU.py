@@ -292,8 +292,6 @@ class FormatSMVTimePix_SU(FormatSMV):
 
     return tuple(self._raw_data)
 
-    return raw_data
-
 if __name__ == '__main__':
 
   import sys
