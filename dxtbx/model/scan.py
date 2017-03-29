@@ -16,11 +16,73 @@ from dxtbx_model_ext import Scan
 
 from dxtbx.model.scan_helpers import scan_helper_image_files
 from dxtbx.model.scan_helpers import scan_helper_image_formats
+import libtbx.phil
 
+scan_phil_scope = libtbx.phil.parse('''
+  scan
+    .expert_level = 1
+    .short_caption = "Scan overrides"
+  {
+
+    image_range = None
+      .type = ints(size=2)
+      .help = "Override the image range"
+      .short_caption = "Image range"
+
+    extrapolate_scan = False
+      .type = bool
+      .help = "When overriding the image range, extrapolate exposure and epoch information from existing images"
+      .short_caption = "Extrapolate scan"
+
+    oscillation = None
+      .type = floats(size=2)
+      .help = "Override the image oscillation"
+      .short_caption = "Oscillation"
+  }
+''')
 
 class ScanFactory:
   '''A factory for scan instances, to help with constructing the classes
   in a set of common circumstances.'''
+
+  @staticmethod
+  def from_phil(params, reference=None):
+    '''
+    Generate a scan model from phil parameters
+
+    '''
+    if reference is None:
+      if params.scan.image_range is None:
+        raise RuntimeError('No image range set')
+      if params.scan.oscillation is None:
+        raise RuntimeError('No oscillation set')
+      scan = Scan(
+        params.scan.image_range,
+        params.scan.oscillation)
+    else:
+      scan = reference
+
+      if params.scan.image_range is not None:
+        most_recent_image_index = scan.get_image_range()[1] - scan.get_image_range()[0]
+        scan.set_image_range(params.scan.image_range)
+        if params.scan.extrapolate_scan and \
+            (params.scan.image_range[1] - params.scan.image_range[0]) > most_recent_image_index:
+          exposure_times = scan.get_exposure_times()
+          epochs = scan.get_epochs()
+          exposure_time = exposure_times[most_recent_image_index]
+          epoch_correction = epochs[most_recent_image_index]
+          for i in range(most_recent_image_index + 1, \
+              params.scan.image_range[1] - params.scan.image_range[0] + 1):
+            exposure_times[i] = exposure_time
+            epoch_correction += exposure_time
+            epochs[i] = epoch_correction
+          scan.set_epochs(epochs)
+          scan.set_exposure_times(exposure_times)
+      if params.scan.oscillation is not None:
+        scan.set_oscillation(params.scan.oscillation)
+
+    # Return the model
+    return scan
 
   @staticmethod
   def from_dict(d, t=None):
