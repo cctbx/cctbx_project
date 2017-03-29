@@ -187,7 +187,58 @@ def test_multi_axis_goniometer():
 
   print 'OK'
 
+def test_goniometer_from_phil():
+  from dxtbx.model.goniometer import GoniometerFactory
+  from dxtbx.model.goniometer import goniometer_phil_scope
+  from libtbx.phil import parse
+
+  params = goniometer_phil_scope.fetch(parse('''
+    goniometer {
+      axes = (1, 0, 0)
+    }
+  ''')).extract()
+
+  g1 = GoniometerFactory.from_phil(params)
+
+  assert g1.get_rotation_axis() == (1, 0, 0)
+
+  params = goniometer_phil_scope.fetch(parse('''
+    goniometer {
+      axes = (0, 1, 0)
+      fixed_rotation = (0, 1, 0, 1, 0, 0, 0, 0, 1)
+    }
+  ''')).extract()
+
+  g2 = GoniometerFactory.from_phil(params, reference=g1)
+
+  assert g2.get_rotation_axis() == (0, 1, 0)
+  assert g2.get_fixed_rotation() == (0, 1, 0, 1, 0, 0, 0, 0, 1)
+
+  params = goniometer_phil_scope.fetch(parse('''
+    goniometer {
+      axes = (1, 0, 0, 0, 1, 0, 0, 0, 1)
+      scan_axis = 2
+    }
+  ''')).extract()
+
+  g3 = GoniometerFactory.from_phil(params)
+  assert tuple(g3.get_axes()) == ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+  assert g3.get_scan_axis() == 2
+
+  params = goniometer_phil_scope.fetch(parse('''
+    goniometer {
+      axes = (0, 1, 0, 1, 0, 0, 0, 0, 1)
+    }
+  ''')).extract()
+
+  g4 = GoniometerFactory.from_phil(params, reference=g3)
+
+  assert tuple(g4.get_axes()) == ((0, 1, 0), (1, 0, 0), (0, 0, 1))
+
+  print 'OK'
+
 if __name__ == '__main__':
 
   test_goniometer()
   test_multi_axis_goniometer()
+  test_goniometer_from_phil()

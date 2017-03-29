@@ -13,8 +13,53 @@ from __future__ import absolute_import, division
 import pycbf
 from dxtbx_model_ext import KappaGoniometer # special import
 from dxtbx_model_ext import Goniometer, MultiAxisGoniometer
-
+import libtbx.phil
 import scitbx.math # import dependency
+
+
+goniometer_phil_scope = libtbx.phil.parse('''
+  goniometer
+    .expert_level = 1
+    .short_caption = "Goniometer overrides"
+  {
+
+    axes = None
+      .type = floats
+      .help = "Override the goniometer axes. Axes must be provided in the"
+              "order crystal-to-goniometer, i.e. for a Kappa goniometer"
+              "phi,kappa,omega"
+      .short_caption="Goniometer axes"
+
+    angles = None
+      .type = floats
+      .help = "Override the goniometer angles. Axes must be provided in the"
+              "order crystal-to-goniometer, i.e. for a Kappa goniometer"
+              "phi,kappa,omega"
+      .short_caption = "Goniometer angles"
+
+    names = None
+      .type = str
+      .help = "The multi axis goniometer axis names"
+      .short_caption = "The axis names"
+
+    scan_axis = None
+      .type = int
+      .help = "The scan axis"
+      .short_caption = "The scan axis"
+
+    fixed_rotation = None
+      .type = floats(size=9)
+      .help = "Override the fixed rotation matrix"
+      .short_caption = "Fixed rotation matrix"
+
+    setting_rotation = None
+      .type = floats(size=9)
+      .help = "Override the setting rotation matrix"
+      .short_caption = "Setting rotation matrix"
+
+  }
+''')
+
 
 class GoniometerFactory:
   '''A factory class for goniometer objects, which will encapsulate
@@ -25,6 +70,147 @@ class GoniometerFactory:
 
   def __init__(self):
     pass
+
+  @staticmethod
+  def single_axis_goniometer_from_phil(params, reference=None):
+    '''
+    Generate or overwrite a single axis goniometer
+
+    '''
+
+    # Check the axes parameter
+    if params.goniometer.axes is not None and len(params.goniometer.axes) != 3:
+      raise RuntimeError('Single axis goniometer requires 3 axes parameters')
+
+    # Check the angles parameter
+    if params.goniometer.angles is not None:
+      raise RuntimeError('Single axis goniometer requires angles == None')
+
+    # Check the names parameter
+    if params.goniometer.names is not None:
+      raise RuntimeError('Single axis goniometer requires names == None')
+
+    # Init the gonionmeter
+    if reference is None:
+      goniometer = Goniometer()
+    else:
+      goniometer = reference
+
+    # Set the parameters
+    if params.goniometer.axes is not None:
+      goniometer.set_rotation_axis_datum(params.goniometer.axes)
+    if params.goniometer.fixed_rotation is not None:
+      goniometer.set_fixed_rotation(params.goniometer.fixed_rotation)
+    if params.goniometer.setting_rotation is not None:
+      goniometer.set_setting_rotation(params.goniometer.setting_rotation)
+
+    # Return the model
+    return goniometer
+
+  @staticmethod
+  def multi_axis_goniometer_from_phil(params, reference=None):
+    from scitbx.array_family import flex
+
+    # Check the axes parameter
+    if params.goniometer.axes is not None:
+      if len(params.goniometer.axes) % 3:
+        raise RuntimeError("Number of values for axes parameter must be multiple of 3.")
+
+    # Check the fixed rotation
+    if params.goniometer.fixed_rotation is not None:
+      raise RuntimeError('Multi-axis goniometer requires fixed_rotation == None')
+
+    # Check the setting rotation
+    if params.goniometer.setting_rotation is not None:
+      raise RuntimeError('Multi-axis goniometer requires setting_rotation == None')
+
+    # Check the input
+    if reference is None:
+      if params.goniometer.axes is None:
+        raise RuntimeError('No axes set')
+
+      # Create the axes
+      axes = flex.vec3_double(
+        params.goniometer.axes[i*3:(i*3)+3] for i in
+        range(len(params.goniometer.axes) // 3))
+
+      # Create the angles
+      if params.goniometer.angles is not None:
+        angles = params.goniometer.angles
+        if len(angles) != len(axes):
+          raise RuntimeError('Number of angles must match axes')
+      else:
+        angles = flex.double([0] * len(axes))
+
+      # Create the names
+      if params.goniometer.names is not None:
+        names = params.goniometer.names
+        if len(names) != len(axes):
+          raise RuntimeError('Number of names must match axes')
+      else:
+        names = flex.std_string([''] * len(axes))
+
+      # Create the scan axis
+      if params.goniometer.scan_axis is not None:
+        scan_axis = params.goniometer.scan_axis
+      else:
+        scan_axis = 0
+
+      # Create the model
+      goniometer = MultiAxisGoniometer(axes, angles, names, scan_axis)
+    else:
+      goniometer = reference
+
+      # Set the axes
+      if params.goniometer.axes is not None:
+        axes = flex.vec3_double(
+          params.goniometer.axes[i*3:(i*3)+3] for i in
+          range(len(params.goniometer.axes) // 3))
+        if len(goniometer.get_axes()) != len(axes):
+          raise RuntimeError("Number of axes must match the current goniometer (%s)"
+             %len(goniometer.get_axes()))
+        goniometer.set_axes(axes)
+
+      # Set the angles
+      if params.goniometer.angles is not None:
+        if len(goniometer.get_angles()) != len(params.goniometer.angles):
+          raise RuntimeError("Number of angles must match the current goniometer (%s)"
+             %len(goniometer.get_angles()))
+        goniometer.set_angles(params.goniometer.angles)
+
+      # Set the namess
+      if params.goniometer.names is not None:
+        if len(goniometer.get_names()) != len(params.goniometer.names):
+          raise RuntimeError("Number of names must match the current goniometer (%s)"
+             %len(goniometer.get_names()))
+        goniometer.set_names(params.goniometer.names)
+
+      # Set the scan axis
+      if params.goniometer.scan_axis is not None:
+        raise RuntimeError('Can not override scan axis')
+
+    # Return the model
+    return goniometer
+
+  @staticmethod
+  def from_phil(params, reference=None):
+    '''
+    Convert the phil parameters into a beam model
+
+    '''
+    if reference is not None:
+      if isinstance(reference, MultiAxisGoniometer):
+        goniometer = GoniometerFactory.multi_axis_goniometer_from_phil(params, reference)
+      else:
+        goniometer = GoniometerFactory.single_axis_goniometer_from_phil(params, reference)
+    else:
+      if params.goniometer.axes is None:
+        raise RuntimeError('No reference and no axes set')
+      if len(params.goniometer.axes) > 3:
+        goniometer = GoniometerFactory.multi_axis_goniometer_from_phil(params)
+      else:
+        goniometer = GoniometerFactory.single_axis_goniometer_from_phil(params)
+    return goniometer
 
   @staticmethod
   def from_dict(d, t=None):

@@ -72,7 +72,7 @@ def tst_from_phil():
       direction = (0, 0, 1)
     }
   """)).extract()
-  
+
   params2 = beam_phil_scope.fetch(parse("""
     beam {
       wavelength = 1.0
@@ -90,7 +90,7 @@ def tst_from_phil():
   assert passed == False
 
   print 'OK'
-    
+
 def run():
   """Test the beam object"""
   tst_set_direction_wavelength()

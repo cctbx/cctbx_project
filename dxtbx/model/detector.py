@@ -117,7 +117,7 @@ detector_phil_scope = libtbx.phil.parse('''
         .type = floats(size=3)
         .help = "Override the panel origin. Requires fast_axis and slow_axis."
         .short_caption = "Panel origin vector"
-    
+
       group
         .multiple = True
       {
@@ -233,7 +233,7 @@ class DetectorFactory:
         panel_params.origin = (0, 0, 0)
       panel.set_local_frame(
         panel_params.fast_axis,
-        panel_params.slow_axis, 
+        panel_params.slow_axis,
         panel_params.origin)
       if panel_params.id in panel_list:
         raise RuntimeError('Multiple panels with id=%d' % panel_params.id)
@@ -253,8 +253,8 @@ class DetectorFactory:
         params.detector.hierarchy.origin = (0, 0, 0)
       root.set_frame(
         params.detector.hierarchy.fast_axis,
-        params.detector.hierarchy.slow_axis, 
-        params.detector.hierarchy.origin) 
+        params.detector.hierarchy.slow_axis,
+        params.detector.hierarchy.origin)
       def get_parent(node, index):
         if len(index) == 0:
           return node
@@ -273,7 +273,7 @@ class DetectorFactory:
           group_params.origin = (0, 0, 0)
         group.set_local_frame(
           group_params.fast_axis,
-          group_params.slow_axis, 
+          group_params.slow_axis,
           group_params.origin)
         for panel_id in group_params.panel:
           assert panel_id == panel_counter
@@ -282,7 +282,7 @@ class DetectorFactory:
     else:
       for panel_id in range(len(max(panel_list.keys()))):
         detector.add_panel(panel_list[panel_id])
-    
+
     # Return detector
     return detector
 
@@ -325,7 +325,7 @@ class DetectorFactory:
         panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, t0))
       else:
         panel.set_px_mm_strategy(SimplePxMmStrategy())
-      axes = [panel_params.fast_axis, 
+      axes = [panel_params.fast_axis,
               panel_params.slow_axis,
               panel_params.origin]
       if axes.count(None) != 0:
@@ -337,9 +337,9 @@ class DetectorFactory:
           panel_params.origin = panel.get_local_origin()
         panel.set_local_frame(
           panel_params.fast_axis,
-          panel_params.slow_axis, 
+          panel_params.slow_axis,
           panel_params.origin)
-    
+
     # Create the hierarchy
     if params.detector.hierarchy is not None:
       root = detector.hierarchy()
@@ -356,8 +356,8 @@ class DetectorFactory:
           params.detector.hierarchy.origin = root.get_origin()
         root.set_frame(
           params.detector.hierarchy.fast_axis,
-          params.detector.hierarchy.slow_axis, 
-          params.detector.hierarchy.origin) 
+          params.detector.hierarchy.slow_axis,
+          params.detector.hierarchy.origin)
       def get_group(node, index):
         if len(index) == 0:
           return node
@@ -377,7 +377,7 @@ class DetectorFactory:
             group_params.origin = group.get_local_origin()
           group.set_local_frame(
             group_params.fast_axis,
-            group_params.slow_axis, 
+            group_params.slow_axis,
             group_params.origin)
         if len(group_params.panel) != 0:
           raise RuntimeError("Can't reassign panels in groups")
@@ -407,7 +407,7 @@ class DetectorFactory:
         detector,
         beam,
         params.detector.mosflm_beam_centre)
-   
+
     # If the slow fast beam centre is set then update
     if params.detector.slow_fast_beam_centre is not None:
       assert beam is not None
@@ -420,7 +420,7 @@ class DetectorFactory:
       except RuntimeError:
         raise Sorry('Detector does not have panel index {0}'.format(pnl))
       beam.set_unit_s0(p.get_pixel_lab_coord((beam_f, beam_s)))
-    
+
     # Return the model
     return detector
 

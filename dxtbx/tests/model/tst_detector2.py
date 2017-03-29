@@ -347,7 +347,7 @@ class Test2:
           image_size = (1000,1000)
           trusted_range = (-1, 1000)
         }
-      
+
         hierarchy {
           name = "Root"
           origin = (100, 100, 100)
@@ -402,10 +402,10 @@ class Test2:
     assert root[1][1][0].get_origin() == (126, 126, 126)
 
     # Check panels are correct in hierarchy
-    assert root[0][0][0].is_(d1[0]) 
-    assert root[0][1][0].is_(d1[1]) 
-    assert root[1][0][0].is_(d1[2]) 
-    assert root[1][1][0].is_(d1[3]) 
+    assert root[0][0][0].is_(d1[0])
+    assert root[0][1][0].is_(d1[1])
+    assert root[1][0][0].is_(d1[2])
+    assert root[1][1][0].is_(d1[3])
 
     # Check panel attributes
     assert d1[0].get_image_size() == (1000, 1000)
@@ -422,11 +422,11 @@ class Test2:
     assert d1[2].get_image_size() == (1000, 1000)
     assert d1[2].get_pixel_size() == (0.001, 0.001)
     assert d1[2].get_trusted_range() == (-1, 1000)
-    
+
     assert d1[3].get_image_size() == (1000, 1000)
     assert d1[3].get_pixel_size() == (0.001, 0.001)
     assert d1[3].get_trusted_range() == (-1, 1000)
-    
+
     params = detector_phil_scope.fetch(parse('''
       detector {
         panel {
@@ -439,7 +439,7 @@ class Test2:
           thickness = 0.01
           parallax_correction = True
         }
-      
+
         hierarchy {
           name = "Root"
           origin = (200, 200, 200)
@@ -470,10 +470,10 @@ class Test2:
         }
       }
     ''')).extract()
-   
+
     # Test overwrite model
     d2 = DetectorFactory.from_phil(params, reference=d1, beam=beam)
-    
+
     root = d2.hierarchy()
 
     # Check hierarchy origins
@@ -490,10 +490,10 @@ class Test2:
     assert root[1][1][0].get_origin() == (237, 237, 237)
 
     # Check panels are correct in hierarchy
-    assert root[0][0][0].is_(d2[0]) 
-    assert root[0][1][0].is_(d2[1]) 
-    assert root[1][0][0].is_(d2[2]) 
-    assert root[1][1][0].is_(d2[3]) 
+    assert root[0][0][0].is_(d2[0])
+    assert root[0][1][0].is_(d2[1])
+    assert root[1][0][0].is_(d2[2])
+    assert root[1][1][0].is_(d2[3])
 
     # Check panel attributes
     assert not isinstance(d2[0].get_px_mm_strategy(), ParallaxCorrectedPxMmStrategy)
