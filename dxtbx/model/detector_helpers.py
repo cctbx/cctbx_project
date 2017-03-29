@@ -126,7 +126,8 @@ class detector_helper_sensors:
             detector_helper_sensors.SENSOR_PAD,
             detector_helper_sensors.SENSOR_IMAGE_PLATE]
 
-def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
+def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre,
+                           detector_distance=None):
   """ detector and beam are dxtbx objects,
       mosflm_beam_centre is a tuple of mm coordinates.
       supports 2-theta offset detectors, assumes correct centre provided
@@ -158,7 +159,10 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
     b = - Ro + Ro.dot(s0) * s0
     beam_x = b.dot(R * f)
     beam_y = b.dot(R * s)
-    distance = Ro.dot(R * n)
+    if detector_distance is None:
+      distance = Ro.dot(R * n)
+    else:
+      distance = detector_distance
     # recompute origin, return to original frame
     o_new = distance * s0 - mosflm_x * R * f - mosflm_y * R * s
     new_origin = R.inverse() * o_new

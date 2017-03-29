@@ -130,19 +130,19 @@ class Format(object):
 
     try:
       goniometer_instance = self._goniometer()
-      assert(isinstance(goniometer_instance, Goniometer))
+      #assert(isinstance(goniometer_instance, Goniometer))
       self._goniometer_instance = goniometer_instance
 
       detector_instance = self._detector()
-      assert(isinstance(detector_instance, Detector))
+      #assert(isinstance(detector_instance, Detector))
       self._detector_instance = detector_instance
 
       beam_instance = self._beam()
-      assert(isinstance(beam_instance, Beam))
+      #assert(isinstance(beam_instance, Beam))
       self._beam_instance = beam_instance
 
       scan_instance = self._scan()
-      assert(isinstance(scan_instance, Scan) or isinstance(scan_instance, list))
+      #assert(isinstance(scan_instance, Scan) or isinstance(scan_instance, list))
       self._scan_instance = scan_instance
 
     except exceptions.Exception, e:
