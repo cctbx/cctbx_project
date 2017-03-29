@@ -96,7 +96,8 @@ detector_phil_scope = libtbx.phil.parse('''
         .short_caption = "Enable parallax correction"
     }
 
-    hierarchy {
+    hierarchy
+      {
 
       name = None
         .type = str
@@ -245,48 +246,49 @@ class DetectorFactory:
       panel_list[panel_params.id] = panel
 
     # Create the hierarchy
-    if params.detector.hierarchy is not None:
-      panel_counter = 0
-      root = detector.hierarchy()
-      if params.detector.hierarchy.name is not None:
-        root.set_name(params.detector.hierarchy.name)
-      if params.detector.hierarchy.fast_axis is None:
-        params.detector.hierarchy.fast_axis = (1, 0, 0)
-      if params.detector.hierarchy.slow_axis is None:
-        params.detector.hierarchy.slow_axis = (0, 1, 0)
-      if params.detector.hierarchy.origin is None:
-        params.detector.hierarchy.origin = (0, 0, 0)
-      root.set_frame(
-        params.detector.hierarchy.fast_axis,
-        params.detector.hierarchy.slow_axis,
-        params.detector.hierarchy.origin)
-      def get_parent(node, index):
-        if len(index) == 0:
-          return node
-        return get_parent(node[index[0]], index[1:])
-      for group_params in params.detector.hierarchy.group:
-        parent = get_parent(root, group_params.id[:-1])
-        assert len(parent) == group_params.id[-1]
-        group = parent.add_group()
-        if group_params.name is not None:
-          group.set_name(group_params.name)
-        if group_params.fast_axis is None:
-          group_params.fast_axis = (1, 0, 0)
-        if group_params.slow_axis is None:
-          group_params.slow_axis = (0, 1, 0)
-        if group_params.origin is None:
-          group_params.origin = (0, 0, 0)
-        group.set_local_frame(
-          group_params.fast_axis,
-          group_params.slow_axis,
-          group_params.origin)
-        for panel_id in group_params.panel:
-          assert panel_id == panel_counter
-          group.add_panel(panel_list[panel_id])
-          panel_counter += 1
-    else:
-      for panel_id in range(len(max(panel_list.keys()))):
+    panel_counter = 0
+    root = detector.hierarchy()
+    if params.detector.hierarchy.name is not None:
+      root.set_name(params.detector.hierarchy.name)
+    if params.detector.hierarchy.fast_axis is None:
+      params.detector.hierarchy.fast_axis = (1, 0, 0)
+    if params.detector.hierarchy.slow_axis is None:
+      params.detector.hierarchy.slow_axis = (0, 1, 0)
+    if params.detector.hierarchy.origin is None:
+      params.detector.hierarchy.origin = (0, 0, 0)
+    root.set_frame(
+      params.detector.hierarchy.fast_axis,
+      params.detector.hierarchy.slow_axis,
+      params.detector.hierarchy.origin)
+    def get_parent(node, index):
+      if len(index) == 0:
+        return node
+      return get_parent(node[index[0]], index[1:])
+    for group_params in params.detector.hierarchy.group:
+      parent = get_parent(root, group_params.id[:-1])
+      assert len(parent) == group_params.id[-1]
+      group = parent.add_group()
+      if group_params.name is not None:
+        group.set_name(group_params.name)
+      if group_params.fast_axis is None:
+        group_params.fast_axis = (1, 0, 0)
+      if group_params.slow_axis is None:
+        group_params.slow_axis = (0, 1, 0)
+      if group_params.origin is None:
+        group_params.origin = (0, 0, 0)
+      group.set_local_frame(
+        group_params.fast_axis,
+        group_params.slow_axis,
+        group_params.origin)
+      for panel_id in group_params.panel:
+        assert panel_id == panel_counter
+        group.add_panel(panel_list[panel_id])
+        panel_counter += 1
+    if panel_counter == 0:
+      for panel_id in range(max(panel_list.keys())+1):
         detector.add_panel(panel_list[panel_id])
+    elif panel_counter != len(panel_list):
+      raise RuntimeError("Inconsistent number of panels in hierarchy")
 
     # Return detector
     return detector
@@ -396,6 +398,7 @@ class DetectorFactory:
     Convert phil parameters into detector model
 
     '''
+    from dxtbx.model.detector_helpers import set_detector_distance
     from dxtbx.model.detector_helpers import set_mosflm_beam_centre
 
     # Check the input. If no reference detector is provided then
@@ -405,14 +408,17 @@ class DetectorFactory:
     else:
       detector = DetectorFactory.overwrite_from_phil(params, reference, beam)
 
+    # If the distance is set
+    if params.detector.distance is not None:
+      set_detector_distance(detector, params.detector.distance)
+
     # If the mosflm beam centre is set then update
     if params.detector.mosflm_beam_centre is not None:
       assert beam is not None
       set_mosflm_beam_centre(
         detector,
         beam,
-        params.detector.mosflm_beam_centre,
-        params.detector.distance)
+        params.detector.mosflm_beam_centre)
 
     # If the slow fast beam centre is set then update
     if params.detector.slow_fast_beam_centre is not None:

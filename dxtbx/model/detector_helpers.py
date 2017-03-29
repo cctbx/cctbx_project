@@ -126,8 +126,7 @@ class detector_helper_sensors:
             detector_helper_sensors.SENSOR_PAD,
             detector_helper_sensors.SENSOR_IMAGE_PLATE]
 
-def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre,
-                           detector_distance=None):
+def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
   """ detector and beam are dxtbx objects,
       mosflm_beam_centre is a tuple of mm coordinates.
       supports 2-theta offset detectors, assumes correct centre provided
@@ -159,10 +158,7 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre,
     b = - Ro + Ro.dot(s0) * s0
     beam_x = b.dot(R * f)
     beam_y = b.dot(R * s)
-    if detector_distance is None:
-      distance = Ro.dot(R * n)
-    else:
-      distance = detector_distance
+    distance = Ro.dot(R * n)
     # recompute origin, return to original frame
     o_new = distance * s0 - mosflm_x * R * f - mosflm_y * R * s
     new_origin = R.inverse() * o_new
@@ -199,3 +195,22 @@ def set_mosflm_beam_centre_old(detector, beam, mosflm_beam_centre):
   panel_id, new_beam_centre = detector.get_ray_intersection(beam.get_s0())
   assert (matrix.col(new_beam_centre) -
           matrix.col(tuple(reversed(mosflm_beam_centre)))).length() < 1e-4
+
+
+def set_detector_distance(detector, distance):
+  '''
+  Set detector origin from distance along normal
+
+  '''
+  from scitbx import matrix
+  from math import cos
+  assert len(detector) == 1
+  normal = matrix.col(detector[0].get_normal())
+  origin = matrix.col(detector[0].get_origin())
+  d = origin.dot(normal)
+  l = origin - d * normal
+  origin = distance * normal + l
+  fast_axis = detector[0].get_fast_axis()
+  slow_axis = detector[0].get_slow_axis()
+  detector[0].set_frame(fast_axis, slow_axis, origin)
+
