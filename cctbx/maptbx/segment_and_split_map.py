@@ -3968,7 +3968,6 @@ def add_neighbors(params,
           x="%s_%s" %(tuple(x))
           if not x in did_not_find_list: 
             did_not_find_list.append(x)
-            print "DID NOT FIND: ",x
         else:
           if not a in ncs_ops_used:
             ncs_ops_used.append(a)
