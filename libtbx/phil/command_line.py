@@ -55,6 +55,9 @@ class argument_interpreter(object):
     if (self.target_paths is None):
       self.target_paths = [object_locator.path
         for object_locator in self.master_phil.all_definitions()]
+    expert_level = [object_locator.object.expert_level or 0
+      for object_locator in self.master_phil.all_definitions()]
+
     source_definitions = params.all_definitions()
     complete_definitions = ""
     for object_locator in source_definitions:
@@ -72,7 +75,16 @@ class argument_interpreter(object):
         for target_path,score in zip(self.target_paths, scores):
           if (score == max_score):
             error.append("  " + target_path)
-        raise Sorry("\n".join(error))
+
+        # Calculate and apply tie-breaker value depending on expert level.
+        # Arguments with lower expert level are preferentially
+        # chosen if otherwise they would be ambiguous.
+        scores = [ score - (exp_lvl / 100) for score, exp_lvl in zip(scores, expert_level) ]
+        max_score = max(scores)
+        if (scores.count(max_score) > 1):
+          raise Sorry("\n".join(error))
+        print "Warning: " + "\n".join(error) + "\nAssuming %s was intended." % self.target_paths[scores.index(max_score)]
+
       complete_definitions += object.customized_copy(
         name=self.target_paths[scores.index(max_score)]).as_str()
     if (complete_definitions == ""):
