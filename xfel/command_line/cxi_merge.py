@@ -2034,7 +2034,7 @@ def show_overall_observations(
       format_value("%5.2f", 100*(cumulative_unique/cumulative_theor)),
       format_value("%6.2f", cumulative_meas/cumulative_theor),
       format_value("%6.2f", cumulative_meas/cumulative_unique),
-      format_value("%6.2f", (0 if redundancy_to_edge is None else cumulative_n_pred/cumulative_unique)),
+      format_value("%6.2f", (0 if redundancy_to_edge is None else cumulative_n_pred/cumulative_theor)),
       format_value("%6d",   cumulative_meas),
       format_value("%6d",   (0 if redundancy_to_edge is None else flex.sum(redundancy_to_edge))),
       format_value("%8.0f", cumulative_I/cumulative_In),
