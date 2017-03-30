@@ -338,6 +338,7 @@ class _Tiles(object):
         self.UseLevel(self.zoom_level)
         self.current_color_scheme = color_scheme
         self.current_brightness = b
+        self.flex_image.adjust(color_scheme)
 
     def update_color_scheme(self,color_scheme=0):
         self.flex_image.adjust(color_scheme)
