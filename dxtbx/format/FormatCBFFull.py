@@ -97,6 +97,99 @@ class FormatCBFFull(FormatCBF):
     except Exception:
       return None
 
+from dxtbx.format.FormatStill import FormatStill
+class FormatCBFFullStill(FormatStill, FormatCBFFull):
+  '''An image reading class for full CBF format images i.e. those from
+  a variety of cameras which support this format. Custom derifed from
+  the FormatStill to handle images without a gonimeter or scan'''
+
+  @staticmethod
+  def understand(image_file):
+    '''Check to see if this looks like an CBF format image, i.e. we can
+    make sense of it.'''
+
+    header = FormatCBF.get_cbf_header(image_file)
+
+    if not '_diffrn.id' in header and not '_diffrn_source':
+      return False
+
+    # According to ImageCIF, "Data items in the DIFFRN_MEASUREMENT_AXIS
+    # category associate axes with goniometers."
+    # http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Cdiffrn_measurement_axis.html
+    if 'diffrn_measurement_axis' in header:
+      return False
+
+    # This implementation only supports single panel.
+    try:
+      cbf_handle = pycbf.cbf_handle_struct()
+      cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
+    except Exception, e:
+      if 'CBFlib Error' in str(e):
+        return False
+
+    #check if multiple arrays
+    try:
+      return cbf_handle.count_elements() == 1
+    except Exception, e:
+      if 'CBFlib Error' in str(e):
+        return False
+
+    return True
+
+  def get_raw_data(self):
+    '''Get the pixel intensities (i.e. read the image and return as a
+    flex array.'''
+
+    # Override parent's get_raw_data, which relies on iotbx, which in turn
+    # relies on cbflib_adaptbx, which in turn expects a gonio
+    cbf = self._get_cbf_handle()
+
+    cbf.find_category('array_structure')
+    cbf.find_column('encoding_type')
+    cbf.select_row(0)
+    types = []
+    for i in xrange(cbf.count_rows()):
+      types.append(cbf.get_value())
+      cbf.next_row()
+    assert len(types) == cbf.count_rows() == 1 # multi-tile data read by different class
+    dtype = types[0]
+
+    # find the data
+    cbf.select_category(0)
+    while cbf.category_name().lower() != "array_data":
+      try:
+        cbf.next_category()
+      except Exception, e:
+        return None
+    cbf.select_column(0)
+    cbf.select_row(0)
+
+    import numpy
+    from scitbx.array_family import flex
+
+    cbf.find_column("data")
+    assert cbf.get_typeofvalue().find('bnry') > -1
+
+    # handle floats vs ints
+    if dtype == 'signed 32-bit integer':
+      array_string = cbf.get_integerarray_as_string()
+      array = flex.int(numpy.fromstring(array_string, numpy.int32))
+      parameters = cbf.get_integerarrayparameters_wdims_fs()
+      slow, mid, fast = (parameters[11], parameters[10], parameters[9])
+      assert slow == 1 # sections not supported
+      array_size = mid, fast
+    elif dtype == 'signed 64-bit real IEEE':
+      array_string = cbf.get_realarray_as_string()
+      array = flex.double(numpy.fromstring(array_string, numpy.float))
+      parameters = cbf.get_realarrayparameters_wdims_fs()
+      slow, mid, fast = (parameters[7], parameters[6], parameters[5])
+      assert slow == 1 # sections not supported
+      array_size = mid, fast
+    else:
+      return None # type not supported
+
+    array.reshape(flex.grid(*array_size))
+    return array
 
 if __name__ == '__main__':
 
