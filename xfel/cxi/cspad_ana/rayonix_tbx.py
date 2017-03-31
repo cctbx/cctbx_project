@@ -207,8 +207,8 @@ def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distan
   """Data items in the ARRAY_STRUCTURE_LIST_SECTION category identify
      the dimension-by-dimension start, end and stride of each section of an
      array that is to be referenced."""
-  cbf.add_category("array_structure_list_section",["array_id","id","index","start","end"])
-  # no rows for monolithic rayonix
+  # no array sections in monolithic rayonix
+  #cbf.add_category("array_structure_list_section",["array_id","id","index","start","end"])
 
   """Data items in the ARRAY_STRUCTURE_LIST_AXIS category describe
      the physical settings of sets of axes for the centres of pixels that
@@ -266,7 +266,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
   """
   import numpy as np
   from xfel.cftbx.detector import cspad_cbf_tbx
-  cbf = cspad_cbf_tbx.copy_cbf_header(base_dxtbx._cbf_handle)
+  cbf = cspad_cbf_tbx.copy_cbf_header(base_dxtbx._cbf_handle, skip_sections=True)
   rayonix_img = FormatCBFRayonixInMemory(cbf)
   cbf.set_datablockname(address + "_" + timestamp)
 
@@ -287,10 +287,10 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
   cbf.set_value(str(-distance))
 
   # Explicitly reset the detector object now that the distance is set correctly
-  #rayonix_img._detector_instance = rayonix_img._detector()
+  rayonix_img._detector_instance = rayonix_img._detector()
 
   # Explicitly set up the beam object now that the tables are all loaded correctly
-  #rayonix_img._beam_instance = rayonix_img._beam()
+  rayonix_img._beam_instance = rayonix_img._beam()
 
   # Get the data and add it to the cbf handle.
   add_data_to_cbf(cbf,data)

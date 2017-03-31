@@ -815,9 +815,11 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
         dimslow,
         padding)
 
-def copy_cbf_header(src_cbf):
+def copy_cbf_header(src_cbf, skip_sections = False):
   """ Given a cbf handle, copy the header tables only to a new cbf handle instance
   @param src_cbf cbf_handle instance that has the header information
+  @param skip_sections If True, don't copy array array_structure_list_section,
+  which may not always be present
   @return cbf_wrapper instance with the header information from the source """
   dst_cbf = cbf_wrapper()
   dst_cbf.new_datablock("dummy")
@@ -828,12 +830,14 @@ def copy_cbf_header(src_cbf):
                 "diffrn_detector_axis",
                 "diffrn_detector_element",
                 "diffrn_data_frame",
-                "array_structure_list",
-                "array_structure_list_section",
+                "array_structure_list"]
+  if not skip_sections:
+    categories.append("array_structure_list_section")
+  categories.extend([
                 "array_structure_list_axis",
                 "axis",
                 "diffrn_scan_axis",
-                "diffrn_scan_frame_axis"]
+                "diffrn_scan_frame_axis"])
 
   for cat in categories:
     src_cbf.find_category(cat)
