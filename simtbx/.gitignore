@@ -18,3 +18,5 @@ testNAN
 testNAN.cpp
 testNAN.cpp~
 intimage_001.img
+nanoBragg/intimage.img
+nanoBragg/.adxv_beam_center
