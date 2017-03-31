@@ -8,7 +8,7 @@
 # An implementation of the CBF image reader for Pilatus images. Inherits from
 # FormatCBFMini.
 
-from __future__ import absolute_import, division
+from __future__ import division
 import os
 
 from dxtbx.format.FormatCBFMini import FormatCBFMini
@@ -297,8 +297,11 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     assert len(detector)==1,"only single-panel detectors supported"
     distance_meters = detector[0].get_distance()/1000
 
+    # why the heck is this backwards?
+    #print detector[0].get_fast_axis()
+    #print detector[0].get_slow_axis()
     beam_center = detector[0].get_beam_centre_px(beam.get_s0())
-    ORGX, ORGY = beam_center
+    ORGY, ORGX = beam_center
 
     cbf.add_row(["PILATUS_1.2", """
 # Detector: PILATUS3 6M, S/N 60-0000
