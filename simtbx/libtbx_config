@@ -1,0 +1,4 @@
+{
+  "modules_required_for_build": ["boost", "scitbx", "cctbx", "dxtbx", "rstbx", "dials"],
+  "modules_required_for_use": ["dials"]
+}

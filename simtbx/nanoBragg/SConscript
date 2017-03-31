@@ -1,0 +1,22 @@
+Import("env")
+
+# remove -ffast-math compile option
+nanoBragg_env = env.Clone()
+ccflags = nanoBragg_env['SHCCFLAGS']
+o = '-ffast-math'
+if o in ccflags:
+  ccflags.remove(o)
+nanoBragg_env.Replace(SHCCFLAGS=ccflags)
+nanoBragg_obj = nanoBragg_env.SharedObject(
+  source=[
+    "nanoBragg_ext.cpp",
+    "nanoBragg.cpp",
+  ])
+
+env.SharedLibrary(
+  target="#lib/simtbx_nanoBragg_ext",
+  source=[
+    nanoBragg_obj
+  ]
+)
+
