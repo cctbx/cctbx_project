@@ -233,7 +233,18 @@ def get_dxtbx_from_params(params):
   from scitbx.matrix import col
   fake_distance = 100
   null_ori = col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
-  metro = {(0,): basis(null_ori, col((0, 0, 0)))}
+  if params.override_beam_x is None and params.override_beam_y is None:
+    metro = {(0,): basis(null_ori, col((0, 0, 0)))}
+  elif params.override_beam_x is not None and params.override_beam_y is not None:
+    # compute the offset from the origin given the provided beam center override
+    pixel_size = get_rayonix_pixel_size(params.bin_size)
+    detector_size = get_rayonix_detector_dimensions(params.bin_size)
+    image_center = col(detector_size)/2
+    override_center = col((params.override_beam_x, params.override_beam_y))
+    delta = (image_center-override_center)*pixel_size
+    metro = {(0,): basis(null_ori, col((delta[0], -delta[1], 0)))} # note the -Y
+  else:
+    assert False, "Please provide both override_beam_x and override_beam_y or provide neither"
   cbf = get_rayonix_cbf_handle(None, metro, None, "test", None, fake_distance, params.bin_size, verbose = True, header_only = True)
   base_dxtbx = FormatCBFRayonixInMemory(cbf)
   return base_dxtbx
