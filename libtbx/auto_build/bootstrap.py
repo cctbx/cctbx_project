@@ -429,8 +429,7 @@ class Toolbox(object):
       #   git reset --hard origin/master
       #   git clean -dffx
       return ShellCommand(
-        command=['git', 'pull', '--rebase'], workdir=destination, silent=False
-      ).run()
+        command=['git', 'pull', '--rebase'], workdir=destination, silent=False, haltOnFailure=True).run()
 
     if os.path.exists(destination):
       print "Existing non-git directory -- don't know what to do. skipping: %s" % module
