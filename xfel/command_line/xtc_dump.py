@@ -5,7 +5,7 @@ from __future__ import division
 #
 import psana
 from xfel.cftbx.detector import cspad_cbf_tbx
-from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import cspad_tbx, rayonix_tbx
 import os, sys
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
@@ -55,6 +55,16 @@ phil_scope = parse('''
       gain_mask_value = None
         .type = float
         .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
+      mode = *cspad rayonix
+        .type = choice
+      rayonix {
+        bin_size = 2
+          .type = int
+        override_beam_x = None
+          .type = float
+        override_beam_y = None
+          .type = float
+      }
     }
   }
   output {
@@ -129,10 +139,14 @@ class Script(object):
 
     for run in ds.runs():
       if params.format.file_format == "cbf":
-        # load a header only cspad cbf from the slac metrology
-        base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
-        if base_dxtbx is None:
-          raise Sorry("Couldn't load calibration file for run %d"%run.run())
+        if params.format.cbf.mode == "cspad":
+          # load a header only cspad cbf from the slac metrology
+          base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
+          if base_dxtbx is None:
+            raise Sorry("Couldn't load calibration file for run %d"%run.run())
+        elif params.format.cbf.mode == "rayonix":
+          # load a header only rayonix cbf from the input parameters
+          base_dxtbx = rayonix_tbx.get_dxtbx_from_params(params.format.cbf.rayonix)
 
       # list of all events
       times = run.times()
@@ -176,14 +190,19 @@ class Script(object):
           easy_pickle.dump(path, data)
 
         elif params.format.file_format == "cbf":
-          # get numpy array, 32x185x388
-          data = cspad_cbf_tbx.get_psana_corrected_data(psana_det, evt, use_default=False, dark=True,
-                                                        common_mode=None,
-                                                        apply_gain_mask=params.format.cbf.gain_mask_value is not None,
-                                                        gain_mask_value=params.format.cbf.gain_mask_value,
-                                                        per_pixel_gain=False)
+          if params.format.cbf.mode == "cspad":
+            # get numpy array, 32x185x388
+            data = cspad_cbf_tbx.get_psana_corrected_data(psana_det, evt, use_default=False, dark=True,
+                                                          common_mode=None,
+                                                          apply_gain_mask=params.format.cbf.gain_mask_value is not None,
+                                                          gain_mask_value=params.format.cbf.gain_mask_value,
+                                                          per_pixel_gain=False)
 
-          distance = cspad_tbx.env_distance(params.input.address, run.env(), params.format.cbf.detz_offset)
+            distance = cspad_tbx.env_distance(params.input.address, run.env(), params.format.cbf.detz_offset)
+          elif params.format.cbf.mode == "rayonix":
+            data = rayonix_tbx.get_data_from_psana_event(evt, params.input.address)
+            distance = params.format.cbf.detz_offset
+
           if distance is None:
             print "No distance, skipping shot"
             continue
@@ -197,13 +216,16 @@ class Script(object):
             wavelength = 12398.4187/self.params.format.cbf.override_energy
 
           # stitch together the header, data and metadata into the final dxtbx format object
-          cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
+          if params.format.cbf.mode == "cspad":
+            image = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
+          elif params.format.cbf.mode == "rayonix":
+            image = rayonix_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, params.input.address)
           path = os.path.join(params.output.output_dir, "shot-" + s + ".cbf")
           print "Saving", path
 
           # write the file
           import pycbf
-          cspad_img._cbf_handle.write_widefile(path, pycbf.CBF,\
+          image._cbf_handle.write_widefile(path, pycbf.CBF,\
             pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)
 
       run.end()
