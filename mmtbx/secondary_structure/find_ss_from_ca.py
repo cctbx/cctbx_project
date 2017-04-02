@@ -331,7 +331,9 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   if not sequences: sequences=len(models)*[None]
   models,sequences=sort_models_and_sequences(models,sequences)
   for model,sequence in zip(models,sequences):
-    if not model or not model.hierarchy or not model.info: continue
+    if not model or not model.hierarchy: continue
+    if not model.info: 
+        model.info={}
     if not info: info=model.info
     i=0
     for m in model.hierarchy.models():
