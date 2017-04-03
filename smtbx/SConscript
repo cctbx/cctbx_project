@@ -18,8 +18,8 @@ if not env_etc.boost_thread_support:
 
 if libtbx.env.boost_version < 105600:
   v = libtbx.env.boost_version
-  d1 = v/10000
-  v %= 10000
+  d1 = v/100000
+  v %= 100000
   d2 = v/100
   print >>sys.stderr, ' '.join((
     "Module smtbx requires Boost version 1.56: ",
