@@ -14,7 +14,7 @@ env_etc.dxtbx_common_includes = [env_etc.base_include,
                                  env_etc.dxtbx_include]
 env_etc.dxtbx_libs = []
 env_etc.dxtbx_hdf5_libs = ["hdf5"]
-env_etc.dxtbx_lib_paths = [env_etc.base_lib, env_etc.libtbx_lib]
+env_etc.dxtbx_lib_paths = [env_etc.base_lib, env_etc.libtbx_lib, os.path.join(sys.prefix, 'lib')]
 env_etc.dxtbx_hdf5_lib_paths = []
 if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
   env_etc.dxtbx_libs = ["boost_python"]
