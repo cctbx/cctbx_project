@@ -528,63 +528,6 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
           result.append(proxy)
   return result
 
-def get_basepair_plane_proxies(
-    pdb_hierarchy,
-    bp_phil_params,
-    grm,
-    mon_lib_srv,
-    plane_cache):
-  assert pdb_hierarchy is not None
-  result_planarities = []
-  result_parallelities = []
-  if len(bp_phil_params) < 1:
-    return result_planarities, result_parallelities
-  if grm is None:
-    return result_planarities, result_parallelities
-  selection_cache = pdb_hierarchy.atom_selection_cache()
-  pdb_atoms = pdb_hierarchy.atoms()
-  for base_pair in bp_phil_params:
-    if (base_pair.base1 is not None and base_pair.base2 is not None
-        and base_pair.enabled):
-      selected_atoms_1 = selection_cache.iselection(base_pair.base1)
-      selected_atoms_2 = selection_cache.iselection(base_pair.base2)
-      if len(selected_atoms_1) == 0:
-        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
-            base_pair.base1))
-      if len(selected_atoms_2) == 0:
-        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
-            base_pair.base2))
-      a1 = pdb_atoms[selected_atoms_1[0]]
-      a2 = pdb_atoms[selected_atoms_2[0]]
-      r1 = a1.parent()
-      r2 = a2.parent()
-      seqs = get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache)
-      for i_seqs, j_seqs in seqs:
-        if len(i_seqs) > 2 and len(j_seqs) > 2:
-          if base_pair.restrain_parallelity:
-            if base_pair.parallelity_sigma < 1e-5:
-              raise Sorry("Sigma for parallelity basepair restraints should be > 1e-5")
-            proxy=geometry_restraints.parallelity_proxy(
-              i_seqs=flex.size_t(i_seqs),
-              j_seqs=flex.size_t(j_seqs),
-              weight=1/(base_pair.parallelity_sigma**2),
-              target_angle_deg=0,
-              slack=0,
-              top_out=False,
-              limit=1,
-              origin_id=1)
-            result_parallelities.append(proxy)
-          if base_pair.restrain_planarity:
-            if base_pair.planarity_sigma < 1e-5:
-              raise Sorry("Sigma for planarity basepair restraints should be > 1e-5")
-            w = 1./(base_pair.planarity_sigma**2)
-            proxy=geometry_restraints.planarity_proxy(
-              i_seqs=flex.size_t(i_seqs+j_seqs),
-              weights=[w]*len(i_seqs+j_seqs),
-              origin_id=1)
-            result_planarities.append(proxy)
-  return result_planarities, result_parallelities
-
 def get_hb_lenght_targets(atoms):
   restraint_values = { 'N6 O4' : (3.00, 0.11),
                        'O6 N4' : (2.93, 0.10),
@@ -679,65 +622,114 @@ def get_h_bonds_for_particular_basepair(atoms, saenger_class=0):
     hbonds.append((hba1, hba2))
   return hbonds
 
-def get_basepair_hbond_proxies(
+def get_basepair_proxies(
     pdb_hierarchy,
     bp_phil_params,
+    grm,
+    mon_lib_srv,
+    plane_cache,
     hbond_distance_cutoff=3.4):
   assert pdb_hierarchy is not None
   bond_proxies_result = []
   angle_proxies_result = []
-  if len(bp_phil_params) > 0:
-    # return bond_proxies_result, angle_proxies_result
-    selection_cache = pdb_hierarchy.atom_selection_cache()
-    pdb_atoms = pdb_hierarchy.atoms()
-    # dashes = open('dashes.pml', 'w')
-    pdb_atoms = pdb_hierarchy.atoms()
-    for base_pair in bp_phil_params:
-      if (base_pair.base1 is not None and base_pair.base2 is not None
-          and base_pair.enabled):
-        selected_atoms_1 = selection_cache.iselection(base_pair.base1)
-        selected_atoms_2 = selection_cache.iselection(base_pair.base2)
-        if len(selected_atoms_1) == 0:
-          raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
-              base_pair.base1))
-        if len(selected_atoms_2) == 0:
-          raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
-              base_pair.base2))
-        a1 = pdb_atoms[selected_atoms_1[0]]
-        a2 = pdb_atoms[selected_atoms_2[0]]
-        if base_pair.saenger_class == 0:
-          hbonds, saenger_class = get_h_bonds_for_basepair(
-            a1, a2, distance_cutoff=hbond_distance_cutoff,
-            log=sys.stdout, verbose=-1)
-          base_pair.saenger_class = saenger_class
-        hbonds = get_h_bonds_for_particular_basepair((a1, a2), base_pair.saenger_class)
-        for hb in hbonds:
-          if hb[0] is None or hb[1] is None:
-            print "NA hbond rejected because one of the atoms is absent"
-            continue
-          dist = hb[0].distance(hb[1])
-          if dist < hbond_distance_cutoff:
-            if base_pair.restrain_hbonds:
-              hb_target, hb_sigma = get_hb_lenght_targets(hb)
-              p = geometry_restraints.bond_simple_proxy(
-                i_seqs=[hb[0].i_seq, hb[1].i_seq],
-                distance_ideal=hb_target,
-                weight=1.0/hb_sigma**2,
-                slack=0,
-                top_out=False,
-                limit=1,
-                origin_id=1)
-              bond_proxies_result.append(p)
-              # print "bond:", hb[0].id_str(), hb[1].id_str(), "(%4.2f, %4.2f)" % (hb_target, hb_sigma)
-              # s1 = pdb_atoms[hb[0].i_seq].id_str()
-              # s2 = pdb_atoms[hb[1].i_seq].id_str()
-              # ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (
-              #   s1[14:15], s1[15:19], s1[5:8], s2[14:15], s2[15:19], s2[5:8])
-              # dashes.write(ps)
-            if base_pair.restrain_hb_angles:
-              angle_proxies_result += get_angle_proxies_for_bond(hb)
-          else:
-            print "NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist
-  # dashes.close()
-  return geometry_restraints.shared_bond_simple_proxy(bond_proxies_result), \
-      angle_proxies_result
+  result_planarities = []
+  result_parallelities = []
+  if len(bp_phil_params) < 1:
+    return bond_proxies_result, angle_proxies_result, result_planarities, result_parallelities
+  if grm is None:
+    return bond_proxies_result, angle_proxies_result, result_planarities, result_parallelities
+  selection_cache = pdb_hierarchy.atom_selection_cache()
+  pdb_atoms = pdb_hierarchy.atoms()
+  for base_pair in bp_phil_params:
+    if (base_pair.base1 is not None and base_pair.base2 is not None
+        and base_pair.enabled):
+      selected_atoms_1 = selection_cache.iselection(base_pair.base1)
+      selected_atoms_2 = selection_cache.iselection(base_pair.base2)
+      if len(selected_atoms_1) == 0:
+        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
+            base_pair.base1))
+      if len(selected_atoms_2) == 0:
+        raise Sorry("Selection %s in base_pair retusulted in 0 atoms." % (
+            base_pair.base2))
+      a1 = pdb_atoms[selected_atoms_1[0]]
+      a2 = pdb_atoms[selected_atoms_2[0]]
+      # get hbonds
+      bp_proxies, ap_proxies = get_bp_hbond_proxies(
+          a1, a2, base_pair, hbond_distance_cutoff)
+      bond_proxies_result += bp_proxies
+      angle_proxies_result += ap_proxies
+      # get planarity/parallelity
+      plan_p, parr_p = get_bp_plan_proxies(
+          a1, a2, base_pair, grm, mon_lib_srv, plane_cache)
+      result_planarities += plan_p
+      result_parallelities += parr_p
+  return bond_proxies_result, angle_proxies_result, result_planarities, result_parallelities
+
+def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff):
+  bp_result = []
+  ap_result = []
+  if base_pair.saenger_class == 0:
+    hbonds, saenger_class = get_h_bonds_for_basepair(
+      a1, a2, distance_cutoff=hbond_distance_cutoff,
+      log=sys.stdout, verbose=-1)
+    base_pair.saenger_class = saenger_class
+  hbonds = get_h_bonds_for_particular_basepair((a1, a2), base_pair.saenger_class)
+  for hb in hbonds:
+    if hb[0] is None or hb[1] is None:
+      print "NA hbond rejected because one of the atoms is absent"
+      continue
+    dist = hb[0].distance(hb[1])
+    if dist < hbond_distance_cutoff:
+      if base_pair.restrain_hbonds:
+        hb_target, hb_sigma = get_hb_lenght_targets(hb)
+        p = geometry_restraints.bond_simple_proxy(
+          i_seqs=[hb[0].i_seq, hb[1].i_seq],
+          distance_ideal=hb_target,
+          weight=1.0/hb_sigma**2,
+          slack=0,
+          top_out=False,
+          limit=1,
+          origin_id=1)
+        bp_result.append(p)
+        # print "bond:", hb[0].id_str(), hb[1].id_str(), "(%4.2f, %4.2f)" % (hb_target, hb_sigma)
+        # s1 = pdb_atoms[hb[0].i_seq].id_str()
+        # s2 = pdb_atoms[hb[1].i_seq].id_str()
+        # ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (
+        #   s1[14:15], s1[15:19], s1[5:8], s2[14:15], s2[15:19], s2[5:8])
+        # dashes.write(ps)
+      if base_pair.restrain_hb_angles:
+        ap_result += get_angle_proxies_for_bond(hb)
+    else:
+      print "NA hbond rejected:",hb[0].id_str(), hb[1].id_str(), "distance=%.2f" % dist
+  return bp_result, ap_result
+
+def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):
+  result_plan_p = []
+  result_parr_p = []
+  seqs = get_plane_i_seqs_from_residues(
+      a1.parent(), a2.parent(), grm,mon_lib_srv, plane_cache)
+  for i_seqs, j_seqs in seqs:
+    if len(i_seqs) > 2 and len(j_seqs) > 2:
+      if base_pair.restrain_parallelity:
+        if base_pair.parallelity_sigma < 1e-5:
+          raise Sorry("Sigma for parallelity basepair restraints should be > 1e-5")
+        proxy=geometry_restraints.parallelity_proxy(
+          i_seqs=flex.size_t(i_seqs),
+          j_seqs=flex.size_t(j_seqs),
+          weight=1/(base_pair.parallelity_sigma**2),
+          target_angle_deg=0,
+          slack=0,
+          top_out=False,
+          limit=1,
+          origin_id=1)
+        result_parr_p.append(proxy)
+      if base_pair.restrain_planarity:
+        if base_pair.planarity_sigma < 1e-5:
+          raise Sorry("Sigma for planarity basepair restraints should be > 1e-5")
+        w = 1./(base_pair.planarity_sigma**2)
+        proxy=geometry_restraints.planarity_proxy(
+          i_seqs=flex.size_t(i_seqs+j_seqs),
+          weights=[w]*len(i_seqs+j_seqs),
+          origin_id=1)
+        result_plan_p.append(proxy)
+  return result_plan_p, result_parr_p

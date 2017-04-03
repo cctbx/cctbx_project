@@ -468,23 +468,17 @@ class manager (object) :
         plane_cache=plane_cache)
     t2 = time.time()
     # print >> log, "    Time for creating stacking proxies:%f" % (t2-t1)
-    planarity_bp_proxies, parallelity_bp_proxies = nucleic_acids.\
-        get_basepair_plane_proxies(
-        pdb_hierarchy=pdb_hierarchy,
-        bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
-        grm=grm,
-        mon_lib_srv=self.mon_lib_srv,
-        plane_cache=plane_cache)
-    t3 = time.time()
-    # print >> log, "    Time for creating planar/parall proxies:%f" % (t3-t2)
-    hb_bond_proxies, hb_angle_proxies = nucleic_acids.\
-        get_basepair_hbond_proxies(
-        pdb_hierarchy=pdb_hierarchy,
-        bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
-        hbond_distance_cutoff=self.params.secondary_structure.\
+    (hb_bond_proxies, hb_angle_proxies, planarity_bp_proxies,
+      parallelity_bp_proxies) = nucleic_acids.get_basepair_proxies(
+          pdb_hierarchy=pdb_hierarchy,
+          bp_phil_params=self.params.secondary_structure.nucleic_acid.base_pair,
+          grm=grm,
+          mon_lib_srv=self.mon_lib_srv,
+          plane_cache=plane_cache,
+          hbond_distance_cutoff=self.params.secondary_structure.\
             nucleic_acid.hbond_distance_cutoff)
     t4 = time.time()
-    # print >> log, "    Time for creating hbond-angle proxies:%f" % (t4-t3)
+    # print >> log, "    Time for creating basepair proxies (hbond, angle, planarity):%f" % (t4-t2)
     self.stats = {'n_protein_hbonds':0, 'n_na_hbonds':0, 'n_na_hbond_angles':0,
         'n_na_basepairs':0, 'n_na_stacking_pairs':0}
     print >> log, "    Restraints generated for nucleic acids:"
