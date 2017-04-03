@@ -124,6 +124,7 @@ class MiniButtonBoxInput(wx.Panel):
     self.SetBackgroundColour('white')
     self.Fit()
 
+
 class DataTypeChoice(wx.Panel):
   def __init__(self, parent, choices):
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
@@ -155,19 +156,19 @@ class InputListItem(object):
                            'We made the best guess. Please select file format '
                            'from the drop-down menu before proceding or '
                            'choose a different file.',
-                 'raw images folder':'This folder contains raw diffraction '
+                 'raw image folder':'This folder contains raw diffraction '
                                      'images.',
-                 'image pickles folder':'This folder contains diffraction '
+                 'image pickle folder':'This folder contains diffraction '
                                         'images converted into Python pickle ',
                  'image list':'This file contains a list of paths to '
                               'diffraction images (raw or pickles)',
-                 'processed pickles folder':'This folder contains processed '
+                 'processed pickle folder':'This folder contains processed '
                                             'diffraction images in Python '
                                             'pickle format',
-                 'processed pickles list':'This file contains paths to '
+                 'processed pickle list':'This file contains paths to '
                                           'processed diffraction images in '
                                           'Python pickle format',
-                 'image objects folder':'This folder contains "image '
+                 'image object folder':'This folder contains "image '
                                         'objects", which are Python pickle '
                                         'files containing information about '
                                         'individual raw images, which have '

@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 02/22/2017
+Last Changed: 04/03/2017
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -680,6 +680,15 @@ class Analyzer(object):
     else:
       crystal_system = 'None'
 
+    # Determine number of images for indexing ambiguity resolution
+    # My default: 1/2 of images or 300, whichever is smaller
+    if len(self.final_objects) >= 600:
+      idx_ambiguity_sample = 300
+      idx_ambiguity_selected = 100
+    else:
+      idx_ambiguity_sample = int(len(self.final_objects) / 2)
+      idx_ambiguity_selected = int(idx_ambiguity_sample / 3)
+
     prime_params = mod_input.master_phil.extract()
 
     prime_params.data = [self.prime_data_path]
@@ -696,6 +705,9 @@ class Analyzer(object):
     prime_params.target_space_group = sg
     prime_params.target_crystal_system = crystal_system
     prime_params.pixel_size_mm = pixel_size
+    prime_params.n_residues = 500
+    prime_params.indexing_ambiguity.n_sample_frames = idx_ambiguity_sample
+    prime_params.indexing_ambiguity.n_selected_frames = idx_ambiguity_selected
 
     prime_phil = mod_input.master_phil.format(python_object=prime_params)
 

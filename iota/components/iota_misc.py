@@ -113,7 +113,11 @@ def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
   else:
     path = os.path.join(os.path.abspath(out_dir), dirname)
   if os.path.isdir(path):
-    n_top = max([int(d) for d in os.listdir(path) if check_dirname(path, d)])
+    dirnums = [int(d) for d in os.listdir(path) if check_dirname(path, d)]
+    if len(dirnums) > 0:
+      n_top = max(dirnums)
+    else:
+      n_top = 001
     if sel_flag:
       new_path = "{}/{:03d}".format(path, n_top)
     else:

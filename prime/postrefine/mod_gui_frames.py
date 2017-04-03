@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 08/23/2016
+Last Changed: 04/03/2017
 Description : PRIME GUI frames module
 '''
 
@@ -18,6 +18,8 @@ from libtbx import easy_pickle as ep
 from libtbx.utils import to_str
 import iotbx.phil as ip
 import numpy as np
+
+import time
 
 import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
@@ -842,9 +844,9 @@ class FileListCtrl(ct.CustomListCtrl):
                             buttons=ct.MiniButtonBoxInput(self.ctr))
 
     self.Bind(wx.EVT_CHOICE, self.onTypeChoice, item.type.type)
-    self.Bind(wx.EVT_BUTTON, self.onMagButton, item.buttons.btn_mag)
-    self.Bind(wx.EVT_BUTTON, self.onDelButton, item.buttons.btn_delete)
-    self.Bind(wx.EVT_BUTTON, self.onInfoButton, item.buttons.btn_info)
+    item.buttons.btn_mag.Bind(wx.EVT_BUTTON, self.onMagButton)
+    item.buttons.btn_delete.Bind(wx.EVT_BUTTON, self.onDelButton)
+    item.buttons.btn_info.Bind(wx.EVT_BUTTON, self.onInfoButton)
 
     # Insert list item
     idx = self.ctr.InsertStringItem(self.ctr.GetItemCount() + 1, item.path)
@@ -935,6 +937,7 @@ class FileListCtrl(ct.CustomListCtrl):
   def onDelButton(self, e):
     item = e.GetEventObject().GetParent()
     self.delete_button(item.index)
+    self.ctr.Refresh()
 
   def delete_all(self):
     for idx in range(self.ctr.GetItemCount()):
@@ -949,15 +952,16 @@ class FileListCtrl(ct.CustomListCtrl):
     self.ctr.DeleteItem(index)
 
     # Refresh widget and list item indices
-    for i in range(self.ctr.GetItemCount()):
-      item_data = self.ctr.GetItemData(i)
-      item_data.id = i
-      item_data.buttons.index = i
-      item_data.type.index = i
-      type_choice = self.ctr.GetItemWindow(i, col=1)
-      type_selection = item_data.type.type.GetSelection()
-      type_choice.type.SetSelection(type_selection)
-      self.ctr.SetItemData(i, item_data)
+    if self.ctr.GetItemCount() != 0:
+      for i in range(self.ctr.GetItemCount()):
+        item_data = self.ctr.GetItemData(i)
+        item_data.id = i
+        item_data.buttons.index = i
+        item_data.type.index = i
+        type_choice = self.ctr.GetItemWindow(i, col=1)
+        type_selection = item_data.type.type.GetSelection()
+        type_choice.type.SetSelection(type_selection)
+        self.ctr.SetItemData(i, item_data)
 
   def onInfoButton(self, e):
     ''' Info / alert / error button (will change depending on circumstance) '''

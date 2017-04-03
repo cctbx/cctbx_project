@@ -1,6 +1,5 @@
-IOTA v1.1.007 - minor tweaks
+IOTA v1.1.008 - More informative runtime stats
 
-1. Temp folder path can be set by user (prevents errors when running on LCLS
-lsf queueing system)
-2. Minor change to integration subfolder numbering system
-3. Removed max limit on nproc spin control
+1. Replaced progress pie chart with smaller horizontal stack bar
+2. Used extra space to display unit cell histograms
+3. Fixed file recognition bug in PRIME

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 02/28/2017
+Last Changed: 04/03/2017
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -157,9 +157,9 @@ class InputFinder():
     # Test if pickle, and if so, if it's an image or processed pickle
     pickle = ep.load(path)
     try:
-      if 'TIMESTAMP' in pickle:
+      if 'DATA' in pickle:
         return 'image pickle'
-      elif 'ewald_proximal_volume' in pickle:
+      elif 'observations' in pickle:
         return 'processed pickle'
       else:
         return 'pickle'

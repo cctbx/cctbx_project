@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 03/20/2017
+Last Changed: 04/03/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -41,18 +41,21 @@ ginp = InputFinder()
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
 if wx.Platform == '__WXGTK__':
+  plot_font_size = 10
   norm_font_size = 10
   button_font_size = 12
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
   python = 'python'
 elif wx.Platform == '__WXMAC__':
+  plot_font_size = 9
   norm_font_size = 12
   button_font_size = 14
   LABEL_SIZE = 14
   CAPTION_SIZE = 12
   python = "Python"
 elif (wx.Platform == '__WXMSW__'):
+  plot_font_size = 9
   norm_font_size = 9
   button_font_size = 11
   LABEL_SIZE = 11
@@ -264,9 +267,9 @@ class FileListCtrl(ct.CustomListCtrl):
                             buttons=ct.MiniButtonBoxInput(self.ctr))
 
     self.Bind(wx.EVT_CHOICE, self.onTypeChoice, item.type.type)
-    self.Bind(wx.EVT_BUTTON, self.onMagButton, item.buttons.btn_mag)
-    self.Bind(wx.EVT_BUTTON, self.onDelButton, item.buttons.btn_delete)
-    self.Bind(wx.EVT_BUTTON, self.onInfoButton, item.buttons.btn_info)
+    item.buttons.btn_mag.Bind(wx.EVT_BUTTON, self.onMagButton)
+    item.buttons.btn_delete.Bind(wx.EVT_BUTTON, self.onDelButton)
+    item.buttons.btn_info.Bind(wx.EVT_BUTTON, self.onInfoButton)
 
     # Insert list item
     idx = self.ctr.InsertStringItem(self.ctr.GetItemCount() + 1, '')
@@ -349,7 +352,7 @@ class FileListCtrl(ct.CustomListCtrl):
         self.view_images([path])
       elif type in ('raw image list', 'image pickle list'):
         with open(path, 'r') as f:
-          file_list = f.readlines()
+          file_list = [i.replace('\n', '') for i in f.readlines()]
           self.view_images(file_list)
       elif type == 'text':
         with open(path, 'r') as f:
@@ -434,40 +437,347 @@ class LogTab(wx.Panel):
 
 class ProcessingTab(wx.Panel):
   def __init__(self, parent):
-    wx.Panel.__init__(self, parent)
-    self.proc_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.proc_figure = Figure()
+    self.gparams = None
+    self.init = None
 
-    # Create transparent background
-    self.proc_figure.patch.set_alpha(0)
+    wx.Panel.__init__(self, parent)
+    self.main_fig_sizer = wx.BoxSizer(wx.VERTICAL)
 
     # Set regular font
-    plt.rc('font', family='sans-serif', size=10)
+    plt.rc('font', family='sans-serif', size=plot_font_size)
     plt.rc('mathtext', default='regular')
 
-    gsp = gridspec.GridSpec(4, 4)
-    self.int_axes = self.proc_figure.add_subplot(gsp[2:, 2:])
-    self.int_axes.axis('off')
-    self.bxy_axes = self.proc_figure.add_subplot(gsp[2:, :2])
+    # Integration figure (resolution & reflections / frame)
+    self.int_panel = wx.Panel(self)
+    int_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.int_panel.SetSizer(int_sizer)
+    self.int_figure = Figure()
+    self.int_figure.patch.set_alpha(0)    # create transparent background
 
-    gsub = gridspec.GridSpecFromSubplotSpec(2, 1,
-                                            subplot_spec=gsp[:2, :],
-                                            hspace=0)
+    int_gsp = gridspec.GridSpec(4, 5)
+    int_gsub = gridspec.GridSpecFromSubplotSpec(2, 1,
+                                                subplot_spec=int_gsp[:2, :],
+                                                hspace=0)
 
-    self.nsref_axes = self.proc_figure.add_subplot(gsub[1])
-    self.res_axes = self.proc_figure.add_subplot(gsub[0])
-    self.nsref_axes.set_xlabel('Frame')
-    self.nsref_axes.set_ylabel('Strong Spots')
-    self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
-    self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+    self.res_axes = self.int_figure.add_subplot(int_gsub[0])
     self.res_axes.set_ylabel('Resolution')
     self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
     plt.setp(self.res_axes.get_xticklabels(), visible=False)
+    self.nsref_axes = self.int_figure.add_subplot(int_gsub[1])
+    self.nsref_axes.set_xlabel('Frame')
+    self.nsref_axes.set_ylabel('Strong Spots')
+    self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    # UC Histogram / cluster figure
+    uc_gsub = gridspec.GridSpecFromSubplotSpec(2, 3,
+                                               subplot_spec=int_gsp[2:4, :3],
+                                               hspace=0, wspace=0)
+    self.a_axes = self.int_figure.add_subplot(uc_gsub[0])
+    self.a_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.a_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    self.b_axes = self.int_figure.add_subplot(uc_gsub[1], sharey=self.a_axes)
+    self.b_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.b_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.b_axes.get_yticklabels(), visible=False)
+    self.c_axes = self.int_figure.add_subplot(uc_gsub[2], sharey=self.a_axes)
+    self.c_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.c_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.c_axes.get_yticklabels(), visible=False)
+    self.alpha_axes = self.int_figure.add_subplot(uc_gsub[3])
+    self.alpha_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.alpha_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    self.beta_axes = self.int_figure.add_subplot(uc_gsub[4],
+                                                 sharey=self.alpha_axes)
+    self.beta_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.beta_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.beta_axes.get_yticklabels(), visible=False)
+    self.gamma_axes = self.int_figure.add_subplot(uc_gsub[5],
+                                                  sharey=self.alpha_axes)
+    self.gamma_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
+
+    # BeamXY chart (TODO: FIND SOMETHING BETTER TO PLOT HERE)
+    self.bxy_axes = self.int_figure.add_subplot(int_gsp[2:4, 3:5])
+    self.bxy_axes.set_xlabel('BeamX (mm)')
+    self.bxy_axes.set_ylabel('BeamY (mm)')
+    self.bxy_axes.set_aspect('equal', 'datalim')
+
+    self.int_figure.set_tight_layout(True)
+    self.int_canvas = FigureCanvas(self.int_panel, -1, self.int_figure)
+    int_sizer.Add(self.int_canvas, 1, flag=wx.EXPAND)
+
+    # Processing summary figure
+    self.proc_panel = wx.Panel(self, size=(-1, 120))
+    proc_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.proc_panel.SetSizer(proc_sizer)
+    self.proc_figure = Figure()
+    self.proc_figure.patch.set_alpha(0)
+
+    self.sum_axes = self.proc_figure.add_subplot(111)
+    self.sum_axes.axis('off')
     self.proc_figure.set_tight_layout(True)
-    self.canvas = FigureCanvas(self, -1, self.proc_figure)
-    self.proc_sizer.Add(self.canvas, proportion=1, flag =wx.EXPAND | wx.ALL, border=10)
-    self.SetSizer(self.proc_sizer)
+    self.proc_canvas = FigureCanvas(self.proc_panel, -1, self.proc_figure)
+    proc_sizer.Add(self.proc_canvas, flag=wx.EXPAND)
+
+    self.main_fig_sizer.Add(self.int_panel, 1, flag=wx.EXPAND)
+    self.main_fig_sizer.Add(self.proc_panel, flag=wx.EXPAND)
+
+    self.SetSizer(self.main_fig_sizer)
+
+  def draw_plots(self,
+                 finished_objects,
+                 img_list,
+                 nref_list,
+                 res_list):
+    try:
+      # Summary horizontal stack bar graph
+      categories = [
+        ['failed triage', '#d73027',
+         len([i for i in finished_objects if i.fail == 'failed triage'])],
+        ['failed indexing / integration', '#f46d43',
+         len([i for i in finished_objects if i.fail == 'failed grid search'])],
+        ['failed filter', '#ffffbf',
+         len([i for i in finished_objects if i.fail == 'failed prefilter'])],
+        ['failed spotfinding', '#f46d43',
+         len([i for i in finished_objects if i.fail == 'failed spotfinding'])],
+        ['failed indexing', '#fdae61',
+         len([i for i in finished_objects if i.fail == 'failed indexing'])],
+        ['failed integration', '#fee090',
+         len([i for i in finished_objects if i.fail == 'failed integration'])],
+        ['integrated', '#4575b4',
+         len([i for i in finished_objects if i.fail == None and i.final['final'] != None])]
+      ]
+      categories.append(['not processed', '#e0f3f8',
+                         len(img_list) - sum([i[2] for i in categories])])
+      nonzero = [i for i in categories if i[2] > 0]
+      names = [i[0] for i in nonzero]
+
+      self.sum_axes.clear()
+      self.sum_axes.axis([0, len(img_list), 0, 1])
+      self.sum_axes.axis('off')
+      for i in range(len(nonzero)):
+        percent = np.round(nonzero[i][2] / len(img_list) * 100)
+
+        previous = [j[2] for j in nonzero[:i]]
+        lf = np.sum(previous)
+        barh = self.sum_axes.barh(0, nonzero[i][2],
+                                  left=lf,
+                                  color=nonzero[i][1],
+                                  align='edge',
+                                  label='{}%'.format(percent))
+        patch = barh[0]
+        bl = patch.get_xy()
+        x = 0.5 * patch.get_width() + bl[0]
+        y = 0.5 * patch.get_height() + bl[1]
+        self.sum_axes.text(x, y, "{}%".format(percent),
+                           ha='center', va='center')
+      self.sum_axes.legend(names, ncol=len(nonzero),
+                           bbox_to_anchor=(0, -0.5, 1, 1),
+                           loc='lower center', fontsize=9,
+                           frameon=False, handlelength=1)
+      self.proc_canvas.draw()
+
+    except ValueError, e:
+      pass
+
+    if sum(nref_list) > 0 and sum(res_list) > 0:
+      try:
+        # Unit cell histograms
+        finished = [i for i in finished_objects if i.fail == None and i.final['final'] != None]
+        if len(finished) > 0:
+          self.a_axes.clear()
+          self.b_axes.clear()
+          self.c_axes.clear()
+          self.alpha_axes.clear()
+          self.beta_axes.clear()
+          self.gamma_axes.clear()
+          a = [i.final['a'] for i in finished]
+          b = [i.final['b'] for i in finished]
+          c = [i.final['c'] for i in finished]
+          alpha = [i.final['alpha'] for i in finished]
+          beta = [i.final['beta'] for i in finished]
+          gamma = [i.final['gamma'] for i in finished]
+
+          self.a_axes.hist(a, 50, normed=False, facecolor='#4575b4', alpha=0.75,
+                           histtype='stepfilled')
+          self.a_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+          self.a_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+          self.a_axes.xaxis.tick_top()
+          edge_ylabel = 'a, b, c ({})'.format(r'$\AA$')
+          self.a_axes.set_ylabel(edge_ylabel)
+
+          self.b_axes.hist(b, 50, normed=False, facecolor='#4575b4', alpha=0.75,
+                           histtype='stepfilled')
+          self.b_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+          self.b_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+          self.b_axes.xaxis.tick_top()
+          plt.setp(self.b_axes.get_yticklabels(), visible=False)
+
+          self.c_axes.hist(c, 50, normed=False, facecolor='#4575b4', alpha=0.75,
+                           histtype='stepfilled')
+          self.c_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+          self.c_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+          self.c_axes.xaxis.tick_top()
+          plt.setp(self.c_axes.get_yticklabels(), visible=False)
+
+          self.alpha_axes.hist(alpha, 50, normed=False, facecolor='#4575b4',
+                               alpha=0.75, histtype='stepfilled')
+          self.alpha_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+          self.alpha_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+          ang_ylabel = '{}, {}, {} ({})'.format(r'$\alpha$', r'$\beta$',
+                                                r'$\gamma$', r'$^\circ$')
+          self.alpha_axes.set_ylabel(ang_ylabel)
+
+          self.beta_axes.hist(beta, 50, normed=False, facecolor='#4575b4',
+                              alpha=0.75, histtype='stepfilled')
+          self.beta_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+          self.beta_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+          plt.setp(self.beta_axes.get_yticklabels(), visible=False)
+
+          self.gamma_axes.hist(gamma, 50, normed=False, facecolor='#4575b4',
+                               alpha=0.75, histtype='stepfilled')
+          self.gamma_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+          self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+          plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
+
+
+        # Strong reflections per frame
+        self.nsref_axes.clear()
+        nsref_x = np.array([i + 1.5 for i in range(len(
+          img_list))]).astype(np.double)
+        nsref_y = np.array([np.nan if i==0 else i for i in
+                            nref_list]).astype(np.double)
+        nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
+                       ''.format(r'$\sigma$',
+                                 self.gparams.cctbx.selection.min_sigma)
+        nsref = self.nsref_axes.scatter(nsref_x, nsref_y, s=45,
+                                                  marker='o',
+                                                  edgecolors='black',
+                                                  color='#ca0020',
+                                                  picker=True)
+
+        nsref_median = np.median([i for i in nref_list if i > 0])
+        nsref_med = self.nsref_axes.axhline(nsref_median,
+                                                      c='#ca0020', ls='--')
+
+        self.nsref_axes.set_xlim(0, np.nanmax(nsref_x) + 2)
+        nsref_ymax = np.nanmax(nsref_y) * 1.25 + 10
+        if nsref_ymax == 0:
+          nsref_ymax = 100
+        self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
+        self.nsref_axes.set_ylabel(nsref_ylabel, fontsize=10)
+        self.nsref_axes.set_xlabel('Frame')
+        self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+        self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+        # Resolution per frame
+        self.res_axes.clear()
+        res_x = np.array([i + 1.5 for i in range(len(img_list))])\
+          .astype(np.double)
+        res_y = np.array([np.nan if i==0 else i for i in res_list])\
+          .astype(np.double)
+        res_m = np.isfinite(res_y)
+
+        res = self.res_axes.scatter(res_x[res_m], res_y[res_m], s=45,
+                                              marker='o', edgecolors='black',
+                                              color='#0571b0',
+                                              picker=True)
+        res_median = np.median([i for i in res_list if i > 0])
+        res_med = self.res_axes.axhline(res_median, c='#0571b0',
+                                                  ls='--')
+
+        self.res_axes.set_xlim(0, np.nanmax(res_x) + 2)
+        res_ymax = np.nanmax(res_y) * 1.1
+        res_ymin = np.nanmin(res_y) * 0.9
+        if res_ymin == res_ymax:
+          res_ymax = res_ymin + 1
+        self.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
+        res_ylabel = 'Resolution ({})'.format(r'$\AA$')
+        self.res_axes.set_ylabel(res_ylabel, fontsize=10)
+        self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+        self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+        plt.setp(self.res_axes.get_xticklabels(), visible=False)
+
+        # Beam XY (cumulative)
+        info = []
+        wavelengths = []
+        distances = []
+        cells = []
+
+        # Import relevant info
+        pickles, _ = ginp.get_input(self.init.fin_base, filter=False)
+        for pickle in pickles:
+            if pickle.endswith(('pickle')):
+              try:
+                beam = ep.load(pickle)
+                info.append([pickle, beam['xbeam'], beam['ybeam']])
+                wavelengths.append(beam['wavelength'])
+                distances.append(beam['distance'])
+                cells.append(beam['observations'][0].unit_cell().parameters())
+              except IOError, e:
+                pass
+
+        # Calculate beam center coordinates and distances
+        if len(info) > 0:
+          beamX = [i[1] for i in info]
+          beamY = [j[2] for j in info]
+          beam_dist = [math.hypot(i[1] - np.median(beamX), i[2] -
+                                  np.median(beamY)) for i in info]
+
+          wavelength = np.median(wavelengths)
+          det_distance = np.median(distances)
+          a = np.median([i[0] for i in cells])
+          b = np.median([i[1] for i in cells])
+          c = np.median([i[2] for i in cells])
+
+          # Calculate predicted L +/- 1 misindexing distance for each cell edge
+          aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
+          bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
+          cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
+
+          # Calculate axis limits of beam center scatter plot
+          beamxy_delta = np.ceil(np.max(beam_dist))
+          xmax = round(np.median(beamX) + beamxy_delta)
+          xmin = round(np.median(beamX) - beamxy_delta)
+          ymax = round(np.median(beamY) + beamxy_delta)
+          ymin = round(np.median(beamY) - beamxy_delta)
+
+          if xmax == xmin:
+            xmax += 0.5
+            xmin -= 0.5
+          if ymax == ymin:
+            ymax += 0.5
+            ymin -= 0.5
+
+          # Plot beam center scatter plot
+          self.bxy_axes.clear()
+          self.bxy_axes.axis('equal')
+          self.bxy_axes.axis([xmin, xmax, ymin, ymax])
+          self.bxy_axes.scatter(beamX, beamY, alpha=1, s=20, c='grey', lw=1)
+          self.bxy_axes.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o', c='yellow', lw=2)
+
+          # Plot projected mis-indexing limits for all three axes
+          circle_a = plt.Circle((np.median(beamX), np.median(beamY)), radius=aD, color='r', fill=False, clip_on=True)
+          circle_b = plt.Circle((np.median(beamX), np.median(beamY)), radius=bD, color='g', fill=False, clip_on=True)
+          circle_c = plt.Circle((np.median(beamX), np.median(beamY)), radius=cD, color='b', fill=False, clip_on=True)
+          self.bxy_axes.add_patch(circle_a)
+          self.bxy_axes.add_patch(circle_b)
+          self.bxy_axes.add_patch(circle_c)
+          self.bxy_axes.set_xlabel('BeamX (mm)', fontsize=10)
+          self.bxy_axes.set_ylabel('BeamY (mm)', fontsize=10)
+          self.bxy_axes.set_title('Beam Center Coordinates')
+
+        self.int_canvas.draw()
+
+      except ValueError, e:
+        pass
+
+
+    self.Layout()
+
 
 class SummaryTab(wx.Panel):
   def __init__(self,
@@ -736,6 +1046,7 @@ class ProcWindow(wx.Frame):
     self.obj_counter = 0
     self.bookmark = 0
     self.gparams = phil.extract()
+
     self.target_phil = target_phil
     self.state = 'process'
 
@@ -1099,173 +1410,12 @@ class ProcWindow(wx.Frame):
 
 
   def plot_integration(self):
-    try:
-      # Summary pie chart
-      categories = [
-        ['failed triage', '#d73027',
-         len([i for i in self.finished_objects if i.fail == 'failed triage'])],
-        ['failed indexing / integration', '#f46d43',
-         len([i for i in self.finished_objects if i.fail == 'failed grid search'])],
-        ['failed filter', '#ffffbf',
-         len([i for i in self.finished_objects if i.fail == 'failed prefilter'])],
-        ['failed spotfinding', '#f46d43',
-         len([i for i in self.finished_objects if i.fail == 'failed spotfinding'])],
-        ['failed indexing', '#fdae61',
-         len([i for i in self.finished_objects if i.fail == 'failed indexing'])],
-        ['failed integration', '#fee090',
-         len([i for i in self.finished_objects if i.fail == 'failed integration'])],
-        ['integrated', '#4575b4',
-         len([i for i in self.finished_objects if i.fail == None and i.final['final'] != None])]
-      ]
-      categories.append(['not processed', '#e0f3f8',
-                         len(self.img_list) - sum([i[2] for i in categories])])
-      names = [i[0] for i in categories if i[2] > 0]
-      colors = [i[1] for i in categories if i[2] > 0]
-      numbers = [i[2] for i in categories if i[2] > 0]
-
-      self.chart_tab.int_axes.clear()
-      self.chart_tab.int_axes.pie(numbers, autopct='%.0f%%', colors=colors)
-      self.chart_tab.int_axes.legend(names, loc='lower left', fontsize=9, fancybox=True)
-      self.chart_tab.int_axes.axis('equal')
-
-    except ValueError, e:
-      pass
-
-    if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
-      try:
-        # Strong reflections per frame
-        self.chart_tab.nsref_axes.clear()
-        nsref_x = np.array([i + 1.5 for i in range(len(
-          self.img_list))]).astype(np.double)
-        nsref_y = np.array([np.nan if i==0 else i for i in
-                            self.nref_list]).astype(np.double)
-        nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
-                       ''.format(r'$\sigma$',
-                                 self.gparams.cctbx.selection.min_sigma)
-        nsref = self.chart_tab.nsref_axes.scatter(nsref_x, nsref_y, s=45,
-                                                  marker='o',
-                                                  edgecolors='black',
-                                                  color='#ca0020',
-                                                  picker=True)
-
-        nsref_median = np.median([i for i in self.nref_list if i > 0])
-        nsref_med = self.chart_tab.nsref_axes.axhline(nsref_median,
-                                                      c='#ca0020', ls='--')
-
-        self.chart_tab.nsref_axes.set_xlim(0, np.nanmax(nsref_x) + 2)
-        nsref_ymax = np.nanmax(nsref_y) * 1.25 + 10
-        if nsref_ymax == 0:
-          nsref_ymax = 100
-        self.chart_tab.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
-        self.chart_tab.nsref_axes.set_ylabel(nsref_ylabel, fontsize=11)
-        self.chart_tab.nsref_axes.set_xlabel('Frame')
-        self.chart_tab.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
-        self.chart_tab.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
-
-        # Resolution per frame
-        self.chart_tab.res_axes.clear()
-        res_x = np.array([i + 1.5 for i in range(len(self.img_list))])\
-          .astype(np.double)
-        res_y = np.array([np.nan if i==0 else i for i in self.res_list])\
-          .astype(np.double)
-        res_m = np.isfinite(res_y)
-
-        res = self.chart_tab.res_axes.scatter(res_x[res_m], res_y[res_m], s=45,
-                                              marker='o', edgecolors='black',
-                                              color='#0571b0',
-                                              picker=True)
-        res_median = np.median([i for i in self.res_list if i > 0])
-        res_med = self.chart_tab.res_axes.axhline(res_median, c='#0571b0',
-                                                  ls='--')
-
-        self.chart_tab.res_axes.set_xlim(0, np.nanmax(res_x) + 2)
-        res_ymax = np.nanmax(res_y) * 1.1
-        res_ymin = np.nanmin(res_y) * 0.9
-        if res_ymin == res_ymax:
-          res_ymax = res_ymin + 1
-        self.chart_tab.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
-        res_ylabel = 'Resolution ({})'.format(r'$\AA$')
-        self.chart_tab.res_axes.set_ylabel(res_ylabel, fontsize=11)
-        self.chart_tab.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
-        self.chart_tab.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
-        plt.setp(self.chart_tab.res_axes.get_xticklabels(), visible=False)
-
-      except ValueError, e:
-        pass
-
-      try:
-        # Beam XY (cumulative)
-        info = []
-        wavelengths = []
-        distances = []
-        cells = []
-
-        # Import relevant info
-        for root, dirs, files in os.walk(self.init.fin_base):
-          for filename in files:
-            found_file = os.path.join(root, filename)
-            if found_file.endswith(('pickle')):
-              beam = ep.load(found_file)
-              info.append([found_file, beam['xbeam'], beam['ybeam']])
-              wavelengths.append(beam['wavelength'])
-              distances.append(beam['distance'])
-              cells.append(beam['observations'][0].unit_cell().parameters())
-
-        # Calculate beam center coordinates and distances
-        if len(info) > 0:
-          beamX = [i[1] for i in info]
-          beamY = [j[2] for j in info]
-          beam_dist = [math.hypot(i[1] - np.median(beamX), i[2] -
-                                  np.median(beamY)) for i in info]
-
-          wavelength = np.median(wavelengths)
-          det_distance = np.median(distances)
-          a = np.median([i[0] for i in cells])
-          b = np.median([i[1] for i in cells])
-          c = np.median([i[2] for i in cells])
-
-          # Calculate predicted L +/- 1 misindexing distance for each cell edge
-          aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
-          bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
-          cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
-
-          # Calculate axis limits of beam center scatter plot
-          beamxy_delta = np.ceil(np.max(beam_dist))
-          xmax = round(np.median(beamX) + beamxy_delta)
-          xmin = round(np.median(beamX) - beamxy_delta)
-          ymax = round(np.median(beamY) + beamxy_delta)
-          ymin = round(np.median(beamY) - beamxy_delta)
-
-          if xmax == xmin:
-            xmax += 0.5
-            xmin -= 0.5
-          if ymax == ymin:
-            ymax += 0.5
-            ymin -= 0.5
-
-          # Plot beam center scatter plot
-          self.chart_tab.bxy_axes.clear()
-          self.chart_tab.bxy_axes.axis('equal')
-          self.chart_tab.bxy_axes.axis([xmin, xmax, ymin, ymax])
-          self.chart_tab.bxy_axes.scatter(beamX, beamY, alpha=1, s=20, c='grey', lw=1)
-          self.chart_tab.bxy_axes.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o', c='yellow', lw=2)
-
-          # Plot projected mis-indexing limits for all three axes
-          circle_a = plt.Circle((np.median(beamX), np.median(beamY)), radius=aD, color='r', fill=False, clip_on=True)
-          circle_b = plt.Circle((np.median(beamX), np.median(beamY)), radius=bD, color='g', fill=False, clip_on=True)
-          circle_c = plt.Circle((np.median(beamX), np.median(beamY)), radius=cD, color='b', fill=False, clip_on=True)
-          self.chart_tab.bxy_axes.add_patch(circle_a)
-          self.chart_tab.bxy_axes.add_patch(circle_b)
-          self.chart_tab.bxy_axes.add_patch(circle_c)
-          self.chart_tab.bxy_axes.set_xlabel('BeamX (mm)', fontsize=12)
-          self.chart_tab.bxy_axes.set_ylabel('BeamY (mm)', fontsize=12)
-          self.chart_tab.bxy_axes.set_title('Beam Center Coordinates')
-
-      except ValueError, e:
-        pass
-
-    self.chart_tab.canvas.draw()
-    self.chart_tab.Layout()
+    self.chart_tab.init = self.init
+    self.chart_tab.gparams = self.gparams
+    self.chart_tab.draw_plots(finished_objects=self.finished_objects,
+                              img_list=self.img_list,
+                              res_list=self.res_list,
+                              nref_list=self.nref_list)
 
 
   def onTimer(self, e):
