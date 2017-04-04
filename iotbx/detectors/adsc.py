@@ -10,7 +10,7 @@ class ADSCImage(DetectorImageBase):
   def readHeader(self,maxlength=12288, external_keys=None): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
       MAGIC_NUMBER = '{\nHEADER_BYTES='
-      stream = open(self.filename, 'rb')
+      stream = self.open_file(self.filename, 'rb')
 
       # Check the magic number and get the size of the header before
       # the start of the image data

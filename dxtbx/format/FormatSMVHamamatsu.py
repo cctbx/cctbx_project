@@ -24,6 +24,7 @@ class FormatSMVHamamatsu(FormatSMVADSC):
   def detectorbase_start(self):
     from iotbx.detectors.hamamatsu import HamamatsuImage
     self.detectorbase = HamamatsuImage(self._image_file)
+    self.detectorbase.open_file = self.open_file
     self.detectorbase.readHeader()
 
 if __name__ == '__main__':

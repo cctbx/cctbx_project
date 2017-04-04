@@ -81,6 +81,7 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
   def detectorbase_start(self):
     from iotbx.detectors.saturn import SaturnImage
     self.detectorbase = SaturnImage(self._image_file)
+    self.detectorbase.open_file = self.open_file
     self.detectorbase.readHeader()
 
   def _goniometer(self):

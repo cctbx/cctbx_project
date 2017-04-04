@@ -75,6 +75,7 @@ class FormatSMVNOIR(FormatSMVRigaku):
   def detectorbase_start(self):
     from iotbx.detectors.noir import NoirImage
     self.detectorbase = NoirImage(self._image_file)
+    self.detectorbase.open_file = self.open_file
     self.detectorbase.readHeader()
 
   def _goniometer(self):
