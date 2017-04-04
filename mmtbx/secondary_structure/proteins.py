@@ -102,10 +102,10 @@ master_helix_phil = iotbx.phil.parse(helix_group_params_str)
 # [{outside}, {inside}]
 angle_restraints_values = [
   {"C"  : (155, 10),
-   "CA" : (113, 10),
+   "CA" : (116, 10),
    "C-1": (121, 10)},
   {"C"  : (155, 5),
-   "CA" : (113, 5),
+   "CA" : (116, 5),
    "C-1": (121, 5)},
   ]
 
