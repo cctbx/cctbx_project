@@ -54,6 +54,9 @@ secondary_structure
       .style = tribool
       .help = If true, h-bonds exceeding distance_cut_n_o length will not be \
        established
+    restrain_hbond_angles = True
+      .type = bool
+      .short_caption = Restrain angles around hbonds in alpha helices
     %s
     %s
   }
@@ -383,11 +386,12 @@ class manager (object) :
     if (distance_cut is None) :
       distance_cut = -1
     generated_proxies = geometry_restraints.shared_bond_simple_proxy()
+    hb_angle_proxies = []
     if self.params.secondary_structure.protein.enabled:
       for helix in self.params.secondary_structure.protein.helix :
         if helix.selection is not None:
           print >> log, "    Processing helix ", helix.selection
-          proxies = proteins.create_helix_hydrogen_bond_proxies(
+          proxies, angle_proxies = proteins.create_helix_hydrogen_bond_proxies(
               params=helix,
               pdb_hierarchy=self.pdb_hierarchy,
               selection_cache=self.selection_cache,
@@ -396,12 +400,14 @@ class manager (object) :
               distance_ideal=distance_ideal,
               distance_cut=distance_cut,
               remove_outliers=remove_outliers,
+              restrain_hbond_angles=self.params.secondary_structure.protein.restrain_hbond_angles,
               log=log)
           if (proxies.size() == 0) :
             print >> log, "      No H-bonds generated for '%s'" % helix.selection
             continue
           else:
             generated_proxies.extend(proxies)
+            hb_angle_proxies += angle_proxies
       for k, sheet in enumerate(self.params.secondary_structure.protein.sheet) :
         print >> log, "    Processing sheet with id=%s, first strand: %s" % (
             sheet.sheet_id, sheet.first_strand)
@@ -409,6 +415,7 @@ class manager (object) :
           proxies = proteins.create_sheet_hydrogen_bond_proxies(
             sheet_params=sheet,
             pdb_hierarchy=self.pdb_hierarchy,
+            selection_cache=self.selection_cache,
             weight=1.0,
             hbond_counts=hbond_counts,
             distance_ideal=distance_ideal,
@@ -428,6 +435,7 @@ class manager (object) :
       print >> log, "    No hydrogen bonds defined for protein."
     else :
       print >> log, "    %d hydrogen bonds defined for protein." % n_proxies
+      print >> log, "    %d hydrogen bond angles defined for protein." % len(hb_angle_proxies)
     # reg_proxies = []
     # for hb_p in build_proxies.proxies:
     #   reg_proxy = geometry_restraints.bond_simple_proxy(
@@ -440,7 +448,7 @@ class manager (object) :
     #     origin_id=1)
     #   reg_proxies.append(reg_proxy)
     # return geometry_restraints.shared_bond_simple_proxy(reg_proxies)
-    return generated_proxies
+    return generated_proxies, geometry_restraints.shared_angle_proxy(hb_angle_proxies)
 
   def create_all_new_restraints(self,
       pdb_hierarchy,
@@ -454,7 +462,7 @@ class manager (object) :
     plane_cache = {}
 
     t0 = time.time()
-    proteins_hbonds = self.create_protein_hbond_proxies(
+    proteins_hbonds, prot_angle_proxies = self.create_protein_hbond_proxies(
         log=log,
         annotation=self.actual_sec_str)
     t1 = time.time()
@@ -489,7 +497,10 @@ class manager (object) :
     print >> log, "      %d stacking parallelities" % len(stacking_proxies)
     all_hbonds = proteins_hbonds.deep_copy()
     all_hbonds.extend(hb_bond_proxies)
-    return (all_hbonds, hb_angle_proxies,
+    all_angle = prot_angle_proxies.deep_copy()
+    all_angle.extend(hb_angle_proxies)
+    return (all_hbonds,
+        all_angle,
         planarity_bp_proxies, parallelity_bp_proxies+stacking_proxies)
 
   def get_simple_bonds (self, selection_phil=None) :
@@ -507,7 +518,7 @@ class manager (object) :
           pdb_hierarchy=self.pdb_hierarchy)
     else :
       desired_annotation = self.actual_sec_str
-    hb_proxies = self.create_protein_hbond_proxies(
+    hb_proxies, hb_angles = self.create_protein_hbond_proxies(
         annotation=desired_annotation,
         log=sys.stdout)
     from scitbx.array_family import shared

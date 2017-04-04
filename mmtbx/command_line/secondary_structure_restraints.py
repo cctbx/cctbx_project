@@ -209,6 +209,11 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
         bonds_in_format = hb_proxies.as_refmac_restraints(
             pdb_hierarchy=pdb_hierarchy)
       print >> result_out, bonds_in_format
+    if hb_angle_proxies.size() > 0:
+      if work_params.format == "pymol":
+        angles_in_format = hb_angle_proxies.as_pymol_dashes(
+            pdb_hierarchy=pdb_hierarchy)
+        print >> result_out, angles_in_format
   result = result_out.getvalue()
   out_prefix = os.path.basename(work_params.file_name[0])
   if work_params.output_prefix is not None:

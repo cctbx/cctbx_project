@@ -89,7 +89,7 @@ class gather_ss_stats(object):
         sec_str_from_pdb_file=temp_annot,
         params=ss_params.secondary_structure,
         log = ss_m_log)
-    h_bond_proxies = ss_manager.create_protein_hbond_proxies(log=ss_m_log)
+    h_bond_proxies, hb_angles = ss_manager.create_protein_hbond_proxies(log=ss_m_log)
 
     cutoff_bad = self.bad_hbond_cutoff
     cutoff_mediocre = self.mediocre_hbond_cutoff

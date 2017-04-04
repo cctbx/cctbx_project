@@ -99,6 +99,70 @@ sheet
 
 master_helix_phil = iotbx.phil.parse(helix_group_params_str)
 
+# [{outside}, {inside}]
+angle_restraints_values = [
+  {"C"  : (155, 10),
+   "CA" : (113, 10),
+   "C-1": (121, 10)},
+  {"C"  : (155, 5),
+   "CA" : (113, 5),
+   "C-1": (121, 5)},
+  ]
+
+def _ac_match(a1, a2):
+  altloc1 = a1.parent().altloc
+  altloc2 = a2.parent().altloc
+  if altloc1.strip() == "" or altloc2.strip() == "":
+    return True
+  if altloc1.strip() == altloc2.strip():
+    return True
+  return False
+
+def _create_hbond_angles_proxies(
+    N_atom,
+    O_atom,
+    prev_atoms,
+    angle_restraint_type=0, # 0-No restraint, 1-outside, 2-inside
+    ):
+  result = []
+  if angle_restraint_type == 0:
+    return result
+  C_atoms = []
+  CA_atoms = []
+  C_1_atoms = []
+  for atom in O_atom.parent().atoms():
+    if atom.name == " C  " and _ac_match(O_atom, atom):
+      C_atoms.append(atom)
+  for atom in N_atom.parent().atoms():
+    if atom.name == " CA " and _ac_match(N_atom, atom):
+      CA_atoms.append(atom)
+  for atom in prev_atoms:
+    if atom.name == " C  " and _ac_match(N_atom, atom):
+      C_1_atoms.append(atom)
+  # building angle restraints
+  for C_atom in C_atoms:
+    p = geometry_restraints.angle_proxy(
+        i_seqs=[C_atom.i_seq, O_atom.i_seq, N_atom.i_seq],
+        angle_ideal=angle_restraints_values[angle_restraint_type-1]["C"][0],
+        weight=1./angle_restraints_values[angle_restraint_type-1]["C"][1]**2,
+        origin_id=1)
+    result.append(p)
+  for CA_atom in CA_atoms:
+    p = geometry_restraints.angle_proxy(
+        i_seqs=[CA_atom.i_seq, N_atom.i_seq, O_atom.i_seq],
+        angle_ideal=angle_restraints_values[angle_restraint_type-1]["CA"][0],
+        weight=1./angle_restraints_values[angle_restraint_type-1]["CA"][1]**2,
+        origin_id=1)
+    result.append(p)
+  for C_1_atom in C_1_atoms:
+    p = geometry_restraints.angle_proxy(
+        i_seqs=[C_1_atom.i_seq, N_atom.i_seq, O_atom.i_seq],
+        angle_ideal=angle_restraints_values[angle_restraint_type-1]["C-1"][0],
+        weight=1./angle_restraints_values[angle_restraint_type-1]["C-1"][1]**2,
+        origin_id=1)
+    result.append(p)
+  return result
+
 def _create_hbond_proxy (
     acceptor_atoms,
     donor_atoms,
@@ -106,6 +170,8 @@ def _create_hbond_proxy (
     distance_ideal,
     distance_cut,
     remove_outliers,
+    prev_atoms=None,
+    angle_restraint_type=0, # 0-No restraint, 1-outside, 2-inside
     weight=1.0,
     sigma=None,
     slack=None,
@@ -121,6 +187,8 @@ def _create_hbond_proxy (
   for atom in donor_atoms :
     if (atom.name == ' N  ') :
       donors.append(atom)
+  result = []
+  angle_proxies = []
   if len(donors) > 0 and len(acceptors) > 0:
     # make pairs of connecting atoms
     donor_acceptor_pairs = []
@@ -133,23 +201,22 @@ def _create_hbond_proxy (
     elif len(donors) == 2 and len(acceptors) == 1:
       for donor in donors:
         donor_acceptor_pairs.append((donor, acceptors[0]))
-    result = []
     for donor, acceptor in donor_acceptor_pairs:
       # print "  linking:", donor.id_str(), acceptor.id_str()
       if (hbond_counts[donor.i_seq] > 0) :
         print >> log, "      WARNING: donor atom is already bonded, skipping"
         print >> log, "    %s" % donor_labels.id_str()
-        return None
+        return result, angle_proxies
       elif (hbond_counts[acceptor.i_seq] > 0) :
         print >> log, "      WARNING: acceptor atom is already bonded, skipping"
         print >> log, "    %s" % acceptor_labels.id_str()
-        return None
+        return result, angle_proxies
       if (remove_outliers) and (distance_cut > 0) :
         dist = donor.distance(acceptor)
         if (dist > distance_cut) :
           print >> log, "      removed outlier: %.3fA  %s --> %s (cutoff:%.3fA)"%(
               dist, donor.id_str(), acceptor.id_str(), distance_cut)
-          return None
+          return result, angle_proxies
       limit = -1
       if (top_out) :
         limit = (distance_cut - distance_ideal)**2 * weight/(sigma**2)
@@ -163,10 +230,17 @@ def _create_hbond_proxy (
         limit=limit,
         origin_id=1)
       result.append(proxy)
-    return result
+      if angle_restraint_type != 0 and prev_atoms is not None:
+        ap = _create_hbond_angles_proxies(
+            N_atom=donor,
+            O_atom=acceptor,
+            prev_atoms=prev_atoms,
+            angle_restraint_type=angle_restraint_type)
+        angle_proxies += ap
+    return result, angle_proxies
   else :
     print >> log, "WARNING: missing atoms!"
-    return None
+    return result, angle_proxies
 
 def create_helix_hydrogen_bond_proxies (
     params,
@@ -177,9 +251,11 @@ def create_helix_hydrogen_bond_proxies (
     distance_ideal,
     distance_cut,
     remove_outliers,
+    restrain_hbond_angles,
     log=sys.stdout) :
   assert (not None in [distance_ideal, distance_cut])
   generated_proxies = geometry_restraints.shared_bond_simple_proxy()
+  hb_angle_proxies = []
   helix_class = params.helix_type
   if helix_class == "alpha" :
     helix_step = 4
@@ -189,41 +265,53 @@ def create_helix_hydrogen_bond_proxies (
     helix_step = 3
   else :
     print >> log, "  Don't know bonding for helix class %s." % helix_class
-    return generated_proxies
+    return generated_proxies, hb_angle_proxies
   try :
     helix_selection = selection_cache.selection(params.selection)
   except Exception, e :
     print >> log, str(e)
-    return generated_proxies
+    return generated_proxies, hb_angle_proxies
   assert (helix_step in [3, 4, 5])
   helix_rgs = _get_residue_groups_from_selection(pdb_hierarchy, helix_selection)
   i = 0
+  just_after_pro = False
   while i < len(helix_rgs)-helix_step:
     if helix_rgs[i+helix_step].atom_groups()[0].resname.strip() == "PRO":
       print >> log, "      Proline residue: %s - end of helix" % \
         (helix_rgs[i+helix_step].id_str())
       i += 3
+      just_after_pro = True
       continue # XXX is this safe?
-    proxies = _create_hbond_proxy(
+    angle_restraint_type = 0
+    if restrain_hbond_angles and helix_class == "alpha":
+      if i == 0 or i == len(helix_rgs)-helix_step-1 or just_after_pro:
+        angle_restraint_type = 1
+        just_after_pro = False
+      else:
+        angle_restraint_type = 2
+    proxies, angle_proxies = _create_hbond_proxy(
       acceptor_atoms=helix_rgs[i].atoms(),
       donor_atoms=helix_rgs[i+helix_step].atoms(),
       hbond_counts=hbond_counts,
       distance_ideal=distance_ideal,
       distance_cut=distance_cut,
       remove_outliers=remove_outliers,
+      prev_atoms=helix_rgs[i+helix_step-1].atoms(),
+      angle_restraint_type=angle_restraint_type,
       weight=weight,
       sigma=params.sigma,
       slack=params.slack,
       log=log)
-    if proxies is not None:
-      for proxy in proxies:
-        generated_proxies.append(proxy)
+    for proxy in proxies:
+      generated_proxies.append(proxy)
+    hb_angle_proxies += angle_proxies
     i += 1
-  return generated_proxies
+  return generated_proxies, hb_angle_proxies
 
 def create_sheet_hydrogen_bond_proxies (
     sheet_params,
     pdb_hierarchy,
+    selection_cache,
     weight,
     hbond_counts,
     distance_ideal,
@@ -231,9 +319,8 @@ def create_sheet_hydrogen_bond_proxies (
     remove_outliers,
     log=sys.stdout) :
   assert (not None in [distance_ideal, distance_cut])
-  cache = pdb_hierarchy.atom_selection_cache()
   prev_strand = sheet_params.first_strand
-  prev_selection = cache.selection(prev_strand)
+  prev_selection = selection_cache.selection(prev_strand)
   prev_rgs = _get_residue_groups_from_selection(
       pdb_hierarchy=pdb_hierarchy,
       bool_selection=prev_selection)
@@ -242,13 +329,13 @@ def create_sheet_hydrogen_bond_proxies (
   generated_proxies = geometry_restraints.shared_bond_simple_proxy()
   while k < len(sheet_params.strand) :
     curr_strand = sheet_params.strand[k]
-    curr_selection = cache.selection(curr_strand.selection)
+    curr_selection = selection_cache.selection(curr_strand.selection)
     curr_start = None
     prev_start = None
     if curr_strand.bond_start_current is not None:
-      curr_start = cache.selection(curr_strand.bond_start_current)
+      curr_start = selection_cache.selection(curr_strand.bond_start_current)
     if curr_strand.bond_start_previous is not None:
-      prev_start = cache.selection(curr_strand.bond_start_previous)
+      prev_start = selection_cache.selection(curr_strand.bond_start_previous)
     curr_rgs = _get_residue_groups_from_selection(
         pdb_hierarchy=pdb_hierarchy,
         bool_selection=curr_selection)
@@ -305,7 +392,7 @@ the .pdb file was edited without updating SHEET records.""" \
                 j += 2
               current_start_res_is_donor = not current_start_res_is_donor
               if donor_residue.atom_groups()[0].resname.strip() != "PRO":
-                proxies = _create_hbond_proxy(
+                proxies, angle_proxies = _create_hbond_proxy(
                     acceptor_atoms=acceptor_residue.atoms(),
                     donor_atoms=donor_residue.atoms(),
                     hbond_counts=hbond_counts,
@@ -317,13 +404,12 @@ the .pdb file was edited without updating SHEET records.""" \
                     slack=sheet_params.slack,
                     top_out=sheet_params.top_out,
                     log=log)
-                if proxies is not None:
-                  for proxy in proxies:
-                    generated_proxies.append(proxy)
+                for proxy in proxies:
+                  generated_proxies.append(proxy)
           elif (curr_strand.sense == "antiparallel") :
             while(i < len_prev_residues and j >= 0):
               if (prev_rgs[i].atom_groups()[0].resname.strip() != "PRO") :
-                proxies = _create_hbond_proxy(
+                proxies, angle_proxies = _create_hbond_proxy(
                   acceptor_atoms=curr_rgs[j].atoms(),
                   donor_atoms=prev_rgs[i].atoms(),
                   hbond_counts=hbond_counts,
@@ -335,12 +421,11 @@ the .pdb file was edited without updating SHEET records.""" \
                   slack=sheet_params.slack,
                   top_out=sheet_params.top_out,
                   log=log)
-                if proxies is not None:
-                  for proxy in proxies:
-                    generated_proxies.append(proxy)
+                for proxy in proxies:
+                  generated_proxies.append(proxy)
 
               if (curr_rgs[j].atom_groups()[0].resname.strip() != "PRO") :
-                proxies = _create_hbond_proxy(
+                proxies, angle_proxies = _create_hbond_proxy(
                   acceptor_atoms=prev_rgs[i].atoms(),
                   donor_atoms=curr_rgs[j].atoms(),
                   hbond_counts=hbond_counts,
@@ -352,9 +437,8 @@ the .pdb file was edited without updating SHEET records.""" \
                   slack=sheet_params.slack,
                   top_out=sheet_params.top_out,
                   log=log)
-                if proxies is not None:
-                  for proxy in proxies:
-                    generated_proxies.append(proxy)
+                for proxy in proxies:
+                  generated_proxies.append(proxy)
               i += 2;
               j -= 2;
           else :

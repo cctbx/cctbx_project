@@ -37,10 +37,11 @@ def exercise_protein () :
     m = manager(pdb_hierarchy=pdb_hierarchy,
         sec_str_from_pdb_file=sec_str_from_pdb_file)
     m.params.secondary_structure.protein.remove_outliers = False
-    proxies = m.create_protein_hbond_proxies(
+    proxies, hb_angles = m.create_protein_hbond_proxies(
         annotation=None, log=log)
-    print proxies.size()
+    print proxies.size(), hb_angles.size()
     assert proxies.size() == 109
+    assert hb_angles.size() == 294, hb_angles.size()
     assert isinstance(proxies, geometry_restraints.shared_bond_simple_proxy)
     (frac_alpha, frac_beta) = m.calculate_structure_content()
     assert ("%.3f" % frac_alpha == "0.643")
@@ -64,9 +65,10 @@ def exercise_protein () :
       m = manager(pdb_hierarchy=pdb_hierarchy,
           sec_str_from_pdb_file=None)
       m.params.secondary_structure.protein.remove_outliers = False
-      proxies = m.create_protein_hbond_proxies(
+      proxies, angle_p = m.create_protein_hbond_proxies(
           annotation=None, log=log)
       assert proxies.size() == 90
+      assert angle_p.size() == 243, angle_p.size()
 
 def exercise_sheet_ends () :
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
@@ -210,10 +212,11 @@ END
   # m.params.secondary_structure.use_ksdssp = False
   m.params.secondary_structure.protein.remove_outliers = False
   log = open("exercise_sheet_ends.log", "w")
-  proxies = m.create_protein_hbond_proxies(annotation=ss_from_file, log=log)
+  proxies, hb_angles = m.create_protein_hbond_proxies(annotation=ss_from_file, log=log)
   log.close()
   # probably the determination of SS by ksdssp is not stable.
   assert proxies.size() == 12, proxies.size()
+  assert hb_angles.size() == 0, hb_angles.size()
 
 
 def exercise_helix_bonding_pattern():
@@ -494,16 +497,16 @@ ATOM     27  CA AALA     2C     -2.231  -4.619  -6.901  0.50  0.00           C
 ATOM     28  C  AALA     2C     -3.253  -3.847  -7.737  0.50  0.00           C
 ATOM     29  O  AALA     2C     -3.647  -4.296  -8.813  0.50  0.00           O
 ATOM     30  CB AALA     2C     -2.864  -5.294  -5.683  0.50  0.00           C
-ATOM     31  N  BALA     2D     -1.084  -3.711  -6.463  0.50  0.00           N
-ATOM     32  CA BALA     2D     -2.131  -4.619  -6.901  0.50  0.00           C
-ATOM     33  C  BALA     2D     -3.153  -3.847  -7.737  0.50  0.00           C
-ATOM     34  O  BALA     2D     -3.547  -4.296  -8.813  0.50  0.00           O
-ATOM     35  CB BALA     2D     -2.764  -5.294  -5.683  0.50  0.00           C
-ATOM     36  N   ALA     2E     -3.654  -2.699  -7.211  1.00  0.00           N
-ATOM     37  CA  ALA     2E     -4.623  -1.860  -7.896  1.00  0.00           C
-ATOM     38  C   ALA     2E     -4.090  -1.499  -9.284  1.00  0.00           C
-ATOM     39  O   ALA     2E     -4.809  -1.602 -10.276  1.00  0.00           O
-ATOM     40  CB  ALA     2E     -4.919  -0.623  -7.045  1.00  0.00           C
+ATOM     31  N  BALA     2C     -1.084  -3.711  -6.463  0.50  0.00           N
+ATOM     32  CA BALA     2C     -2.131  -4.619  -6.901  0.50  0.00           C
+ATOM     33  C  BALA     2C     -3.153  -3.847  -7.737  0.50  0.00           C
+ATOM     34  O  BALA     2C     -3.547  -4.296  -8.813  0.50  0.00           O
+ATOM     35  CB BALA     2C     -2.764  -5.294  -5.683  0.50  0.00           C
+ATOM     36  N   ALA     2D     -3.654  -2.699  -7.211  1.00  0.00           N
+ATOM     37  CA  ALA     2D     -4.623  -1.860  -7.896  1.00  0.00           C
+ATOM     38  C   ALA     2D     -4.090  -1.499  -9.284  1.00  0.00           C
+ATOM     39  O   ALA     2D     -4.809  -1.602 -10.276  1.00  0.00           O
+ATOM     40  CB  ALA     2D     -4.919  -0.623  -7.045  1.00  0.00           C
 ATOM     41  N   ALA     3      -2.831  -1.084  -9.309  1.00  0.00           N
 ATOM     42  CA  ALA     3      -2.192  -0.708 -10.559  1.00  0.00           C
 ATOM     43  C   ALA     3      -2.243  -1.890 -11.529  1.00  0.00           C
@@ -542,6 +545,7 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
 
   log = null_out()
   n_hbonds = []
+  n_hangles = []
   for pdb_inp, recs in [
                         (alpha_h1_simple, alpha_annot_1),
                         (alpha_h1_1ac, alpha_annot_1),
@@ -560,12 +564,19 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
                 verbose=-1)
-    proxies_for_grm = ss_manager.create_protein_hbond_proxies(
+    proxies_for_grm, angle_p = ss_manager.create_protein_hbond_proxies(
       annotation= None,
       log          = log)
+    pdb_inp.hierarchy.write_pdb_file(file_name="alpha_h1_1_5_10ac.pdb")
+    # print proxies_for_grm.as_pymol_dashes(pdb_inp.hierarchy)
+    # print angle_p.as_pymol_dashes(pdb_hierarchy=pdb_inp.hierarchy)
+    # print "hbonds, hangles:", proxies_for_grm.size(), angle_p.size()
+    # STOP()
     n_hbonds.append(proxies_for_grm.size())
-  print n_hbonds
-  assert n_hbonds == [6, 7, 8, 9, 9, 5]
+    n_hangles.append(angle_p.size())
+  print n_hbonds, n_hangles
+  assert n_hbonds ==  [ 6,  7,  8,  9,  9,  5]
+  assert n_hangles == [18, 21, 24, 28, 28, 16]
 
 def exercise_sheets_bonding_pattern():
   pdb_apar_input = iotbx.pdb.hierarchy.input(pdb_string = """\
@@ -1019,6 +1030,7 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
   log = null_out()
   # defpars = sec_str_master_phil
   n_hbonds = []
+  n_hangles = []
   for pdb_inp, recs in [
                         (pdb_apar_input, s_apar_records1),
                         (pdb_apar_input, s_apar_records2),
@@ -1047,13 +1059,15 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
                 verbose=-1)
-    proxies_for_grm = ss_manager.create_protein_hbond_proxies(
+    proxies_for_grm, h_angles = ss_manager.create_protein_hbond_proxies(
       annotation= None,
       log          = log)
     # print proxies_for_grm.size()
     n_hbonds.append(proxies_for_grm.size())
-  print n_hbonds
+    n_hangles.append(h_angles.size())
+  print n_hbonds, n_hangles
   assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3, 4, 2, 2, 8]
+  assert n_hangles ==[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 def exercise_segid():
   if (not libtbx.env.has_module(name="ksdssp")):
@@ -1148,10 +1162,11 @@ END
               params=custom_pars.secondary_structure,
               verbose=-1)
   ss_manager.initialize()
-  proxies_for_grm = ss_manager.create_protein_hbond_proxies(
+  proxies_for_grm, h_angles = ss_manager.create_protein_hbond_proxies(
     annotation = None,
     log          = log)
   assert proxies_for_grm.size() == 4
+  assert h_angles.size() == 12
 
 def exercise_phil_generation():
   log = null_out()
