@@ -1612,7 +1612,7 @@ class QRBuilder(CCTBXBuilder):
     pip_installs = [] #'aes']
     instructions = []
     for pi in pip_installs:
-      instructions.append(['Q|R pip %s' % pi, 
+      instructions.append(['Q|R pip %s' % pi,
                            [self.python_base,
                             '-m',
                             'pip',
