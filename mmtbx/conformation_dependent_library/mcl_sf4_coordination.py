@@ -82,6 +82,7 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
 
 def get_bond_proxies(coordination):
   bonds = []
+  if coordination is None: return bonds
   for a1, a2 in coordination:
     p = geometry_restraints.bond_simple_proxy(
       i_seqs=[a1.i_seq, a2.i_seq],
@@ -96,6 +97,7 @@ def get_bond_proxies(coordination):
 
 def get_angle_proxies_for_bond(coordination):
   angles = []
+  if coordination is None: return angles
   for a1, a2 in coordination:
     assert a1.name.find("FE")>-1
     assert a1.parent().resname in ['SF4', 'F3S']
