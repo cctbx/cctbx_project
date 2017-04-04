@@ -234,6 +234,8 @@
 
 #ifdef __cplusplus
 
+#include "cbf.h"
+
 extern "C" {
 
 #endif
@@ -244,7 +246,6 @@ extern "C" {
 #include <limits.h>
 #include <ctype.h>
 
-#include "cbf.h"
 #include "cbf_file.h"
 #include "cbf_byte_offset.h"
 #include <cbflib_adaptbx/detectors/cbf_byte_offset_optimized.h>
