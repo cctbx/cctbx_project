@@ -500,9 +500,9 @@ class _(boost.python.injector, shared_bond_simple_proxy):
       i_seq, j_seq = proxy.i_seqs
       atom1 = pdb_atoms[i_seq].fetch_labels()
       atom2 = pdb_atoms[j_seq].fetch_labels()
-      base_sele = """chain "%s" and resi %s and name %s"""
-      sele1 = base_sele % (atom1.chain_id, atom1.resseq, atom1.name)
-      sele2 = base_sele % (atom2.chain_id, atom2.resseq, atom2.name)
+      base_sele = """chain "%s" and resi %s and name %s and alt '%s'"""
+      sele1 = base_sele % (atom1.chain_id.strip(), atom1.resid(), atom1.name, atom1.altloc)
+      sele2 = base_sele % (atom2.chain_id.strip(), atom2.resid(), atom2.name, atom2.altloc)
       result += "dist %s, %s\n" % (sele1, sele2)
     return result
 
@@ -1069,6 +1069,25 @@ class _(boost.python.injector, angle):
             weight_as_sigma(weight=O.weight), O.weight, O.residual()]
 
 class _(boost.python.injector, shared_angle_proxy):
+
+  def as_pymol_dashes(self, pdb_hierarchy):
+    # copied from mmtbx/geometry_restraints/hbond.py due to deprecation of
+    # hbond.py
+    result = ""
+    pdb_atoms = pdb_hierarchy.atoms()
+    i = 0
+    for proxy in self:
+      i_seq, j_seq, k_seq = proxy.i_seqs
+      atom1 = pdb_atoms[i_seq].fetch_labels()
+      atom2 = pdb_atoms[j_seq].fetch_labels()
+      atom3 = pdb_atoms[k_seq].fetch_labels()
+      base_sele = """chain "%s" and resi %s and name %s and alt '%s'"""
+      sele1 = base_sele % (atom1.chain_id.strip(), atom1.resid(), atom1.name, atom1.altloc)
+      sele2 = base_sele % (atom2.chain_id.strip(), atom2.resid(), atom2.name, atom2.altloc)
+      sele3 = base_sele % (atom3.chain_id.strip(), atom3.resid(), atom3.name, atom3.altloc)
+      result += "angle a%d, %s, %s, %s\n" % (i, sele1, sele2, sele3)
+      i += 1
+    return result
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
