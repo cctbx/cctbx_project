@@ -672,6 +672,21 @@ class cctbx_module(SourceModule):
                'https://github.com/cctbx/cctbx_project.git',
                'https://github.com/cctbx/cctbx_project/archive/master.zip']
 
+class qrefine_module(SourceModule):
+  module = 'qrefine'
+  assert 0
+  anonymous = ['git',
+               'git@github.com:cctbx/cctbx_project.git',
+               'https://github.com/cctbx/cctbx_project.git',
+               'https://github.com/cctbx/cctbx_project/archive/master.zip']
+
+class geostd_module(SourceModule):
+  module = 'geostd'
+  anonymous = ['svn',
+               'svn://svn.code.sf.net/p/geostd/code/trunk'
+               ]
+  authenticated = anonymous
+
 class cbflib_module(SourceModule):
   module = 'cbflib'
   anonymous = ['git',
@@ -1586,6 +1601,48 @@ class CCTBXBuilder(CCIBuilder):
   def rebuild_docs(self):
     pass
 
+class QRBuilder(CCTBXBuilder):
+  #EXTERNAL_CODEBASES = ["qrefine"]
+  CODEBASES_EXTRA = [
+    'geostd',
+    ]
+
+  def add_make(self):
+    CCTBXBuilder.add_make(self)
+    pip_installs = [] #'aes']
+    instructions = []
+    for pi in pip_installs:
+      instructions.append(['Q|R pip %s' % pi, 
+                           [self.python_base,
+                            '-m',
+                            'pip',
+                            'install',
+                            pi
+                          ],
+                           ['modules']])
+
+    for name, command, workdir in instructions:
+      print name,
+      print command,
+      print workdir
+      self.add_step(self.shell(
+        name       = name,
+        command    = command,
+        workdir    = workdir,
+        description= "",
+        haltOnFailure = 1, #haltOnFailure,
+        ))
+    self.add_refresh()
+
+  def add_tests(self):
+    pass
+
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip-phenix-dispatchers']
@@ -2073,6 +2130,7 @@ def run(root=None):
     'dials': DIALSBuilder,
     'external': PhenixExternalRegression,
     'molprobity':MOLPROBITYBuilder,
+    'qrefine': QRBuilder,
   }
   if options.builder not in builders:
     raise ValueError("Unknown builder: %s"%options.builder)
