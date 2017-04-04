@@ -33,6 +33,7 @@ def find_mon_lib_file(env_vars=mon_lib_env_vars,
         "chem_data/geostd",
         "chem_data/mon_lib",
         "mon_lib",
+        'geostd',
         "ext_ref_files/mon_lib"]:
     result = load_mon_lib_file(
       mon_lib_path=libtbx.env.find_in_repositories(
