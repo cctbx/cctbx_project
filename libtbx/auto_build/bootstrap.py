@@ -1172,7 +1172,7 @@ class Builder(object):
         posixpath.split(dirpath)[0],
         '&&',
         'tar',
-        'cfz',
+        'cfzh',
         '~/' + arxname,
         basename + '"'
       ]
