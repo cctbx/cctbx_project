@@ -6,6 +6,7 @@ class ADSCImage(DetectorImageBase):
   def __init__(self,filename):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "ADSC"
+    self.open_file = open # default: open files with built-in, unless otherwise instructed by dxtbx format
 
   def readHeader(self,maxlength=12288, external_keys=None): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
