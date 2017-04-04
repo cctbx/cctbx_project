@@ -21,6 +21,7 @@ def run(_args):
                                write_file_lists=_args.nofiles,
                                schnell=_args.schnell,
                                doplot=_args.noplot)
+    print unit_cell_info(clusters)
   else:
     plt.figure("Andrews-Bernstein distance dendogram", figsize=(12, 8))
     ax = plt.gca()
@@ -28,10 +29,10 @@ def run(_args):
                                             write_file_lists=_args.nofiles,
                                             schnell=_args.schnell,
                                             doplot=_args.noplot)
+    print unit_cell_info(clusters)
     plt.tight_layout()
     plt.show()
 
-  print unit_cell_info(clusters)
 
 if __name__ == "__main__":
   import argparse
