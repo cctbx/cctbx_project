@@ -673,11 +673,13 @@ class cctbx_module(SourceModule):
 
 class qrefine_module(SourceModule):
   module = 'qrefine'
-  assert 0
   anonymous = ['git',
-               'git@github.com:cctbx/cctbx_project.git',
-               'https://github.com/cctbx/cctbx_project.git',
-               'https://github.com/cctbx/cctbx_project/archive/master.zip']
+               'git@github.com:qrefine/qrefine.git',
+               'https://github.com/qrefine/qrefine.git',
+               #'git@github.com:cctbx/cctbx_project.git',
+               #'https://github.com/cctbx/cctbx_project.git',
+               #'https://github.com/cctbx/cctbx_project/archive/master.zip']
+               ]
 
 class geostd_module(SourceModule):
   module = 'geostd'
@@ -1601,7 +1603,7 @@ class CCTBXBuilder(CCIBuilder):
     pass
 
 class QRBuilder(CCTBXBuilder):
-  #EXTERNAL_CODEBASES = ["qrefine"]
+  EXTERNAL_CODEBASES = ["qrefine"]
   CODEBASES_EXTRA = [
     'geostd',
     ]

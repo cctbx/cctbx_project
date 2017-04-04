@@ -59,8 +59,12 @@ def generate_protein_threes(hierarchy,
                             include_non_linked=False,
                             omega_cdl=False,
                             backbone_only=True,
+                            include_non_standard_peptides=False,
                             verbose=False,
                             ):
+  peptide_lookup = ['common_amino_acid']
+  if include_non_standard_peptides:
+    peptide_lookup.append('modified_amino_acid')
   backbone_asc = hierarchy.atom_selection_cache()
   backbone_sel = backbone_asc.selection("name ca or name c or name n or name o or name cb")
   backbone_hierarchy = hierarchy.select(backbone_sel)
@@ -85,7 +89,7 @@ def generate_protein_threes(hierarchy,
               print '    residue: resname="%s" resid="%s"' % (
                 residue.resname, residue.resid())
           if verbose: print '      residue class : %s' % get_class(residue.resname)
-          if get_class(residue.resname) not in ["common_amino_acid"]:
+          if get_class(residue.resname) not in peptide_lookup:
             continue
           if include_non_linked:
             list.append(threes, residue)
