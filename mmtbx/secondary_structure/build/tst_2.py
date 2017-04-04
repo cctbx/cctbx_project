@@ -1078,8 +1078,8 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
   # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
   assert dmmm[1] < 0.5, dmmm[1]
-  assert dmmm[2] < 0.1, dmmm[2]
-  assert dist.standard_deviation_of_the_sample() < 0.05
+  assert dmmm[2] < 0.15, dmmm[2]
+  assert dist.standard_deviation_of_the_sample() < 0.1, dist.standard_deviation_of_the_sample()
 
 def exercise_00(prefix="tst_2_exercise_00"):
   """

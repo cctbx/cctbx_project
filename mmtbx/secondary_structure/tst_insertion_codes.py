@@ -149,6 +149,7 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
 
   log = null_out()
   n_hbonds = []
+  n_hangles = []
   for pdb_inp, recs in [
                         (alpha_h1_ends, alpha_annot_1_1), #6
                         (alpha_h1_ends, alpha_annot_1_2), #4
@@ -169,12 +170,14 @@ HELIX    1   1 ALA      2  ALA      5  1                                  10
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
                 verbose=-1)
-    proxies_for_grm = ss_manager.create_protein_hbond_proxies(
+    proxies_for_grm, hangles = ss_manager.create_protein_hbond_proxies(
       annotation= None,
       log          = log)
     n_hbonds.append(proxies_for_grm.size())
-  print n_hbonds
-  assert n_hbonds == [6, 4, 5, 5, 9, 5, 7, 7]
+    n_hangles.append(hangles.size())
+  print n_hbonds, n_hangles
+  assert n_hbonds ==  [6,   4,  5,  5,  9,  5,  7,  7]
+  assert n_hangles == [18, 12, 15, 15, 28, 16, 22, 22]
 
 def exercise_sheets_bonding_pattern_with_insertions():
   pdb_apar_input = iotbx.pdb.hierarchy.input(pdb_string = """\
@@ -462,6 +465,7 @@ SHEET    2   B 2 GLN A  40  ALA A  45  1  O  GLN A  44   N  THR A  20
   log = null_out()
   # defpars = sec_str_master_phil
   n_hbonds = []
+  n_hangles = []
   for pdb_inp, recs in [
                         (pdb_apar_input, s_apar_records1), # 6
                         (pdb_apar_input, s_apar_records2), # 6
@@ -481,12 +485,16 @@ SHEET    2   B 2 GLN A  40  ALA A  45  1  O  GLN A  44   N  THR A  20
                 sec_str_from_pdb_file=None,
                 params=custom_pars_ex.secondary_structure,
                 verbose=-1)
-    proxies_for_grm = ss_manager.create_protein_hbond_proxies(
+    proxies_for_grm, hangles = ss_manager.create_protein_hbond_proxies(
       annotation= None,
       log          = log)
     # print proxies_for_grm.size()
     n_hbonds.append(proxies_for_grm.size())
-  assert n_hbonds == [6, 6, 4, 6, 6, 5, 8]
+    n_hangles.append(hangles.size())
+  print n_hbonds, n_hangles
+  assert n_hbonds  == [6, 6, 4, 6, 6, 5, 8]
+  assert n_hangles == [0, 0, 0, 0, 0, 0, 0]
+
 
 def exercise_phil_generation():
   log = null_out()

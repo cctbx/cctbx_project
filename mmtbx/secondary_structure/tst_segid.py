@@ -748,8 +748,9 @@ def get_grm(pdb_str, mon_lib_srv, ener_lib, log):
 def exercise_protein(mon_lib_srv, ener_lib, log):
   grm = get_grm(protein_pdb_str.split('\n'), mon_lib_srv, ener_lib, log)
   print grm.get_n_hbond_proxies(), "want 30"  # 31 hbonds, with segids 30
-  print grm.get_n_hangle_proxies(), "want ... don't check"
+  print grm.get_n_hangle_proxies(), "want 90"
   assert grm.get_n_hbond_proxies() == 30  # 31 hbonds, with segids 30
+  assert grm.get_n_hangle_proxies() == 90
 
 def exercise_rna(mon_lib_srv, ener_lib, log):
   grm = get_grm(rna_pdb_str.split('\n'), mon_lib_srv, ener_lib, log)
@@ -762,9 +763,9 @@ def exercise_both(mon_lib_srv, ener_lib, log):
   grm = get_grm(protein_pdb_str.split('\n') + rna_pdb_str.split('\n'),
       mon_lib_srv, ener_lib, log)
   print grm.get_n_hbond_proxies(), "want 52"
-  print grm.get_n_hangle_proxies(), "want 44"
+  print grm.get_n_hangle_proxies(), "want 44+90=134" # 90 from protein
   assert grm.get_n_hbond_proxies() == 52
-  assert grm.get_n_hangle_proxies() == 44
+  assert grm.get_n_hangle_proxies() == 134
 
 
 if __name__ == "__main__":
