@@ -242,17 +242,13 @@ namespace dxtbx { namespace format {
       std::size_t nbytes = read_header_nbytes(handle);
 
       // Read the bytes into a string stream
-      std::string buffer;
-      buffer.reserve(nbytes);
-      std::copy_n(
-          std::istreambuf_iterator<char>(handle),
-          nbytes,
-          std::back_inserter(buffer));
+      std::vector<char> buffer(nbytes);
+      handle.read(&buffer[0], nbytes);
       handle.seekg(nbytes, std::ios_base::beg);
       DXTBX_ASSERT(handle.good());
 
       // Create a string stream
-      std::stringstream header(buffer.c_str());
+      std::stringstream header(&buffer[0]);
       std::string line;
       while (std::getline(header, line)) {
 
