@@ -81,6 +81,13 @@ if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
       'format/boost_python/nexus_ext.cc'],
       LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs+env_etc.dxtbx_hdf5_libs,
       LIBPATH=env_etc.dxtbx_lib_paths+env_etc.dxtbx_hdf5_lib_paths)
+  
+  image = env.SharedLibrary(
+    target='#/lib/dxtbx_format_image_ext',
+    source=[
+      'format/boost_python/image_ext.cc'],
+      LIBS=env_etc.libs_python+env_etc.libm+env_etc.dxtbx_libs+env_etc.dxtbx_hdf5_libs,
+      LIBPATH=env_etc.dxtbx_lib_paths+env_etc.dxtbx_hdf5_lib_paths)
 
   model = env.SharedLibrary(
     target='#/lib/dxtbx_model_ext',
