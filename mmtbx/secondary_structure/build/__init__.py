@@ -537,12 +537,14 @@ def substitute_ss(real_h,
   log.write("Replacing ss-elements with ideal ones:\n")
   log.flush()
   ss_stats = gather_ss_stats(pdb_h=real_h)
+  n_idealized_elements = 0
   for h in ann.helices:
     log.write("  %s\n" % h.as_pdb_str())
     log.flush()
     if processed_params.skip_good_ss_elements and ss_element_is_good(ss_stats, ([h],[])):
       log.write("    skipping, good element.\n")
     else:
+      n_idealized_elements += 1
       log.write("    substitute with idealized one.\n")
       selstring = h.as_atom_selections()
       isel = selection_cache.iselection(selstring[0])
@@ -562,6 +564,7 @@ def substitute_ss(real_h,
     if processed_params.skip_good_ss_elements and ss_element_is_good(ss_stats, ([],[sh])):
       log.write("    skipping, good element.\n")
     else:
+      n_idealized_elements += 1
       log.write("    substitute with idealized one.\n")
       for st in sh.strands:
         selstring = st.as_atom_selections()
@@ -577,7 +580,10 @@ def substitute_ss(real_h,
             )
         set_xyz_carefully(edited_h.select(all_bsel), ideal_h)
         # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
-
+  if n_idealized_elements == 0:
+    log.write("Nothing was idealized.\n")
+    # Don't do geometry minimization and stuff if nothing was changed.
+    return None
   t3 = time()
   pre_result_h = edited_h
   pre_result_h.reset_i_seq_if_necessary()
