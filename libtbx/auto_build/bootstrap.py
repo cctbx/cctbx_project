@@ -453,7 +453,7 @@ class Toolbox(object):
         if reference is not None:
           if os.path.exists(reference) and os.path.exists(os.path.join(reference, '.git')):
             reference_parameters = [ '--reference', reference ]
-        cmd = [ 'git', 'clone' ] + git_parameters + [ source_candidate, destdir ] + reference_parameters
+        cmd = [ 'git', 'clone', '--recursive' ] + git_parameters + [ source_candidate, destdir ] + reference_parameters
         if verbose:
           cmd = cmd + [ '--progress', '--verbose' ]
         returncode = ShellCommand(
@@ -1634,6 +1634,9 @@ class QRBuilder(CCTBXBuilder):
         haltOnFailure = 1, #haltOnFailure,
         ))
     self.add_refresh()
+
+  def get_libtbx_configure(self): # modified in derived class PhenixBuilder
+    return self.LIBTBX + self.LIBTBX_EXTRA + self.EXTERNAL_CODEBASES
 
   def add_tests(self):
     pass
