@@ -18,6 +18,12 @@
 #include <dxtbx/format/image.h>
 #include <dxtbx/error.h>
 
+#ifdef _WIN32  // use the unistd.h file from cbflib_adaptbx since VC++9.0 hasn't got one
+#if _MSC_VER < 1600
+#include <unistd.h>
+#endif
+#endif
+
 namespace dxtbx { namespace format {
 
   namespace detail {
