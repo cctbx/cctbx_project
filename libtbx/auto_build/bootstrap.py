@@ -1130,7 +1130,7 @@ class Builder(object):
     method, parameters = action[0], action[1:]
     if len(parameters) == 1: parameters = parameters[0]
     tarurl, arxname, dirpath = None, None, None
-    if self.isPlatformWindows() and method == "authenticated":
+    if self.isPlatformWindows() and (method == "authenticated" or method == "rsync"):
       tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
     if self.isPlatformWindows():
       if module in windows_remove_list:
