@@ -92,7 +92,7 @@ def superpose_ideal_sf4_coordinates(pdb_hierarchy, resname='SF4'):
         assert 0, 'not all atoms updated - missing %s' % atom1.quote()
   outl = ''
   if rmsd_list:
-    outl = '  %(resname)s Regularisation' % locals()
+    outl = '\n  %(resname)s Regularisation' % locals()
     outl+= '\n    residue        rmsd'
     for id_str, rmsd in sorted(rmsd_list.items()):
       outl += '\n    "%s"   %0.1f' % (id_str, rmsd)

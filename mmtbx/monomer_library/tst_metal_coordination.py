@@ -60,10 +60,32 @@ HETATM   49  H1  HOH L 974     -31.498 -10.034  10.798  1.00 12.35           H
 HETATM   50  H2  HOH L 974     -32.009 -10.160  12.036  1.00 11.06           H
 END
 ''',
+  'linking_test_SF4.pdb' : '''
+ATOM      1  CB  CYS A  43       3.194   5.758   4.327  1.00  3.39           C
+ATOM      2  SG  CYS A  43       1.682   6.600   4.910  1.00  3.32           S
+ATOM      3  CB  CYS A  46       6.976   9.042   5.345  1.00  3.45           C
+ATOM      4  SG  CYS A  46       6.736  10.109   6.828  1.00  3.39           S
+ATOM      5  CB  CYS A  61       2.826   5.722  11.129  1.00  4.19           C
+ATOM      6  SG  CYS A  61       3.191   7.503  11.225  1.00  3.86           S
+ATOM      7  CD1 LEU A  63       3.399  11.917  12.377  1.00  4.96           C
+ATOM      8  N   CYS A  75       0.009  11.484   5.007  1.00  3.12           N
+ATOM      9  CB  CYS A  75      -0.759  11.967   7.348  1.00  3.25           C
+ATOM     10  SG  CYS A  75       0.712  12.086   8.405  1.00  3.33           S
+TER
+HETATM   11  S1  SF4 A  84       3.034  10.140   5.716  1.00  3.17           S
+HETATM   12  S2  SF4 A  84       4.314   7.265   7.546  1.00  3.24           S
+HETATM   13  S3  SF4 A  84       0.963   8.387   8.105  1.00  3.23           S
+HETATM   14  S4  SF4 A  84       3.811  10.428   9.197  1.00  3.34           S
+HETATM   15 FE1  SF4 A  84       2.436   8.034   6.473  1.00  3.03          Fe
+HETATM   16 FE2  SF4 A  84       4.585   9.549   7.307  1.00  3.10          Fe
+HETATM   17 FE3  SF4 A  84       3.040   8.257   9.103  1.00  3.11          Fe
+HETATM   18 FE4  SF4 A  84       2.046  10.381   7.746  1.00  3.04          Fe
+'''
         }
 
 links = {
   'linking_test_F3S.pdb' : [0,3], # 3 bonds from F3S to SGs
+  'linking_test_SF4.pdb' : [0,4],
   }
 
 def run_and_test(cmd, pdb, i):
@@ -126,6 +148,22 @@ def run_and_test(cmd, pdb, i):
                                                                 )
     os.system(cmd)
 
+def ideal_and_test(cmd, pdb, i):
+  result = easy_run.fully_buffered(cmd).raise_if_errors()
+  assert (result.return_code == 0)
+  for line in result.stdout_lines :
+    if ("Write PDB file" in line) :
+      break
+  else :
+    raise RuntimeError("Missing expected log output")
+  print "OK"
+  for line in result.stdout_lines :
+    if line.find('SF4 Regularisation')>-1: break
+    if line.find('F3S Regularisation')>-1: break
+  else:
+    assert 0
+  print 'OK'
+
 def run(only_i=None):
   try: only_i=int(only_i)
   except ValueError: only_i=None
@@ -155,6 +193,10 @@ def run(only_i=None):
       print "test number:",j
       print cmd
       run_and_test(cmd, pdb,i)
+      
+      cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
+      cmd += ' superpose_ideal_ligand=all'
+      ideal_and_test(cmd, pdb, i)
 
 
 if __name__=="__main__":
