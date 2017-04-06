@@ -311,6 +311,14 @@ class SingleFrame(InputFrame):
       return [a, b, c, d, e, f]
 
 class SingleDialsFrame(SingleFrame):
+  def __init__(self, refl=None, expt=None, id=None, **kwargs):
+    from xfel.command_line.frame_extractor import ConstructFrame
+    frame = ConstructFrame(refl, expt).make_frame()
+    SingleFrame.__init__(self, dicti=frame, path=str(id), **kwargs)
+    self.experiment = expt
+    self.reflections = refl
+
+class SingleDialsFrameFromFiles(SingleFrame):
   def __init__(self, refls_path=None, expts_path=None, **kwargs):
     from xfel.command_line.frame_extractor import ConstructFrameFromFiles
     frame = ConstructFrameFromFiles(refls_path, expts_path).make_frame()

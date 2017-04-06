@@ -13,7 +13,7 @@ from cctbx.array_family import flex
 import os
 import math
 import logging
-from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame
+from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDialsFrameFromFiles
 from cctbx.uctbx.determine_unit_cell import NCDist
 import numpy as np
 import matplotlib.patheffects as patheffects
@@ -206,7 +206,7 @@ class Cluster:
       matches = [(dials_refls[i], dials_expts[dials_expts_ids.index(dials_refls_ids[i])])
                   for i in xrange(len(dials_refls_ids)) if dials_refls_ids[i] in dials_expts_ids]
       for (r, e) in matches:
-        this_frame = SingleDialsFrame(refls_path=r, expts_path=e, **kwargs)
+        this_frame = SingleDialsFrameFromFiles(refls_path=r, expts_path=e, **kwargs)
         if hasattr(this_frame, 'miller_array'):
           data.append(this_frame)
           if done():
@@ -226,6 +226,41 @@ class Cluster:
           logging.info('skipping file {}'.format(os.path.basename(path)))
 
     return cls(data, _prefix, _message)
+
+  @classmethod
+  def from_expts(cls,
+                 refl_table=None,
+                 expts_list=None,
+                 _prefix='cluster_from_file',
+                 _message='Made from experiment objects',
+                 n_images=None,
+                 **kwargs):
+    """Constructor to get a cluster from experiment and reflection list objects
+    :param refl_table: DIALS integrated reflection table
+    :param expts_list: DIALS experiment list
+    :param n_images: find at most this number of images
+    """
+
+    data = []
+
+    def done():
+      if n_images is None:
+        return False
+      return len(data) >= n_images
+
+    for i, expt in enumerate(expts_list):
+      sel = refl_table['id'] == i
+      refls_sel = refl_table.select(sel)
+      this_frame = SingleDialsFrame(refl=refls_sel, expt=expt, id=i, **kwargs)
+      if hasattr(this_frame, 'miller_array'):
+        data.append(this_frame)
+        if done():
+          break
+      else:
+        logging.info('skipping invalid experiment #{}'.format(i))
+
+    return cls(data, _prefix, _message)
+
 
   def make_sub_cluster(self, new_members, new_prefix, new_info):
     """ Make a sub-cluster from a list of SingleFrame objects from the old
