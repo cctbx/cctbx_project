@@ -87,8 +87,9 @@ Parameters:"""%h
     pdb_hierarchy = pdb_inp.construct_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
-  # Map or map coefficients
+  else:
     pdb_hierarchy=None
+  # Map or map coefficients
   map_coeff = None
   if(inputs.ccp4_map is None and not map_data):
     if(len(inputs.reflection_file_names)!=1):
@@ -185,6 +186,8 @@ Parameters:"""%h
   if(params.output_file_name_prefix is None):
     file_name = "%s_box.pdb"%output_prefix
   else: file_name = "%s.pdb"%params.output_file_name_prefix
+  ph_box = pdb_hierarchy.select(selection)
+  ph_box.adopt_xray_structure(box.xray_structure_box)
   ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
     box.xray_structure_box.crystal_symmetry())
 
