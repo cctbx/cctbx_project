@@ -1294,7 +1294,8 @@ class sharpening_info:
       maximum_low_b_adjusted_sa=None,
       box_sharpening_info_obj=None,
       chain_type=None,
-      model_sharpening_scale=None,
+      target_scale_factors=None,
+      d_min_list=None,
       pdb_inp=None,
         ):
 
@@ -1312,13 +1313,13 @@ class sharpening_info:
     if self.resolution_dependent_b is None:
       self.resolution_dependent_b=[0,0,0]
 
-    if self.model_sharpening_scale and self.sharpening_type!='model_sharpening':
+    if self.target_scale_factors and self.sharpening_type!='model_sharpening':
       assert self.sharpening_type is None # XXX may want to print out error
       self.sharpening_type='model_sharpening'
 
     if pdb_inp:
         self.sharpening_method='model_sharpening'
-        self.box_in_auto_sharpen=False
+        self.box_in_auto_sharpen=True
         self.sharpening_target='model'
    
   def set_resolution_dependent_b(self,
@@ -1333,7 +1334,7 @@ class sharpening_info:
     if self.sharpening_method is None:
       return False
 
-    if self.model_sharpening_scale:
+    if self.target_scale_factors:
       return True
 
     if self.b_iso is not None or \
@@ -1411,7 +1412,7 @@ class sharpening_info:
 
       if pdb_inp or self.sharpening_method=='model_sharpening':
         self.sharpening_method='model_sharpening'
-        self.box_in_auto_sharpen=False
+        self.box_in_auto_sharpen=True
         self.sharpening_target='model'
 
       elif params.map_modification.b_iso is not None or \
@@ -1478,6 +1479,14 @@ class sharpening_info:
       for dd,b in zip(d_min_values,b_values):
         print >>out,"                                 %7.1f       %7.2f " %(
          dd,b)
+
+    elif self.sharpening_method=="model_sharpening":
+      print >>out,"Resolution-dependent model sharpening"
+      print >>out,"Scale vs resolution:"
+      for d_min,sc in zip(
+        self.d_min_list,
+        self.target_scale_factors):
+        print >>out,"Dmin: %7.2f  Scale: %7.2f" %(d_min,sc)
 
     if self.sharpening_method in ["b_iso_to_d_cut"] and \
       self.k_sharpen and self.resolution:
@@ -1843,8 +1852,9 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
 def apply_sharpening(map_coeffs=None,
     sharpening_info_obj=None,
     n_real=None,b_sharpen=None,crystal_symmetry=None,
-    model_sharpening_scale=None,
+    target_scale_factors=None,
     f_array=None,phases=None,d_min=None,k_sharpen=None,out=sys.stdout):
+
     if map_coeffs and f_array is None and phases is None:
       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
@@ -1853,11 +1863,30 @@ def apply_sharpening(map_coeffs=None,
       k_sharpen=sharpening_info_obj.k_sharpen
       d_min=sharpening_info_obj.resolution# changed from d_cut
       n_real=sharpening_info_obj.n_real
-      model_sharpening_scale=sharpening_info_obj.model_sharpening_scale
+      target_scale_factors=sharpening_info_obj.target_scale_factors
+      n_bins=sharpening_info_obj.n_bins
 
-    if model_sharpening_scale:
+    if target_scale_factors:
+      assert sharpening_info_obj is not None
+      print >>out,"\nApplying target scale factors vs resolution"
       if not map_coeffs:
         map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
+
+      f_array,phases=map_coeffs_as_fp_phi(map_coeffs) 
+      f_array_b_iso=get_b_iso(f_array,d_min=d_min)
+      if not f_array.binner():
+        (local_d_max,local_d_min)=f_array.d_max_min()
+        f_array.setup_binner(n_bins=n_bins,d_max=local_d_max,d_min=local_d_min)
+
+      from cctbx.maptbx.refine_sharpening import get_scale_factors
+      scale_array=get_scale_factors(f_array,
+          target_scale_factors=target_scale_factors)
+      scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
+      scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=d_min)
+      print >>out,"\nInitial b_iso for "+\
+        "local map: %5.1f A**2     After adjustment: %5.1f A**2" %(
+        f_array_b_iso,scaled_f_array_b_iso)
+
       return get_map_from_map_coeffs(map_coeffs=map_coeffs,
         crystal_symmetry=crystal_symmetry,n_real=n_real)
 
@@ -5564,6 +5593,7 @@ def get_iterated_solvent_fraction(map=None,
 
 def select_box_map_data(si=None,
            map_data=None,
+           pdb_inp=None,
            minimum_size=(40,40,40),
            out=sys.stdout):
 
@@ -5573,22 +5603,36 @@ def select_box_map_data(si=None,
   crystal_symmetry=si.crystal_symmetry
   max_box_fraction=si.max_box_fraction
 
-  lower_bounds,upper_bounds=box_of_biggest_region(si=si,
+  if pdb_inp:  # use model to identify region to cut out
+    from mmtbx.command_line.map_box import run as run_map_box
+    args=[]
+    box=run_map_box(args,
+        map_data=map_data,pdb_hierarchy=pdb_inp.construct_hierarchy(),
+       write_output_files=False,
+       crystal_symmetry=crystal_symmetry,log=out)
+
+    box_map=box.map_box.as_double()
+    box_crystal_symmetry=box.box_crystal_symmetry
+    box_pdb_inp=box.hierarchy.as_pdb_input()
+
+  else:
+    lower_bounds,upper_bounds=box_of_biggest_region(si=si,
            map_data=map_data,
            out=out)
 
-  lower_bounds,upper_bounds=put_bounds_in_range(
+    lower_bounds,upper_bounds=put_bounds_in_range(
      lower_bounds=lower_bounds,upper_bounds=upper_bounds,
      minimum_size=minimum_size,
      n_real=map_data.all())
 
-  # select map data inside this box
-  box_map,box_crystal_symmetry=cut_out_map(
+    # select map data inside this box
+    box_map,box_crystal_symmetry=cut_out_map(
        map_data=map_data.as_double(),
        crystal_symmetry=crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
+
   if not box_map or box_map.size() > max_box_fraction* map_data.size():
-    return map_data,crystal_symmetry,None # no point
+    return None,map_data,crystal_symmetry,None # no point
 
   else:
     # figure out solvent fraction in this box...
@@ -5605,7 +5649,7 @@ def select_box_map_data(si=None,
       crystal_symmetry=box_crystal_symmetry,
       solvent_fraction=box_solvent_fraction)
 
-    return box_map,box_crystal_symmetry,box_sharpening_info_obj
+    return None,box_map,box_crystal_symmetry,box_sharpening_info_obj
 
 def box_of_biggest_region(si=None,
            map_data=None,
@@ -5795,13 +5839,15 @@ def run_auto_sharpen(
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
-  if si.box_in_auto_sharpen and (not pdb_inp):
+
+  if si.box_in_auto_sharpen:
     print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
 
-    box_map_data,box_crystal_symmetry,box_sharpening_info_obj=\
+    box_pdb_inp,box_map_data,box_crystal_symmetry,box_sharpening_info_obj=\
        select_box_map_data(si=si,
            map_data=map_data,
+           pdb_inp=pdb_inp,
            out=out)
     # write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
     if box_sharpening_info_obj is None: # did not do it
@@ -5837,8 +5883,8 @@ def run_auto_sharpen(
   # Try various methods for sharpening.
 
 
-  if si.maximum_low_b_adjusted_sa is not None and (
-      not si.sharpening_is_defined()): 
+  if si.maximum_low_b_adjusted_sa is not None and \
+      (not si.sharpening_is_defined()) and (not si.is_model_sharpening()):
     # Make sure at highest sharpening the region_weight is high enough to
     #  give adjusted_sa of zero or less
 
@@ -5891,7 +5937,6 @@ def run_auto_sharpen(
     if not auto_sharpen_methods or auto_sharpen_methods==['None']:
       auto_sharpen_methods=['no_sharpening']
 
-     
     for m in auto_sharpen_methods:
       # ------------------------
       if m in ['no_sharpening','resolution_dependent','model_sharpening']:
@@ -5954,6 +5999,18 @@ def run_auto_sharpen(
              map_coeffs=map_coeffs,
              sharpening_info_obj=local_si,
              out=out)
+        elif m=='model_sharpening':
+          print >>out,\
+           "\nUsing model-based sharpening"
+          local_si.b_sharpen=0
+          local_si.b_iso=original_b_iso
+          from cctbx.maptbx.refine_sharpening import scale_amplitudes
+          scale_amplitudes(pdb_inp=pdb_inp,map_coeffs=map_coeffs,
+            si=local_si,out=out)
+          # local_si contains target_scale_factors now
+          local_f_array=f_array
+          local_phases=phases
+          
         else:
           local_f_array=f_array
           local_phases=phases
@@ -5983,7 +6040,7 @@ def run_auto_sharpen(
                 local_si.adjusted_sa,local_si.kurtosis)+\
             " %7.3f  %7.3f" %(
              local_si.sa_ratio,local_si.normalized_regions)
-        else:
+        elif local_si.b_sharpen is not None and local_si.b_iso is not None:
           print >>out,\
            " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
             local_si.b_sharpen,local_si.b_iso,
@@ -6195,9 +6252,9 @@ def set_up_sharpening(si=None,map_data=None,out=sys.stdout):
            print >>out,"Resolution-dependent b_sharpening values:" +\
               "b0: %7.2f  b1: %7.2f  b2: %7.2f " %(
              tuple(check_si.resolution_dependent_b))
-         elif check_si.model_sharpening_scale:
+         elif check_si.target_scale_factors:
            print >>out,"Model sharpening scale values:"
-           for x in check_si.model_sharpening_scale: print >>out,x,
+           for x in check_si.target_scale_factors: print >>out,x,
            print >>out
          return check_si
 
@@ -6265,7 +6322,7 @@ def run(args,
 
     # We can use params.input_files.target_ncs_au_file here to define ncs au
     if target_xyz and not target_scattered_points: 
-       target_scattered_points=target_xyz # ZZZ
+       target_scattered_points=target_xyz
 
     # get the chain types and therefore (using ncs_copies) volume fraction
     tracking_data=get_solvent_fraction(params,

@@ -168,6 +168,15 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
   data_array=data_array*scale_array
   return f_array.customized_copy(data=data_array)
 
+def get_scale_factors(f_array,target_scale_factors=None):
+  scale_array=flex.double(f_array.data().size()*(-1.,))
+  assert len(target_scale_factors)==len(list(f_array.binner().range_used()))
+  for i_bin in f_array.binner().range_used():
+    sel       = f_array.binner().selection(i_bin)
+    scale_array.set_selected(sel,target_scale_factors[i_bin-1])
+  assert scale_array.count(-1.)==0
+  return scale_array
+
 def scale_amplitudes(pdb_inp=None,map_coeffs=None,
     si=None,resolution=None,overall_b=None,
     fraction_complete=None,
@@ -177,6 +186,9 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
 
   # Figure out resolution_dependent sharpening to optimally
   #  match map and model. Then apply it as usual.
+
+  # if si.target_scale_factors is set, just use it...
+
   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
   from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model
   from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
@@ -279,16 +291,21 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   if not max_possible_cc:
     max_possible_cc=0.01
 
-  # Define overall CC based on model completeness (CC=sqrt(fraction_complete))
-  if fraction_complete is None:
-    fraction_complete=max_possible_cc**2
-
-    print >>out,\
-      "Estimated fraction complete is is %5.2f based on low_res CC of %5.2f" %(
-        fraction_complete,max_possible_cc)
+  if si.target_scale_factors: # not using these
+    max_possible_cc=1.
+    fraction_complete=1. 
   else:
-    print >>out,"Using fraction complete value of %5.2f "  %(fraction_complete)
-    max_possible_cc=fraction_complete**0.5
+    # Define overall CC based on model completeness (CC=sqrt(fraction_complete))
+
+    if fraction_complete is None:
+      fraction_complete=max_possible_cc**2
+
+      print >>out,\
+        "Estimated fraction complete is %5.2f based on low_res CC of %5.2f" %(
+          fraction_complete,max_possible_cc)
+    else:
+      print >>out,"Using fraction complete value of %5.2f "  %(fraction_complete)
+      max_possible_cc=fraction_complete**0.5
 
 
   target_scale_factors=flex.double()
@@ -316,6 +333,12 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
 
   target_scale_factors=\
      target_scale_factors/target_scale_factors.min_max_mean().max
+
+  if si.target_scale_factors:
+    print >>out, "\nUsing supplied target scale factors..."
+    assert target_scale_factors.size()==si.target_scale_factors.size()
+    target_scale_factors=si.target_scale_factors
+
   print >>out,"\nScale factors vs resolution:"
   for sthol2,scale,rms_fo in zip(
      target_sthol2,target_scale_factors,rms_fo_list):
@@ -329,22 +352,20 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   si.b_sharpen=0
   si.b_iso=None
 
-  si.target_scale_factors=target_scale_factors
-  si.target_sthol2=target_sthol2
+  if not si.target_scale_factors:
+    si.target_scale_factors=target_scale_factors
+    si.target_sthol2=target_sthol2
+    si.d_min_list=d_min_list
 
-  scale_array=flex.double(f_array.data().size()*(-1.,))
-  for i_bin in f_array.binner().range_used():
-    sel       = f_array.binner().selection(i_bin)
-    scale_array.set_selected(sel,target_scale_factors[i_bin-1])
-  assert scale_array.count(-1.)==0
 
-  f_array_b_iso=get_b_iso(f_array,d_min=resolution)
-
-  if fraction_complete < min_fraction_complete:
+  if not si.target_scale_factors and fraction_complete < min_fraction_complete:
     scaled_f_array=f_array
     print >>out,"\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
       fraction_complete,min_fraction_complete) + "\nSkipping scaling"
   else:  # apply scaling
+    f_array_b_iso=get_b_iso(f_array,d_min=resolution)
+    scale_array=get_scale_factors(f_array,
+        target_scale_factors=target_scale_factors)
     scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
     scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
     print >>out,"\nInitial b_iso for "+\

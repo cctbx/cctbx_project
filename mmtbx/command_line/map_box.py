@@ -47,7 +47,11 @@ master_phil = libtbx.phil.parse("""
     .type=float
 """)
 
-def run(args, crystal_symmetry=None, log=None):
+def run(args, crystal_symmetry=None, 
+     pdb_hierarchy=None,
+     map_data=None,
+     write_output_files=True,
+     log=None):
   h = "phenix.map_box: extract box with model and map around selected atoms"
   if(log is None): log = sys.stdout
   print_statistics.make_header(h, out=log)
@@ -63,7 +67,7 @@ or
   phenix.map_box map.ccp4 density_select=True
 
 Parameters:"""%h
-  if(len(args) == 0):
+  if(len(args) == 0 and not pdb_hierarchy):
     print default_message
     master_phil.show(prefix="  ")
     return
@@ -72,9 +76,10 @@ Parameters:"""%h
     master_params = master_phil)
   params = inputs.params.extract()
   # PDB file
-  if params.pdb_file and not inputs.pdb_file_names:
+  if params.pdb_file and not inputs.pdb_file_names and not pdb_hierarchy:
     inputs.pdb_file_names=[params.pdb_file]
-  if(len(inputs.pdb_file_names)!=1 and not params.density_select):
+  if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
+    pdb_hierarchy):
     raise Sorry("PDB file is needed unless density_select is set.")
   print_statistics.make_sub_header("pdb model", out=log)
   if len(inputs.pdb_file_names)>0:
@@ -82,11 +87,10 @@ Parameters:"""%h
     pdb_hierarchy = pdb_inp.construct_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
-  else:
-    pdb_hierarchy=None
   # Map or map coefficients
+    pdb_hierarchy=None
   map_coeff = None
-  if(inputs.ccp4_map is None):
+  if(inputs.ccp4_map is None and not map_data):
     if(len(inputs.reflection_file_names)!=1):
       raise Sorry("Map or map coefficients file is needed.")
     map_coeff = reflection_file_utils.extract_miller_array_from_file(
@@ -99,7 +103,7 @@ Parameters:"""%h
     map_data = fft_map.real_map_unpadded()
     map_or_map_coeffs_prefix=os.path.basename(
        inputs.reflection_file_names[0][:-4])
-  else:
+  elif not map_data:
     print_statistics.make_sub_header("CCP4 map", out=log)
     ccp4_map = inputs.ccp4_map
     ccp4_map.show_summary(prefix="  ",out=log)
@@ -110,6 +114,8 @@ Parameters:"""%h
     else:
       map_or_map_coeffs_prefix=os.path.basename(
        inputs.ccp4_map_file_name[:-4])
+  else: # have map_data
+      map_or_map_coeffs_prefix=None
   #
   if len(inputs.pdb_file_names)>0:
     output_prefix=os.path.basename(inputs.pdb_file_names[0])[:-4]
@@ -168,11 +174,17 @@ Parameters:"""%h
   if box.pdb_outside_box_msg:
     print >> log, box.pdb_outside_box_msg
 
+
+  ph_box = pdb_hierarchy.select(selection)
+  ph_box.adopt_xray_structure(box.xray_structure_box)
+
+  box.hierarchy=ph_box
+  if not write_output_files:
+    return box
+
   if(params.output_file_name_prefix is None):
     file_name = "%s_box.pdb"%output_prefix
   else: file_name = "%s.pdb"%params.output_file_name_prefix
-  ph_box = pdb_hierarchy.select(selection)
-  ph_box.adopt_xray_structure(box.xray_structure_box)
   ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
     box.xray_structure_box.crystal_symmetry())
 
