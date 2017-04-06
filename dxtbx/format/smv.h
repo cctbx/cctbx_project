@@ -208,6 +208,14 @@ namespace dxtbx { namespace format {
       return as_type<double>();
     }
 
+    /**
+     * Return the byte order
+     */
+    std::string byte_order() const {
+      return byte_order_;
+    }
+
+
   protected:
 
     /**
@@ -360,6 +368,7 @@ namespace dxtbx { namespace format {
     }
 
     std::vector<char> data_;
+    std::string byte_order_;
   };
 
 

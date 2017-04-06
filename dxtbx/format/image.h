@@ -73,7 +73,7 @@ namespace dxtbx { namespace format {
      * Return if is a float
      */
     bool is_float() const {
-      return type_ == "float" || type_ == "double";
+      return type_ == "float32" || type_ == "float64";
     }
 
     /**
@@ -83,19 +83,11 @@ namespace dxtbx { namespace format {
       return type_;
     }
 
-    /**
-     * Return the byte order
-     */
-    std::string byte_order() const {
-      return byte_order_;
-    }
-
   protected:
 
     std::string filename_;
     size_type size_;
     std::string type_;
-    std::string byte_order_;
   };
 
 

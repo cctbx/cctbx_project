@@ -16,6 +16,7 @@
 #include <dxtbx/error.h>
 #include <dxtbx/format/image.h>
 #include <dxtbx/format/smv.h>
+#include <dxtbx/format/tiff.h>
 #include <vector>
 #include <hdf5.h>
 
@@ -27,11 +28,11 @@ namespace dxtbx { namespace format { namespace boost_python {
 
   BOOST_PYTHON_MODULE(dxtbx_format_image_ext)
   {
+
     class_<ImageReader>("ImageReader", no_init)
       .def("filename", &ImageReader::filename)
       .def("size", &ImageReader::size)
       .def("type", &ImageReader::type)
-      .def("byte_order", &ImageReader::byte_order)
       .def("is_int", &ImageReader::is_int)
       .def("is_float", &ImageReader::is_float)
       .def("as_int", &ImageReader::as_int)
@@ -41,7 +42,14 @@ namespace dxtbx { namespace format { namespace boost_python {
     class_<SMVReader, bases<ImageReader> >("SMVReader", no_init)
       .def(init<const char*>((
               arg("filename"))))
+      .def("byte_order", &SMVReader::byte_order)
       ;
+
+    class_<TIFFReader, bases<ImageReader> >("TIFFReader", no_init)
+      .def(init<const char*>((
+              arg("filename"))))
+      ;
+
   }
 
 }}} // namespace = dxtbx::format::boost_python
