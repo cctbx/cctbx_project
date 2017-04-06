@@ -5470,8 +5470,9 @@ class process(object):
       if automatic_linking.link_metals:
         from mmtbx.conformation_dependent_library import mcl
         mcl.update(self._geometry_restraints_manager,
-                    self.all_chain_proxies.pdb_hierarchy,
-        )
+                   self.all_chain_proxies.pdb_hierarchy,
+                   self.all_chain_proxies.pdb_link_records,
+                  )
 
       # Here we are going to add another needed restraints.
       # Ramachandran restraints
