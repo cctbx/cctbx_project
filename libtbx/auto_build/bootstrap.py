@@ -422,16 +422,22 @@ class Toolbox(object):
       destination = os.path.join('modules', module)
     destpath, destdir = os.path.split(destination)
 
-    if git_available and os.path.exists(os.path.join(destination, '.git')):
-      # This may fail for unclean trees and merge problems. In this case manual
-      # user intervention will be required.
-      # For the record, you can clean up the tree and *discard ALL changes* with
-      #   git reset --hard origin/master
-      #   git clean -dffx
-      return ShellCommand(
-        command=['git', 'pull', '--rebase'], workdir=destination, silent=False, haltOnFailure=True).run()
-
     if os.path.exists(destination):
+      if git_available and os.path.exists(os.path.join(destination, '.git')):
+        if not open(os.path.join(destination, '.git', 'HEAD'), 'r').read().startswith('ref:'):
+          print "WARNING: Can not update existing git repository! You are not on a branch."
+          print "This may be legitimate when run eg. via Jenkins, but be aware that you cannot commit any changes"
+          return
+
+        else:
+          # This may fail for unclean trees and merge problems. In this case manual
+          # user intervention will be required.
+          # For the record, you can clean up the tree and *discard ALL changes* with
+          #   git reset --hard origin/master
+          #   git clean -dffx
+          return ShellCommand(
+            command=['git', 'pull', '--rebase'], workdir=destination, silent=False, haltOnFailure=True).run()
+
       print "Existing non-git directory -- don't know what to do. skipping: %s" % module
       if ('cctbx_project.git' in parameters[0]):
         print '\n' + '=' * 80 + '\nCCTBX is transitioning to git.\nPlease continue committing changes using svn until November 22, 2016.\nAfter that, commits will only be done through git.\n\nTo update cctbx_project, please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n'
