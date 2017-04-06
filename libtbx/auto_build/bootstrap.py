@@ -601,7 +601,7 @@ class SourceModule(object):
 
   def get_tarauthenticated(self, auth=None):
     auth = auth or {}
-    if self.authentarfile: # and self.isPlatformWindows():
+    if self.authentarfile:
       return [self.authentarfile[0]%auth, self.authentarfile[1], self.authentarfile[2]]
     return None, None, None
 
@@ -1130,7 +1130,7 @@ class Builder(object):
     method, parameters = action[0], action[1:]
     if len(parameters) == 1: parameters = parameters[0]
     tarurl, arxname, dirpath = None, None, None
-    if self.isPlatformWindows():
+    if self.isPlatformWindows() and method == "authenticated":
       tarurl, arxname, dirpath = MODULES.get_module(module)().get_tarauthenticated(auth=self.get_auth())
     if self.isPlatformWindows():
       if module in windows_remove_list:
