@@ -1,4 +1,4 @@
-IOTA v1.1.009 - DIALS optimization
+IOTA v1.1.009 - Optimization additions
 
 
 1. Bravais lattice refinement and reindexing before integration (use the
