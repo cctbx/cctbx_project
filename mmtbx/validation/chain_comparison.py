@@ -415,6 +415,7 @@ def run(args=None,
     print>>out, "Space group: %s" %(crystal_symmetry.space_group().info()), \
          "Unit cell: %7.2f %7.2f %7.2f  %7.2f %7.2f %7.2f \n" %(
         crystal_symmetry.unit_cell().parameters())
+    use_crystal_symmetry=True
   if not quiet:
     print >>out,"Looking for chain similarity for "+\
       "%s (%d residues) in the model %s (%d residues)" %(
@@ -455,12 +456,14 @@ def run(args=None,
   for i in xrange(chain_xyz_fract.size()):
     best_j=None
     best_dd=None
+    distance=None
     if working_crystal_symmetry:
       info=get_best_match(
         flex.vec3_double([chain_xyz_fract[i]]),target_xyz_fract,
         crystal_symmetry=working_crystal_symmetry,
         distance_per_site=distance_per_site)
-      distance=info.dist()
+      if info:
+        distance=info.dist()
     else:
       info=get_best_match(
         flex.vec3_double([chain_xyz_cart[i]]),target_xyz_cart)

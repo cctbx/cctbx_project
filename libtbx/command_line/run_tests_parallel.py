@@ -35,7 +35,7 @@ max_time = 180
           "than max_time (in seconds) to run."
 """)
 
-def run (args) :
+def run (args, return_list_of_tests=None) :
   if (len(args) == 0) :
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
   user_phil = []
@@ -57,6 +57,8 @@ def run (args) :
     run_dir = open_tmp_directory()
     print 'Running tests in %s' % run_dir
     os.chdir(run_dir)
+  elif return_list_of_tests:
+    pass # don't need to check anything
   else:
     cwd = os.getcwd()
     cwd_files = os.listdir(cwd)
@@ -77,6 +79,9 @@ def run (args) :
     module_tests = libtbx.test_utils.parallel.get_module_tests(module_name)
     all_tests.extend(module_tests)
   #
+  if return_list_of_tests:
+    return all_tests
+
   # postpone some tests
   #
   import time
