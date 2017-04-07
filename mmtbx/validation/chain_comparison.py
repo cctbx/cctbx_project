@@ -44,10 +44,11 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Chain type
       .help = Chain type.  All residues of other chain types ignored.
 
-    use_crystal_symmetry = True
+    use_crystal_symmetry = None
       .type = bool
       .short_caption = Use crystal symmetry in comparison
-      .help = If set, use crystal symmetry to map atoms to closest positions
+      .help = Default is True if space group is not P1.  \
+              If set, use crystal symmetry to map atoms to closest positions
   }
   comparison {
     max_dist = 3.
@@ -356,6 +357,7 @@ def run(args=None,
     chain_type=params.crystal_info.chain_type
   if use_crystal_symmetry is None:
     use_crystal_symmetry=params.crystal_info.use_crystal_symmetry
+  params.crystal_info.use_crystal_symmetry=use_crystal_symmetry
   if max_dist is None:
     max_dist=params.comparison.max_dist
 
@@ -369,11 +371,6 @@ def run(args=None,
   if not chain_file and len(params.input_files.pdb_in)>1:
      chain_file=params.input_files.pdb_in[1] # query
 
-  # set dummy crystal_symmetry if necessary
-  if not params.crystal_info.use_crystal_symmetry:
-    crystal_symmetry=get_pdb_inp(
-        text="CRYST1 1000.000 1000.000 1000.000  90.00  90.00  90.00 P 1"
-        ).crystal_symmetry_from_cryst1()
   # get the hierarchies
   if not chain_hierarchy or not target_hierarchy:
     assert chain_file and target_file
@@ -394,13 +391,30 @@ def run(args=None,
     if not crystal_symmetry or not crystal_symmetry.unit_cell():
       crystal_symmetry=target_pdb_inp.crystal_symmetry_from_cryst1()
     target_hierarchy=target_pdb_inp.construct_hierarchy()
+
+  if params.crystal_info.use_crystal_symmetry is None: # set default
+    if crystal_symmetry and crystal_symmetry.space_group() and \
+       (not crystal_symmetry.space_group().type().number() in [0,1]):
+      params.crystal_info.use_crystal_symmetry=True
+    else:
+      params.crystal_info.use_crystal_symmetry=False
+      crystal_symmetry=None
+  elif params.crystal_info.use_crystal_symmetry==False:
+      crystal_symmetry=None
+
   if not crystal_symmetry or not crystal_symmetry.unit_cell():
     crystal_symmetry=get_pdb_inp(
         text="CRYST1 1000.000 1000.000 1000.000  90.00  90.00  90.00 P 1"
         ).crystal_symmetry_from_cryst1()
+    print >>out,"\nCrystal symmetry will not be used in comparison.\n"
     if use_crystal_symmetry:
-        raise Sorry(
-        "Please set use_crystal_symmetry=False (no crystal symmetry supplied)")
+        raise Sorry("Please set use_crystal_symmetry"+
+           "=False (no crystal symmetry supplied)")
+  else:
+    print >>out,"\nCrystal symmetry will be used in comparison.\n"
+    print>>out, "Space group: %s" %(crystal_symmetry.space_group().info()), \
+         "Unit cell: %7.2f %7.2f %7.2f  %7.2f %7.2f %7.2f \n" %(
+        crystal_symmetry.unit_cell().parameters())
   if not quiet:
     print >>out,"Looking for chain similarity for "+\
       "%s (%d residues) in the model %s (%d residues)" %(
