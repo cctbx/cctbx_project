@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/20/2017
+Last Changed: 04/06/2017
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -55,12 +55,13 @@ image_conversion
     .type = float
     .help = Alternate crystal-to-detector distance (set to zero to leave the same)
   beam_center
-    .help = Alternate beam center coordinates (set to zero to leave the same)
+    .help = Alternate beam center coordinates (in PIXELS)
+    .help = Set to zero to leave the same
   {
     x = 0
-      .type = float
+      .type = int
     y = 0
-      .type = float
+      .type = int
   }
 }
 image_triage
@@ -173,12 +174,9 @@ dials
     .type = str
     .multiple = False
     .help = Target (.phil) file with integration parameters for DIALS
-  min_spot_size = 6
-    .type = int
-    .help = Minimal spot size
-  global_threshold = 0
-    .type = int
-    .help = Global threshold
+  determine_sg_and_reindex = True
+    .type = bool
+    .help = Will determine sg and reindex if no target space group supplied
 }
 analysis
   .help = "Analysis / visualization options."
@@ -428,6 +426,19 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx',
   elif method == 'dials':
     def_target_file = '{}/dials.phil'.format(current_path)
     default_target = ['verbosity=10',
+                      'spotfinder {',
+                      '  threshold {',
+                      '    xds {',
+                      '      gain = 1',
+                      '      sigma_strong = 3',
+                      '      global_threshold = 0',
+                      '      }',
+                      '   }',
+                      '}',
+                      'geometry {',
+                      '  mosflm_beam_centre = None',
+                      '  slow_fast_beam_centre = None',
+                      '}'
                       'indexing {',
                       '  known_symmetry {',
                       '    space_group = None',
@@ -438,7 +449,7 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx',
                       '    d_min_start = 2.0',
                       '  }',
                       '  basis_vector_combinations.max_try = 10',
-                      '  stills {'
+                      '  stills { ',
                       '    indexer = stills',
                       '    method_list = fft1d real_space_grid_search',
                       '  }',

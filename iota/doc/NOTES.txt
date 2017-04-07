@@ -1,5 +1,11 @@
-IOTA v1.1.008 - More informative runtime stats
+IOTA v1.1.009 - DIALS optimization
 
-1. Replaced progress pie chart with smaller horizontal stack bar
-2. Used extra space to display unit cell histograms
-3. Fixed file recognition bug in PRIME
+
+1. Bravais lattice refinement and reindexing before integration (use the
+highest-symmetry "recommended" s.g.)
+2. Unit cell clustering no longer disabled when using DIALS
+3. Removed min_spot_size and global_threshold options from DIALS options dialog
+4. Added space group / reindexing option into DIALS options dialog
+5. Added more DIALS PHIL defaults
+6. BeamXY override via DIALS options rather than image conversion (completely
+ disabled image conversion for DIALS).

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 03/09/2015
+Last Changed: 04/06/2017
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -19,6 +19,12 @@ import iota.components.iota_misc as misc
 from iota.components.iota_utils import InputFinder
 
 ginp = InputFinder()
+pid = os.getpid()
+
+try:
+  user = os.getlogin()
+except OSError:
+  user = 'iota'
 
 # --------------------------- Initialize IOTA -------------------------------- #
 
@@ -67,6 +73,7 @@ class InitAll(object):
 
   def __init__(self, help_message):
     self.iver = misc.iota_version
+    self.user_id = user
     self.now = misc.now
     self.logo = "\n\n"\
    "     IIIIII            OOOOOOO        TTTTTTTTTT          A                 \n"\

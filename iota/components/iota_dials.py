@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/22/2017
+Last Changed: 04/06/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -11,10 +11,21 @@ Description : Runs DIALS spotfinding, indexing, refinement and integration
 
 import os
 import sys
-import iota.components.iota_misc as misc
+import copy
+from cStringIO import StringIO
+
 from iotbx.phil import parse
 from dxtbx.datablock import DataBlockFactory
+from cctbx import sgtbx
+from dxtbx.model import Crystal
+
+from dials.array_family import flex
 from dials.command_line.stills_process import phil_scope, Processor
+from dials.command_line.refine_bravais_settings import phil_scope as sg_scope
+from dials.command_line.refine_bravais_settings import \
+  bravais_lattice_to_space_group_table
+
+import iota.components.iota_misc as misc
 
 class IOTADialsProcessor(Processor):
   ''' Subclassing the Processor module from dials.stills_process to introduce
@@ -23,6 +34,82 @@ class IOTADialsProcessor(Processor):
   def __init__(self, params):
     self.phil = params
     Processor.__init__(self, params=params)
+
+  def refine_bravais_settings(self, reflections, experiments):
+    sgparams = sg_scope.extract()
+    sgparams.refinement.reflections.outlier.algorithm = 'tukey'
+
+    from dials.algorithms.indexing.symmetry \
+      import refined_settings_factory_from_refined_triclinic
+
+    # Generate Bravais settings
+    Lfat = refined_settings_factory_from_refined_triclinic(
+      sgparams, experiments, reflections,
+      lepage_max_delta=5, nproc=1, refiner_verbosity=0)
+    Lfat.labelit_printout()
+
+    # Filter out not-recommended (i.e. too-high rmsd and too-high max angular
+    #  difference) solutions
+    Lfat_recommended = [s for s in Lfat if s.recommended]
+
+    # If none are recommended, return P1
+    if len(Lfat_recommended) == 0:
+      return Lfat[-1]
+
+    # Find the highest symmetry group
+    possible_bravais_settings = set(solution['bravais'] for solution in
+                                    Lfat_recommended)
+    bravais_lattice_to_space_group_table(possible_bravais_settings)
+    lattice_to_sg_number = {
+      'aP': 1, 'mP': 3, 'mC': 5, 'oP': 16, 'oC': 20, 'oF': 22, 'oI': 23,
+      'tP': 75, 'tI': 79, 'hP': 143, 'hR': 146, 'cP': 195, 'cF': 196, 'cI': 197
+    }
+    filtered_lattices = {}
+    for key, value in lattice_to_sg_number.iteritems():
+      if key in possible_bravais_settings:
+        filtered_lattices[key] = value
+
+    highest_sym_lattice = max(filtered_lattices, key=filtered_lattices.get)
+    highest_sym_solutions = [s for s in Lfat if s['bravais'] == highest_sym_lattice]
+    if len(highest_sym_solutions) > 1:
+      highest_sym_solution = sorted(highest_sym_solutions,
+                                    key=lambda x: x['max_angular_difference'])[0]
+    else:
+      highest_sym_solution = highest_sym_solutions[0]
+
+    return highest_sym_solution
+
+
+  def reindex(self, reflections, experiments, solution):
+    ''' Reindex with newly-determined space group / unit cell '''
+
+    # Update space group / unit cell
+    experiment = experiments[0]
+    print "Old crystal:"
+    print experiment.crystal
+    print
+    experiment.crystal.update(solution.refined_crystal)
+    print "New crystal:"
+    print experiment.crystal
+    print
+
+    # Change basis
+    cb_op = solution['cb_op_inp_best'].as_abc()
+    change_of_basis_op = sgtbx.change_of_basis_op(cb_op)
+    miller_indices = reflections['miller_index']
+    non_integral_indices = change_of_basis_op.apply_results_in_non_integral_indices(miller_indices)
+    if non_integral_indices.size() > 0:
+      print "Removing {}/{} reflections (change of basis results in non-integral indices)" \
+            "".format(non_integral_indices.size(), miller_indices.size())
+    sel = flex.bool(miller_indices.size(), True)
+    sel.set_selected(non_integral_indices, False)
+    miller_indices_reindexed = change_of_basis_op.apply(
+      miller_indices.select(sel))
+    reflections['miller_index'].set_selected(sel, miller_indices_reindexed)
+    reflections['miller_index'].set_selected(~sel, (0, 0, 0))
+
+    return experiments, reflections
+
 
   def write_integration_pickles(self, integrated, experiments, callback=None):
     ''' This is streamlined vs. the code in stills_indexer, since the filename
@@ -117,12 +204,14 @@ class Integrator(object):
     self.phil.output.integrated_filename = "{}/{}_integrated.pickle".format(object_folder, file_basename)
     self.phil.output.profile_filename = "{}/{}_profile.phil".format(object_folder, file_basename)
     self.phil.output.integration_pickle = final_filename
-    self.int_log = logfile #"{}/int_{}.log".format(final_folder, file_basename)
+    self.int_log = logfile
 
     # Set customized parameters
-    self.phil.spotfinder.threshold.xds.global_threshold = self.params.dials.global_threshold
-    #self.phil.spotfinder.threshold.xds.gain = self.gain
-    self.phil.spotfinder.filter.min_spot_size=self.params.dials.min_spot_size
+    # TODO: hook up gain calculation
+    beamX = self.params.image_conversion.beam_center.x
+    beamY = self.params.image_conversion.beam_center.y
+    if beamX != 0 or beamY != 0:
+      self.phil.geometry.slow_fast_beam_centre = '{}, {}'.format(beamY, beamX)
 
     self.img = [source_image]
     self.obj_base = object_folder
@@ -143,6 +232,14 @@ class Integrator(object):
     # Run indexing
     self.experiments, self.indexed = self.processor.index(
       datablock=self.datablock, reflections=self.observed)
+
+  def refine_bravais_settings_and_reindex(self):
+    solution = self.processor.refine_bravais_settings(
+      reflections=self.indexed, experiments=self.experiments)
+    self.experiments, self.indexed = self.processor.reindex(
+      reflections=self.indexed,
+      experiments=self.experiments,
+      solution=solution)
 
   def refine(self):
     # Run refinement
@@ -190,6 +287,15 @@ class Integrator(object):
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
           print e
           self.fail = 'failed indexing'
+
+      if self.fail is None and self.phil.indexing.known_symmetry.space_group is None:
+        try:
+          print "{:-^100}\n".format(" DETERMINING SPACE GROUP : ")
+          self.refine_bravais_settings_and_reindex()
+          sg = self.experiments[0].crystal.get_space_group().info()
+          print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
+        except Exception, e:
+          print e
 
       if self.fail == None:
         try:

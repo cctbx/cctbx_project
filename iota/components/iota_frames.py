@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/03/2017
+Last Changed: 04/06/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -646,8 +646,7 @@ class ProcessingTab(wx.Panel):
 
         # Strong reflections per frame
         self.nsref_axes.clear()
-        nsref_x = np.array([i + 1.5 for i in range(len(
-          img_list))]).astype(np.double)
+        nsref_x = np.array([i + 1.5 for i in range(len(img_list))]).astype(np.double)
         nsref_y = np.array([np.nan if i==0 else i for i in
                             nref_list]).astype(np.double)
         nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
