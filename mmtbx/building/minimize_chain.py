@@ -174,8 +174,17 @@ def get_map_data_and_symmetry(
     crystal_symmetry=None,
     map_data=None,
     map_coeffs=None,
+    map_file=None,
     map_coeffs_file=None,
-    map_coeffs_labels=None):
+    map_coeffs_labels=None,
+    out=sys.stdout):
+
+  if map_file:
+    from cctbx.maptbx.segment_and_split_map import get_map_object
+    map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc=\
+        get_map_object(file_name=map_file,out=out)
+    map_data=map_data.as_double()
+
   if not map_data:
     if not map_coeffs:
       map_coeffs=get_map_coeffs(
@@ -291,8 +300,9 @@ def run(args,
     crystal_symmetry=crystal_symmetry,
     map_data=map_data,
     map_coeffs=map_coeffs,
+    map_file=params.input_files.map_file,
     map_coeffs_file=params.input_files.map_coeffs_file,
-    map_coeffs_labels=params.input_files.map_coeffs_labels)
+    map_coeffs_labels=params.input_files.map_coeffs_labels,out=out)
 
   # Get the starting model
   pdb_inp,cryst1_line,pdb_string=get_pdb_inp(
