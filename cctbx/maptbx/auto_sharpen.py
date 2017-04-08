@@ -348,12 +348,16 @@ def get_map_coeffs_from_file(
       if not map_coeffs_labels or labels==map_coeffs_labels:  # take it
          return ma
 
-def get_map_and_model(params=None,out=sys.stdout):
+def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
+    out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
   origin_frac=(0,0,0)
   acc=None
-  if params.input_files.map_file:
+  if map_data and crystal_symmetry:
+    pass # we are set
+
+  elif params.input_files.map_file:
     from cctbx.maptbx.segment_and_split_map import get_map_object
     map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc=\
       get_map_object(file_name=params.input_files.map_file,out=out)
@@ -412,13 +416,20 @@ def get_map_and_model(params=None,out=sys.stdout):
   return pdb_inp,map_data,crystal_symmetry,acc
 
 
-def run(args,out=sys.stdout):
+def run(args=None,params=None,
+    map_data=None,crystal_symmetry=None,
+    write_output_files=True,
+    return_map_data_only=False,
+    out=sys.stdout):
   # Get the parameters
-  params=get_params(args,out=out)
+  if not params:
+    params=get_params(args,out=out)
 
   # get map_data and crystal_symmetry
 
   pdb_inp,map_data,crystal_symmetry,acc=get_map_and_model(
+     map_data=map_data,
+     crystal_symmetry=crystal_symmetry,
      params=params,out=out)
 
   # NOTE: map_data is now relative to origin at (0,0,0).
@@ -475,7 +486,7 @@ def run(args,out=sys.stdout):
 
   # write out the new map_coeffs and map if requested:
 
-  if params.output_files.sharpened_map_file:
+  if write_output_files and params.output_files.sharpened_map_file:
     output_map_file=os.path.join(params.output_files.output_directory,
         params.output_files.sharpened_map_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
@@ -491,7 +502,7 @@ def run(args,out=sys.stdout):
          output_map_file)
     write_ccp4_map(crystal_symmetry, output_map_file, offset_map_data)
 
-  if params.output_files.shifted_sharpened_map_file:
+  if write_output_files and params.output_files.shifted_sharpened_map_file:
     output_map_file=os.path.join(params.output_files.output_directory,
         params.output_files.shifted_sharpened_map_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
@@ -499,7 +510,7 @@ def run(args,out=sys.stdout):
     print >>out,"\nWrote sharpened map (origin at %s)\nto %s" %(
      str(new_map_data.origin()),output_map_file)
 
-  if params.output_files.sharpened_map_coeffs_file:
+  if write_output_files and params.output_files.sharpened_map_coeffs_file:
     output_map_coeffs_file=os.path.join(params.output_files.output_directory,
         params.output_files.sharpened_map_coeffs_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
@@ -508,7 +519,10 @@ def run(args,out=sys.stdout):
     print >>out,"\nWrote sharpened map_coeffs (origin at 0,0,0)\n to %s\n" %(
        output_map_coeffs_file)
 
-  return new_map_data,new_map_coeffs,crystal_symmetry,si
+  if return_map_data_only:
+    return new_map_data
+  else:  #usual
+    return new_map_data,new_map_coeffs,crystal_symmetry,si
 
 # =============================================================================
 # GUI-specific bits for running command
