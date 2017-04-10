@@ -79,7 +79,11 @@ def run_c_plus_plus(target_evaluator,
                     termination_params=None,
                     core_params=None,
                     exception_handling_params=None,
-                    log=None):
+                    log=None,
+                    #---> Insertion starts
+                    gradient_only=False,
+                    line_search=True):
+                    #<--- Insertion ends
   if (termination_params is None):
     termination_params = termination_parameters()
   if (core_params is None):
@@ -141,9 +145,13 @@ def run_c_plus_plus(target_evaluator,
           " f=%.6g, |g|=%.6g, x_min=%.6g, x_mean=%.6g, x_max=%.6g" % (
           f, g.norm(), flex.min(x), flex.mean(x), flex.max(x))
       if (d is None):
-        if (minimizer.run(x, f, g)): continue
+        #---> Insertion starts
+        if (minimizer.run(x, f, g, gradient_only,line_search)): continue
+        #<--- Insertion ends
       else:
-        if (minimizer.run(x, f, g, d)): continue
+        #---> Insertion starts
+        if (minimizer.run(x, f, g, d, gradient_only,line_search)): continue
+        #<--- Insertion ends
       if (log is not None):
         print >> log, "lbfgs minimizer step"
       if (callback_after_step is not None):
@@ -173,9 +181,13 @@ def run_c_plus_plus(target_evaluator,
           print >> log, "lbfgs minimizer stop: max_calls"
         break
       if (d is None):
-        if (not minimizer.run(x, f, g)): break
+        #---> Insertion starts
+        if (not minimizer.run(x, f, g, gradient_only,line_search)): break
+        #<--- Insertion ends
       else:
-        if (not minimizer.run(x, f, g, d)): break
+        #---> Insertion starts
+        if (not minimizer.run(x, f, g, d, gradient_only,line_search)): break
+        #<--- Insertion ends
   except RuntimeError, e:
     minimizer.error = str(e)
     if (log is not None):
@@ -247,7 +259,11 @@ def run(target_evaluator,
         core_params=None,
         exception_handling_params=None,
         use_fortran=False,
-        log=None):
+        log=None,
+        #---> Insertion starts
+        gradient_only=False,
+        line_search=True):
+        #<--- Insertion ends
   if (use_fortran):
     return run_fortran(target_evaluator, termination_params, core_params)
   else:
@@ -256,4 +272,8 @@ def run(target_evaluator,
       termination_params,
       core_params,
       exception_handling_params,
-      log)
+      log,
+      #---> Insertion starts
+      gradient_only,
+      line_search)
+      #<--- Insertion ends

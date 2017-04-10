@@ -3,7 +3,10 @@
 #if defined(SCITBX_LBFGS_HAVE_LBFGS_FEM)
 #include <scitbx/lbfgs_fem.hpp>
 #endif
-
+#include <algorithm>
+#include <stdexcept>
+#include <cstdio>
+#include <cmath>
 #include <scitbx/error.h>
 #include <scitbx/lbfgs.h>
 #include <scitbx/lbfgs/drop_convergence_test.h>
@@ -17,7 +20,6 @@
 #include <boost/python/args.hpp>
 
 namespace scitbx { namespace lbfgs { namespace ext {
-
   int
   fortran(
     int n,
@@ -240,6 +242,40 @@ struct raw_lbfgs_wrappers
       return minimizer.run(x.begin(), f, g.begin());
     }
 
+    //---> Insertion starts
+    static bool
+    run_6(
+      w_t& minimizer,
+      af::flex_double& x,
+      double f,
+      af::flex_double const& g,
+      af::flex_double const& diag,
+      bool gradient_only,
+      bool line_search)
+    {
+      using namespace scitbx::af::boost_python;
+      SCITBX_ASSERT(flex_as_base_array(x).size() == minimizer.n());
+      SCITBX_ASSERT(flex_as_base_array(g).size() == minimizer.n());
+      SCITBX_ASSERT(flex_as_base_array(diag).size() == minimizer.n());
+      return minimizer.run(x.begin(), f, g.begin(), diag.begin(), gradient_only,line_search);
+    }
+
+    static bool
+    run_5(
+      w_t& minimizer,
+      af::flex_double& x,
+      double f,
+      af::flex_double const& g,
+      bool gradient_only,
+      bool line_search)
+    {
+      using namespace scitbx::af::boost_python;
+      SCITBX_ASSERT(flex_as_base_array(x).size() == minimizer.n());
+      SCITBX_ASSERT(flex_as_base_array(g).size() == minimizer.n());
+      return minimizer.run(x.begin(), f, g.begin(), gradient_only,line_search);
+    }
+    //<--- Insertion ends
+
     static double
     euclidean_norm(
       w_t const& minimizer,
@@ -257,6 +293,10 @@ struct raw_lbfgs_wrappers
       class_<w_t>("minimizer", no_init)
         .def(init<optional<std::size_t, std::size_t, std::size_t,
           double, double, double, double> >())
+        //---> Insertion starts
+        .def("run", run_6)
+        .def("run", run_5)
+        //<--- Insertion ends
         .def("run", run_4)
         .def("run", run_3)
         .def("n", &w_t::n)

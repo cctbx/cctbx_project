@@ -133,6 +133,110 @@ namespace lbfgs {
 
   namespace detail {
 
+    /* Compute the sum of a vector times a scalar plus another vector.
+       Adapted from the subroutine <code>daxpy</code> in
+       <code>lbfgs.f</code>.
+     */
+    template <typename FloatType, typename SizeType>
+    void daxpy(
+      SizeType n,
+      FloatType da,
+      const FloatType* dx,
+      SizeType ix0,
+      SizeType incx,
+      FloatType* dy,
+      SizeType iy0,
+      SizeType incy)
+    {
+      SizeType i, ix, iy, m;
+      if (n == 0) return;
+      if (da == FloatType(0)) return;
+      if  (!(incx == 1 && incy == 1)) {
+        ix = 0;
+        iy = 0;
+        for (i = 0; i < n; i++) {
+          dy[iy0+iy] += da * dx[ix0+ix];
+          ix += incx;
+          iy += incy;
+        }
+        return;
+      }
+      m = n % 4;
+      for (i = 0; i < m; i++) {
+        dy[iy0+i] += da * dx[ix0+i];
+      }
+      for (; i < n;) {
+        dy[iy0+i] += da * dx[ix0+i]; i++;
+        dy[iy0+i] += da * dx[ix0+i]; i++;
+        dy[iy0+i] += da * dx[ix0+i]; i++;
+        dy[iy0+i] += da * dx[ix0+i]; i++;
+      }
+    }
+
+    template <typename FloatType, typename SizeType>
+    inline
+    void daxpy(
+      SizeType n,
+      FloatType da,
+      const FloatType* dx,
+      SizeType ix0,
+      FloatType* dy)
+    {
+      daxpy(n, da, dx, ix0, SizeType(1), dy, SizeType(0), SizeType(1));
+    }
+
+    /* Compute the dot product of two vectors.
+       Adapted from the subroutine <code>ddot</code>
+       in <code>lbfgs.f</code>.
+     */
+    template <typename FloatType, typename SizeType>
+    FloatType ddot(
+      SizeType n,
+      const FloatType* dx,
+      SizeType ix0,
+      SizeType incx,
+      const FloatType* dy,
+      SizeType iy0,
+      SizeType incy)
+    {
+      SizeType i, ix, iy, m;
+      FloatType dtemp(0);
+      if (n == 0) return FloatType(0);
+      if (!(incx == 1 && incy == 1)) {
+        ix = 0;
+        iy = 0;
+        for (i = 0; i < n; i++) {
+          dtemp += dx[ix0+ix] * dy[iy0+iy];
+          ix += incx;
+          iy += incy;
+        }
+        return dtemp;
+      }
+      m = n % 5;
+      for (i = 0; i < m; i++) {
+        dtemp += dx[ix0+i] * dy[iy0+i];
+      }
+      for (; i < n;) {
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
+      }
+      return dtemp;
+    }
+
+    template <typename FloatType, typename SizeType>
+    inline
+    FloatType ddot(
+      SizeType n,
+      const FloatType* dx,
+      const FloatType* dy)
+    {
+      return ddot(
+        n, dx, SizeType(0), SizeType(1), dy, SizeType(0), SizeType(1));
+    }
+
     template <typename NumType>
     inline
     NumType
@@ -152,6 +256,8 @@ namespace lbfgs {
     {
       protected:
         int infoc;
+        bool gradient_only;
+        bool line_search;
         FloatType dginit;
         bool brackt;
         bool stage1;
@@ -160,11 +266,14 @@ namespace lbfgs {
         FloatType width;
         FloatType width1;
         FloatType stx;
+        FloatType* sx;
         FloatType fx;
         FloatType dgx;
+        FloatType* gx;
         FloatType sty;
         FloatType fy;
         FloatType dgy;
+        FloatType* gy;
         FloatType stmin;
         FloatType stmax;
 
@@ -271,6 +380,8 @@ namespace lbfgs {
            @param wa Temporary storage array, of length <code>n</code>.
          */
         void run(
+          bool gradient_only,
+          bool line_search,
           FloatType const& gtol,
           FloatType const& stpmin,
           FloatType const& stpmax,
@@ -347,6 +458,7 @@ namespace lbfgs {
              as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
              Robert Dodier: Java translation, August 1997.
          */
+
         static int mcstep(
           FloatType& stx,
           FloatType& fx,
@@ -360,10 +472,24 @@ namespace lbfgs {
           bool& brackt,
           FloatType stpmin,
           FloatType stpmax);
+
+        //---> Insertion starts
+        static int mcstep_g(
+         SizeType& n,
+         FloatType* const& sx,
+         FloatType* const& gx,
+         FloatType& stp,
+         FloatType* const& gp,
+         bool& brackt,
+         FloatType stpmin,
+         FloatType stpmax);
+         //<--- Insertion ends
     };
 
     template <typename FloatType, typename SizeType>
     void mcsrch<FloatType, SizeType>::run(
+      bool gradient_only,
+      bool line_search,
       FloatType const& gtol,
       FloatType const& stpmin,
       FloatType const& stpmax,
@@ -400,7 +526,7 @@ namespace lbfgs {
         for (SizeType j = 0; j < n; j++) {
           dginit += g[j] * s[is0+j];
         }
-        if (dginit >= FloatType(0)) {
+        if (dginit >= FloatType(0) && !gradient_only) {
           throw error_search_direction_not_descent();
         }
         brackt = false;
@@ -421,31 +547,62 @@ namespace lbfgs {
         stx = FloatType(0);
         fx = finit;
         dgx = dginit;
+        gx = new FloatType[n];
+        sx = new FloatType[n];
+        for (SizeType j = 0; j < n; j++) {
+          gx[j] = g[j];
+          sx[j] = s[j+is0];
+        }
         sty = FloatType(0);
         fy = finit;
         dgy = dginit;
       }
       for (;;) {
         if (info != -1) {
-          // Set the minimum and maximum steps to correspond
-          // to the present interval of uncertainty.
-          if (brackt) {
-            stmin = std::min(stx, sty);
-            stmax = std::max(stx, sty);
+          //---> Insertion starts
+          if (gradient_only){
+            FloatType dr_max=0.0;
+            SizeType m = n/3;
+            for (SizeType i=0; i<m; i++){
+              FloatType dr=0.0;
+              SizeType j = 3*i;
+              dr = sx[j]*sx[j];
+              dr = dr + sx[j+1]*sx[j+1];
+              dr = dr + sx[j+2]*sx[j+2];
+              if(dr_max<dr){
+                dr_max = dr;
+              }
+            }
+            dr_max = std::sqrt(dr_max);
+            if (abs(dr_max*stp) > stpmax) {
+              stp = stpmax/dr_max;
+            }
+            else if (abs(dr_max*stp) < FloatType(0.0001)) {
+               stp = FloatType(0.0001)/dr_max;
+            }
           }
+          //<--- Insertion ends
           else {
-            stmin = stx;
-            stmax = stp + FloatType(4) * (stp - stx);
-          }
-          // Force the step to be within the bounds stpmax and stpmin.
-          stp = std::max(stp, stpmin);
-          stp = std::min(stp, stpmax);
-          // If an unusual termination is to occur then let
-          // stp be the lowest point obtained so far.
-          if (   (brackt && (stp <= stmin || stp >= stmax))
-              || nfev >= maxfev - 1 || infoc == 0
-              || (brackt && stmax - stmin <= xtol * stmax)) {
-            stp = stx;
+            // Set the minimum and maximum steps to correspond
+            // to the present interval of uncertainty.
+            if (brackt) {
+              stmin = std::min(stx, sty);
+              stmax = std::max(stx, sty);
+            }
+            else {
+              stmin = stx;
+              stmax = stp + FloatType(4) * (stp - stx);
+            }
+            // Force the step to be within the bounds stpmax and stpmin.
+            stp = std::max(stp, stpmin);
+            stp = std::min(stp, stpmax);
+            // If an unusual termination is to occur then let
+            // stp be the lowest point obtained so far.
+            if (   (brackt && (stp <= stmin || stp >= stmax))
+                || nfev >= maxfev - 1 || infoc == 0
+                || (brackt && stmax - stmin <= xtol * stmax)) {
+              stp = stx;
+            }
           }
           // Evaluate the function and gradient at stp
           // and compute the directional derivative.
@@ -463,70 +620,95 @@ namespace lbfgs {
           dg += g[j] * s[is0+j];
         }
         FloatType ftest1 = finit + stp*dgtest;
-        // Test for convergence.
-        if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
-          throw error_line_search_failed_rounding_errors(
-            "Rounding errors prevent further progress."
-            " There may not be a step which satisfies the"
-            " sufficient decrease and curvature conditions."
-            " Tolerances may be too small.");
-        }
-        if (stp == stpmax && f <= ftest1 && dg <= dgtest) {
-          throw error_line_search_failed(
-            "The step is at the upper bound stpmax().");
-        }
-        if (stp == stpmin && (f > ftest1 || dg >= dgtest)) {
-          throw error_line_search_failed(
-            "The step is at the lower bound stpmin().");
-        }
-        if (nfev >= maxfev) {
-          throw error_line_search_failed(
-            "Number of function evaluations has reached maxfev().");
-        }
-        if (brackt && stmax - stmin <= xtol * stmax) {
-          throw error_line_search_failed(
-            "Relative width of the interval of uncertainty"
-            " is at most xtol().");
-        }
         // Check for termination.
-        if (f <= ftest1 && abs(dg) <= gtol * (-dginit)) {
-          info = 1;
-          break;
+        //---> Insertion starts
+        if (gradient_only) {
+          if (!line_search || nfev==2 || ((abs(dg) <= gtol * (-dginit)))) {
+            info = 1;
+            break;
+          }
+        }
+        //<--- Insertion ends
+        else {
+          // Test for convergence.
+          if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0) {
+            throw error_line_search_failed_rounding_errors(
+              "Rounding errors prevent further progress."
+              " There may not be a step which satisfies the"
+              " sufficient decrease and curvature conditions."
+              " Tolerances may be too small.");
+          }
+          if (stp == stpmax && f <= ftest1 && dg <= dgtest) {
+            throw error_line_search_failed(
+              "The step is at the upper bound stpmax().");
+          }
+          if (stp == stpmin && (f > ftest1 || dg >= dgtest)) {
+            throw error_line_search_failed(
+              "The step is at the lower bound stpmin().");
+          }
+          if (nfev >= maxfev) {
+            throw error_line_search_failed(
+              "Number of function evaluations has reached maxfev().");
+          }
+          if (brackt && stmax - stmin <= xtol * stmax) {
+            throw error_line_search_failed(
+              "Relative width of the interval of uncertainty"
+              " is at most xtol().");
+          }
+            if  ( f <= ftest1 && abs(dg) <= gtol * (-dginit)) {
+            info = 1;
+            break;
+            }
         }
         // In the first stage we seek a step for which the modified
         // function has a nonpositive value and nonnegative derivative.
-        if (   stage1 && f <= ftest1
+        if (   stage1 && (f <= ftest1 || gradient_only)
             && dg >= std::min(ftol, gtol) * dginit) {
           stage1 = false;
         }
-        // A modified function is used to predict the step only if
-        // we have not obtained a step for which the modified
-        // function has a nonpositive function value and nonnegative
-        // derivative, and if a lower function value has been
-        // obtained but the decrease is not sufficient.
-        if (stage1 && f <= fx && f > ftest1) {
-          // Define the modified function and derivative values.
-          FloatType fm = f - stp*dgtest;
-          FloatType fxm = fx - stx*dgtest;
-          FloatType fym = fy - sty*dgtest;
-          FloatType dgm = dg - dgtest;
-          FloatType dgxm = dgx - dgtest;
-          FloatType dgym = dgy - dgtest;
-          // Call cstep to update the interval of uncertainty
-          // and to compute the new step.
-          infoc = mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
-                         brackt, stmin, stmax);
-          // Reset the function and gradient values for f.
-          fx = fxm + stx*dgtest;
-          fy = fym + sty*dgtest;
-          dgx = dgxm + dgtest;
-          dgy = dgym + dgtest;
-        }
-        else {
-          // Call mcstep to update the interval of uncertainty
-          // and to compute the new step.
-          infoc = mcstep(stx, fx, dgx, sty, fy, dgy, stp, f, dg,
-                         brackt, stmin, stmax);
+        //---> Insertion starts
+        if (gradient_only) {
+          gy = new FloatType[n];
+          for (SizeType j = 0; j < n; j++) {
+            gy[j] = g[j];
+          }
+          FloatType* const& const_gy = gy;
+          FloatType* const& const_gx = gx;
+          FloatType* const& const_sx = sx;
+          infoc = mcstep_g(n,  const_sx, const_gx, stp,  const_gy,
+                        brackt, stmin, stpmax);
+         }
+         //<--- Insertion ends
+        else{
+          // A modified function is used to predict the step only if
+          // we have not obtained a step for which the modified
+          // function has a nonpositive function value and nonnegative
+          // derivative, and if a lower function value has been
+          // obtained but the decrease is not sufficient.
+          if (stage1 && f <= fx && f > ftest1) {
+            // Define the modified function and derivative values.
+            FloatType fm = f - stp*dgtest;
+            FloatType fxm = fx - stx*dgtest;
+            FloatType fym = fy - sty*dgtest;
+            FloatType dgm = dg - dgtest;
+            FloatType dgxm = dgx - dgtest;
+            FloatType dgym = dgy - dgtest;
+            // Call cstep to update the interval of uncertainty
+            // and to compute the new step.
+            infoc = mcstep(stx, fxm, dgxm, sty, fym, dgym, stp, fm, dgm,
+                           brackt, stmin, stmax);
+            // Reset the function and gradient values for f.
+            fx = fxm + stx*dgtest;
+            fy = fym + sty*dgtest;
+            dgx = dgxm + dgtest;
+            dgy = dgym + dgtest;
+          }
+          else {
+            // Call mcstep to update the interval of uncertainty
+            // and to compute the new step.
+            infoc = mcstep(stx, fx, dgx, sty, fy, dgy, stp, f, dg,
+                           brackt, stmin, stmax);
+          }
         }
         // Force a sufficient decrease in the size of the
         // interval of uncertainty.
@@ -537,9 +719,10 @@ namespace lbfgs {
           width1 = width;
           width = abs(sty - stx);
         }
-      }
-    }
+      } // end of for loop in mcsrch
+    } // end of mcsrch
 
+    // energy_gradient line search
     template <typename FloatType, typename SizeType>
     int mcsrch<FloatType, SizeType>::mcstep(
       FloatType& stx,
@@ -718,110 +901,46 @@ namespace lbfgs {
       return info;
     }
 
-    /* Compute the sum of a vector times a scalar plus another vector.
-       Adapted from the subroutine <code>daxpy</code> in
-       <code>lbfgs.f</code>.
-     */
+    // gradient_only line search
+    //---> Insertion starts
     template <typename FloatType, typename SizeType>
-    void daxpy(
-      SizeType n,
-      FloatType da,
-      const FloatType* dx,
-      SizeType ix0,
-      SizeType incx,
-      FloatType* dy,
-      SizeType iy0,
-      SizeType incy)
+    int mcsrch<FloatType, SizeType>::mcstep_g(
+      SizeType& n,
+      FloatType* const& sx,
+      FloatType* const& gx,
+      FloatType& stp,
+      FloatType* const& gp,
+      bool& brackt,
+      FloatType stpmin,
+      FloatType stpmax)
     {
-      SizeType i, ix, iy, m;
-      if (n == 0) return;
-      if (da == FloatType(0)) return;
-      if  (!(incx == 1 && incy == 1)) {
-        ix = 0;
-        iy = 0;
-        for (i = 0; i < n; i++) {
-          dy[iy0+iy] += da * dx[ix0+ix];
-          ix += incx;
-          iy += incy;
-        }
-        return;
+      int info = 5;
+      brackt = false;
+      FloatType sxnorm = std::sqrt(ddot(SizeType(n), sx, sx));
+      FloatType  pk[n];
+      FloatType  a_sum[n];
+      FloatType  akm1[n];
+      for (SizeType i=0; i < n; i++) {
+        pk[i] = sx[i]/sxnorm;
+        akm1[i] = -gx[i]/sxnorm;
+        a_sum[i] = akm1[i] - gp[i]/sxnorm;
       }
-      m = n % 4;
-      for (i = 0; i < m; i++) {
-        dy[iy0+i] += da * dx[ix0+i];
+      FloatType* const& a_sum_c = a_sum;
+      FloatType* const& akm1_c = akm1;
+      FloatType* const& pk_c = pk;
+      FloatType dfk = -0.5*ddot(SizeType(n), pk_c, a_sum_c);
+      FloatType rho = -1.0*ddot(SizeType(n), pk_c, akm1_c);
+      if (abs(dfk - rho) < 1e-5){
+       rho = -(dfk - rho);
       }
-      for (; i < n;) {
-        dy[iy0+i] += da * dx[ix0+i]; i++;
-        dy[iy0+i] += da * dx[ix0+i]; i++;
-        dy[iy0+i] += da * dx[ix0+i]; i++;
-        dy[iy0+i] += da * dx[ix0+i]; i++;
+      FloatType theta = -rho / (dfk - rho);
+      if ((dfk < 0) && (theta < 0)){
+        theta = -theta;
       }
+      stp = theta / 2.0;
+      return info;
     }
-
-    template <typename FloatType, typename SizeType>
-    inline
-    void daxpy(
-      SizeType n,
-      FloatType da,
-      const FloatType* dx,
-      SizeType ix0,
-      FloatType* dy)
-    {
-      daxpy(n, da, dx, ix0, SizeType(1), dy, SizeType(0), SizeType(1));
-    }
-
-    /* Compute the dot product of two vectors.
-       Adapted from the subroutine <code>ddot</code>
-       in <code>lbfgs.f</code>.
-     */
-    template <typename FloatType, typename SizeType>
-    FloatType ddot(
-      SizeType n,
-      const FloatType* dx,
-      SizeType ix0,
-      SizeType incx,
-      const FloatType* dy,
-      SizeType iy0,
-      SizeType incy)
-    {
-      SizeType i, ix, iy, m;
-      FloatType dtemp(0);
-      if (n == 0) return FloatType(0);
-      if (!(incx == 1 && incy == 1)) {
-        ix = 0;
-        iy = 0;
-        for (i = 0; i < n; i++) {
-          dtemp += dx[ix0+ix] * dy[iy0+iy];
-          ix += incx;
-          iy += incy;
-        }
-        return dtemp;
-      }
-      m = n % 5;
-      for (i = 0; i < m; i++) {
-        dtemp += dx[ix0+i] * dy[iy0+i];
-      }
-      for (; i < n;) {
-        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-        dtemp += dx[ix0+i] * dy[iy0+i]; i++;
-      }
-      return dtemp;
-    }
-
-    template <typename FloatType, typename SizeType>
-    inline
-    FloatType ddot(
-      SizeType n,
-      const FloatType* dx,
-      const FloatType* dy)
-    {
-      return ddot(
-        n, dx, SizeType(0), SizeType(1), dy, SizeType(0), SizeType(1));
-    }
-
+    //<--- Insertion ends
   } // namespace detail
 
   //! Interface to the LBFGS %minimizer.
@@ -1026,7 +1145,6 @@ namespace lbfgs {
           See also: requests_f_and_g()
        */
       bool requests_diag() const { return requests_diag_; }
-
       //! Number of iterations so far.
       /*! Note that one iteration may involve multiple evaluations
           of the objective function.
@@ -1086,7 +1204,7 @@ namespace lbfgs {
         FloatType f,
         const FloatType* g)
       {
-        return generic_run(x, f, g, false, 0);
+        return generic_run(x, f, g, false, false, true, 0);
       }
 
       //! Execution of one step of the minimization.
@@ -1110,9 +1228,53 @@ namespace lbfgs {
         FloatType f,
         const FloatType* g,
         const FloatType* diag)
+      //---> Insertion starts
       {
-        return generic_run(x, f, g, true, diag);
+        return generic_run(x, f, g, true, false, true, diag);
       }
+      //<--- Insertion ends
+
+      bool run(
+        FloatType* x,
+        FloatType f,
+        const FloatType* g,
+      //---> Insertion starts
+        bool gradient_only,
+        bool line_search)
+      {
+        return generic_run(x, f, g, false, gradient_only, line_search, 0);
+      }
+      //<--- Insertion ends
+
+      //! Execution of one step of the minimization.
+      /*! @param x See other overload.
+
+          @param f See other overload.
+
+          @param g See other overload.
+
+          @param diag On initial entry or on re-entry under the
+             control of requests_diag(), <code>diag</code> must be set by
+             the user to contain the values of the diagonal matrix Hk0.
+             The routine will return at each iteration of the algorithm
+             with requests_diag() set to <code>true</code>.
+             <p>
+             Restriction: all elements of <code>diag</code> must be
+             positive.
+       */
+
+      bool run(
+        FloatType* x,
+        FloatType f,
+        const FloatType* g,
+        const FloatType* diag,
+        //---> Insertion starts
+        bool gradient_only,
+        bool line_search)
+      {
+        return generic_run(x, f, g, true, gradient_only, line_search, diag);
+      }
+      //<--- Insertion ends
 
     protected:
       static void throw_diagonal_element_not_positive(SizeType i) {
@@ -1126,6 +1288,10 @@ namespace lbfgs {
         FloatType f,
         const FloatType* g,
         bool diagco,
+        //---> Insertion starts
+        bool gradient_only,
+        bool line_search,
+        //<--- Insertion ends
         const FloatType* diag);
 
       detail::mcsrch<FloatType, SizeType> mcsrch_instance;
@@ -1162,9 +1328,13 @@ namespace lbfgs {
     FloatType f,
     const FloatType* g,
     bool diagco,
+    //---> Insertion starts
+    bool gradient_only,
+    bool line_search,
+    //<--- Insertion ends
     const FloatType* diag)
   {
-    bool execute_entire_while_loop = false;
+   bool execute_entire_while_loop = false;
     if (!(requests_f_and_g_ || requests_diag_)) {
       execute_entire_while_loop = true;
     }
@@ -1263,9 +1433,11 @@ namespace lbfgs {
       if (iter_ == 1) stp_ = stp1;
       std::copy(g, g+n_, w);
     }
+    //---> Insertion starts
     mcsrch_instance.run(
-      gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
+      gradient_only, line_search, gtol_, stpmin_, stpmax_, n_, x, f, g, w, ispt + point * n_,
       stp_, ftol, xtol_, maxfev_, info, nfev, &(*(scratch_array_.begin())));
+    //<--- Insertion ends
     if (info == -1) {
       iflag_ = 1;
       requests_f_and_g_ = true;
@@ -1348,7 +1520,9 @@ namespace lbfgs {
       {
         FloatType xnorm = std::sqrt(detail::ddot(n_, x, x));
         FloatType gnorm = std::sqrt(detail::ddot(n_, g, g));
-        if (gnorm <= eps_ * std::max(FloatType(1), xnorm)) return true;
+        if (gnorm <= eps_ * std::max(FloatType(1), xnorm)){
+          return true;
+        }
         return false;
       }
     protected:
