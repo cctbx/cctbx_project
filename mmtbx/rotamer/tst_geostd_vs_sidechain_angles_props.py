@@ -9,6 +9,9 @@ def run(args):
   mon_lib_srv = mmtbx.monomer_library.server.server()
   SidechainAngles = mmtbx.rotamer.sidechain_angles.SidechainAngles(
     show_errs=True)
+  assert SidechainAngles.get_rotamer_expectation_frequencies('GLY', 't') is None
+  assert SidechainAngles.get_rotamer_expectation_frequencies('CYS', 't')=='26.33%'
+  assert SidechainAngles.get_rotamer_expectation_frequencies('CYS', 'w') is None
   for resname_dot_tor_id,atom_names_raw \
         in SidechainAngles.atomsForAngle.items():
     resname, tor_id = resname_dot_tor_id.split(".")

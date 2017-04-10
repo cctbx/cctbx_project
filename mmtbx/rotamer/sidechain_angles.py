@@ -46,6 +46,7 @@ class SidechainAngles:
   anglesForRot = {}
   atomsMoveWithAngle = {}
   resAtomsToChi = {}
+  frequencies_from_rotamer = {}
 
   def __init__(self, show_errs):
     self.show_errors = show_errs
@@ -54,7 +55,13 @@ class SidechainAngles:
     f = PropertyFile()
     f.process(os.path.join(source_dir, "sidechain_angles.props"))
     for aa in f.properties['aminoacids'].split(","):
-      #print aa + f.properties[aa+".chis"]
+      #print aa + f.properties[aa+".chis"], f.properties['%s.frequencies' % aa]
+      for rot, freq in zip(f.properties['%s.rotamers' % aa].split(','),
+                           f.properties['%s.frequencies' % aa].split(','),
+                           ):
+        if not freq: continue
+        self.frequencies_from_rotamer.setdefault(aa, {})
+        self.frequencies_from_rotamer[aa][rot] = freq
       self.resAtomsToChi[aa] = {}
       self.chisPerAA[aa] = f.properties[aa+".chis"] #gives aaName -> # of chis
       #print f.properties[aa+".angles"].split(",")
@@ -111,6 +118,13 @@ class SidechainAngles:
     for angle in angles:
       return_angles.append(float(angle))
     return return_angles
+
+  def get_rotamer_expectation_frequencies(self, residue_name, rotamer_name):
+    aa = residue_name.lower()
+    if (not aa in self.rotamersForAA): return None
+    freqs = self.frequencies_from_rotamer.get(aa)
+    if not freqs: return None
+    return freqs.get(rotamer_name, None)
 
   def measureChiAngles(
         self,
