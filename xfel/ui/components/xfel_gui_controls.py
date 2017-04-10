@@ -369,6 +369,12 @@ class VerticalOptionCtrl(CtrlBase):
 
     self.SetSizer(opt_box)
 
+class IntFloatSpin(fs.FloatSpin):
+  def GetValue(self):
+    float_value = super(IntFloatSpin, self).GetValue()
+    int_value = int(round(float_value))
+    return int_value
+
 class SpinCtrl(CtrlBase):
   ''' Generic panel will place a spin control w/ label '''
   def __init__(self, parent,
@@ -388,9 +394,11 @@ class SpinCtrl(CtrlBase):
     self.txt = wx.StaticText(self, label=label.decode('utf-8'),
                              size=label_size)
     self.txt.SetFont(self.font)
-    self.ctr = fs.FloatSpin(self, value=ctrl_value, max_val=(ctrl_max),
-                            min_val=(ctrl_min), increment=ctrl_step,
-                            digits=ctrl_digits, size=ctrl_size)
+
+    floatspin_class = IntFloatSpin if ctrl_digits == 0 else fs.FloatSpin
+    self.ctr = floatspin_class(self, value=ctrl_value, max_val=(ctrl_max),
+                              min_val=(ctrl_min), increment=ctrl_step,
+                              digits=ctrl_digits, size=ctrl_size)
     ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL)
 
