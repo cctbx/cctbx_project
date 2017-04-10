@@ -17,6 +17,7 @@
 #include <dxtbx/format/image.h>
 #include <dxtbx/format/smv.h>
 #include <dxtbx/format/tiff.h>
+#include <dxtbx/format/cbf.h>
 #include <vector>
 #include <hdf5.h>
 
@@ -46,6 +47,16 @@ namespace dxtbx { namespace format { namespace boost_python {
       ;
 
     class_<TIFFReader, bases<ImageReader> >("TIFFReader", no_init)
+      .def(init<const char*>((
+              arg("filename"))))
+      ;
+
+    class_<CBFFastReader, bases<ImageReader> >("CBFFastReader", no_init)
+      .def(init<const char*>((
+              arg("filename"))))
+      ;
+
+    class_<CBFReader, bases<ImageReader> >("CBFReader", no_init)
       .def(init<const char*>((
               arg("filename"))))
       ;

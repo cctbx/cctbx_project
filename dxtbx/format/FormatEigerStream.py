@@ -28,7 +28,9 @@ class FormatEigerStream(Format, FormatMultiImage):
     Initialise the class
 
     '''
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
     import json
     self.header = json.load(open(image_file))
 

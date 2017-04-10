@@ -38,7 +38,9 @@ class FormatSMVRigakuEiger1M(FormatSMVRigaku):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment.'''
 
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
 
     FormatSMVRigaku.__init__(self, image_file, **kwargs)
 

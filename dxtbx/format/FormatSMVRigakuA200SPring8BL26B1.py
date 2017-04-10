@@ -45,7 +45,9 @@ class FormatSMVRigakuA200SPring8BL26B1(FormatSMVRigakuA200):
     proper model of the experiment. Easy from Rigaku A200 images as
     they contain everything pretty much we need...'''
 
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
 
     FormatSMVRigakuA200.__init__(self, image_file, **kwargs)
 

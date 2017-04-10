@@ -45,7 +45,9 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment.'''
 
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
 
     # if multi_panel == False, then interpret data as 24 panels, where each row
     # of 5 panels is grouped as one "panel"

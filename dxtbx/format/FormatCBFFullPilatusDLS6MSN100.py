@@ -43,7 +43,9 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
 
     self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
     FormatCBFFullPilatus.__init__(self, image_file, **kwargs)

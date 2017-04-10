@@ -56,7 +56,9 @@ class FormatTIFF(Format):
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
 
     Format.__init__(self, image_file, **kwargs)
 

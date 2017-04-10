@@ -60,7 +60,9 @@ class FormatSMVNOIR(FormatSMVRigaku):
     proper model of the experiment. Easy from Rigaku Saturn images as
     they contain everything pretty much we need...'''
 
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
 
     FormatSMVRigaku.__init__(self, image_file, **kwargs)
 

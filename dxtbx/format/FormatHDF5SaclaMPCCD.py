@@ -33,7 +33,9 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     return False
 
   def __init__(self, image_file, index = 0, reconst_mode = False, **kwargs):
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
     self._raw_data = None
     self.index = index
     self.image_filename = image_file

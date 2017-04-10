@@ -73,8 +73,9 @@ class FormatCBFMultiTile(FormatCBFFull):
 
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
-
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
 
     FormatCBFFull.__init__(self, image_file, **kwargs)
 
@@ -153,6 +154,7 @@ class FormatCBFMultiTile(FormatCBFFull):
     return self._beam_factory.imgCIF_H(self._get_cbf_handle())
 
   def get_raw_data(self):
+    print "hLL"
     if self._raw_data is None:
       self._raw_data = []
 

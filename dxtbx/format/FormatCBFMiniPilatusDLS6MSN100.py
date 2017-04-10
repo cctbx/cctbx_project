@@ -35,7 +35,9 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment.'''
 
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
 
     self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
     self._multi_panel = kwargs.get('multi_panel', False)

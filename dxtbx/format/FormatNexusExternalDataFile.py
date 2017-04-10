@@ -51,7 +51,9 @@ def is_nexus_external_data_file(filename):
 class FormatNexusExternalDataFile(FormatHDF5):
 
   def __init__(self, image_file, **kwargs):
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
     FormatHDF5.__init__(self, image_file, **kwargs)
 
   @staticmethod

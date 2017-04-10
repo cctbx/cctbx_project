@@ -10,6 +10,18 @@ else:
 if ext is not None:
   from dxtbx_ext import *
 
+
+class IncorrectFormatError(RuntimeError):
+  '''
+  An exception class for an incorrect format error
+
+  '''
+
+  def __init__(self, format_instance, filename):
+    super(IncorrectFormatError, self).__init__(
+      "Could not open %s as %s" % (filename, str(format_instance)))
+
+
 def load(filename):
   """Use DXTBX to get the files from the input filename.
 

@@ -46,7 +46,9 @@ class FormatHDF5Nexus(FormatHDF5):
     return False
 
   def __init__(self, image_file, **kwargs):
-    assert(self.understand(image_file))
+    from dxtbx import IncorrectFormatError
+    if not self.understand(image_file):
+      raise IncorrectFormatError(self, image_file)
     FormatHDF5.__init__(self, image_file, **kwargs)
 
   def _start(self):
