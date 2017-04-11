@@ -86,6 +86,7 @@ tst_list = (
   ["$D/lbfgs/tst_ext.py"],
   "$D/lbfgs/tst_curvatures.py",
   "$D/lbfgs/tst_lbfgs_fem.py",
+  "$D/lbfgs/tst_func_free_line_search.py",
   "$B/lbfgs/tst_lbfgs",
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
