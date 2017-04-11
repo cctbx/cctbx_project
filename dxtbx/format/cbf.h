@@ -12,6 +12,7 @@
 #define DXTBX_FORMAT_CBF_H
 
 #include <vector>
+#include <map>
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -20,8 +21,7 @@
 #include <dxtbx/error.h>
 #include <cbflib_adaptbx/detectors/buffer_based_service.h>
 
-#define cbf_failnez(x) { int err; err = (x); if (err) { \
-  std::cout<<"error code "<<err<<std::endl; DXTBX_ERROR("CBFlib error in " #x " "); }}
+#define cbf_check(x) DXTBX_ASSERT((x) == 0)
 
 namespace dxtbx { namespace format {
 
@@ -79,16 +79,143 @@ namespace dxtbx { namespace format {
       stream >> result;
       return result;
     }
+
+
+    template <typename T>
+    struct cbf_array_buffer {};
+
+    /**
+     * Helper struct to read an integer cbf buffer
+     */
+    template<>
+    struct cbf_array_buffer<int> {
+
+      std::vector<int> data;
+      std::size_t dimfast;
+      std::size_t dimmid;
+      std::size_t dimslow;
+
+      cbf_array_buffer(cbf_handle cbf_h)
+        : dimfast(0),
+          dimmid(0),
+          dimslow(0) {
+
+        // Get the parameters
+        unsigned int compression = 0;
+        int binary_id = 0;
+        size_t elsize = 0;
+        int elsigned = 0;
+        int elunsigned = 0;
+        size_t elements = 0;
+        int minelement = 0;
+        int maxelement = 0;
+        const char *byteorder = 0;
+        size_t padding = 0;
+        cbf_get_integerarrayparameters_wdims_fs(
+          cbf_h,
+          &compression,
+          &binary_id,
+          &elsize,
+          &elsigned,
+          &elunsigned,
+          &elements,
+          &minelement,
+          &maxelement,
+          &byteorder,
+          &dimfast,
+          &dimmid,
+          &dimslow,
+          &padding);
+        DXTBX_ASSERT(elsigned == 1);
+        if (dimslow == 0) dimslow = 1;
+        DXTBX_ASSERT(std::string(byteorder) == "little_endian");
+        DXTBX_ASSERT(dimfast * dimmid * dimslow == elements);
+        DXTBX_ASSERT(elements > 0);
+
+        // Resize
+        data.resize(elements);
+
+        // Read the data
+        size_t elements_read;
+        cbf_get_integerarray(
+          cbf_h,
+          &binary_id,
+          &data[0],
+          sizeof(int),
+          elsigned,
+          elements,
+          &elements_read);
+        DXTBX_ASSERT(elements_read == elements);
+      }
+
+    };
+
+    /**
+     * Helper struct to read a double cbf buffer
+     */
+    template<>
+    struct cbf_array_buffer<double> {
+
+      std::vector<double> data;
+      std::size_t dimfast;
+      std::size_t dimmid;
+      std::size_t dimslow;
+
+      cbf_array_buffer(cbf_handle cbf_h)
+        : dimfast(0),
+          dimmid(0),
+          dimslow(0) {
+
+        // Get parameters
+        unsigned int compression = 0;
+        int binary_id = 0;
+        size_t elsize = 0;
+        size_t elements = 0;
+        const char *byteorder = 0;
+        size_t padding = 0;
+        cbf_get_realarrayparameters_wdims_fs(
+          cbf_h,
+          &compression,
+          &binary_id,
+          &elsize,
+          &elements,
+          &byteorder,
+          &dimfast,
+          &dimmid,
+          &dimslow,
+          &padding);
+        if (dimslow == 0) dimslow = 1;
+        DXTBX_ASSERT(elsize = sizeof(double));
+        DXTBX_ASSERT(std::string(byteorder) == "little_endian");
+        DXTBX_ASSERT(dimfast * dimmid * dimslow == elements);
+        DXTBX_ASSERT(elements > 0);
+
+        // Resize the data
+        data.resize(elements);
+
+        // Read the data
+        size_t elements_read;
+        cbf_get_realarray(
+          cbf_h,
+          &binary_id,
+          &data[0],
+          sizeof(double),
+          elements,
+          &elements_read);
+        DXTBX_ASSERT(elements_read == elements);
+      }
+
+    };
+
   }
 
 
   /**
    * A class to read a CBF Image (quickly)
+   * Only works for signed 16/32 bit int data
    */
   class CBFFastReader : public ImageReader {
   public:
-
-    typedef ImageReader::size_type size_type;
 
     /**
      * Construct the class with the filename
@@ -96,32 +223,6 @@ namespace dxtbx { namespace format {
     CBFFastReader(const char *filename)
       : ImageReader(filename) {
       read_data();
-    }
-
-    /**
-     * Get the image data as the desired type
-     */
-    template<typename T>
-    scitbx::af::versa< T, scitbx::af::c_grid<2> > as_type() const {
-      scitbx::af::c_grid<2> grid(size_[0], size_[1]);
-      scitbx::af::versa< T, scitbx::af::c_grid<2> > result(grid);
-      DXTBX_ASSERT(data_.accessor().all_eq(result.accessor()));
-      std::copy(data_.begin(), data_.end(), result.begin());
-      return result;
-    }
-
-    /**
-     * Get the image data as an integer array
-     */
-    scitbx::af::versa< int, scitbx::af::c_grid<2> > as_int() const {
-      return data_;
-    }
-
-    /**
-     * Get the image data as a double array
-     */
-    scitbx::af::versa< double, scitbx::af::c_grid<2> > as_double() const {
-      return as_type<double>();
     }
 
   protected:
@@ -151,9 +252,11 @@ namespace dxtbx { namespace format {
       std::stringstream header(buffer.substr(0, data_offset));
 
       // Initialise some info
-      type_ = "int32";
+      std::string type = "int32";
       std::size_t length = 0;
       std::size_t data_size = 0;
+      std::size_t fast_size = 0;
+      std::size_t slow_size = 0;
       bool byte_offset = false;
 
       // Parse the header
@@ -163,18 +266,18 @@ namespace dxtbx { namespace format {
         std::string value;
         if (detail::get_cbf_header_item(line, name, value)) {
           if (name == "X-Binary-Size-Fastest-Dimension") {
-            size_[1] = detail::get_cbf_header_value<std::size_t>(value);
+            fast_size = detail::get_cbf_header_value<std::size_t>(value);
           } else if (name == "X-Binary-Size-Second-Dimension") {
-            size_[0] = detail::get_cbf_header_value<std::size_t>(value);
+            slow_size = detail::get_cbf_header_value<std::size_t>(value);
           } else if (name == "X-Binary-Number-of-Elements") {
             length = detail::get_cbf_header_value<std::size_t>(value);
           } else if (name == "X-Binary-Size") {
             data_size = detail::get_cbf_header_value<std::size_t>(value);
           } else if (name == "X-Binary-Element-Type") {
             if (value == "signed 16-bit integer") {
-              type_ = "int16";
+              type = "int16";
             } else if (value == "signed 32-bit integer") {
-              type_ = "int32";
+              type = "int32";
             } else {
               DXTBX_ERROR("Can only handle signed 16/32-bit integer data");
             }
@@ -184,29 +287,32 @@ namespace dxtbx { namespace format {
         } else if (
           line.find("conversions") != std::string::npos &&
           line.find("x-CBF_BYTE_OFFSET")) {
-            byte_offset=true;
+            byte_offset = true;
         }
       }
 
       // Check the input
-      DXTBX_ASSERT(size_[0] > 0);
-      DXTBX_ASSERT(size_[1] > 0);
-      DXTBX_ASSERT(size_[1] * size_[0] == length);
+      DXTBX_ASSERT(fast_size > 0);
+      DXTBX_ASSERT(slow_size > 0);
+      DXTBX_ASSERT(slow_size * fast_size == length);
       DXTBX_ASSERT(byte_offset == true);
       DXTBX_ASSERT(data_size >= length);
 
       // Resize the array
-      scitbx::af::c_grid<2> grid(size_);
-      data_.resize(grid);
+      scitbx::af::c_grid<2> grid(slow_size, fast_size);
+      scitbx::af::versa< int, scitbx::af::c_grid<2> > data(grid);
 
       // Uncompress the data
       iotbx::detectors::buffer_uncompress(
           buffer.c_str() + data_offset,
           data_size,
-          &data_[0]);
+          &data[0]);
+
+      // Add to the tiles
+      tiles_.push_back(variant_type(data));
+      names_.push_back("");
     }
 
-    scitbx::af::versa< int, scitbx::af::c_grid<2> > data_;
   };
 
 
@@ -215,8 +321,6 @@ namespace dxtbx { namespace format {
    */
   class CBFReader : public ImageReader {
   public:
-
-    typedef ImageReader::size_type size_type;
 
     /**
      * Construct the class with the filename
@@ -228,171 +332,327 @@ namespace dxtbx { namespace format {
 
   protected:
 
+    /**
+     * Helper struct for multi-tile CBF files
+     */
+    struct Section {
+      std::string name;
+      int slow_start;
+      int slow_end;
+      int mid_start;
+      int mid_end;
+      int fast_start;
+      int fast_end;
+
+      Section():
+        slow_start(-1),
+        slow_end(-1),
+        mid_start(-1),
+        mid_end(-1),
+        fast_start(-1),
+        fast_end(-1) {}
+    };
+
+    /**
+     * Read the data
+     */
     void read_data() {
 
       // Open the cbf handle
       cbf_handle cbf_h;
-      cbf_failnez(cbf_make_handle(&cbf_h));
+      cbf_check(cbf_make_handle(&cbf_h));
       DXTBX_ASSERT(cbf_h);
 
+      // Open the file
       FILE *handle = std::fopen(filename_.c_str(), "rb");
       DXTBX_ASSERT(handle);
 
       // Read the file
-      cbf_failnez(cbf_read_widefile(cbf_h, handle, MSG_DIGEST));
+      cbf_check(cbf_read_widefile(cbf_h, handle, MSG_DIGEST));
 
-      cbf_find_category(cbf_h, "array_structure");
-      cbf_find_column(cbf_h, "encoding_type");
-      cbf_select_row(cbf_h, 0);
+      // Find the array structure
+      if (cbf_find_category(cbf_h, "array_structure") == 0) {
+        cbf_check(cbf_find_column(cbf_h, "encoding_type"));
+        cbf_check(cbf_select_row(cbf_h, 0));
 
-      std::string array_data_type;
-      unsigned int nrows = 0;
-      cbf_count_rows(cbf_h, &nrows);
-      for (std::size_t i = 0; i < nrows; ++i) {
-        const char *type = 0;
-        cbf_get_value(cbf_h, &type);
-        if (i == 0) {
-          array_data_type = type;
-          DXTBX_ASSERT(
-              array_data_type == "signed 32-bit integer" ||
-              array_data_type == "signed 64-bit real IEEE");
-        } else {
-          DXTBX_ASSERT(array_data_type == type);
-        }
-        cbf_next_row(cbf_h);
-      }
-
-      cbf_find_category(cbf_h, "array_data");
-      cbf_count_rows(cbf_h, &nrows);
-      for (std::size_t i = 0; i < nrows; ++i) {
-        cbf_find_column(cbf_h, "array_id");
-        const char *name = 0;
-        cbf_get_value(cbf_h, &name);
-
-        cbf_find_column(cbf_h, "data");
-
-        const char *data_type = 0;
-        cbf_get_typeofvalue(cbf_h, &data_type);
-        DXTBX_ASSERT(std::string(data_type) == "bnry");
-
-        if (array_data_type == "signed 32-bit integer") {
-          unsigned int compression = 0;
-          int binary_id = 0;
-          size_t elsize = 0;
-          int elsigned = 0;
-          int elunsigned = 0;
-          size_t elements = 0;
-          int minelement = 0;
-          int maxelement = 0;
-          const char *byteorder = 0;
-          size_t dimfast = 0;
-          size_t dimmid = 0;
-          size_t dimslow = 0;
-          size_t padding = 0;
-          cbf_get_integerarrayparameters_wdims_fs(
-              cbf_h,
-              &compression,
-              &binary_id,
-              &elsize,
-              &elsigned,
-              &elunsigned,
-              &elements,
-              &minelement,
-              &maxelement,
-              &byteorder,
-              &dimfast,
-              &dimmid,
-              &dimslow,
-              &padding);
-          DXTBX_ASSERT(std::string(byteorder) == "little_endian");
-          DXTBX_ASSERT(dimfast * dimmid * dimslow == elements);
-          DXTBX_ASSERT(elements > 0);
-
-          std::vector<int> buffer(elements);
-
-          size_t elements_read;
-          cbf_get_integerarray(
-              cbf_h,
-              &binary_id,
-              &buffer[0],
-              elsize,
-              elsigned,
-              elements,
-              &elements_read);
-          DXTBX_ASSERT(elements_read == elements);
-        } else if (array_data_type == "signed 64-bit real IEEE") {
-            unsigned int compression = 0;
-            int binary_id = 0;
-            size_t elsize = 0;
-            size_t elements = 0;
-            const char *byteorder = 0;
-            size_t dimfast = 0;
-            size_t dimmid = 0;
-            size_t dimslow = 0;
-            size_t padding = 0;
-          cbf_get_realarrayparameters_wdims_fs(
-            cbf_h,
-            &compression,
-            &binary_id,
-            &elsize,
-            &elements,
-            &byteorder,
-            &dimfast,
-            &dimmid,
-            &dimslow,
-            &padding);
-          DXTBX_ASSERT(std::string(byteorder) == "little_endian");
-          DXTBX_ASSERT(dimfast * dimmid * dimslow == elements);
-          DXTBX_ASSERT(elements > 0);
-
-          std::vector<double> buffer(elements);
-
-          size_t elements_read;
-          cbf_get_realarray(
-              cbf_h,
-              &binary_id,
-              &buffer[0],
-              elsize,
-              elements,
-              &elements_read);
-
-          DXTBX_ASSERT(elements_read == elements);
-        }
-
-        cbf_next_row(cbf_h);
-      }
-
-      cbf_find_category(cbf_h, "array_structure_list_section");
-      if (true) {
-
-        cbf_count_rows(cbf_h, &nrows);
+        // Get the array data type for each section
+        std::string array_data_type;
+        unsigned int nrows = 0;
+        cbf_check(cbf_count_rows(cbf_h, &nrows));
         for (std::size_t i = 0; i < nrows; ++i) {
-          cbf_find_column(cbf_h, "id");
+          const char *type = 0;
+          cbf_check(cbf_get_value(cbf_h, &type));
+          if (i == 0) {
+            array_data_type = type;
+            DXTBX_ASSERT(
+                array_data_type == "signed 32-bit integer" ||
+                array_data_type == "signed 64-bit real IEEE");
+          } else {
+            DXTBX_ASSERT(array_data_type == type);
+          }
+          cbf_check(cbf_next_row(cbf_h));
+        }
+
+        // Call appropriate function depending on the type
+        if (array_data_type == "signed 32-bit integer") {
+          read_multi_tile_data_detail<int>(cbf_h);
+        } else if (array_data_type == "signed 64-bit real IEEE") {
+          read_multi_tile_data_detail<double>(cbf_h);
+        } else {
+          DXTBX_ERROR("Unsupported data type");
+        }
+      } else {
+        read_single_tile_data_detail(cbf_h);
+      }
+
+      // Free the CBF handle
+      cbf_check(cbf_free_handle(cbf_h));
+    }
+
+    /**
+     * Read single tile data
+     */
+    void read_single_tile_data_detail(cbf_handle cbf_h) {
+
+      // Get the data
+      cbf_check(cbf_find_category(cbf_h, "array_data"));
+      cbf_check(cbf_find_column(cbf_h, "data"));
+
+      const char *data_type = 0;
+      cbf_check(cbf_get_typeofvalue(cbf_h, &data_type));
+      DXTBX_ASSERT(data_type != 0);
+      DXTBX_ASSERT(std::string(data_type) == "bnry");
+
+      // Read the data
+      detail::cbf_array_buffer<int> buffer(cbf_h);
+      DXTBX_ASSERT(buffer.dimslow == 1);
+
+      // Allocate and copy the data
+      scitbx::af::c_grid<2> grid(buffer.dimmid, buffer.dimfast);
+      scitbx::af::versa< int, scitbx::af::c_grid<2> > data(grid);
+      DXTBX_ASSERT(buffer.data.size() == data.size());
+      std::copy(buffer.data.begin(), buffer.data.end(), data.begin());
+
+      // Add to the tiles
+      tiles_.push_back(variant_type(data));
+      names_.push_back("");
+    }
+
+    /**
+     * Read multi-tile data
+     */
+    template <typename T>
+    void read_multi_tile_data_detail(cbf_handle &cbf_h) {
+
+      std::map < std::string, std::vector<Section> > section_lookup;
+      bool has_sections = false;
+
+      // Check if the data has sections
+      if (cbf_find_category(cbf_h, "array_structure_list_section") == 0) {
+
+        has_sections = true;
+
+        // Count the number of sections
+        unsigned int nsections = 0;
+        cbf_check(cbf_count_rows(cbf_h, &nsections));
+        for (std::size_t i = 0; i < nsections; ++i) {
+
+          // Find the section ID and get the name
+          cbf_check(cbf_find_column(cbf_h, "id"));
           const char *section_name = 0;
-          cbf_get_value(cbf_h, &section_name);
+          cbf_check(cbf_get_value(cbf_h, &section_name));
+          DXTBX_ASSERT(section_name != 0);
 
-          cbf_find_column(cbf_h, "array_id");
+          // Find the array id
+          cbf_check(cbf_find_column(cbf_h, "array_id"));
+          const char *array_id = 0;
+          cbf_check(cbf_get_value(cbf_h, &array_id));
+          DXTBX_ASSERT(array_id != 0);
 
+          // Get the section and append to the list
           int axis_index;
           int axis_start;
           int axis_end;
 
-          cbf_find_column(cbf_h, "index");
-          cbf_get_integervalue(cbf_h, &axis_index);
+          cbf_check(cbf_find_column(cbf_h, "index"));
+          cbf_check(cbf_get_integervalue(cbf_h, &axis_index));
 
-          cbf_find_column(cbf_h, "start");
-          cbf_get_integervalue(cbf_h, &axis_start);
+          cbf_check(cbf_find_column(cbf_h, "start"));
+          cbf_check(cbf_get_integervalue(cbf_h, &axis_start));
 
-          cbf_find_column(cbf_h, "end");
-          cbf_get_integervalue(cbf_h, &axis_end);
+          cbf_check(cbf_find_column(cbf_h, "end"));
+          cbf_check(cbf_get_integervalue(cbf_h, &axis_end));
 
-          cbf_next_row(cbf_h);
+          // Add the section
+          std::vector<Section> &sections = section_lookup[array_id];
+          int index = -1;
+          for (std::size_t j = 0; j < sections.size(); ++j) {
+            if (sections[j].name == section_name) {
+              index = j;
+              break;
+            }
+          }
+          if (index >= 0) {
+            Section &s = sections[index];
+            if (axis_index == 3) {
+              s.slow_start = axis_start - 1;
+              s.slow_end = axis_end;
+            } else if (axis_index == 2) {
+              s.mid_start = axis_start - 1;
+              s.mid_end = axis_end;
+            } else if (axis_index == 1) {
+              s.fast_start = axis_start - 1;
+              s.fast_end = axis_end;
+            } else {
+              DXTBX_ASSERT("Bad axis index");
+            }
+          } else {
+            Section s;
+            s.name = section_name;
+            if (axis_index == 3) {
+              s.slow_start = axis_start - 1;
+              s.slow_end = axis_end;
+            } else if (axis_index == 2) {
+              s.mid_start = axis_start - 1;
+              s.mid_end = axis_end;
+            } else if (axis_index == 1) {
+              s.fast_start = axis_start - 1;
+              s.fast_end = axis_end;
+            } else {
+              DXTBX_ASSERT("Bad axis index");
+            }
+            sections.push_back(s);
+          }
+
+          // Get the next section
+          cbf_check(cbf_next_row(cbf_h));
         }
-
       }
 
-      // Free the CBF handle
-      cbf_failnez(cbf_free_handle(cbf_h));
+      // Find the array data
+      unsigned int nrows = 0;
+      cbf_check(cbf_find_category(cbf_h, "array_data"));
+      cbf_check(cbf_count_rows(cbf_h, &nrows));
+      DXTBX_ASSERT(nrows > 0);
+      if (nrows == 1) {
+
+        // Get the data
+        cbf_check(cbf_find_column(cbf_h, "data"));
+
+        const char *data_type = 0;
+        cbf_check(cbf_get_typeofvalue(cbf_h, &data_type));
+        DXTBX_ASSERT(data_type != 0);
+        DXTBX_ASSERT(std::string(data_type) == "bnry");
+
+        // Read the data
+        detail::cbf_array_buffer<T> buffer(cbf_h);
+
+        DXTBX_ASSERT(buffer.dimslow == 1);
+
+        // Allocate and copy the data
+        scitbx::af::c_grid<2> grid(buffer.dimmid, buffer.dimfast);
+        scitbx::af::versa< T, scitbx::af::c_grid<2> > data(grid);
+        DXTBX_ASSERT(buffer.data.size() == data.size());
+        std::copy(buffer.data.begin(), buffer.data.end(), data.begin());
+
+        // Add to the tiles
+        tiles_.push_back(variant_type(data));
+        names_.push_back("");
+
+      } else {
+        for (std::size_t i = 0; i < nrows; ++i) {
+
+          // Get the array name
+          cbf_check(cbf_find_column(cbf_h, "array_id"));
+          const char *name = 0;
+          cbf_check(cbf_get_value(cbf_h, &name));
+          DXTBX_ASSERT(name != 0);
+
+          // Get the data
+          cbf_check(cbf_find_column(cbf_h, "data"));
+
+          const char *data_type = 0;
+          cbf_check(cbf_get_typeofvalue(cbf_h, &data_type));
+          DXTBX_ASSERT(data_type != 0);
+          DXTBX_ASSERT(std::string(data_type) == "bnry");
+
+          // Read the data
+          detail::cbf_array_buffer<T> buffer(cbf_h);
+
+          if (has_sections) {
+
+            // Get the sections
+            std::vector<Section> sections = section_lookup[name];
+
+            // Loop through the sections
+            for (std::size_t j = 0; j < sections.size(); ++j) {
+
+              // Get the section info
+              std::string section_name = sections[j].name;
+              int slow_start = sections[j].slow_start;
+              int slow_end = sections[j].slow_end;
+              int mid_start = sections[j].mid_start;
+              int mid_end = sections[j].mid_end;
+              int fast_start = sections[j].fast_start;
+              int fast_end = sections[j].fast_end;
+
+              // Get the size of the sections
+              int slow_size = slow_end - slow_start;
+              int mid_size = mid_end - mid_start;
+              int fast_size = fast_end - fast_start;
+
+              // Check the size of the sections
+              DXTBX_ASSERT(slow_size == 1);
+              DXTBX_ASSERT(mid_size > 0);
+              DXTBX_ASSERT(fast_size > 0);
+              DXTBX_ASSERT(fast_start >= 0);
+              DXTBX_ASSERT(slow_start >= 0);
+              DXTBX_ASSERT(mid_start >= 0);
+              DXTBX_ASSERT(fast_end <= buffer.dimfast);
+              DXTBX_ASSERT(mid_end <= buffer.dimmid);
+              DXTBX_ASSERT(slow_end <= buffer.dimslow);
+
+              // Allocate
+              scitbx::af::c_grid<2> grid(mid_size, fast_size);
+              scitbx::af::versa< T, scitbx::af::c_grid<2> > data(grid);
+
+              // Copy the data from the buffer
+              std::size_t size1 = buffer.dimfast;
+              std::size_t size2 = buffer.dimmid * buffer.dimfast;
+              for (std::size_t y = 0; y < mid_size; ++y) {
+                for (std::size_t x = 0; x < fast_size; ++x) {
+                  std::size_t xx = x + fast_start;
+                  std::size_t yy = y + mid_start;
+                  std::size_t zz = slow_start;
+                  std::size_t k = xx + yy*size1 + zz*size2;
+                  DXTBX_ASSERT(k < buffer.data.size());
+                  data(y,x) = buffer.data[k];
+                }
+              }
+
+              // Add to the tiles
+              tiles_.push_back(variant_type(data));
+              names_.push_back(section_name);
+            }
+
+          } else {
+            DXTBX_ASSERT(buffer.dimslow == 1);
+
+            // Allocate and copy the data
+            scitbx::af::c_grid<2> grid(buffer.dimmid, buffer.dimfast);
+            scitbx::af::versa< T, scitbx::af::c_grid<2> > data(grid);
+            DXTBX_ASSERT(buffer.data.size() == data.size());
+            std::copy(buffer.data.begin(), buffer.data.end(), data.begin());
+
+            // Add to the tiles
+            tiles_.push_back(variant_type(data));
+            names_.push_back(name == 0 ? "" : name);
+          }
+
+          // Go to the next array
+          cbf_check(cbf_next_row(cbf_h));
+        }
+      }
     }
 
   };

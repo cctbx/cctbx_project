@@ -11,8 +11,8 @@ env_etc.dxtbx_common_includes = [env_etc.base_include,
                                  env_etc.scitbx_include,
                                  env_etc.boost_adaptbx_include,
                                  env_etc.boost_include,
-                                 env_etc.dxtbx_include]
-env_etc.dxtbx_libs = ["tiff"]
+                                 env_etc.dxtbx_include] + env_etc.cbflib_common_includes
+env_etc.dxtbx_libs = ["tiff", "cbf"]
 env_etc.dxtbx_hdf5_libs = ["hdf5"]
 env_etc.dxtbx_lib_paths = [env_etc.base_lib, env_etc.libtbx_lib, os.path.join(sys.prefix, 'lib')]
 env_etc.dxtbx_hdf5_lib_paths = []

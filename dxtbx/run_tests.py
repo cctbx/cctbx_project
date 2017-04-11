@@ -10,6 +10,7 @@ tst_list = (
     "$D/tests/tst_beamline_definitions.py",
     "$D/tests/tstFormatCBFFull.py",
     "$D/tests/tst_dials_226.py",
+    "$D/tests/tst_image_readers.py",
     "$D/tests/command_line/tst_to_xds.py",
     "$D/tests/model/tst_beam.py",
     "$D/tests/model/tst_detector.py",

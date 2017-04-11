@@ -11,11 +11,186 @@
 #ifndef DXTBX_FORMAT_IMAGE_H
 #define DXTBX_FORMAT_IMAGE_H
 
+#include <vector>
+#include <boost/variant.hpp>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 
 namespace dxtbx { namespace format {
+
+
+  /**
+   * A class to represent an image tile
+   */
+  class ImageTile {
+  public:
+
+    // Variant data typedefs
+    typedef scitbx::af::versa< short,          scitbx::af::c_grid<2> > int16_type;
+    typedef scitbx::af::versa< int,            scitbx::af::c_grid<2> > int32_type;
+    typedef scitbx::af::versa< unsigned short, scitbx::af::c_grid<2> > uint16_type;
+    typedef scitbx::af::versa< unsigned int,   scitbx::af::c_grid<2> > uint32_type;
+    typedef scitbx::af::versa< float,          scitbx::af::c_grid<2> > float32_type;
+    typedef scitbx::af::versa< double,         scitbx::af::c_grid<2> > float64_type;
+
+    typedef int32_type int_array_type;
+    typedef float64_type double_array_type;
+
+    typedef boost::variant <
+      int16_type,
+      int32_type,
+      uint16_type,
+      uint32_type,
+      float32_type,
+      float64_type
+    > variant_type;
+
+
+    /**
+     * A visitor class to convert from/to different types.
+     * Data is copied except when the to/from types are the same
+     */
+    template <typename ArrayType>
+    class ConverterVisitor : public boost::static_visitor<ArrayType> {
+    public:
+
+      ArrayType operator()(ArrayType &v) const {
+        return v;
+      }
+
+      template <typename OtherArrayType>
+      ArrayType operator()(OtherArrayType &v) const {
+        ArrayType result(v.accessor());
+        std::copy(v.begin(), v.end(), result.begin());
+        return result;
+      }
+
+    };
+
+    /**
+     * Is the data a double type
+     */
+    class IsDoubleVisitor : public boost::static_visitor<bool> {
+    public:
+
+      bool operator()(float32_type &v) const {
+        return true;
+      }
+
+      bool operator()(float64_type &v) const {
+        return true;
+      }
+
+      template <typename OtherArrayType>
+      bool operator()(OtherArrayType &v) const {
+        return false;
+      }
+
+    };
+
+
+    /**
+     * Initialize the class
+     */
+    ImageTile(variant_type data, const char *name)
+      : data_(data),
+        name_(name) {}
+
+    /**
+     * Is the data integer
+     */
+    bool is_int() const {
+      return !boost::apply_visitor(IsDoubleVisitor(), data_);
+    }
+
+    /**
+     * Is the data double
+     */
+    bool is_double() const {
+      return boost::apply_visitor(IsDoubleVisitor(), data_);
+    }
+
+    /**
+     * Get the data as integer
+     */
+    int_array_type as_int() const {
+      return boost::apply_visitor(ConverterVisitor<int_array_type>(), data_);
+    }
+
+    /**
+     * Get the data as double
+     */
+    double_array_type as_double() const {
+      return boost::apply_visitor(ConverterVisitor<double_array_type>(), data_);
+    }
+
+    /**
+     * Get the tile name
+     */
+    std::string name() {
+      return name_;
+    }
+
+  protected:
+
+    variant_type data_;
+    std::string name_;
+  };
+
+
+  /**
+   * A class to represent a multi-tile image
+   */
+  class Image {
+  public:
+    typedef ImageTile::int16_type int16_type;
+    typedef ImageTile::int32_type int32_type;
+    typedef ImageTile::uint16_type uint16_type;
+    typedef ImageTile::uint32_type uint32_type;
+    typedef ImageTile::float64_type float32_type;
+    typedef ImageTile::float64_type float64_type;
+    typedef ImageTile::variant_type variant_type;
+
+    /**
+     * Add a tile
+     */
+    void push_back(const variant_type &tile, const char *name) {
+      tiles_.push_back(tile);
+      names_.push_back(name);
+    }
+
+    /**
+     * Get the tile names
+     */
+    scitbx::af::shared< std::string > tile_names() const {
+      return scitbx::af::shared< std::string >(
+          &names_[0],
+          &names_[0] + names_.size());
+    }
+
+    /**
+     * Get an image tile
+     */
+    ImageTile tile(std::size_t index) {
+      DXTBX_ASSERT(index < n_tiles());
+      return ImageTile(tiles_[index], names_[index].c_str());
+    }
+
+    /**
+     * Get the number of tiles
+     */
+    std::size_t n_tiles() const {
+      return tiles_.size();
+    }
+
+  protected:
+
+    std::vector< variant_type > tiles_;
+    std::vector< std::string > names_;
+  };
+
 
   /**
    * Base class for reading images
@@ -23,73 +198,45 @@ namespace dxtbx { namespace format {
   class ImageReader {
   public:
 
-    typedef scitbx::af::tiny<std::size_t,2> size_type;
+    typedef Image::int16_type int16_type;
+    typedef Image::int32_type int32_type;
+    typedef Image::uint16_type uint16_type;
+    typedef Image::uint32_type uint32_type;
+    typedef Image::float64_type float32_type;
+    typedef Image::float64_type float64_type;
+    typedef Image::variant_type variant_type;
 
+    /**
+     * Initialise with the filename
+     */
     ImageReader(const char *filename)
       : filename_(filename) {}
 
     /**
-     * Get the data as integer
-     */
-    virtual
-    scitbx::af::versa< int, scitbx::af::c_grid<2> > as_int() const {
-      throw std::runtime_error("Override");
-    }
-
-    /**
-     * Get the data as double
-     */
-    virtual
-    scitbx::af::versa< double, scitbx::af::c_grid<2> > as_double() const {
-      throw std::runtime_error("Override");
-    }
-
-    /**
-     * Return the image filename
+     * Return the filename
      */
     std::string filename() const {
       return filename_;
     }
 
     /**
-     * Return the size of the image
+     * Return the image
      */
-    size_type size() const {
-      return size_;
-    }
-
-    /**
-     * Return is an int
-     */
-    bool is_int() const {
-      return
-        type_ == "int16" ||
-        type_ == "int32" ||
-        type_ == "uint16" ||
-        type_ == "uint32" ;
-    }
-
-    /**
-     * Return if is a float
-     */
-    bool is_float() const {
-      return type_ == "float32" || type_ == "float64";
-    }
-
-    /**
-     * Return the data type
-     */
-    std::string type() const {
-      return type_;
+    Image image() const {
+      DXTBX_ASSERT(tiles_.size() == names_.size());
+      Image result;
+      for (std::size_t i = 0; i < tiles_.size(); ++i) {
+        result.push_back(tiles_[i], names_[i].c_str());
+      }
+      return result;
     }
 
   protected:
 
     std::string filename_;
-    size_type size_;
-    std::string type_;
+    std::vector<variant_type> tiles_;
+    std::vector<std::string> names_;
   };
-
 
 }} // namespace dxtbx::format
 

@@ -36,73 +36,23 @@ namespace dxtbx { namespace format {
   class TIFFReader : public ImageReader {
   public:
 
-    typedef ImageReader::size_type size_type;
-
     /**
      * Construct the class with the filename
      */
     TIFFReader(const char *filename)
-      : ImageReader(filename) {
+      : ImageReader(filename),
+        slow_size_(0),
+        fast_size_(0) {
       read_data();
     }
 
-    /**
-     * Get the image data as the desired type
-     */
-    template<typename T>
-    scitbx::af::versa< T, scitbx::af::c_grid<2> > as_type() const {
-      scitbx::af::c_grid<2> grid(size_[0], size_[1]);
-      scitbx::af::versa< T, scitbx::af::c_grid<2> > result(grid);
-
-      // Get the number of elements
-      std::size_t n_elements = size_[0] * size_[1];
-
-      // Copy the data into the output array
-      if (type_ == "int16") {
-        const short *buffer = reinterpret_cast<const short*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(short));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      } else if (type_ == "uint16") {
-        const unsigned short *buffer = reinterpret_cast<const unsigned short*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(unsigned short));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      } else if (type_ == "int32") {
-        const long *buffer = reinterpret_cast<const long*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(long));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      } else if (type_ == "uint32") {
-        const unsigned long *buffer = reinterpret_cast<const unsigned long*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(unsigned long));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      } else if (type_ == "float32") {
-        const float *buffer = reinterpret_cast<const float*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(float));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      } else if (type_ == "float64") {
-        const double *buffer = reinterpret_cast<const double*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(double));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      }
-
-      // Return the result
-      return result;
-    }
-
-    /**
-     * Get the image data as an integer array
-     */
-    scitbx::af::versa< int, scitbx::af::c_grid<2> > as_int() const {
-      return as_type<int>();
-    }
-
-    /**
-     * Get the image data as a double array
-     */
-    scitbx::af::versa< double, scitbx::af::c_grid<2> > as_double() const {
-      return as_type<double>();
-    }
-
   protected:
+
+    // Helper structs to get types
+    template <typename T>
+    struct array_type {
+      typedef scitbx::af::versa< T, scitbx::af::c_grid<2> > type;
+    };
 
     void read_data() {
 
@@ -125,31 +75,37 @@ namespace dxtbx { namespace format {
       TIFFGetField(tiff, TIFFTAG_BITSPERSAMPLE,  &bits_per_sample);
       TIFFGetField(tiff, TIFFTAG_SAMPLEFORMAT,  &sample_format);
       DXTBX_ASSERT(samples_per_pixel == 1);
-      size_[0] = slow_size;
-      size_[1] = fast_size;
+      slow_size_ = slow_size;
+      fast_size_ = fast_size;
 
       // Check the sample format
       if (sample_format == SAMPLEFORMAT_INT) {
         if (bits_per_sample == 16) {
-          type_ = "int16";
+          DXTBX_ASSERT(8 * sizeof(short) == (bits_per_sample));
+          read_data_detail<short>(tiff);
         } else if (bits_per_sample == 32) {
-          type_ = "int32";
+          DXTBX_ASSERT(8 * sizeof(int) == (bits_per_sample));
+          read_data_detail<int>(tiff);
         } else {
           DXTBX_ERROR("Unsupported bits per sample");
         }
       } else if (sample_format == SAMPLEFORMAT_UINT) {
         if (bits_per_sample == 16) {
-          type_ = "uint16";
+          DXTBX_ASSERT(8 * sizeof(unsigned short) == (bits_per_sample));
+          read_data_detail<unsigned short>(tiff);
         } else if (bits_per_sample == 32) {
-          type_ = "uint32";
+          DXTBX_ASSERT(8 * sizeof(unsigned int) == (bits_per_sample));
+          read_data_detail<unsigned int>(tiff);
         } else {
           DXTBX_ERROR("Unsupported bits per sample");
         }
       } else if (sample_format == SAMPLEFORMAT_IEEEFP) {
         if (bits_per_sample == 32) {
-          type_ = "float32";
+          DXTBX_ASSERT(8 * sizeof(float) == (bits_per_sample));
+          read_data_detail<float>(tiff);
         } else if (bits_per_sample == 64) {
-          type_ = "float64";
+          DXTBX_ASSERT(8 * sizeof(double) == (bits_per_sample));
+          read_data_detail<double>(tiff);
         } else {
           DXTBX_ERROR("Unsupported bits per sample");
         }
@@ -157,23 +113,41 @@ namespace dxtbx { namespace format {
         DXTBX_ERROR("Unsupported format");
       }
 
-      // Get the scan line length and allocate a buffer
-      tsize_t scanline_size = TIFFScanlineSize(tiff);
-      DXTBX_ASSERT(scanline_size == (bits_per_sample / 8) * fast_size);
-
-      // Allocate the image array
-      data_.resize(scanline_size * slow_size);
-
-      // Loop through and read the data
-      for (std::size_t j = 0; j < slow_size; ++j) {
-        DXTBX_ASSERT(TIFFReadScanline(tiff, (void *)&data_[j * scanline_size], j) == 1);
-      }
-
       // Close the tiff file
       TIFFClose(tiff);
     }
 
-    std::vector<char> data_;
+    template <typename T>
+    void read_data_detail(TIFF *tiff) {
+
+      typedef typename array_type<T>::type array_data_type;
+
+      // Get the scan line length and allocate a buffer
+      tsize_t scanline_size = TIFFScanlineSize(tiff);
+      std::size_t element_size = sizeof(T);
+      DXTBX_ASSERT(scanline_size == element_size * fast_size_);
+
+      // The image grid
+      DXTBX_ASSERT(slow_size_ > 0);
+      DXTBX_ASSERT(fast_size_ > 0);
+      scitbx::af::c_grid<2> grid(slow_size_, fast_size_);
+
+      // Allocate the array
+      array_data_type data(grid);
+
+      // Loop through and read the data
+      for (std::size_t j = 0; j < slow_size_; ++j) {
+        DXTBX_ASSERT(TIFFReadScanline(tiff, (void *)&data[j * fast_size_], j) == 1);
+      }
+
+      // Add to the tiles list
+      tiles_.push_back(variant_type(data));
+      names_.push_back("");
+    }
+
+    std::size_t slow_size_;
+    std::size_t fast_size_;
+
   };
 
 

@@ -115,9 +115,9 @@ namespace dxtbx { namespace format {
      * Swap bytes for an array of longs
      */
     inline
-    void swap_bytes(long *first, long *last) {
-      for (long *it = first; it != last; ++it) {
-        long x = *it;
+    void swap_bytes(int *first, int *last) {
+      for (int *it = first; it != last; ++it) {
+        int x = *it;
         *it = (x << 24) |
               (x << 8 & 0xff0000) |
               (x >> 8 & 0xff00) |
@@ -129,9 +129,9 @@ namespace dxtbx { namespace format {
      * Swap bytes for an array of unsigned longs
      */
     inline
-    void swap_bytes(unsigned long *first, unsigned long *last) {
-      for (unsigned long *it = first; it != last; ++it) {
-        unsigned long x = *it;
+    void swap_bytes(unsigned int *first, unsigned int *last) {
+      for (unsigned int *it = first; it != last; ++it) {
+        unsigned int x = *it;
         *it = (x << 24) |
               (x << 8 & 0xff0000) |
               (x >> 8 & 0xff00) |
@@ -148,64 +148,16 @@ namespace dxtbx { namespace format {
   class SMVReader : public ImageReader {
   public:
 
-    typedef ImageReader::size_type size_type;
-
     /**
      * Construct the class with the filename
      */
     SMVReader(const char *filename)
-      : ImageReader(filename) {
+      : ImageReader(filename),
+        slow_size_(0),
+        fast_size_(0) {
       std::ifstream handle(filename, std::ifstream::binary);
       read_header(handle);
       read_data(handle);
-    }
-
-    /**
-     * Get the image data as the desired type
-     */
-    template<typename T>
-    scitbx::af::versa< T, scitbx::af::c_grid<2> > as_type() const {
-      scitbx::af::c_grid<2> grid(size_[0], size_[1]);
-      scitbx::af::versa< T, scitbx::af::c_grid<2> > result(grid);
-
-      // Get the number of elements
-      std::size_t n_elements = size_[0] * size_[1];
-
-      // Copy the data into the output array
-      if (type_ == "int16") {
-        const short *buffer = reinterpret_cast<const short*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(short));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      } else if (type_ == "uint16") {
-        const unsigned short *buffer = reinterpret_cast<const unsigned short*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(unsigned short));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      } else if (type_ == "int32") {
-        const long *buffer = reinterpret_cast<const long*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(long));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      } else if (type_ == "uint32") {
-        const unsigned long *buffer = reinterpret_cast<const unsigned long*>(&data_[0]);
-        DXTBX_ASSERT(data_.size() == n_elements * sizeof(unsigned long));
-        std::copy(buffer, buffer + n_elements, result.begin());
-      }
-
-      // Return the result
-      return result;
-    }
-
-    /**
-     * Get the image data as an integer array
-     */
-    scitbx::af::versa< int, scitbx::af::c_grid<2> > as_int() const {
-      return as_type<int>();
-    }
-
-    /**
-     * Get the image data as a double array
-     */
-    scitbx::af::versa< double, scitbx::af::c_grid<2> > as_double() const {
-      return as_type<double>();
     }
 
     /**
@@ -217,6 +169,12 @@ namespace dxtbx { namespace format {
 
 
   protected:
+
+    // Helper structs to get types
+    template <typename T>
+    struct array_type {
+      typedef scitbx::af::versa< T, scitbx::af::c_grid<2> > type;
+    };
 
     /**
      * Read the number of bytes in the header
@@ -303,9 +261,9 @@ namespace dxtbx { namespace format {
                 value == "little_endian");
             byte_order_ = value;
                   } else if (name == "SIZE1") {
-            size_[0] = detail::get_value<std::size_t>(value);
+            slow_size_ = detail::get_value<std::size_t>(value);
           } else if (name == "SIZE2") {
-            size_[1] = detail::get_value<std::size_t>(value);
+            fast_size_ = detail::get_value<std::size_t>(value);
           } else if (name == "COMPRESSION") {
             DXTBX_ASSERT(value == "None");
           }
@@ -315,7 +273,8 @@ namespace dxtbx { namespace format {
       // Check we have everything
       DXTBX_ASSERT(type_ != "");
       DXTBX_ASSERT(byte_order_ != "");
-      DXTBX_ASSERT(size_.all_gt(0));
+      DXTBX_ASSERT(slow_size_ > 0);
+      DXTBX_ASSERT(fast_size_ > 0);
     }
 
     /**
@@ -324,50 +283,53 @@ namespace dxtbx { namespace format {
     void read_data(std::ifstream &handle) {
 
       // Get the element size
-      std::size_t element_size = 0;
       if (type_ == "int16") {
-        element_size = sizeof(short);
+        read_data_detail<short>(handle);
       } else if (type_ == "uint16") {
-        element_size = sizeof(unsigned short);
+        read_data_detail<unsigned short>(handle);
       } else if (type_ == "int32") {
-        element_size = sizeof(long);
+        read_data_detail<int>(handle);
       } else if (type_ == "uint32") {
-        element_size = sizeof(unsigned long);
+        read_data_detail<unsigned int>(handle);
       } else {
         DXTBX_ASSERT("Unsupported type");
       }
-
-      // The number of bytes
-      std::size_t n_elements = size_[0] * size_[1];
-      std::size_t nbytes = n_elements * element_size;
-      DXTBX_ASSERT(nbytes > 0);
-
-      // Allocate the data buffer
-      data_.resize(nbytes);
-
-      // Read the data
-      handle.read(&data_[0], nbytes);
-      DXTBX_ASSERT(handle.good());
-
-      // If we need to swap bytes
-      if (detail::is_big_endian(byte_order_) != detail::is_big_endian()) {
-        if (type_ == "int16") {
-          short *buffer = reinterpret_cast<short*>(&data_[0]);
-          detail::swap_bytes(buffer, buffer + n_elements);
-        } else if (type_ == "uint16") {
-          unsigned short *buffer = reinterpret_cast<unsigned short*>(&data_[0]);
-          detail::swap_bytes(buffer, buffer + n_elements);
-        } else if (type_ == "int32") {
-          long *buffer = reinterpret_cast<long*>(&data_[0]);
-          detail::swap_bytes(buffer, buffer + n_elements);
-        } else if (type_ == "uint32") {
-          unsigned long *buffer = reinterpret_cast<unsigned long*>(&data_[0]);
-          detail::swap_bytes(buffer, buffer + n_elements);
-        }
-      }
     }
 
-    std::vector<char> data_;
+    template <typename T>
+    void read_data_detail(std::ifstream &handle) {
+
+      typedef typename array_type<T>::type array_data_type;
+
+      // The image grid
+      DXTBX_ASSERT(slow_size_ > 0);
+      DXTBX_ASSERT(fast_size_ > 0);
+      scitbx::af::c_grid<2> grid(slow_size_, fast_size_);
+
+      // Allocate the array
+      std::size_t element_size = sizeof(T);
+      std::size_t nbytes = element_size * slow_size_ * fast_size_;
+      array_data_type data(grid);
+
+      // Read the data
+      handle.read(reinterpret_cast<char*>(&data[0]), nbytes);
+
+      // Swap bytes if necessary
+      if (detail::is_big_endian(byte_order_) != detail::is_big_endian()) {
+        detail::swap_bytes(data.begin(), data.end());
+      }
+
+      // Add to the tiles list
+      tiles_.push_back(variant_type(data));
+      names_.push_back("");
+
+      // Check handle is still good
+      DXTBX_ASSERT(handle.good());
+    }
+
+    std::size_t slow_size_;
+    std::size_t fast_size_;
+    std::string type_;
     std::string byte_order_;
   };
 

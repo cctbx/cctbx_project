@@ -30,14 +30,23 @@ namespace dxtbx { namespace format { namespace boost_python {
   BOOST_PYTHON_MODULE(dxtbx_format_image_ext)
   {
 
+    class_<ImageTile>("ImageTile", no_init)
+      .def("as_int", &ImageTile::as_int)
+      .def("as_double", &ImageTile::as_double)
+      .def("is_int", &ImageTile::is_int)
+      .def("is_double", &ImageTile::is_double)
+      .def("name", &ImageTile::name)
+      ;
+
+    class_<Image>("Image", no_init)
+      .def("tile", &Image::tile)
+      .def("tile_names", &Image::tile_names)
+      .def("n_tiles", &Image::n_tiles)
+      ;
+
     class_<ImageReader>("ImageReader", no_init)
       .def("filename", &ImageReader::filename)
-      .def("size", &ImageReader::size)
-      .def("type", &ImageReader::type)
-      .def("is_int", &ImageReader::is_int)
-      .def("is_float", &ImageReader::is_float)
-      .def("as_int", &ImageReader::as_int)
-      .def("as_double", &ImageReader::as_double)
+      .def("image", &ImageReader::image)
       ;
 
     class_<SMVReader, bases<ImageReader> >("SMVReader", no_init)
