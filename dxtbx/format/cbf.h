@@ -237,8 +237,12 @@ namespace dxtbx { namespace format {
 
       // Read all the data into a buffer
       std::string buffer;
+      std::ifstream::pos_type file_start = handle.tellg();
       handle.seekg(0, std::ios::end);
-      std::ifstream::pos_type file_size = handle.tellg();
+      std::ifstream::pos_type file_end = handle.tellg();
+      DXTBX_ASSERT(file_end > file_start);
+      std::size_t file_size = file_end - file_start;
+      DXTBX_ASSERT(file_size > 0);
       buffer.resize(file_size);
       handle.seekg(0, std::ios::beg);
       handle.read(&buffer[0], file_size);
