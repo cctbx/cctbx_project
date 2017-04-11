@@ -233,7 +233,7 @@ namespace dxtbx { namespace format {
     void read_data() {
 
       // Open the file handle
-      std::ifstream handle(filename_, std::ifstream::binary);
+      std::ifstream handle(filename_.c_str(), std::ifstream::binary);
 
       // Read all the data into a buffer
       std::string buffer;
