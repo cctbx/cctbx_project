@@ -132,7 +132,7 @@ class installer (object) :
       log=log,
       pkg_dirs=options.pkg_dirs,
       no_download=options.no_download)
-    # Shortcut: Extract python for Windows bundled with all preinstalled modules
+    # Shortcut: Extract HDF5 and python for Windows bundled with all preinstalled modules
     if sys.platform == "win32":
       if platform.architecture()[0] == '64bit':
         winpythonpkg = WIN64PYTHON_PKG
@@ -158,9 +158,8 @@ class installer (object) :
         print >> self.log, "extracting", zipinfo
         winhdf5.extract(zipinfo, path=self.base_dir)
       winhdf5.close()
-
+      # Provide the VC++ redistributable libraries in case we are compiling with OpenMP
       self.fetch_package(pkg_name=vcredist, pkg_url=BASE_CCI_PKG_URL)
-
       # On Windows quit now as all required modules are in the precompiled python package
       # and HDF5 installation
       return
