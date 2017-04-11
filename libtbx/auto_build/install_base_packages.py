@@ -255,17 +255,16 @@ class installer (object) :
     if options.build_gui or options.build_all or options.download_only:
       packages += [
         'png',
+        'tiff',
         'freetype',
         'matplotlib',
         'pyopengl',
         'wxpython',
       ]
       if self.flag_is_mac or options.download_only:
-        # Use system libpng.
         packages += ['py2app']
       if self.flag_is_linux or options.download_only:
         packages += [
-          'tiff',
           'gettext',
           'glib',
           'expat',
