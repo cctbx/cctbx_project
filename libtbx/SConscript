@@ -223,7 +223,7 @@ def gcc_common_warn_options():
     if ( (env_etc.gcc_version == 40407) or (env_etc.gcc_version == 40504) or
          (env_etc.gcc_version >= 40602) ):
       result.append("-Wno-unused-local-typedefs")
-      result.append("--Werror=vla")  # do not allow non-portable extension for dynamic array allocation
+      result.append("-Werror=vla")  # do not allow non-portable extension for dynamic array allocation
   return result
 
 def clang_common_warn_options():
