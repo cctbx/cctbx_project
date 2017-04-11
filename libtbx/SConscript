@@ -207,7 +207,9 @@ def gcc_common_warn_options():
     "-Wall",
     "-Wno-sign-compare",
     "-Wno-unknown-pragmas",
-    "-Wno-parentheses"]
+    "-Wno-parentheses",
+    "-Werror=vla" # do not allow non-portable extension for dynamic array allocation
+    ]
   if (    env_etc.gcc_version is not None
       and env_etc.gcc_version >= 40000):
     result.append("-Winit-self")
