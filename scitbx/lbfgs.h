@@ -917,9 +917,9 @@ namespace lbfgs {
       int info = 5;
       brackt = false;
       FloatType sxnorm = std::sqrt(ddot(SizeType(n), sx, sx));
-      FloatType  pk[n];
-      FloatType  a_sum[n];
-      FloatType  akm1[n];
+      FloatType* pk = new FloatType[n];
+      FloatType* a_sum = new FloatType[n];
+      FloatType* akm1 = new FloatType[n];
       for (SizeType i=0; i < n; i++) {
         pk[i] = sx[i]/sxnorm;
         akm1[i] = -gx[i]/sxnorm;
