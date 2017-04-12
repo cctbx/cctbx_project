@@ -938,6 +938,9 @@ namespace lbfgs {
         theta = -theta;
       }
       stp = theta / 2.0;
+      delete[] pk;
+      delete[] a_sum;
+      delete[] akm1;
       return info;
     }
     //<--- Insertion ends

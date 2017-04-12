@@ -17,19 +17,20 @@ env_etc.dxtbx_hdf5_libs = ["hdf5"]
 env_etc.dxtbx_lib_paths = [env_etc.base_lib, env_etc.libtbx_lib, os.path.join(sys.prefix, 'lib')]
 env_etc.dxtbx_hdf5_lib_paths = []
 if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
-  env_etc.dxtbx_libs = ["boost_python"]
+  env_etc.dxtbx_libs = ["libtiff", "cbf", "boost_python"]
   env_etc.dxtbx_hdf5_libs = ["libhdf5"]
   env_etc.dxtbx_includes.append(libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'include')))
   env_etc.dxtbx_lib_paths = [
                               env_etc.libpath_python,
                               env_etc.libtbx_lib,
+                              libtbx.env.under_base('libtiff'),
                             ]
   env_etc.dxtbx_hdf5_lib_paths = [
                                    libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'lib'))
                                  ]
 
   env_etc.dxtbx_includes.append(os.path.join(libtbx.env.dist_path("cbflib_adaptbx"), 'msvc_include'))
-                                 
+  env_etc.dxtbx_includes.append(libtbx.env.under_base('libtiff'))
                                  
 # for the hdf5.h file - look at where Python is coming from unless is OS X
 # framework build... messy but appears to work on Linux and OS X
