@@ -246,6 +246,9 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   model_map_coeffs_normalized=model_f_array.phase_transfer(
      phase_source=model_phases,deg=True)
 
+  obs_b_iso=get_b_iso(f_array,d_min=resolution)
+  print >>out,"\nEffective b_iso of observed data: %6.1f A**2" %(obs_b_iso)
+
   # get f and model_f vs resolution and FSC vs resolution and apply
   # scale to f_array and return sharpened map
   dsd = f_array.d_spacings().data()
