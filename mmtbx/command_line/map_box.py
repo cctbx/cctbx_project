@@ -85,6 +85,7 @@ Parameters:"""%h
   if len(inputs.pdb_file_names)>0:
     pdb_inp = iotbx.pdb.input(file_name=inputs.pdb_file_names[0])
     pdb_hierarchy = pdb_inp.construct_hierarchy()
+  if pdb_hierarchy:
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
   else:
