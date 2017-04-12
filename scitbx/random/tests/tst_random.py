@@ -7,6 +7,11 @@ from scitbx.array_family import flex
 import itertools
 import math
 
+# Boost 1.56 changes normal distribution, but keep old tests for testing
+# older versions of Boost
+import libtbx.load_env
+boost_version = libtbx.env.boost_version
+
 def exercise_distributions():
   from scitbx.random import normal_distribution
   n = normal_distribution()
@@ -21,13 +26,22 @@ def exercise_variate_generators():
   for i in xrange(10):
     scitbx.random.set_random_seed(0)
     g = variate(normal_distribution())
-    assert approx_equal(g(), -0.917787219374)
-    assert approx_equal(g(10),
-      (1.21838707856, 1.732426915,
-       0.838038157555, -0.296895169923,
-       0.246451144946, -0.635474652255,
-       -0.0980626986425, 0.36458295417,
-       0.534073780268, -0.665073136294))
+    if (boost_version < 105600):
+      assert approx_equal(g(), -1.2780081289048213)
+      assert approx_equal(g(10),
+        (-0.40474189234755492, -0.41845505596083288,
+         -1.8825790263067721, -1.5779112018107659,
+         -1.1888174422378859, -1.8619619179878537,
+         -0.53946818661388318, -1.2400941724410812,
+         0.64511959841907285, -0.59934120033270688))
+    else:
+      assert approx_equal(g(), -0.917787219374)
+      assert approx_equal(g(10),
+        (1.21838707856, 1.732426915,
+         0.838038157555, -0.296895169923,
+         0.246451144946, -0.635474652255,
+         -0.0980626986425, 0.36458295417,
+         0.534073780268, -0.665073136294))
 
   stat = basic_statistics(flex.double(itertools.islice(g, 1000000)))
   assert approx_equal(stat.mean,            0, eps=0.005)
