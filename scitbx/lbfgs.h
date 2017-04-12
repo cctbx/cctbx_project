@@ -266,14 +266,14 @@ namespace lbfgs {
         FloatType width;
         FloatType width1;
         FloatType stx;
-        FloatType* sx;
+        std::vector<FloatType> sx;
         FloatType fx;
         FloatType dgx;
-        FloatType* gx;
+        std::vector<FloatType> gx;
         FloatType sty;
         FloatType fy;
         FloatType dgy;
-        FloatType* gy;
+        std::vector<FloatType> gy;
         FloatType stmin;
         FloatType stmax;
 
@@ -547,8 +547,8 @@ namespace lbfgs {
         stx = FloatType(0);
         fx = finit;
         dgx = dginit;
-        gx = new FloatType[n];
-        sx = new FloatType[n];
+        gx = std::vector<FloatType>(n);
+        sx = std::vector<FloatType>(n);
         for (SizeType j = 0; j < n; j++) {
           gx[j] = g[j];
           sx[j] = s[j+is0];
@@ -668,13 +668,13 @@ namespace lbfgs {
         }
         //---> Insertion starts
         if (gradient_only) {
-          gy = new FloatType[n];
+          gy = std::vector<FloatType>(n);
           for (SizeType j = 0; j < n; j++) {
             gy[j] = g[j];
           }
-          FloatType* const& const_gy = gy;
-          FloatType* const& const_gx = gx;
-          FloatType* const& const_sx = sx;
+          FloatType* const& const_gy = &(gy[0]);
+          FloatType* const& const_gx = &(gx[0]);
+          FloatType* const& const_sx = &(sx[0]);
           infoc = mcstep_g(n,  const_sx, const_gx, stp,  const_gy,
                         brackt, stmin, stpmax);
          }
@@ -917,17 +917,17 @@ namespace lbfgs {
       int info = 5;
       brackt = false;
       FloatType sxnorm = std::sqrt(ddot(SizeType(n), sx, sx));
-      FloatType* pk = new FloatType[n];
-      FloatType* a_sum = new FloatType[n];
-      FloatType* akm1 = new FloatType[n];
+      std::vector<FloatType> pk(n);
+      std::vector<FloatType> a_sum(n);
+      std::vector<FloatType> akm1(n);
       for (SizeType i=0; i < n; i++) {
         pk[i] = sx[i]/sxnorm;
         akm1[i] = -gx[i]/sxnorm;
         a_sum[i] = akm1[i] - gp[i]/sxnorm;
       }
-      FloatType* const& a_sum_c = a_sum;
-      FloatType* const& akm1_c = akm1;
-      FloatType* const& pk_c = pk;
+      FloatType* const& a_sum_c = &(a_sum[0]);
+      FloatType* const& akm1_c = &(akm1[0]);
+      FloatType* const& pk_c = &(pk[0]);
       FloatType dfk = -0.5*ddot(SizeType(n), pk_c, a_sum_c);
       FloatType rho = -1.0*ddot(SizeType(n), pk_c, akm1_c);
       if (abs(dfk - rho) < 1e-5){
@@ -938,9 +938,6 @@ namespace lbfgs {
         theta = -theta;
       }
       stp = theta / 2.0;
-      delete[] pk;
-      delete[] a_sum;
-      delete[] akm1;
       return info;
     }
     //<--- Insertion ends
