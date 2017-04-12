@@ -138,10 +138,12 @@ class installer (object) :
         winpythonpkg = WIN64PYTHON_PKG
         hdf5pkg = WIN64HDF5_PKG
         vcredist = VCREDIST64
+        libtiff = WINLIBTIFF64
       else:
         winpythonpkg = WIN32PYTHON_PKG
         hdf5pkg = WIN32HDF5_PKG
         vcredist = VCREDIST32
+        libtiff = WINLIBTIFF32
 
       self.fetch_package(pkg_name=winpythonpkg, pkg_url=BASE_CCI_PKG_URL)
       winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, winpythonpkg), 'r')
@@ -158,6 +160,15 @@ class installer (object) :
         print >> self.log, "extracting", zipinfo
         winhdf5.extract(zipinfo, path=self.base_dir)
       winhdf5.close()
+
+      self.fetch_package(pkg_name=libtiff, pkg_url=BASE_CCI_PKG_URL)
+      winlibtiff = zipfile.ZipFile(os.path.join(self.tmp_dir, libtiff), 'r')
+      members = winlibtiff.namelist()
+      for zipinfo in members:
+        print >> self.log, "extracting", zipinfo
+        winlibtiff.extract(zipinfo, path=self.base_dir)
+      winlibtiff.close()
+
       # Provide the VC++ redistributable libraries in case we are compiling with OpenMP
       self.fetch_package(pkg_name=vcredist, pkg_url=BASE_CCI_PKG_URL)
       # On Windows quit now as all required modules are in the precompiled python package

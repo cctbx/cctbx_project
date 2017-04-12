@@ -119,6 +119,8 @@ WIN64HDF5_PKG = "HDF5-1.8.16-win64.zip"
 WIN32HDF5_PKG = "HDF5-1.8.16-win32.zip"
 VCREDIST64 = "vcredist_x64.exe"
 VCREDIST32 = "vcredist_x86.exe"
+WINLIBTIFF64 = "libtiff4.0.6x64.zip"
+WINLIBTIFF32 = "libtiff4.0.6x32.zip"
 
 # Various dependencies from external repositories, distributed as static
 # tarballs (since they are not under active development by us or our
