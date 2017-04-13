@@ -32,7 +32,7 @@ def contiguous_ss_selections(pdb_hierarchy):
     sec_str_from_pdb_file        = None,
     params                       = params.secondary_structure,
     log                          = null_out())
-  n_atoms = pdb_hierarchy.atoms().size()
+  n_atoms = pdb_hierarchy.atoms_size()
   helix_sel = [s.iselection() for s in ssm.helix_selections()]
   beta_sel  = [s.iselection() for s in ssm.beta_selections()]
   bp_sel    = [s.iselection() for s in ssm.base_pair_selections()]
