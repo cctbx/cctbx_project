@@ -37,7 +37,9 @@ namespace dxtbx { namespace model {
         divergence_(0.0),
         sigma_divergence_(0.0),
         polarization_normal_(0.0, 1.0, 0.0),
-        polarization_fraction_(0.999) {}
+        polarization_fraction_(0.999),
+        flux_(0),
+        transmission_(1.0) {}
 
     /**
      * Initialise all the beam parameters.
@@ -47,7 +49,9 @@ namespace dxtbx { namespace model {
       : divergence_(0.0),
         sigma_divergence_(0.0),
         polarization_normal_(0.0, 1.0, 0.0),
-        polarization_fraction_(0.999) {
+        polarization_fraction_(0.999),
+        flux_(0),
+        transmission_(1.0) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
       direction_ = -s0.normalize();
@@ -64,7 +68,9 @@ namespace dxtbx { namespace model {
         divergence_(0.0),
         sigma_divergence_(0.0),
         polarization_normal_(0.0, 1.0, 0.0),
-        polarization_fraction_(0.999) {
+        polarization_fraction_(0.999),
+        flux_(0),
+        transmission_(1.0) {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
@@ -77,7 +83,9 @@ namespace dxtbx { namespace model {
       : divergence_(divergence),
         sigma_divergence_(sigma_divergence),
         polarization_normal_(0.0, 1.0, 0.0),
-        polarization_fraction_(0.999) {
+        polarization_fraction_(0.999),
+        flux_(0),
+        transmission_(1.0) {
       DXTBX_ASSERT(s0.length() > 0);
       wavelength_ = 1.0 / s0.length();
       direction_ = -s0.normalize();
@@ -95,7 +103,9 @@ namespace dxtbx { namespace model {
         divergence_(divergence),
         sigma_divergence_(sigma_divergence),
         polarization_normal_(0.0, 1.0, 0.0),
-        polarization_fraction_(0.999)  {
+        polarization_fraction_(0.999),
+        flux_(0),
+        transmission_(1.0) {
       DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
@@ -103,12 +113,16 @@ namespace dxtbx { namespace model {
     Beam(vec3 <double> direction, double wavelength,
          double divergence, double sigma_divergence,
          vec3<double> polarization_normal,
-         double polarization_fraction)
+         double polarization_fraction,
+         double flux,
+         double transmission)
       : wavelength_(wavelength),
         divergence_(divergence),
         sigma_divergence_(sigma_divergence),
         polarization_normal_(polarization_normal),
-        polarization_fraction_(polarization_fraction)  {
+        polarization_fraction_(polarization_fraction),
+        flux_(0),
+        transmission_(1.0) {
       direction_ = direction.normalize();
     }
 
@@ -200,6 +214,34 @@ namespace dxtbx { namespace model {
       polarization_fraction_ = polarization_fraction;
     }
 
+    /**
+     * Set the flux
+     */
+    void set_flux(double flux) {
+      flux_ = flux;
+    }
+
+    /**
+     * Set the transmission
+     */
+    void set_transmission(double transmission) {
+      transmission_ = transmission;
+    }
+
+    /**
+     * Get the flux
+     */
+    double get_flux() const {
+      return flux_;
+    }
+
+    /**
+     * Get the transmission
+     */
+    double get_transmission() const {
+      return transmission_;
+    }
+
     /** Check wavlength and direction are (almost) same */
     bool operator==(const Beam &rhs) const {
       double eps = 1.0e-6;
@@ -249,6 +291,8 @@ namespace dxtbx { namespace model {
     double sigma_divergence_;
     vec3 <double> polarization_normal_;
     double polarization_fraction_;
+    double flux_;
+    double transmission_;
   };
 
   /** Print beam information */

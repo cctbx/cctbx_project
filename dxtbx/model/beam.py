@@ -123,13 +123,19 @@ class BeamFactory:
   def make_polarized_beam(sample_to_source=None, wavelength=None,
                           s0=None, unit_s0=None,
                           polarization=None, polarization_fraction=None,
-                          divergence=None, sigma_divergence=None):
+                          divergence=None, sigma_divergence=None,
+                          flux=None, transmission=None):
     assert(polarization)
     assert(polarization_fraction)
 
     if divergence == None or sigma_divergence == None:
       divergence = 0.0
       sigma_divergence = 0.0
+
+    if flux is None:
+      flux = 0
+    if transmission is None:
+      transmission = 1.0
 
     if sample_to_source:
       assert(wavelength)
@@ -139,7 +145,9 @@ class BeamFactory:
           float(divergence),
           float(sigma_divergence),
           tuple(map(float, polarization)),
-          float(polarization_fraction))
+          float(polarization_fraction),
+          float(flux),
+          float(transmission))
     elif unit_s0:
       assert(wavelength)
       return Beam(
@@ -148,7 +156,9 @@ class BeamFactory:
           float(divergence),
           float(sigma_divergence),
           tuple(map(float, polarization)),
-          float(polarization_fraction))
+          float(polarization_fraction),
+          float(flux),
+          float(transmission))
     else:
       assert(s0)
       return Beam(
@@ -156,7 +166,9 @@ class BeamFactory:
           float(divergence),
           float(sigma_divergence),
           tuple(map(float, polarization)),
-          float(polarization_fraction))
+          float(polarization_fraction),
+          float(flux),
+          float(transmission))
 
   @staticmethod
   def simple(wavelength):

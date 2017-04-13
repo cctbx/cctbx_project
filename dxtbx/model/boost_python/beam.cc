@@ -37,7 +37,9 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_divergence(),
         obj.get_sigma_divergence(),
         obj.get_polarization_normal(),
-        obj.get_polarization_fraction());
+        obj.get_polarization_fraction(),
+        obj.get_flux(),
+        obj.get_transmission());
     }
   };
 
@@ -50,6 +52,8 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["sigma_divergence"] = rad_as_deg(obj.get_sigma_divergence());
     result["polarization_normal"] = obj.get_polarization_normal();
     result["polarization_fraction"] = obj.get_polarization_fraction();
+    result["flux"] = obj.get_flux();
+    result["transmission"] = obj.get_transmission();
     return result;
   }
 
@@ -64,7 +68,9 @@ namespace dxtbx { namespace model { namespace boost_python {
         boost::python::extract< double >(obj.get("sigma_divergence", 0.0))),
       boost::python::extract< vec3<double> >(
         obj.get("polarization_normal", vec3<double>(0.0, 1.0, 0.0))),
-      boost::python::extract< double >(obj.get("polarization_fraction", 0.999)));
+      boost::python::extract< double >(obj.get("polarization_fraction", 0.999)),
+      boost::python::extract< double >(obj.get("flux", 0)),
+      boost::python::extract< double >(obj.get("transmission", 1)));
   }
 
   static Beam* make_beam(vec3<double> sample_to_source, double wavelength,
@@ -97,19 +103,26 @@ namespace dxtbx { namespace model { namespace boost_python {
                                double wavelength,
                                double divergence, double sigma_divergence,
                                vec3<double> polarization_normal,
-                               double polarization_fraction, bool deg) {
+                               double polarization_fraction,
+                               double flux,
+                               double transmission,
+                               bool deg) {
     Beam *beam = NULL;
     if (deg) {
       beam = new Beam(sample_to_source, wavelength,
                       deg_as_rad(divergence),
                       deg_as_rad(sigma_divergence),
                       polarization_normal,
-                      polarization_fraction);
+                      polarization_fraction,
+                      flux,
+                      transmission);
     } else {
       beam = new Beam(sample_to_source, wavelength,
                       divergence, sigma_divergence,
                       polarization_normal,
-                      polarization_fraction);
+                      polarization_fraction,
+                      flux,
+                      transmission);
     }
     return beam;
   }
@@ -179,12 +192,14 @@ namespace dxtbx { namespace model { namespace boost_python {
           make_constructor(
           &make_beam_w_all,
           default_call_policies(), (
-                  arg("direction"),
-                  arg("wavelength"),
-                  arg("divergence"),
-                  arg("sigma_divergence"),
+            arg("direction"),
+            arg("wavelength"),
+            arg("divergence"),
+            arg("sigma_divergence"),
             arg("polarization_normal"),
             arg("polarization_fraction"),
+            arg("flux"),
+            arg("transmission"),
             arg("deg") = true)))
       .def("get_direction",
         &Beam::get_direction)
@@ -224,6 +239,14 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Beam::get_polarization_fraction)
       .def("set_polarization_fraction",
         &Beam::set_polarization_fraction)
+      .def("get_flux",
+        &Beam::get_flux)
+      .def("set_flux",
+        &Beam::set_flux)
+      .def("get_transmission",
+        &Beam::get_transmission)
+      .def("set_transmission",
+        &Beam::set_transmission)
       .def("rotate_around_origin",
           &rotate_around_origin, (
             arg("axis"),
