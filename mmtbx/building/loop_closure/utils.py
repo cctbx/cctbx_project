@@ -30,6 +30,13 @@ def get_phi_psi_atoms(hierarchy):
   return phi_psi_atoms
 
 def py_dihedral_angle2(sites, deg=True):
+  """
+  Should not be used anywhere. Algorithm maybe faster that currently available
+  in c++, needs further investigation.
+  - experimental, while aware of analogous c++ implementation;
+  - custom duplication of basic linalg functions is intentional;
+  - no tests since not used in production and may be removed in future.
+  """
   def dot_product(a,b):
     return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
   def cross_product(a,b):
@@ -216,7 +223,7 @@ def rotate_atoms_around_bond(
   # rotate stuff
   for a in atoms:
     if ((direction_forward and a.i_seq > atom_axis_point_1.i_seq) or
-        (not direction_forward and a.i_seq < atom_axis_point_1.i_seq)):
+        (not direction_forward and a.i_seq < atom_axis_point_2.i_seq)):
       new_xyz = rotate_point_around_axis(
           axis_point_1=rotate_xyz1,
           axis_point_2=rotate_xyz2,
