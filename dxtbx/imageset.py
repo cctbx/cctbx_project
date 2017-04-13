@@ -580,7 +580,7 @@ class ImageSet(object):
       if p is not None:
         r = r - p
       if g is not None:
-        r = r * g
+        r = r / g
       result.append(r)
     return tuple(result)
 
@@ -594,6 +594,10 @@ class ImageSet(object):
     gain = fmt.get_gain()
     if gain is not None:
       return gain
+    else:
+      gain = [p.get_gain() for p in self.get_detector(0)]
+      if all([g > 0 for g in gain]):
+        return gain
     return self.external_lookup.gain.data
 
   def get_pedestal(self, index):
