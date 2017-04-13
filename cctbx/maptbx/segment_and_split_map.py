@@ -352,6 +352,16 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map.
 
+     box_center = None
+       .type = floats
+       .short_caption = Center of box
+       .help = You can specify the center of the box (A units)
+
+     box_size = 40 40 40
+       .type = ints
+       .short_caption = Size of box
+       .help = You can specify the size of the box (grid units) 
+
      max_box_fraction = 0.5
        .type = float
        .short_caption = Max size of box for auto_sharpening
@@ -1394,6 +1404,8 @@ class sharpening_info:
       self.eps=params.map_modification.eps
       self.n_bins=params.map_modification.n_bins
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
+      self.box_center=params.map_modification.box_center
+      self.box_size=params.map_modification.box_size
       self.min_ratio_of_ncs_copy_to_first=\
          params.segmentation.min_ratio_of_ncs_copy_to_first
       self.max_ratio_to_target=params.segmentation.max_ratio_to_target
@@ -5549,13 +5561,13 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 
 def put_bounds_in_range(
      lower_bounds=None,upper_bounds=None,
-     minimum_size=None,
+     box_size=None,
      n_real=None):
   # put lower and upper inside (0,n_real) and try to make size at least minimum
 
   new_lb=[]
   new_ub=[]
-  for lb,ub,ms,nr in zip(lower_bounds,upper_bounds,minimum_size,n_real):
+  for lb,ub,ms,nr in zip(lower_bounds,upper_bounds,box_size,n_real):
     boundary=int(ms-(ub-lb+1))//2
     if boundary>0:
        lb=lb-boundary
@@ -5598,7 +5610,8 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
     if auto_sharpen_methods and auto_sharpen_methods != ['None']:
       args.append("auto_sharpen_methods=*%s" %(" *".join(auto_sharpen_methods)))
 
-    for param in ['box_in_auto_sharpen','resolution','d_min_ratio',
+    for param in ['box_size','box_center',
+       'box_in_auto_sharpen','resolution','d_min_ratio',
        'max_box_fraction','k_sharpen',
         'residual_target','sharpening_target',
        'search_b_min','search_b_max','search_b_n','maximum_low_b_adjusted_sa',
@@ -5629,7 +5642,6 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
 def select_box_map_data(si=None,
            map_data=None,
            pdb_inp=None,
-           minimum_size=(40,40,40),
            out=sys.stdout):
 
   n_residues=si.n_residues,
@@ -5637,6 +5649,7 @@ def select_box_map_data(si=None,
   solvent_fraction=si.solvent_fraction
   crystal_symmetry=si.crystal_symmetry
   max_box_fraction=si.max_box_fraction
+  box_size=si.box_size
 
   if pdb_inp:  # use model to identify region to cut out
     from mmtbx.command_line.map_box import run as run_map_box
@@ -5651,13 +5664,17 @@ def select_box_map_data(si=None,
     box_pdb_inp=box.hierarchy.as_pdb_input()
 
   else:
-    lower_bounds,upper_bounds=box_of_biggest_region(si=si,
+    if si.box_center:  # center at box_center
+      lower_bounds,upper_bounds=box_from_center(si=si,
+        map_data=map_data,out=out)
+    else:
+      lower_bounds,upper_bounds=box_of_biggest_region(si=si,
            map_data=map_data,
            out=out)
 
     lower_bounds,upper_bounds=put_bounds_in_range(
      lower_bounds=lower_bounds,upper_bounds=upper_bounds,
-     minimum_size=minimum_size,
+     box_size=box_size,
      n_real=map_data.all())
 
     # select map data inside this box
@@ -5685,6 +5702,19 @@ def select_box_map_data(si=None,
       solvent_fraction=box_solvent_fraction)
 
     return None,box_map,box_crystal_symmetry,box_sharpening_info_obj
+
+def box_from_center( si=None,
+           map_data=None,
+           out=sys.stdout):
+    cx,cy,cz=si.crystal_symmetry.unit_cell().fractionalize(si.box_center)
+    print >>out, "\nBox centered at (%7.2f,%7.2f,%7.2f) A" %(
+      tuple(si.box_center))
+    if cx<0 or cx>1 or cy<0 or cy>1 or cz<0 or cz>1:
+       raise Sorry("Box center must be inside (0,1)")
+    ax,ay,az=map_data.all()
+    cgx,cgy,cgz=int(0.5+ax*cx),int(0.5+ay*cy),int(0.5+az*cz),
+    print >>out,"Box grid centered at (%d,%d,%d)\n" %(cgx,cgy,cgz)
+    return (cgx,cgy,cgz),(cgx,cgy,cgz)
 
 def box_of_biggest_region(si=None,
            map_data=None,
@@ -5767,6 +5797,8 @@ def auto_sharpen_map_or_map_coeffs(
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
         n_residues=None,
         ncs_copies=None,
+        box_center=None,
+        box_size=None,
         auto_sharpen_methods=None,
         residual_target=None,
         sharpening_target=None,

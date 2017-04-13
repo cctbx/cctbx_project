@@ -176,6 +176,16 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map. Default is True.
 
+     box_center = None
+       .type = floats
+       .short_caption = Center of box
+       .help = You can specify the center of the box (A units)
+
+     box_size = 40 40 40
+       .type = ints
+       .short_caption = Size of box
+       .help = You can specify the size of the box (grid units)
+
      max_box_fraction = None
        .type = float
        .short_caption = Max size of box for auto_sharpening
@@ -444,6 +454,8 @@ def run(args=None,params=None,
         map=map_data,
         solvent_content=params.crystal_info.solvent_content,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
+        box_center=params.map_modification.box_center,
+        box_size=params.map_modification.box_size,
         auto_sharpen_methods=params.map_modification.auto_sharpen_methods,
         residual_target=params.map_modification.residual_target,
         region_weight=params.map_modification.region_weight,
