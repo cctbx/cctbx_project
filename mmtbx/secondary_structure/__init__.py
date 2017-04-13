@@ -44,11 +44,14 @@ def contiguous_ss_selections(pdb_hierarchy):
     isels = ph.atoms().extract_i_seq()
     chain_selections.append(isels)
   #
-  ss_all_as_one_array = ss_all[0]
-  if(len(ss_all)>1):
-    for s in ss_all[1:]:
-      ss_all_as_one_array.extend(s)
-  ss_all_as_one_array_bool = flex.bool(n_atoms, ss_all_as_one_array)
+  if(len(ss_all)>0):
+    ss_all_as_one_array = ss_all[0]
+    if(len(ss_all)>1):
+      for s in ss_all[1:]:
+        ss_all_as_one_array.extend(s)
+    ss_all_as_one_array_bool = flex.bool(n_atoms, ss_all_as_one_array)
+  else:
+    ss_all_as_one_array_bool = flex.bool(n_atoms,False)
   #
   iseqs = []
   for atom in pdb_hierarchy.atoms():
