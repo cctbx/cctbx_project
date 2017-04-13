@@ -349,6 +349,7 @@ def get_map_coeffs_from_file(
          return ma
 
 def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
+    pdb_inp=None,
     out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
@@ -393,7 +394,7 @@ def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
   if params.crystal_info.resolution is None:
     raise Sorry("Need resolution if map is supplied")
 
-  if params.input_files.pdb_file: # get model
+  if params.input_files.pdb_file and not pdb_inp: # get model
     model_file=params.input_files.pdb_file
     if not os.path.isfile(model_file):
       raise Sorry("Missing the model file: %s" %(model_file))
@@ -410,15 +411,13 @@ def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
        pdb_hierarchy=pdb_inp.construct_hierarchy(),
        out=out).as_pdb_input()
 
-  else:
-    pdb_inp=None
-
   return pdb_inp,map_data,crystal_symmetry,acc
 
 
 def run(args=None,params=None,
     map_data=None,crystal_symmetry=None,
     write_output_files=True,
+    pdb_inp=None,
     return_map_data_only=False,
     out=sys.stdout):
   # Get the parameters
@@ -429,6 +428,7 @@ def run(args=None,params=None,
 
   pdb_inp,map_data,crystal_symmetry,acc=get_map_and_model(
      map_data=map_data,
+     pdb_inp=pdb_inp,
      crystal_symmetry=crystal_symmetry,
      params=params,out=out)
 

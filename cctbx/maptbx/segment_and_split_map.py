@@ -5590,6 +5590,41 @@ def get_iterated_solvent_fraction(map=None,
 
     return None  # was not available
 
+def set_up_si(var_dict=None,crystal_symmetry=None,
+      solvent_fraction=None,pdb_inp=None,map=None):
+    si=sharpening_info(n_real=map.all())
+    args=[]
+    auto_sharpen_methods=var_dict.get('auto_sharpen_methods')
+    if auto_sharpen_methods and auto_sharpen_methods != ['None']:
+      args.append("auto_sharpen_methods=*%s" %(" *".join(auto_sharpen_methods)))
+
+    for param in ['box_in_auto_sharpen','resolution','d_min_ratio',
+       'max_box_fraction','k_sharpen',
+        'residual_target','sharpening_target',
+       'search_b_min','search_b_max','search_b_n','maximum_low_b_adjusted_sa',
+       'b_iso','b_sharpen',
+       'resolution_dependent_b',
+       'region_weight',
+       'sa_percent',
+       'n_bins',
+       'eps',
+       'max_regions_to_test',
+       'fraction_occupied',
+       'rmsd',
+       'k_sol',
+       'b_sol',
+       'fraction_complete',
+         ]:
+     x=var_dict.get(param)
+     if x is not None:
+       args.append("%s=%s" %(param,x))
+    local_params=get_params_from_args(args)
+    si.update_with_params(params=local_params,
+      crystal_symmetry=crystal_symmetry,
+      solvent_fraction=solvent_fraction,
+      pdb_inp=pdb_inp,
+      )
+    return si,local_params
 
 def select_box_map_data(si=None,
            map_data=None,
@@ -5763,72 +5798,37 @@ def auto_sharpen_map_or_map_coeffs(
     if pdb_inp:
       auto_sharpen_methods=['model_sharpening']
 
-    # run auto_sharpening
-    si=sharpening_info(n_real=map.all())
-    args=[]
-    if auto_sharpen_methods and auto_sharpen_methods != ['None']:
-      args.append("auto_sharpen_methods=*%s" %(" *".join(auto_sharpen_methods)))
-    for x,param in zip(
-      [box_in_auto_sharpen,resolution,d_min_ratio,
-        max_box_fraction,k_sharpen,
-        residual_target,sharpening_target,
-        search_b_min,search_b_max,search_b_n,maximum_low_b_adjusted_sa,
-        b_iso,b_sharpen,resolution_dependent_b,
-        region_weight,
-        sa_percent,
-        n_bins,
-        eps,
-        max_regions_to_test,
-        fraction_occupied,
-        rmsd,
-        k_sol,
-        b_sol,
-        fraction_complete,
-          ],
-      ['box_in_auto_sharpen','resolution','d_min_ratio',
-       'max_box_fraction','k_sharpen',
-        'residual_target','sharpening_target',
-       'search_b_min','search_b_max','search_b_n','maximum_low_b_adjusted_sa',
-       'b_iso','b_sharpen',
-       'resolution_dependent_b',
-       'region_weight',
-       'sa_percent',
-       'n_bins',
-       'eps',
-       'max_regions_to_test',
-       'fraction_occupied',
-       'rmsd',
-       'k_sol',
-       'b_sol',
-       'fraction_complete',
-         ],):
-     if x is not None:
-       args.append("%s=%s" %(param,x))
-    local_params=get_params_from_args(args)
-    si.update_with_params(params=local_params,
+    # Copy parameters to si (sharpening_info_object)
+    si,local_params=set_up_si(var_dict=locals(),
       crystal_symmetry=crystal_symmetry,
       solvent_fraction=solvent_content,
-      pdb_inp=pdb_inp,
-      )
+      map=map,
+      pdb_inp=pdb_inp)
 
+    # Figure out solvent fraction
     if si.solvent_fraction is None:
       si.solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=crystal_symmetry,
         map=map,
         out=out)
     print "Estimated solvent fraction: %s" %(si.solvent_fraction)
+
+    # Now identify optimal sharpening params
     si=run_auto_sharpen(
       si=si,
       map_data=map,
       pdb_inp=pdb_inp,
       auto_sharpen_methods=local_params.map_modification.auto_sharpen_methods,
       out=out)
+
+    # Apply the optimal sharpening values and save map in si.map_data
     si.sharpen_and_score_map(map_data=map,pdb_inp=pdb_inp,
           out=out)
     if not si.is_model_sharpening():
       si.show_score(out=out)
       si.show_summary(out=out)
-    return si
+
+    return si  # si.map_data is the sharpened map
 
 def run_auto_sharpen(
       si=None,
