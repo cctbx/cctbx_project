@@ -82,9 +82,6 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
     #    value     = flex.mean(b_isos.select(sel)),
     #    selection = sel)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    #self.chain_selections = []
-    #for chain in self.pdb_hierarchy.chains():
-    #  self.chain_selections.append(chain.atoms().extract_i_seq())
     self.chain_selections = get_chain_selections(
       pdb_hierarchy = self.pdb_hierarchy)
 
@@ -100,23 +97,17 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
       mask_atoms_atom_radius = self.atom_radius)
     ph_box.adopt_xray_structure(box.xray_structure_box)
     group_adp_sel = []
-    
-    #group_adp_sel.append(ph_box.atoms().extract_i_seq())
-    
     for rg in ph_box.residue_groups():
       group_adp_sel.append(rg.atoms().extract_i_seq())
-      
     f_obs_box = abs(box.box_map_coefficients(d_min = self.target_map.d_min))
+    #
     fmodel = mmtbx.f_model.manager(
       f_obs          = f_obs_box,
       xray_structure = box.xray_structure_box)
-
-    #XXX
     fmodel.update_all_scales(update_f_part1=False, apply_back_trace=True,
       remove_outliers=False)
-    #XXX
-
     fmodel.update(target_name="ls_wunit_k1")
+    #
     if(self.nproc>1): log = None
     else:             log = self.log
     group_b_manager = mmtbx.refinement.group.manager(
