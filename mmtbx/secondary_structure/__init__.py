@@ -13,6 +13,62 @@ from math import sqrt
 import sys, os
 import time
 
+from libtbx.test_utils import approx_equal
+import mmtbx.secondary_structure
+from libtbx.utils import null_out
+from itertools import groupby
+from operator import itemgetter
+import iotbx.phil
+
+def contiguous_ss_selections(pdb_hierarchy):
+  """
+  Return list of atom selections that contiguous split molecule by SS and loops.
+  """
+  pdb_hierarchy.atoms().reset_i_seq()
+  params = mmtbx.secondary_structure.sec_str_master_phil.extract()
+  params.secondary_structure.protein.search_method="from_ca"
+  ssm = mmtbx.secondary_structure.manager(
+    pdb_hierarchy                = pdb_hierarchy,
+    sec_str_from_pdb_file        = None,
+    params                       = params.secondary_structure,
+    log                          = null_out())
+  n_atoms = pdb_hierarchy.atoms().size()
+  helix_sel = [s.iselection() for s in ssm.helix_selections()]
+  beta_sel  = [s.iselection() for s in ssm.beta_selections()]
+  bp_sel    = [s.iselection() for s in ssm.base_pair_selections()]
+  ss_all = helix_sel + beta_sel + bp_sel
+  #
+  chain_selections = []
+  for sel in ss_all:
+    ph = pdb_hierarchy.select(sel)
+    isels = ph.atoms().extract_i_seq()
+    chain_selections.append(isels)
+  #
+  ss_all_as_one_array = ss_all[0]
+  if(len(ss_all)>1):
+    for s in ss_all[1:]:
+      ss_all_as_one_array.extend(s)
+  ss_all_as_one_array_bool = flex.bool(n_atoms, ss_all_as_one_array)
+  #
+  iseqs = []
+  for atom in pdb_hierarchy.atoms():
+    if(not ss_all_as_one_array_bool[atom.i_seq]):
+      iseqs.append(atom.i_seq)
+  for k, g in groupby(enumerate(iseqs), lambda (i, x): i-x):
+    isels = list(map(itemgetter(1), g))
+    chain_selections.append(flex.size_t(isels))
+  # DEBUG
+  C1 = flex.size_t()
+  for s in chain_selections:
+    C1.extend(s)
+  s = flex.sort_permutation(C1)
+  C1 = C1.select(s)
+  C2 = flex.size_t(xrange(n_atoms))
+  assert approx_equal(C1, C2)
+  assert C1.size()==C2.size()
+  #
+  return chain_selections
+
 #
 # Notes. Now this class trying to keep updated SS information in form of
 # phil parameters and as iotbx/secondary_structure/annotation. This is
