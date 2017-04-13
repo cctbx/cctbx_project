@@ -54,7 +54,7 @@ def get_chain_selections(pdb_hierarchy):
   s = flex.sort_permutation(C1)
   C1 = C1.select(s)
   C2 = flex.size_t(xrange(n_atoms))
-  asert approx_equal(C1, C2)
+  assert approx_equal(C1, C2)
   assert C1.size()==C2.size()
   #
   return chain_selections
