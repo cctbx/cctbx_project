@@ -32,36 +32,42 @@ loop_idealization
 {
   enabled = True
     .type = bool
-  change_non_rama_outliers = True
-    .type = bool
-    .help = Allow changing non-outlier ramachandran residues angles
+    .expert_level = 0
   output_prefix = None
     .type = str
+    .expert_level = 0
   minimize_whole = True
     .type = bool
+    .expert_level = 1
   force_rama_fixes = False
     .type = bool
     .help = If true, the procedure will pick and apply the best variant even \
       if all of them are above thresholds to be picked straight away. \
       Alternatively, when False, the procedure will accept failure and leave \
       a ramachandran outlier intact.
+    .expert_level = 1
   make_all_trans = True
     .type = bool
     .help = If true, procedure will try to get rid of all twisted and \
       cis-peptides making all of them trans.
+    .expert_level = 1
   save_states = False
     .type = bool
     .help = Save states of CCD. Generates a states file for every model. \
       Warning! Significantly slower!
+    .expert_level = 2
   number_of_ccd_trials = 3
     .type = int
     .help = How many times we are trying to fix outliers in the same chain
+    .expert_level = 2
   variant_search_level = 2
     .type = int
     .help = how thoroughly variants will be explored (1-3)
+    .expert_level = 2
   variant_number_cutoff = 50
     .type = int
     .help = how many first variants to take from generated
+    .expert_level = 2
 }
 """
 
@@ -238,13 +244,12 @@ class loop_idealization():
     if hasattr(params, "loop_idealization"):
       p_pars = params.loop_idealization
     else:
-      assert hasattr(params, "enabled") and hasattr(params, "change_non_rama_outliers"), \
+      assert hasattr(params, "enabled"), \
           "Something wrong with parameters passed to model_idealization"
       p_pars = params
     if p_pars.output_prefix is None:
       p_pars.output_prefix = "rama_fixed"
     assert isinstance(p_pars.enabled, bool)
-    assert isinstance(p_pars.change_non_rama_outliers, bool)
     return p_pars
 
   def idealize_chain(self, hierarchy, tried_rama_angles_for_chain={},

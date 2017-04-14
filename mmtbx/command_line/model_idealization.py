@@ -39,41 +39,52 @@ file_name = None
   .multiple = True
   .short_caption = Model file
   .style = file_type:pdb bold input_file
+  .expert_level = 0
 map_file_name = None
   .type = path
   .help = User-provided map that will be used as reference
+  .expert_level = 0
 trim_alternative_conformations = False
   .type = bool
   .help = Leave only atoms with empty altloc
+  .expert_level = 2
 additionally_fix_rotamer_outliers = True
   .type = bool
   .help = At the late stage if rotamer is still outlier choose another one \
     with minimal clash with surrounding atoms
+  .expert_level = 2
 use_ss_restraints = True
   .type = bool
   .help = Use Secondary Structure restraints
+  .expert_level = 2
 use_starting_model_for_final_gm = False
   .type = bool
   .help = Use supplied model for final geometry minimization. Otherwise just \
     use self.
+  .expert_level = 3
 output_prefix = None
   .type = str
+  .expert_level = 0
 use_map_for_reference = True
   .type = bool
+  .expert_level = 1
 run_minimization_first = False
   .type = bool
+  .expert_level = 2
 reference_map_resolution = 5
   .type = float
-data_for_map = None
-  .type = path
+  .expert_level = 2
 number_of_refinement_cycles = 3
   .type = int
+  .expert_level = 1
 ignore_ncs = False
   .type = bool
   .help = Don't use NCS even if it is present in model.
+  .expert_level = 2
 debug = False
   .type = bool
   .help = Output all intermediate files
+  .expert_level = 3
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
