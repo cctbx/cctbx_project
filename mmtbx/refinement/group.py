@@ -100,6 +100,7 @@ class manager(object):
     selections_as_bool = flex.bool(fmodel.xray_structure.scatterers().size(),
       tmp)
     #
+    if(log is None): log = sys.stdout
     timer = user_plus_sys_time()
     self.show(
       rw         = fmodel.r_work(),
@@ -111,7 +112,6 @@ class manager(object):
       refine_occ = refine_occ,
       weight     = restraints_weight,
       out        = log)
-    if(log is None): log = sys.stdout
     assert [refine_adp, refine_occ].count(True) == 1
     if(selections is None):
       selections = []
@@ -120,8 +120,13 @@ class manager(object):
     else: assert len(selections) > 0
     par_initial = []
     selections_ = []
+    b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+    b_iso_mean = flex.mean(b_isos)
     for sel in selections:
-      if(refine_adp): par_initial.append(adptbx.b_as_u(0.0))
+      if(refine_adp):
+        p = flex.mean(b_isos.select(sel))
+        if(p<5.): p = b_iso_mean
+        par_initial.append(adptbx.b_as_u( p ))
       if(refine_occ): par_initial.append(0.0)
       if(str(type(sel).__name__) == "bool"):
         selections_.append(sel.iselection())
@@ -224,8 +229,8 @@ class manager(object):
         refine_adp,
         refine_occ,
         weight,
-        out = None):
-    if(out is None): out = sys.stdout
+        out):
+    if(out is None): return
     mc = str(mc)
     it = str(it)
     if(refine_adp): part1 = "|-group b-factor refinement (macro cycle = "
