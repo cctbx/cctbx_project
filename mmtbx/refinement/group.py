@@ -120,13 +120,8 @@ class manager(object):
     else: assert len(selections) > 0
     par_initial = []
     selections_ = []
-    b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-    b_iso_mean = flex.mean(b_isos)
     for sel in selections:
-      if(refine_adp):
-        p = flex.mean(b_isos.select(sel))
-        if(p<5.): p = b_iso_mean
-        par_initial.append(adptbx.b_as_u( p ))
+      if(refine_adp): par_initial.append(adptbx.b_as_u(0.0))
       if(refine_occ): par_initial.append(0.0)
       if(str(type(sel).__name__) == "bool"):
         selections_.append(sel.iselection())
