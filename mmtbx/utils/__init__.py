@@ -3003,7 +3003,8 @@ class extract_box_around_model_and_map(object):
                density_select=None,
                threshold=None,
                mask_atoms=False,
-               mask_atoms_atom_radius=3.0):
+               mask_atoms_atom_radius=3.0,
+               value_outside_atoms=None):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     self.initial_shift = None
@@ -3090,7 +3091,14 @@ class extract_box_around_model_and_map(object):
         mask_value_outside_molecule = 0,
         radii                       = radii)
       self.map_box = self.map_box*mask
-    ###
+
+      if value_outside_atoms=='mean':  # default is None. 
+        #  make mean outside==mean inside
+        one_d=self.map_box.as_1d()
+        n_zero=mask.count(0)
+        n_tot=mask.size()
+        mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
+        self.map_box=self.map_box+(1-mask)*mean_in_box
 
   def select_box(self,threshold,xrs=None):
     # Select box where data are positive (> threshold*max)

@@ -45,6 +45,9 @@ master_phil = libtbx.phil.parse("""
     .help = Set map values to 0 outside molecular mask
   mask_atoms_atom_radius = 3.
     .type=float
+  value_outside_atoms = None
+    .type = str
+    .help = Set to 'mean' to make average value same inside and outside mask.
 """)
 
 def run(args, crystal_symmetry=None, 
@@ -153,6 +156,8 @@ Parameters:"""%h
    print_statistics.make_sub_header(
     "Extracting box around selected atoms and writing output files", out=log)
   #
+  if params.value_outside_atoms=='mean':
+    print >>log,"\nValue outside atoms mask will be set to mean inside mask"
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
     map_data         = map_data.as_double(),
@@ -161,7 +166,9 @@ Parameters:"""%h
     density_select   = params.density_select,
     threshold        = params.density_select_threshold,
     mask_atoms       = params.mask_atoms,
-    mask_atoms_atom_radius = params.mask_atoms_atom_radius)
+    mask_atoms_atom_radius = params.mask_atoms_atom_radius,
+    value_outside_atoms = params.value_outside_atoms,
+    )
 
   if box.initial_shift_cart:
     print >>log,"\nInitial coordinate shift will be (%.1f,%.1f,%.1f)\n" %(
