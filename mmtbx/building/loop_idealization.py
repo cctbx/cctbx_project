@@ -45,6 +45,10 @@ loop_idealization
       if all of them are above thresholds to be picked straight away. \
       Alternatively, when False, the procedure will accept failure and leave \
       a ramachandran outlier intact.
+  make_all_trans = True
+    .type = bool
+    .help = If true, procedure will try to get rid of all twisted and \
+      cis-peptides making all of them trans.
   save_states = False
     .type = bool
     .help = Save states of CCD. Generates a states file for every model. \
@@ -299,6 +303,7 @@ class loop_idealization():
       print >> self.log, "listing outliers after loop minimization"
       outp = utils.list_rama_outliers_h(new_h, self.r)
       print >> self.log, outp
+      utils.list_omega_outliers(new_h, self.log)
       self.log.flush()
       working_h = new_h
       out_i += 1
@@ -332,24 +337,29 @@ class loop_idealization():
   def ccd_solution_is_ok(self,
       anchor_rmsd, mc_rmsd, n_outliers, ccd_radius,
       change_all_angles, change_radius,
-      contains_ss_element):
+      contains_ss_element, fixing_omega):
 
     # then checking rmsd
-    adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0, 4:4.5, 5:5.5, 6:7.0, 7:8.5, 8:10.0}
+    adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0, 4:4.5, 5:5.5, 6:7.0, 7:8.5, 8:10.0, 9:12.0}
     num_of_run = max(self.number_of_ccd_trials, self.n_run)
     for k in adaptive_mc_rmsd:
       adaptive_mc_rmsd[k] = adaptive_mc_rmsd[k] * (1 + 0.3*num_of_run)
+    if fixing_omega:
+      for k in adaptive_mc_rmsd:
+        adaptive_mc_rmsd[k] += 1
     # print "adaptive_mc_rmsd", adaptive_mc_rmsd
     # adaptive_mc_rmsd = {1:2.5, 2:3.0, 3:3.5}
     ss_multiplier = 1
     if contains_ss_element:
       ss_multiplier = 0.4
+    # print "checking is_ok, n_out, target rmsd:", n_outliers, adaptive_mc_rmsd[ccd_radius+n_outliers-1]
     if (mc_rmsd < adaptive_mc_rmsd[ccd_radius+n_outliers-1]*ss_multiplier and anchor_rmsd < 0.3):
       return True
     elif ccd_radius == 3 and change_all_angles and change_radius == 2:
       # we are desperate and trying the most extensive search,
       # this deserves relaxed criteria...
-      return mc_rmsd < 5*ss_multiplier and anchor_rmsd < 0.4
+      # print "desperate checking", adaptive_mc_rmsd[ccd_radius+n_outliers+1]*ss_multiplier
+      return mc_rmsd < adaptive_mc_rmsd[ccd_radius+n_outliers+1]*ss_multiplier and anchor_rmsd < 0.4
 
   def fix_rama_outlier(self,
       pdb_hierarchy, out_res_num_list, prefix="", minimize=True,
@@ -442,6 +452,7 @@ class loop_idealization():
 
     for ccd_radius, change_all, change_radius, direction_forward in decided_variants:
     # while ccd_radius <= 3:
+      fixing_omega = False
       print >> self.log, "  Starting optimization with radius=%d, " % ccd_radius,
       print >> self.log, "change_all=%s, change_radius=%d, " % (change_all, change_radius),
       print >> self.log, "direction=forward" if direction_forward else "direction=backwards"
@@ -451,6 +462,8 @@ class loop_idealization():
           m_selection, contains_ss_element) = get_fixed_moving_parts(
               pdb_hierarchy=pdb_hierarchy,
               out_res_num_list=out_res_num_list,
+              # n_following=1,
+              # n_previous=ccd_radius+ccd_radius-1,
               n_following=ccd_radius,
               n_previous=ccd_radius,
               ss_annotation=ss_annotation,
@@ -467,6 +480,7 @@ class loop_idealization():
           cutoff=self.params.variant_number_cutoff,
           change_all=change_all,
           # log=self.log,
+          check_omega=self.params.make_all_trans,
           )
 
       #
@@ -512,12 +526,20 @@ class loop_idealization():
           step = 1
         for i in range(i_max):
           comb = ff_all_angles[int(round(step*i))]
-          moving_h_set.append(
-              starting_conformations.set_rama_angles(
+          setted_h, fixed_omega = starting_conformations.set_rama_angles(
                   moving_h,
                   list(comb),
-                  direction_forward=direction_forward))
+                  direction_forward=direction_forward,
+                  check_omega=self.params.make_all_trans)
+          fixing_omega = fixing_omega or fixed_omega
+          moving_h_set.append(setted_h)
           # print >> self.log, "Model %d, angles:" % i, comb
+          if utils.n_bad_omegas(moving_h_set[-1]) != 0:
+            print "Model_%d_angles_%s.pdb" % (i, comb),
+            print "got ", utils.n_bad_omegas(moving_h_set[-1]), "bad omegas"
+            moving_h_set[-1].write_pdb_file("Model_%d_angles_%s.pdb" % (i, comb))
+            utils.list_omega(moving_h_set[-1], self.log)
+            assert 0
 
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
@@ -621,7 +643,8 @@ class loop_idealization():
             ccd_radius=ccd_radius,
             change_all_angles=change_all,
             change_radius=change_radius,
-            contains_ss_element=contains_ss_element):
+            contains_ss_element=contains_ss_element,
+            fixing_omega=fixing_omega):
           print "Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter
           # Save to tried_ccds
           for rn, angles in start_angles:
@@ -723,15 +746,14 @@ class loop_idealization():
       # === end of duplication!!!!
 
     else:
-      print >> self.log, "Epic FAIL: failed to fix rama outlier"
+      print >> self.log, "Epic FAIL: failed to fix rama outlier:", out_res_num_list
       print >> self.log, "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
       for i in all_results:
         print >> self.log, i[1:]
-    # STOP()
     return original_pdb_h
 
   def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy):
-    phi_psi_atoms = utils.get_phi_psi_atoms(pdb_hierarchy)
+    phi_psi_atoms = utils.get_phi_psi_atoms(pdb_hierarchy, omega=True)
     # print "len phi psi atoms", len(phi_psi_atoms)
     result = []
     rama_results = []
@@ -740,14 +762,18 @@ class loop_idealization():
     list_of_reference_exclusion = []
     outp = utils.list_rama_outliers_h(pdb_hierarchy, self.r)
     print >> self.log, outp
-    for phi_psi_pair, rama_key in phi_psi_atoms:
+    for phi_psi_pair, rama_key, omega in phi_psi_atoms:
       # print "resseq:", phi_psi_pair[0][2].parent().parent().resseq
       ev = utils.rama_evaluate(phi_psi_pair, self.r, rama_key)
       # print "  ev", ev
       rama_results.append(ev)
+      resnum = phi_psi_pair[0][2].parent().parent().resseq
       if ev == ramalyze.RAMALYZE_OUTLIER:
-        resnum = phi_psi_pair[0][2].parent().parent().resseq
         result.append(resnum)
+      if abs(abs(omega)-180) > 30:
+        print >> self.log, "Spotted twisted/cis peptide:", resnum, omega
+        result.append(resnum)
+    # STOP()
     return result
 
 
@@ -809,7 +835,7 @@ def get_res_nums_around(pdb_hierarchy, center_resnum_list, n_following, n_previo
     # return residue_list[max(0,center_index-n_previous)].resseq, \
     #     residue_list[min(len(residue_list)-1,center_index+n_following)].resseq
     print "center_index, resnum list", center_index, center_resnum_list
-    assert len(center_index) == len(center_resnum_list)
+    # assert len(center_index) == len(center_resnum_list)
     start_res_num = residue_list[max(0,center_index[0]-n_previous)].resseq_as_int()
     end_res_num = residue_list[min(len(residue_list)-1,center_index[-1]+n_following)].resseq_as_int()
     srn, ern = get_loop_borders(pdb_hierarchy, center_resnum_list, working_ss_annot)

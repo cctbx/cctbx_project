@@ -394,10 +394,11 @@ class model_idealization():
     params.pdb_interpretation.peptide_link.ramachandran_restraints = True
     params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
     params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
+    params.pdb_interpretation.peptide_link.apply_peptide_plane = True
+    params.pdb_interpretation.peptide_link.apply_all_trans = True
     params.pdb_interpretation.nonbonded_weight = 500
     params.pdb_interpretation.c_beta_restraints=True
     params.pdb_interpretation.max_reasonable_bond_distance = None
-    params.pdb_interpretation.peptide_link.apply_peptide_plane = True
     params.pdb_interpretation.ncs_search.enabled = True
     params.pdb_interpretation.restraints_library.rdl = True
     if self.params.ignore_ncs:
@@ -581,6 +582,7 @@ class model_idealization():
         negate_selection = "all"
         if outlier_selection_txt != "" and outlier_selection_txt is not None:
           negate_selection = "not (%s)" % outlier_selection_txt
+      # if self.params.run_minimization_first:
       self.minimize(
           hierarchy=self.whole_pdb_h,
           xrs=self.whole_xrs,

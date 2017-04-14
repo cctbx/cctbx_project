@@ -9,7 +9,7 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
-def set_rama_angles(moving_h, angles, direction_forward=True):
+def set_rama_angles(moving_h, angles, direction_forward=True, check_omega=False):
   """
   angles = [(phi, psi), (phi, psi), ... (phi, psi)]
   phi or psi == None means we don't change this angle
@@ -24,13 +24,15 @@ def set_rama_angles(moving_h, angles, direction_forward=True):
   # STOP()
   result_h = moving_h.deep_copy()
   result_h.reset_atom_i_seqs()
-  phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
+  fixed_omega = False
+  phi_psi_atoms = utils.get_phi_psi_atoms(moving_h, omega=True)
   assert len(phi_psi_atoms) == len(angles)
   if not direction_forward:
     phi_psi_atoms.reverse()
     angles.reverse()
   for ps_atoms, target_angle_pair in zip(phi_psi_atoms, angles):
     phi_psi_pair = ps_atoms[0]
+    omega = ps_atoms[2]
     phi_psi_angles = utils.get_pair_angles(phi_psi_pair)
     # print "ps_atoms, target_angle_pair", phi_psi_angles, target_angle_pair
     # phi
@@ -55,10 +57,21 @@ def set_rama_angles(moving_h, angles, direction_forward=True):
           phi_psi_pair[1][2],
           angle=rotation_angle,
           direction_forward=direction_forward)
+    # omega
+    if abs(abs(omega)-180) > 10 and check_omega:
+      rotation_angle= -omega+180
+      # print "Omega rotation:", omega, rotation_angle
+      utils.rotate_atoms_around_bond(
+          result_h,
+          phi_psi_pair[0][0],
+          phi_psi_pair[0][1],
+          angle=rotation_angle,
+          direction_forward=direction_forward)
+      fixed_omega = True
   # print utils.list_rama_outliers_h(result_h)
   # result_h.write_pdb_file(file_name="variant_%s.pdb" % direction_forward)
   # STOP()
-  return result_h
+  return result_h, fixed_omega
 
 def is_not_none_combination(comb):
   for pair in comb:
@@ -78,14 +91,14 @@ def get_sampled_rama_favored_angles(rama_key, r=None, step=20):
         result.append((i,j))
   return result
 
-# Refactoring idea: combine these two functions
 def get_all_starting_conformations(moving_h, change_radius,
     n_outliers,
-    direction_forward=True, cutoff=50, change_all=True, log=null_out()):
+    direction_forward=True, cutoff=50, change_all=True, log=null_out(), check_omega=False):
   variants = []
   result = []
   r = rama_eval()
-  phi_psi_atoms = utils.get_phi_psi_atoms(moving_h)
+  phi_psi_atoms = utils.get_phi_psi_atoms(moving_h, omega=True)
+  # print "N residue groups in h", [x.resseq for x in moving_h.residue_groups()]
   if len(phi_psi_atoms) == 0:
     print "Strange input to starting conformations!!!"
     return result
@@ -94,12 +107,23 @@ def get_all_starting_conformations(moving_h, change_radius,
   change_angles = [None]
   if change_all:
     change_angles = range((n_rama)//2-change_radius-n_outliers//2, (n_rama)//2+change_radius+1+n_outliers//2)
-  for i, (phi_psi_pair, rama_key) in enumerate(phi_psi_atoms):
+    # if change_angles[0] < 0:
+    #   change_angles = range(change_angles[-1]-change_angles[0])
+  has_twisted = False
+  if check_omega:
+    omegas = [x[2] for x in phi_psi_atoms]
+    for o in omegas:
+      if abs(abs(o)-180) > 30:
+        has_twisted = True
+  print "n_outliers", n_outliers
+  for i, (phi_psi_pair, rama_key, omega) in enumerate(phi_psi_atoms):
     angle_is_outlier = utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER
-    print "in cycle, N, outlier?, change?", i, angle_is_outlier, i in change_angles
+    twisted = (abs(abs(omega)-180) > 30) and check_omega
+    print "in cycle, N, outlier?, change?, twisted?", i, angle_is_outlier, i in change_angles, twisted
     if angle_is_outlier and n_outliers < 3:
       vs = get_sampled_rama_favored_angles(rama_key, r)
-    elif (i in change_angles) or angle_is_outlier:
+    elif (i in change_angles) or angle_is_outlier or has_twisted:
+      # vs = get_sampled_rama_favored_angles(rama_key, r)
       vs = ramalyze.get_favored_regions(rama_key)
     else:
       vs = [(None, None)]

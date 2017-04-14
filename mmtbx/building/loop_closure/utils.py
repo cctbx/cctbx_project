@@ -14,7 +14,7 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 
-def get_phi_psi_atoms(hierarchy):
+def get_phi_psi_atoms(hierarchy, omega=False):
   phi_psi_atoms = []
   for three in generate_protein_threes(
         hierarchy=hierarchy,
@@ -26,8 +26,32 @@ def get_phi_psi_atoms(hierarchy):
       phi_atoms, psi_atoms = None, None
     rama_key = three.get_ramalyze_key()
     # print "rama_key", rama_key
-    phi_psi_atoms.append(([phi_atoms, psi_atoms],rama_key))
+    if omega:
+      phi_psi_atoms.append(([phi_atoms, psi_atoms],rama_key, three.get_omega_value()))
+    else:
+      phi_psi_atoms.append(([phi_atoms, psi_atoms],rama_key))
   return phi_psi_atoms
+
+def list_omega_outliers(hierarchy, log):
+  pso_atoms = get_phi_psi_atoms(hierarchy, omega=True)
+  print >> log, "Omega outliers:"
+  for psatoms, rama_key, omega in pso_atoms:
+    if abs(abs(omega)-180) > 30:
+      print >> log, "  ", psatoms[0][0].id_str(), omega
+
+def list_omega(hierarchy, log):
+  pso_atoms = get_phi_psi_atoms(hierarchy, omega=True)
+  print >> log, "Omega angles:"
+  for psatoms, rama_key, omega in pso_atoms:
+    print >> log, "  ", psatoms[0][0].id_str(), omega
+
+def n_bad_omegas(hierarchy):
+  result = 0
+  pso_atoms = get_phi_psi_atoms(hierarchy, omega=True)
+  for psatoms, rama_key, omega in pso_atoms:
+    if abs(abs(omega)-180) > 10:
+      result += 1
+  return result
 
 def py_dihedral_angle2(sites, deg=True):
   """
