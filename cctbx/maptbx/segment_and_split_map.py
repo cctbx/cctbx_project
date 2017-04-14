@@ -368,6 +368,22 @@ master_phil = iotbx.phil.parse("""
        .help = If box is greater than this fraction of entire map, use \
                 entire map.
 
+     mask_atoms = True
+       .type = bool
+       .short_caption = Mask atoms 
+       .help = Mask atoms when using model sharpening
+
+     mask_atoms_atom_radius = 3
+       .type =float
+       .short_caption = Mask radius
+       .help = Mask for mask_atoms will have mask_atoms_atom_radius
+
+     value_outside_atoms = None
+       .type = str
+       .short_caption = Value outside atoms
+       .help = Value of map outside atoms (set to 'mean' to have mean \
+                value inside and outside mask be equal)
+
      k_sharpen = 10
        .type = float
        .short_caption = sharpening transition
@@ -1298,6 +1314,9 @@ class sharpening_info:
       score=None,
       box_in_auto_sharpen=None,
       max_box_fraction=None,
+      mask_atoms=None,
+      mask_atoms_atom_radius=None,
+      value_outside_atoms=None,
       search_b_min=None,
       search_b_max=None,
       search_b_n=None,
@@ -1398,6 +1417,9 @@ class sharpening_info:
       #  high-res cutoff of reflections is d_min*d_min_ratio
 
       self.max_box_fraction=params.map_modification.max_box_fraction
+      self.mask_atoms=params.map_modification.mask_atoms
+      self.mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius
+      self.value_outside_atoms=params.map_modification.value_outside_atoms
       self.k_sharpen=params.map_modification.k_sharpen
       self.sharpening_target=params.map_modification.sharpening_target
       self.residual_target=params.map_modification.residual_target
@@ -5612,6 +5634,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
 
     for param in ['box_size','box_center',
        'box_in_auto_sharpen','resolution','d_min_ratio',
+       'mask_atoms','mask_atoms_atom_radius','value_outside_atoms',
        'max_box_fraction','k_sharpen',
         'residual_target','sharpening_target',
        'search_b_min','search_b_max','search_b_n','maximum_low_b_adjusted_sa',
@@ -5642,7 +5665,6 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
 def select_box_map_data(si=None,
            map_data=None,
            pdb_inp=None,
-           mask_atoms=True,
            out=sys.stdout):
 
   n_residues=si.n_residues,
@@ -5655,9 +5677,12 @@ def select_box_map_data(si=None,
   if pdb_inp:  # use model to identify region to cut out
     from mmtbx.command_line.map_box import run as run_map_box
     args=[]
-    if mask_atoms:
+    if si.mask_atoms:
       args.append('mask_atoms=True')
-      args.append('mask_atoms_atom_radius=3')
+      if si.mask_atoms_atom_radius:
+        args.append('mask_atoms_atom_radius=%s' %(si.mask_atoms_atom_radius))
+      if si.value_outside_atoms:
+        args.append('value_outside_atoms=%s' %(si.value_outside_atoms))
     box=run_map_box(args,
         map_data=map_data,pdb_hierarchy=pdb_inp.construct_hierarchy(),
        write_output_files=False,
@@ -5810,6 +5835,9 @@ def auto_sharpen_map_or_map_coeffs(
         sharpening_target=None,
         d_min_ratio=None,
         max_box_fraction=None,
+        mask_atoms=None,
+        mask_atoms_atom_radius=None,
+        value_outside_atoms=None,
         k_sharpen=None,
         search_b_min=None,
         search_b_max=None,
@@ -5884,7 +5912,7 @@ def run_auto_sharpen(
     else:
       print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
-    write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
+    #write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
     
     box_pdb_inp,box_map_data,box_crystal_symmetry,box_sharpening_info_obj=\
        select_box_map_data(si=si,

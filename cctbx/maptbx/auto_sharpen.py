@@ -192,6 +192,22 @@ master_phil = iotbx.phil.parse("""
        .help = If box is greater than this fraction of entire map, use \
                 entire map. Default is 0.5.
 
+     mask_atoms = True
+       .type = bool
+       .short_caption = Mask atoms 
+       .help = Mask atoms when using model sharpening
+
+     mask_atoms_atom_radius = 3
+       .type =float
+       .short_caption = Mask radius
+       .help = Mask for mask_atoms will have mask_atoms_atom_radius
+
+     value_outside_atoms = None
+       .type = str
+       .short_caption = Value outside atoms
+       .help = Value of map outside atoms (set to 'mean' to have mean \
+                value inside and outside mask be equal)
+
      k_sharpen = None
        .type = float
        .short_caption = sharpening transition
@@ -467,7 +483,10 @@ def run(args=None,params=None,
         sharpening_target=params.map_modification.sharpening_target,
         d_min_ratio=params.map_modification.d_min_ratio,
         max_box_fraction=params.map_modification.max_box_fraction,
-        k_sharpen=params.map_modification.max_box_fraction,
+        mask_atoms=params.map_modification.mask_atoms,
+        mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius,
+        value_outside_atoms=params.map_modification.value_outside_atoms,
+        k_sharpen=params.map_modification.k_sharpen,
         search_b_min=params.map_modification.search_b_min,
         search_b_max=params.map_modification.search_b_max,
         search_b_n=params.map_modification.search_b_n,
