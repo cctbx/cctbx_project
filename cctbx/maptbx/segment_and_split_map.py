@@ -5683,7 +5683,9 @@ def select_box_map_data(si=None,
        crystal_symmetry=crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
 
-  if not box_map or box_map.size() > max_box_fraction* map_data.size():
+    box_pdb_inp=None
+  if not box_map or (
+       (not pdb_inp) and box_map.size() > max_box_fraction* map_data.size()):
     return None,map_data,crystal_symmetry,None # no point
 
   else:
@@ -5701,7 +5703,7 @@ def select_box_map_data(si=None,
       crystal_symmetry=box_crystal_symmetry,
       solvent_fraction=box_solvent_fraction)
 
-    return None,box_map,box_crystal_symmetry,box_sharpening_info_obj
+    return box_pdb_inp,box_map,box_crystal_symmetry,box_sharpening_info_obj
 
 def box_from_center( si=None,
            map_data=None,
@@ -5875,13 +5877,15 @@ def run_auto_sharpen(
   if si.box_in_auto_sharpen:
     print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
-
+    write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
+    
     box_pdb_inp,box_map_data,box_crystal_symmetry,box_sharpening_info_obj=\
        select_box_map_data(si=si,
            map_data=map_data,
            pdb_inp=pdb_inp,
            out=out)
-    # write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
+    #write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
+
     if box_sharpening_info_obj is None: # did not do it
       print >>out,"Box map is similar in size to entire map..."+\
          "skipping representative box of density"
