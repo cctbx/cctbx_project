@@ -5642,6 +5642,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
 def select_box_map_data(si=None,
            map_data=None,
            pdb_inp=None,
+           mask_atoms=True,
            out=sys.stdout):
 
   n_residues=si.n_residues,
@@ -5654,6 +5655,9 @@ def select_box_map_data(si=None,
   if pdb_inp:  # use model to identify region to cut out
     from mmtbx.command_line.map_box import run as run_map_box
     args=[]
+    if mask_atoms:
+      args.append('mask_atoms=True')
+      args.append('mask_atoms_atom_radius=3')
     box=run_map_box(args,
         map_data=map_data,pdb_hierarchy=pdb_inp.construct_hierarchy(),
        write_output_files=False,
