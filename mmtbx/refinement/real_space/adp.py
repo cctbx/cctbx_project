@@ -33,7 +33,7 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
       map_data               = self.target_map.map_data,
       box_cushion            = self.atom_radius,
       mask_atoms             = True,
-      mask_atoms_atom_radius = self.atom_radius)
+      mask_atoms_atom_radius = 2.0)
     ph_box.adopt_xray_structure(box.xray_structure_box)
     group_adp_sel = []
     for rg in ph_box.residue_groups():
@@ -60,11 +60,10 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
       f_obs          = f_obs_box,
       xray_structure = xrs)
     fmodel.update_core(k_isotropic = k_isotropic)
-    fmodel.update(target_name="ml") # Risky?
+    fmodel.update(target_name="ls_wunit_k1") # Risky?
     #
-    #fmodel.update_all_scales(update_f_part1=False, apply_back_trace=True,
-    #  remove_outliers=False)
-    #
+    fmodel.update_all_scales(update_f_part1=False, apply_back_trace=True,
+      remove_outliers=False)
     #
     if(self.nproc>1): log = None
     else:             log = self.log
