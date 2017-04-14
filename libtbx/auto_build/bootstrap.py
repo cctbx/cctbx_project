@@ -23,12 +23,10 @@ rosetta_version_directory='rosetta_src_2016.32.58837_bundle'
 # LICENSE REQUIRED
 afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
 amber_version='linux-64.ambertools-17.0.0-py27' # same as circle download file
+amber_dir='amber17'
 envs = {
   "AMBERHOME"           : ["modules", "amber"],
   "PHENIX_ROSETTA_PATH" : ["modules", "rosetta"],
-  # not required
-  #"ROSETTA_BIN"         : ["modules", "rosetta", "main", "source", "bin"],
-  #"ROSETTA3_DB"         : ["modules", "rosetta", "main", "database"],
   "OE_EXE"              : ["modules", "openeye", "bin"],
   "OE_LICENSE"          : ["oe_license.txt"], # needed for license
 }
@@ -503,9 +501,10 @@ class Toolbox(object):
     raise Exception(error)
 
 class cleanup_ext_class(object):
-  def __init__(self, filename_ext, workdir=None):
+  def __init__(self, filename_ext, workdir=None, walk=True):
     self.filename_ext = filename_ext
     self.workdir = workdir
+    self.walk = walk
 
   def get_command(self):
     return "delete *%s in %s" % (self.filename_ext, self.workdir).split()
@@ -517,12 +516,21 @@ class cleanup_ext_class(object):
         os.chdir(self.workdir)
       else:
         return
-    print "\n  removing %s files in %s" % (self.filename_ext, os.getcwd())
+    print "\n  removing %s files in %s, walk? %s" % (self.filename_ext,
+                                                     os.getcwd(),
+                                                     self.walk,
+      )
     i=0
-    for root, dirs, files in os.walk(".", topdown=False):
-      for name in files:
+    if self.walk:
+      for root, dirs, files in os.walk(".", topdown=False):
+        for name in files:
+          if name.endswith(self.filename_ext):
+            os.remove(os.path.join(root, name))
+            i+=1
+    else:
+      for name in os.listdir(os.getcwd()):
         if name.endswith(self.filename_ext):
-          os.remove(os.path.join(root, name))
+          os.remove(os.path.join(name))
           i+=1
     os.chdir(cwd)
     print "  removed %d files" % i
@@ -655,6 +663,10 @@ class amber_module(SourceModule):
     'externals', # not mapped yet!
     'amber_rsync', # not plumbed ...
   ]
+  #download downloader
+  authenticated = [
+    'scp',
+    '%(cciuser)s@cci.lbl.gov:/net/cci-filer2/raid1/auto_build/externals/download_circleci_AmberTools.py']
 
 class rosetta_class(SourceModule):
   module = 'rosetta'
@@ -695,6 +707,12 @@ class qrefine_module(SourceModule):
                #'https://github.com/cctbx/cctbx_project.git',
                #'https://github.com/cctbx/cctbx_project/archive/master.zip']
                ]
+
+class mon_lib_module(SourceModule):
+  module = 'mon_lib'
+  anonymous = ['curl', 'http://cci.lbl.gov/repositories/mon_lib.gz']
+  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'mon_lib.tar.gz', '/net/cci/auto_build/repositories/mon_lib']
+  #authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/annlib/']
 
 class geostd_module(SourceModule):
   module = 'geostd'
@@ -778,7 +796,7 @@ class elbow_module(SourceModule):
   module = 'elbow'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/elbow/trunk']
 
-class amber_module(SourceModule):
+class amber_adaptbx_module(SourceModule):
   module = 'amber_adaptbx'
   authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/amber_adaptbx/trunk']
 
@@ -1622,6 +1640,9 @@ class QRBuilder(CCTBXBuilder):
   CODEBASES_EXTRA = [
     'geostd',
     ]
+  HOT_EXTRA = [
+    'mon_lib',
+    ]
 
   def add_make(self):
     CCTBXBuilder.add_make(self)
@@ -1651,7 +1672,8 @@ class QRBuilder(CCTBXBuilder):
     self.add_refresh()
 
   def get_libtbx_configure(self): # modified in derived class PhenixBuilder
-    return self.LIBTBX + self.LIBTBX_EXTRA + self.EXTERNAL_CODEBASES
+    return self.LIBTBX + self.LIBTBX_EXTRA + self.EXTERNAL_CODEBASES \
+      + self.HOT_EXTRA
 
   def add_tests(self):
     pass
@@ -1837,7 +1859,7 @@ class PhenixExternalRegression(PhenixBuilder):
     ]
 
   def cleanup(self, dirs=None):
-    self.add_step(cleanup_ext_class(".bz2", "modules"))
+    self.add_step(cleanup_ext_class(".bz2", "modules", walk=False))
     lt = time.localtime()
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
     if lt.tm_wday==5: # do a completer build on Saturday night
@@ -1866,6 +1888,7 @@ class PhenixExternalRegression(PhenixBuilder):
                         filename="setpaths_externals",
                        ):
     # called by add_make which is called in build
+    # this is a little funky as it seems to be very often in the wrong remote dir
     outl = ""
     for key, path in env.items():
       if key in ["PATH"]: continue
@@ -1906,6 +1929,10 @@ class PhenixExternalRegression(PhenixBuilder):
     amber_c_comp = "clang"
     if sys.platform == "linux2":
       amber_c_comp = "gnu"
+    # Preparation
+    # AFITT
+    if self.subcategory in [None, "afitt"]:
+      self.add_step(cleanup_dirs_class(['openeye'], 'modules'))
     for name, command, workdir in [
         ['AFITT - untar',
          ['tar', 'xvf', '%s.gz' % afitt_version],
@@ -1919,7 +1946,7 @@ class PhenixExternalRegression(PhenixBuilder):
          ['modules']],
         ['Amber download bzip2',
          [self.python_base, #'python',
-          '/home/builder/download_circleci_AmberTools.py',
+          'download_circleci_AmberTools.py',
           ],
          ['modules'],
         ],
@@ -1931,6 +1958,14 @@ class PhenixExternalRegression(PhenixBuilder):
          ['tar', 'xvf', '%s.tar' % amber_version],
          ['modules'],
           ],
+        ['Amber - rm link',
+         # not windows compatible
+         ['rm', '-f', "amber"],
+         ['modules']],
+        ['Amber - link',
+         # not windows compatible
+         ['ln', '-sf', '%s' % amber_dir, "amber"],
+         ['modules']],
         #['Amber update', ["./update_amber", "--update"], [env["AMBERHOME"]]],
         #['Amber configure',
         #  ["./configure",
