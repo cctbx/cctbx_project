@@ -407,7 +407,7 @@ class model_idealization():
     params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
     params.pdb_interpretation.peptide_link.apply_peptide_plane = True
     params.pdb_interpretation.peptide_link.apply_all_trans = True
-    params.pdb_interpretation.nonbonded_weight = 500
+    params.pdb_interpretation.nonbonded_weight = 10000
     params.pdb_interpretation.c_beta_restraints=True
     params.pdb_interpretation.max_reasonable_bond_distance = None
     params.pdb_interpretation.ncs_search.enabled = True
