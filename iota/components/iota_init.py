@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/06/2017
+Last Changed: 04/13/2017
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -179,7 +179,6 @@ class InitAll(object):
         analyze-only mode """
 
     from iota.components.iota_analysis import Analyzer
-    from libtbx import easy_pickle as ep
 
     if os.path.isdir(analysis_source):
       int_folder = os.path.abspath(analysis_source)

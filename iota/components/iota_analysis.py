@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 04/03/2017
+Last Changed: 04/13/2017
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -297,7 +297,6 @@ class Analyzer(object):
     self.ver = misc.iota_version
     self.now = init.now
     self.params = init.params
-    self.args = init.args
     self.output_dir = init.int_base
     self.viz_dir = init.viz_base
     self.gui_mode = gui_mode

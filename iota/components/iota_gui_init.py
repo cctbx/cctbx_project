@@ -3,20 +3,22 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 04/06/2017
+Last Changed: 04/13/2017
 Description : IOTA GUI Initialization module
 '''
 
 import os
-import time
 import wx
 import wx.lib.agw.ultimatelistctrl as ulc
 from wxtbx import bitmaps
 import multiprocessing
 
 from iotbx import phil as ip
+from libtbx import easy_pickle as ep
+from cctbx import miller
+assert miller
 
-from iota import iota_version
+from iota import iota_version, gui_description, gui_license
 import iota.components.iota_input as inp
 import iota.components.iota_misc as misc
 import iota.components.iota_frames as frm
@@ -129,6 +131,11 @@ class MainWindow(wx.Frame):
                                                   shortHelp='Reset Settings',
                                                   longHelp='Reset IOTA settings with defaults')
     self.toolbar.AddSeparator()
+    analyze_bmp = bitmaps.fetch_icon_bitmap('mimetypes', 'text-x-generic-2')
+    self.tb_btn_analysis = self.toolbar.AddLabelTool(wx.ID_ANY, label='Recover',
+                                                     bitmap=analyze_bmp,
+                                                     shortHelp='Recover',
+                                                     longHelp='Recover run, show statistics and restart if aborted ')
     run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=run_bmp,
@@ -161,6 +168,7 @@ class MainWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onPreferences, self.tb_btn_prefs)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
+    self.Bind(wx.EVT_TOOL, self.onRecovery, self.tb_btn_analysis)
     self.Bind(wx.EVT_TOOL, self.onLoadScript, self.tb_btn_load)
     self.Bind(wx.EVT_TOOL, self.onOutputScript, self.tb_btn_save)
     self.Bind(wx.EVT_TOOL, self.onReset, self.tb_btn_reset)
@@ -302,9 +310,9 @@ class MainWindow(wx.Frame):
     info = wx.AboutDialogInfo()
     info.SetName('IOTA')
     info.SetVersion(iota_version)
-    info.SetDescription(description)
+    info.SetDescription(gui_description)
     info.SetWebSite('http://cci.lbl.gov/xfel')
-    info.SetLicense(license)
+    info.SetLicense(gui_license)
     info.AddDeveloper('Art Lyubimov')
     info.AddDeveloper('Monarin Uervirojnangkoorn')
     info.AddDeveloper('Aaron Brewster')
@@ -319,6 +327,70 @@ class MainWindow(wx.Frame):
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
     else:
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+
+  def onRecovery(self, e):
+    # Find finished runs and display results
+
+    int_folder = os.path.abspath('{}/integration'.format(os.curdir))
+
+    if not os.path.isdir(int_folder):
+      open_dlg = wx.DirDialog(self, "Choose the integration folder:",
+                              style=wx.DD_DEFAULT_STYLE)
+      if open_dlg.ShowModal() == wx.ID_OK:
+        int_folder = open_dlg.GetPath()
+        open_dlg.Destroy()
+      else:
+        open_dlg.Destroy()
+        return
+
+    paths = [os.path.join(int_folder, p) for p in os.listdir(int_folder)]
+    paths = [p for p in paths if os.path.isdir(p)]
+
+    path_dlg = dlg.RecoveryDialog(self)
+    path_dlg.insert_paths(paths)
+
+    if path_dlg.ShowModal() == wx.ID_OK:
+      self.reset_settings()
+      selected = path_dlg.selected
+      int_path = selected[1]
+      init_file = os.path.join(int_path, 'init.cfg')
+
+      rec_target_phil_file = os.path.join(int_path, 'target.phil')
+      with open(rec_target_phil_file, 'r') as pf:
+        rec_target_phil = pf.read()
+
+      if os.path.isfile(init_file):
+        rec_init = ep.load(init_file)
+        self.iota_phil = self.iota_phil.format(python_object=rec_init.params)
+      else:
+        rec_init = InitAll(iver=iota_version)
+        rec_init.int_base = int_path
+        rec_init.obj_base = os.path.join(int_path, 'image_objects')
+        rec_init.fin_base = os.path.join(int_path, 'final')
+        rec_init.log_base = os.path.join(int_path, 'logs')
+        rec_init.viz_base = os.path.join(int_path, 'visualization')
+        rec_init.logfile = os.path.join(int_path, 'iota.log')
+        with open(rec_init.logfile, 'r') as lf:
+          log_phil = ip.parse(''.join(lf.readlines()[4:86]))
+        self.iota_phil = self.iota_phil.fetch(source=log_phil)
+        rec_init.params = self.iota_phil.extract()
+        input_entries = [i for i in rec_init.params.input if i != None]
+        rec_init.input_list = ginp.make_input_list(input_entries)
+
+      # Re-populate input window with settings from read-in run
+      self.gparams = self.iota_phil.extract()
+      self.target_phil = rec_target_phil
+      self.update_input_window()
+
+      # Re-open processing window with results of the run
+      self.proc_window = frm.ProcWindow(self, -1, title='Image Processing',
+                                        target_phil=rec_target_phil,
+                                        phil=self.iota_phil)
+      self.proc_window.recover(int_path=int_path,
+                               init=rec_init,
+                               status=selected[0],
+                               params=rec_init.params)
+      self.proc_window.Show(True)
 
   def onRun(self, e):
     # Run full processing
@@ -470,7 +542,10 @@ class MainWindow(wx.Frame):
     self.input_window.int_box.ctr.SetSelection(idx)
 
     # Description
-    self.input_window.project_title.ctr.SetValue(self.gparams.description)
+    if self.gparams.description is not None:
+      self.input_window.project_title.ctr.SetValue(self.gparams.description)
+    else:
+      self.input_window.project_title.ctr.SetValue('')
 
     # Output folder
     if self.gparams.output is not None:

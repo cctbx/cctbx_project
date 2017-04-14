@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/13/2017
+Last Changed: 04/13/2017
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -74,8 +74,6 @@ class ProcessImage():
       return img_object
     else:
       img_object.process()
-      #result_file = os.path.splitext(img_object.obj_file)[0] + '.fin'
-      #ep.dump(result_file, img_object)
       return img_object
 
 class ProcThread(Thread):
@@ -101,8 +99,8 @@ class ProcThread(Thread):
       # write iterable
       img_objects = None
       queue = self.init.params.mp_queue
-      iter_path = os.path.join(self.init.params.output, 'iter.cfg')
-      init_path = os.path.join(self.init.params.output, 'init.cfg')
+      iter_path = os.path.join(self.init.params.int_base, 'iter.cfg')
+      init_path = os.path.join(self.init.params.int_base, 'init.cfg')
       nproc = self.init.params.n_processors
       ep.dump(iter_path, self.iterable)
       ep.dump(init_path, self.init)
@@ -124,8 +122,11 @@ class ProcThread(Thread):
       easy_run.fully_buffered(command, join_stdout_stderr=True)
 
     # Send "all done" event to GUI
-    evt = AllDone(tp_EVT_ALLDONE, -1, img_objects)
-    wx.PostEvent(self.parent, evt)
+    try:
+      evt = AllDone(tp_EVT_ALLDONE, -1, img_objects)
+      wx.PostEvent(self.parent, evt)
+    except TypeError, e:
+      pass
 
   def full_proc_wrapper(self, input_entry):
     proc_image_instance = ProcessImage(self.init, input_entry, self.type)

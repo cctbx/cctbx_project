@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/13/2017
+Last Changed: 04/13/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -192,46 +192,12 @@ class SingleImage(object):
     # Estimate gain (or set gain to 1.00 if cannot calculate)
     # Cribbed from estimate_gain.py by Richard Gildea
     if self.params.advanced.estimate_gain:
-      try:
-        from dials.algorithms.image.threshold import KabschDebug
-        raw_data = [raw_data]
-
-        gain_value = 1
-        kernel_size=(10,10)
-        gain_map = [flex.double(raw_data[i].accessor(), gain_value)
-                    for i in range(len(loaded_img.get_detector()))]
-        mask = loaded_img.get_mask()
-        min_local = 0
-
-        # dummy values, shouldn't affect results: REPLACE WITH SETTINGS!
-        nsigma_b = 6
-        nsigma_s = 3
-        global_threshold = 0
-
-        kabsch_debug_list = []
-        for i_panel in range(len(loaded_img.get_detector())):
-          kabsch_debug_list.append(
-            KabschDebug(
-              raw_data[i_panel].as_double(), mask[i_panel], gain_map[i_panel],
-              kernel_size, nsigma_b, nsigma_s, global_threshold, min_local))
-
-        dispersion = flex.double()
-        for kabsch in kabsch_debug_list:
-          dispersion.extend(kabsch.coefficient_of_variation().as_1d())
-
-        sorted_dispersion = flex.sorted(dispersion)
-        from libtbx.math_utils import nearest_integer as nint
-
-        q1 = sorted_dispersion[nint(len(sorted_dispersion)/4)]
-        q2 = sorted_dispersion[nint(len(sorted_dispersion)/2)]
-        q3 = sorted_dispersion[nint(len(sorted_dispersion)*3/4)]
-        iqr = q3-q1
-
-        inlier_sel = (sorted_dispersion > (q1 - 1.5*iqr)) & (sorted_dispersion < (q3 + 1.5*iqr))
-        sorted_dispersion = sorted_dispersion.select(inlier_sel)
-        self.gain = sorted_dispersion[nint(len(sorted_dispersion)/2)]
-      except IndexError:
-        self.gain = 1.0
+      from dxtbx.datablock import DataBlockFactory
+      from dials.command_line.estimate_gain import estimate_gain
+      with misc.Capturing() as junk_output:
+        datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
+        imageset = datablock.extract_imagesets()[0]
+        self.gain = estimate_gain(imageset)
     else:
       self.gain = 1.0
 

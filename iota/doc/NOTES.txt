@@ -1,11 +1,12 @@
-IOTA v1.1.009 - Optimization additions
+IOTA v1.1.010 - DIALS additions, run recovery and assorted bugfixes
 
-
-1. Bravais lattice refinement and reindexing before integration (use the
-highest-symmetry "recommended" s.g.)
-2. Unit cell clustering no longer disabled when using DIALS
-3. Removed min_spot_size and global_threshold options from DIALS options dialog
-4. Added space group / reindexing option into DIALS options dialog
-5. Added more DIALS PHIL defaults
-6. BeamXY override via DIALS options rather than image conversion (completely
- disabled image conversion for DIALS).
+1. Absorb the wx.PostEvent error if run is aborted
+2. Call dials.estimate_gain on image import (had cribbed code before)
+3. Option to estimate gain for each image in DIALS options dialog
+4. Changing BeamXY and distance propagates them to DIALS PHIL, image is never
+ converted to pickle if using DIALS
+5. Added detector override to DIALS PHIL defaults
+6. iter.cfg and init.cfg now saved for each integration run rather than in
+the roof data processing folder
+7. Added option to "re-run" previous runs; finished runs can be repeated as
+new runs; aborted runs can be restarted and finished (within same run folder)

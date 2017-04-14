@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/06/2017
+Last Changed: 04/13/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -23,7 +23,6 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from libtbx import easy_pickle as ep
-from libtbx import easy_run
 from libtbx.utils import to_unicode
 from cctbx import miller
 assert miller
@@ -772,7 +771,7 @@ class ProcessingTab(wx.Panel):
         self.int_canvas.draw()
 
       except ValueError, e:
-        pass
+        print e
 
 
     self.Layout()
@@ -1037,7 +1036,7 @@ class ProcWindow(wx.Frame):
   def __init__(self, parent, id, title,
                phil,
                target_phil=None,
-               test=False):
+               recover=None):
     wx.Frame.__init__(self, parent, id, title, size=(800, 900),
                       style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER)
 
@@ -1048,6 +1047,7 @@ class ProcWindow(wx.Frame):
 
     self.target_phil = target_phil
     self.state = 'process'
+    self.recovery = False
 
     self.monitor_mode = False
     self.monitor_mode_timeout = None
@@ -1180,7 +1180,8 @@ class ProcWindow(wx.Frame):
     processing """
 
     # Remove abort signal file
-    os.remove(self.tmp_abort_file)
+    if os.path.isfile(self.tmp_abort_file):
+      os.remove(self.tmp_abort_file)
 
     # Re-generate new image info to include un-processed images
     input_entries = [i for i in self.gparams.input if i != None]
@@ -1196,13 +1197,6 @@ class ProcWindow(wx.Frame):
     self.img_list = [[i, len(ext_file_list) + 1, j] for i, j in
                      enumerate(old_file_list, 1)]
 
-    # # Re-initialize monitor mode
-    # if self.monitor_mode:
-    #   self.new_images = []
-    #   self.find_new_images = True
-    #   if self.monitor_mode_timeout:
-    #     self.timeout_start = None
-
     # Reset toolbar buttons
     self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), True)
     self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), False)
@@ -1212,6 +1206,27 @@ class ProcWindow(wx.Frame):
     self.state = 'resume'
     self.process_images()
     self.timer.Start(5000)
+
+  def recover(self, int_path, status, init, params):
+    self.init = init
+    self.gparams = params
+    self.tmp_abort_file = os.path.join(int_path, '.abort.tmp')
+    self.img_list = [[i, len(self.init.input_list) + 1, j] for
+                     i, j in enumerate(self.init.input_list, 1)]
+    self.status_txt.SetLabel('Searching in {} ...'.format(int_path))
+
+    self.status_summary = [0] * len(self.img_list)
+    self.nref_list = [0] * len(self.img_list)
+    self.nref_xaxis = [i[0] for i in self.img_list]
+    self.res_list = [0] * len(self.img_list)
+
+    self.start_object_finder = True
+    self.state = status
+    self.start_object_finder = False
+    object_finder = thr.ObjectFinderThread(self,
+                                           object_folder=self.init.obj_base)
+    object_finder.start()
+
 
   def run(self, init):
     # Initialize IOTA parameters and log
@@ -1229,7 +1244,7 @@ class ProcWindow(wx.Frame):
       self.timer.Start(5000)
 
       # write init file
-      ep.dump(os.path.join(self.gparams.output, 'init.cfg'), self.init)
+      ep.dump(os.path.join(self.init.int_base, 'init.cfg'), self.init)
 
     else:
       self.good_to_go = False
@@ -1409,36 +1424,6 @@ class ProcWindow(wx.Frame):
 
 
   def plot_integration(self):
-    self.chart_tab.init = self.init
-    self.chart_tab.gparams = self.gparams
-    self.chart_tab.draw_plots(finished_objects=self.finished_objects,
-                              img_list=self.img_list,
-                              res_list=self.res_list,
-                              nref_list=self.nref_list)
-
-
-  def onTimer(self, e):
-    if os.path.isfile(self.tmp_abort_file):
-      self.finish_process()
-
-    if self.start_object_finder:
-      self.start_object_finder = False
-      object_finder = thr.ObjectFinderThread(self,
-                                             object_folder=self.init.obj_base)
-      object_finder.start()
-
-    # if len(self.new_objects) == 0:
-    #   object_finder = thr.ObjectFinderThread(self,
-    #                                          object_folder=self.init.obj_base,
-    #                                          read_objects=self.read_object_files)
-    #   object_finder.start()
-    #
-    # if len(self.new_objects) > 0:
-    #   new_finished_objects = [i for i in self.new_objects if i.status == 'final']
-    #
-    #   self.finished_objects.extend(new_finished_objects)
-    #   self.read_object_files = [i.obj_file for i in self.finished_objects]
-    #   self.new_objects = []
 
     if len(self.finished_objects) > 0:
       for obj in self.finished_objects:
@@ -1447,6 +1432,24 @@ class ProcWindow(wx.Frame):
           self.res_list[obj.img_index - 1] = obj.final['res']
         except Exception:
           pass
+
+    self.chart_tab.init = self.init
+    self.chart_tab.gparams = self.gparams
+    self.chart_tab.draw_plots(finished_objects=self.finished_objects,
+                              img_list=self.img_list,
+                              res_list=self.res_list,
+                              nref_list=self.nref_list)
+
+  def onTimer(self, e):
+    if os.path.isfile(self.tmp_abort_file):
+      self.finish_process()
+
+    # Find processed image objects
+    if self.start_object_finder:
+      self.start_object_finder = False
+      object_finder = thr.ObjectFinderThread(self,
+                                             object_folder=self.init.obj_base)
+      object_finder.start()
 
     if len(self.finished_objects) > self.obj_counter:
       self.plot_integration()
@@ -1511,19 +1514,39 @@ class ProcWindow(wx.Frame):
 
   def onFinishedImageFinder(self, e):
     new_img = e.GetValue()
-    #current_gauge = self.gauge_process.GetRange()
-    #self.gauge_process.SetRange(current_gauge + len(new_img))
     self.new_images = self.new_images + new_img
     self.find_new_images = True
 
   def onFinishedObjectFinder(self, e):
     self.finished_objects = e.GetValue()
-    self.start_object_finder = True
+    if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
+      self.finish_process()
+    else:
+      self.start_object_finder = True
 
   def finish_process(self):
     import shutil
     self.timer.Stop()
-    if os.path.isfile(self.tmp_abort_file):
+    if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
+      self.gauge_process.Hide()
+      font = self.sb.GetFont()
+      font.SetWeight(wx.BOLD)
+      self.status_txt.SetFont(font)
+      run_no = int(self.init.int_base.split('/')[-1])
+      self.status_txt.SetLabel('Run #{} Loaded!'.format(run_no))
+      self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
+      self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
+      self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
+      if len(self.finished_objects) > 0:
+        self.plot_integration()
+      if str(self.state).lower() == 'finished':
+        self.final_objects = [i for i in self.finished_objects if i.fail is None]
+        self.analyze_results()
+      else:
+        if os.path.isfile(os.path.join(self.init.int_base, 'init.cfg')):
+          self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
+      return
+    elif os.path.isfile(self.tmp_abort_file):
       self.gauge_process.Hide()
       font = self.sb.GetFont()
       font.SetWeight(wx.BOLD)
@@ -1531,7 +1554,10 @@ class ProcWindow(wx.Frame):
       self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('ABORTED BY USER')
       self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
-      shutil.rmtree(self.init.tmp_base)
+      try:
+        shutil.rmtree(self.init.tmp_base)
+      except Exception:
+        pass
       return
     else:
       self.final_objects = [i for i in self.finished_objects if i.fail == None]
@@ -1547,5 +1573,5 @@ class ProcWindow(wx.Frame):
 
       try:
         shutil.rmtree(self.init.tmp_base)
-      except OSError:
+      except Exception:
         pass

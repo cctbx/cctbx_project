@@ -3,13 +3,14 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/06/2017
+Last Changed: 04/13/2017
 Description : IOTA GUI Dialogs
 '''
 
 import os
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
+from wxtbx import bitmaps
 
 from iotbx import phil as ip
 
@@ -1021,6 +1022,11 @@ class DIALSOptions(BaseDialog):
                                label='Determine space group and reindex')
     self.reindex.SetValue(True)
     dials_box_sizer.Add(self.reindex, flag=wx.ALL, border=10)
+
+    self.estimate_gain = wx.CheckBox(self.options,
+                                     label='Estimate gain for each image')
+    self.reindex.SetValue(True)
+    dials_box_sizer.Add(self.estimate_gain, flag=wx.ALL, border=10)
     # self.min_spot_size = ct.OptionCtrl(self.options,
     #                                    items = [('min_spot_size', '6')],
     #                                    label='Minimum spot size:',
@@ -1096,6 +1102,7 @@ class DIALSOptions(BaseDialog):
 
     # DIALS options
     self.reindex.SetValue(self.params.dials.determine_sg_and_reindex)
+    self.estimate_gain.SetValue(self.params.advanced.estimate_gain)
     # self.min_spot_size.min_spot_size.SetValue(
     #   str(self.params.dials.min_spot_size))
     # self.global_threshold.threshold.SetValue(
@@ -1120,6 +1127,10 @@ class DIALSOptions(BaseDialog):
       'dials',
       '{',
       '  determine_sg_and_reindex = {}'.format(self.reindex.GetValue()),
+      '}',
+      'advanced',
+      '{',
+      '  estimate_gain = {}'.format(self.estimate_gain.GetValue()),
       '}'
     ])
 
@@ -1438,3 +1449,74 @@ class ViewerWarning(BaseDialog):
     elif self.rb_custom.GetValue():
       self.no_images = int(self.opt_custom.GetValue())
     self.EndModal(wx.ID_OK)
+
+class RecoveryDialog(BaseDialog):
+
+  def __init__(self,
+               parent,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
+    BaseDialog.__init__(self, parent, style=dlg_style,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(400, 400),
+                        title='Recover Previous Run',
+                        *args, **kwargs)
+
+
+    self.pathlist = wx.ListCtrl(self, style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
+    self.selected = None
+
+    self.pathlist.InsertColumn(0, "")
+    self.pathlist.InsertColumn(1, "Status")
+    self.pathlist.InsertColumn(2, "Integration Path")
+
+    bmps = wx.ImageList(width=16, height=16)
+    finished_bmp = bitmaps.fetch_icon_bitmap('actions', 'button_ok', size=16)
+    aborted_bmp = bitmaps.fetch_icon_bitmap('actions', 'cancel', size=16)
+    unknown_bmp = bitmaps.fetch_icon_bitmap('actions', 'status_unknown',
+                                            size=16)
+    bmps.Add(finished_bmp)
+    bmps.Add(aborted_bmp)
+    bmps.Add(unknown_bmp)
+    self.pathlist.AssignImageList(bmps, which=1)
+
+    self.main_sizer.Add(self.pathlist, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL),
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+
+  def insert_paths(self, pathlist):
+    for i in range(len(pathlist)):
+      final_file = os.path.join(pathlist[i], 'integrated.lst')
+      if os.path.isfile(final_file):
+        img_id = 0       # "finished" icon
+        status = 'Finished'
+      elif os.path.isfile(os.path.join(pathlist[i], '.abort.tmp')):
+        img_id = 1       # "aborted" icon
+        status = 'Aborted'
+      else:
+        img_id = 2       # "unknown" icon
+        status = 'Unknown'
+      idx = self.pathlist.InsertImageItem(i, img_id)
+      self.pathlist.SetStringItem(idx, 1, status)
+      self.pathlist.SetStringItem(idx, 2, pathlist[i])
+      self.pathlist.SetColumnWidth(0, width=-1)
+      self.pathlist.SetColumnWidth(1, width=-1)
+      self.pathlist.SetColumnWidth(2, width=-1)
+
+
+  def onOK(self, e):
+    for i in range(self.pathlist.GetItemCount()):
+      if self.pathlist.IsSelected(i):
+
+        self.selected = [self.pathlist.GetItemText(i, col=1),
+                         self.pathlist.GetItemText(i, col=2)]
+    e.Skip()

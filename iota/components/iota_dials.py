@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/06/2017
+Last Changed: 04/13/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -11,13 +11,10 @@ Description : Runs DIALS spotfinding, indexing, refinement and integration
 
 import os
 import sys
-import copy
-from cStringIO import StringIO
 
 from iotbx.phil import parse
 from dxtbx.datablock import DataBlockFactory
 from cctbx import sgtbx
-from dxtbx.model import Crystal
 
 from dials.array_family import flex
 from dials.command_line.stills_process import phil_scope, Processor
@@ -145,6 +142,9 @@ class Triage(object):
     else:
       self.phil = phil_scope.extract()
 
+    # Modify settings
+    self.phil.output.strong_filename = None
+
     # Convert raw image into single-image datablock
     with misc.Capturing() as junk_output:
       self.datablock = DataBlockFactory.from_filenames([img])[0]
@@ -207,21 +207,23 @@ class Integrator(object):
     self.int_log = logfile
 
     # Set customized parameters
-    # TODO: hook up gain calculation
     beamX = self.params.image_conversion.beam_center.x
     beamY = self.params.image_conversion.beam_center.y
     if beamX != 0 or beamY != 0:
-      self.phil.geometry.slow_fast_beam_centre = '{}, {}'.format(beamY, beamX)
+      self.phil.geometry.detector.slow_fast_beam_centre = '{} {}'.format(
+        beamY, beamX)
+    if self.params.image_conversion.distance != 0:
+      self.phil.geometry.detector.distance = self.params.image_conversion.distance
+    if self.params.advanced.estimate_gain:
+      self.phil.spotfinder.threshold.xds.gain = gain
 
     self.img = [source_image]
     self.obj_base = object_folder
-    self.gain = gain
     self.fail = None
     self.frame = None
     self.final = final
     self.final['final'] = final_filename
-    with misc.Capturing() as junk_output:
-      self.datablock = DataBlockFactory.from_filenames(self.img)[0]
+    self.datablock = DataBlockFactory.from_filenames(self.img)[0]
     self.obj_filename = "int_{}".format(os.path.basename(self.img[0]))
 
   def find_spots(self):
@@ -288,7 +290,10 @@ class Integrator(object):
           print e
           self.fail = 'failed indexing'
 
-      if self.fail is None and self.phil.indexing.known_symmetry.space_group is None:
+      if (                                        self.fail is None and
+              self.phil.indexing.known_symmetry.space_group is None and
+                             self.params.dials.determine_sg_and_reindex
+          ):
         try:
           print "{:-^100}\n".format(" DETERMINING SPACE GROUP : ")
           self.refine_bravais_settings_and_reindex()
