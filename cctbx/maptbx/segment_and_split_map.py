@@ -5879,7 +5879,10 @@ def run_auto_sharpen(
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
 
   if si.box_in_auto_sharpen:
-    print >>out,"\nAuto-sharpening using representative box of density"
+    if pdb_inp:
+      print >>out,"\nAuto-sharpening using model-defined box of density"
+    else:
+      print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
     write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
     
