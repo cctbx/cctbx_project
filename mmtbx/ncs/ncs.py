@@ -1157,8 +1157,16 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def helix_rt_reverse(self):
     assert self._have_helical_symmetry
     # Return r and t for moving one reverse in a helix
-    if not hasattr(self,'helix_oper_reverse'):
-      return None,None
+    if not hasattr(self,'helix_oper_reverse') or not self.helix_oper_reverse:
+      if not hasattr(self,'helix_oper_forwards') or \
+         not self.helix_oper_forwards: # no info, quit
+        return None,None
+      else: # generate from forwards:
+        r_forwards,t_forwards=self.helix_rt_forwards()
+        r_reverse=r_forwards.inverse()
+        t_reverse=-1.*r_reverse*t_forwards
+        return r_reverse,t_reverse
+
     i1=self.helix_oper_reverse
     r1=self.rota_matrices_inv()[i1]
     t1=self.translations_orth_inv()[i1]
@@ -1167,8 +1175,16 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def helix_rt_forwards(self):
     assert self._have_helical_symmetry
     # Return r and t for moving one forwards in a helix
-    if not hasattr(self,'helix_oper_forwards'):
-      return None,None
+    if not hasattr(self,'helix_oper_forwards') or not self.helix_oper_forwards:
+      if not hasattr(self,'helix_oper_reverse') or \
+         not self.helix_oper_reverse: # no info, quit
+        return None,None
+      else: # generate from reverse:
+        r_reverse,t_reverse=self.helix_rt_reverse()
+        r_forwards=r_reverse.inverse()
+        t_forwards=-1.*r_forwards*t_reverse
+        return r_forwards,t_forwards
+
     i1=self.helix_oper_forwards
     r1=self.rota_matrices_inv()[i1]
     t1=self.translations_orth_inv()[i1]

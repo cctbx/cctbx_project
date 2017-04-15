@@ -881,6 +881,60 @@ tran_orth     0.0000    0.0000    1.4100
 
 center_orth    0.0000    0.0000    0.0000
 """
+
+text_helical_short_a="""
+new_operator
+
+rota_matrix    1.0000    0.0000   -0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.9270    0.3751   -0.0000
+rota_matrix   -0.3751    0.9270    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth     0.0000    0.0000   -1.4100
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.7186    0.6954   -0.0000
+rota_matrix   -0.6954    0.7186    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth     0.0000    0.0000   -2.8200
+
+center_orth    0.0000    0.0000    0.0000
+"""
+
+text_helical_short_b="""
+new_operator
+
+rota_matrix    0.7186   -0.6954    0.0000
+rota_matrix    0.6954    0.7186   -0.0000
+rota_matrix   -0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    2.8200
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.9270   -0.3751    0.0000
+rota_matrix    0.3751    0.9270   -0.0000
+rota_matrix   -0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    1.4100
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    1.0000    0.0000   -0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+"""
 def tst_02():
 
   print "Test short helical and point_group symmetry...",
@@ -962,6 +1016,34 @@ def tst_02():
   assert ncs_group.is_helical_along_z()
 
   print "OK"
+
+
+def tst_02a():
+
+  print "Test short helical and point_group symmetry with identity at start...",
+  from mmtbx.ncs.ncs import ncs
+  f=open('helical.ncs_spec','w')
+  print >>f,text_helical_short_a
+  f.close()
+  ncs_object=ncs()
+  ncs_object.read_ncs('helical.ncs_spec',quiet=True)
+  assert ncs_object.is_helical_along_z()
+  assert not ncs_object.is_point_group_symmetry()
+  print "OK"
+
+def tst_02b():
+
+  print "Test short helical and point_group symmetry with identity at end...",
+  from mmtbx.ncs.ncs import ncs
+  f=open('helical.ncs_spec','w')
+  print >>f,text_helical_short_b
+  f.close()
+  ncs_object=ncs()
+  ncs_object.read_ncs('helical.ncs_spec',quiet=True)
+  assert ncs_object.is_helical_along_z()
+  assert not ncs_object.is_point_group_symmetry()
+  print "OK"
+
 
 text2="""
 Summary of NCS information
@@ -1255,15 +1337,12 @@ def tst_06():
   unit_cell=unit_cell,space_group_info=SpaceGroup)
 
   ncs_obj=crystal_symmetry_to_ncs(crystal_symmetry)
-  ncs_obj.display_all()
 
   # apply ncs or apply crystal symmetry and make sure we get same answer.
   xyz_fract=matrix.col((0.41,0.43,0.39))
 
   sites_fract=flex.vec3_double()
   sites_fract.append(xyz_fract)
-  for sf in sites_fract:
-    print "SITES FRACT: %7.2f %7.2f %7.2f " %(sf)
 
   sites_cart=crystal_symmetry.unit_cell().orthogonalize(sites_fract)
 
@@ -1292,7 +1371,6 @@ def tst_06():
     text= "%7.2f  %7.2f %7.2f  :: %7.2f  %7.2f %7.2f " %(
        tuple(list(ncs_xx)+list(cryst_xx)))
     print >>f, text
-    print text
     assert "%7.2f  %7.2f %7.2f" %(ncs_xx) == "%7.2f  %7.2f %7.2f" %(cryst_xx)
 
   found_text=f.getvalue()
@@ -1306,6 +1384,8 @@ def tst_06():
 if __name__=="__main__":
   tst_01()
   tst_02()
+  tst_02a()
+  tst_02b()
   tst_03()
   tst_04()
   tst_05()
