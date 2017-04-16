@@ -33,25 +33,17 @@ def contiguous_ss_selections(pdb_hierarchy):
     params                       = params.secondary_structure,
     log                          = null_out())
   n_atoms = pdb_hierarchy.atoms_size()
-  helix_sel = [s.iselection() for s in ssm.helix_selections()]
-  beta_sel  = [s.iselection() for s in ssm.beta_selections()]
-  bp_sel    = [s.iselection() for s in ssm.base_pair_selections()]
-  ss_all = helix_sel + beta_sel + bp_sel
-  #
+  ss_all = ssm.alpha_selection().iselection()
+  ss_all.extend(ssm.beta_selection().iselection())
+  ss_all.extend(ssm.base_pair_selection().iselection())
   chain_selections = []
-  for sel in ss_all:
-    ph = pdb_hierarchy.select(sel)
-    isels = ph.atoms().extract_i_seq()
-    chain_selections.append(isels)
+  for k, g in groupby(enumerate(ss_all), lambda (i, x): i-x):
+    chain_selections.append(flex.size_t(list(map(itemgetter(1), g))))
   #
-  if(len(ss_all)>0):
-    ss_all_as_one_array = ss_all[0]
-    if(len(ss_all)>1):
-      for s in ss_all[1:]:
-        ss_all_as_one_array.extend(s)
-    ss_all_as_one_array_bool = flex.bool(n_atoms, ss_all_as_one_array)
+  if(ss_all.size()>0):
+    ss_all_as_one_array_bool = flex.bool(n_atoms, ss_all)
   else:
-    ss_all_as_one_array_bool = flex.bool(n_atoms,False)
+    ss_all_as_one_array_bool = flex.bool(n_atoms, False)
   #
   iseqs = []
   for atom in pdb_hierarchy.atoms():
