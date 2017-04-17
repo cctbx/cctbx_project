@@ -1933,6 +1933,11 @@ class PhenixExternalRegression(PhenixBuilder):
     # AFITT
     if self.subcategory in [None, "afitt"]:
       self.add_step(cleanup_dirs_class(['openeye'], 'modules'))
+    # Amber
+    if self.subcategory in [None, "amber"]:
+      self.add_step(cleanup_dirs_class(['amber'], 'modules'))
+      self.add_step(cleanup_dirs_class(['amber16'], 'modules'))
+      self.add_step(cleanup_dirs_class(['amber17'], 'modules'))
     for name, command, workdir in [
         ['AFITT - untar',
          ['tar', 'xvf', '%s.gz' % afitt_version],
