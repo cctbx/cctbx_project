@@ -84,7 +84,6 @@ class geometry_no_grm(object):
         print "  %s" % str(e)
         pass
 
-
   def format_molprobity_scores(self, prefix=""):
     clashscore_explanation = '"Clashscore and/or Probe failed to process model"'
     result="%s" % prefix
