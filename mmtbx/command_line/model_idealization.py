@@ -154,6 +154,7 @@ class model_idealization():
 
     self.using_ncs = False
     self.ncs_restr_group_list = []
+    self.filtered_ncs_restr_group_list = []
 
     # various checks, shifts, trims
     self.cs = crystal_symmetry
@@ -244,7 +245,7 @@ class model_idealization():
     result_h.reset_atom_i_seqs()
     if self.using_ncs:
       # multiply back and do geometry_minimization for the whole molecule
-      for ncs_gr in self.ncs_restr_group_list:
+      for ncs_gr in self.filtered_ncs_restr_group_list:
         ssb.set_xyz_smart(result_h, self.working_pdb_h)
         new_sites = result_h.select(ncs_gr.master_iselection).atoms().extract_xyz()
         # print len(ncs_gr.master_iselection), result_h.atoms_size(), len(new_sites)
@@ -460,6 +461,49 @@ class model_idealization():
     else:
       self.working_grm = self.whole_grm
 
+  def get_filtered_ncs_group_list(self):
+    if not self.params.ignore_ncs:
+      ncs_obj = iotbx.ncs.input(
+          hierarchy=self.whole_pdb_h,
+          chain_max_rmsd=4.0,
+          chain_similarity_threshold=0.99,
+          residue_match_radius=999.0)
+      print >> self.log, "Found NCS groups:"
+      ncs_obj.show(format='phil', log=self.log)
+      self.ncs_restr_group_list = ncs_obj.get_ncs_restraints_group_list(
+          raise_sorry=False)
+      total_ncs_selected_atoms = 0
+      master_sel = flex.size_t([])
+      self.filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
+          self.whole_pdb_h, self.ncs_restr_group_list)
+      print "self.filtered_ncs_restr_group_list", self.filtered_ncs_restr_group_list
+    if not self.params.ignore_ncs:
+      if len(self.filtered_ncs_restr_group_list) > 0:
+        self.using_ncs = True
+        master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
+        for ncs_gr in self.filtered_ncs_restr_group_list:
+          for copy in ncs_gr.copies:
+            master_sel.set_selected(copy.iselection, False)
+        self.master_pdb_h = self.whole_pdb_h.select(master_sel).deep_copy()
+        self.master_sel=master_sel
+        self.master_pdb_h.reset_atom_i_seqs()
+        print "master_sel", list(master_sel)
+
+    if self.using_ncs:
+      if self.params.debug:
+        self.master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
+      self.working_pdb_h = self.master_pdb_h
+    else:
+      self.working_pdb_h = self.whole_pdb_h
+    self.working_pdb_h.reset_atom_i_seqs()
+
+    self.working_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
+    if self.using_ncs:
+      self.whole_xrs = self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
+    else:
+      self.whole_xrs = self.working_xrs
+
+
   def run(self):
     t_0 = time()
     self.ann = ioss.annotation.from_phil(
@@ -474,21 +518,7 @@ class model_idealization():
     if self.ann is not None:
       self.filtered_whole_ann = self.ann.deep_copy()
 
-    filtered_ncs_restr_group_list = []
-    if not self.params.ignore_ncs:
-      ncs_obj = iotbx.ncs.input(
-          hierarchy=self.whole_pdb_h,
-          chain_max_rmsd=4.0,
-          chain_similarity_threshold=0.99,
-          residue_match_radius=999.0)
-      print >> self.log, "Found NCS groups:"
-      ncs_obj.show(format='phil', log=self.log)
-      self.ncs_restr_group_list = ncs_obj.get_ncs_restraints_group_list(
-          raise_sorry=False)
-      total_ncs_selected_atoms = 0
-      master_sel = flex.size_t([])
-      filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
-          self.whole_pdb_h, self.ncs_restr_group_list)
+    self.get_filtered_ncs_group_list()
 
     if self.params.run_minimization_first:
       # running simple minimization and updating all
@@ -502,7 +532,7 @@ class model_idealization():
           xrs=self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
           original_pdb_h=self.whole_pdb_h,
           grm=self.whole_grm,
-          ncs_restraints_group_list=filtered_ncs_restr_group_list,
+          ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
           excl_string_selection=None, # don't need if we have map
           ss_annotation=self.ann,
           reference_map=init_ref_map)
@@ -532,31 +562,7 @@ class model_idealization():
       self.time_for_run = time() - t_0
       return
 
-    if not self.params.ignore_ncs:
-      if len(filtered_ncs_restr_group_list) > 0:
-        self.using_ncs = True
-        master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
-        for ncs_gr in filtered_ncs_restr_group_list:
-          for copy in ncs_gr.copies:
-            master_sel.set_selected(copy.iselection, False)
-        self.master_pdb_h = self.whole_pdb_h.select(master_sel).deep_copy()
-        self.master_sel=master_sel
-        self.master_pdb_h.reset_atom_i_seqs()
 
-    if self.using_ncs:
-      if self.params.debug:
-        self.master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
-      self.working_pdb_h = self.master_pdb_h
-    else:
-      self.working_pdb_h = self.whole_pdb_h
-    self.working_pdb_h.reset_atom_i_seqs()
-
-
-    self.working_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
-    if self.using_ncs:
-      self.whole_xrs = self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
-    else:
-      self.whole_xrs = self.working_xrs
 
     if self.reference_map is None and self.params.use_map_for_reference:
       # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
@@ -604,7 +610,7 @@ class model_idealization():
           xrs=self.whole_xrs,
           original_pdb_h=self.whole_pdb_h,
           grm=self.whole_grm,
-          ncs_restraints_group_list=filtered_ncs_restr_group_list,
+          ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
           excl_string_selection=negate_selection,
           ss_annotation=self.ann,
           reference_map=self.reference_map)
@@ -747,7 +753,7 @@ class model_idealization():
       print >> self.log, "Not using ncs"
 
     # need to update SS manager for the whole model here.
-    # print "filtered_ncs_restr_group_list", filtered_ncs_restr_group_list
+    # print "self.filtered_ncs_restr_group_list", self.filtered_ncs_restr_group_list
     # STOP()
     if self.params.use_ss_restraints:
       ss_params = sec_str_master_phil.fetch().extract()
@@ -770,7 +776,7 @@ class model_idealization():
         hierarchy=self.whole_pdb_h,
         xrs=self.whole_xrs,
         grm=self.whole_grm,
-        ncs_restraints_group_list=filtered_ncs_restr_group_list,
+        ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
         original_pdb_h=ref_hierarchy_for_final_gm,
         excl_string_selection=loop_ideal.ref_exclusion_selection,
         ss_annotation=self.ann,
@@ -807,6 +813,7 @@ class model_idealization():
     self.whole_pdb_h = iotbx.pdb.input(lines=pdb_str, source_info=None).construct_hierarchy()
     # we need to renew everythig here: grm, whole model, xrs!
     self.whole_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=cs)
+    self.get_filtered_ncs_group_list()
     self.get_grm()
     # temp workaround, do something here to handle NCS cases
     self.working_pdb_h = self.whole_pdb_h
@@ -943,7 +950,13 @@ class model_idealization():
       m_c_id = m_c.only_model().chains()[0].id
       for chain in whole_h.only_model().chains():
         if chain.id == m_c_id:
-          if chain.atoms_size() <= master_iselection.size():
+          n_non_h_atoms = 0
+          for a in chain.atoms():
+            # print "'%s'" % a.element
+            if not a.element_is_hydrogen():
+              n_non_h_atoms += 1
+          # print "n_non_h_atoms, master_iselection.size()", n_non_h_atoms, master_iselection.size()
+          if n_non_h_atoms <= master_iselection.size():
             return True
           else:
             return False
