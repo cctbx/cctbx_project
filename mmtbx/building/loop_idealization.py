@@ -358,13 +358,13 @@ class loop_idealization():
     if contains_ss_element:
       ss_multiplier = 0.4
     # print "checking is_ok, n_out, target rmsd:", n_outliers, adaptive_mc_rmsd[ccd_radius+n_outliers-1]
-    if (mc_rmsd < adaptive_mc_rmsd[ccd_radius+n_outliers-1]*ss_multiplier and anchor_rmsd < 0.3):
+    if (mc_rmsd < adaptive_mc_rmsd.get(ccd_radius+n_outliers-1, 14.0)*ss_multiplier and anchor_rmsd < 0.3):
       return True
     elif ccd_radius == 3 and change_all_angles and change_radius == 2:
       # we are desperate and trying the most extensive search,
       # this deserves relaxed criteria...
       # print "desperate checking", adaptive_mc_rmsd[ccd_radius+n_outliers+1]*ss_multiplier
-      return mc_rmsd < adaptive_mc_rmsd[ccd_radius+n_outliers+1]*ss_multiplier and anchor_rmsd < 0.4
+      return mc_rmsd < adaptive_mc_rmsd.get(ccd_radius+n_outliers+1, 14.0)*ss_multiplier and anchor_rmsd < 0.4
 
   def fix_rama_outlier(self,
       pdb_hierarchy, out_res_num_list, prefix="", minimize=True,
@@ -524,9 +524,13 @@ class loop_idealization():
         print "len(ff_all_angles)", len(ff_all_angles)
         n_added = 0
         n_all_combination = len(ff_all_angles)
+        if n_all_combination == 0:
+          print >> self.log, "Strange - got 0 combinations."
         i_max = min(self.params.variant_number_cutoff, n_all_combination)
-        assert i_max > 0
-        step = float(n_all_combination-1)/float(i_max-1)
+        # assert i_max > 0
+        step = 0
+        if i_max > 1:
+          step = float(n_all_combination-1)/float(i_max-1)
         if step < 1:
           step = 1
         for i in range(i_max):
