@@ -93,7 +93,7 @@ def run(prefix="tst_map_model_cc"):
     # check results
     fo = open("%s.zlog"%prefix,"r")
     for l in fo.readlines():
-      if(l.startswith("around atoms:")):
+      if(l.startswith("  CC_mask  :")):
         cc = float(l.split()[2])
         assert cc>0.989
         checked+=1
