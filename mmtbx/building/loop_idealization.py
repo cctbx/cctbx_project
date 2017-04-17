@@ -763,6 +763,7 @@ class loop_idealization():
 
   def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy):
     phi_psi_atoms = utils.get_phi_psi_atoms(pdb_hierarchy, omega=True)
+    # pdb_hierarchy.write_pdb_file(file_name="phi_psi_atoms.pdb")
     # print "len phi psi atoms", len(phi_psi_atoms)
     result = []
     rama_results = []
@@ -772,16 +773,18 @@ class loop_idealization():
     outp = utils.list_rama_outliers_h(pdb_hierarchy, self.r)
     print >> self.log, outp
     for phi_psi_pair, rama_key, omega in phi_psi_atoms:
-      # print "resseq:", phi_psi_pair[0][2].parent().parent().resseq
-      ev = utils.rama_evaluate(phi_psi_pair, self.r, rama_key)
-      # print "  ev", ev
-      rama_results.append(ev)
-      resnum = phi_psi_pair[0][2].parent().parent().resseq
-      if ev == ramalyze.RAMALYZE_OUTLIER:
-        result.append(resnum)
-      if abs(abs(omega)-180) > 30:
-        print >> self.log, "Spotted twisted/cis peptide:", resnum, omega
-        result.append(resnum)
+      if phi_psi_pair[0] is not None and phi_psi_pair[1] is not None:
+        # print "resseq:", phi_psi_pair[0][2].parent().parent().resseq
+        ev = utils.rama_evaluate(phi_psi_pair, self.r, rama_key)
+        # print "  ev", ev
+        rama_results.append(ev)
+        # print phi_psi_pair[0][0].id_str()
+        resnum = phi_psi_pair[0][2].parent().parent().resseq
+        if ev == ramalyze.RAMALYZE_OUTLIER:
+          result.append(resnum)
+        if abs(abs(omega)-180) > 30:
+          print >> self.log, "Spotted twisted/cis peptide:", resnum, omega
+          result.append(resnum)
     # STOP()
     return result
 
