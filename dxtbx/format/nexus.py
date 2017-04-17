@@ -385,7 +385,43 @@ class NXdetector_module(object):
 
     run_checks(self.handle, items)
 
+class NXdetector_group(object):
+  '''
+  A class to hold a handle to NXdetector_group
 
+  '''
+
+  def __init__(self, handle, errors=None):
+
+    self.handle = handle
+
+    items = {
+      "group_names" : {
+        "minOccurs" : 0,
+        "checks" : [
+        ]
+      },
+      "group_index" : {
+        "minOccurs" : 0,
+        "checks" : [
+          check_dset(dtype=['int32', 'int64', 'uint32', 'uint64'], is_scalar=True)
+        ]
+      },
+      "group_parent" : {
+        "minOccurs" : 0,
+        "checks" : [
+          check_dset(dtype=['int32', 'int64', 'uint32', 'uint64'], is_scalar=True)
+        ]
+      },
+      "group_type" : {
+        "minOccurs" : 0,
+        "checks" : [
+          check_dset(dtype=['int32', 'int64', 'uint32', 'uint64'], is_scalar=True)
+        ]
+      },
+    }
+
+    run_checks(self.handle, items)
 
 class NXdetector(object):
   '''
@@ -585,6 +621,14 @@ class NXinstrument(object):
     if len(self.detectors) == 0:
       raise RuntimeError('No NXdetector in %s' % self.handle.name)
 
+    # Find any detector groups
+    self.detector_groups = []
+    for entry in find_class(self.handle, "NXdetector_group"):
+      try:
+        self.detector_groups.append(NXdetector_group(entry, errors=errors))
+      except Exception, e:
+        if errors is not None:
+          errors.append(str(e))
 
 class NXbeam(object):
   '''
