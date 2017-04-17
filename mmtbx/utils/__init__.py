@@ -3092,7 +3092,7 @@ class extract_box_around_model_and_map(object):
         radii                       = radii)
       self.map_box = self.map_box*mask
 
-      if value_outside_atoms=='mean':  # default is None. 
+      if value_outside_atoms=='mean':  # default is None.
         #  make mean outside==mean inside
         one_d=self.map_box.as_1d()
         n_zero=mask.count(0)

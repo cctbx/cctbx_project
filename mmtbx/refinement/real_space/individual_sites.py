@@ -490,8 +490,8 @@ class minimize_wrapper_with_map():
     #     crystal_symmetry=self.xrs.crystal_symmetry())
     # STOP()
 
-    selection_real_space = xrs.backbone_selection()
-    # selection_real_space = None
+    # selection_real_space = xrs.backbone_selection() # XXX What is it???
+    selection_real_space = None
     import mmtbx.refinement.real_space.weight
     self.w = None
     for x in xrange(number_of_cycles):

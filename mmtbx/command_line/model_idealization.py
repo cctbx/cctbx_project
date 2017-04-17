@@ -30,6 +30,7 @@ from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
 from iotbx.file_reader import any_file
+from mmtbx.validation.clashscore import check_and_add_hydrogen
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -56,6 +57,10 @@ additionally_fix_rotamer_outliers = True
 use_ss_restraints = True
   .type = bool
   .help = Use Secondary Structure restraints
+  .expert_level = 2
+add_hydrogens = True
+  .type = bool
+  .help = Add hydrogens to the model before rotamer fixing
   .expert_level = 2
 use_starting_model_for_final_gm = False
   .type = bool
@@ -670,11 +675,9 @@ class model_idealization():
         pdb_hierarchy=for_stat_h,
         molprobity_scores=True)
 
-    # self.after_loop_idealization = geometry_no_grm(
-    #     pdb_hierarchy=iotbx.pdb.input(
-    #       source_info=None,
-    #       lines=loop_ideal.resulting_pdb_h.as_pdb_string()).construct_hierarchy(),
-    #     molprobity_scores=True)
+    if self.params.add_hydrogens:
+      print >> self.log, "Adding hydrogens"
+      self.add_hydrogens()
 
     # fixing remaining rotamer outliers
     # fixed_rot_pdb_h = loop_ideal.resulting_pdb_h.deep_copy()
@@ -744,6 +747,8 @@ class model_idealization():
       print >> self.log, "Not using ncs"
 
     # need to update SS manager for the whole model here.
+    # print "filtered_ncs_restr_group_list", filtered_ncs_restr_group_list
+    # STOP()
     if self.params.use_ss_restraints:
       ss_params = sec_str_master_phil.fetch().extract()
       ss_params.secondary_structure.protein.remove_outliers = not self.params.ss_idealization.enabled
@@ -781,6 +786,34 @@ class model_idealization():
         molprobity_scores=True)
     # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
     self.time_for_run = time() - t_0
+
+  def add_hydrogens(self):
+    # self.wo
+    self.whole_pdb_h = self.get_intermediate_result_hierarchy()
+    cs = self.whole_xrs.crystal_symmetry()
+    pdb_str, changed = check_and_add_hydrogen(
+        pdb_hierarchy=self.whole_pdb_h,
+        file_name=None,
+        nuclear=False,
+        keep_hydrogens=False,
+        verbose=False,
+        model_number=0,
+        n_hydrogen_cut_off=0,
+        time_limit=120,
+        allow_multiple_models=True,
+        crystal_symmetry=self.cs,
+        do_flips=True,
+        log=self.log)
+    self.whole_pdb_h = iotbx.pdb.input(lines=pdb_str, source_info=None).construct_hierarchy()
+    # we need to renew everythig here: grm, whole model, xrs!
+    self.whole_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=cs)
+    self.get_grm()
+    # temp workaround, do something here to handle NCS cases
+    self.working_pdb_h = self.whole_pdb_h
+    self.working_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=cs)
+    self.working_grm = self.whole_grm
+
+
 
   def minimize(self,
       hierarchy,
