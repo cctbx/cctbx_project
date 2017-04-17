@@ -952,7 +952,10 @@ class DetectorFactory(object):
     nx_module = obj.modules[0].handle
 
     # Get the detector name and type
-    detector_type = str(nx_detector['type'][()])
+    if 'type' in nx_detector:
+      detector_type = str(nx_detector['type'][()])
+    else:
+      detector_type = "unknown"
     detector_name = str(nx_detector.name)
 
     # Get the trusted range of pixel values
@@ -1055,6 +1058,11 @@ class GoniometerFactory(object):
 
   '''
   def __init__(self, obj):
+    if 'depends_on' not in obj.handle:
+      # Still image
+      self.model = None
+      return
+
     from dxtbx.model import Goniometer
 
     # Get the rotation axis
