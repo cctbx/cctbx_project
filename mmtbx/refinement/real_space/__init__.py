@@ -400,14 +400,33 @@ class structure_monitor(object):
 %s   outliers:                %-s %%
 %s   allowed:                 %-s %%
 %s   favored:                 %-s %%
+%s Omega angle:
+%s   cis-proline:             %-s %%
+%s   twisted proline:         %-s %%
+%s   cis-general:             %-s %%
+%s   twisted-general:         %-s %%
+%s CaBLAM analysis:
+%s   outliers:                %-s %%
+%s   disfavored:              %-s %%
+%s   ca outliers:             %-s %%
 %s Rotamer outliers:          %-s %%
 %s C-beta deviations:         %-s
 """
-    if(self.geometry_restraints_manager is not None):
-      mso = model_statistics.geometry(
-        pdb_hierarchy      = self.pdb_hierarchy,
-        molprobity_scores  = libtbx.env.has_module("probe"),
-        restraints_manager = self.geometry_restraints_manager)
+    mso = None
+    try:
+      if self.geometry_restraints_manager is not None:
+        mso = model_statistics.geometry(
+          pdb_hierarchy      = self.pdb_hierarchy,
+          molprobity_scores  = libtbx.env.has_module("probe"),
+          restraints_manager = self.geometry_restraints_manager)
+      else:
+        mso = model_statistics.geometry_no_grm(
+          pdb_hierarchy      = self.pdb_hierarchy,
+          molprobity_scores  = libtbx.env.has_module("probe"))
+    except Exception:
+      # some part of validation failed
+      pass
+    if mso is not None:
       print >> log, fmt%(
         prefix, self.map_cc_whole_unit_cell,
         prefix, self.map_cc_around_atoms,
@@ -420,23 +439,17 @@ class structure_monitor(object):
         prefix, format_value("%-5.2f", mso.ramachandran_outliers),
         prefix, format_value("%-5.2f", mso.ramachandran_allowed),
         prefix, format_value("%-5.2f", mso.ramachandran_favored),
+        prefix,
+        prefix, format_value("%-5.2f", mso.cis_proline),
+        prefix, format_value("%-5.2f", mso.twisted_proline),
+        prefix, format_value("%-5.2f", mso.cis_general),
+        prefix, format_value("%-5.2f", mso.twisted_general),
+        prefix,
+        prefix, format_value("%-5.2f", mso.cablam_outliers),
+        prefix, format_value("%-5.2f", mso.cablam_disfavored),
+        prefix, format_value("%-5.2f", mso.cablam_ca_outliers),
         prefix, format_value("%6.2f", mso.rotamer_outliers).strip(),
         prefix, format_value("%-3d", mso.c_beta_dev))
-    else:
-      print >> log, fmt%(
-        prefix, self.map_cc_whole_unit_cell,
-        prefix, self.map_cc_around_atoms,
-        prefix, "None",
-        prefix, "None",
-        prefix, self.dist_from_start,
-        prefix, self.dist_from_previous,
-        prefix, "None",
-        prefix,
-        prefix, "None",
-        prefix, "None",
-        prefix, "None",
-        prefix, "None",
-        prefix, "None")
 
   def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
     self.assert_pdb_hierarchy_xray_structure_sync()

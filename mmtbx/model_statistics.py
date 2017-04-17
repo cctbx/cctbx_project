@@ -14,6 +14,7 @@ from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
+from mmtbx.validation import cablam
 
 class geometry_no_grm(object):
   def __init__(
@@ -53,10 +54,36 @@ class geometry_no_grm(object):
         rama_fav   = self.ramachandran_favored)
       self.omglz = omegalyze.omegalyze(
         pdb_hierarchy=self.pdb_hierarchy, quiet=True)
+      self.n_proline = self.omglz.n_proline()
+      self.n_general = self.omglz.n_general()
       self.n_cis_proline = self.omglz.n_cis_proline()
       self.n_cis_general = self.omglz.n_cis_general()
       self.n_twisted_proline = self.omglz.n_twisted_proline()
       self.n_twisted_general = self.omglz.n_twisted_general()
+      self.cis_general = 0
+      self.twisted_general = 0
+      self.cis_proline = 0
+      self.twisted_proline = 0
+      if self.n_proline != 0:
+        self.cis_proline = self.n_cis_proline*100./self.n_proline
+        self.twisted_proline = self.n_twisted_proline*100./self.n_proline
+      if self.n_general != 0:
+        self.cis_general = self.n_cis_general*100./self.n_general
+        self.twisted_general = self.n_twisted_general*100./self.n_general
+      self.cablam_outliers=None
+      self.cablam_disfavored=None
+      self.cablam_ca_outliers=None
+      try:
+        cablam_results = cablam.cablamalyze(pdb_hierarchy, outliers_only=False,
+          out=null_out(), quiet=True)
+        self.cablam_outliers = cablam_results.percent_outliers()
+        self.cablam_disfavored = cablam_results.percent_disfavored()
+        self.cablam_ca_outliers = cablam_results.percent_ca_outliers()
+      except Exception as e:
+        print "CaBLAM failed with exception:"
+        print "  %s" % str(e)
+        pass
+
 
   def format_molprobity_scores(self, prefix=""):
     clashscore_explanation = '"Clashscore and/or Probe failed to process model"'
