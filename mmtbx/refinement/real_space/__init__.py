@@ -414,7 +414,11 @@ class structure_monitor(object):
 """
     mso = None
     try:
-      if self.geometry_restraints_manager is not None:
+      if self.geometry_restraints_manager is not None and False:
+        # XXX False at the end is intentional, because currently I want to
+        # disable this 'if' branch. Reason is - nothing from extended
+        # model_statistics (with GRM) is being used, so no reason to spend
+        # time calculating statistics over various restraints.
         mso = model_statistics.geometry(
           pdb_hierarchy      = self.pdb_hierarchy,
           molprobity_scores  = libtbx.env.has_module("probe"),
