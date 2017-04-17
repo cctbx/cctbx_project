@@ -349,7 +349,7 @@ class NXdetector_module(object):
         ]
       },
       "module_offset" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : [
           check_dset(dtype=["float64", "float32", "int64", "int32"], is_scalar=True),
           check_attr("transformation_type"),
@@ -360,7 +360,7 @@ class NXdetector_module(object):
         ]
       },
       "fast_pixel_direction" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : [
           check_dset(dtype=["float32", "float64"], is_scalar=True),
           check_attr("transformation_type"),
@@ -371,7 +371,7 @@ class NXdetector_module(object):
         ]
       },
       "slow_pixel_direction" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : [
           check_dset(dtype=["float32", "float64"], is_scalar=True),
           check_attr("transformation_type"),
@@ -410,7 +410,7 @@ class NXdetector(object):
         ]
       },
       "description" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : []
       },
       "time_per_channel" : {
@@ -430,7 +430,7 @@ class NXdetector(object):
         ]
       },
       "count_time" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : [
           check_dset(dtype=["float32", "float64"], is_scalar=True)
         ]
@@ -518,17 +518,17 @@ class NXdetector(object):
         "checks" : []
       },
       "saturation_value" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : [
           check_dset(dtype=["int32", "int64"], is_scalar=True)
         ]
       },
       "sensor_material" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : []
       },
       "sensor_thickness" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : [
           check_dset(dtype=["float32", "float64"], is_scalar=True),
           check_attr("units", dtype=str)
@@ -541,7 +541,7 @@ class NXdetector(object):
         ]
       },
       "type" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : []
       },
     }
@@ -640,7 +640,7 @@ class NXsample(object):
         "checks" : []
       },
       "depends_on" : {
-        "minOccurs" : 1,
+        "minOccurs" : 0,
         "checks" : []
       },
       "chemical_formula" : {
