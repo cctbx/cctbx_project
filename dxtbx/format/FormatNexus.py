@@ -19,7 +19,7 @@ from dxtbx.model import Scan # import dependency
 from dxtbx.format.nexus import is_nexus_file
 from dxtbx.format.nexus import NXmxReader
 from dxtbx.format.nexus import BeamFactory
-from dxtbx.format.nexus import DetectorFactory
+from dxtbx.format.nexus import DetectorFactory, DetectorFactoryFromGroup
 from dxtbx.format.nexus import GoniometerFactory
 from dxtbx.format.nexus import ScanFactory
 from dxtbx.format.nexus import DataFactory
@@ -56,10 +56,6 @@ class FormatNexus(FormatHDF5):
       "Currently only supports 1 NXinstrument"
     assert len(reader.entries[0].samples) == 1, \
       "Currently only supports 1 NXsample"
-    assert len(reader.entries[0].instruments[0].detectors) == 1, \
-      "Currently only supports 1 NXdetector"
-    assert len(reader.entries[0].instruments[0].detectors[0].modules) == 1, \
-      "Currently only supports 1 NXdetector_module"
     assert len(reader.entries[0].samples[0].beams) == 1, \
       "Currently only supports 1 NXbeam"
 
@@ -73,9 +69,22 @@ class FormatNexus(FormatHDF5):
 
     # Construct the models
     self._beam_model = BeamFactory(beam).model
-    self._detector_model = DetectorFactory(detector, self._beam_model).model
+
+    if len(instrument.detector_groups) == 0:
+      assert len(reader.entries[0].instruments[0].detectors) == 1, \
+        "Currently only supports 1 NXdetector unless in a detector group"
+      assert len(reader.entries[0].instruments[0].detectors[0].modules) == 1, \
+        "Currently only supports 1 NXdetector_module unless in a detector group"
+
+      self._detector_model = DetectorFactory(detector, self._beam_model).model
+    else:
+      self._detector_model = DetectorFactoryFromGroup(instrument, self._beam_model).model
+
     self._goniometer_model = GoniometerFactory(sample).model
-    self._scan_model = ScanFactory(sample, detector).model
+    if self._goniometer_model is None: # XXX need to derive from FormatStill, see hack in GoniometerFactory's __init__
+      self._scan_model = None
+    else:
+      self._scan_model = ScanFactory(sample, detector).model
     self._raw_data = DataFactory(data).model
     self._mask = (MaskFactory(detector).mask,)
 
@@ -122,3 +131,8 @@ class FormatNexus(FormatHDF5):
 
   def get_detectorbase(self, index=None):
     raise RuntimeError('Overload!')
+
+if __name__ == '__main__':
+  import sys
+  for arg in sys.argv[1:]:
+    print FormatNexus.understand(arg)
