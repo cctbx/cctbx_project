@@ -919,10 +919,10 @@ class model_idealization():
         ("Ramachandran outliers", "ramachandran_outliers", "{:10.2f}"),
         ("Ramachandran allowed", "ramachandran_allowed", "{:10.2f}"),
         ("Rotamer outliers", "rotamer_outliers", "{:10.2f}"),
-        ("Cis-prolines", "n_cis_proline", "{:10d}"),
-        ("Cis-general", "n_cis_general", "{:10d}"),
-        ("Twisted prolines", "n_twisted_proline", "{:10d}"),
-        ("Twisted general", "n_twisted_general", "{:10d}")]:
+        ("Cis-prolines", "cis_proline", "{:10.2f}"),
+        ("Cis-general", "cis_general", "{:10.2f}"),
+        ("Twisted prolines", "twisted_proline", "{:10.2f}"),
+        ("Twisted general", "twisted_general", "{:10.2f}")]:
       l = "%-21s:" % val_caption
       for stat_obj in stat_obj_list:
         value = 99999
