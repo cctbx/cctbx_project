@@ -933,6 +933,234 @@ class BeamFactory(object):
       direction=(0, 0, -1),
       wavelength=wavelength_value)
 
+def get_change_of_basis(transformation):
+  '''
+  Get the 4x4 homogenous coordinate matrix for a given NXtransformation.
+
+  '''
+  from scitbx.matrix import col, sqr
+  axis_type = transformation.attrs['transformation_type']
+
+  vector = col(transformation.attrs['vector']).normalize()
+  setting = transformation[0]
+  units = transformation.attrs['units']
+
+  if 'offset' in transformation.attrs:
+    offset = col(transformation.attrs['offset'])
+    offset = convert_units(offset, transformation.attrs['offset_units'], 'mm')
+  else:
+    offset = col((0,0,0))
+
+  # change of basis matrix in homologous coordinates
+  cob = None
+
+  if axis_type == "rotation":
+    if units == 'rad':
+      deg = False
+    elif units in ['deg', 'degrees']:
+      deg = True
+    else:
+      raise RuntimeError('Invalid units: %s' % units)
+    r3 = vector.axis_and_angle_as_r3_rotation_matrix(setting, deg = deg)
+    cob = sqr((r3[0], r3[1], r3[2], offset[0],
+               r3[3], r3[4], r3[5], offset[1],
+               r3[6], r3[7], r3[8], offset[2],
+               0,     0,     0,     1))
+  elif axis_type == "translation":
+    setting = convert_units(setting, units, 'mm')
+    translation = offset + (vector * setting)
+    cob = sqr((1,0,0,translation[0],
+               0,1,0,translation[1],
+               0,0,1,translation[2],
+               0,0,0,1))
+  else:
+    raise Sorry("Unrecognized tranformation type: %d"%axis_type)
+
+  return cob
+
+def get_depends_on_chain_using_equipment_components(transformation):
+  '''
+  Given an NXtransformation, find the list of dependencies that transformation
+  has.  If there are multiple dependencies in a single 'level', as indicated
+  by grouping them using equipment_component, then the dependency chain will
+  skip the intermediate dependencies, listing only the first at each level.
+
+  '''
+  import os
+  chain = []
+  current = transformation
+
+  while True:
+    parent_id = current.attrs['depends_on']
+
+    if parent_id == ".":
+      return chain
+    parent = current.parent[parent_id]
+
+    if 'equipment_component' in current.attrs:
+      eq_comp = current.attrs['equipment_component']
+      parent_eq_comp = parent.attrs['equipment_component']
+      if eq_comp == parent_eq_comp:
+        current = parent
+        continue
+    chain.append(parent)
+    current = parent
+
+def get_cummulative_change_of_basis(transformation):
+  ''' Get the 4x4 homogenous coordinate matrix for a given NXtransformation,
+  combining it with the change of basis matrices of parent transformations
+  with the same equipment component as the given transformation.
+  Returns (parent, change of basis matrix), where parent is None if the
+  transformation's depends_on is ".".  Parent is the tranformation that the
+  top level transformation in this chain of transformations depends on.
+
+  '''
+
+  cob = get_change_of_basis(transformation)
+
+  parent_id = transformation.attrs['depends_on']
+
+  if parent_id == ".":
+    return None, cob
+  parent = transformation.parent[parent_id]
+
+  if 'equipment_component' in transformation.attrs:
+    eq_comp = transformation.attrs['equipment_component']
+    parent_eq_comp = parent.attrs['equipment_component']
+    if eq_comp == parent_eq_comp:
+      non_matching_parent, parent_cob = get_cummulative_change_of_basis(parent)
+      return non_matching_parent, parent_cob * cob
+
+  return parent, cob
+
+class DetectorFactoryFromGroup(object):
+  '''
+  A class to create a detector model from a NXdetector_group
+
+  '''
+
+  def __init__(self, instrument, beam, idx = None):
+    from dxtbx.model import Detector, Panel
+    from scitbx import matrix
+    import os
+
+    if idx is None:
+      idx = 0
+
+    assert len(instrument.detector_groups) == 1, "Multiple detectors not supported"
+
+    nx_group = instrument.detector_groups[0].handle
+    group_names = nx_group['group_names']
+    group_indices = nx_group['group_index']
+    group_parent = nx_group['group_parent']
+
+    # Verify the NXdetector objects specified by the detector group are present
+    expected_detectors = []
+    root_name = None
+    for i, parent_id in enumerate(group_parent):
+      assert parent_id in [-1, 1], "Hierarchy of detectors not supported. Hierarchy of module components within detector elements is supported"
+
+      if parent_id == -1:
+        assert root_name is None, "Multiple roots not supported"
+        root_name = group_names[i]
+      else:
+        expected_detectors.append(group_names[i])
+
+    assert root_name is not None, "Detector root not found"
+    assert sorted([os.path.basename(d.handle.name) for d in instrument.detectors]) == sorted(expected_detectors), \
+      "Mismatch between detector group names and detectors available"
+
+    root = None
+
+    def set_frame(pg, transformation):
+      ''' Function to set the local frame of a panel/panel group given an
+      NXtransformation '''
+      parent, cob = get_cummulative_change_of_basis(transformation)
+      # set up the dxtbx d matrix.  Note use of homogenous coordinates.
+      origin = matrix.col((cob * matrix.col((0,0,0,1)))[0:3])
+      fast   = matrix.col((cob * matrix.col((1,0,0,1)))[0:3]) - origin
+      slow   = matrix.col((cob * matrix.col((0,1,0,1)))[0:3]) - origin
+
+      pg.set_local_frame(
+        fast.elems,
+        slow.elems,
+        origin.elems)
+
+      name = str(os.path.basename(transformation.name))
+      pg.set_name(name)
+
+    self.model = Detector()
+    for nx_detector in instrument.detectors:
+      # Get the detector type
+      if 'type' in nx_detector.handle:
+        detector_type = str(nx_detector.handle['type'][()])
+      else:
+        detector_type = "unknown"
+
+      # get the set of leaf modules (handles nested modules)
+      modules = []
+      for nx_detector_module in nx_detector.modules:
+        if len(find_class(nx_detector_module.handle, "NXdetector_module")) == 0:
+          modules.append(nx_detector_module)
+
+      n_modules = len(modules)
+      # depends_on field for a detector will have NxM entries in it, where
+      # N = number of images and M = number of detector modules
+      assert len(nx_detector.handle['depends_on']) % n_modules == 0, "Couldn't find NXdetector_modules matching the list of dependencies for this detector"
+
+      for module_number, nx_detector_module in enumerate(modules):
+        # Get the depends_on starting point for this module and for this image
+        depends_on = nx_detector.handle[nx_detector.handle['depends_on'][(idx//n_modules)+module_number]]
+        panel_name = str(os.path.basename(nx_detector_module.handle.name))
+        px_fast = int(nx_detector_module.handle['data_size'][0])
+        px_slow = int(nx_detector_module.handle['data_size'][1])
+        image_size = px_fast, px_slow
+        fast_pixel_size = nx_detector_module.handle['fast_pixel_size'][()]
+        slow_pixel_size = nx_detector_module.handle['slow_pixel_size'][()]
+        pixel_size = fast_pixel_size, slow_pixel_size
+        # XXX no units for pixel size in nx example file, plus fast_pixel_size isn't a standardized NXdetector_module field
+        #fast_pixel_direction_units = fast_pixel_direction.attrs['units']
+        #fast_pixel_size = convert_units(
+        #  fast_pixel_direction_value,
+        #  fast_pixel_direction_units,
+        #  "mm")
+
+        # Set up the hierarchical detector by iteraing through the dependencies,
+        # starting at the root
+        chain = get_depends_on_chain_using_equipment_components(depends_on)
+        pg = None
+        for transform in reversed(chain):
+          name = str(os.path.basename(transform.name))
+          if pg is None: # The first transform will be the root of the hiearchy
+            if root is None:
+              root = self.model.hierarchy()
+              set_frame(root, transform)
+            else:
+              assert root.get_name() == name, "Found multiple roots"
+            pg = root
+            continue
+
+          # subsequent times through the loop, pg will be the parent of the
+          # current transform
+          pg_names = [child.get_name() for child in pg]
+          if name in pg_names:
+            pg = pg[pg_names.index(name)]
+          else:
+            pg = pg.add_group()
+            set_frame(pg, transform)
+
+        # pg is now this panel's parent
+        p = pg.add_panel()
+        set_frame(p, depends_on)
+        p.set_name(panel_name)
+        p.set_pixel_size(pixel_size)
+        p.set_image_size(image_size)
+        p.set_type(detector_type)
+        # XXX These are still needing to be set
+        #    trusted_range,
+        #    thickness_value,
+        #    material,
+        #    mu))
 
 class DetectorFactory(object):
   '''
