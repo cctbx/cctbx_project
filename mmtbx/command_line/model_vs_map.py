@@ -156,31 +156,40 @@ def run(args, log=sys.stdout):
   show_histogram(data=bs, n_slots=10, data_min=flex.min(bs),
     data_max=flex.max(bs), log=log)
   #
+  # Compute CC
+  broadcast(m="Map-model CC (overall):", log=log)
+  five_cc_result = mmtbx.maps.correlation.five_cc(map = map_data,
+    xray_structure = xrs, d_min = d_min)
+  print >> log, "  CC_mask  : %6.4f"%five_cc_result.cc_mask
+  print >> log, "  CC_volume: %6.4f"%five_cc_result.cc_volume
+  print >> log, "  CC_peaks : %6.4f"%five_cc_result.cc_peaks
   # Compute FSC(map, model)
-  broadcast(m="Map-model FSC:", log=log)
-  mmtbx.maps.correlation.fsc_model_map(
-    xray_structure=xrs, map=map_data, d_min=d_min, log=log)
-  #
-  # various CC
+  broadcast(m="Model-map FSC:", log=log)
+  fsc = mmtbx.maps.correlation.fsc_model_vs_map(
+    xray_structure = xrs,
+    map            = map_data,
+    atom_radius    = five_cc_result.atom_radius,
+    d_min          = d_min)
+  fsc.show(prefix="  ")
+  # Local CC
   cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
     xray_structure = xrs,
     map_data       = map_data,
     d_min          = d_min)
-  broadcast(m="Map-model CC:", log=log)
-  print >> log, "Overall (entire box):  %6.4f"%cc_calculator.cc()
-  print >> log, "Around atoms (masked): %6.4f"%cc_calculator.cc(
-    selection=flex.bool(xrs.scatterers().size(), True))
+  broadcast(m="Map-model CC (local):", log=log)
+  # per residue
+  print >> log, "Per residue:"
+  residue_results = list()
+  for rg in ph.residue_groups():
+    cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
+    chain_id = rg.parent().id
+    print >> log, "  chain id: %s resid %s: %6.4f"%(
+      chain_id, rg.resid(), cc)
   # per chain
   print >> log, "Per chain:"
   for chain in ph.chains():
     print >> log, "  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
       selection=chain.atoms().extract_i_seq()))
-  # per residue
-  print >> log, "Per residue:"
-  for rg in ph.residue_groups():
-    cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
-    print >> log, "  chain id: %s resid %s: %6.4f"%(
-      rg.parent().id, rg.resid(), cc)
   # per residue detailed counts
   print >> log, "Per residue (histogram):"
   crystal_gridding = maptbx.crystal_gridding(

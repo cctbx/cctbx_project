@@ -8,6 +8,7 @@ from mmtbx import masks
 import sys
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+from libtbx import group_args
 
 class d99(object):
   def __init__(self, map, crystal_symmetry):
@@ -57,8 +58,23 @@ def get_selection_above_cutoff(m, n):
   return m>=m_.select(s)[n]
 
 class five_cc(object):
-  def __init__(self, map, xray_structure, d_min):
+  def __init__(self,
+               map,
+               xray_structure,
+               d_min,
+               compute_cc_box=False,
+               compute_cc_image=False,
+               compute_cc_mask=True,
+               compute_cc_volume=True,
+               compute_cc_peaks=True):
     adopt_init_args(self, locals())
+    #
+    self.cc_box    = None
+    self.cc_image  = None
+    self.cc_mask   = None
+    self.cc_volume = None
+    self.cc_peaks  = None
+    #
     self.crystal_gridding = maptbx.crystal_gridding(
       unit_cell             = xray_structure.unit_cell(),
       space_group_info      = xray_structure.space_group_info(),
@@ -78,21 +94,26 @@ class five_cc(object):
     maptbx.unpad_in_place(map=self.bs_mask)
     self.sel_inside = (self.bs_mask==0.).iselection()
     #
-    self.cc_overall = from_map_map(map_1=self.map, map_2=self.map_calc)
-    self.cc_image = self._cc_image()
-    self.cc_mask = from_map_map_selection(map_1=self.map, map_2=self.map_calc,
-      selection = self.sel_inside)
-    self.cc_peaks = self._cc_peaks()
-    self.cc_volume = self._cc_volume()
+    if(compute_cc_box):
+      self.cc_box = from_map_map(map_1=self.map, map_2=self.map_calc)
+    if(compute_cc_image):
+      self.cc_image = self._cc_image()
+    if(compute_cc_mask):
+      self.cc_mask = from_map_map_selection(map_1=self.map, map_2=self.map_calc,
+        selection = self.sel_inside)
+    if(compute_cc_volume):
+      self.cc_volume = self._cc_volume()
+    if(compute_cc_peaks):
+      self.cc_peaks = self._cc_peaks()
     # Free memory
-    del self.bs_mask, self.sel_inside
+    del self.sel_inside
 
   def _atom_radius(self):
     b_iso = adptbx.u_as_b(
       flex.mean(self.xray_structure.extract_u_iso_or_u_equiv()))
     o = maptbx.atom_curves(scattering_type="C", scattering_table="electron")
     return o.image(d_min=self.d_min, b_iso=b_iso,
-      radius_max=max(10.,self.d_min), radius_step=0.01).radius
+      radius_max=max(15.,self.d_min), radius_step=0.01).radius
 
   def _cc_image(self):
     return from_map_map_atoms(
@@ -128,66 +149,87 @@ class five_cc(object):
       x=self.map.select(s.iselection()).as_1d(),
       y=self.map_calc.select(s.iselection()).as_1d()).coefficient()
 
-def fsc_model_map(xray_structure, map, d_min, log=sys.stdout, radius=2.,
-                  prefix=""):
-  # XXX make radius dynamic
-  sgn = xray_structure.crystal_symmetry().space_group().type().number()
-  f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
-  n_bins=min(30, f_calc.data().size()//500)
-  def compute_mc(f_calc, map):
-    return f_calc.structure_factors_from_map(
-      map            = map,
-      use_scale      = True,
-      anomalous_flag = False,
-      use_sg         = False)
-  sites_frac = xray_structure.sites_frac()
-  if(sgn==1):
+class fsc_model_vs_map(object):
+  def __init__(self,
+               xray_structure,
+               map,
+               atom_radius,
+               d_min):
+    adopt_init_args(self, locals())
+    sgn = xray_structure.crystal_symmetry().space_group().type().number()
+    assert sgn == 1 # P1 only
+    def compute_mc(map_coeffs, map_data):
+      return map_coeffs.structure_factors_from_map(
+        map            = map_data,
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = False)
+    # Crystal gridding
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = self.xray_structure.unit_cell(),
+      space_group_info      = self.xray_structure.space_group_info(),
+      pre_determined_n_real = self.map.accessor().all())
+    # Compute mask
+    sites_frac = self.xray_structure.sites_frac()
     mask = cctbx_maptbx_ext.mask(
       sites_frac                  = sites_frac,
-      unit_cell                   = xray_structure.unit_cell(),
+      unit_cell                   = self.xray_structure.unit_cell(),
       n_real                      = map.all(),
       mask_value_inside_molecule  = 1,
       mask_value_outside_molecule = 0,
-      radii                       = flex.double(sites_frac.size(), radius))
-  mc = compute_mc(f_calc=f_calc, map=map)
-  if(sgn==1):
-    mc_masked = compute_mc(f_calc=f_calc, map=map*mask)
-    del mask
-  print >> log, prefix, "Overall (entire box):  %7.4f"%\
-    f_calc.map_correlation(other = mc)
-  if(sgn==1):
-    cc = f_calc.map_correlation(other = mc_masked)
-    if(cc is not None): print >> log, prefix, "Around atoms (masked): %7.4f"%cc
-  dsd = f_calc.d_spacings().data()
-  if(dsd.size()>1500):
-    f_calc.setup_binner(n_bins = n_bins)
-  else:
-    f_calc.setup_binner(reflections_per_bin = dsd.size())
-  if(sgn==1):
-    print >> log, prefix, "Bin# Resolution (A)     CC   CC(masked)"
-  else:
-    print >> log, prefix, "Bin# Resolution (A)     CC"
-  fmt1="%2d: %7.3f-%-7.3f %7.4f"
-  for i_bin in f_calc.binner().range_used():
-    sel       = f_calc.binner().selection(i_bin)
-    d         = dsd.select(sel)
-    d_min     = flex.min(d)
-    d_max     = flex.max(d)
-    n         = d.size()
-    fc        = f_calc.select(sel)
-    fo        = mc.select(sel)
-    cc        = fc.map_correlation(other = fo)
-    if(sgn==1):
-      fo_masked = mc_masked.select(sel)
-      cc_masked = fc.map_correlation(other = fo_masked)
-      if(cc_masked is not None and cc is not None):
-        fmt2="%2d: %7.3f-%-7.3f %7.4f %7.4f"
-        print >> log, prefix, fmt2%(i_bin, d_max, d_min, cc, cc_masked)
-      else:
-        fmt2="%2d: %7.3f-%-7.3f %s %s"
-        print >> log, prefix, fmt2%(i_bin, d_max, d_min, "none", "none")
+      radii                       = flex.double(sites_frac.size(), atom_radius))
+    # Compute Fcalc
+    f_calc = xray_structure.structure_factors(
+      d_min=min(d_min, 2.0)).f_calc().resolution_filter(d_min=d_min)
+    # Compute Fcalc masked inplace
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = f_calc)
+    map_calc = fft_map.real_map_unpadded()
+    map_calc = map_calc * mask
+    f_calc = compute_mc(map_coeffs = f_calc, map_data = map_calc)
+    # Compute Fobs masked
+    map = map*mask
+    f_obs = compute_mc(map_coeffs = f_calc, map_data = map)
+    # Binning
+    n_bins=min(30, f_calc.data().size()//500)
+    dsd = f_calc.d_spacings().data()
+    if(dsd.size()>1500):
+      f_calc.setup_binner(n_bins = n_bins)
     else:
-      print >> log, prefix, fmt1%(i_bin, d_max, d_min, cc)
+      f_calc.setup_binner(reflections_per_bin = dsd.size())
+    # Compute FSC
+    self.result = []
+    for i_bin in f_calc.binner().range_used():
+      sel       = f_calc.binner().selection(i_bin)
+      d         = dsd.select(sel)
+      d_min     = flex.min(d)
+      d_max     = flex.max(d)
+      n         = d.size()
+      fc        = f_calc.select(sel)
+      fo        = f_obs.select(sel)
+      cc        = fc.map_correlation(other = fo)
+      bin = group_args(
+        d_min = d_min, d_max = d_max, n = d.size(), cc = cc)
+      self.result.append(bin)
+
+  def show_lines(self, prefix=""):
+    lines = []
+    msg = prefix+"Atom radius used for masking: %s A"%(
+      str("%5.2f"%self.atom_radius).strip())
+    lines.append(msg)
+    lines.append(prefix+"Bin  Resolution      CC(FSC)  N_coeffs")
+    fmt="%2d: %7.3f-%-7.3f %7.4f %5d"
+    for i, bin in enumerate(self.result):
+      lines.append(prefix+fmt%(i, bin.d_max, bin.d_min, bin.cc, bin.n))
+    return lines
+
+  def show(self, log=None, prefix="", allcaps=False):
+    if(log is None): log = sys.stdout
+    lines = self.show_lines(prefix=prefix)
+    for l in lines:
+      if(allcaps): l = l.upper()
+      print >> log, l
 
 def assert_same_gridding(map_1, map_2):
   assert map_1.focus()==map_2.focus()

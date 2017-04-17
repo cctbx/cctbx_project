@@ -9,8 +9,6 @@ from libtbx import group_args
 from libtbx.utils import Sorry
 import mmtbx.utils
 import mmtbx.maps.correlation
-from cctbx import maptbx
-from cctbx.maptbx import resolution_from_map_and_model
 
 legend = """phenix.map_model_cc or phenix.model_map_cc:
   Given PDB file and a map file calculate model-map coorelation.
@@ -88,17 +86,27 @@ def run(args, pdb_hierarchy=None, crystal_symmetry=None, log=sys.stdout):
   if(d_min is None):
     raise Sorry("Resolution is required.")
   print >> log, "  d_min:", d_min
+  # Compute CC
+  broadcast(m="Map-model CC (overall):", log=log)
+  five_cc_result = mmtbx.maps.correlation.five_cc(map = map_data,
+    xray_structure = xrs, d_min = d_min)
+  print >> log, "  CC_mask  : %6.4f"%five_cc_result.cc_mask
+  print >> log, "  CC_volume: %6.4f"%five_cc_result.cc_volume
+  print >> log, "  CC_peaks : %6.4f"%five_cc_result.cc_peaks
   # Compute FSC(map, model)
   broadcast(m="Model-map FSC:", log=log)
-  mmtbx.maps.correlation.fsc_model_map(
-    xray_structure=xrs, map=map_data, d_min=d_min, log=log)
-  #
-  # various CC
+  fsc = mmtbx.maps.correlation.fsc_model_vs_map(
+    xray_structure = xrs,
+    map            = map_data,
+    atom_radius    = five_cc_result.atom_radius,
+    d_min          = d_min)
+  fsc.show(prefix="  ")
+  # Local CC
   cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
     xray_structure = xrs,
     map_data       = map_data,
     d_min          = d_min)
-  broadcast(m="Map-model CC:", log=log)
+  broadcast(m="Map-model CC (local):", log=log)
   # per residue
   print >> log, "Per residue:"
   residue_results = list()
@@ -127,15 +135,8 @@ def run(args, pdb_hierarchy=None, crystal_symmetry=None, log=sys.stdout):
   for chain in h.chains():
     print >> log, "  chain %s: %6.4f"%(chain.id, cc_calculator.cc(
       selection=chain.atoms().extract_i_seq()))
-  print >> log, "Overall:"
-  # entire box
-  print >> log, "         box: %6.4f"%cc_calculator.cc()
-  # all atoms
-  overall_cc = cc_calculator.cc(
-    selection=flex.bool(xrs.scatterers().size(),True))
-  print >> log, "around atoms: %6.4f"%overall_cc
   #
-  return overall_cc, residue_results
+  return five_cc_result, residue_results
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
