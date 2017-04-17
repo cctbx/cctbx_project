@@ -3036,10 +3036,10 @@ class extract_box_around_model_and_map(object):
       frac_min = list(flex.double(frac_min)-cushion)
     self.frac_min = frac_min
     na = self.map_data.all()
-    gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
-    gridding_last=[iceil(f*n) for f,n in zip(frac_max,na)]
+    self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
+    self.gridding_last=[iceil(f*n) for f,n in zip(frac_max,na)]
     all = self.map_data.all()
-    self.map_box = maptbx.copy(self.map_data, gridding_first, gridding_last)
+    self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     o = self.map_box.origin()
     self.secondary_shift = (-o[0]/all[0],-o[1]/all[1],-o[2]/all[2])
     self.secondary_shift_cart = cs.unit_cell().orthogonalize(self.secondary_shift)
@@ -3099,6 +3099,9 @@ class extract_box_around_model_and_map(object):
         n_tot=mask.size()
         mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
         self.map_box=self.map_box+(1-mask)*mean_in_box
+
+  def cut_and_copy_map(self,map_data=None):
+    return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
 
   def select_box(self,threshold,xrs=None):
     # Select box where data are positive (> threshold*max)

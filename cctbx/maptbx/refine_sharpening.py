@@ -177,53 +177,23 @@ def get_scale_factors(f_array,target_scale_factors=None):
   assert scale_array.count(-1.)==0
   return scale_array
 
-def scale_amplitudes(pdb_inp=None,map_coeffs=None,
-    si=None,resolution=None,overall_b=None,
-    fraction_complete=None,
-    min_fraction_complete=0.05,
-    verbose=False,
-    out=sys.stdout):
+def get_model_map_coeffs_normalized(pdb_inp=None,
+   si=None,
+   f_array=None,
+   overall_b=None,
+   resolution=None,
+   out=sys.stdout):
+  if not pdb_inp: return None
 
-  # Figure out resolution_dependent sharpening to optimally
-  #  match map and model. Then apply it as usual.
-
-  # if si.target_scale_factors is set, just use it...
-
-  from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
-  from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model
-  from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
-  import math
-
-  f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
-
-  from cctbx.maptbx.refine_sharpening import get_sharpened_map,\
-     quasi_normalize_structure_factors
-  (d_max,d_min)=f_array.d_max_min()
-  if not f_array.binner():
-    f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
-  f_array_normalized=quasi_normalize_structure_factors(
-        f_array,set_to_minimum=0.01)
-
-  if resolution is None:
-    resolution=si.resolution
-  if resolution is None:
-    raise Sorry("Need resolution for model sharpening")
   # define Wilson B for the model
   if overall_b is None:
     overall_b=10*resolution
     print >>out,"Setting Wilson B = %5.1f A based on resolution of %5.1f A" %(
       overall_b,resolution)
 
-  # Define expected fall-off of CC due to model error
-  if si.rmsd is None:
-    b_eff=None
-  else:
-    b_eff=8*3.14159*si.rmsd**2
-    print >>out,\
-    "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
-       %( b_eff,si.rmsd)
 
   # create model map using same coeffs
+  from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model
   model_map_coeffs=get_f_phases_from_model(
      pdb_inp=pdb_inp,
      f_array=f_array,
@@ -232,7 +202,9 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
      b_sol=si.b_sol,
      out=out)
 
+  from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
   model_f_array,model_phases=map_coeffs_as_fp_phi(model_map_coeffs)
+  (d_max,d_min)=f_array.d_max_min()
   model_f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
 
   # Set overall_b....
@@ -245,13 +217,42 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
      "adjusted model map: %6.1f A**2  %6.1f A**2" %(starting_b_iso,final_b_iso)
   model_map_coeffs_normalized=model_f_array.phase_transfer(
      phase_source=model_phases,deg=True)
+  return model_map_coeffs_normalized
 
-  obs_b_iso=get_b_iso(f_array,d_min=resolution)
-  print >>out,"\nEffective b_iso of observed data: %6.1f A**2" %(obs_b_iso)
+def get_b_eff(si=None,out=sys.stdout):
+  if si.rmsd is None:
+    b_eff=None
+  else:
+    b_eff=8*3.14159*si.rmsd**2
+    print >>out,\
+    "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
+       %( b_eff,si.rmsd)
+
+def calculate_fsc(si=None,
+     f_array=None,
+     map_coeffs=None,
+     second_map_coeffs=None,
+     resolution=None,
+     fraction_complete=None,
+     min_fraction_complete=None,
+     verbose=None,
+     out=sys.stdout):
+
+  # calculate anticipated fall-off of model data with resolution
+  b_eff=get_b_eff(si=si,out=out)
 
   # get f and model_f vs resolution and FSC vs resolution and apply
   # scale to f_array and return sharpened map
   dsd = f_array.d_spacings().data()
+  from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
+
+  if si.remove_aniso:
+    print >>out,"\nRemoving anisotropy from data before calculating scale"
+    map_coeffs,b_iso_map_coeffs=remove_aniso(
+       map_coeffs=map_coeffs,resolution=resolution,out=out)
+    if second_map_coeffs:
+      second_map_coeffs,b_iso_second_map_coeffs=remove_aniso(
+        map_coeffs=second_map_coeffs,resolution=resolution)
 
   ratio_list=flex.double()
   target_sthol2=flex.double()
@@ -267,7 +268,7 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
     d_avg     = flex.mean(d)
     n         = d.size()
     fo        = map_coeffs.select(sel)
-    fc        = model_map_coeffs_normalized.select(sel)
+    fc        = second_map_coeffs.select(sel)
     cc        = fc.map_correlation(other = fo)
     f_array_fc=map_coeffs_to_fp(fc)
     f_array_fo=map_coeffs_to_fp(fo)
@@ -337,46 +338,141 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   target_scale_factors=\
      target_scale_factors/target_scale_factors.min_max_mean().max
 
-  if si.target_scale_factors:
-    print >>out, "\nUsing supplied target scale factors..."
-    assert target_scale_factors.size()==si.target_scale_factors.size()
-    target_scale_factors=si.target_scale_factors
+  if fraction_complete < min_fraction_complete:
+    print >>out,"\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
+      fraction_complete,min_fraction_complete) + "\nSkipping scaling"
+    target_scale_factors=flex.double(target_scale_factors.size()*(1.0,))
 
   print >>out,"\nScale factors vs resolution:"
+  import math
   for sthol2,scale,rms_fo in zip(
      target_sthol2,target_scale_factors,rms_fo_list):
      print >>out,"d_min: %5.1f   scale:  %5.2f  rms F:  %7.1f" %(
        0.5/math.sqrt(sthol2),scale,rms_fo*scale)
 
+  si.target_scale_factors=target_scale_factors
+  si.target_sthol2=target_sthol2
+  si.d_min_list=d_min_list
+
+  return si 
+
+def remove_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
+     out=sys.stdout):
+  # remove anisotropy and set all directions to lowest value
+
+  if map_coeffs:  # convert to f and apply
+    from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
+    f_local,phases_local=map_coeffs_as_fp_phi(map_coeffs) 
+    f_local,b_iso=remove_aniso(f_array=f_local,resolution=resolution,out=out)
+    return f_local.phase_transfer(phase_source=phases_local,deg=True),b_iso
+
+  else:  # have f_array and resolution
+    from cctbx.maptbx.segment_and_split_map import get_b_iso
+    b_iso,aniso_scale_and_b=get_b_iso(f_array,d_min=resolution,
+      return_aniso_scale_and_b=True)
+    if not aniso_scale_and_b:
+      return f_array,0.  # could not do it
+
+    print >>out,"\nRemoving anisotropy with b_cart=(%7.2f,%7.2f,%7.2f)\n" %(
+      aniso_scale_and_b.b_cart[:3])
+    b_use=b_iso
+    miller_array=f_array
+
+    from cctbx import adptbx # next lines from xtriage (basic_analysis.py)
+    b_cart_aniso_removed = [ -b_use,
+                             -b_use,
+                             -b_use,
+                             0,
+                             0,
+                             0]
+    u_star_aniso_removed = adptbx.u_cart_as_u_star(
+      miller_array.unit_cell(),
+      adptbx.b_as_u( b_cart_aniso_removed  ) )
+    from mmtbx.scaling import absolute_scaling
+    no_aniso_array = absolute_scaling.anisotropic_correction(
+      miller_array,0.0,aniso_scale_and_b.u_star ,must_be_greater_than=-0.0001)
+    no_aniso_array = absolute_scaling.anisotropic_correction(
+      no_aniso_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
+    no_aniso_array = no_aniso_array.set_observation_type(
+      miller_array )
+
+    return no_aniso_array,b_iso
+
+def scale_amplitudes(pdb_inp=None,map_coeffs=None,
+    second_map_coeffs=None,
+    si=None,resolution=None,overall_b=None,
+    fraction_complete=None,
+    min_fraction_complete=0.05,
+    verbose=False,
+    out=sys.stdout):
+
+  # Figure out resolution_dependent sharpening to optimally
+  #  match map and model. Then apply it as usual.
+
+  # if si.target_scale_factors is set, just use those scale factors
+
+  from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso
+
+  f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+
+  (d_max,d_min)=f_array.d_max_min()
+  if not f_array.binner():
+    f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
+
+  if resolution is None:
+    resolution=si.resolution
+  if resolution is None:
+    raise Sorry("Need resolution for model sharpening")
+
+  obs_b_iso=get_b_iso(f_array,d_min=resolution)
+  print >>out,"\nEffective b_iso of observed data: %6.1f A**2" %(obs_b_iso)
+
+  if pdb_inp and not second_map_coeffs:
+    # Getting model information if pdb_inp present ---------------------------
+    second_map_coeffs=get_model_map_coeffs_normalized(pdb_inp=pdb_inp,
+       si=si,
+       f_array=f_array,
+       overall_b=overall_b,
+       resolution=resolution,
+       out=out)
+
+  if not si.target_scale_factors: # get scale factors if don't alread have them
+    si=calculate_fsc(si=si,
+      f_array=f_array,
+      map_coeffs=map_coeffs,
+      second_map_coeffs=second_map_coeffs,
+      resolution=resolution,
+      fraction_complete=fraction_complete,
+      min_fraction_complete=min_fraction_complete,
+      verbose=verbose,
+      out=out)
+    # now si.target_scale_factors array are the scale factors
+
   # Now create resolution-dependent coefficients from the scale factors
-  from cctbx.maptbx.refine_sharpening import run as refine_sharpening
-  si.sharpening_method='model_sharpening'
-  si.residual_target='model'
-  si.b_sharpen=0
-  si.b_iso=None
 
-  if not si.target_scale_factors:
-    si.target_scale_factors=target_scale_factors
-    si.target_sthol2=target_sthol2
-    si.d_min_list=d_min_list
-
-
-  if not si.target_scale_factors and fraction_complete < min_fraction_complete:
+  if not si.target_scale_factors: # nothing to do 
     scaled_f_array=f_array
-    print >>out,"\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
-      fraction_complete,min_fraction_complete) + "\nSkipping scaling"
-  else:  # apply scaling
     f_array_b_iso=get_b_iso(f_array,d_min=resolution)
+    print >>out,"\nNo scaling applied. B_iso=%5.1f A**2\n" %(f_array_b_iso)
+  else:  # apply scaling
+    if si.remove_aniso:
+      print >>out,"\nRemoving anisotropy from data before applying scale"
+      f_array,f_array_b_iso=remove_aniso(f_array=f_array,resolution=resolution,
+        out=out)
+      # get back binner
+      (d_max,d_min)=f_array.d_max_min()
+      f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
+    else:
+      f_array_b_iso=get_b_iso(f_array,d_min=resolution)
     scale_array=get_scale_factors(f_array,
-        target_scale_factors=target_scale_factors)
+        target_scale_factors=si.target_scale_factors)
     scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
     scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
     print >>out,"\nInitial b_iso for "+\
       "map: %5.1f A**2     After adjustment: %5.1f A**2" %(
       f_array_b_iso,scaled_f_array_b_iso)
-
-  assert si.n_real is not None
   new_map_coeffs=scaled_f_array.phase_transfer(phase_source=phases,deg=True)
+  assert si.n_real is not None
   return calculate_map(map_coeffs=new_map_coeffs,n_real=si.n_real)
 
 def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):

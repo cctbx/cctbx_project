@@ -14,6 +14,13 @@ master_phil = iotbx.phil.parse("""
       .help = File with CCP4-style map
       .short_caption = Map file
 
+    half_map_file = None
+      .type = path
+      .multiple = True
+      .short_caption = Half map
+      .help = Half map (two should be supplied) for FSC calculation. Must \
+               have grid identical to map_file
+
     map_coeffs_file = None
       .type = path
       .help = Optional file with map coefficients
@@ -161,7 +168,8 @@ master_phil = iotbx.phil.parse("""
                  or adjusted surface area. Default is True
 
      auto_sharpen_methods = no_sharpening b_iso b_iso_to_d_cut \
-                            resolution_dependent *None
+                            resolution_dependent model_sharpening \
+                            half_map_sharpening *None
        .type = choice(multi=True)
        .short_caption = Sharpening methods
        .help = Methods to use in sharpening. b_iso searches for b_iso to \
@@ -376,6 +384,7 @@ def get_map_coeffs_from_file(
 
 def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
     pdb_inp=None,
+    half_map_data_list=None,
     out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
@@ -385,6 +394,7 @@ def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
     pass # we are set
 
   elif params.input_files.map_file:
+    print >>out,"\nReading map from %s\n" %( params.input_files.map_file)
     from cctbx.maptbx.segment_and_split_map import get_map_object
     map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc=\
       get_map_object(file_name=params.input_files.map_file,out=out)
@@ -417,6 +427,21 @@ def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
   else:
     raise Sorry("Need ccp4 map or map_coeffs")
 
+  if params.input_files.half_map_file:
+    if len(params.input_files.half_map_file) != 2:
+      raise Sorry("Please supply zero or two half_map files")
+    half_map_data_list=[]
+    from cctbx.maptbx.segment_and_split_map import get_map_object
+    for file_name in params.input_files.half_map_file:
+      print >>out,"\nReading half-map from %s\n" %(file_name)
+      half_map_data,half_map_space_group,half_map_unit_cell,\
+        half_map_crystal_symmetry,half_map_origin_frac,half_map_acc=\
+        get_map_object(file_name=file_name,out=out)
+      half_map_data=half_map_data.as_double()
+      assert half_map_crystal_symmetry.is_similar_symmetry(crystal_symmetry)
+
+      half_map_data_list.append(half_map_data)
+
   if params.crystal_info.resolution is None:
     raise Sorry("Need resolution if map is supplied")
 
@@ -437,7 +462,8 @@ def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
        pdb_hierarchy=pdb_inp.construct_hierarchy(),
        out=out).as_pdb_input()
 
-  return pdb_inp,map_data,crystal_symmetry,acc
+
+  return pdb_inp,map_data,half_map_data_list,crystal_symmetry,acc
 
 
 def run(args=None,params=None,
@@ -445,15 +471,18 @@ def run(args=None,params=None,
     write_output_files=True,
     pdb_inp=None,
     return_map_data_only=False,
+    half_map_data_list=None,
     out=sys.stdout):
   # Get the parameters
   if not params:
     params=get_params(args,out=out)
 
   # get map_data and crystal_symmetry
-
-  pdb_inp,map_data,crystal_symmetry,acc=get_map_and_model(
+ 
+  pdb_inp,map_data,half_map_data_list,\
+        crystal_symmetry,acc=get_map_and_model(
      map_data=map_data,
+     half_map_data_list=half_map_data_list,
      pdb_inp=pdb_inp,
      crystal_symmetry=crystal_symmetry,
      params=params,out=out)
@@ -468,6 +497,7 @@ def run(args=None,params=None,
         resolution=params.crystal_info.resolution, # required
         crystal_symmetry=crystal_symmetry,
         map=map_data,
+        half_map_list=half_map_data_list,
         solvent_content=params.crystal_info.solvent_content,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
         box_center=params.map_modification.box_center,
