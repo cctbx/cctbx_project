@@ -11,6 +11,7 @@ from libtbx import runtime_utils
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import adopt_init_args, group_args
+from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
 import os
 import sys
 
@@ -156,7 +157,7 @@ class peaks_holes_container (object) :
     peaks_chain = iotbx.pdb.hierarchy.chain(id="A")
     model.append_chain(peaks_chain)
     def create_atom (xyz, peak, serial) :
-      rg = iotbx.pdb.hierarchy.residue_group(resseq=str(serial))
+      rg = iotbx.pdb.hierarchy.residue_group(resseq=hy36encode(4, serial))
       ag = iotbx.pdb.hierarchy.atom_group(resname="UNK")
       rg.append_atom_group(ag)
       a = iotbx.pdb.hierarchy.atom()
