@@ -1567,6 +1567,10 @@ def tst_filter_sheets_with_long_hbonds2():
       pass
     else:
       raise e
+  else:
+    # disable for now
+    pass
+    # assert 0
 
 def tst_reset_sheet_ids():
   ann_str = """\

@@ -784,6 +784,7 @@ class annotation(structure_base):
   def filter_sheets_with_long_hbonds(self, hierarchy, asc=None):
     from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
     from mmtbx.secondary_structure import manager as ss_manager
+    from mmtbx.secondary_structure import sec_str_master_phil
     if asc is None:
       asc = hierarchy.atom_selection_cache()
     ss_stats_obj = gather_ss_stats(pdb_h=hierarchy)
@@ -822,11 +823,20 @@ class annotation(structure_base):
           fresh_sheets = ss_m.actual_sec_str.sheets
           # checking for bug occuring in 4a7h where one strand happens to be
           # too long
+          ksdssp_bug = False
           for f_sh in fresh_sheets:
             for f_strand in f_sh.strands:
               if f_strand.get_end_resseq_as_int() - f_strand.get_start_resseq_as_int() > n_rgs:
                 sh_hierarchy.write_pdb_file(file_name="ksdssp_failure.pdb")
-                raise Sorry("It is 4a7h or ksdssp failed on another structure.")
+                ksdssp_bug = True
+                break
+                # raise Sorry("It is 4a7h or ksdssp failed on another structure.")
+          if ksdssp_bug:
+            ss_def_pars = sec_str_master_phil.extract()
+            ss_def_pars.secondary_structure.protein.search_method="from_ca"
+            ss_m = ss_manager(
+              pdb_hierarchy=sh_hierarchy,
+              params=ss_def_pars.secondary_structure)
           new_sheets += ss_m.actual_sec_str.sheets
     if len(sh_indeces_to_delete) > 0:
       for i in reversed(sh_indeces_to_delete):
