@@ -1583,6 +1583,8 @@ class sharpening_info:
     return b_iso
 
   def sharpen_and_score_map(self,map_data=None,out=sys.stdout):
+    if self.remove_aniso:
+      print >>out,"\nRemoving aniso before sharpening\n"
     if self.n_real is None: # need to get it
       self.n_real=map_data.all()
     self.map_data=sharpen_map_with_si(
@@ -1941,6 +1943,8 @@ def apply_sharpening(map_coeffs=None,
       n_real=sharpening_info_obj.n_real
       target_scale_factors=sharpening_info_obj.target_scale_factors
       n_bins=sharpening_info_obj.n_bins
+      remove_aniso=sharpening_info_obj.remove_aniso
+      resolution=sharpening_info_obj.resolution
 
     if target_scale_factors:
       assert sharpening_info_obj is not None
@@ -1984,6 +1988,12 @@ def apply_sharpening(map_coeffs=None,
       f_array_sharpened=absolute_scaling.anisotropic_correction(
         f_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
     else:
+      if remove_aniso:
+        print >>out,"\nRemoving aniso before applying sharpening"
+        from cctbx.maptbx.refine_sharpening import remove_aniso
+        f_array,f_array_b_iso=remove_aniso(
+           f_array=f_array,resolution=resolution,out=out)
+
       # Apply sharpening only to data from infinity to d_min, with transition
       # steepness of k_sharpen.
       data_array=f_array.data()
@@ -2472,8 +2482,10 @@ def get_params(args,out=sys.stdout):
   else:
     raise Sorry("Need ccp4 map")
 
-  if params.input_files.half_map_file and \
-     len(params.input_files.half_map_file)==2:
+  if params.input_files.half_map_file:
+    if len(params.input_files.half_map_file) != 2: 
+      raise Sorry("Please supply none or two half_map_file values")
+
     from iotbx import ccp4_map
     half_map_list=[]
     half_map_list.append(iotbx.ccp4_map.map_reader(
@@ -5623,6 +5635,13 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 
   elif si.is_resolution_dependent_sharpening():
     if f_array_normalized is None:
+
+      if si.remove_aniso:
+        print >>out,"\nRemoving aniso before applying sharpening"
+        from cctbx.maptbx.refine_sharpening import remove_aniso
+        f_array,f_array_b_iso=remove_aniso(
+           f_array=f_array,resolution=si.resolution,out=out)
+
       from cctbx.maptbx.refine_sharpening import get_sharpened_map,\
        quasi_normalize_structure_factors
       (d_max,d_min)=f_array.d_max_min()
@@ -5726,7 +5745,8 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
 
 def select_box_map_data(si=None,
            map_data=None,
-           second_map_data=None,
+           first_half_map_data=None,
+           second_half_map_data=None,
            pdb_inp=None,
            get_solvent_fraction=True,# XXX test not doing this...
            out=sys.stdout):
@@ -5757,15 +5777,25 @@ def select_box_map_data(si=None,
     box_crystal_symmetry=box.box_crystal_symmetry
     box_pdb_inp=box.hierarchy.as_pdb_input()
 
-    if second_map_data:
-      print >>out,"Getting second map as box"
-      box_second=run_map_box(args,
-        map_data=second_map_data,pdb_hierarchy=hierarchy,
+    if first_half_map_data:
+      print >>out,"Getting first map as box"
+      box_first=run_map_box(args,
+        map_data=first_half_map_data,pdb_hierarchy=hierarchy,
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
-      box_second_map=box_second.map_box.as_double()
+      box_first_half_map=box_first.map_box.as_double()
     else:
-      box_second_map=None
+      box_first_half_map=None
+
+    if second_half_map_data:
+      print >>out,"Getting second map as box"
+      box_second=run_map_box(args,
+        map_data=second_half_map_data,pdb_hierarchy=hierarchy,
+       write_output_files=False,
+       crystal_symmetry=crystal_symmetry,log=out)
+      box_second_half_map=box_second.map_box.as_double()
+    else:
+      box_second_half_map=None
 
 
   else:
@@ -5789,18 +5819,28 @@ def select_box_map_data(si=None,
        crystal_symmetry=crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
     box_pdb_inp=None
-    if second_map_data:
-      box_second_map,box_second_crystal_symmetry=cut_out_map(
-       map_data=second_map_data.as_double(),
+
+    if first_half_map_data:
+      box_first_half_map,box_first_crystal_symmetry=cut_out_map(
+       map_data=first_half_map_data.as_double(),
        crystal_symmetry=crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds)
     else:
-      box_second_map=None
+      box_first_half_map=None
+
+    if second_half_map_data:
+      box_second_half_map,box_second_crystal_symmetry=cut_out_map(
+       map_data=second_half_map_data.as_double(),
+       crystal_symmetry=crystal_symmetry,
+       min_point=lower_bounds, max_point=upper_bounds)
+    else:
+      box_second_half_map=None
 
   if not box_map or (
-       (not pdb_inp and not second_map_data) and \
+       (not pdb_inp and not second_half_map_data) and \
       box_map.size() > max_box_fraction* map_data.size()):
-    return None,map_data,second_map_data,crystal_symmetry,None # no point
+    return None,map_data,first_half_map_data,\
+        second_half_map_data,crystal_symmetry,None # no point
 
   else:
     # figure out solvent fraction in this box... 
@@ -5820,7 +5860,7 @@ def select_box_map_data(si=None,
       crystal_symmetry=box_crystal_symmetry,
       solvent_fraction=box_solvent_fraction)
 
-    return box_pdb_inp,box_map,box_second_map,\
+    return box_pdb_inp,box_map,box_first_half_map,box_second_half_map,\
         box_crystal_symmetry,box_sharpening_info_obj
 
 def box_from_center( si=None,
@@ -5975,11 +6015,11 @@ def auto_sharpen_map_or_map_coeffs(
 
     # Determine if we are running half-map or model_sharpening
     if half_map_list and len(half_map_list)==2:
-      first_map_data=half_map_list[0]
-      second_map_data=half_map_list[1]
+      first_half_map_data=half_map_list[0]
+      second_half_map_data=half_map_list[1]
     else:
-      first_map_data=map
-      second_map_data=None
+      first_half_map_data=map
+      second_half_map_data=None
 
     # Now identify optimal sharpening params
     print >>out,80*"="
@@ -5987,8 +6027,9 @@ def auto_sharpen_map_or_map_coeffs(
     print >>out,80*"="
     si=run_auto_sharpen( # get sharpening parameters standard run
       si=si,
-      map_data=first_map_data,
-      second_map_data=second_map_data,
+      map_data=map,
+      first_half_map_data=first_half_map_data,
+      second_half_map_data=second_half_map_data,
       pdb_inp=pdb_inp,
       auto_sharpen_methods=local_params.map_modification.auto_sharpen_methods,
       out=out)
@@ -6008,13 +6049,15 @@ def auto_sharpen_map_or_map_coeffs(
 def run_auto_sharpen(
       si=None,
       map_data=None,
-      second_map_data=None,
+      first_half_map_data=None,
+      second_half_map_data=None,
       pdb_inp=None,
       auto_sharpen_methods=None,
       out=sys.stdout):
 
   #  Identifies parameters for optimal map sharpening using analysis of density,
-  #    model-correlation, or half-map correlation (map_data vs second_map_data).
+  #    model-correlation, or half-map correlation (first_half_map_data vs
+  #     vs second_half_map_data).
 
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
@@ -6028,11 +6071,12 @@ def run_auto_sharpen(
     original_box_sharpening_info_obj=deepcopy(si)
     #write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
     
-    box_pdb_inp,box_map_data,box_second_map_data,\
+    box_pdb_inp,box_map_data,box_first_half_map_data,box_second_half_map_data,\
          box_crystal_symmetry,box_sharpening_info_obj=\
        select_box_map_data(si=si,
            map_data=map_data,
-           second_map_data=second_map_data,
+           first_half_map_data=first_half_map_data,
+           second_half_map_data=second_half_map_data,
            pdb_inp=pdb_inp,
            out=out)
     #write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
@@ -6053,8 +6097,10 @@ def run_auto_sharpen(
 
       map_data=box_map_data
       crystal_symmetry=box_crystal_symmetry
-      if box_second_map_data:
-        second_map_data=box_second_map_data
+      if box_first_half_map_data:
+        first_half_map_data=box_first_half_map_data
+      if box_second_half_map_data:
+        second_half_map_data=box_second_half_map_data
 
   else:
     original_box_sharpening_info_obj=None
@@ -6068,15 +6114,25 @@ def run_auto_sharpen(
       crystal_symmetry=crystal_symmetry,
       out=out)
 
-  if second_map_data:
-    second_map_coeffs=get_f_phases_from_map(map_data=second_map_data,
+  if first_half_map_data:
+    first_half_map_coeffs=get_f_phases_from_map(map_data=first_half_map_data,
        crystal_symmetry=crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
        return_as_map_coeffs=True,
        out=out)
   else:
-    second_map_coeffs=None
+    first_half_map_coeffs=None
+
+  if second_half_map_data:
+    second_half_map_coeffs=get_f_phases_from_map(map_data=second_half_map_data,
+       crystal_symmetry=crystal_symmetry,
+       d_min=si.resolution,
+       d_min_ratio=si.d_min_ratio,
+       return_as_map_coeffs=True,
+       out=out)
+  else:
+    second_half_map_coeffs=None
 
   # Try various methods for sharpening. # XXX fix this up
 
@@ -6218,8 +6274,10 @@ def run_auto_sharpen(
           local_si.b_sharpen=0
           local_si.b_iso=original_b_iso
           from cctbx.maptbx.refine_sharpening import scale_amplitudes
-          scale_amplitudes(second_map_coeffs=second_map_coeffs,
+          scale_amplitudes(
             map_coeffs=map_coeffs,
+            first_half_map_coeffs=first_half_map_coeffs,
+            second_half_map_coeffs=second_half_map_coeffs,
             si=local_si,out=out)
           # local_si contains target_scale_factors now
           local_f_array=f_array
@@ -6254,7 +6312,9 @@ def run_auto_sharpen(
                 local_si.adjusted_sa,local_si.kurtosis)+\
             " %7.3f  %7.3f" %(
              local_si.sa_ratio,local_si.normalized_regions)
-        elif local_si.b_sharpen is not None and local_si.b_iso is not None:
+        elif local_si.b_sharpen is not None and local_si.b_iso is not None and\
+           local_si.k_sharpen is not None and local_si.kurtosis is not None \
+           and local_si.adjusted_sa is not None:
           print >>out,\
            " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
             local_si.b_sharpen,local_si.b_iso,
@@ -6564,14 +6624,14 @@ def run(args,
       if params.map_modification.auto_sharpen:
         print >>out,"\nCarrying out auto-sharpening of map"
         print>>out,"Starting sharpening info:"
-        first_map_data=map_data
-        second_map_data=None
+        first_half_map_data=None
+        second_half_map_data=None
         if sharpening_target_pdb_inp: # use model in sharpening
           auto_sharpen_methods=['model_sharpening']
         elif half_map_list: # half_datasets
           auto_sharpen_methods=['half_map_sharpening']
-          first_map_data=half_map_list[0]
-          second_map_data=half_map_list[1]
+          first_half_map_data=half_map_list[0]
+          second_half_map_data=half_map_list[1]
         else:
           auto_sharpen_methods=\
             tracking_data.params.map_modification.auto_sharpen_methods
@@ -6581,8 +6641,9 @@ def run(args,
 
         check_si=run_auto_sharpen( # Get sharpening parameters 
            si=si,
-           map_data=first_map_data,
-           second_map_data=second_map_data,
+           map_data=map_data,
+           first_half_map_data=first_half_map_data,
+           second_half_map_data=second_half_map_data,
            auto_sharpen_methods=auto_sharpen_methods,
            pdb_inp=sharpening_target_pdb_inp,
            out=out)

@@ -229,12 +229,15 @@ def get_b_eff(si=None,out=sys.stdout):
        %( b_eff,si.rmsd)
 
 def calculate_fsc(si=None,
-     f_array=None,
+     f_array=None,  # just used for binner
      map_coeffs=None,
-     second_map_coeffs=None,
+     model_map_coeffs=None,
+     first_half_map_coeffs=None,
+     second_half_map_coeffs=None,
      resolution=None,
      fraction_complete=None,
      min_fraction_complete=None,
+     is_model_based=None,
      verbose=None,
      out=sys.stdout):
 
@@ -247,12 +250,34 @@ def calculate_fsc(si=None,
   from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
 
   if si.remove_aniso:
-    print >>out,"\nRemoving anisotropy from data before calculating scale"
+    print >>out,"\nRemoving anisotropy before calculating scale"
+    print >>out,"Working on first map"
     map_coeffs,b_iso_map_coeffs=remove_aniso(
        map_coeffs=map_coeffs,resolution=resolution,out=out)
-    if second_map_coeffs:
-      second_map_coeffs,b_iso_second_map_coeffs=remove_aniso(
-        map_coeffs=second_map_coeffs,resolution=resolution)
+    if model_map_coeffs:
+      print >>out,"Working on model map"
+      model_map_coeffs,b_iso_model_map_coeffs=remove_aniso(
+        map_coeffs=model_map_coeffs,resolution=resolution)
+    if first_half_map_coeffs:
+      print >>out,"Working on first map"
+      first_half_map_coeffs,b_iso_first_half_map_coeffs=remove_aniso(
+        map_coeffs=first_half_map_coeffs,resolution=resolution)
+    if second_half_map_coeffs:
+      print >>out,"Working on second map"
+      second_half_map_coeffs,b_iso_second_half_map_coeffs=remove_aniso(
+        map_coeffs=second_half_map_coeffs,resolution=resolution)
+
+  if is_model_based:
+    mc1=map_coeffs
+    mc2=model_map_coeffs
+    fo_map=map_coeffs # scale map_coeffs to model_map_coeffs*FSC
+    fc_map=model_map_coeffs
+  else: # half_dataset
+    mc1=first_half_map_coeffs
+    mc2=second_half_map_coeffs
+    fo_map=map_coeffs # scale map_coeffs to FSC**0.5 for now
+    fc_map=None # XXX will later be dummy_model_map_coeffs
+    
 
   ratio_list=flex.double()
   target_sthol2=flex.double()
@@ -267,20 +292,30 @@ def calculate_fsc(si=None,
     d_max     = flex.max(d)
     d_avg     = flex.mean(d)
     n         = d.size()
-    fo        = map_coeffs.select(sel)
-    fc        = second_map_coeffs.select(sel)
-    cc        = fc.map_correlation(other = fo)
-    f_array_fc=map_coeffs_to_fp(fc)
-    f_array_fo=map_coeffs_to_fp(fo)
+    m1        = mc1.select(sel)
+    m2        = mc2.select(sel)
+    cc        = m1.map_correlation(other = m2)
+    if fo_map:
+      fo        = fo_map.select(sel)
+      f_array_fo=map_coeffs_to_fp(fo)
+      rms_fo=f_array_fo.data().norm()
+    else:
+      rms_fo=1.
+    if fc_map:
+      fc        = fc_map.select(sel)
+      f_array_fc=map_coeffs_to_fp(fc)
+      rms_fc=f_array_fc.data().norm()
+    else:
+      rms_fc=1.
 
-    rms_fc=f_array_fc.data().norm()
-    rms_fo=f_array_fo.data().norm()
     sthol2=0.25/d_avg**2
-    ratio_list.append(rms_fc/rms_fo)
+    ratio_list.append(max(1.e-10,rms_fc)/max(1.e-10,rms_fo))
     target_sthol2.append(sthol2)
+    if cc is None: cc=0.
     cc_list.append(cc)
     d_min_list.append(d_min)
     rms_fo_list.append(rms_fo)
+
     if b_eff is not None:
       max_cc_estimate=cc* math.exp(min(20.,sthol2*b_eff))
     else:
@@ -292,10 +327,14 @@ def calculate_fsc(si=None,
     if verbose:
       print >>out,"d_min: %5.1f  FC: %7.1f  FOBS: %7.1f   CC: %5.2f" %(
       d_avg,rms_fc,rms_fo,cc)
+
   if not max_possible_cc:
     max_possible_cc=0.01
 
   if si.target_scale_factors: # not using these
+    max_possible_cc=1.
+    fraction_complete=1. 
+  elif (not is_model_based):
     max_possible_cc=1.
     fraction_complete=1. 
   else:
@@ -311,7 +350,6 @@ def calculate_fsc(si=None,
       print >>out,"Using fraction complete value of %5.2f "  %(fraction_complete)
       max_possible_cc=fraction_complete**0.5
 
-
   target_scale_factors=flex.double()
   max_scale=None
   for i_bin in f_array.binner().range_used():
@@ -320,8 +358,12 @@ def calculate_fsc(si=None,
     cc=cc_list[index]
     sthol2=target_sthol2[index]
     d_min=d_min_list[index]
+
     corrected_cc=max(0.00001,min(1.,cc/max_possible_cc))
-    if b_eff is not None:
+
+    if (not is_model_based): # use sqrt(cc) as est of correlation to perfect
+      scale_on_fo=ratio * min(1.,max(0.00001,corrected_cc**0.5))
+    elif b_eff is not None:
       scale_on_fo=ratio * min(1.,
         max(0.00001,corrected_cc) * math.exp(min(20.,sthol2*b_eff)) )
     else:
@@ -370,7 +412,7 @@ def remove_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
     from cctbx.maptbx.segment_and_split_map import get_b_iso
     b_iso,aniso_scale_and_b=get_b_iso(f_array,d_min=resolution,
       return_aniso_scale_and_b=True)
-    if not aniso_scale_and_b:
+    if not aniso_scale_and_b or not aniso_scale_and_b.b_cart:
       return f_array,0.  # could not do it
 
     print >>out,"\nRemoving anisotropy with b_cart=(%7.2f,%7.2f,%7.2f)\n" %(
@@ -398,8 +440,10 @@ def remove_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
 
     return no_aniso_array,b_iso
 
-def scale_amplitudes(pdb_inp=None,map_coeffs=None,
-    second_map_coeffs=None,
+def scale_amplitudes(pdb_inp=None,
+    map_coeffs=None,
+    first_half_map_coeffs=None,
+    second_half_map_coeffs=None,
     si=None,resolution=None,overall_b=None,
     fraction_complete=None,
     min_fraction_complete=0.05,
@@ -408,6 +452,16 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
 
   # Figure out resolution_dependent sharpening to optimally
   #  match map and model. Then apply it as usual.
+  #  if second_half_map_coeffs instead of model, use second_half_map_coeffs same as
+  #    normalized model map_coeffs, except that the target fall-off should be
+  #    skipped (could use fall-off based on a dummy model...)
+
+  if pdb_inp:
+    is_model_based=True
+  else:
+    assert si.target_scale_factors or (
+       first_half_map_coeffs and second_half_map_coeffs)
+    is_model_based=False
 
   # if si.target_scale_factors is set, just use those scale factors
 
@@ -427,23 +481,28 @@ def scale_amplitudes(pdb_inp=None,map_coeffs=None,
   obs_b_iso=get_b_iso(f_array,d_min=resolution)
   print >>out,"\nEffective b_iso of observed data: %6.1f A**2" %(obs_b_iso)
 
-  if pdb_inp and not second_map_coeffs:
+  if pdb_inp and not second_half_map_coeffs:
     # Getting model information if pdb_inp present ---------------------------
-    second_map_coeffs=get_model_map_coeffs_normalized(pdb_inp=pdb_inp,
+    model_map_coeffs=get_model_map_coeffs_normalized(pdb_inp=pdb_inp,
        si=si,
        f_array=f_array,
        overall_b=overall_b,
        resolution=resolution,
        out=out)
+  else:
+    model_map_coeffs=None
 
-  if not si.target_scale_factors: # get scale factors if don't alread have them
+  if not si.target_scale_factors: # get scale factors if don't already have them
     si=calculate_fsc(si=si,
-      f_array=f_array,
+      f_array=f_array,  # just used for binner
       map_coeffs=map_coeffs,
-      second_map_coeffs=second_map_coeffs,
+      model_map_coeffs=model_map_coeffs,
+      first_half_map_coeffs=first_half_map_coeffs,
+      second_half_map_coeffs=second_half_map_coeffs,
       resolution=resolution,
       fraction_complete=fraction_complete,
       min_fraction_complete=min_fraction_complete,
+      is_model_based=is_model_based,
       verbose=verbose,
       out=out)
     # now si.target_scale_factors array are the scale factors

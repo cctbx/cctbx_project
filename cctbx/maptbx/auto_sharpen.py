@@ -194,6 +194,11 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Size of box
        .help = You can specify the size of the box (grid units)
 
+     remove_aniso = True
+       .type = bool
+       .short_caption = Remove aniso
+       .help = You can remove anisotropy (overall and locally) during sharpening
+
      max_box_fraction = None
        .type = float
        .short_caption = Max size of box for auto_sharpening
@@ -502,6 +507,7 @@ def run(args=None,params=None,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
         box_center=params.map_modification.box_center,
         box_size=params.map_modification.box_size,
+        remove_aniso=params.map_modification.remove_aniso,
         auto_sharpen_methods=params.map_modification.auto_sharpen_methods,
         residual_target=params.map_modification.residual_target,
         region_weight=params.map_modification.region_weight,
