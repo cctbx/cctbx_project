@@ -122,13 +122,15 @@ def tar(source, tarfile, cwd=None):
   #mytar = tarfile.open(tarfile, mode="r:gz")
   #mytar.add(source, arcname=tarfile)
   #tar.close()
+  environment = os.environ.copy()
+  environment['GZIP'] = '-9'
   subprocess.check_call([
       'tar',
       '-cz',
       '-f', tarfile,
       source
     ],
-    cwd=cwd)
+    cwd=cwd, env=environment)
 
 class SetupInstaller(object):
   def __init__(self, **kwargs):
