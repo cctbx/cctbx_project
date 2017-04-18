@@ -660,6 +660,9 @@ Installation of Python packages may fail.
   #######################################################
 
   def build_python (self) :
+    if self.flag_is_mac and not op.exists('/usr/include/zlib.h'):
+      print >> self.log, "zlib.h missing -- try running 'xcode-select --install' first"
+      sys.exit(1)
     log = self.start_building_package("Python")
     os.chdir(self.tmp_dir)
     python_tarball = self.fetch_package(PYTHON_PKG)
