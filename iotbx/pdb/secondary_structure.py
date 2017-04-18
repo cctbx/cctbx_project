@@ -825,6 +825,7 @@ class annotation(structure_base):
           for f_sh in fresh_sheets:
             for f_strand in f_sh.strands:
               if f_strand.get_end_resseq_as_int() - f_strand.get_start_resseq_as_int() > n_rgs:
+                sh_hierarchy.write_pdb_file(file_name="ksdssp_failure.pdb")
                 raise Sorry("It is 4a7h or ksdssp failed on another structure.")
           new_sheets += ss_m.actual_sec_str.sheets
     if len(sh_indeces_to_delete) > 0:
