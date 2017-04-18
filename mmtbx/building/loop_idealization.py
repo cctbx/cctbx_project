@@ -129,6 +129,7 @@ class loop_idealization():
     berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
     self.berkeley_p_before_minimization_rama_outliers = \
         berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
+    n_bad_omegas = utils.n_bad_omegas(self.resulting_pdb_h)
 
     self.berkeley_p_after_minimiaztion_rama_outliers = self.berkeley_p_before_minimization_rama_outliers
     self.ref_exclusion_selection = ""
@@ -141,7 +142,8 @@ class loop_idealization():
     if not self.params.enabled:
       print >> self.log, "Loop idealization is not enabled, use 'enabled=True'."
     while (self.number_of_ccd_trials < self.params.number_of_ccd_trials
-        and self.berkeley_p_after_minimiaztion_rama_outliers > 0.001
+        and (self.berkeley_p_after_minimiaztion_rama_outliers > 0.001 or
+            (n_bad_omegas>1 and self.params.make_all_trans))
         and self.params.enabled):
       print >> self.log, "CCD try number, outliers:", self.number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
       processed_chain_ids = []
