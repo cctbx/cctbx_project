@@ -1434,6 +1434,70 @@ class DataList(object):
     data_as_flex.reshape(flex.grid(data_as_flex.all()[1:]))
     return data_as_flex
 
+class DetectorGroupDataList(object):
+  '''
+  A class to make it easier to access the data from multiple datasets.
+  This version brings in all the panels from a detector group with several detectors.
+
+  '''
+  def __init__(self, datalists):
+    self.datalists = datalists
+    lengths = [len(datalist) for datalist in datalists]
+    self.num_images = lengths[0]
+    assert all([l == self.num_images for l in lengths]), "Not all datasets are the same length"
+
+  def __len__(self):
+    return self.num_images
+
+  def __getitem__(self, index):
+    data = []
+    for datalist in self.datalists:
+      data.extend(datalist[index])
+    return tuple(data)
+
+class MultiPanelDataList(object):
+  '''
+  A class to make it easier to access the data from multiple datasets.
+  Also handles multi-panel data as described in a series of NXdetector_modules
+
+  '''
+
+  def __init__(self, datasets, modules):
+    self.datasets = datasets
+    self.num_images = 0
+    self.lookup = []
+    self.offset = [0]
+    for i, dataset in enumerate(self.datasets):
+      self.num_images += dataset.shape[0]
+      self.lookup.extend([i] * dataset.shape[0])
+      self.offset.append(self.num_images)
+
+    self.all_slices = []
+    for module in modules:
+      data_origin = module.handle['data_origin']
+      data_size = module.handle['data_size']
+      self.all_slices.append(list(reversed([slice(int(start), int(start+step), 1) for start, step in zip(data_origin, data_size)])))
+
+  def __len__(self):
+    return self.num_images
+
+  def __getitem__(self, index):
+    from scitbx.array_family import flex
+    import numpy as np
+    d = self.lookup[index]
+    i = index - self.offset[d]
+
+    all_data = []
+
+    for module_slices in self.all_slices:
+      slices = [slice(i, i+1, 1)]
+      slices.extend(module_slices)
+      data_as_flex = dataset_as_flex_int(
+        self.datasets[d].id.id,
+        tuple(slices))
+      data_as_flex.reshape(flex.grid(data_as_flex.all()[-2:])) # handle 3 or 4 dimension arrays
+      all_data.append(data_as_flex)
+    return tuple(all_data)
 
 class DataFactory(object):
   def __init__(self, obj):
@@ -1447,8 +1511,46 @@ class DataFactory(object):
       except KeyError: # If we cannot follow links due to lack of a write permission
         datasets.append(h5py.File(obj.handle["_filename_" + key].value, "r")["/entry/data/data"])
 
+    self._datasets = datasets
+
     self.model = DataList(datasets)
 
+class DetectorGroupDataFactory(DataFactory):
+  """ Class to handle reading data from a detector with a NXdetector_group """
+  def __init__(self, obj, instrument):
+    import os
+    DataFactory.__init__(self, obj)
+
+    # Map NXdetector names to list of datasets
+    mapping = {}
+    for dataset in self._datasets:
+      dataset_name = os.path.basename(dataset.name)
+      found_it = False
+      for detector in instrument.detectors:
+        if dataset_name in detector.handle:
+          found_it = True
+          detector_name = os.path.basename(detector.handle.name)
+          if detector_name in mapping:
+            assert dataset_name not in mapping[detector_name]['dataset_names'], "Dataset %s found in > 1 NXdetectors"%dataset_name
+            mapping[detector_name]['dataset_names'].append(dataset_name)
+            mapping[detector_name]['datasets'].append(dataset)
+          else:
+            mapping[detector_name] = { 'dataset_names': [dataset_name],
+                                       'datasets': [dataset],
+                                       'detector': detector }
+      assert found_it, "Couldn't match dataset %s to a NXdetector"%dataset_name
+
+    # Create a list of multipanel datalist objects
+    datalists = []
+    for detector_name in mapping:
+      # get the set of leaf modules (handles nested modules)
+      modules = []
+      for nx_detector_module in mapping[detector_name]['detector'].modules:
+        if len(find_class(nx_detector_module.handle, "NXdetector_module")) == 0:
+          modules.append(nx_detector_module)
+
+      datalists.append(MultiPanelDataList(mapping[detector_name]['datasets'], modules))
+    self.model = DetectorGroupDataList(datalists)
 
 class MaskFactory(object):
   '''
