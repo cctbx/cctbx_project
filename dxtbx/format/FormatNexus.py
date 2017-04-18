@@ -80,13 +80,14 @@ class FormatNexus(FormatHDF5):
     else:
       self._detector_model = DetectorFactoryFromGroup(instrument, self._beam_model).model
 
-    self._goniometer_model = GoniometerFactory(sample).model
-    if self._goniometer_model is None: # XXX need to derive from FormatStill, see hack in GoniometerFactory's __init__
-      self._scan_model = None
-    else:
-      self._scan_model = ScanFactory(sample, detector).model
+    self._setup_gonio_and_scan(sample, detector)
     self._raw_data = DataFactory(data).model
     self._mask = (MaskFactory(detector).mask,)
+
+  def _setup_gonio_and_scan(self, sample, detector):
+    """ Set up rotation-specific models """
+    self._goniometer_model = GoniometerFactory(sample).model
+    self._scan_model = ScanFactory(sample, detector).model
 
   def _end(self):
     return
@@ -131,6 +132,30 @@ class FormatNexus(FormatHDF5):
 
   def get_detectorbase(self, index=None):
     raise RuntimeError('Overload!')
+
+from dxtbx.format.FormatStill import FormatStill
+class FormatNexusStill(FormatNexus, FormatStill):
+
+  @staticmethod
+  def understand(image_file):
+    import h5py
+    is_nexus_still = False
+    try:
+      from dxtbx.format.nexus import find_entries, find_class
+      # Get the file handle
+      handle = h5py.File(image_file, 'r')
+      for entry in find_entries(handle, "/"):
+        for sample in find_class(entry, "NXsample"):
+          if 'depends_on' not in sample:
+            is_nexus_still = True
+    except IOError, e:
+      return False
+    return is_nexus_still
+
+  def _setup_gonio_and_scan(self, sample, detector):
+    """ No rotation-specific models for stills """
+    self._goniometer_model = None
+    self._scan_model = None
 
 if __name__ == '__main__':
   import sys
