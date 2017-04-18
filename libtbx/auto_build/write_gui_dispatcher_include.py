@@ -110,7 +110,7 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
     FONTCONFIG_PATH=$CCTBX_BUILD_BASE/etc/fonts
     FONTCONFIG_FILE=$CCTBX_BUILD_BASE/etc/fonts/fonts.conf
     if [ -z "$XDG_DATA_DIRS" ]; then
-      XDG_DATA_DIRS=$CCTBX_BUILD_BASE/base/share
+      XDG_DATA_DIRS=$CCTBX_BUILD_BASE/share:/usr/share
     else
       XDG_DATA_DIRS=$CCTBX_BUILD_BASE/share:$XDG_DATA_DIRS
     fi
