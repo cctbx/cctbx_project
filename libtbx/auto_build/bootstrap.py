@@ -1864,6 +1864,14 @@ class PhenixExternalRegression(PhenixBuilder):
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
     if lt.tm_wday==5: # do a completer build on Saturday night
       cleaning += ['base', 'build']
+    # Preparation
+    # AFITT
+    if self.subcategory in [None, "afitt"]:
+      self.add_step(cleanup_dirs_class(['openeye'], 'modules'))
+    # Amber
+    if self.subcategory in [None, "amber"]:
+      self.add_step(cleanup_dirs_class(['amber16'], 'modules'))
+      self.add_step(cleanup_dirs_class(['amber17'], 'modules'))
     PhenixBuilder.cleanup(self, cleaning)
 
   def get_environment(self, add_build_python_to_path=True):
@@ -1929,15 +1937,6 @@ class PhenixExternalRegression(PhenixBuilder):
     amber_c_comp = "clang"
     if sys.platform == "linux2":
       amber_c_comp = "gnu"
-    # Preparation
-    # AFITT
-    if self.subcategory in [None, "afitt"]:
-      self.add_step(cleanup_dirs_class(['openeye'], 'modules'))
-    # Amber
-    if self.subcategory in [None, "amber"]:
-      self.add_step(cleanup_dirs_class(['amber'], 'modules'))
-      self.add_step(cleanup_dirs_class(['amber16'], 'modules'))
-      self.add_step(cleanup_dirs_class(['amber17'], 'modules'))
     for name, command, workdir in [
         ['AFITT - untar',
          ['tar', 'xvf', '%s.gz' % afitt_version],
