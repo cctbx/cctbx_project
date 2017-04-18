@@ -146,7 +146,9 @@ class EigerNXmxFixer(object):
     # Add fast_pixel_size dataset
     # print "Using /entry/instrument/detector/geometry/orientation/value as fast/slow pixel directions"
     fast_axis = handle['/entry/instrument/detector/geometry/orientation/value'][0:3]
+    fast_axis = [fast_axis[0], fast_axis[1], -fast_axis[2]] # swap Z axis to align with Dectis/NeXus documentation
     slow_axis = handle['/entry/instrument/detector/geometry/orientation/value'][3:6]
+    slow_axis = [slow_axis[0], slow_axis[1], -slow_axis[2]] # swap Z axis to align with Dectis/NeXus documentation
     create_scalar(
       group,
       "fast_pixel_direction",
@@ -193,7 +195,9 @@ class EigerNXmxFixer(object):
 
     # Add detector position
     # print "Using /entry/instrument/detector/geometry/translation/distances as transformation"
-    detector_offset_vector = matrix.col(handle['/entry/instrument/detector/geometry/translation/distances'][()])
+    detector_offset_vector = handle['/entry/instrument/detector/geometry/translation/distances'][()]
+    # swap Z axis to align with Dectis/NeXus documentation
+    detector_offset_vector = matrix.col((detector_offset_vector[0], detector_offset_vector[1], -detector_offset_vector[2]))
     group = handle.create_group('/entry/instrument/detector/transformations')
     group.attrs['NX_class'] = 'NXtransformations'
     create_scalar(
