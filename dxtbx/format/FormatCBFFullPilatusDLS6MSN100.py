@@ -86,16 +86,24 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
         #   with rectangle of size a(A) = 12.8 mm (x 20 mm)
 
         offsetA = 33.0
+        # semi-circle for phi=-90 ... +90
         radiusA = 10.0
-        sqdA = 12.8 # square depth
         phi = flex.double_range(-90, 100, step=10) * math.pi/180
         x = flex.double(phi.size(), -offsetA)
         y = radiusA * flex.cos(phi)
         z = radiusA * flex.sin(phi)
 
-        x.extend(flex.double(5, -offsetA))
-        y.extend(flex.double((-sqdA/2, -sqdA, -sqdA, -sqdA, -sqdA/2)))
-        z.extend(flex.double((radiusA, radiusA, 0, -radiusA, -radiusA)))
+        # corners of square
+        sqdA = 12.8 # square depth
+        nsteps = 10
+        for i in range(nsteps+1):
+          for sign in (+1, -1):
+            x.append(-offsetA)
+            y.append(i * -sqdA/nsteps)
+            z.append(sign * radiusA)
+        x.append(-offsetA)
+        y.append(-sqdA)
+        z.append(0)
 
         SMG.faceA = flex.vec3_double(x, y, z)
 
