@@ -49,8 +49,9 @@ def n_bad_omegas(hierarchy):
   result = 0
   pso_atoms = get_phi_psi_atoms(hierarchy, omega=True)
   for psatoms, rama_key, omega in pso_atoms:
-    if abs(abs(omega)-180) > 10:
-      result += 1
+    if omega is not None:
+      if abs(abs(omega)-180) > 10:
+        result += 1
   return result
 
 def py_dihedral_angle2(sites, deg=True):
