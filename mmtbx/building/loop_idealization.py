@@ -195,7 +195,7 @@ class loop_idealization():
           berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
       if len(self.ref_exclusion_selection) > 0:
         self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
-      self.resulting_pdb_h.write_pdb_file(file_name="%d%s_before_minimization.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
+      # self.resulting_pdb_h.write_pdb_file(file_name="%d%s_before_minimization.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
       ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
       self.p_before_minimization_rama_outliers = ram.out_percent
 

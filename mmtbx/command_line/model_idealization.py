@@ -546,7 +546,11 @@ class model_idealization():
             grm=self.whole_grm)
 
     if (self.init_gm_model_statistics is not None
-        and self.init_gm_model_statistics.ramachandran_outliers == 0):
+        and self.init_gm_model_statistics.ramachandran_outliers == 0
+        and self.init_gm_model_statistics.twisted_general <= 0.01
+        and self.init_gm_model_statistics.twisted_proline <= 0.01
+        and self.init_gm_model_statistics.cis_general <= 0.01
+        and self.init_gm_model_statistics.cis_proline <= 0.01):
       print >> self.log, "Simple minimization was enough"
       # Early exit!!!
       self.shift_and_write_result(
@@ -929,7 +933,10 @@ class model_idealization():
         ("Cis-prolines", "cis_proline", "{:10.2f}"),
         ("Cis-general", "cis_general", "{:10.2f}"),
         ("Twisted prolines", "twisted_proline", "{:10.2f}"),
-        ("Twisted general", "twisted_general", "{:10.2f}")]:
+        ("Twisted general", "twisted_general", "{:10.2f}"),
+        ("CaBLAM outliers", "cablam_outliers", "{:10.2f}"),
+        ("CaBLAM disfavored", "cablam_disfavored", "{:10.2f}"),
+        ("CaBLAM CA outliers", "cablam_ca_outliers", "{:10.2f}")]:
       l = "%-21s:" % val_caption
       for stat_obj in stat_obj_list:
         value = 99999
