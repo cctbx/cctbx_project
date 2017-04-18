@@ -1286,11 +1286,6 @@ class GoniometerFactory(object):
 
   '''
   def __init__(self, obj):
-    if 'depends_on' not in obj.handle:
-      # Still image
-      self.model = None
-      return
-
     from dxtbx.model import Goniometer
 
     # Get the rotation axis
