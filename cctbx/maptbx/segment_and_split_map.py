@@ -1583,8 +1583,6 @@ class sharpening_info:
     return b_iso
 
   def sharpen_and_score_map(self,map_data=None,out=sys.stdout):
-    if self.remove_aniso:
-      print >>out,"\nRemoving aniso before sharpening\n"
     if self.n_real is None: # need to get it
       self.n_real=map_data.all()
     self.map_data=sharpen_map_with_si(
@@ -1869,21 +1867,11 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
   model_f_array=f_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
 
-  # now apply k_sol b_sol XXX not used...can cause problems with low-res
-  if 0 and k_sol:
-    from mmtbx.f_model import manager 
-    fmodel = manager(
-      xray_structure = xray_structure,
-      f_obs          = abs(model_f_array),
-      b_cart         = [0,0,0,0,0,0], # overall anisotropic scale matrix
-      k_sol          = k_sol,
-      b_sol          = b_sol)
-    model_f_array = fmodel.f_model()
-
   return model_f_array
 
 def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
-      d_min_ratio=None,return_as_map_coeffs=False,out=sys.stdout):
+      d_min_ratio=None,return_as_map_coeffs=False,remove_aniso=None,
+        out=sys.stdout):
     from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
     if d_min and d_min_ratio is not None:
       d_min_ratio_use=d_min_ratio
@@ -1920,6 +1908,12 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
          return_as_miller_arrays=True,nohl=True,out=null_out())
+
+    if remove_aniso:
+      print >>out,"\nRemoving aniso in data before analysis\n"
+      from cctbx.maptbx.refine_sharpening import remove_aniso
+      map_coeffs,b_iso_map_coeffs=remove_aniso(
+         map_coeffs=map_coeffs,resolution=d_min,out=out)
 
     if return_as_map_coeffs:
       return map_coeffs
@@ -1988,11 +1982,6 @@ def apply_sharpening(map_coeffs=None,
       f_array_sharpened=absolute_scaling.anisotropic_correction(
         f_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
     else:
-      if remove_aniso:
-        print >>out,"\nRemoving aniso before applying sharpening"
-        from cctbx.maptbx.refine_sharpening import remove_aniso
-        f_array,f_array_b_iso=remove_aniso(
-           f_array=f_array,resolution=resolution,out=out)
 
       # Apply sharpening only to data from infinity to d_min, with transition
       # steepness of k_sharpen.
@@ -5431,9 +5420,6 @@ def get_marked_points_cart(mask_data=None,unit_cell=None,
         (grid_point[0]/nx,
          grid_point[1]/ny,
          grid_point[2]/nz))
-  if 0 and boundary_points_skipped:
-     print "Total of %s boundary points of %s skipped" %(
-       boundary_points_skipped,marked_points.size())
 
   sites_cart=unit_cell.orthogonalize(sites_frac)
   return sites_cart
@@ -5628,19 +5614,20 @@ def sharpen_map_with_si(sharpening_info_obj=None,
        out=out)
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
+  if si.remove_aniso: 
+    print >>out,"\nRemoving aniso from map before sharpening\n"
+    from cctbx.maptbx.refine_sharpening import remove_aniso
+    f_array,f_array_b_iso=remove_aniso(
+       f_array=f_array,resolution=si.resolution,out=out)
+     
   if si.is_model_sharpening() or si.is_half_map_sharpening():
     from cctbx.maptbx.refine_sharpening import scale_amplitudes
-    return scale_amplitudes(map_coeffs=map_coeffs,
+    return scale_amplitudes(
+      map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True),
       si=si,overall_b=overall_b,out=out)
 
   elif si.is_resolution_dependent_sharpening():
     if f_array_normalized is None:
-
-      if si.remove_aniso:
-        print >>out,"\nRemoving aniso before applying sharpening"
-        from cctbx.maptbx.refine_sharpening import remove_aniso
-        f_array,f_array_b_iso=remove_aniso(
-           f_array=f_array,resolution=si.resolution,out=out)
 
       from cctbx.maptbx.refine_sharpening import get_sharpened_map,\
        quasi_normalize_structure_factors
@@ -6018,7 +6005,7 @@ def auto_sharpen_map_or_map_coeffs(
       first_half_map_data=half_map_list[0]
       second_half_map_data=half_map_list[1]
     else:
-      first_half_map_data=map
+      first_half_map_data=None
       second_half_map_data=None
 
     # Now identify optimal sharpening params
@@ -6070,7 +6057,6 @@ def run_auto_sharpen(
       print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
     #write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
-    
     box_pdb_inp,box_map_data,box_first_half_map_data,box_second_half_map_data,\
          box_crystal_symmetry,box_sharpening_info_obj=\
        select_box_map_data(si=si,
@@ -6111,6 +6097,7 @@ def run_auto_sharpen(
      map_data=map_data,
       resolution=si.resolution,
       d_min_ratio=si.d_min_ratio,
+      remove_aniso=si.remove_aniso,
       crystal_symmetry=crystal_symmetry,
       out=out)
 
@@ -6119,6 +6106,7 @@ def run_auto_sharpen(
        crystal_symmetry=crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
+       remove_aniso=si.remove_aniso,
        return_as_map_coeffs=True,
        out=out)
   else:
@@ -6129,6 +6117,7 @@ def run_auto_sharpen(
        crystal_symmetry=crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
+       remove_aniso=si.remove_aniso,
        return_as_map_coeffs=True,
        out=out)
   else:
@@ -6184,9 +6173,9 @@ def run_auto_sharpen(
 
   else:
     if best_si.is_model_sharpening():
-      print >>out,"\nApplying model sharpening"
+      print >>out,"\nSetting up model sharpening"
     elif best_si.is_half_map_sharpening():
-      print >>out,"\nApplying half-map sharpening"
+      print >>out,"\nSetting up half-map sharpening"
     else:
       print >>out,"\nTesting sharpening methods with target of %s" %(
         best_si.sharpening_target)
@@ -6383,6 +6372,7 @@ def get_effective_b_iso(map_data=None,tracking_data=None,
       box_sharpening_info_obj=None,
       crystal_symmetry=None,
       resolution=None,
+      remove_aniso=None,
       d_min_ratio=None,
       out=sys.stdout):
 
@@ -6403,6 +6393,7 @@ def get_effective_b_iso(map_data=None,tracking_data=None,
        crystal_symmetry=crystal_symmetry,
        d_min=d_min,
        d_min_ratio=d_min_ratio,
+       remove_aniso=remove_aniso,
        return_as_map_coeffs=True,
        out=out)
 

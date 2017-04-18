@@ -249,24 +249,6 @@ def calculate_fsc(si=None,
   dsd = f_array.d_spacings().data()
   from cctbx.maptbx.segment_and_split_map import map_coeffs_to_fp
 
-  if si.remove_aniso:
-    print >>out,"\nRemoving anisotropy before calculating scale"
-    print >>out,"Working on first map"
-    map_coeffs,b_iso_map_coeffs=remove_aniso(
-       map_coeffs=map_coeffs,resolution=resolution,out=out)
-    if model_map_coeffs:
-      print >>out,"Working on model map"
-      model_map_coeffs,b_iso_model_map_coeffs=remove_aniso(
-        map_coeffs=model_map_coeffs,resolution=resolution)
-    if first_half_map_coeffs:
-      print >>out,"Working on first map"
-      first_half_map_coeffs,b_iso_first_half_map_coeffs=remove_aniso(
-        map_coeffs=first_half_map_coeffs,resolution=resolution)
-    if second_half_map_coeffs:
-      print >>out,"Working on second map"
-      second_half_map_coeffs,b_iso_second_half_map_coeffs=remove_aniso(
-        map_coeffs=second_half_map_coeffs,resolution=resolution)
-
   if is_model_based:
     mc1=map_coeffs
     mc2=model_map_coeffs
@@ -514,15 +496,7 @@ def scale_amplitudes(pdb_inp=None,
     f_array_b_iso=get_b_iso(f_array,d_min=resolution)
     print >>out,"\nNo scaling applied. B_iso=%5.1f A**2\n" %(f_array_b_iso)
   else:  # apply scaling
-    if si.remove_aniso:
-      print >>out,"\nRemoving anisotropy from data before applying scale"
-      f_array,f_array_b_iso=remove_aniso(f_array=f_array,resolution=resolution,
-        out=out)
-      # get back binner
-      (d_max,d_min)=f_array.d_max_min()
-      f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
-    else:
-      f_array_b_iso=get_b_iso(f_array,d_min=resolution)
+    f_array_b_iso=get_b_iso(f_array,d_min=resolution)
     scale_array=get_scale_factors(f_array,
         target_scale_factors=si.target_scale_factors)
     scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
