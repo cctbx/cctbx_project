@@ -44,6 +44,23 @@ master_phil = iotbx.phil.parse("""
                 to improve a map in regions where no model is yet \
                 built.
       .short_caption = Model file
+
+    ncs_file = None
+      .type = path
+      .help = File with NCS information (typically point-group NCS with \
+               the center specified). Typically in  PDB format. \
+              Can also be a .ncs_spec file from phenix. \
+              Created automatically if ncs_type is specified.
+      .short_caption = NCS info file
+
+    seq_file = None
+       .type = path
+       .short_caption = Sequence file
+       .help = Sequence file (unique chains only,  \
+               1-letter code, chains separated by \
+               blank line or greater-than sign.)  \
+               Can have chains that are DNA/RNA/protein and\
+               all can be present in one file.
   }
 
   output_files
@@ -167,22 +184,34 @@ master_phil = iotbx.phil.parse("""
        .help = Automatically determine sharpening using kurtosis maximization\
                  or adjusted surface area. Default is True
 
-     auto_sharpen_methods = no_sharpening b_iso b_iso_to_d_cut \
-                            resolution_dependent model_sharpening \
-                            half_map_sharpening *None
+     auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
+                            *resolution_dependent model_sharpening \
+                            half_map_sharpening None
+
        .type = choice(multi=True)
        .short_caption = Sharpening methods
        .help = Methods to use in sharpening. b_iso searches for b_iso to \
           maximize sharpening target (kurtosis or adjusted_sa). \
           b_iso_to_d_cut applies b_iso only up to resolution specified, with \
           fall-over of k_sharpen.  Resolution dependent adjusts 3 parameters \
-          to sharpen variably over resolution range. Default is all.
+          to sharpen variably over resolution range. Default is b_iso,\
+          b_iso_to_d_cut and resolution_dependent.
 
      box_in_auto_sharpen = None
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map. Default is True.
+
+     local_sharpening = None
+       .type = bool
+       .short_caption = Local sharpening
+       .help = Sharpen locally using overlapping regions
+
+     local_aniso_in_local_sharpening = True
+       .type = bool
+       .short_caption = Local anisotropy
+       .help = Use local anisotropy in local sharpening
 
      box_center = None
        .type = floats
@@ -356,6 +385,8 @@ def get_params(args,out=sys.stdout):
     reflection_file_def="input_files.map_coeffs_file",
     map_file_def="input_files.map_file",
     pdb_file_def="input_files.pdb_file",
+    seq_file_def="input_files.seq_file",
+    ncs_file_def="input_files.ncs_file",
     args=args,
     master_phil=master_phil)
 
@@ -387,8 +418,11 @@ def get_map_coeffs_from_file(
       if not map_coeffs_labels or labels==map_coeffs_labels:  # take it
          return ma
 
-def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
+def get_map_and_model(params=None,
+    map_data=None,
+    crystal_symmetry=None,
     pdb_inp=None,
+    ncs_obj=None,
     half_map_data_list=None,
     out=sys.stdout):
 
@@ -467,14 +501,25 @@ def get_map_and_model(params=None,map_data=None,crystal_symmetry=None,
        pdb_hierarchy=pdb_inp.construct_hierarchy(),
        out=out).as_pdb_input()
 
+  if params.input_files.ncs_file and not ncs_obj: # NCS
+    from cctbx.maptbx.segment_and_split_map import get_ncs
+    ncs_obj,dummy_tracking_data=get_ncs(params,out=out)
+    if origin_frac != (0,0,0):
+      origin_shift=crystal_symmetry.unit_cell().orthogonalize(
+         (-origin_frac[0],-origin_frac[1],-origin_frac[2]))
+      print >>out,"Shifting NCS by %s" %(str(origin_shift))
+      from scitbx.math import  matrix
+      ncs_obj=ncs_obj.coordinate_offset(
+       coordinate_offset=matrix.col(origin_shift))
 
-  return pdb_inp,map_data,half_map_data_list,crystal_symmetry,acc
+  return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc
 
 
 def run(args=None,params=None,
     map_data=None,crystal_symmetry=None,
     write_output_files=True,
     pdb_inp=None,
+    ncs_obj=None,
     return_map_data_only=False,
     half_map_data_list=None,
     out=sys.stdout):
@@ -484,11 +529,12 @@ def run(args=None,params=None,
 
   # get map_data and crystal_symmetry
  
-  pdb_inp,map_data,half_map_data_list,\
+  pdb_inp,map_data,half_map_data_list,ncs_obj,\
         crystal_symmetry,acc=get_map_and_model(
      map_data=map_data,
      half_map_data_list=half_map_data_list,
      pdb_inp=pdb_inp,
+     ncs_obj=ncs_obj,
      crystal_symmetry=crystal_symmetry,
      params=params,out=out)
 
@@ -504,6 +550,9 @@ def run(args=None,params=None,
         map=map_data,
         half_map_list=half_map_data_list,
         solvent_content=params.crystal_info.solvent_content,
+        local_sharpening=params.map_modification.local_sharpening,
+        local_aniso_in_local_sharpening=\
+           params.map_modification.local_aniso_in_local_sharpening,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
         box_center=params.map_modification.box_center,
         box_size=params.map_modification.box_size,
@@ -533,10 +582,12 @@ def run(args=None,params=None,
         resolution_dependent_b=\
            params.map_modification.resolution_dependent_b,
         pdb_inp=pdb_inp,
+        ncs_obj=ncs_obj,
         rmsd=params.map_modification.rmsd,
         b_sol=params.map_modification.b_sol,
         k_sol=params.map_modification.k_sol,
         fraction_complete=params.map_modification.fraction_complete,
+        seq_file=params.input_files.seq_file,
         out=out)
 
   # get map_data and map_coeffs of final map
@@ -553,7 +604,8 @@ def run(args=None,params=None,
 
   # write out the new map_coeffs and map if requested:
 
-  if write_output_files and params.output_files.sharpened_map_file:
+  if write_output_files and params.output_files.sharpened_map_file and \
+      new_map_data:
     output_map_file=os.path.join(params.output_files.output_directory,
         params.output_files.sharpened_map_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
@@ -577,7 +629,8 @@ def run(args=None,params=None,
     print >>out,"\nWrote sharpened map (origin at %s)\nto %s" %(
      str(new_map_data.origin()),output_map_file)
 
-  if write_output_files and params.output_files.sharpened_map_coeffs_file:
+  if write_output_files and params.output_files.sharpened_map_coeffs_file and \
+      new_map_coeffs:
     output_map_coeffs_file=os.path.join(params.output_files.output_directory,
         params.output_files.sharpened_map_coeffs_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map

@@ -360,6 +360,16 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map.
 
+     local_sharpening = None
+       .type = bool
+       .short_caption = Local sharpening
+       .help = Sharpen locally using overlapping regions
+
+     local_aniso_in_local_sharpening = True
+       .type = bool
+       .short_caption = Local anisotropy 
+       .help = Use local anisotropy in local sharpening
+
      box_center = None
        .type = floats
        .short_caption = Center of box
@@ -982,6 +992,13 @@ class map_info_object:
       print >>out,"   Map unit cell: %.1f  %.1f  %.1f    %.1f  %.1f  %.1f " %(
         self.crystal_symmetry.unit_cell().parameters())
 
+  def lower_upper_bounds(self):
+    lower_bounds=self.origin
+    upper_bounds=[]
+    for a,b in zip(self.origin,self.all):
+      upper_bounds.append(a+b)
+    return list(self.origin),list(upper_bounds)
+
 class info_object:
   def __init__(self,
       ncs_obj=None,
@@ -1301,6 +1318,8 @@ class sharpening_info:
       solvent_fraction=None,
       n_residues=None,
       ncs_copies=None,
+      ncs_file=None,
+      seq_file=None,
       n_real=None,
       region_weight=None,
       n_bins=None,
@@ -1325,6 +1344,10 @@ class sharpening_info:
       sa_ratio=None,
       normalized_regions=None,
       score=None,
+      local_sharpening=None,
+      local_aniso_in_local_sharpening=None,
+      use_local_aniso=None,
+      original_aniso_obj=None,
       box_in_auto_sharpen=None,
       max_box_fraction=None,
       mask_atoms=None,
@@ -1339,13 +1362,15 @@ class sharpening_info:
       target_scale_factors=None,
       remove_aniso=None,
       d_min_list=None,
-      pdb_inp=None,
+      pdb_inp=None,  # XXX probably do not need this
         ):
 
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
     del self.tracking_data  # don't need it as part of the object
     del self.box_sharpening_info_obj# don't need it as part of the object
+    del self.pdb_inp # don't need it as part of the object
+
     if tracking_data:  # use tracking data information
       self.update_with_tracking_data(tracking_data=tracking_data)
 
@@ -1415,6 +1440,7 @@ class sharpening_info:
       self.solvent_fraction=solvent_fraction
       self.n_residues=n_residues
       self.ncs_copies=ncs_copies
+      self.seq_file=params.input_files.seq_file
       self.chain_type=params.crystal_info.chain_type
 
       self.wrapping=params.crystal_info.use_sg_symmetry
@@ -1441,6 +1467,8 @@ class sharpening_info:
       self.residual_target=params.map_modification.residual_target
       self.eps=params.map_modification.eps
       self.n_bins=params.map_modification.n_bins
+      self.local_sharpening=params.map_modification.local_sharpening
+      self.local_aniso_in_local_sharpening=params.map_modification.local_aniso_in_local_sharpening
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
       self.box_center=params.map_modification.box_center
       self.box_size=params.map_modification.box_size
@@ -1574,13 +1602,12 @@ class sharpening_info:
           print >>out,"%s : %s" %(x,getattr(self,x))
 
   def get_effective_b_iso(self,map_data=None,out=sys.stdout):
-    b_iso,map_coeffs,f_array,phases=\
-    get_effective_b_iso(map_data=map_data,
+    map_coeffs_ra,map_coeffs,f_array,phases=effective_b_iso(map_data=map_data,
       resolution=self.resolution,
       d_min_ratio=self.d_min_ratio,
       crystal_symmetry=self.crystal_symmetry,
        out=out)
-    return b_iso
+    return map_coeffs_ra.b_iso
 
   def sharpen_and_score_map(self,map_data=None,out=sys.stdout):
     if self.n_real is None: # need to get it
@@ -1617,18 +1644,22 @@ class sharpening_info:
     else:
        return False
 
-
-
   def as_map_coeffs(self,out=sys.stdout):
-    return get_f_phases_from_map(map_data=self.map_data,
+    map_data=getattr(self,'map_data',None)
+    if map_data:
+      map_coeffs,dummy=get_f_phases_from_map(map_data=self.map_data,
        crystal_symmetry=self.crystal_symmetry,
        d_min=self.resolution,
        d_min_ratio=self.d_min_ratio,
        return_as_map_coeffs=True,
        out=out)
+      return map_coeffs
+    else:
+      return None
 
   def as_map_data(self):
-    return self.map_data
+    return getattr(self,'map_data',None)
+
 
 class ncs_group_object:
   def __init__(self,
@@ -1911,12 +1942,14 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
 
     if remove_aniso:
       print >>out,"\nRemoving aniso in data before analysis\n"
-      from cctbx.maptbx.refine_sharpening import remove_aniso
-      map_coeffs,b_iso_map_coeffs=remove_aniso(
+
+    from cctbx.maptbx.refine_sharpening import analyze_aniso
+    map_coeffs,map_coeffs_ra=analyze_aniso(
+         remove_aniso=remove_aniso,
          map_coeffs=map_coeffs,resolution=d_min,out=out)
 
     if return_as_map_coeffs:
-      return map_coeffs
+      return map_coeffs,map_coeffs_ra
     else:
       return map_coeffs_as_fp_phi(map_coeffs)
 
@@ -2389,7 +2422,7 @@ def get_params_from_args(args):
 
   return command_line.work.extract()
 
-def get_params(args,out=sys.stdout):
+def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   params=get_params_from_args(args)
 
@@ -2461,7 +2494,9 @@ def get_params(args,out=sys.stdout):
   else:
     pdb_hierarchy=None
 
-  if params.input_files.map_file:
+  if map_data:
+    pass # ok
+  elif params.input_files.map_file:
     from iotbx import ccp4_map
     ccp4_map=iotbx.ccp4_map.map_reader(
     file_name=params.input_files.map_file)
@@ -5606,7 +5641,7 @@ def sharpen_map_with_si(sharpening_info_obj=None,
   si=sharpening_info_obj
 
   if map_data and (not f_array or not phases):
-    map_coeffs=get_f_phases_from_map(map_data=map_data,
+    map_coeffs,dummy=get_f_phases_from_map(map_data=map_data,
        crystal_symmetry=si.crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
@@ -5615,10 +5650,18 @@ def sharpen_map_with_si(sharpening_info_obj=None,
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
   if si.remove_aniso: 
-    print >>out,"\nRemoving aniso from map before sharpening\n"
-    from cctbx.maptbx.refine_sharpening import remove_aniso
-    f_array,f_array_b_iso=remove_aniso(
-       f_array=f_array,resolution=si.resolution,out=out)
+    if si.use_local_aniso and \
+         si.local_aniso_in_local_sharpening and si.original_aniso_obj: # use original
+      aniso_obj=si.original_aniso_obj
+      print >>out,"\nRemoving aniso from map using saved aniso object before sharpening\n"
+    else:
+      print >>out,"\nRemoving aniso from map before sharpening\n"
+      aniso_obj=None
+    from cctbx.maptbx.refine_sharpening import analyze_aniso
+    f_array,f_array_ra=analyze_aniso(
+        aniso_obj=aniso_obj,
+        remove_aniso=si.remove_aniso,
+        f_array=f_array,resolution=si.resolution,out=out)
      
   if si.is_model_sharpening() or si.is_half_map_sharpening():
     from cctbx.maptbx.refine_sharpening import scale_amplitudes
@@ -5699,8 +5742,9 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
     if auto_sharpen_methods and auto_sharpen_methods != ['None']:
       args.append("auto_sharpen_methods=*%s" %(" *".join(auto_sharpen_methods)))
 
-    for param in ['box_size','box_center','remove_aniso',
-       'box_in_auto_sharpen','resolution','d_min_ratio',
+    for param in ['seq_file','box_size','box_center','remove_aniso',
+       'use_local_aniso','local_aniso_in_local_sharpening',
+       'local_sharpening','box_in_auto_sharpen','resolution','d_min_ratio',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms',
        'max_box_fraction','k_sharpen',
         'residual_target','sharpening_target',
@@ -5720,7 +5764,13 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
          ]:
      x=var_dict.get(param)
      if x is not None:
-       args.append("%s=%s" %(param,x))
+       if type(x)==type([1,2,3]):
+         xx=[]
+         for k in x:
+           xx.append(str(k))
+         args.append("%s=%s" %(param," ".join(xx)))
+       else:
+         args.append("%s=%s" %(param,x))
     local_params=get_params_from_args(args)
     si.update_with_params(params=local_params,
       crystal_symmetry=crystal_symmetry,
@@ -5728,7 +5778,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       pdb_inp=pdb_inp,
       half_map_list=half_map_list,
       )
-    return si,local_params
+    return si
 
 def select_box_map_data(si=None,
            map_data=None,
@@ -5865,6 +5915,7 @@ def box_from_center( si=None,
 
 def box_of_biggest_region(si=None,
            map_data=None,
+           return_as_list=None,
            out=sys.stdout):
     n_residues=si.n_residues
     ncs_copies=si.ncs_copies
@@ -5893,8 +5944,10 @@ def box_of_biggest_region(si=None,
            chain_type=si.chain_type,
            verbose=si.verbose,
            out=out)
+
     if len(sorted_by_volume)<2:
       return # nothing to do
+
     v,i=sorted_by_volume[1]
     print >>out,"\nVolume of largest region: %d grid points: "%(v)
 
@@ -5904,7 +5957,23 @@ def box_of_biggest_region(si=None,
      min_b[i][0],max_b[i][0],
      min_b[i][1],max_b[i][1],
      min_b[i][2],max_b[i][2])
-    return min_b[i],max_b[i]
+
+    if (not return_as_list):
+      return min_b[i],max_b[i]
+
+    else: # return a list of centers
+      centers_frac=flex.vec3_double()
+      a1,a2,a3=map_data.all()
+
+      for v,i in sorted_by_volume[1:]:
+        centers_frac.append(
+          tuple((
+          (min_b[i][0]+max_b[i][0])/(2.*a1),
+          (min_b[i][1]+max_b[i][1])/(2.*a2),
+          (min_b[i][2]+max_b[i][2])/(2.*a3),
+               ))
+                      )
+      return centers_frac
 
 def get_fft_map(n_real=None,map_coeffs=None):
     from cctbx import maptbx
@@ -5923,13 +5992,60 @@ def get_fft_map(n_real=None,map_coeffs=None):
     fft_map.apply_sigma_scaling()
     return fft_map
 
+def run_local_sharpening(si=None,
+    auto_sharpen_methods=None,
+    map=None,
+    ncs_obj=None,
+    half_map_list=None,
+    pdb_inp=None,
+    out=sys.stdout):
+
+  print >>out,80*"-"
+  print >>out,"Running local sharpening"
+  print >>out,80*"-"
+
+  si.local_sharpening=False  # don't do it again
+
+  # run auto_sharpen_map_or_map_coeffs with box_in_auto_sharpen=True and
+  #   centered at different places.  Identify the places as centers of regions.
+  #   Run on au of NCS and apply NCS to get remaining positions
+
+  print >>out,80*"-"
+  print >>out,"Getting segmented map to ID locations for sharpening"
+  print >>out,80*"-"
+  args=[
+        'resolution=%s' %(si.resolution),
+        'seq_file=%s' %(si.seq_file),
+        'auto_sharpen=False', # XXX could sharpen overall
+        'write_output_maps=True',
+        'density_select=False', ]
+  ncs_group_obj,remainder_ncs_group_obj,tracking_data=run(
+     args,
+     map_data=map,
+     ncs_obj=ncs_obj,
+     crystal_symmetry=si.crystal_symmetry)
+   
+  print >>out,"Regions in this map:" 
+  for map_info_obj in tracking_data.output_region_map_info_list:
+    print >>out,map_info_obj.lower_upper_bounds()
+
+  print >>out,80*"-"
+  print >>out,"Done getting segmented map to ID locations for sharpening"
+  print >>out,80*"-"
+  
+  # ZZZ run auto_sharpen_map_or_map_coeffs with use_local_aniso=True
+  return si
+
 def auto_sharpen_map_or_map_coeffs(
+        si=None,
         resolution=None,        # resolution is required
         crystal_symmetry=None,  # supply crystal_symmetry and map or
         map=None,               #  map and n_real
         half_map_list=None,     #  two half-maps matching map
         map_coeffs=None,
         pdb_inp=None,
+        ncs_obj=None,
+        seq_file=None,
         rmsd=None,
         k_sol=None,
         b_sol=None,
@@ -5942,6 +6058,9 @@ def auto_sharpen_map_or_map_coeffs(
         eps=None,
         max_regions_to_test=None,
         fraction_occupied=None,
+        local_sharpening=None,
+        local_aniso_in_local_sharpening=None,
+        use_local_aniso=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
         n_residues=None,
         ncs_copies=None,
@@ -5965,6 +6084,11 @@ def auto_sharpen_map_or_map_coeffs(
         b_sharpen=None, # if set, use it
         resolution_dependent_b=None, # if set, use it
         out=sys.stdout):
+
+    if si:  # 
+      resolution=si.resolution
+      crystal_symmetry=si.crystal_symmetry
+ 
     if map_coeffs and not resolution:
        resolution=map_coeffs.d_min()
     if map_coeffs and not crystal_symmetry:
@@ -5984,13 +6108,14 @@ def auto_sharpen_map_or_map_coeffs(
     elif half_map_list and len(half_map_list)==2:
       auto_sharpen_methods=['half_map_sharpening']
 
-    # Copy parameters to si (sharpening_info_object)
-    si,local_params=set_up_si(var_dict=locals(),
-      crystal_symmetry=crystal_symmetry,
-      solvent_fraction=solvent_content,
-      map=map,
-      half_map_list=half_map_list,
-      pdb_inp=pdb_inp)
+    if not si:
+      # Copy parameters to si (sharpening_info_object)
+      si=set_up_si(var_dict=locals(),
+        crystal_symmetry=crystal_symmetry,
+        solvent_fraction=solvent_content,
+        map=map,
+        half_map_list=half_map_list,
+        pdb_inp=pdb_inp)
 
     # Figure out solvent fraction
     if si.solvent_fraction is None:
@@ -6008,6 +6133,17 @@ def auto_sharpen_map_or_map_coeffs(
       first_half_map_data=None
       second_half_map_data=None
 
+    # Decide if we are running local sharpening (overlapping set of sharpening
+    #   runs at various locations)
+    if si.local_sharpening:
+      return run_local_sharpening(si=si,
+         auto_sharpen_methods=auto_sharpen_methods,
+         map=map,
+         ncs_obj=ncs_obj,
+         half_map_list=half_map_list,
+         pdb_inp=pdb_inp,
+         out=out)
+
     # Now identify optimal sharpening params
     print >>out,80*"="
     print >>out,"\nRunning auto_sharpen to get sharpening parameters\n"
@@ -6018,7 +6154,7 @@ def auto_sharpen_map_or_map_coeffs(
       first_half_map_data=first_half_map_data,
       second_half_map_data=second_half_map_data,
       pdb_inp=pdb_inp,
-      auto_sharpen_methods=local_params.map_modification.auto_sharpen_methods,
+      auto_sharpen_methods=auto_sharpen_methods,
       out=out)
     print >>out,80*"="
     print >>out,"\nDone running auto_sharpen to get sharpening parameters\n"
@@ -6063,7 +6199,7 @@ def run_auto_sharpen(
            map_data=map_data,
            first_half_map_data=first_half_map_data,
            second_half_map_data=second_half_map_data,
-           pdb_inp=pdb_inp,
+           pdb_inp=pdb_inp,  # ZZZ allow smaller box and trim pdb_inp ; or supply pdb_inp that is just part of the model...
            out=out)
     #write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
 
@@ -6082,6 +6218,8 @@ def run_auto_sharpen(
       original_crystal_symmetry=si.crystal_symmetry
 
       map_data=box_map_data
+      pdb_inp=box_pdb_inp
+
       crystal_symmetry=box_crystal_symmetry
       if box_first_half_map_data:
         first_half_map_data=box_first_half_map_data
@@ -6093,16 +6231,20 @@ def run_auto_sharpen(
     box_sharpening_info_obj=None
     crystal_symmetry=si.crystal_symmetry
 
-  original_b_iso,map_coeffs,f_array,phases=get_effective_b_iso(
+
+  map_coeffs_aa,map_coeffs,f_array,phases=effective_b_iso(
      map_data=map_data,
       resolution=si.resolution,
       d_min_ratio=si.d_min_ratio,
       remove_aniso=si.remove_aniso,
       crystal_symmetry=crystal_symmetry,
       out=out)
+  original_b_iso=map_coeffs_aa.b_iso
+  si.original_aniso_obj=map_coeffs_aa # set it so we can apply it later if desired
 
   if first_half_map_data:
-    first_half_map_coeffs=get_f_phases_from_map(map_data=first_half_map_data,
+    first_half_map_coeffs,dummy=get_f_phases_from_map(
+          map_data=first_half_map_data,
        crystal_symmetry=crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
@@ -6113,7 +6255,8 @@ def run_auto_sharpen(
     first_half_map_coeffs=None
 
   if second_half_map_data:
-    second_half_map_coeffs=get_f_phases_from_map(map_data=second_half_map_data,
+    second_half_map_coeffs,dummy=get_f_phases_from_map(
+      map_data=second_half_map_data,
        crystal_symmetry=crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
@@ -6122,6 +6265,17 @@ def run_auto_sharpen(
        out=out)
   else:
     second_half_map_coeffs=None
+
+  if pdb_inp:
+    # Getting model information if pdb_inp present ---------------------------
+    from cctbx.maptbx.refine_sharpening import get_model_map_coeffs_normalized
+    model_map_coeffs=get_model_map_coeffs_normalized(pdb_inp=pdb_inp,
+       si=si,
+       f_array=f_array,
+       resolution=si.resolution,
+       out=out)
+  else:
+    model_map_coeffs=None
 
   # Try various methods for sharpening. # XXX fix this up
 
@@ -6252,7 +6406,7 @@ def run_auto_sharpen(
           local_si.b_sharpen=0
           local_si.b_iso=original_b_iso
           from cctbx.maptbx.refine_sharpening import scale_amplitudes
-          scale_amplitudes(pdb_inp=pdb_inp,map_coeffs=map_coeffs,
+          scale_amplitudes(model_map_coeffs=model_map_coeffs,map_coeffs=map_coeffs,
             si=local_si,out=out)
           # local_si contains target_scale_factors now
           local_f_array=f_array
@@ -6368,7 +6522,7 @@ def run_auto_sharpen(
       # and set tracking data with result
   return best_si
 
-def get_effective_b_iso(map_data=None,tracking_data=None,
+def effective_b_iso(map_data=None,tracking_data=None,
       box_sharpening_info_obj=None,
       crystal_symmetry=None,
       resolution=None,
@@ -6389,7 +6543,7 @@ def get_effective_b_iso(map_data=None,tracking_data=None,
     if not d_min_ratio:
        d_min_ratio=tracking_data.params.map_modification.d_min_ratio
 
-    map_coeffs=get_f_phases_from_map(map_data=map_data,
+    map_coeffs,map_coeffs_ra=get_f_phases_from_map(map_data=map_data,
        crystal_symmetry=crystal_symmetry,
        d_min=d_min,
        d_min_ratio=d_min_ratio,
@@ -6398,9 +6552,9 @@ def get_effective_b_iso(map_data=None,tracking_data=None,
        out=out)
 
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
-    b_iso=get_b_iso(f_array,d_min=d_min)
+    b_iso=map_coeffs_ra.b_iso
     print >>out,"\nEffective B-iso = %7.2f" %(b_iso)
-    return b_iso,map_coeffs,f_array,phases
+    return map_coeffs_ra,map_coeffs,f_array,phases
 
 def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
        si=None,out=sys.stdout):
@@ -6529,6 +6683,7 @@ def set_up_sharpening(si=None,map_data=None,out=sys.stdout):
 def run(args,
      params=None,
      map_data=None,
+     crystal_symmetry=None,
      half_map_list=None,
      ncs_obj=None,
      tracking_data=None,
@@ -6546,7 +6701,7 @@ def run(args,
   else:
     # get the parameters and map_data (magnified, shifted...)
     params,map_data,half_map_list,pdb_hierarchy,tracking_data=get_params(
-       args,out=out)
+       args,map_data=map_data,crystal_symmetry=crystal_symmetry,out=out)
 
     if params.input_files.pdb_to_restore:
       restore_pdb(params,tracking_data=tracking_data,out=out)

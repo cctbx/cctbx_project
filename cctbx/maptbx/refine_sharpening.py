@@ -380,49 +380,33 @@ def calculate_fsc(si=None,
 
   return si 
 
-def remove_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
-     out=sys.stdout):
-  # remove anisotropy and set all directions to lowest value
+def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
+     remove_aniso=None, aniso_obj=None, out=sys.stdout):
+  # optionally remove anisotropy and set all directions to mean value
+  #  return array and analyze_aniso_object
+  #  resolution can be None, b_iso can be None
+  #  if remove_aniso is None, just analyze and return original array
 
   if map_coeffs:  # convert to f and apply
     from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
     f_local,phases_local=map_coeffs_as_fp_phi(map_coeffs) 
-    f_local,b_iso=remove_aniso(f_array=f_local,resolution=resolution,out=out)
-    return f_local.phase_transfer(phase_source=phases_local,deg=True),b_iso
+    f_local,f_local_aa=analyze_aniso(f_array=f_local,
+       aniso_obj=aniso_obj,
+       remove_aniso=remove_aniso, resolution=resolution,out=out)
+    return f_local.phase_transfer(phase_source=phases_local,deg=True),f_local_aa
 
   else:  # have f_array and resolution
-    from cctbx.maptbx.segment_and_split_map import get_b_iso
-    b_iso,aniso_scale_and_b=get_b_iso(f_array,d_min=resolution,
-      return_aniso_scale_and_b=True)
-    if not aniso_scale_and_b or not aniso_scale_and_b.b_cart:
-      return f_array,0.  # could not do it
+    if not aniso_obj:
+      aniso_obj=analyze_aniso_object()
+      aniso_obj.set_up_aniso_correction(f_array=f_array,d_min=resolution)
 
-    print >>out,"\nRemoving anisotropy with b_cart=(%7.2f,%7.2f,%7.2f)\n" %(
-      aniso_scale_and_b.b_cart[:3])
-    b_use=b_iso
-    miller_array=f_array
+    if remove_aniso:
+      f_array=aniso_obj.apply_aniso_correction(f_array=f_array)
+      print >>out,"\nRemoving anisotropy with b_cart=(%7.2f,%7.2f,%7.2f)\n" %(
+        aniso_obj.b_cart[:3])
+    return f_array,aniso_obj
 
-    from cctbx import adptbx # next lines from xtriage (basic_analysis.py)
-    b_cart_aniso_removed = [ -b_use,
-                             -b_use,
-                             -b_use,
-                             0,
-                             0,
-                             0]
-    u_star_aniso_removed = adptbx.u_cart_as_u_star(
-      miller_array.unit_cell(),
-      adptbx.b_as_u( b_cart_aniso_removed  ) )
-    from mmtbx.scaling import absolute_scaling
-    no_aniso_array = absolute_scaling.anisotropic_correction(
-      miller_array,0.0,aniso_scale_and_b.u_star ,must_be_greater_than=-0.0001)
-    no_aniso_array = absolute_scaling.anisotropic_correction(
-      no_aniso_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
-    no_aniso_array = no_aniso_array.set_observation_type(
-      miller_array )
-
-    return no_aniso_array,b_iso
-
-def scale_amplitudes(pdb_inp=None,
+def scale_amplitudes(model_map_coeffs=None,
     map_coeffs=None,
     first_half_map_coeffs=None,
     second_half_map_coeffs=None,
@@ -438,7 +422,7 @@ def scale_amplitudes(pdb_inp=None,
   #    normalized model map_coeffs, except that the target fall-off should be
   #    skipped (could use fall-off based on a dummy model...)
 
-  if pdb_inp:
+  if model_map_coeffs:
     is_model_based=True
   else:
     assert si.target_scale_factors or (
@@ -462,17 +446,6 @@ def scale_amplitudes(pdb_inp=None,
 
   obs_b_iso=get_b_iso(f_array,d_min=resolution)
   print >>out,"\nEffective b_iso of observed data: %6.1f A**2" %(obs_b_iso)
-
-  if pdb_inp and not second_half_map_coeffs:
-    # Getting model information if pdb_inp present ---------------------------
-    model_map_coeffs=get_model_map_coeffs_normalized(pdb_inp=pdb_inp,
-       si=si,
-       f_array=f_array,
-       overall_b=overall_b,
-       resolution=resolution,
-       out=out)
-  else:
-    model_map_coeffs=None
 
   if not si.target_scale_factors: # get scale factors if don't already have them
     si=calculate_fsc(si=si,
@@ -602,6 +575,58 @@ def get_kurtosis(data=None):
   sd=data.standard_deviation_of_the_sample()
   x=data-mean
   return (x**4).min_max_mean().mean/sd**4
+
+class analyze_aniso_object:
+  def __init__(self):
+  
+    self.b_iso=None # target b_iso, default is mean of existing
+    self.b_cart=None
+    self.aniso_scale_and_b=None
+    self.u_star_aniso_removed=None
+
+  def set_up_aniso_correction(self,f_array=None,b_iso=None,d_min=None):
+
+    assert f_array is not None
+    if not d_min:
+      (d_max,d_min)=f_array.d_max_min()
+
+    from cctbx.maptbx.segment_and_split_map import get_b_iso
+    b_mean,self.aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,
+      return_aniso_scale_and_b=True)
+
+    if not self.aniso_scale_and_b or not self.aniso_scale_and_b.b_cart:
+      return # failed
+
+    if b_iso is None:
+      b_iso=b_mean  # use mean
+    self.b_iso=b_iso
+
+    # Set up matrices
+
+    b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0]
+
+    from cctbx import adptbx 
+    self.u_star_aniso_removed = adptbx.u_cart_as_u_star(
+      f_array.unit_cell(), adptbx.b_as_u( b_cart_aniso_removed  ) )
+    self.b_cart=self.aniso_scale_and_b.b_cart
+
+    # ready to apply
+
+  def apply_aniso_correction(self,f_array=None):
+
+    if not self.aniso_scale_and_b or not self.u_star_aniso_removed:
+      return f_array  # nothing to do
+
+    from mmtbx.scaling import absolute_scaling
+
+    no_aniso_array = absolute_scaling.anisotropic_correction(
+      f_array,0.0,self.aniso_scale_and_b.u_star ,must_be_greater_than=-0.0001)
+
+    no_aniso_array = absolute_scaling.anisotropic_correction(
+      no_aniso_array,0.0,self.u_star_aniso_removed,must_be_greater_than=-0.0001)
+
+    no_aniso_array=no_aniso_array.set_observation_type( f_array)
+    return no_aniso_array
 
 
 class refinery:
