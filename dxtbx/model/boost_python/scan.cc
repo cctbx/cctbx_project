@@ -199,6 +199,15 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
+  scitbx::af::shared<bool> is_angle_valid_array(const Scan &scan, scitbx::af::const_ref<double> angle, bool deg) {
+    scitbx::af::shared<bool> result(angle.size());
+    for (std::size_t i = 0; i < angle.size(); ++i) {
+      result[i] = scan.is_angle_valid(deg ? deg_as_rad(angle[i]) : angle[i]);
+    }
+    return result;
+  }
+
+  static
   double get_angle_from_image_index(const Scan &scan, double index,
       bool deg) {
     double angle = scan.get_angle_from_image_index(index);
@@ -388,6 +397,10 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("deg") = true))
       .def("is_angle_valid",
         &is_angle_valid, (
+          arg("angle"),
+          arg("deg") = true))
+      .def("is_angle_valid",
+        &is_angle_valid_array, (
           arg("angle"),
           arg("deg") = true))
       .def("is_image_index_valid",
