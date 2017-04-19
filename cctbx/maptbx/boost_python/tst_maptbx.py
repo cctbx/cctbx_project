@@ -1058,6 +1058,43 @@ def exercise_set_box():
       end           = e)
   assert m2.as_1d().min_max_mean().as_tuple() == (1.,1.,1.)
 
+# Reset map values in a box within a unit cell
+def exercise_set_box_2():
+  n_real = (100, 60, 80)
+  # total number of grid points: 480,000
+  n = n_real[0]*n_real[1]*n_real[2]
+  m1 = flex.double([1 for i in xrange(n)])
+  m1.resize(flex.grid(n_real))
+  # reset grid points in box to -1
+  # size of box: (60, 10, 20) = 12,000 grid points
+  maptbx.set_box(
+    value       = -1,
+    map_data_to = m1,
+    start       = [20,30,40],
+    end         = [80,40,60])
+  # calculate min_max_mean
+  # min = -1, max = 1
+  # mean = [(480,000 - 12,000)*1 + 12,000*(-1)] / 480,000
+  # = 0.95
+  #print m1.as_1d().min_max_mean().as_tuple()
+  assert m1.as_1d().min_max_mean().as_tuple() == (-1.,1.,0.95)
+
+# reset map values in a box spanning the border of the unit cell
+def exercise_set_box_3():
+  n_real = (60, 100, 80)
+  n = n_real[0]*n_real[1]*n_real[2]
+  m1 = flex.double([1 for i in xrange(n)])
+  m1.resize(flex.grid(n_real))
+  #print m1.as_1d().min_max_mean().as_tuple()
+  maptbx.set_box(
+    value       = -1,
+    map_data_to = m1,
+    start       = [-10,-20,20],
+    end         = [30,40,50])
+
+  #print m1.as_1d().min_max_mean().as_tuple()
+  assert m1.as_1d().min_max_mean().as_tuple() == (-1.,1.,0.7)
+
 def exercise_median_filter():
   values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
   av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in xrange(10*20*30)]
@@ -1372,6 +1409,8 @@ def run(args):
   exercise_kuwahara_filter()
   exercise_median_filter()
   exercise_set_box()
+  exercise_set_box_2()
+  exercise_set_box_3()
   exercise_copy()
   exercise_statistics()
   exercise_grid_tags()
