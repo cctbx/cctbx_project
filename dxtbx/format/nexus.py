@@ -1046,6 +1046,8 @@ class DetectorFactoryFromGroup(object):
 
   def __init__(self, instrument, beam, idx = None):
     from dxtbx.model import Detector, Panel
+    from cctbx.eltbx import attenuation_coefficient
+    from dxtbx.model import ParallaxCorrectedPxMmStrategy
     from scitbx import matrix
     import os
 
@@ -1129,6 +1131,10 @@ class DetectorFactoryFromGroup(object):
         #  fast_pixel_direction_value,
         #  fast_pixel_direction_units,
         #  "mm")
+        # Get the trusted range of pixel values
+        underload = float(nx_detector['undefined_value'][()])  if 'undefined_value'  in nx_detector.handle else -400
+        overload  = float(nx_detector['saturation_value'][()]) if 'saturation_value' in nx_detector.handle else 90000
+        trusted_range = underload, overload
 
         # Set up the hierarchical detector by iteraing through the dependencies,
         # starting at the root
@@ -1172,11 +1178,45 @@ class DetectorFactoryFromGroup(object):
         p.set_pixel_size(pixel_size)
         p.set_image_size(image_size)
         p.set_type(detector_type)
-        # XXX These are still needing to be set
-        #    trusted_range,
-        #    thickness_value,
-        #    material,
-        #    mu))
+        p.set_trusted_range(trusted_range)
+
+        if 'sensor_thickness' in nx_detector.handle:
+          # Get the detector thickness
+          thickness = nx_detector.handle['sensor_thickness']
+          thickness_value = float(thickness[()])
+          thickness_units = thickness.attrs['units']
+          thickness_value = float(convert_units(
+            thickness_value,
+            thickness_units,
+            "mm"))
+          p.set_thickness(thickness_value)
+
+        # Get the detector material
+        if 'sensor_material' in nx_detector.handle:
+          material = str(nx_detector.handle['sensor_material'][()])
+          p.set_material(material)
+
+          # Compute the attenuation coefficient.
+          # This will fail for undefined composite materials
+          # mu_at_angstrom returns cm^-1, but need mu in mm^-1
+          if material == 'Si':
+            pass
+          elif material == 'Silicon':
+            material = 'Si'
+          elif material == 'Sillicon':
+            material = 'Si'
+          elif material == 'CdTe':
+            pass
+          elif material == 'GaAs':
+            pass
+          else:
+            raise RuntimeError('Unknown material: %s' % material)
+          table = attenuation_coefficient.get_table(material)
+          wavelength = beam.get_wavelength()
+          p.set_mu(table.mu_at_angstrom(wavelength) / 10.0)
+
+        if 'sensor_thickness' in nx_detector.handle and 'sensor_material' in nx_detector.handle:
+          p.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, thickness_value))
 
 class DetectorFactory(object):
   '''
