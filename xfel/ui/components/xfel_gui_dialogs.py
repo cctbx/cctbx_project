@@ -560,7 +560,7 @@ class CalibrationDialog(BaseDialog):
 
   def onOK(self, e):
     from xfel.ui.db import get_run_path
-    from xfel.command_line.cxi_mpi_submit import get_submit_command
+    from xfel.util.mp import get_lsf_submit_command
     from xfel.ui import settings_dir
     from libtbx import easy_run
     import copy
@@ -604,7 +604,7 @@ class CalibrationDialog(BaseDialog):
     command += " ".join(run_paths)
 
     submit_path = os.path.join(settings_dir, "%s.sh"%version_str)
-    command = str(get_submit_command(command, submit_path, working_dir, params.mp)) # comes back as unicode which throws off easy_run
+    command = str(get_lsf_submit_command(command, submit_path, working_dir, params.mp)()) # comes back as unicode which throws off easy_run
     cwd = os.getcwd()
     os.makedirs(working_dir)
     os.chdir(working_dir)

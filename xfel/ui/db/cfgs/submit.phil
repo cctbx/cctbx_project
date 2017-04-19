@@ -16,7 +16,8 @@ output {{
   split_logs = True
 }}
 mp {{
-  method = *mpi sge pbs custom
+  method = *lsf sge pbs custom
+  use_mpi = True
   nproc = {nproc}
   queue = {queue}
 }}

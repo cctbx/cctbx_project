@@ -12,6 +12,7 @@ import os, sys, shutil
 from libtbx.utils import Sorry
 from libtbx.phil import parse
 from libtbx import easy_run
+from xfel.util.mp import mp_phil_str, get_submit_command_chooser
 
 help_str = """
 Use cxi.mpi_submit to submit a cxi.xtc_process job to the cluster for analyzing
@@ -98,46 +99,6 @@ phil_str = '''
   }
 '''
 
-mp_phil_str = '''
-  mp {
-    method = *mpi sge pbs custom lsf
-      .type = choice
-      .help = Muliprocessing method
-    nproc = 1
-      .type = int
-      .help = Number of processes
-    queue = "psanacsq"
-      .type = str
-      .help = Queue to submit MPI job to
-    sge {
-      memory = 4g
-        .type = str
-        .help = How much memory to request for an SGE job
-    }
-    pbs {
-      env_script = None
-        .type = str
-        .help = Path to bash script with extra environment settings. Ran after PSDM \
-              and cctbx are sourced.
-      walltime = "00:00:30"
-        .type = str
-        .help = Maximum time this job will be scheduled to run for.
-    }
-    custom {
-      extra_args = ""
-        .type = str
-        .help = Extra arguments to qsub as needed
-      submit_template = None
-        .type = str
-        .help = Submission script for qsub. The script will be copied to the trial \
-                directory and modified. There should be one instance of the string \
-                <command> (including the <> brackets) in the template script, which \
-                will be replaced with the processing command. <queue> and <nproc> \
-                will similarly be replaced.
-    }
-  }
-'''
-
 phil_scope = parse(phil_str + mp_phil_str, process_includes=True)
 mp_phil_scope = parse(mp_phil_str, process_includes=True)
 
@@ -216,126 +177,6 @@ def copy_target(target, dest_dir, root_name):
       copy_target(os.path.join(os.path.dirname(target), sub_target), dest_dir, sub_target_root_name)
       num_sub_targets += 1
     f.write(line)
-
-def get_submit_command(command, submit_path, stdoutdir, params, run = None, log_name = "log.out"):
-  """ Get a submit command for the various compute environments known to work for cctbx.xfel
-  @param command Any command line program and its arguments
-  @param submit_path Submit script will be written here
-  @param stdoutdir Log file will be created in this directory
-  @param params mp phil params for cxi.mpi_submit (see mp_phil_scope)
-  @param run Only used for sge and pbs. Run number for processing.  Optional.
-  """
-  if params.method == "mpi" or params.method == "lsf":
-    if params.method == "mpi":
-      mpistr = " -a mympi"
-    else:
-      mpistr = ""
-    command = "bsub%s -n %d -o %s -q %s %s" % (
-      mpistr, params.nproc, os.path.join(stdoutdir, log_name), params.queue, command)
-
-    f = open(submit_path, 'w')
-    f.write("#! /bin/sh\n")
-    f.write("\n")
-    f.write("%s\n" % command)
-    f.close()
-
-    return command
-
-  elif params.method == "sge":
-    if params.nproc > 1:
-      nproc_str = "-t 1-%d" % params.nproc
-    else:
-      nproc_str = ""
-
-    run_str = ""
-    if run is not None:
-      run_str = "-N run%d"%run
-
-    submit_command = "qsub -cwd %s %s -o %s -q %s %s" % (
-      nproc_str, run_str, os.path.join(stdoutdir, log_name), params.queue, submit_path)
-
-    import libtbx.load_env
-    setpaths_path = os.path.join(abs(libtbx.env.build_path), "setpaths.sh")
-    psdmenv_path = os.path.join(os.environ.get("SIT_ROOT", ""), "etc", "ana_env.sh")
-    assert os.path.exists(setpaths_path)
-    assert os.path.exists(psdmenv_path)
-
-    f = open(submit_path, 'w')
-    f.write("#!/bin/bash\n")
-    f.write("#$ -S /bin/bash\n")
-    f.write("#$ -l mem=%s\n" % params.sge.memory)
-    f.write("\n")
-    f.write(". %s\n" % psdmenv_path)
-    f.write(". %s\n" % setpaths_path)
-    f.write("\n")
-
-    f.write(
-      "%s mp.method=sge 1> %s 2> %s\n" % (
-        command, os.path.join(stdoutdir, "log_$SGE_TASK_ID.out"), os.path.join(stdoutdir, "log_$SGE_TASK_ID.err")))
-    f.close()
-
-    return submit_command
-
-  elif params.method == "pbs":
-    # Write out a script for submitting this job and submit it
-    submit_path = os.path.splitext(submit_path)[0] + ".csh"
-
-    submit_command = "qsub -o %s %s" % (os.path.join(stdoutdir, log_name), submit_path)
-
-    import libtbx.load_env
-    setpaths_path = os.path.join(abs(libtbx.env.build_path), "setpaths.csh")
-    psdmenv_path = os.path.join(os.environ.get("SIT_ROOT", ""), "etc", "ana_env.csh")
-    assert os.path.exists(setpaths_path)
-    assert os.path.exists(psdmenv_path)
-
-    f = open(submit_path, 'w')
-    f.write("#!/bin/csh\n")
-    f.write("#PBS -q %s\n" % params.queue)
-    f.write("#PBS -l mppwidth=%d\n" % params.nproc)
-    f.write("#PBS -l walltime=%s\n" % params.pbs.walltime)
-    if run is not None:
-      f.write("#PBS -N run%d\n" % run)
-    f.write("#PBS -j oe\n")
-    f.write("\n")
-    f.write("cd $PBS_O_WORKDIR\n")
-    f.write("\n")
-    if params.pbs.env_script is not None:
-      f.write("source %s\n" % params.pbs.env_script)
-    f.write("\n")
-    f.write("source %s\n" % psdmenv_path)
-    f.write("source %s\n" % setpaths_path)
-    f.write("sit_setup\n")
-
-    f.write("aprun -n %d %s mp.method=mpi\n" % (command, params.nproc))
-    f.close()
-
-    return submit_path
-
-  elif params.method == "custom":
-    if not os.path.exists(params.custom.submit_template):
-      raise Sorry("Custom submission template file not found: %s" % params.custom.submit_template)
-
-    # Use the input script as a template and fill in the missing info needed
-    submit_command = "qsub -o %s %s %s" % (os.path.join(stdoutdir, log_name), params.custom.extra_args, submit_path)
-
-    processing_command = "%s mp.method=mpi\n" % (command)
-
-    f = open(submit_path, 'w')
-    for line in open(params.custom.submit_template).readlines():
-      if "<command>" in line:
-        line = line.replace("<command>", processing_command)
-      if "<queue>" in line:
-        line = line.replace("<queue>", params.queue)
-      if "<nproc>" in line:
-        line = line.replace("<nproc>", str(params.nproc))
-
-      f.write(line)
-    f.close()
-
-    return submit_command
-
-  else:
-    raise Sorry("Multiprocessing method %s not recognized" % params.method)
 
 class Script(object):
   """ Script to submit XFEL data at LCLS for processing"""
@@ -477,16 +318,23 @@ class Script(object):
       logging_str, extra_str
     )
 
-    command = get_submit_command(command, submit_path, stdoutdir, params.mp)
+    submit_command = get_submit_command_chooser(command, submit_path, stdoutdir, params.mp)
+    if params.mp.method in "lsf sge pbs".split(" "):
+      parts = submit_command.split(" ")
+      script = open(parts.pop(-1), "rb")
+      run_command = script.read().split("\n")[-2]
+      command = " ".join(parts + [run_command])
+    else:
+      command = submit_command
     print command
 
     if params.dry_run:
       print "Dry run: job not submitted. Trial directory created here:", trialdir
       print "Execute this command to submit the job:"
-      print command
+      print submit_command
     else:
       try:
-        result = easy_run.fully_buffered(command=command)
+        result = easy_run.fully_buffered(command=submit_command)
         result.raise_if_errors()
       except Exception, e:
         if not "Warning: job being submitted without an AFS token." in str(e):

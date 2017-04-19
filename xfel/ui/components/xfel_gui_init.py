@@ -2488,7 +2488,7 @@ class MergeTab(BaseTab):
   def onRun(self, e):
     # Run full processing
 
-    from xfel.command_line.cxi_mpi_submit import get_submit_command
+    from xfel.util.mp import get_lsf_submit_command
     from xfel.ui import settings_dir
     import datetime
     import copy
@@ -2521,8 +2521,8 @@ class MergeTab(BaseTab):
       job_name = 'prime_t{}'.format(self.trial_no)
       cmd = '-J {} prime.postrefine {}'.format(job_name, prime_file)
       submit_path = os.path.join(settings_dir, script_filename)
-      command = str(get_submit_command(cmd, submit_path, self.working_dir,
-                                       params.mp))
+      command = str(get_lsf_submit_command(cmd, submit_path, self.working_dir,
+                                           params.mp)())
 
     if e.GetId() == self.tb_btn_run.GetId():
       self.prime_run_window = PRIMERunWindow(self, -1,
