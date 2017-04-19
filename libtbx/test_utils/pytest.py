@@ -50,7 +50,7 @@ def discover(module, pytestargs=None):
   dist_dir = libtbx.env.dist_path(module)
   class TestDiscoveryPlugin:
     def pytest_itemcollected(self, item):
-      test_list.append([ "libtbx.python", "-m", "pytest", '--noconftest',
+      test_list.append([ "libtbx.python", "-m", "pytest", '--noconftest', '--basetemp=pytest',
         '"%s"' % os.path.join(dist_dir, item.nodeid) ])
   pytest.main(['-qq', '--collect-only', '--noconftest', dist_dir] + pytestargs, plugins=[TestDiscoveryPlugin()])
   return test_list
