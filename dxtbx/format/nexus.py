@@ -939,19 +939,24 @@ def get_change_of_basis(transformation):
 
   '''
   from scitbx.matrix import col, sqr
+  # Change of basis to convert from NeXus to IUCr/ImageCIF convention
+  n2i_cob = sqr((-1,  0,  0,
+                  0,  1,  0,
+                  0,  0, -1))
+
   axis_type = transformation.attrs['transformation_type']
 
-  vector = col(transformation.attrs['vector']).normalize()
+  vector = n2i_cob * col(transformation.attrs['vector']).normalize()
   setting = transformation[0]
   units = transformation.attrs['units']
 
   if 'offset' in transformation.attrs:
-    offset = col(transformation.attrs['offset'])
+    offset = n2i_cob * col(transformation.attrs['offset'])
     offset = convert_units(offset, transformation.attrs['offset_units'], 'mm')
   else:
     offset = col((0,0,0))
 
-  # change of basis matrix in homologous coordinates
+  # 4x4 change of basis matrix (homogeneous coordinates)
   cob = None
 
   if axis_type == "rotation":
@@ -1151,7 +1156,18 @@ class DetectorFactoryFromGroup(object):
 
         # pg is now this panel's parent
         p = pg.add_panel()
-        set_frame(p, depends_on)
+        fast = depends_on.attrs['vector']
+        fast = matrix.col([-fast[0], fast[1], -fast[2]])
+        slow = nx_detector_module.handle[depends_on.attrs['depends_on']].attrs['vector']
+        slow = matrix.col([-slow[0], slow[1], -slow[2]])
+        parent, cob = get_cummulative_change_of_basis(depends_on)
+        origin = matrix.col((cob * matrix.col((0,0,0,1)))[0:3])
+
+        p.set_local_frame(
+          fast.elems,
+          slow.elems,
+          origin.elems)
+
         p.set_name(panel_name)
         p.set_pixel_size(pixel_size)
         p.set_image_size(image_size)
