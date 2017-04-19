@@ -389,7 +389,9 @@ class GoniometerFactory:
         scan_axis = flex.first_index(axis_names, axis_name)
       cbf_handle.next_row()
     assert axes.size() == angles.size()
-    assert scan_axis is not None
+    if scan_axis is None:
+      # probably a still shot -> scan axis arbitrary as no scan
+      scan_axis = 0
 
     # figure out the order of the axes from the depends_on values
     order = flex.size_t()

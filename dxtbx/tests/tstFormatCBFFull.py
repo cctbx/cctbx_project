@@ -37,7 +37,32 @@ def exercise_multi_axis_goniometer():
     gonio.get_setting_rotation(),
     (1, 0, 0, 0, 0.5, 0.866, 0.0, -0.866, 0.5), eps=1e-4)
 
+def exercise_still():
+  import libtbx.load_env
+  from libtbx.test_utils import approx_equal
+  import os
+
+  if not libtbx.env.has_module("dials"):
+    print "Skipping tstFormatCBFFull.py: dials not present"
+    return
+  if not libtbx.env.has_module("dials_regression"):
+    print "Skipping tstFormatCBFFull.py: dials_regression not present"
+    return
+
+  data_dir = libtbx.env.find_in_repositories(
+    relative_path="dials_regression/image_examples/DLS_I04",
+    test=os.path.isdir)
+
+  from dxtbx.imageset import ImageSetFactory
+  imgset = ImageSetFactory.new(os.path.join(data_dir, "grid_full_cbf_0005.cbf"))[0]
+  assert imgset.get_scan() is None
+  beam = imgset.get_beam()
+  beam.get_s0()
+  assert approx_equal(beam.get_s0(),
+                      (-0.0, -0.0, -1.0209290454313424))
+
 def run():
+  exercise_still()
   exercise_multi_axis_goniometer()
   print "OK"
 

@@ -172,7 +172,13 @@ class ScanFactory:
     timestamp = cbf_handle.get_timestamp()[0]
 
     gonio = cbf_handle.construct_goniometer()
-    angles = tuple(gonio.get_rotation_range())
+    try:
+      angles = tuple(gonio.get_rotation_range())
+    except Exception, e:
+      if str(e).strip() == 'CBFlib Error(s): CBF_NOTFOUND':
+        # probaby a still shot -> no scan object
+        return None
+      raise
 
     # xia2-56 handle gracefully reverse turning goniometers - this assumes the
     # rotation axis is correctly inverted in the goniometer factory
