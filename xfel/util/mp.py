@@ -349,6 +349,7 @@ class get_shifter_submit_command(get_submit_command):
     sb = open(self.sbatch_template, "rb")
     self.sbatch_contents = sb.read()
     sb.close()
+    self.sbatch_path = os.path.join(self.destination, "sbatch.sh")
 
     # template for srun.sh
     self.srun_template = self.params.shifter.srun_script_template
@@ -357,6 +358,7 @@ class get_shifter_submit_command(get_submit_command):
     sr = open(self.srun_template, "rb")
     self.srun_contents = sr.read()
     sr.close()
+    self.srun_path = os.path.join(self.destination, "srun.sh")
 
     self.destination = os.path.dirname(self.submit_path)
 
@@ -381,27 +383,36 @@ class get_shifter_submit_command(get_submit_command):
     self.sbatch_contents = self.substitute(self.sbatch_contents, "<partition>",
       self.params.shifter.partition)
 
+    # <srun_script>
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<srun_script>",
+      self.srun_path)
+
+    # <command> and any extra args
+    if len(self.params.extra_args) > 0:
+      self.srun_contents = self.substitute(self.srun_contents, "<command>",
+        "<command> %s" % " ".join(self.params.extra_args))
+    self.srun_contents = self.substitute(self.srun_contents, "<command>",
+      self.command)
+
   def generate_submit_command(self):
-    return self.params.shifter.submit_command
+    return self.params.shifter.submit_command + self.sbatch_path
 
   def encapsulate_submit(self):
     pass
 
   def generate_sbatch_script(self):
-    sbatch_path = os.path.join(self.destination, "sbatch.sh")
-    sb = open(sbatch_path, "wb")
+    sb = open(self.sbatch_path, "wb")
     sb.write(self.sbatch_contents)
     sb.write("\n")
     sb.close()
-    self.make_executable(sbatch_path)
+    self.make_executable(self.sbatch_path)
 
   def generate_srun_script(self):
-    srun_path = os.path.join(self.destination, "srun.sh")
-    sr = open(srun_path, "wb")
+    sr = open(self.srun_path, "wb")
     sr.write(self.srun_contents)
     sr.write("\n")
     sr.close()
-    self.make_executable(srun_path)
+    self.make_executable(self.srun_path)
 
   def write_script(self):
     self.generate_sbatch_script()
@@ -449,7 +460,7 @@ class get_custom_submit_command(get_submit_command):
       self.submit_command_contents = self.params.custom.submit_command_template.replace("<script>",
         "%s <script>" % " ".join(self.params.extra_options))
     self.submit_command_contents = self.submit_command_contents.replace("<script>",
-      os.path.join(self.stdoutdir, self.err_name))
+      self.submit_path)
 
     # other changes to the submission command
     for marker, value in [
