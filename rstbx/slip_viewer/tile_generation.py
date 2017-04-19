@@ -62,7 +62,7 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0,
   from scitbx.matrix import col, rec, sqr
   from xfel.cftbx.detector.metrology import get_projection_matrix
 
-  assert len(panels) == len(raw_data)
+  assert len(panels) == len(raw_data), (len(panels), len(raw_data))
 
   # Determine next multiple of eight of the largest panel size.
   for data in raw_data:
