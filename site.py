@@ -1,3 +1,4 @@
+from __future__ import division
 #
 #   Copyright (C) 2017 Diamond Light Source, Markus Gerstel
 #

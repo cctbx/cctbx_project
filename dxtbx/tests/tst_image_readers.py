@@ -1,3 +1,4 @@
+from __future__ import division
 
 def get_image_examples():
   from os.path import join
