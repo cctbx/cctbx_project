@@ -356,6 +356,8 @@ class loop_idealization():
         adaptive_mc_rmsd[k] += 1
     # print "adaptive_mc_rmsd", adaptive_mc_rmsd
     # adaptive_mc_rmsd = {1:2.5, 2:3.0, 3:3.5}
+    if anchor_rmsd is None:
+      anchor_rmsd = 0
     ss_multiplier = 1
     if contains_ss_element:
       ss_multiplier = 0.4
@@ -466,7 +468,7 @@ class loop_idealization():
       self.log.flush()
       #
       (moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms,
-          m_selection, contains_ss_element) = get_fixed_moving_parts(
+          m_selection, contains_ss_element, anchor_present) = get_fixed_moving_parts(
               pdb_hierarchy=pdb_hierarchy,
               out_res_num_list=out_res_num_list,
               # n_following=1,
@@ -565,16 +567,19 @@ class loop_idealization():
         #   print >> self.log, "Warning!!! make something here (check angles or so)"
         #   print >> self.log, "Skipping nonstable solution, tried previously:", (ccd_radius, change_all, change_radius, direction_forward, i)
         #   continue
-        fixed_ref_atoms_coors = [x.xyz for x in fixed_ref_atoms]
-        # print "params to constructor", fixed_ref_atoms, h, moving_ref_atoms_iseqs
-        ccd_obj = ccd_cpp(fixed_ref_atoms_coors, h, moving_ref_atoms_iseqs)
-        ccd_obj.run(direction_forward=direction_forward, save_states=self.params.save_states)
-        resulting_rmsd = ccd_obj.resulting_rmsd
-        n_iter = ccd_obj.n_iter
+        resulting_rmsd = None
+        n_iter = 0
+        if anchor_present:
+          fixed_ref_atoms_coors = [x.xyz for x in fixed_ref_atoms]
+          # print "params to constructor", fixed_ref_atoms, h, moving_ref_atoms_iseqs
+          ccd_obj = ccd_cpp(fixed_ref_atoms_coors, h, moving_ref_atoms_iseqs)
+          ccd_obj.run(direction_forward=direction_forward, save_states=self.params.save_states)
+          resulting_rmsd = ccd_obj.resulting_rmsd
+          n_iter = ccd_obj.n_iter
 
-        if self.params.save_states:
-          states = ccd_obj.states
-          states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num_list[0], ccd_radius, change_all, change_radius, i))
+          if self.params.save_states:
+            states = ccd_obj.states
+            states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num_list[0], ccd_radius, change_all, change_radius, i))
         map_target = 0
         if self.reference_map is not None:
           map_target = maptbx.real_space_target_simple(
@@ -929,7 +934,6 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
   m_cache = moving_h.atom_selection_cache()
   # print "len inp h atoms", pdb_hierarchy.atoms_size()
   # print "len moving_h atoms", moving_h.atoms_size()
-  moving_ref_atoms_iseqs = []
   # here we need N, CA, C atoms from the end_res_num residue
   eff_end_resnum = end_res_num
   if not direction_forward:
@@ -944,28 +948,23 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
     sel = m_cache.selection("resid %d" % int_eff_resnum)
   eff_end_resnum = hy36encode(4, int_eff_resnum)
 
+  anchor_present = True
+  moving_ref_atoms_iseqs = []
+  fixed_ref_atoms = []
   # print "fixed_ref_atoms:"
-  sel = m_cache.selection("resid %s and name N" % eff_end_resnum)
-  a = moving_h.select(sel).atoms()[0]
-  moving_ref_atoms_iseqs.append(a.i_seq)
-  fixed_N = a.detached_copy()
-  # print "  ", a.id_str()
-
-  sel = m_cache.selection("resid %s and name CA" % eff_end_resnum)
-  a = moving_h.select(sel).atoms()[0]
-  moving_ref_atoms_iseqs.append(a.i_seq)
-  fixed_CA = a.detached_copy()
-  # print "  ", a.id_str()
-
-  sel = m_cache.selection("resid %s and name C" % eff_end_resnum)
-  a = moving_h.select(sel).atoms()[0]
-  moving_ref_atoms_iseqs.append(a.i_seq)
-  fixed_C = a.detached_copy()
-  # print "  ", a.id_str()
-
-  fixed_ref_atoms = [fixed_N, fixed_CA, fixed_C]
-
-  return moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection, contains_ss_element
+  base_sel = "resid %s and name " % eff_end_resnum
+  for ssel in ["N", "CA", "C"]:
+    sel = m_cache.selection(base_sel+ssel)
+    atoms = moving_h.select(sel).atoms()
+    if atoms.size() > 0:
+      moving_ref_atoms_iseqs.append(atoms[0].i_seq)
+      fixed_ref_atoms.append(atoms[0].detached_copy())
+    else:
+      anchor_present = False
+    # print "  ", atoms[0].id_str()
+  print "anchor_present", anchor_present
+  return (moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection,
+      contains_ss_element, anchor_present)
 
 def get_main_chain_rmsd_range(
     hierarchy, original_h, all_atoms=False, placing_range=None):
