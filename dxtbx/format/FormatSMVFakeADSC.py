@@ -23,6 +23,12 @@ class FormatSMVFakeADSC(FormatSMV):
 
     size, header = FormatSMV.get_smv_header(image_file)
 
+    # do not understand JHSim images
+    if header.get('BEAMLINE') == 'fake': return False
+
+    # do not understand Timepix_SU images
+    if header.get('BEAMLINE') == 'TimePix_SU': return False
+
     wanted_header_items = [
       "HEADER_BYTES",
       "BEAM_CENTER_X",
