@@ -446,12 +446,12 @@ void set_box(
     gridstartz.insert(gridstartz.begin(), 0);
     gridendz.push_back(a[2]);
   }
-  for (int l = 0; l < gridstartx.size(); l ++) {
-    for (int m = 0; m < gridstarty.size(); m ++) {
-      for (int n = 0; n < gridstartz.size(); n ++) {
+  for (int l = 0; l < gridstartx.size(); l++) {
+    for (int m = 0; m < gridstarty.size(); m++) {
+      for (int n = 0; n < gridstartz.size(); n++) {
         for (int i = gridstartx[l]; i < gridendx[l]; i++) {
-          for (int j = gridstarty[m]; j < gridendy[m]; j ++) {
-            for (int k = gridstartz[n]; k < gridendz[n]; k ++) {
+          for (int j = gridstarty[m]; j < gridendy[m]; j++) {
+            for (int k = gridstartz[n]; k < gridendz[n]; k++) {
               map_data_to(i,j,k) = value;
             }
           }
