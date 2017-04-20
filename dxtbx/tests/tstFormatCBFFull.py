@@ -55,7 +55,9 @@ def exercise_still():
 
   from dxtbx.imageset import ImageSetFactory
   imgset = ImageSetFactory.new(os.path.join(data_dir, "grid_full_cbf_0005.cbf"))[0]
-  assert imgset.get_scan() is None
+  if imgset.get_scan():
+    scan = imgset.get_scan()
+    assert approx_equal(scan.get_image_oscillation(0), (30.0, 0.0), eps=1e-5)
   beam = imgset.get_beam()
   beam.get_s0()
   assert approx_equal(beam.get_s0(),
