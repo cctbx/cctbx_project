@@ -1,5 +1,4 @@
 from __future__ import division
-from  iotbx.pdb.multimer_reconstruction import multimer
 import iotbx.ncs
 from mmtbx.ncs.ncs_search import is_same_transform
 from libtbx.test_utils import approx_equal
