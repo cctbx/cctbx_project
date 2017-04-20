@@ -311,7 +311,7 @@ class FormatEigerNearlyNexus(FormatHDF5):
     self._goniometer_model = GoniometerFactory(sample).model
     self._scan_model = ScanFactory(sample, detector).model
     self._raw_data = DataFactory(data).model
-    self._mask = (MaskFactory(detector).mask,)
+    self._mask = MaskFactory([detector]).mask
 
   def _end(self):
     return
