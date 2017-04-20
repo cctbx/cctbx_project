@@ -914,13 +914,16 @@ class BeamFactory(object):
 
   '''
 
-  def __init__(self, obj):
+  def __init__(self, obj, index = None):
     from dxtbx.model import Beam
 
     # Get the items from the NXbeam class
     wavelength = obj.handle['incident_wavelength']
     wavelength_value = wavelength[()]
     wavelength_units = wavelength.attrs['units']
+
+    if index is not None:
+      wavelength_value = wavelength_value[index]
 
     # Convert wavelength to Angstroms
     wavelength_value = float(convert_units(
