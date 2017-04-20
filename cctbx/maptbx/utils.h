@@ -413,55 +413,42 @@ void set_box(
   af::tiny<int, 3> const& end)
 {
   af::c_grid<3> a = map_data_to.accessor();
-  // start DL
-  int nx = a[0], ny = a[1], nz = a[2];
-  int startx = start[0], starty = start[1], startz = start[2];
-  int endx = end[0], endy = end[1], endz = end[2];
-  af::tiny<int, 3> startmod, endmod; //initialization needed?
+  af::tiny<int, 3> startmod, endmod;
   af::shared<DataType> gridstartx, gridstarty, gridstartz;
   af::shared<DataType> gridendx, gridendy, gridendz;
   // make sure that grid points are not further apart than unit cell length
-  // and that start is smaller than end
+  // and that start is strictly smaller than end
   for(int i = 0; i < 3; i++) {
     CCTBX_ASSERT((end[i] - start[i]) <= a[i]);
-    CCTBX_ASSERT(end[i] >= start[i]);
+    CCTBX_ASSERT(end[i] > start[i]);
   }
-  startmod[0] = scitbx::math::mod_positive(startx, nx);
-  startmod[1] = scitbx::math::mod_positive(starty, ny);
-  startmod[2] = scitbx::math::mod_positive(startz, nz);
-  endmod[0] = scitbx::math::mod_positive(endx, nx);
-  endmod[1] = scitbx::math::mod_positive(endy, ny);
-  endmod[2] = scitbx::math::mod_positive(endz, nz);
-  // test output
-  //std::cout << "start " << start[0] << " "<< start[1] << " " << start[2] << "\n";
-  //std::cout << "end " << end[0] << " "<< end[1] << " " << end[2] << "\n";
-  //std::cout << "startmod " << startmod[0] << " "<< startmod[1] << " " << startmod[2] << "\n";
-  //std::cout << "endmod " << endmod[0] << " "<< endmod[1] << " " << endmod[2] << "\n";
-
-  //gridstartx.resize(0,0); gridendx.resize(0,0);
-  gridstartx.push_back(startmod[0]); gridendx.push_back(endmod[0]);
+  for(int i = 0; i < 3; i++) {
+    startmod[i] = scitbx::math::mod_positive(start[i], static_cast<int>(a[i]));
+    endmod[i] = scitbx::math::mod_positive(end[i], static_cast<int>(a[i]));
+    if (endmod[i] == 0) endmod[i] = a[i];
+  }
+  //
+  gridstartx.push_back(startmod[0]);
+  gridendx.push_back(endmod[0]);
   if (startmod[0] > endmod[0]) {
     gridstartx.insert(gridstartx.begin(), 0);
-    gridendx.push_back(nx);
+    gridendx.push_back(a[0]);
   }
-  //gridstarty.resize(0,0); gridendy.resize(0,0);
-  gridstarty.push_back(startmod[1]); gridendy.push_back(endmod[1]);
+  gridstarty.push_back(startmod[1]);
+  gridendy.push_back(endmod[1]);
   if (startmod[1] > endmod[1]) {
     gridstarty.insert(gridstarty.begin(), 0);
-    gridendy.push_back(ny);
+    gridendy.push_back(a[1]);
   }
-  //gridstartz.resize(0,0); gridendz.resize(0,0);
-  gridstartz.push_back(startmod[2]); gridendz.push_back(endmod[2]);
+  gridstartz.push_back(startmod[2]);
+  gridendz.push_back(endmod[2]);
   if (startmod[2] > endmod[2]) {
     gridstartz.insert(gridstartz.begin(), 0);
-    gridendz.push_back(nz);
+    gridendz.push_back(a[2]);
   }
-
   for (int l = 0; l < gridstartx.size(); l ++) {
     for (int m = 0; m < gridstarty.size(); m ++) {
       for (int n = 0; n < gridstartz.size(); n ++) {
-        //std::cout << "start coordinate " << gridstartx[l] << " " << gridstarty[m] << " " << gridstartz[n] << "\n";
-        //std::cout << "end coordinate " << gridendx[l] << " " << gridendy[m] << " " << gridendz[n] << "\n";
         for (int i = gridstartx[l]; i < gridendx[l]; i++) {
           for (int j = gridstarty[m]; j < gridendy[m]; j ++) {
             for (int k = gridstartz[n]; k < gridendz[n]; k ++) {
@@ -472,28 +459,7 @@ void set_box(
       }
     }
   }
-  int sum = gridstartx.size() * gridstarty.size() * gridstartz.size();
-  //std::cout << "number of quadrants " << sum << "\n";
 
-// end DL
-//  for(int i = 0; i < 3; i++) {
-//    CCTBX_ASSERT(start[i]>=0 && start[i]<=a[i]);
-//    CCTBX_ASSERT(end[i]>=0   && end[i]<=a[i]);
-//  }
-
-//  int ii=0;
-//  for (int i = start[0]; i < end[0]; i++) {
-//    int jj=0;
-//    for (int j = start[1]; j < end[1]; j++) {
-//      int kk=0;
-//      for (int k = start[2]; k < end[2]; k++) {
-//        map_data_to(i,j,k) = value;
-//        kk+=1;
-//      }
-//      jj+=1;
-//    }
-//    ii+=1;
-//  }
 }
 
 template <typename DataType>
