@@ -1514,6 +1514,27 @@ class DetectorGroupDataList(object):
       data.extend(datalist[index])
     return tuple(data)
 
+def get_detector_module_slices(detector):
+  '''
+  Helper function to read data_origin and data_size from the NXdetector_modules in a
+  NXdetector.  Returns a list of lists, where each sublist is a list of slices in
+  slow to fast order.
+  Assumes slices are stored in NeXus in fast to slow order.
+
+  '''
+  # get the set of leaf modules (handles nested modules)
+  modules = []
+  for nx_detector_module in detector.modules:
+    if len(find_class(nx_detector_module.handle, "NXdetector_module")) == 0:
+      modules.append(nx_detector_module)
+
+  all_slices = []
+  for module in modules:
+    data_origin = module.handle['data_origin']
+    data_size = module.handle['data_size']
+    all_slices.append(list(reversed([slice(int(start), int(start+step), 1) for start, step in zip(data_origin, data_size)])))
+  return all_slices
+
 class MultiPanelDataList(object):
   '''
   A class to make it easier to access the data from multiple datasets.
@@ -1521,7 +1542,7 @@ class MultiPanelDataList(object):
 
   '''
 
-  def __init__(self, datasets, modules):
+  def __init__(self, datasets, detector):
     self.datasets = datasets
     self.num_images = 0
     self.lookup = []
@@ -1531,11 +1552,7 @@ class MultiPanelDataList(object):
       self.lookup.extend([i] * dataset.shape[0])
       self.offset.append(self.num_images)
 
-    self.all_slices = []
-    for module in modules:
-      data_origin = module.handle['data_origin']
-      data_size = module.handle['data_size']
-      self.all_slices.append(list(reversed([slice(int(start), int(start+step), 1) for start, step in zip(data_origin, data_size)])))
+    self.all_slices = get_detector_module_slices(detector)
 
   def __len__(self):
     return self.num_images
@@ -1602,13 +1619,7 @@ class DetectorGroupDataFactory(DataFactory):
     # Create a list of multipanel datalist objects
     datalists = []
     for detector_name in mapping:
-      # get the set of leaf modules (handles nested modules)
-      modules = []
-      for nx_detector_module in mapping[detector_name]['detector'].modules:
-        if len(find_class(nx_detector_module.handle, "NXdetector_module")) == 0:
-          modules.append(nx_detector_module)
-
-      datalists.append(MultiPanelDataList(mapping[detector_name]['datasets'], modules))
+      datalists.append(MultiPanelDataList(mapping[detector_name]['datasets'], mapping[detector_name]['detector']))
     self.model = DetectorGroupDataList(datalists)
 
 class MaskFactory(object):
@@ -1617,18 +1628,26 @@ class MaskFactory(object):
 
   '''
 
-  def __init__(self, obj):
-    handle = obj.handle
+  def __init__(self, objects):
     def make_mask(dset):
       from dials.array_family import flex
-      height, width = dset.shape
-      mask_data = flex.int(dset[:,:].flatten()) == 0
-      mask_data.reshape(flex.grid(height, width))
-      return mask_data
+      mask_data = flex.int(dset[()]) == 0
+      mask = []
+      for slices in all_slices:
+        mask.append(mask_data[slices])
+      return tuple(mask)
     self.mask = None
-    if "pixel_mask_applied" in handle and handle['pixel_mask_applied']:
-      if "pixel_mask" in handle:
-        self.mask = make_mask(handle['pixel_mask'])
-      elif "detectorSpecific" in handle:
-        if "pixel_mask" in handle["detectorSpecific"]:
-          self.mask = make_mask(handle["detectorSpecific"]["pixel_mask"])
+    for obj in objects:
+      handle = obj.handle
+      if "pixel_mask_applied" in handle and handle['pixel_mask_applied']:
+        if self.mask is None:
+          self.mask = []
+        if "pixel_mask" in handle:
+          all_slices = get_detector_module_slices(obj)
+          self.mask.extend(list(make_mask(handle['pixel_mask'])))
+        elif "detectorSpecific" in handle:
+          if "pixel_mask" in handle["detectorSpecific"]:
+            all_slices = get_detector_module_slices(obj)
+            self.mask.extend(list(make_mask(handle["detectorSpecific"]["pixel_mask"])))
+    if self.mask is not None:
+      self.mask = tuple(self.mask)

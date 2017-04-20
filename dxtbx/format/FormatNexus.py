@@ -83,7 +83,7 @@ class FormatNexus(FormatHDF5):
       self._raw_data = DetectorGroupDataFactory(data, instrument).model
 
     self._setup_gonio_and_scan(sample, detector)
-    self._mask = (MaskFactory(detector).mask,)
+    self._mask = MaskFactory(instrument.detectors).mask
 
   def _setup_gonio_and_scan(self, sample, detector):
     """ Set up rotation-specific models """
