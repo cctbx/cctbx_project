@@ -45,7 +45,7 @@ class FormatNexus(FormatHDF5):
   def _start(self):
 
     # Read the file structure
-    reader = NXmxReader(self._image_file)
+    self._reader = reader = NXmxReader(self._image_file)
 
     # Only support 1 set of models at the moment
     assert len(reader.entries) == 1, \
@@ -99,7 +99,15 @@ class FormatNexus(FormatHDF5):
   def _detector(self):
     return self._detector_model
 
-  def _beam(self):
+  def _beam(self, index = None):
+    if index is None:
+      index = 0
+
+    entry = self._reader.entries[0]
+    sample = entry.samples[0]
+    beam = sample.beams[0]
+
+    self._beam_model = BeamFactory(beam, index).model
     return self._beam_model
 
   def _scan(self):
