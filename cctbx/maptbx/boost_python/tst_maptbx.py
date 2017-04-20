@@ -1058,42 +1058,150 @@ def exercise_set_box():
       end           = e)
   assert m2.as_1d().min_max_mean().as_tuple() == (1.,1.,1.)
 
-# Reset map values in a box within a unit cell
-def exercise_set_box_2():
+
+def exercise_set_box_0():
+  # Create a grid of size 10x10x10 having value 0 everywhere
+  box = flex.double(flex.grid(10,10,10), 0)
+  # test 0: same start and end
+  b1 = box.deep_copy()
+  try:
+    maptbx.set_box(
+      value       = -1,
+      map_data_to = b1,
+      start       = b1.all(),
+      end         = b1.all())
+  except RuntimeError, e:
+    assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
+  else: raise Exception_expected
+  # test 1: transform entire unit cell
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = -1,
+    map_data_to = b1,
+    start       = [0,0,0],
+    end         = b1.all())
+  assert approx_equal(b1.as_1d().min_max_mean().as_tuple(), [-1.0, -1.0, -1.0])
+  # test 2: transform entire unit cell, this time translated
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = 1,
+    map_data_to = b1,
+    start       = [-30,-30,-30],
+    end         = [-20,-20,-20])
+  assert approx_equal(b1.as_1d().min_max_mean().as_tuple(), [1.0, 1.0, 1.0])
+  # test 3: start in neighboring cell and end at 0,0,0
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = 1,
+    map_data_to = b1,
+    start       = [-5,-5,-5],
+    end         = [0,0,0])
+  assert approx_equal(b1.as_1d().min_max_mean().as_tuple(), [0.0, 1.0, 0.125])
+  # test 4: slice instead of a box
+  b1 = box.deep_copy()
+  try:
+    maptbx.set_box(
+      value       = -1,
+      map_data_to = b1,
+      start       = [1,2,3],
+      end         = [2,2,3])
+  except RuntimeError, e:
+    assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
+  else: raise Exception_expected
+  # test 5: another slice
+  b1 = box.deep_copy()
+  try:
+    maptbx.set_box(
+      value       = -1,
+      map_data_to = b1,
+      start       = [-1,0,2],
+      end         = [0,0,3])
+  except RuntimeError, e:
+    assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
+  else: raise Exception_expected
+  # test 6: one point changed
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = 1,
+    map_data_to = b1,
+    start       = [0,0,0],
+    end         = [1,1,1])
+  assert (b1==0).count(True)==999
+  assert (b1==1).count(True)==1
+  # test 7: change 1/8 of the unit cell
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = 1,
+    map_data_to = b1,
+    start       = [0,0,0],
+    end         = [5,5,5])
+  assert approx_equal(b1.as_1d().min_max_mean().as_tuple(), [0.0, 1.0, 0.125])
+  # test 8: change one point
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = 1,
+    map_data_to = b1,
+    start       = [-1,-1,-1],
+    end         = [0,0,0])
+  assert (b1==0).count(True)==999
+  assert (b1==1).count(True)==1
+  # test 9: entire cell, end point is 0,0,0
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = 1,
+    map_data_to = b1,
+    start       = [-10,-10,-10],
+    end         = [0,0,0])
+  assert approx_equal(b1.as_1d().min_max_mean().as_tuple(), [1.0, 1.0, 1.0])
+  # test 10: slice of a box
+  b1 = box.deep_copy()
+  try:
+    maptbx.set_box(
+      value       = 1,
+      map_data_to = b1,
+      start       = [0,0,0],
+      end         = [9,0,0])
+  except RuntimeError, e:
+    assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
+  else: raise Exception_expected
+  # test 11: box within unit cell one period apart
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = 1,
+    map_data_to = b1,
+    start       = [14,14,14],
+    end         = [19,19,19])
+  assert approx_equal(b1.as_1d().min_max_mean().as_tuple(), [0.0, 1.0, 0.125])
+  # test 12 box between cells, translated by a period
+  b1 = box.deep_copy()
+  maptbx.set_box(
+    value       = 1,
+    map_data_to = b1,
+    start       = [-14,-14,-14],
+    end         = [-9,-9,-9])
+  assert approx_equal(b1.as_1d().min_max_mean().as_tuple(), [0.0, 1.0, 0.125])
+  # TEST 13: Reset map values in a box within a unit cell
   n_real = (100, 60, 80)
-  # total number of grid points: 480,000
   n = n_real[0]*n_real[1]*n_real[2]
   m1 = flex.double([1 for i in xrange(n)])
   m1.resize(flex.grid(n_real))
-  # reset grid points in box to -1
-  # size of box: (60, 10, 20) = 12,000 grid points
   maptbx.set_box(
     value       = -1,
     map_data_to = m1,
     start       = [20,30,40],
     end         = [80,40,60])
-  # calculate min_max_mean
-  # min = -1, max = 1
-  # mean = [(480,000 - 12,000)*1 + 12,000*(-1)] / 480,000
-  # = 0.95
-  #print m1.as_1d().min_max_mean().as_tuple()
   assert m1.as_1d().min_max_mean().as_tuple() == (-1.,1.,0.95)
-
-# reset map values in a box spanning the border of the unit cell
-def exercise_set_box_3():
+  # TEST 14: reset map values in a box crossing the border of the unit cell
   n_real = (60, 100, 80)
   n = n_real[0]*n_real[1]*n_real[2]
-  m1 = flex.double([1 for i in xrange(n)])
-  m1.resize(flex.grid(n_real))
-  #print m1.as_1d().min_max_mean().as_tuple()
+  m2 = flex.double([1 for i in xrange(n)])
+  m2.resize(flex.grid(n_real))
   maptbx.set_box(
     value       = -1,
-    map_data_to = m1,
+    map_data_to = m2,
     start       = [-10,-20,20],
     end         = [30,40,50])
-
-  #print m1.as_1d().min_max_mean().as_tuple()
-  assert m1.as_1d().min_max_mean().as_tuple() == (-1.,1.,0.7)
+  assert m2.as_1d().min_max_mean().as_tuple() == (-1.,1.,0.7)
 
 def exercise_median_filter():
   values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
@@ -1409,8 +1517,7 @@ def run(args):
   exercise_kuwahara_filter()
   exercise_median_filter()
   exercise_set_box()
-  exercise_set_box_2()
-  exercise_set_box_3()
+  exercise_set_box_0()
   exercise_copy()
   exercise_statistics()
   exercise_grid_tags()
