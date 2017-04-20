@@ -922,7 +922,7 @@ class BeamFactory(object):
     wavelength_value = wavelength[()]
     wavelength_units = wavelength.attrs['units']
 
-    if index is not None:
+    if index is not None and len(wavelength_value) > 1:
       wavelength_value = wavelength_value[index]
 
     # Convert wavelength to Angstroms
