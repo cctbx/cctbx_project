@@ -494,6 +494,7 @@ class minimize_wrapper_with_map():
     selection_real_space = None
     import mmtbx.refinement.real_space.weight
     self.w = None
+    print "number_of_cycles", number_of_cycles
     for x in xrange(number_of_cycles):
       print >> self.log, "  Updating rotamer restraints..."
       self.pdb_h, grm = add_rotamer_restraints(
@@ -602,10 +603,10 @@ class minimize_wrapper_with_map():
           #   xray_structure = tfg_obj.xray_structure,
           #   accept_as_is   = True)
       self.pdb_h.adopt_xray_structure(self.xrs)
-      # ms = geometry_no_grm(
-      #     pdb_hierarchy=self.pdb_h,
-      #     molprobity_scores=True)
-      # print >> self.log, ms.format_molprobity_scores(prefix="    ")
+      ms = geometry_no_grm(
+          pdb_hierarchy=self.pdb_h,
+          molprobity_scores=True)
+      print >> self.log, ms.format_molprobity_scores(prefix="    ")
 
 
     # print >> log, "pdb_h", self.pdb_h.atoms_size()
