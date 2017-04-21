@@ -69,6 +69,11 @@ master_phil = iotbx.phil.parse("""
                unit of the map. The coordinates in this file will be used \
                to mark part of the ncs au and all points nearby that are \
                not part of another ncs au will be added.
+
+     input_weight_map_pickle_file = None
+       .type = path 
+       .short_caption = Input weight map pickle file 
+       .help = Weight map pickle file
   }
 
   output_files {
@@ -170,6 +175,11 @@ master_phil = iotbx.phil.parse("""
               map_file.  Used in combination with info_file=xxx.pkl \
               and pdb_to_restore=xxxx.pdb
       .short_caption = Restored PDB file
+
+    output_weight_map_pickle_file = weight_map_pickle_file.pkl
+       .type = path 
+       .short_caption = Output weight map pickle file 
+       .help = Output weight map pickle file
   }
 
   crystal_info {
@@ -364,6 +374,27 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Local sharpening
        .help = Sharpen locally using overlapping regions
+
+     select_sharpened_map = None
+       .type = int
+       .short_caption = Sharpened map to use
+       .help = Select a single sharpened map to use
+
+     read_sharpened_maps = None
+       .type = bool 
+       .short_caption = Read sharpened maps
+       .help = Read in previously-calculated sharpened maps
+
+     write_sharpened_maps = None
+       .type = bool 
+       .short_caption = Write sharpened maps
+       .help = Write out local sharpened maps
+
+     smoothing_radius = None
+       .type = float 
+       .short_caption = Smoothing radius 
+       .help = Sharpen locally using smoothing_radius. Default is 2/3 of \
+                 mean distance between centers for sharpening
 
      local_aniso_in_local_sharpening = True
        .type = bool
@@ -1344,6 +1375,13 @@ class sharpening_info:
       sa_ratio=None,
       normalized_regions=None,
       score=None,
+      input_weight_map_pickle_file=None,
+      output_weight_map_pickle_file=None,
+      read_sharpened_maps=None,
+      write_sharpened_maps=None,
+      select_sharpened_map=None,
+      output_directory=None,
+      smoothing_radius=None,
       local_sharpening=None,
       local_aniso_in_local_sharpening=None,
       use_local_aniso=None,
@@ -1467,8 +1505,16 @@ class sharpening_info:
       self.residual_target=params.map_modification.residual_target
       self.eps=params.map_modification.eps
       self.n_bins=params.map_modification.n_bins
+      self.input_weight_map_pickle_file=params.input_files.input_weight_map_pickle_file
+      self.output_weight_map_pickle_file=params.output_files.output_weight_map_pickle_file
+      self.read_sharpened_maps=params.map_modification.read_sharpened_maps
+      self.write_sharpened_maps=params.map_modification.write_sharpened_maps
+      self.select_sharpened_map=params.map_modification.select_sharpened_map
+      self.output_directory=params.output_files.output_directory
+      self.smoothing_radius=params.map_modification.smoothing_radius
       self.local_sharpening=params.map_modification.local_sharpening
-      self.local_aniso_in_local_sharpening=params.map_modification.local_aniso_in_local_sharpening
+      self.local_aniso_in_local_sharpening=\
+         params.map_modification.local_aniso_in_local_sharpening
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
       self.box_center=params.map_modification.box_center
       self.box_size=params.map_modification.box_size
@@ -1478,7 +1524,8 @@ class sharpening_info:
       self.max_ratio_to_target=params.segmentation.max_ratio_to_target
       self.min_ratio_to_target=params.segmentation.min_ratio_to_target
       self.residues_per_region=params.segmentation.residues_per_region
-      self.starting_density_threshold=params.segmentation.starting_density_threshold
+      self.starting_density_threshold=\
+         params.segmentation.starting_density_threshold
       self.density_threshold=params.segmentation.density_threshold
       self.min_ratio=params.segmentation.min_ratio
       self.min_volume=params.segmentation.min_volume
@@ -1839,7 +1886,7 @@ def write_atoms(tracking_data=None,sites=None,file_name=None,
     unit_cell=crystal_symmetry.unit_cell()
     for xyz_cart in sites:
       scatterers.append( xray.scatterer(scattering_type="O", label="O",
-        site=unit_cell.fractionalize(xyz_cart), u=0.1, occupancy=1.0))
+        site=unit_cell.fractionalize(xyz_cart), u=0.38, occupancy=1.0))
     write_xrs(xrs=xrs,scatterers=scatterers,file_name=file_name,out=out)
 
 
@@ -5746,7 +5793,10 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       args.append("auto_sharpen_methods=*%s" %(" *".join(auto_sharpen_methods)))
 
     for param in ['seq_file','box_size','box_center','remove_aniso',
-       'use_local_aniso','local_aniso_in_local_sharpening',
+       'input_weight_map_pickle_file', 'output_weight_map_pickle_file',
+       'read_sharpened_maps', 'write_sharpened_maps', 'select_sharpened_map',
+       'output_directory',
+       'smoothing_radius','use_local_aniso','local_aniso_in_local_sharpening',
        'local_sharpening','box_in_auto_sharpen','resolution','d_min_ratio',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms',
        'max_box_fraction','k_sharpen',
@@ -6040,20 +6090,38 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
   print >>out,80*"-"
   print >>out,"Getting segmented map to ID locations for sharpening"
   print >>out,80*"-"
-    
-  args=[
+   
+  if si.input_weight_map_pickle_file:
+    from libtbx import easy_pickle
+    file_name=si.input_weight_map_pickle_file
+    print >>out,"Loading segmentation data from %s" %(file_name)
+    tracking_data=easy_pickle.load(file_name)
+
+  else:
+    args=[
         'resolution=%s' %(si.resolution),
         'seq_file=%s' %(si.seq_file),
         'auto_sharpen=False', # XXX could sharpen overall
         'write_output_maps=True',
         'add_neighbors=False',
         'density_select=False', ]
-  ncs_group_obj,remainder_ncs_group_obj,tracking_data=run(
+    ncs_group_obj,remainder_ncs_group_obj,tracking_data=run(
      args,
      map_data=map,
      ncs_obj=ncs_obj,
      crystal_symmetry=si.crystal_symmetry)
-   
+
+  if si.output_weight_map_pickle_file:
+    from libtbx import easy_pickle
+    file_name=os.path.join(si.output_directory,si.output_weight_map_pickle_file)
+    print >>out,"Dumping segmentation data to %s" %(file_name)
+    easy_pickle.dump(file_name,tracking_data)
+  
+  if not ncs_obj or ncs_obj.max_operators()==0:
+    from mmtbx.ncs.ncs import ncs
+    ncs_obj=ncs()
+    ncs_obj.set_unit_ncs()
+
   print >>out,"Regions in this map:" 
   centers_frac=flex.vec3_double()
   upper_bounds_list=[]
@@ -6066,31 +6134,63 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
     lower_bounds_list.append(lower)
     average_fract=average_from_bounds(lower,upper,grid_all=map.all())
     centers_frac.append(average_fract)
-    print >>out,"Bounds: %s:%s  Center: %5.2f %5.2f %5.2f " %(
-       str(lower),str(upper),average_fract[0],
-        average_fract[1], average_fract[2],)
   centers_cart=si.crystal_symmetry.unit_cell().orthogonalize(centers_frac)
-  for x in centers_cart: print "%7.2f %7.2f %7.2f" %(x)
 
-  print >>out,"NCS ops:",ncs_group_obj.ncs_obj.max_operators()
 
   #  Make ncs-related centers
+  print >>out,"NCS ops:",ncs_obj.max_operators()
   centers_cart_ncs_list=[]
   for i in xrange(centers_cart.size()):
     centers_cart_ncs_list.append(ncs_copies(
-       centers_cart[i],ncs_object=ncs_group_obj.ncs_obj) )
+       centers_cart[i],ncs_object=ncs_obj) )
+
+  all_cart=flex.vec3_double()
+  for center_list in centers_cart_ncs_list:
+    all_cart.extend(center_list)
+
+  sharpening_centers_file=os.path.join(
+      si.output_directory,"sharpening_centers.pdb")
+  write_atoms(file_name=sharpening_centers_file,
+    crystal_symmetry=si.crystal_symmetry,sites=centers_cart)
+  ncs_sharpening_centers_file=os.path.join(
+      si.output_directory,"ncs_sharpening_centers.pdb")
+  write_atoms(file_name=ncs_sharpening_centers_file,
+    crystal_symmetry=si.crystal_symmetry,sites=all_cart)
+   
+  print >>out,\
+    "\nSharpening centers (matching shifted_map_file).\n\n "+\
+      "Written to: \n%s \n%s\n"%(
+      sharpening_centers_file,ncs_sharpening_centers_file)
+
+  for i in xrange(centers_cart.size()):
+    print >>out,"Center: %s (%7.2f,%7.2f,%7.2f)  Bounds: %s :: %s " %(
+        i,centers_cart[i][0],centers_cart[i][1],centers_cart[i][2],
+          str(lower_bounds_list[i]),str(upper_bounds_list[i]))
 
   print >>out,80*"-"
   print >>out,"Done getting segmented map to ID locations for sharpening"
   print >>out,80*"-"
 
-  return upper_bounds_list,lower_bounds_list,centers_cart_ncs_list
+
+  return upper_bounds_list,lower_bounds_list,centers_cart_ncs_list,all_cart
 
 def get_box_size(lower_bound=None,upper_bound=None):
   box_size=[]
   for lb,ub in zip(lower_bound,upper_bound):
     box_size.append(ub-lb)
   return box_size
+
+def mean_dist_to_nearest_neighbor(all_cart):
+  sum_dist=0.
+  sum_n=0.
+  for i in xrange(all_cart.size()):
+    xyz=all_cart[i:i+1]
+    others=all_cart[:i]
+    others.extend(all_cart[i+1:])
+    sum_dist+=get_closest_dist(xyz,others)
+    sum_n+=1.
+  return sum_dist/max(1.,sum_n)
+
 
 def run_local_sharpening(si=None,
     auto_sharpen_methods=None,
@@ -6113,39 +6213,64 @@ def run_local_sharpening(si=None,
   sum_weight_map=sum_weight_map.set_selected(s,0.0)
   sum_weight_value_map=sum_weight_map.deep_copy()
 
-  upper_bounds_list,lower_bounds_list,centers_cart_ncs_list=\
+  upper_bounds_list,lower_bounds_list,centers_cart_ncs_list,all_cart=\
      get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,out=out)
+
+  dist=mean_dist_to_nearest_neighbor(all_cart)
+  print >>out,"\nMean distance to nearest center is %7.2f A " %(
+    dist)
+  if not si.smoothing_radius:
+    si.smoothing_radius=float("%.0f" %(dist*2/3))  # 10% from nearest neighbor
+    print >>out,"Using %s A for smoothing radius" %(si.smoothing_radius)
+
   i=-1
   for ub,lb,centers_ncs_cart in zip(
     upper_bounds_list,lower_bounds_list,centers_cart_ncs_list):
     i+=1
-    local_si=deepcopy(si)
-    local_si.local_sharpening=False  # don't do it again
-    local_si.box_size=get_box_size(lower_bound=lb,upper_bound=ub)
-    local_si.box_center=centers_ncs_cart[0]
-    local_si.box_in_auto_sharpen=True
-    local_si.use_local_aniso=True
-    print >>out,80*"+" 
-    print >>out,"Getting local sharpening for box %s" %(i)
-    print >>out,80*"+"
-    local_si=auto_sharpen_map_or_map_coeffs(si=local_si,
-      auto_sharpen_methods=auto_sharpen_methods,
-      map=map,
-      half_map_list=half_map_list,
-      pdb_inp=pdb_inp,
-      out=out)
-    local_map_data=local_si.map_data
-    write_ccp4_map(si.crystal_symmetry,'sharpened_map_%s.ccp4' %(i),
-        local_map_data)
+
+    if si.select_sharpened_map is not None and i != si.select_sharpened_map:
+      continue
+    map_file_name='sharpened_map_%s.ccp4' %(i)
+    if si.read_sharpened_maps:
+      print >>out,"\nReading sharpened map directly from %s" %(map_file_name)
+      result=get_map_object(file_name=map_file_name,
+        out=out)
+      local_map_data=result[0]
+    else:
+
+      local_si=deepcopy(si)
+      local_si.local_sharpening=False  # don't do it again
+      local_si.box_size=get_box_size(lower_bound=lb,upper_bound=ub)
+      local_si.box_center=centers_ncs_cart[0]
+      local_si.box_in_auto_sharpen=True
+      local_si.use_local_aniso=True
+      print >>out,80*"+" 
+      print >>out,"Getting local sharpening for box %s" %(i)
+      print >>out,80*"+"
+      local_si=auto_sharpen_map_or_map_coeffs(si=local_si,
+        auto_sharpen_methods=auto_sharpen_methods,
+        map=map,
+        half_map_list=half_map_list,
+        pdb_inp=pdb_inp,
+        out=out)
+      local_map_data=local_si.map_data
+
+    if si.write_sharpened_maps:
+      print >>out,"\nWriting sharpened map %s to %s" %(
+       i,map_file_name)
+      write_ccp4_map(si.crystal_symmetry,map_file_name,
+         local_map_data)
+
+    local_map_data=local_map_data.as_double()
 
     # Calculate weight map, max near location of centers_ncs_cart
-    # u=0.1 gives B=7.9 -> B=1 is u=0.1/7.9=0.1266.
-    # b_eff=8*3.14159*rmsd**2 -> u=(0.1266)* 8*3.14159*rmsd**2=
+    # U=rmsd**2
+    # (b_eff=8*3.14159**2*U) 
     #  rmsd is at least distance between centers, not too much bigger than
     #  unit cell size, typically 10-20 A, 
-    dis=10.
-    print >>out,"\nFall-off of local weight is 1/%6.1f A\n" %(dis)
-    u=(0.1266)* 8*3.14159*dis**2
+    print >>out,"\nFall-off of local weight is 1/%6.1f A\n" %(
+      si.smoothing_radius)
+    u=si.smoothing_radius**2
 
     from cctbx import xray
     xrs,scatterers=set_up_xrs(crystal_symmetry=si.crystal_symmetry)
@@ -6166,8 +6291,17 @@ def run_local_sharpening(si=None,
 
     weight_map=get_map_from_map_coeffs(map_coeffs=weight_f_array,
       crystal_symmetry=si.crystal_symmetry,n_real=map.all())
-    s = (weight_map <1.e-10)
-    weight_map=weight_map.set_selected(s,1.e-10)
+    min_value=weight_map.as_1d().min_max_mean().min
+    weight_map+=min_value # all positive or zero
+
+    max_value=weight_map.as_1d().min_max_mean().max
+    weight_map=weight_map/max(1.e-10,max_value)  # normalize; max=1 now
+
+    min_value=1.e-10  # just a small value for all distances far from center
+    s = (weight_map <min_value )  # make extra sure every point is above this
+    weight_map=weight_map.set_selected(s,min_value)
+
+    # increase sums
     sum_weight_map+=weight_map
     sum_weight_value_map+=weight_map*local_map_data
 
@@ -6216,6 +6350,13 @@ def auto_sharpen_map_or_map_coeffs(
         eps=None,
         max_regions_to_test=None,
         fraction_occupied=None,
+        input_weight_map_pickle_file=None,
+        output_weight_map_pickle_file=None,
+        read_sharpened_maps=None,
+        write_sharpened_maps=None,
+        select_sharpened_map=None,
+        output_directory=None,
+        smoothing_radius=None,
         local_sharpening=None,
         local_aniso_in_local_sharpening=None,
         use_local_aniso=None,

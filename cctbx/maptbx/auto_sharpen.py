@@ -61,6 +61,12 @@ master_phil = iotbx.phil.parse("""
                blank line or greater-than sign.)  \
                Can have chains that are DNA/RNA/protein and\
                all can be present in one file.
+
+    input_weight_map_pickle_file = None
+      .type = path
+      .short_caption = Input weight map pickle file
+      .help = Weight map pickle file
+
   }
 
   output_files
@@ -91,6 +97,11 @@ master_phil = iotbx.phil.parse("""
               written out as map coefficients
       .short_caption = Sharpened map coeffs file
       .input_size = 400
+
+    output_weight_map_pickle_file = weight_map_pickle_file.pkl
+       .type = path
+       .short_caption = Output weight map pickle file
+       .help = Output weight map pickle file
 
     output_directory =  None
       .type = path
@@ -207,6 +218,28 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Local sharpening
        .help = Sharpen locally using overlapping regions
+
+
+     select_sharpened_map = None
+       .type = int
+       .short_caption = Sharpened map to use
+       .help = Select a single sharpened map to use
+
+     read_sharpened_maps = None
+       .type = bool
+       .short_caption = Read sharpened maps
+       .help = Read in previously-calculated sharpened maps
+
+     write_sharpened_maps = None
+       .type = bool
+       .short_caption = Write sharpened maps
+       .help = Write out local sharpened maps
+
+     smoothing_radius = None
+       .type = float
+       .short_caption = Smoothing radius
+       .help = Sharpen locally using smoothing_radius. Default is 2/3 of \
+                 mean distance between centers for sharpening
 
      local_aniso_in_local_sharpening = True
        .type = bool
@@ -507,7 +540,7 @@ def get_map_and_model(params=None,
     if origin_frac != (0,0,0):
       origin_shift=crystal_symmetry.unit_cell().orthogonalize(
          (-origin_frac[0],-origin_frac[1],-origin_frac[2]))
-      print >>out,"Shifting NCS by %s" %(str(origin_shift))
+      print >>out,"Shifting NCS by (%7.2f,%7.2f,%7.2f) " %((origin_shift))
       from scitbx.math import  matrix
       ncs_obj=ncs_obj.coordinate_offset(
        coordinate_offset=matrix.col(origin_shift))
@@ -550,7 +583,16 @@ def run(args=None,params=None,
         map=map_data,
         half_map_list=half_map_data_list,
         solvent_content=params.crystal_info.solvent_content,
+        input_weight_map_pickle_file=\
+            params.input_files.input_weight_map_pickle_file,
+        output_weight_map_pickle_file=\
+            params.output_files.output_weight_map_pickle_file,
+        read_sharpened_maps=params.map_modification.read_sharpened_maps,
+        write_sharpened_maps=params.map_modification.write_sharpened_maps,
+        select_sharpened_map=params.map_modification.select_sharpened_map,
         local_sharpening=params.map_modification.local_sharpening,
+        output_directory=params.output_files.output_directory,
+        smoothing_radius=params.map_modification.smoothing_radius,
         local_aniso_in_local_sharpening=\
            params.map_modification.local_aniso_in_local_sharpening,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
