@@ -20,6 +20,7 @@ def exercise_cbetadev():
   validation = cbetadev.cbetadev(
     pdb_hierarchy=hierarchy,
     outliers_only=True)
+  assert approx_equal(validation.get_weighted_outlier_percent(), 4.40420846587)
   for unpickle in [False, True] :
     if unpickle :
       validation = loads(dumps(validation))
