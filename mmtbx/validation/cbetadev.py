@@ -17,6 +17,7 @@ from mmtbx.validation import residue, validation
 from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
 import sys
 from scitbx.array_family import flex
+from libtbx import group_args
 
 class cbeta (residue) :
   """
@@ -55,7 +56,7 @@ class cbeta (residue) :
              self.deviation, self.dihedral_NABB ]
 
 class cbetadev (validation) :
-  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs"]
+  __slots__ = validation.__slots__ + ["beta_ideal","_outlier_i_seqs","stats"]
   program_description = "Analyze protein sidechain C-beta deviation"
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
   gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
@@ -75,6 +76,9 @@ class cbetadev (validation) :
     relevant_atom_names = {
       " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
     output_list = []
+    self.stats = group_args(n_results=0,
+                            n_weighted_results = 0,
+                            n_weighted_outliers = 0)
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)
@@ -105,9 +109,13 @@ class cbetadev (validation) :
                 dihedralNABB = result.dihedral
                 betaxyz = result.ideal
                 if (dev is None) : continue
+                resCB = relevant_atoms[" CB "]
+                self.stats.n_results += 1
+                self.stats.n_weighted_results += resCB.occ
                 if(dev >=0.25 or outliers_only==False):
                   if(dev >=0.25):
                     self.n_outliers+=1
+                    self.stats.n_weighted_outliers += resCB.occ
                     self._outlier_i_seqs.append(atom.i_seq)
                   if (is_alt_conf):
                     altchar = cf.altloc
@@ -117,7 +125,6 @@ class cbetadev (validation) :
                   sub=chain.id
                   if(len(sub)==1):
                     sub=" "+sub
-                  resCB = relevant_atoms[" CB "]
                   result = cbeta(
                     chain_id=chain_id,
                     resname=residue.resname,
@@ -148,8 +155,29 @@ class cbetadev (validation) :
       'SUMMARY: %d C-beta deviations >= 0.25 Angstrom (Goal: 0)' % \
       self.n_outliers
 
+  #functions for internal access of summary statistics
   def get_outlier_count(self):
     return self.n_outliers
+
+  def get_weighted_outlier_count(self):
+    return self.stats.n_weighted_outliers
+
+  def get_result_count(self):
+    return self.stats.n_results
+
+  def get_weighted_result_count(self):
+    return self.stats.n_weighted_results
+
+  def get_outlier_percent(self):
+    if self.stats.n_results == 0:
+      return 0
+    return self.n_outliers/self.stats.n_results*100
+
+  def get_weighted_outlier_percent(self):
+    weighted_result_count = self.get_weighted_result_count()
+    if weighted_result_count == 0:
+      return 0
+    return self.get_weighted_outlier_count()/weighted_result_count*100
 
   def get_expected_count(self):
     return 0
