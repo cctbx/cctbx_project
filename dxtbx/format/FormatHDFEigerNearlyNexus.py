@@ -305,10 +305,9 @@ class FormatEigerNearlyNexus(FormatHDF5):
     detector = instrument.detectors[0]
     sample = entry.samples[0]
     beam = sample.beams[0]
-    #data = entry.data[0]
 
     # Use data from original master file
-    data = NXdata(fixer.handle_orig[data.handle.name])
+    data = NXdata(fixer.handle_orig[entry.data[0].handle.name])
 
     # Construct the models
     self._beam_model = BeamFactory(beam).model
