@@ -926,7 +926,7 @@ class model_idealization():
     for val_caption, val_name, val_format in [
         ("Molprobity Score", "mpscore", "{:10.2f}"),
         ("Clashscore", "clashscore", "{:10.2f}"),
-        ("CBeta deviations", "c_beta_dev", "{:10d}"),
+        ("CBeta deviations", "c_beta_dev_percent", "{:10.2f}"),
         ("Ramachandran outliers", "ramachandran_outliers", "{:10.2f}"),
         ("Ramachandran allowed", "ramachandran_allowed", "{:10.2f}"),
         ("Rotamer outliers", "rotamer_outliers", "{:10.2f}"),

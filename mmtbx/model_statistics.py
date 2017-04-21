@@ -47,6 +47,7 @@ class geometry_no_grm(object):
         outliers_only = True,
         out           = null_out())
       self.c_beta_dev = self.cbetadev_obj.get_outlier_count()
+      self.c_beta_dev_percent = self.cbetadev_obj.get_weighted_outlier_percent()
       self.clashscore = clashscore(pdb_hierarchy=pdb_hierarchy).get_clashscore()
       self.mpscore = molprobity_score(
         clashscore = self.clashscore,
