@@ -410,7 +410,7 @@ class structure_monitor(object):
 %s   disfavored:              %-s %%
 %s   ca outliers:             %-s %%
 %s Rotamer outliers:          %-s %%
-%s C-beta deviations:         %-s
+%s C-beta deviations:         %-s %%
 """
     mso = None
     try:
@@ -453,7 +453,7 @@ class structure_monitor(object):
         prefix, format_value("%-5.2f", mso.cablam_disfavored),
         prefix, format_value("%-5.2f", mso.cablam_ca_outliers),
         prefix, format_value("%6.2f", mso.rotamer_outliers).strip(),
-        prefix, format_value("%-3d", mso.c_beta_dev))
+        prefix, format_value("%-5.2f", mso.c_beta_dev_percent))
 
   def show_residues(self, map_cc_all=0.8, map_cc_sidechain=0.8, log=None):
     self.assert_pdb_hierarchy_xray_structure_sync()
