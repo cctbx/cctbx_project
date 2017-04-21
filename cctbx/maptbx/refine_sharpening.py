@@ -581,8 +581,7 @@ class analyze_aniso_object:
   
     self.b_iso=None # target b_iso, default is mean of existing
     self.b_cart=None
-    self.aniso_scale_and_b=None
-    self.u_star_aniso_removed=None
+    self.b_cart_aniso_removed=None
 
   def set_up_aniso_correction(self,f_array=None,b_iso=None,d_min=None):
 
@@ -591,39 +590,41 @@ class analyze_aniso_object:
       (d_max,d_min)=f_array.d_max_min()
 
     from cctbx.maptbx.segment_and_split_map import get_b_iso
-    b_mean,self.aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,
+    b_mean,aniso_scale_and_b=get_b_iso(f_array,d_min=d_min,
       return_aniso_scale_and_b=True)
 
-    if not self.aniso_scale_and_b or not self.aniso_scale_and_b.b_cart:
+    if not aniso_scale_and_b or not aniso_scale_and_b.b_cart:
       return # failed
 
     if b_iso is None:
       b_iso=b_mean  # use mean
     self.b_iso=b_iso
 
-    # Set up matrices
 
-    b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0]
-
-    from cctbx import adptbx 
-    self.u_star_aniso_removed = adptbx.u_cart_as_u_star(
-      f_array.unit_cell(), adptbx.b_as_u( b_cart_aniso_removed  ) )
-    self.b_cart=self.aniso_scale_and_b.b_cart
+    self.b_cart=aniso_scale_and_b.b_cart  # current 
+    self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
 
     # ready to apply
 
   def apply_aniso_correction(self,f_array=None):
 
-    if not self.aniso_scale_and_b or not self.u_star_aniso_removed:
+    if self.b_cart is None or self.b_cart_aniso_removed is None:
       return f_array  # nothing to do
 
     from mmtbx.scaling import absolute_scaling
+    from cctbx import adptbx 
+
+    u_star= adptbx.u_cart_as_u_star(
+      f_array.unit_cell(), adptbx.b_as_u( self.b_cart) )
+
+    u_star_aniso_removed = adptbx.u_cart_as_u_star(
+      f_array.unit_cell(), adptbx.b_as_u( self.b_cart_aniso_removed  ) )
 
     no_aniso_array = absolute_scaling.anisotropic_correction(
-      f_array,0.0,self.aniso_scale_and_b.u_star ,must_be_greater_than=-0.0001)
+      f_array,0.0, u_star ,must_be_greater_than=-0.0001)
 
     no_aniso_array = absolute_scaling.anisotropic_correction(
-      no_aniso_array,0.0,self.u_star_aniso_removed,must_be_greater_than=-0.0001)
+      no_aniso_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
 
     no_aniso_array=no_aniso_array.set_observation_type( f_array)
     return no_aniso_array

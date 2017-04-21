@@ -2726,26 +2726,27 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   return params,map_data,half_map_list,pdb_hierarchy,tracking_data
 
-def get_ncs(params,tracking_data=None,out=sys.stdout):
+def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
   file_name=params.input_files.ncs_file
-  print >>out,"Reading ncs from %s" %(file_name)
+  if file_name: print >>out,"Reading ncs from %s" %(file_name)
   is_helical_symmetry=None
-  if not file_name: # No ncs supplied...use just 1 ncs copy..
+  if not ncs_object and not file_name: # No ncs supplied...use just 1 ncs copy..
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     ncs_object.set_unit_ncs()
     #ncs_object.display_all(log=out)
-  elif not os.path.isfile(file_name):
+  elif not ncs_object and not os.path.isfile(file_name):
     raise Sorry("The ncs file %s is missing" %(file_name))
   else: # get the ncs
-    from mmtbx.ncs.ncs import ncs
-    ncs_object=ncs()
-    try: # see if we can read biomtr records
-      pdb_inp=iotbx.pdb.input(file_name=file_name)
-      ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
-    except Exception,e: # try as regular ncs object
-      ncs_object.read_ncs(file_name=file_name,log=out)
-    #ncs_object.display_all(log=out)
+    if not ncs_object:
+      from mmtbx.ncs.ncs import ncs
+      ncs_object=ncs()
+      try: # see if we can read biomtr records
+        pdb_inp=iotbx.pdb.input(file_name=file_name)
+        ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
+      except Exception,e: # try as regular ncs object
+        ncs_object.read_ncs(file_name=file_name,log=out)
+      #ncs_object.display_all(log=out)
     if ncs_object.max_operators()==0:
       ncs_object=ncs()
       ncs_object.set_unit_ncs()
@@ -5651,9 +5652,11 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 
   if si.remove_aniso: 
     if si.use_local_aniso and \
-         si.local_aniso_in_local_sharpening and si.original_aniso_obj: # use original
+         si.local_aniso_in_local_sharpening and \
+         si.original_aniso_obj: # use original
       aniso_obj=si.original_aniso_obj
-      print >>out,"\nRemoving aniso from map using saved aniso object before sharpening\n"
+      print >>out,\
+       "\nRemoving aniso from map using saved aniso object before sharpening\n"
     else:
       print >>out,"\nRemoving aniso from map before sharpening\n"
       aniso_obj=None
@@ -5992,32 +5995,58 @@ def get_fft_map(n_real=None,map_coeffs=None):
     fft_map.apply_sigma_scaling()
     return fft_map
 
-def run_local_sharpening(si=None,
-    auto_sharpen_methods=None,
-    map=None,
-    ncs_obj=None,
-    half_map_list=None,
-    pdb_inp=None,
-    out=sys.stdout):
+def average_from_bounds(lower,upper,grid_all=None):
+  avg=[]
+  for u,l in zip(upper,lower):
+    avg.append(0.5*(u+l))
+  if grid_all:
+     avg_fract=[]
+     for a,g in zip(avg,grid_all):
+       avg_fract.append(a/g)
+     avg=avg_fract
+  return avg
 
-  print >>out,80*"-"
-  print >>out,"Running local sharpening"
-  print >>out,80*"-"
+def ncs_copies(site_cart,ncs_object=None):
 
-  si.local_sharpening=False  # don't do it again
+  ncs_group=ncs_object.ncs_groups()[0]
+  from scitbx.array_family import flex
+  from scitbx.matrix import col
+  sites_cart_ncs=flex.vec3_double()
 
-  # run auto_sharpen_map_or_map_coeffs with box_in_auto_sharpen=True and
-  #   centered at different places.  Identify the places as centers of regions.
-  #   Run on au of NCS and apply NCS to get remaining positions
+  for t,r in zip(ncs_group.translations_orth_inv(),
+                 ncs_group.rota_matrices_inv()):
+
+    sites_cart_ncs.append(r * col(site_cart)  + t)
+  return sites_cart_ncs
+
+
+def fit_bounds_inside_box(lower,upper,box_size=None,all=None):
+  # adjust bounds so upper>lower and box size is at least box_size
+  new_lower=[]
+  new_upper=[]
+  for u,l,s,a in zip(upper,lower,box_size,all):
+    ss=u-l+1
+    delta=int((1+s-ss)/2) # desired increase in size, to subtract from l
+    l=max(0,l-delta)
+    ss=u-l+1
+    delta=(s-ss) # desired increase in size, to add to u
+    u=min(a-1,u+delta)
+    new_lower.append(l)
+    new_upper.append(u)
+  return new_lower,new_upper 
+
+def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
 
   print >>out,80*"-"
   print >>out,"Getting segmented map to ID locations for sharpening"
   print >>out,80*"-"
+    
   args=[
         'resolution=%s' %(si.resolution),
         'seq_file=%s' %(si.seq_file),
         'auto_sharpen=False', # XXX could sharpen overall
         'write_output_maps=True',
+        'add_neighbors=False',
         'density_select=False', ]
   ncs_group_obj,remainder_ncs_group_obj,tracking_data=run(
      args,
@@ -6026,14 +6055,87 @@ def run_local_sharpening(si=None,
      crystal_symmetry=si.crystal_symmetry)
    
   print >>out,"Regions in this map:" 
+  centers_frac=flex.vec3_double()
+  upper_bounds_list=[]
+  lower_bounds_list=[]
   for map_info_obj in tracking_data.output_region_map_info_list:
-    print >>out,map_info_obj.lower_upper_bounds()
+    lower,upper=map_info_obj.lower_upper_bounds()
+    lower,upper=fit_bounds_inside_box(
+      lower,upper,box_size=si.box_size,all=map.all())
+    upper_bounds_list.append(upper)
+    lower_bounds_list.append(lower)
+    average_fract=average_from_bounds(lower,upper,grid_all=map.all())
+    centers_frac.append(average_fract)
+    print >>out,"Bounds: %s:%s  Center: %5.2f %5.2f %5.2f " %(
+       str(lower),str(upper),average_fract[0],
+        average_fract[1], average_fract[2],)
+  centers_cart=si.crystal_symmetry.unit_cell().orthogonalize(centers_frac)
+  for x in centers_cart: print "%7.2f %7.2f %7.2f" %(x)
+
+  print >>out,"NCS ops:",ncs_group_obj.ncs_obj.max_operators()
+
+  #  Make ncs-related centers
+  centers_cart_ncs_list=[]
+  for i in xrange(centers_cart.size()):
+    centers_cart_ncs_list.append(ncs_copies(
+       centers_cart[i],ncs_object=ncs_group_obj.ncs_obj) )
 
   print >>out,80*"-"
   print >>out,"Done getting segmented map to ID locations for sharpening"
   print >>out,80*"-"
+
+  return upper_bounds_list,lower_bounds_list,centers_cart,centers_cart_ncs_list
+
+def get_box_size(lower_bound=None,upper_bound=None):
+  box_size=[]
+  for lb,ub in zip(lower_bound,upper_bound):
+    box_size.append(ub-lb)
+  return box_size
+
+def run_local_sharpening(si=None,
+    auto_sharpen_methods=None,
+    map=None,
+    ncs_obj=None,
+    half_map_list=None,
+    pdb_inp=None,
+    out=sys.stdout):
+  print >>out,80*"-"
+  print >>out,"Running local sharpening"
+  print >>out,80*"-"
+
+
+  # run auto_sharpen_map_or_map_coeffs with box_in_auto_sharpen=True and
+  #   centered at different places.  Identify the places as centers of regions.
+  #   Run on au of NCS and apply NCS to get remaining positions
+
+  upper_bounds_list,lower_bounds_list,centers_cart,centers_cart_ncs_list=\
+     get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,out=out)
+  i=-1
+  for ub,lb,center_cart,centers_ncs_cart in zip(
+    upper_bounds_list,lower_bounds_list,centers_cart,centers_cart_ncs_list):
+    i+=1
+    local_si=deepcopy(si)
+    local_si.local_sharpening=False  # don't do it again
+    local_si.box_size=get_box_size(lower_bound=lb,upper_bound=ub)
+    local_si.box_center=center_cart
+    local_si.box_in_auto_sharpen=True
+    local_si.use_local_aniso=True
+    print >>out,80*"+" 
+    print >>out,"Getting local sharpening for box %s" %(i)
+    print >>out,80*"+"
+    local_si=auto_sharpen_map_or_map_coeffs(si=local_si,
+      auto_sharpen_methods=auto_sharpen_methods,
+      map=map,
+      half_map_list=half_map_list,
+      pdb_inp=pdb_inp,
+      out=out)
+    local_map_data=local_si.map_data
+    write_ccp4_map(si.crystal_symmetry,'sharpened_map_%s.ccp4' %(i),
+        local_map_data)
+    print >>out,80*"+" 
+    print >>out,"End of getting local sharpening for box %s" %(i)
+    print >>out,80*"+"
   
-  # ZZZ run auto_sharpen_map_or_map_coeffs with use_local_aniso=True
   return si
 
 def auto_sharpen_map_or_map_coeffs(
@@ -6708,7 +6810,9 @@ def run(args,
       return None,None,tracking_data
 
     # read and write the ncs (Normally point-group NCS)
-    ncs_obj,tracking_data=get_ncs(params,tracking_data,out=out)
+    ncs_obj,tracking_data=get_ncs(params,tracking_data=tracking_data,
+       ncs_object=ncs_obj,
+       out=out)
 
     if params.input_files.target_ncs_au_file: # read in target
       import iotbx.pdb

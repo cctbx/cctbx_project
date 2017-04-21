@@ -598,7 +598,7 @@ def run(args=None,params=None,
   if not si.is_model_sharpening():
     print >>out
     print >>out,80*"=","\n",80*"="
-    print >>out,"\n           Final sharpening information\n "
+    print >>out,"\n           Summary of sharpening information\n "
     si.show_summary(verbose=params.control.verbose,out=out)
     print >>out,80*"=","\n",80*"="
 
