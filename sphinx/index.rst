@@ -39,7 +39,7 @@ The cctbx code base is available without restrictions and free of charge to all
 interested developers, both academic and commercial. The entire community is
 invited to actively participate in the development of the code base. A
 sophisticated technical infrastructure that enables community based software
-development is provided by SourceForge_. This service is also free of charge and
+development is provided by GitHub_. This service is also free of charge and
 open to the entire world.
 
 The cctbx is designed with an open and flexible architecture to promote
@@ -193,10 +193,8 @@ documention.
 Links
 =====
 
-* cctbx - Automatic multi-platform builds
-* cctbx - Public SVN repository
-* cctbx - Project page at SourceForge
-* cctbx - Development history
+* `cctbx - Automatic multi-platform builds <http://cci.lbl.gov/cctbx_build/>`_
+* `cctbx - Public git repository <https://github.com/cctbx/cctbx_project>`_
 
 Acknowledgments
 ===============
@@ -211,7 +209,7 @@ some source code fragments. Our work was funded in part by the US Department of
 Energy under Contract No. DE-AC03-76SF00098. We gratefully acknowledge the
 financial support of NIH/NIGMS.
 
-The cctbx SVN development tree is hosted by SourceForge
+The cctbx git development tree is hosted by GitHub.
 
 Contact
 =======
@@ -231,7 +229,7 @@ Contact
 
 .. _SCons: http://www.scons.org/
 
-.. _SourceForge: http://sourceforge.net/
+.. _GitHub: https://github.com
 
 Indices and tables
 ==================

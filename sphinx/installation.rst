@@ -6,51 +6,32 @@
 Installation overview
 ---------------------
 
-Periodically the most recent cctbx source code including all its
+Periodically, the most recent cctbx source code including all its
 dependencies is automatically exported from the source code repositories
-(SVN, CVS) and bundled into self-extracting files that are published
+(git) and bundled into compressed binary installers that are published
 at:
 
   - http://cci.lbl.gov/cctbx_build/
 
-This web page also provides self-extracting binary distributions for a
+This web page provides compressed binary distributions for a
 variety of platforms. It is most convenient to use these binary bundles
-if possible. Installation is very simple and fast. The minimal
-instructions are shown at the download page.
+if possible. Installation is very simple and fast. After uncompressing the
+bundle, run the ``install --prefix=<installation location>`` command to
+install on macOS and Linux. On Windows, uncompressing the zip file will provide
+a working copy of cctbx. There is not installation script.
 
-Source code bundles are also available. Under Unix, if Python 2.4
-through 2.7 is pre-installed on the target platform, the smaller
-``cctbx_bundle.selfx`` can be used. However, in general it will be
-best to download the ``cctbx_python_*_bundle.selfx`` file because
-the installation script will automatically install a recent Python
-before proceeding with the installation of the cctbx modules.
+----------------------------------------------------
+Manually building from sources under Linux and macOS
+----------------------------------------------------
 
-The Unix bundles include a file ``cctbx_install_script.csh``.
-This script is known to work with:
+Please note: **The following instructions are for developers!**
 
-  - Linux: any gcc >= 3.2
-  - Mac OS 10.4 or higher with Apple's compiler
-
-Other Unix platforms will most likely require adjustments of the
-build scripts.
-
-The self-extracting source code bundle for Windows (``cctbx_bundle.exe``)
-does not include an installation script.
-
------------------------------------------
-Manually building from sources under Unix
------------------------------------------
-
-Please note: **The following instructions are for developers!** The
-self-extracting (.selfx) source bundles perform all the steps
-automatically.
-
-Building from sources requires Python 2.4 through 2.7 and a C++
+Building from sources requires Python 2.5 through 2.7 and a C++
 compiler. If you like to use the most recent Python, it can be
 installed in the following way::
 
-  gunzip -c Python-2.7.2.tar.gz | tar xf -
-  cd Python-2.7.2
+  tar -xf Python-2.7.13.tar.xz
+  cd Python-2.7.13
   ./configure --prefix=/your/choice
   make
   make install
@@ -61,21 +42,31 @@ It may be convenient (but is not required) to add the directory
 
   set path=(/your/choice/bin $path)
 
-Recent self-contained cctbx sources are available in the file
-`cctbx_bundle.tar.gz <http://cci.lbl.gov/cctbx_build/results/last_published/cctbx_bundle.tar.gz>`_
-published at the cctbx build page. To unpack this file in a new,
-empty directory::
+Recent cctbx sources are available from the cctbx GitHub_ repository. To
+download the repository and build cctbx, use bootstrap.py::
 
-  tar zxf cctbx_bundle.tar.gz
+  mkdir <installation directory>
+  cd <installation directory>
+  wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
+  python ./bootstrap.py
 
-This creates a subdirectory ``cctbx_sources``. The installation
-procedure should be executed in another directory, e.g.::
+On macOS, since ``wget`` is not available by default, use ``curl`` instead::
 
-  mkdir cctbx_build
-  cd cctbx_build
-  /your/choice/bin/python ../cctbx_sources/libtbx/configure.py mmtbx
+  curl https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py > bootstrap.py
 
-The last command initializes the ``cctbx_build`` directory and creates a
+After some time, this creates the subdirectories ``base``, ``base_tmp``,
+``build``, and ``modules``. The ``base`` directory contains dependencies for
+cctbx, ``base_tmp`` is a temporary directory for compiling dependencies (can be
+deleted), ``build`` contains the compiled cctbx code, and ``modules`` contains
+the source code for cctbx. To keep ``bootstrap.py`` in your
+``<installation directory>`` up-to-date with the version in ``modules``, you
+can create a symbolic link to that version::
+
+  cd <installation directory>
+  rm bootstrap.py
+  ln -s ./modules/cctbx_project/libtbx/auto_build/bootstrap.py
+
+Within the ``build`` directory, cctbx creates a
 file ``setpaths.csh`` (among others). This file must be used to
 initialize a new shell or process with the cctbx settings::
 
@@ -83,7 +74,18 @@ initialize a new shell or process with the cctbx settings::
 
 There is also a ``setpaths.sh`` for ``bash`` users.
 
-To compile enter::
+To update your cctbx installation to the latest version, you can just run::
+
+  python ./bootstrap.py
+
+again in the ``<installation directory>``. This will update the source code in
+the ``modules`` directory and recompile the changes (if necessary) in
+``build``. Occasionally, dependencies in ``base`` are updated. When this
+happens, just delete the ``base`` and ``base_tmp`` directories and rerun
+the ``bootstrap.py`` command.
+
+To compile any local changes to the source code, enter the ``build`` directory
+and run::
 
   make
 
@@ -106,7 +108,7 @@ all these commands are equivalent.)
 For example, to run some regression tests after the compilation is
 finished enter::
 
-  source setpaths_all.csh
+  source build/setpaths_all.csh
   libtbx.python $SCITBX_DIST/run_tests.py
   libtbx.python $CCTBX_DIST/run_tests.py --Quick
 
@@ -175,38 +177,6 @@ finished enter::
 The output should show many OK. A Python Traceback is an indicator
 for problems.
 
-------------------------------
-Using the cctbx SVN repository
-------------------------------
-
-To participate in the development of the cctbx project, or to
-get easy access to the most recent changes, it may be useful
-to checkout the cctbx project directly from the git repository
-maintained at Github_. An easy way to get started is::
-
-  wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/development/cctbx_svn_getting_started.csh
-  ./cctbx_svn_getting_started.csh
-
-The script will create a ``sources`` directory with a ``cctbx_project``
-repository checked out from Github, and all other
-third-party sources (e.g. boost, scons) taken from the latest nightly
-cctbx build.
-
-To configure a new build using the ``sources`` directory::
-
-  mkdir build
-  cd build
-  /your/choice/bin/python ../sources/cctbx_project/libtbx/configure.py mmtbx
-  source setpaths.csh
-  make
-
-It is also possible to replace the ``sources/boost`` directory with
-a working copy of the `boost SVN tree`_ . However, in practice
-it sometimes happens that a ``svn update`` of the boost tree
-leads to compilation errors on some platforms. In most cases
-it will be best to use the boost sources obtained with the
-``cctbx_svn_getting_started.csh`` script.
-
 Back_
 
 .. _Back: introduction.html
@@ -216,4 +186,4 @@ Back_
 .. _Boost: http://www.boost.org/
 .. _`boost SVN tree`: http://svn.boost.org/trac/boost/wiki/BoostSubversion
 .. _CCP4: http://www.ccp4.ac.uk/
-.. _Github: https://github.com/cctbx/
+.. _GitHub: https://github.com/cctbx/cctbx_project/
