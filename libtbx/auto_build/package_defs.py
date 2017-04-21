@@ -15,7 +15,6 @@ import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
-BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8.15-patch1/src"
 BASE_PIPY_PKG_URL = "https://pypi.python.org/packages/source"
 
 def pypi_pkg_url(package):
@@ -60,15 +59,14 @@ MOCK_DEP_PBR = "pbr-1.9.1.tar.gz"
 PYTEST_PKG = "pytest-2.9.1.tar.gz"
 PYTEST_DEP_PY = "py-1.4.31.tar.gz"
 PYTEST_DEP_COLORAMA = "colorama-0.3.7.tar.gz"
-
-## from xia2 page
-#HDF5_PKG = "hdf5-1.8.8.tar.bz2"      # dxtbx
-#H5PY_PKG = "h5py-2.0.1-edit.tar.gz"  # dxtbx
-
-H5PY_PKG = "h5py-2.4.0.tar.gz" # dxtbx
-HDF5_PKG = "hdf5-1.8.15-patch1.tar.bz2"
 CYTHON_PKG = "cython-0.22.tar.gz"
 JINJA2_PKG = "Jinja2-2.8.tar.gz"
+
+# HDF5
+BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/"
+HDF5_PKG = "hdf5-1.10.0-patch1.tar.bz2"
+BASE_H5PY_PKG_URL = "https://pypi.python.org/packages/11/6b/32cee6f59e7a03ab7c60bb250caff63e2d20c33ebca47cf8c28f6a2d085c" # workaround because Python <2.7.9
+H5PY_PKG = "h5py-2.7.0.tar.gz" # dxtbx
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.5.26.tar.gz"

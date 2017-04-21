@@ -583,7 +583,6 @@ Installation of Python packages may fail.
       'python',
       'numpy',
       'cython',
-      'hdf5',
       'png',
       'setuptools',
       'libsvm',
@@ -592,6 +591,7 @@ Installation of Python packages may fail.
       'pythonextra',
       'jinja',
       'junitxml',
+      'hdf5',
       'biopython',
       'docutils',
       'sphinx',
@@ -1009,10 +1009,10 @@ _replace_sysconfig_paths(build_time_vars)
     line = "Finished processing dependencies for h5py"
     return self.simple_log_parse_test(log_filename, line)
 
-  def build_hdf5 (self):
+  def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")
     hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_HDF5_PKG_URL)
-    h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=pypi_pkg_url('h5py'))
+    h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_H5PY_PKG_URL)
     if ( self.check_download_only(HDF5_PKG) and
          self.check_download_only(H5PY_PKG)
          ):
@@ -1026,7 +1026,7 @@ _replace_sysconfig_paths(build_time_vars)
     if self.flag_is_linux:
       make_args.append("CFLAGS=\"-std=c99\"")
     self.configure_and_build(
-      config_args=[self.prefix, "--enable-production",],
+      config_args=[self.prefix, "--enable-build-mode=production",],
       log=pkg_log,
       make_args=make_args)
 
@@ -1043,7 +1043,7 @@ _replace_sysconfig_paths(build_time_vars)
     #self.call("%s setup.py test" % self.python_exe, log=pkg_log)
     self.verify_python_module("h5py", "h5py")
 
-  def build_openssl (self) :
+  def build_openssl(self) :
     # https://wiki.openssl.org/index.php/Compilation_and_Installation#Configure_.26_Config
     # http://stackoverflow.com/a/20740964
 
