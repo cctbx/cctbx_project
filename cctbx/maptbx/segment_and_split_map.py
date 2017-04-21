@@ -6084,7 +6084,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
   print >>out,"Done getting segmented map to ID locations for sharpening"
   print >>out,80*"-"
 
-  return upper_bounds_list,lower_bounds_list,centers_cart,centers_cart_ncs_list
+  return upper_bounds_list,lower_bounds_list,centers_cart_ncs_list
 
 def get_box_size(lower_bound=None,upper_bound=None):
   box_size=[]
@@ -6103,21 +6103,26 @@ def run_local_sharpening(si=None,
   print >>out,"Running local sharpening"
   print >>out,80*"-"
 
-
   # run auto_sharpen_map_or_map_coeffs with box_in_auto_sharpen=True and
   #   centered at different places.  Identify the places as centers of regions.
   #   Run on au of NCS and apply NCS to get remaining positions
 
-  upper_bounds_list,lower_bounds_list,centers_cart,centers_cart_ncs_list=\
+  # Accumulate sums
+  sum_weight_map=map.deep_copy()
+  s = (sum_weight_map != 0)
+  sum_weight_map=sum_weight_map.set_selected(s,0.0)
+  sum_weight_value_map=sum_weight_map.deep_copy()
+
+  upper_bounds_list,lower_bounds_list,centers_cart_ncs_list=\
      get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,out=out)
   i=-1
-  for ub,lb,center_cart,centers_ncs_cart in zip(
-    upper_bounds_list,lower_bounds_list,centers_cart,centers_cart_ncs_list):
+  for ub,lb,centers_ncs_cart in zip(
+    upper_bounds_list,lower_bounds_list,centers_cart_ncs_list):
     i+=1
     local_si=deepcopy(si)
     local_si.local_sharpening=False  # don't do it again
     local_si.box_size=get_box_size(lower_bound=lb,upper_bound=ub)
-    local_si.box_center=center_cart
+    local_si.box_center=centers_ncs_cart[0]
     local_si.box_in_auto_sharpen=True
     local_si.use_local_aniso=True
     print >>out,80*"+" 
@@ -6132,9 +6137,60 @@ def run_local_sharpening(si=None,
     local_map_data=local_si.map_data
     write_ccp4_map(si.crystal_symmetry,'sharpened_map_%s.ccp4' %(i),
         local_map_data)
+
+    # Calculate weight map, max near location of centers_ncs_cart
+    # u=0.1 gives B=7.9 -> B=1 is u=0.1/7.9=0.1266.
+    # b_eff=8*3.14159*rmsd**2 -> u=(0.1266)* 8*3.14159*rmsd**2=
+    #  rmsd is at least distance between centers, not too much bigger than
+    #  unit cell size, typically 10-20 A, 
+    dis=10.
+    print >>out,"\nFall-off of local weight is 1/%6.1f A\n" %(dis)
+    u=(0.1266)* 8*3.14159*dis**2
+
+    from cctbx import xray
+    xrs,scatterers=set_up_xrs(crystal_symmetry=si.crystal_symmetry)
+    unit_cell=si.crystal_symmetry.unit_cell()
+    for xyz_cart in centers_ncs_cart:
+      scatterers.append( xray.scatterer(scattering_type="H", label="H",
+        site=unit_cell.fractionalize(xyz_cart), u=u, occupancy=1.0))
+
+    f_array,phases=get_f_phases_from_map(map_data=map,
+       crystal_symmetry=si.crystal_symmetry,
+       d_min=si.resolution,
+       d_min_ratio=si.d_min_ratio,
+       out=out)
+
+    weight_f_array=f_array.structure_factors_from_scatterers(
+      algorithm = 'direct',
+      xray_structure = xrs).f_calc()
+
+    weight_map=get_map_from_map_coeffs(map_coeffs=weight_f_array,
+      crystal_symmetry=si.crystal_symmetry,n_real=map.all())
+    s = (weight_map <1.e-10)
+    weight_map=weight_map.set_selected(s,1.e-10)
+    sum_weight_map+=weight_map
+    sum_weight_value_map+=weight_map*local_map_data
+
     print >>out,80*"+" 
     print >>out,"End of getting local sharpening for box %s" %(i)
     print >>out,80*"+"
+ 
+  print >>out,"\nOverall map created from total of %s local maps" %(i)
+
+  sum_weight_map+=weight_map
+  si.map_data=sum_weight_value_map/sum_weight_map
+
+  # Get overall b_iso...
+  map_coeffs_aa,map_coeffs,f_array,phases=effective_b_iso(
+     map_data=si.map_data,
+      resolution=si.resolution,
+      d_min_ratio=si.d_min_ratio,
+      crystal_symmetry=si.crystal_symmetry,
+      out=out)
+ 
+  print >>out,80*"+" 
+  print >>out,"End of getting local sharpening "
+  print >>out,80*"+"
   
   return si
 
