@@ -199,7 +199,7 @@ def side_chain_placement(ag_to_place, current_reference_ag, rotamer_manager):
     for a in ag.atoms():
       if a.name.strip() in reper_atoms:
         arr.append(a.xyz)
-  assert len(fixed_sites) == 3
+  assert len(fixed_sites) == 3, ag_to_place.id_str()
   if len(moving_sites) < 3:
     error_msg = "C, CA or N atoms are absent in secondary structure element." +\
         "\nPlease add them to the model and try again."

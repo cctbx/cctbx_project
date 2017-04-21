@@ -36,7 +36,7 @@ def list_omega_outliers(hierarchy, log):
   pso_atoms = get_phi_psi_atoms(hierarchy, omega=True)
   print >> log, "Omega outliers:"
   for psatoms, rama_key, omega in pso_atoms:
-    if abs(abs(omega)-180) > 30:
+    if omega is not None and abs(abs(omega)-180) > 30:
       print >> log, "  ", psatoms[0][0].id_str(), omega
 
 def list_omega(hierarchy, log):
@@ -49,9 +49,8 @@ def n_bad_omegas(hierarchy):
   result = 0
   pso_atoms = get_phi_psi_atoms(hierarchy, omega=True)
   for psatoms, rama_key, omega in pso_atoms:
-    if omega is not None:
-      if abs(abs(omega)-180) > 10:
-        result += 1
+    if omega is not None and abs(abs(omega)-180) > 10:
+      result += 1
   return result
 
 def py_dihedral_angle2(sites, deg=True):

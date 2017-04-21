@@ -789,7 +789,7 @@ class loop_idealization():
         resnum = phi_psi_pair[0][2].parent().parent().resseq
         if ev == ramalyze.RAMALYZE_OUTLIER:
           result.append(resnum)
-        if abs(abs(omega)-180) > 30:
+        if omega is not None and abs(abs(omega)-180) > 30:
           print >> self.log, "Spotted twisted/cis peptide:", resnum, omega
           result.append(resnum)
     # STOP()

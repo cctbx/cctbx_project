@@ -36,7 +36,7 @@ def set_rama_angles(moving_h, angles, direction_forward=True, check_omega=False)
     phi_psi_angles = utils.get_pair_angles(phi_psi_pair)
     # print "ps_atoms, target_angle_pair", phi_psi_angles, target_angle_pair
     # phi
-    if target_angle_pair[0] is not None:
+    if target_angle_pair[0] and phi_psi_angles[0]:
       rotation_angle = -phi_psi_angles[0]+target_angle_pair[0]
       # if not direction_forward:
       #   rotation_angle = -rotation_angle
@@ -47,7 +47,7 @@ def set_rama_angles(moving_h, angles, direction_forward=True, check_omega=False)
           angle=rotation_angle,
           direction_forward=direction_forward)
     # psi
-    if target_angle_pair[1] is not None:
+    if target_angle_pair[1] and phi_psi_angles[1]:
       rotation_angle = -phi_psi_angles[1]+target_angle_pair[1]
       # if not direction_forward:
       #   rotation_angle = -rotation_angle
@@ -58,7 +58,7 @@ def set_rama_angles(moving_h, angles, direction_forward=True, check_omega=False)
           angle=rotation_angle,
           direction_forward=direction_forward)
     # omega
-    if abs(abs(omega)-180) > 10 and check_omega:
+    if omega is not None and abs(abs(omega)-180) > 10 and check_omega:
       rotation_angle= -omega+180
       # print "Omega rotation:", omega, rotation_angle
       utils.rotate_atoms_around_bond(
@@ -113,12 +113,12 @@ def get_all_starting_conformations(moving_h, change_radius,
   if check_omega:
     omegas = [x[2] for x in phi_psi_atoms]
     for o in omegas:
-      if abs(abs(o)-180) > 30:
+      if o is not None and abs(abs(o)-180) > 30:
         has_twisted = True
   print "n_outliers", n_outliers
   for i, (phi_psi_pair, rama_key, omega) in enumerate(phi_psi_atoms):
     angle_is_outlier = utils.rama_evaluate(phi_psi_pair, r, rama_key) == ramalyze.RAMALYZE_OUTLIER
-    twisted = (abs(abs(omega)-180) > 30) and check_omega
+    twisted = omega is not None and ((abs(abs(omega)-180) > 30) and check_omega)
     print "in cycle, N, outlier?, change?, twisted?", i, angle_is_outlier, i in change_angles, twisted
     if angle_is_outlier and n_outliers < 3:
       vs = get_sampled_rama_favored_angles(rama_key, r)

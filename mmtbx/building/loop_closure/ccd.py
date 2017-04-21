@@ -91,9 +91,9 @@ class _(boost.python.injector, ccd_cpp):
             now_psi_angle = utils.get_dihedral_angle(phi_psi_pair[1])
 
             # print "psi angles:", now_psi_angle0, now_psi_angle
-            angles_ok = (approx_equal(now_psi_angle0-now_psi_angle, 0, out=null_out) or
-                approx_equal(now_psi_angle0-now_psi_angle, 360, out=null_out) or
-                approx_equal(now_psi_angle0-now_psi_angle, -360, out=null_out))
+            angles_ok = (approx_equal(now_psi_angle0-now_psi_angle, 0, out=null_out()) or
+                approx_equal(now_psi_angle0-now_psi_angle, 360, out=null_out()) or
+                approx_equal(now_psi_angle0-now_psi_angle, -360, out=null_out()))
 
             assert angles_ok
             # approx_equal(now_psi_angle0, now_psi_angle)
