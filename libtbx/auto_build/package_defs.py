@@ -14,7 +14,6 @@ import platform
 import sys
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
-BASE_XIA_PKG_URL = "http://www.ccp4.ac.uk/xia"
 BASE_PIPY_PKG_URL = "https://pypi.python.org/packages/source"
 
 def pypi_pkg_url(package):
@@ -251,9 +250,6 @@ def fetch_all_dependencies (dest_dir,
         MATPLOTLIB_PKG, PY2APP_PKG, SEND2TRASH_PKG,
       ] :
       fetch_package(pkg_name)
-  if (dials_packages) :
-    for pkg_name in [ HDF5_PKG, H5PY_PKG, PYOPENGL_PKG ] :
-      fetch_package(pkg_name, BASE_XIA_PKG_URL)
 
 def fetch_svn_repository (pkg_name, pkg_url=None, working_copy=True,
     delete_if_present=False) :
