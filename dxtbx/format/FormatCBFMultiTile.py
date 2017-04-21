@@ -89,6 +89,8 @@ class FormatCBFMultiTile(FormatCBFFull):
     from dxtbx.format.FormatCBF import FormatCBF
     FormatCBF._start(self) # Note, skip up an inhieritance level
 
+  def detectorbase_start(self): pass
+
   def _get_cbf_handle(self):
     try:
       return self._cbf_handle
