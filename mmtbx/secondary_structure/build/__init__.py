@@ -804,12 +804,15 @@ def substitute_ss(real_h,
   from mmtbx.refinement.geometry_minimization import run2
   t10 = time()
   if reference_map is None:
+    n_cycles = 3
+    if processed_params.n_macro is not Auto:
+      n_cycles = processed_params.n_macro
     obj = run2(
         restraints_manager       = grm,
         pdb_hierarchy            = real_h,
         correct_special_position_tolerance = 1.0,
         max_number_of_iterations = processed_params.n_iter,
-        number_of_macro_cycles   = processed_params.n_macro,
+        number_of_macro_cycles   = n_cycles,
         bond                     = True,
         nonbonded                = True,
         angle                    = True,
