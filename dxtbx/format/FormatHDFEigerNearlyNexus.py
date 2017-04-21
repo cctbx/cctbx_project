@@ -17,6 +17,7 @@ from dxtbx.model import Detector # import dependency
 from dxtbx.model import Goniometer # import dependency
 from dxtbx.model import Scan # import dependency
 from dxtbx.format.nexus import NXmxReader
+from dxtbx.format.nexus import NXdata
 from dxtbx.format.nexus import BeamFactory
 from dxtbx.format.nexus import DetectorFactory
 from dxtbx.format.nexus import GoniometerFactory
@@ -256,6 +257,7 @@ class EigerNXmxFixer(object):
       handle['entry/data']["_filename_" + name] = filename # Store file namesa
 
     self.handle = handle
+    self.handle_orig = handle_orig
 
 class FormatEigerNearlyNexus(FormatHDF5):
 
@@ -303,7 +305,10 @@ class FormatEigerNearlyNexus(FormatHDF5):
     detector = instrument.detectors[0]
     sample = entry.samples[0]
     beam = sample.beams[0]
-    data = entry.data[0]
+    #data = entry.data[0]
+
+    # Use data from original master file
+    data = NXdata(fixer.handle_orig[data.handle.name])
 
     # Construct the models
     self._beam_model = BeamFactory(beam).model
