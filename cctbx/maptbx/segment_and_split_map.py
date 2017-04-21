@@ -6181,6 +6181,8 @@ def get_box_size(lower_bound=None,upper_bound=None):
   return box_size
 
 def mean_dist_to_nearest_neighbor(all_cart):
+  if all_cart.size()<2:  # nothing to check
+    return None
   sum_dist=0.
   sum_n=0.
   for i in xrange(all_cart.size()):
@@ -6217,6 +6219,10 @@ def run_local_sharpening(si=None,
      get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,out=out)
 
   dist=mean_dist_to_nearest_neighbor(all_cart)
+  if not dist:
+    dist=10.
+    if not si.smoothing_radius:
+      print >>out,"No nearest neighbors...best to set smoothing radius"
   print >>out,"\nMean distance to nearest center is %7.2f A " %(
     dist)
   if not si.smoothing_radius:
