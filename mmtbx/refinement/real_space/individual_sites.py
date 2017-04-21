@@ -1,6 +1,6 @@
 from __future__ import division
 from cctbx.maptbx import real_space_target_and_gradients
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, Auto
 import scitbx.lbfgs
 from cctbx import maptbx
 from cctbx.array_family import flex
@@ -406,6 +406,7 @@ class minimize_wrapper_with_map():
       log=None):
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
     from mmtbx.model_statistics import geometry_no_grm
+    from mmtbx.refinement.minimization_monitor import minimization_monitor
     self.pdb_h = pdb_h
     self.xrs = xrs
     self.log = log
@@ -491,11 +492,16 @@ class minimize_wrapper_with_map():
     # STOP()
 
     # selection_real_space = xrs.backbone_selection() # XXX What is it???
+    min_monitor = minimization_monitor(
+        number_of_cycles=number_of_cycles,
+        max_number_of_cycles=20,
+        mode="min_outliers")
     selection_real_space = None
     import mmtbx.refinement.real_space.weight
-    self.w = None
-    print "number_of_cycles", number_of_cycles
-    for x in xrange(number_of_cycles):
+    self.w = 1
+    print >> log, "number_of_cycles", number_of_cycles
+    while min_monitor.need_more_cycles():
+      # for x in xrange(number_of_cycles):
       print >> self.log, "  Updating rotamer restraints..."
       self.pdb_h, grm = add_rotamer_restraints(
         pdb_hierarchy      = self.pdb_h,
@@ -512,7 +518,8 @@ class minimize_wrapper_with_map():
       # if True:
       if ncs_restraints_group_list is None or len(ncs_restraints_group_list)==0:
         #No NCS
-        if self.w is None:
+        if min_monitor.need_weight_optimization():
+          # if self.w is None:
           print >> self.log, "  Determining weight..."
           self.log.flush()
           self.weight = mmtbx.refinement.real_space.weight.run(
@@ -557,7 +564,8 @@ class minimize_wrapper_with_map():
             xray_structure = self.xrs,
             map_data       = target_map,
             d_min          = 3)
-        if self.w is None:
+        if min_monitor.need_weight_optimization():
+          # if self.w is None:
           print >> self.log, "  Determining weight... (NCS)",
           self.weight = mmtbx.refinement.real_space.weight.run(
               map_data                    = target_map,
@@ -606,6 +614,7 @@ class minimize_wrapper_with_map():
       ms = geometry_no_grm(
           pdb_hierarchy=self.pdb_h,
           molprobity_scores=True)
+      min_monitor.save_cycle_results(geometry=ms)
       print >> self.log, ms.format_molprobity_scores(prefix="    ")
 
 

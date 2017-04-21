@@ -4,6 +4,7 @@ import iotbx.pdb
 from cctbx.array_family import flex
 from mmtbx.monomer_library import idealized_aa
 from libtbx.utils import Sorry, null_out
+from libtbx import Auto
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter as one_three
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_one
 from mmtbx.rotamer.rotamer_eval import RotamerEval
@@ -109,7 +110,7 @@ ss_idealization
     .type = float
   sigma_on_cbeta = 2.5
     .type = float
-  n_macro=3
+  n_macro = Auto
     .type = int
   n_iter=300
     .type = int
@@ -436,7 +437,7 @@ def process_params(params):
     assert (isinstance(getattr(p_pars, par), float) and \
       getattr(p_pars, par) > min_sigma), "" + \
       "Bad %s parameter" % par
-  for par in ["n_macro", "n_iter"]:
+  for par in ["n_iter"]:
     assert (isinstance(getattr(p_pars, par), int) and \
       getattr(p_pars, par) >= 0), ""+ \
       "Bad %s parameter" % par

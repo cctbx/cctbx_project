@@ -11,7 +11,7 @@ from iotbx.phil import process_command_line_with_files
 from scitbx.array_family import flex
 from iotbx.pdb import write_whole_pdb_file
 import iotbx.phil
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, multi_out
 from mmtbx.building.loop_idealization import loop_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
@@ -22,7 +22,6 @@ from mmtbx.command_line.geometry_minimization import get_geometry_restraints_man
 from mmtbx.model_statistics import geometry_no_grm
 from time import time
 import datetime
-from libtbx.utils import multi_out
 from cctbx import maptbx, miller
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 from mmtbx.pdbtools import truncate_to_poly_gly
@@ -31,6 +30,7 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
 from iotbx.file_reader import any_file
 from mmtbx.validation.clashscore import check_and_add_hydrogen
+from libtbx import Auto
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -79,7 +79,7 @@ run_minimization_first = False
 reference_map_resolution = 5
   .type = float
   .expert_level = 2
-number_of_refinement_cycles = 3
+number_of_refinement_cycles = Auto
   .type = int
   .expert_level = 1
 ignore_ncs = False
