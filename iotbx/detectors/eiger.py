@@ -34,7 +34,7 @@ class EIGERImage(DetectorImageBase):
       self.parameters['WAVELENGTH'] = B.get_wavelength()
       from scitbx.matrix import col
       detector_normal = D[0].get_normal()
-      tt_angle_deg = col(detector_normal).angle(col((0.,0.,1.)),deg=True)
+      tt_angle_deg = col(detector_normal).angle(col((0.,0.,-1.)),deg=True)
       assert tt_angle_deg < 0.01 # assert normal to within 0.01 degree
       self.parameters['TWOTHETA'] = 0.0
 
