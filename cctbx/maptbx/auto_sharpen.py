@@ -214,7 +214,7 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map. Default is True.
 
-     local_sharpening = True 
+     local_sharpening = None
        .type = bool
        .short_caption = Local sharpening
        .help = Sharpen locally using overlapping regions
