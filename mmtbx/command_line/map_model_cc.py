@@ -92,18 +92,15 @@ Feedback:
     pdb_hierarchy    = inputs.pdb_hierarchy,
     crystal_symmetry = inputs.crystal_symmetry,
     params           = inputs.params.extract())
-  # Show results
+  #
   broadcast(m="Map resolution:", log=log)
   print >> log, "  Resolution:", results.resolution
-  # Compute CC
   broadcast(m="Map-model CC (overall):", log=log)
   print >> log, "  CC_mask  : %6.4f"%results.cc_mask
   print >> log, "  CC_volume: %6.4f"%results.cc_volume
   print >> log, "  CC_peaks : %6.4f"%results.cc_peaks
-  # Compute FSC(map, model)
   broadcast(m="Model-map FSC:", log=log)
   results.fsc.show(prefix="  ")
-  # Local CC
   broadcast(m="Map-model CC (local):", log=log)
   # Per chain
   fmt = "%s %7.4f %8.3f %4.2f %d"

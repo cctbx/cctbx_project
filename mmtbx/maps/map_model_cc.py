@@ -88,7 +88,6 @@ def run(map_data, pdb_hierarchy, crystal_symmetry, params=master_params()):
           occ_mean   = cd.occ_mean,
           n_atoms    = cd.n_atoms,
           cc         = cd.cc))
-  #
   return group_args(
     resolution     = resolution,
     cc_mask        = five_cc_result.cc_mask,
