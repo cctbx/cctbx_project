@@ -137,13 +137,16 @@ class loop_idealization():
     # print "logic expr outcome:", (self.number_of_ccd_trials < 10 and self.berkeley_p_before_minimization_rama_outliers > 0.001)
     # print self.number_of_ccd_trials < 10
     # print "berkeley before rama out:", self.berkeley_p_before_minimization_rama_outliers
-    if self.berkeley_p_before_minimization_rama_outliers <= 0.001:
+    if (self.berkeley_p_before_minimization_rama_outliers <= 0.001 and
+        (n_bad_omegas<1 and self.params.make_all_trans)):
       print >> self.log, "No ramachandran outliers, skipping CCD step."
+    print "n_bad_omegas", n_bad_omegas
+    print "self.params.make_all_trans",self.params.make_all_trans
     if not self.params.enabled:
       print >> self.log, "Loop idealization is not enabled, use 'enabled=True'."
     while (self.number_of_ccd_trials < self.params.number_of_ccd_trials
         and (self.berkeley_p_after_minimiaztion_rama_outliers > 0.001 or
-            (n_bad_omegas>1 and self.params.make_all_trans))
+            (n_bad_omegas>=1 and self.params.make_all_trans))
         and self.params.enabled):
       print >> self.log, "CCD try number, outliers:", self.number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
       processed_chain_ids = []

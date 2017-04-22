@@ -527,6 +527,7 @@ class model_idealization():
       init_ref_map = self.prepare_init_reference_map(
         self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
         self.whole_pdb_h)
+      print >> self.log, "Minimization first"
       self.minimize(
           hierarchy=self.whole_pdb_h,
           xrs=self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
@@ -661,6 +662,7 @@ class model_idealization():
     self.params.loop_idealization.minimize_whole = not self.using_ncs
     # self.params.loop_idealization.enabled = False
     # self.params.loop_idealization.variant_search_level = 0
+    print >> self.log, "Starting loop idealization"
     loop_ideal = loop_idealization(
         pdb_hierarchy=self.working_pdb_h,
         params=self.params.loop_idealization,

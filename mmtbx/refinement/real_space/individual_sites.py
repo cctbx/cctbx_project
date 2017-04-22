@@ -495,7 +495,7 @@ class minimize_wrapper_with_map():
     min_monitor = minimization_monitor(
         number_of_cycles=number_of_cycles,
         max_number_of_cycles=20,
-        mode="min_outliers")
+        mode="no_outliers")
     selection_real_space = None
     import mmtbx.refinement.real_space.weight
     self.w = 1
