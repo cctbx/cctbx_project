@@ -101,12 +101,15 @@ def run(prefix="tst_map_model_cc"):
 #  assert checked==1
   # Exercise corresponding library function
   params = mmtbx.maps.map_model_cc.master_params().extract()
-  params.resolution=1.5
-  result = mmtbx.maps.map_model_cc.run(
+  params.map_model_cc.resolution=1.5
+  task_obj = mmtbx.maps.map_model_cc.map_model_cc(
     map_data         = map_data,
     pdb_hierarchy    = ph,
     crystal_symmetry = xrs.crystal_symmetry(),
-    params           = params)
+    params           = params.map_model_cc)
+  task_obj.validate()
+  task_obj.run()
+  result = task_obj.get_results()
   assert approx_equal(result.cc_mask  , 1.0, 1.e-4)
   assert approx_equal(result.cc_peaks , 1.0, 1.e-4)
   assert approx_equal(result.cc_volume, 1.0, 1.e-4)

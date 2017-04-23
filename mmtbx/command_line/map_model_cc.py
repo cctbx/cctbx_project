@@ -9,6 +9,20 @@ from libtbx.utils import Sorry
 import mmtbx.utils
 import mmtbx.maps.map_model_cc
 
+master_params_str = """\
+  map_file_name = None
+    .type = str
+    .help = Map file name
+  model_file_name = None
+    .type = str
+    .help = Model file name
+  include scope mmtbx.maps.map_model_cc.master_params
+"""
+
+def master_params():
+  return iotbx.phil.parse(master_params_str, process_includes=True)
+
+
 def broadcast(m, log):
   print >> log, "-"*79
   print >> log, m
@@ -49,7 +63,7 @@ def get_inputs(args,
       raise Sorry("No box (unit cell) info found.")
   #
   return group_args(
-    params           = inputs.params,
+    params           = inputs.params.extract(),
     pdb_file_name    = pdb_file_name,
     pdb_hierarchy    = pdb_hierarchy,
     ccp4_map_object  = ccp4_map_object,
@@ -75,10 +89,10 @@ Feedback:
   inputs = get_inputs(
     args          = args,
     log           = log,
-    master_params = mmtbx.maps.map_model_cc.master_params())
+    master_params = master_params())
   # Model
   broadcast(m="Input PDB:", log=log)
-  print >> log, inputs.pdb_file_name
+  print >> log, inputs.pdb_file_name # ideally this should not be available here
   inputs.pdb_hierarchy.show(level_id="chain")
   # Crystal symmetry
   broadcast(m="Box (unit cell) info:", log=log)
@@ -86,12 +100,15 @@ Feedback:
   # Map
   broadcast(m="Input map:", log=log)
   inputs.ccp4_map_object.show_summary(prefix="  ")
-  # Run task
-  results = mmtbx.maps.map_model_cc.run(
+  # Run task in 4 separate steps
+  task_obj = mmtbx.maps.map_model_cc.map_model_cc(
     map_data         = inputs.ccp4_map_object.map_data(),
     pdb_hierarchy    = inputs.pdb_hierarchy,
     crystal_symmetry = inputs.crystal_symmetry,
-    params           = inputs.params.extract())
+    params           = inputs.params.map_model_cc)
+  task_obj.validate()
+  task_obj.run()
+  results = task_obj.get_results()
   #
   broadcast(m="Map resolution:", log=log)
   print >> log, "  Resolution:", results.resolution
