@@ -213,6 +213,36 @@ af::shared<FloatType> cc_complex_complex(
   return result;
 }
 
+template <typename ComplexType, typename FloatType>
+FloatType cc_complex_complex(
+  af::const_ref<ComplexType> const& f_1,
+  af::const_ref<ComplexType> const& f_2)
+{
+  CCTBX_ASSERT(f_1.size()==f_2.size());
+  af::shared<FloatType> num_term(f_1.size());
+  af::shared<FloatType> d2_term(f_1.size());
+  af::shared<FloatType> f_1_i_sq(f_1.size());
+  for(int i = 0; i < f_1.size(); i++) {
+    FloatType f_2_abs = std::abs(f_2[i]);
+    FloatType f_1_abs = std::abs(f_1[i]);
+    FloatType f_1_arg = std::arg(f_1[i]);
+    FloatType f_2_arg = std::arg(f_2[i]);
+    num_term[i] = f_1_abs*f_2_abs*std::cos(f_2_arg-f_1_arg);
+    d2_term[i] = f_2_abs*f_2_abs;
+    f_1_i_sq[i] = f_1_abs*f_1_abs;
+  }
+  FloatType num = 0.;
+  FloatType d1 = 0.;
+  FloatType d2 = 0.;
+  for(int i = 0; i < f_1.size(); i++) {
+    num += num_term[i];
+    d2 += d2_term[i];
+    d1 += f_1_i_sq[i];
+  }
+  FloatType cc = num / (std::sqrt(d1*d2));
+  return cc;
+}
+
 /*
 Acta Cryst. (2014). D70, 2593-2606
 Metrics for comparison of crystallographic maps

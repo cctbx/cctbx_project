@@ -42,22 +42,69 @@ class _(boost.python.injector, connectivity):
       max_boundaries.append(maxb)
     return min_boundaries, max_boundaries
 
-def shift_origin_if_needed(map_data, xray_structure=None):
+class d99(object):
+  def __init__(self, map, crystal_symmetry):
+    adopt_init_args(self, locals())
+    map = shift_origin_if_needed(map_data=map).map_data
+    from cctbx import miller
+    self.f = miller.structure_factor_box_from_map(
+      map = map, crystal_symmetry = crystal_symmetry)
+    self.d_spacings = self.f.d_spacings().data()
+    self.d_max, self.d_min = flex.max(self.d_spacings), flex.min(self.d_spacings)
+    o = ext.d99(
+      f          = self.f.data(),
+      d_spacings = self.d_spacings,
+      hkl        = self.f.indices(),
+      d_min      = self.d_min,
+      d_max      = self.d_max)
+    self.result = group_args(
+      d9     = o.d_min_cc9(),
+      d99    = o.d_min_cc99(),
+      d999   = o.d_min_cc999(),
+      ccs    = o.ccs(),
+      d_mins = o.d_mins())
+
+  def show(self, log):
+    fmt = "%12.6f %8.6f"
+    for d_min, cc in zip(self.result.d_mins, self.result.ccs):
+      print >> log, fmt%(d_min, cc)
+
+def shift_origin_if_needed(map_data, xray_structure=None, sites_cart=None,
+                           crystal_symmetry=None):
+  assert [xray_structure, sites_cart].count(None) == 1
+  if([xray_structure, crystal_symmetry].count(None) == 0):
+    assert xray_structure.crystal_symmetry().is_similar_symmetry(
+      crystal_symmetry)
   shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
      map_data.is_0_based())
+  shift_frac = None
+  shift_cart = None
   if(shift_needed):
     N = map_data.all()
     O = map_data.origin()
     map_data = map_data.shift_origin()
-    if(xray_structure is not None):
-      a,b,c = xray_structure.crystal_symmetry().unit_cell().parameters()[:3]
-      sites_cart = xray_structure.sites_cart()
-      sx,sy,sz = a/N[0]*O[0], b/N[1]*O[1], c/N[2]*O[2]
-      sites_cart_shifted = sites_cart-\
-        flex.vec3_double(sites_cart.size(), [sx,sy,sz])
-      xray_structure.set_sites_cart(sites_cart_shifted)
-  return group_args(map_data = map_data, xray_structure = xray_structure)
+    if(xray_structure is not None or sites_cart is not None):
+      if(crystal_symmetry is None):
+        crystal_symmetry = xray_structure.crystal_symmetry()
+      if(not crystal_symmetry.space_group().type().number() in [0,1]):
+        raise RuntimeError("Not implemented")
+      a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
+      fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+      shift_frac = [-sx,-sy,-sz]
+      shift_cart = crystal_symmetry.unit_cell().orthogonalize(shift_frac)
+      if(sites_cart is None):
+        sites_cart = xray_structure.sites_cart()
+      sites_cart_shifted = sites_cart+\
+        flex.vec3_double(sites_cart.size(), shift_cart)
+      if(xray_structure is not None):
+        xray_structure.set_sites_cart(sites_cart_shifted)
+  return group_args(
+    map_data       = map_data,
+    xray_structure = xray_structure,
+    sites_cart     = sites_cart_shifted,
+    shift_frac     = shift_frac,
+    shift_cart     = shift_cart)
 
 def value_at_closest_grid_point(map, x_frac):
   return map[closest_grid_point(map.accessor(), x_frac)]

@@ -750,6 +750,13 @@ namespace {
       arg("d_mins"),
       arg("b_iso")));
 
+    def("cc_complex_complex",
+      (double(*)
+        (af::const_ref<std::complex<double> > const&,
+         af::const_ref<std::complex<double> > const&)) cc_complex_complex, (
+      arg("f_1"),
+      arg("f_2")));
+
     def("cc_peak",
       (double(*)
         (af::const_ref<double, af::c_grid<3> > const&,

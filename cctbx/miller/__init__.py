@@ -3969,7 +3969,84 @@ class array(set):
         print >> f, prefix + str(h), d, s
     return self
 
-  def map_correlation(self, other):
+  def fsc(self, other, bin_width=1000):
+    """
+    Compute Fourier Shell Correlation (FSC)
+    """
+    f1, f2 = self, other
+    assert f1.indices().all_eq(f2.indices())
+    # Get data and order
+    ds = f1.d_spacings().data()
+    d1 = f1.data()
+    d2 = f2.data()
+    s = flex.sort_permutation(ds)
+    ds = ds.select(s)
+    d1 = d1.select(s)
+    d2 = d2.select(s)
+    # Get bin limits
+    n      = flex.int()
+    n_next = flex.int()
+    i=0
+    while i < ds.size():
+      sc = 1
+      if(min(i+bin_width*2, d1.size()-1)==d1.size()-1): sc = 2
+      n_next.append(min(i+bin_width*sc, d1.size()-1))
+      n.append(i)
+      i+=bin_width*sc
+    # Compute FSC
+    d_inv, d, fsc = flex.double(),flex.double(),flex.double()
+    for i,j in zip(n, n_next):
+      n_next = min(n+bin_width, d1.size()-1)
+      d_sel = ds[i:j]
+      cc = maptbx.cc_complex_complex(
+        f_1        = d1[i:j],
+        f_2        = d2[i:j])
+      d_mean = flex.mean(d_sel)
+      d_inv.append(1/d_mean)
+      d.append(d_mean)
+      fsc.append(cc)
+    # Smooth FSC curve
+    from scitbx import smoothing
+    d_inv, fsc = smoothing.savitzky_golay_filter(
+      x=d_inv,  y=fsc,  half_window=50, degree=2)
+    s = flex.sort_permutation(d_inv)
+    return group_args(d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
+
+  def d_min_from_fsc(self, other, bin_width=1000, fsc_cutoff=0.143):
+    """
+    Compute Fourier Shell Correlation (FSC) and derive resolution based on
+    specified cutoff.
+    """
+    fsc_result = self.fsc(other=other, bin_width=bin_width)
+    i_mid = None
+    for i in xrange(fsc_result.fsc.size()):
+      if(fsc_result.fsc[i]<fsc_cutoff):
+        i_mid = i
+        break
+    d_min = None
+    if(i_mid is not None):
+      i_min = i_mid-5
+      i_max = i_mid+6
+      on_slope = [
+        fsc_result.fsc[i_min]>fsc_cutoff,
+        fsc_result.fsc[i_max]<fsc_cutoff].count(True)==2
+      if(on_slope):
+        x = fsc_result.d_inv[i_min:i_max]
+        y = fsc_result.fsc[i_min:i_max]
+        from scitbx.math import curve_fitting
+        c,b,a = curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
+          degree=2, number_of_cycles=5).params
+        c = c-fsc_cutoff
+        det = b**2-4*a*c
+        well_defined = [det >= 0., a != 0.]
+        if(well_defined):
+          x1 = (-b+math.sqrt(det))/(2*a)
+          x2 = (-b-math.sqrt(det))/(2*a)
+          if(x1*x2<0.):
+            d_min = 1./max(x1,x2)
+    return group_args(fsc=fsc_result, d_min=d_min)
+
+  def map_correlation(self, other, bin_width=1000):
     d1 = flex.abs(self.data())
     d2 = flex.abs(other.data())
     p1 = self.phases().data()
@@ -5565,6 +5642,29 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
   if (f_000 is not None):
     f_000 = f_000 * f_000
   return fft_map(crystal_gridding, i_patt, f_000)
+
+def structure_factor_box_from_map(crystal_symmetry, map=None, n_real=None,
+                                  anomalous_flag=False, include_000=False):
+  assert crystal_symmetry.space_group().type().number()==1 # must be P1 box
+  assert [map, n_real].count(None) in [0,2]
+  if(n_real is None):
+    n_real = map.focus()
+  max_index = [(i-1)//2 for i in n_real]
+  complete_set = build_set(
+    crystal_symmetry = crystal_symmetry,
+    anomalous_flag   = anomalous_flag,
+    max_index        = max_index)
+  if(include_000):
+    indices = complete_set.indices()
+    indices.append((0,0,0))
+    complete_set = complete_set.customized_copy(indices = indices)
+  if(map is None): return complete_set
+  else:
+    return complete_set.structure_factors_from_map(
+      map            = map,
+      use_scale      = True,
+      anomalous_flag = anomalous_flag,
+      use_sg         = False)
 
 # this is tested as part of phenix.merging_statistics (note that the exact
 # values are not reproducible)
