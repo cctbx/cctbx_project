@@ -2948,28 +2948,19 @@ class shift_origin(object):
     self.xray_structure = xray_structure
     self.crystal_symmetry = crystal_symmetry
     self.map_data = map_data
-    self.shift_cart = None
-    self.shift_frac = None
-    shift_needed = not \
-      (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
-       map_data.is_0_based())
-    if(shift_needed):
-      if(not crystal_symmetry.space_group().type().number() in [0,1]):
-        raise RuntimeError("Not implemented")
-      a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
-      N = map_data.all()
-      O = map_data.origin()
-      fm = crystal_symmetry.unit_cell().fractionalization_matrix()
-      self.map_data = self.map_data.shift_origin()
-      sx,sy,sz = O[0]/N[0],O[1]/N[1], O[2]/N[2]
-      self.shift_frac = [-sx,-sy,-sz]
-      self.shift_cart=crystal_symmetry.unit_cell().orthogonalize(self.shift_frac)
-      sites_cart_shifted = sites_cart+\
-        flex.vec3_double(sites_cart.size(), self.shift_cart)
-      if(self.pdb_hierarchy is not None):
-        self.pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
-      if(self.xray_structure is not None):
-        self.xray_structure.set_sites_cart(sites_cart=sites_cart_shifted)
+    # Shift origin if needed
+    soin = maptbx.shift_origin_if_needed(
+      map_data         = self.map_data,
+      xray_structure   = None,
+      sites_cart       = None,
+      crystal_symmetry = None)
+    self.map_data       = soin.map_data
+    self.shift_cart     = soin.shift_cart
+    self.shift_frac     = soin.shift_frac
+    sites_cart_shifted  = soin.sites_cart
+    self.xray_structure = soin.xray_structure
+    if([self.pdb_hierarchy,sites_cart_shifted].count(None)==0):
+      self.pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
   def shift_back(self, pdb_hierarchy):
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
@@ -3371,20 +3362,6 @@ class states(object):
     self.root.write_pdb_file(
       file_name        = file_name,
       crystal_symmetry = crystal_symmetry)
-
-def structure_factors_from_map(map_data, unit_cell_lengths, n_real,
-                               crystal_symmetry, resolution_factor=1/4.):
-  d_min_guess_from_map = maptbx.d_min_from_map(map_data=map_data,
-    unit_cell=crystal_symmetry.unit_cell(), resolution_factor=resolution_factor)
-  complete_set = miller.build_set(
-    crystal_symmetry = crystal_symmetry,
-    anomalous_flag   = False,
-    d_min            = d_min_guess_from_map)
-  return complete_set.structure_factors_from_map(
-    map            = map_data,
-    use_scale      = True,
-    anomalous_flag = False,
-    use_sg         = True)
 
 class f_000(object):
   def __init__(self, xray_structure=None, unit_cell_volume=None,

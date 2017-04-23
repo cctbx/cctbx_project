@@ -115,20 +115,9 @@ def run(args, log=sys.stdout):
   show_histogram(data=md, n_slots=10, data_min=flex.min(md),
     data_max=flex.max(md), log=log)
   # shift origin if needed
-  shift_needed = not \
-    (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
-     map_data.is_0_based())
-  if(shift_needed):
-    N = map_data.all()
-    O=map_data.origin()
-    map_data = map_data.shift_origin()
-    # apply same shift to the model
-    a,b,c = xrs.crystal_symmetry().unit_cell().parameters()[:3]
-    sites_cart = xrs.sites_cart()
-    sx,sy,sz = a/N[0]*O[0], b/N[1]*O[1], c/N[2]*O[2]
-    sites_cart_shifted = sites_cart-\
-      flex.vec3_double(sites_cart.size(), [sx,sy,sz])
-    xrs.set_sites_cart(sites_cart_shifted)
+  soin = maptbx.shift_origin_if_needed(map_data=map_data, xray_structure=xrs)
+  map_data = soin.map_data
+  xrs = soin.xray_structure
   ####
   # Compute and show all stats
   ####

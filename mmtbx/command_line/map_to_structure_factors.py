@@ -8,6 +8,7 @@ import mmtbx.utils
 import sys
 from libtbx.utils import Sorry
 from cctbx import maptbx
+from cctbx import miller
 
 master_params_str = """
 output_file_name = map_to_structure_factors.mtz
@@ -82,12 +83,7 @@ def run(args, log=None, ccp4_map=None,
   print >>out,"unit cell:", m.unit_cell_parameters
   #
   map_data=m.data
-  shift_needed = not \
-     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
-      map_data.is_0_based())
-  if(shift_needed):
-    map_data = map_data.shift_origin()
-
+  map_data = maptbx.shift_origin_if_needed(map_data = map_data).map_data
   # generate complete set of Miller indices up to given high resolution d_min
   n_real = map_data.focus()
   if not space_group_number:
@@ -111,46 +107,27 @@ def run(args, log=None, ccp4_map=None,
       unit_cell = cs.unit_cell())
   if(d_min is None):
     # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
-    max_index = [(i-1)//2 for i in n_real]
-    print >>out,"max_index:", max_index
-    complete_set = miller.build_set(
+    f_obs_cmpl = miller.structure_factor_box_from_map(
+      map              = map_data.as_double(),
       crystal_symmetry = cs,
-      anomalous_flag   = False,
-      max_index        = max_index)
-    indices = complete_set.indices()
-    indices.append((0,0,0))
-    complete_set = complete_set.customized_copy(indices = indices)
-    #if(not params.box):
-    #  # XXX What is sphere resolution corresponding to given box?
-    #  uc = complete_set.unit_cell()
-    #  d1 = uc.d([0,0,max_index[2]])
-    #  d2 = uc.d([0,max_index[1],0])
-    #  d3 = uc.d([max_index[0],1,0])
-    #  print >>out, d1,d2,d3
-    #  complete_set_sp = miller.build_set(
-    #    crystal_symmetry = cs,
-    #    anomalous_flag   = False,
-    #    d_min            = min(d1,d2,d3))
-    #  complete_set = complete_set.common_set(complete_set_sp)
+      include_000      = True)
   else:
     complete_set = miller.build_set(
       crystal_symmetry = cs,
       anomalous_flag   = False,
       d_min            = d_min)
-  broadcast(m="Complete set information:", log=log)
-  complete_set.show_comprehensive_summary(prefix="  ",f=out)
-  try:
-    f_obs_cmpl = complete_set.structure_factors_from_map(
-      map            = map_data.as_double(),
-      use_scale      = True,
-      anomalous_flag = False,
-      use_sg         = False)
-  except Exception, e:
-    if(str(e) == "cctbx Error: Miller index not in structure factor map."):
-      msg = "Too high resolution requested. Try running with larger d_min."
-      raise Sorry(msg)
-    else:
-      raise Sorry(str(e))
+    try:
+      f_obs_cmpl = complete_set.structure_factors_from_map(
+        map            = map_data.as_double(),
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = False)
+    except Exception, e:
+      if(str(e) == "cctbx Error: Miller index not in structure factor map."):
+        msg = "Too high resolution requested. Try running with larger d_min."
+        raise Sorry(msg)
+      else:
+        raise Sorry(str(e))
 
   if nohl and return_as_miller_arrays:
     return f_obs_cmpl

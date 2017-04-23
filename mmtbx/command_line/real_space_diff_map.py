@@ -64,23 +64,9 @@ def run(args, log=sys.stdout):
   inputs.ccp4_map.show_summary(prefix="  ")
   map_data = inputs.ccp4_map.map_data()
   # shift origin if needed
-  shift_needed = not \
-    (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
-     map_data.is_0_based())
-#XXX
-  if(shift_needed):
-    raise Sorry("Map origin must be (0,0,0).")
-#XXX  if(shift_needed):
-#XXX    N = map_data.all()
-#XXX    O=map_data.origin()
-#XXX    map_data = map_data.shift_origin()
-#XXX    # apply same shift to the model
-#XXX    a,b,c = xrs.crystal_symmetry().unit_cell().parameters()[:3]
-#XXX    sites_cart = xrs.sites_cart()
-#XXX    sx,sy,sz = a/N[0]*O[0], b/N[1]*O[1], c/N[2]*O[2]
-#XXX    sites_cart_shifted = sites_cart-\
-#XXX      flex.vec3_double(sites_cart.size(), [sx,sy,sz])
-#XXX    xrs.set_sites_cart(sites_cart_shifted)
+  soin = maptbx.shift_origin_if_needed(map_data=map_data, xray_structure=xrs)
+  map_data = soin.map_data
+  xrs = soin.xray_structure
   # estimate resolution
   d_min = params.resolution
   if(d_min is None):

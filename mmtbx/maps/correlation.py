@@ -10,48 +10,6 @@ import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 from libtbx import group_args
 
-class d99(object):
-  def __init__(self, map, crystal_symmetry):
-    # First thing first: shift origin if needed
-    shift_needed = not \
-      (map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based())
-    if(shift_needed):
-      if(not crystal_symmetry.space_group().type().number() in [0,1]):
-        raise RuntimeError("Not implemented")
-    map = map.shift_origin()
-    #
-    n_real = map.focus()
-    max_index = [(i-1)//2 for i in n_real]
-    complete_set = miller.build_set(
-      crystal_symmetry = crystal_symmetry,
-      anomalous_flag   = False,
-      max_index        = max_index)
-    self.f = complete_set.structure_factors_from_map(
-      map            = map,
-      use_scale      = True,
-      anomalous_flag = False,
-      use_sg         = False)
-    ds = self.f.d_spacings().data()
-    d_max, d_min = flex.max(ds), flex.min(ds)
-    o = maptbx.d99(f=self.f.data(), d_spacings=ds,
-      hkl=self.f.indices(), d_min=d_min, d_max=d_max)
-    self.d_min_cc9, self.d_min_cc99, self.d_min_cc999=\
-      o.d_min_cc9(), o.d_min_cc99(), o.d_min_cc999()
-    self.ccs=o.ccs()
-    self.d_mins=o.d_mins()
-
-  def write_mtz_file(self, file_name):
-    mtz_dataset = self.f.as_mtz_dataset(column_root_label="F")
-    mtz_object = mtz_dataset.mtz_object()
-    mtz_object.write(file_name = file_name)
-
-  def write_log(self, file_name):
-    of=open(file_name,"w")
-    fmt = "%12.6f %8.6f"
-    for d_min, cc in zip(self.d_mins, self.ccs):
-      print >> of, fmt%(d_min, cc)
-    of.close()
-
 def get_selection_above_cutoff(m, n):
   m_ = m.as_1d()
   s = flex.sort_permutation(m_, reverse=True)

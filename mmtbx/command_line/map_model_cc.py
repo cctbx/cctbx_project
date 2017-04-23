@@ -120,10 +120,12 @@ Feedback:
   results.fsc.show(prefix="  ")
   broadcast(m="Map-model CC (local):", log=log)
   # Per chain
+  print >> log, "Per chain:"
   fmt = "%s %7.4f %8.3f %4.2f %d"
   for r in results.cc_per_chain:
     print fmt%(r.chain_id, r.cc, r.b_iso_mean, r.occ_mean, r.n_atoms)
   # Per residue
+  print >> log, "Per residue:"
   fmt = "%s %s %s %7.4f %8.3f %4.2f"
   for r in results.cc_per_residue:
     print fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean, r.occ_mean)

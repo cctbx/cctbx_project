@@ -1,6 +1,5 @@
 
 from __future__ import division
-from scitbx.array_family import flex
 from cctbx import maptbx, miller
 from cctbx.sgtbx import space_group_info
 from iotbx.file_reader import any_file
@@ -84,7 +83,6 @@ class waters (validation) :
     asu_table = pair_asu_table.table()
     u_isos = xray_structure.extract_u_iso_or_u_equiv()
     occupancies = xray_structure.scatterers().extract_occupancies()
-    sites_cart = xray_structure.sites_cart()
     sites_frac = xray_structure.sites_frac()
     sel_cache = pdb_hierarchy.atom_selection_cache()
     water_sel = sel_cache.selection("water")
@@ -110,27 +108,13 @@ class waters (validation) :
         xray_structure = pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=f.crystal_symmetry())
         unit_cell = xray_structure.unit_cell()
-        sites_cart = xray_structure.sites_cart()
-
         # check for origin shift
-        # modified from mmtbx.command_line.map_model_cc
         # ---------------------------------------------------------------------
-        shift_needed = not (two_fofc_map.focus_size_1d() > 0 and
-                            two_fofc_map.nd() == 3 and
-                            two_fofc_map.is_0_based())
-        if (shift_needed):
-          print "Map origin is not at (0,0,0): shifting the map and model."
-          N = two_fofc_map.all()
-          O = two_fofc_map.origin()
-          two_fofc_map.shift_origin()
-          a, b, c = unit_cell.parameters()[:3]
-          sx, sy, sz = a/N[0]*O[0], b/N[1]*O[1], c/N[2]*O[2]
-          sites_cart_shifted = sites_cart - \
-                               flex.vec3_double(sites_cart.size(), [sx,sy,sz])
-          xray_structure.set_sites_cart(sites_cart_shifted)
-          sites_cart = sites_cart_shifted
+        soin = maptbx.shift_origin_if_needed(
+          map_data=two_fofc_map, xray_structure=None)
+        two_fofc_map   = soin.map_data
+        xray_structure = soin.xray_structure
         # ---------------------------------------------------------------------
-
         pair_asu_table = xray_structure.pair_asu_table(
           distance_cutoff = distance_cutoff)
         asu_mappings = pair_asu_table.asu_mappings()

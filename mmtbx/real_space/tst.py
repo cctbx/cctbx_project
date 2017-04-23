@@ -330,21 +330,12 @@ END
       xray_structure = xrs,
       n_real         = crystal_gridding.n_real()).data()
     #
-    max_index = [(i-1)//2 for i in crystal_gridding.n_real()]
-    complete_set = miller.build_set(
+    f_obs_cmpl = miller.structure_factor_box_from_map(
+      map              = m,
       crystal_symmetry = xrs.crystal_symmetry(),
-      anomalous_flag   = False,
-      max_index        = max_index)
-    indices = complete_set.indices()
-    indices.append((0,0,0))
+      include_000      = False)
     #
-    complete_set = complete_set.customized_copy(indices = indices)
-    f_obs_cmpl = complete_set.structure_factors_from_map(
-      map            = m,
-      use_scale      = True,
-      anomalous_flag = False,
-      use_sg         = False)
-    fc = complete_set.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
+    fc = f_obs_cmpl.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
     #
     f1 = abs(fc).data()
     f2 = abs(f_obs_cmpl).data()

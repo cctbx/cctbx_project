@@ -997,20 +997,15 @@ class manager(manager_mixin):
     assert approx_equal(d.min_max_mean().as_tuple(), [0,0,0])
     # consistency check END
     if(method == "box"):
-      max_index = [(i-1)//2 for i in n_real]
-      full_set = miller.build_set(
+      full_set = miller.structure_factor_box_from_map(
         crystal_symmetry = self.f_calc().crystal_symmetry(),
-        anomalous_flag   = self.f_obs().anomalous_flag(),
-        max_index        = max_index)
+        n_real           = n_real,
+        include_000      = include_f000)
     else:
       full_set = miller.build_set(
         crystal_symmetry = self.f_calc().crystal_symmetry(),
         anomalous_flag   = self.f_obs().anomalous_flag(),
         d_min            = d_min)
-    if(include_f000):
-      indices = full_set.indices()
-      indices.append((0,0,0))
-      full_set = full_set.customized_copy(indices = indices)
     ##
     zero = flex.complex_double(full_set.indices().size(), 0)
     f_calc_full_set = self.compute_f_calc(miller_array = full_set)
