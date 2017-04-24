@@ -6,6 +6,7 @@ import iotbx.phil
 from libtbx import adopt_init_args
 from cctbx.maptbx import resolution_from_map_and_model
 import mmtbx.utils
+from libtbx import group_args
 
 master_params_str = """
   map_file_name = None
@@ -51,9 +52,15 @@ class run(object):
                half_map_data_2=None,
                pdb_hierarchy=None,
                nproc=1):
-    # XXX assert len(locals().keys()) == 4 # intentional
     assert [half_map_data_1, half_map_data_2].count(None) in [0,2]
-    #adopt_init_args(self, locals())
+    # Results
+    self.d99           = None
+    self.d99_1         = None
+    self.d99_2         = None
+    self.d_model       = None
+    self.b_iso_overall = None
+    self.d_fsc         = None
+    self.d_fsc_model   = None
     # Get xray.structure
     xray_structure = None
     if(pdb_hierarchy is not None):
@@ -62,14 +69,16 @@ class run(object):
         crystal_symmetry = crystal_symmetry)
     # Compute d99
     d99_obj = maptbx.d99(map=map_data, crystal_symmetry=crystal_symmetry)
+    self.d99 = d99_obj.result.d99
     d99_half1_obj, d99_half2_obj = None,None
     if(half_map_data_1 is not None):
       d99_half1_obj = maptbx.d99(
         map=half_map_data_1, crystal_symmetry=crystal_symmetry)
       d99_half2_obj = maptbx.d99(
         map=half_map_data_2, crystal_symmetry=crystal_symmetry)
+      self.d99_1 = d99_half1_obj.result.d99
+      self.d99_2 = d99_half2_obj.result.d99
     # Compute d_model
-    d_model = None
     if(pdb_hierarchy is not None):
       xray_structure = pdb_hierarchy.extract_xray_structure(
         crystal_symmetry = crystal_symmetry)
@@ -83,35 +92,50 @@ class run(object):
         pdb_hierarchy    = box.pdb_hierarchy,
         d_min_min        = 1.7,
         nproc            = nproc)
+      self.d_model       = d_model_obj.d_min
+      self.b_iso_overall = d_model_obj.b_iso
     # Compute half-map FSC
-    fsc_obj = d99_half1_obj.f.d_min_from_fsc(
-      other=d99_half2_obj.f, bin_width=1000, fsc_cutoff=0.143)
-    # XXX
-    of = open("zz","w")
-    for a,b in zip(fsc_obj.fsc.d_inv, fsc_obj.fsc.fsc):
-      print >>of, "%15.9f %15.9f"%(a,b)
-    of.close()
-    # XXX
+    if(half_map_data_1 is not None):
+      fsc_obj = d99_half1_obj.f.d_min_from_fsc(
+        other=d99_half2_obj.f, bin_width=1000, fsc_cutoff=0.143)
+      # XXX
+      #of = open("zz","w")
+      #for a,b in zip(fsc_obj.fsc.d_inv, fsc_obj.fsc.fsc):
+      #  print >>of, "%15.9f %15.9f"%(a,b)
+      #of.close()
+      # XXX
+      self.d_fsc = fsc_obj.d_min
     # Map-model FSC and d_fsc_model
     if(pdb_hierarchy is not None):
       f_calc = d99_obj.f.structure_factors_from_scatterers(
         xray_structure = xray_structure).f_calc()
       fsc_map_model_obj = f_calc.d_min_from_fsc(
         other=d99_obj.f, bin_width=1000, fsc_cutoff=0.0)
-      d_fsc_model = fsc_map_model_obj.d_min
+      self.d_fsc_model = fsc_map_model_obj.d_min
       # XXX
-      of = open("xx","w")
-      for a,b in zip(fsc_map_model_obj.fsc.d_inv, fsc_map_model_obj.fsc.fsc):
-        print >>of, "%15.9f %15.9f"%(a,b)
-      of.close()
+      #of = open("xx","w")
+      #for a,b in zip(fsc_map_model_obj.fsc.d_inv, fsc_map_model_obj.fsc.fsc):
+      #  print >>of, "%15.9f %15.9f"%(a,b)
+      #of.close()
       # XXX
-    #
-    print
-    print d99_obj.result.d99 #XXX
-    print d99_half1_obj.result.d99, d99_half2_obj.result.d99 #XXX
-    print d_model_obj.d_min, d_model_obj.b_iso, d_model_obj.cc
-    print fsc_obj.d_min
-    print d_fsc_model
+
+  def get_results(self):
+    #print "   ", self.d99
+    #print "   ", self.d99_1
+    #print "   ", self.d99_2
+    #print "   ", self.d_model
+    #print "   ", self.b_iso_overall
+    #print "   ", self.d_fsc
+    #print "   ", self.d_fsc_model
+    return group_args(
+      d99           = self.d99          ,
+      d99_1         = self.d99_1        ,
+      d99_2         = self.d99_2        ,
+      d_model       = self.d_model      ,
+      b_iso_overall = self.b_iso_overall,
+      d_fsc         = self.d_fsc        ,
+      d_fsc_model   = self.d_fsc_model)
+
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
