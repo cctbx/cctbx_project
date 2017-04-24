@@ -88,8 +88,8 @@ def exercise_d99():
   fft_map = fc.fft_map(crystal_gridding=crystal_gridding)
   map = fft_map.real_map_unpadded()
   #
-  o = correlation.d99(map=map, crystal_symmetry=xrs.crystal_symmetry())
-  assert approx_equal(o.d_min_cc999, 2.0, 0.03)
+  o = maptbx.d99(map=map, crystal_symmetry=xrs.crystal_symmetry())
+  assert approx_equal(o.result.d999, 2.0, 0.03)
 
 def exercise_five_cc():
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)

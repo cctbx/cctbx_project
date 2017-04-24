@@ -3,6 +3,7 @@ from __future__ import division
 from mmtbx import building
 from libtbx.utils import null_out
 from cStringIO import StringIO
+from libtbx.test_utils import approx_equal
 
 def exercise_model_utils () :
   pdb_in = get_1yjp_pdb()
@@ -65,7 +66,8 @@ def exercise_box_rebuild () :
   #    sites_orig.rms_difference(sites_new), rmsd_start)
   assert (sites_orig.select(sel).rms_difference(sites_new.select(sel)) > 0)
   assert (sites_new.select(sel).rms_difference(sites_shaken.select(sel)) > 0)
-  assert (sites_orig.select(~sel).rms_difference(sites_new.select(~sel)) == 0)
+  assert approx_equal(
+    sites_orig.select(~sel).rms_difference(sites_new.select(~sel)), 0)
   box_builder = building.box_build_refine_base(
     pdb_hierarchy=pdb_in.hierarchy,
     xray_structure=xrs,

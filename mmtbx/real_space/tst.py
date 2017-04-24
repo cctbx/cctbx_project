@@ -12,7 +12,7 @@ import mmtbx.real_space
 from libtbx.test_utils import approx_equal
 from cctbx import sgtbx
 from libtbx.utils import format_cpu_times
-
+import mmtbx.f_model
 
 def xray_structure_of_one_atom(site_cart,
                                buffer_layer,
@@ -316,6 +316,10 @@ TER
 END
 """
   #
+  sf_accuracy_params = \
+    mmtbx.f_model.sf_and_grads_accuracy_master_params.extract()
+  sf_accuracy_params.algorithm="direct"
+  p = sf_accuracy_params
   for pdb_str in [pdb_str1, pdb_str2]:
     print
     pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
@@ -333,15 +337,24 @@ END
     f_obs_cmpl = miller.structure_factor_box_from_map(
       map              = m,
       crystal_symmetry = xrs.crystal_symmetry(),
-      include_000      = False)
+      include_000      = True)
     #
-    fc = f_obs_cmpl.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
+    fc = f_obs_cmpl.structure_factors_from_scatterers(
+      xray_structure=xrs,
+      algorithm                    = p.algorithm,
+      cos_sin_table                = p.cos_sin_table,
+      grid_resolution_factor       = p.grid_resolution_factor,
+      quality_factor               = p.quality_factor,
+      u_base                       = p.u_base,
+      b_base                       = p.b_base,
+      wing_cutoff                  = p.wing_cutoff,
+      exp_table_one_over_step_size = p.exp_table_one_over_step_size).f_calc()
     #
     f1 = abs(fc).data()
     f2 = abs(f_obs_cmpl).data()
     r = 200*flex.sum(flex.abs(f1-f2))/flex.sum(f1+f2)
-    assert r<0.5
     print r
+    assert r<0.5
     #
     fft_map = miller.fft_map(
       crystal_gridding     = crystal_gridding,
