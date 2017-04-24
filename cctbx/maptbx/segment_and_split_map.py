@@ -495,12 +495,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Require improvement
        .help = Require improvement in score for sharpening to be applied
 
-     region_weight = 40
+     region_weight = 20
        .type = float
        .short_caption = Region weighting
        .help = Region weighting in adjusted surface area calculation.\
             Score is surface area minus region_weight times number of regions.\
-            Default is 40. A smaller value will give more sharpening.
+            Default is 20. A smaller value will give more sharpening.
 
      sa_percent = 30.
        .type = float
