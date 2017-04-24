@@ -6186,7 +6186,8 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
   print >>out,80*"-"
 
 
-  return upper_bounds_list,lower_bounds_list,centers_cart_ncs_list,all_cart
+  return upper_bounds_list,lower_bounds_list,\
+     centers_cart_ncs_list,centers_cart,all_cart
 
 def get_box_size(lower_bound=None,upper_bound=None):
   box_size=[]
@@ -6229,7 +6230,8 @@ def run_local_sharpening(si=None,
   sum_weight_map=sum_weight_map.set_selected(s,0.0)
   sum_weight_value_map=sum_weight_map.deep_copy()
 
-  upper_bounds_list,lower_bounds_list,centers_cart_ncs_list,all_cart=\
+  upper_bounds_list,lower_bounds_list,\
+     centers_cart_ncs_list,centers_cart,all_cart=\
      get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,out=out)
 
   dist=mean_dist_to_nearest_neighbor(all_cart)
@@ -6244,8 +6246,8 @@ def run_local_sharpening(si=None,
     print >>out,"Using %s A for smoothing radius" %(si.smoothing_radius)
 
   i=-1
-  for ub,lb,centers_ncs_cart in zip(
-    upper_bounds_list,lower_bounds_list,centers_cart_ncs_list):
+  for ub,lb,centers_ncs_cart,center_cart in zip(
+    upper_bounds_list,lower_bounds_list,centers_cart_ncs_list,centers_cart):
     i+=1
 
     if si.select_sharpened_map is not None and i != si.select_sharpened_map:
@@ -6261,7 +6263,7 @@ def run_local_sharpening(si=None,
       local_si=deepcopy(si)
       local_si.local_sharpening=False  # don't do it again
       local_si.box_size=get_box_size(lower_bound=lb,upper_bound=ub)
-      local_si.box_center=centers_ncs_cart[0]
+      local_si.box_center=center_cart
       local_si.box_in_auto_sharpen=True
       local_si.use_local_aniso=True
       print >>out,80*"+" 
