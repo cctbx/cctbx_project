@@ -7,8 +7,6 @@ from libtbx import adopt_init_args
 from cctbx.maptbx import resolution_from_map_and_model
 import mmtbx.utils
 from libtbx import group_args
-from cctbx.maptbx.auto_sharpen import run as auto_sharpen
-from libtbx.utils import null_out
 from cctbx import miller
 from mmtbx.maps import correlation
 
@@ -30,33 +28,25 @@ master_params_str = """
     .help = Atom radius for masking. If undefined then calculated automatically
 """
 
-def sharpen_map(map, resolution, crystal_symmetry, pdb_inp):
-  args=['resolution=%s' %(resolution)]
-  return auto_sharpen(
-    args                 = args,
-    map_data             = map,
-    crystal_symmetry     = crystal_symmetry,
-    write_output_files   = False,
-    return_map_data_only = True,
-    pdb_inp              = pdb_inp,
-    out                  = null_out())
-
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
 def get_box(map_data, pdb_hierarchy, xray_structure):
-  box = mmtbx.utils.extract_box_around_model_and_map(
-    xray_structure         = xray_structure,
-    map_data               = map_data,
-    box_cushion            = 5.0,
-    selection              = None,
-    density_select         = None,
-    threshold              = None)
-  pdb_hierarchy.adopt_xray_structure(box.xray_structure_box)
-  return group_args(
-    map_data       = box.map_box,
-    xray_structure = box.xray_structure_box,
-    pdb_hierarchy  = pdb_hierarchy)
+  if(pdb_hierarchy is not None):
+    box = mmtbx.utils.extract_box_around_model_and_map(
+      xray_structure         = xray_structure,
+      map_data               = map_data,
+      box_cushion            = 5.0,
+      selection              = None,
+      density_select         = None,
+      threshold              = None)
+    pdb_hierarchy.adopt_xray_structure(box.xray_structure_box)
+    return group_args(
+      map_data       = box.map_box,
+      xray_structure = box.xray_structure_box,
+      pdb_hierarchy  = pdb_hierarchy)
+  else:
+    return None
 
 class mtriage(object):
   def __init__(self,
@@ -66,12 +56,13 @@ class mtriage(object):
                half_map_data_1=None,
                half_map_data_2=None,
                pdb_hierarchy=None,
-               sharp=False,
                nproc=1):
     adopt_init_args(self, locals())
     assert [half_map_data_1, half_map_data_2].count(None) in [0,2]
     # Results
+    self.d9              = None
     self.d99             = None
+    self.d999            = None
     self.d99_1           = None
     self.d99_2           = None
     self.d_model         = None
@@ -105,6 +96,8 @@ class mtriage(object):
   def run(self):
     # Extract xrs from pdb_hierarchy
     self._get_xray_structure()
+    # Extract box around model with map
+    self._get_box()
     # Compute d99
     self._compute_d99()
     # Compute d_model
@@ -120,11 +113,20 @@ class mtriage(object):
       self.xray_structure = self.pdb_hierarchy.extract_xray_structure(
         crystal_symmetry = self.crystal_symmetry)
 
+  def _get_box(self):
+    if(self.pdb_hierarchy is not None):
+      self.box = get_box(
+        map_data       = self.map_data,
+        pdb_hierarchy  = self.pdb_hierarchy,
+        xray_structure = self.xray_structure)
+
   def _compute_d99(self):
     d99_obj = maptbx.d99(
       map              = self.map_data,
       crystal_symmetry = self.crystal_symmetry)
-    self.d99 = d99_obj.result.d99
+    self.d9   = d99_obj.result.d9
+    self.d99  = d99_obj.result.d99
+    self.d999 = d99_obj.result.d999
     self.f = d99_obj.f
     d99_obj_1, d99_obj_2 = None,None
     if(self.half_map_data_1 is not None):
@@ -141,10 +143,6 @@ class mtriage(object):
 
   def _compute_d_model(self):
     if(self.pdb_hierarchy is not None):
-      self.box = get_box(
-        map_data       = self.map_data,
-        pdb_hierarchy  = self.pdb_hierarchy,
-        xray_structure = self.xray_structure)
       o = resolution_from_map_and_model.run(
         map_data         = self.box.map_data,
         xray_structure   = self.box.xray_structure.deep_copy_scatterers(),
@@ -192,7 +190,9 @@ class mtriage(object):
     #print "   ", self.d_fsc
     #print "   ", self.d_fsc_model
     return group_args(
+      d9              = self.d9,
       d99             = self.d99,
+      d999            = self.d999,
       d99_1           = self.d99_1,
       d99_2           = self.d99_2,
       d_model         = self.d_model,
