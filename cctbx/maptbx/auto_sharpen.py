@@ -189,7 +189,7 @@ master_phil = iotbx.phil.parse("""
              estimate correct part \
              of model-based map. If None, estimated from max(FSC).
 
-     auto_sharpen = None
+     auto_sharpen = True
        .type = bool
        .short_caption = Automatically determine sharpening
        .help = Automatically determine sharpening using kurtosis maximization\
@@ -208,11 +208,16 @@ master_phil = iotbx.phil.parse("""
           to sharpen variably over resolution range. Default is b_iso,\
           b_iso_to_d_cut and resolution_dependent.
 
-     box_in_auto_sharpen = None
+     box_in_auto_sharpen = True
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map. Default is True.
+
+     discard_if_worse = True
+       .type = bool
+       .short_caption = Discard sharpening if worse
+       .help = Discard sharpening if worse
 
      local_sharpening = None
        .type = bool
@@ -555,6 +560,8 @@ def run(args=None,params=None,
     ncs_obj=None,
     return_map_data_only=False,
     half_map_data_list=None,
+    ncs_copies=None,
+    n_residues=None,
     out=sys.stdout):
   # Get the parameters
   if not params:
@@ -581,7 +588,7 @@ def run(args=None,params=None,
         resolution=params.crystal_info.resolution, # required
         crystal_symmetry=crystal_symmetry,
         map=map_data,
-        half_map_list=half_map_data_list,
+        half_map_data_list=half_map_data_list,
         solvent_content=params.crystal_info.solvent_content,
         input_weight_map_pickle_file=\
             params.input_files.input_weight_map_pickle_file,
@@ -590,12 +597,14 @@ def run(args=None,params=None,
         read_sharpened_maps=params.map_modification.read_sharpened_maps,
         write_sharpened_maps=params.map_modification.write_sharpened_maps,
         select_sharpened_map=params.map_modification.select_sharpened_map,
+        auto_sharpen=params.map_modification.auto_sharpen,
         local_sharpening=params.map_modification.local_sharpening,
         output_directory=params.output_files.output_directory,
         smoothing_radius=params.map_modification.smoothing_radius,
         local_aniso_in_local_sharpening=\
            params.map_modification.local_aniso_in_local_sharpening,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
+        discard_if_worse=params.map_modification.discard_if_worse,
         box_center=params.map_modification.box_center,
         box_size=params.map_modification.box_size,
         remove_aniso=params.map_modification.remove_aniso,
@@ -630,13 +639,14 @@ def run(args=None,params=None,
         k_sol=params.map_modification.k_sol,
         fraction_complete=params.map_modification.fraction_complete,
         seq_file=params.input_files.seq_file,
+        ncs_copies=ncs_copies,
+        n_residues=n_residues,
         out=out)
 
   # get map_data and map_coeffs of final map
 
   new_map_data=si.as_map_data()
   new_map_coeffs=si.as_map_coeffs()
-
   if not si.is_model_sharpening():
     print >>out
     print >>out,80*"=","\n",80*"="
