@@ -189,10 +189,13 @@ class fsc_model_vs_map(object):
       if(allcaps): l = l.upper()
       print >> log, l
 
-def assert_same_gridding(map_1, map_2):
-  assert map_1.focus()==map_2.focus()
-  assert map_1.origin()==map_2.origin()
-  assert map_1.all()==map_2.all()
+def assert_same_gridding(map_1, map_2,
+                         Sorry_message="Maps have different gridding."):
+  f1 = map_1.focus()==map_2.focus()
+  f2 = map_1.origin()==map_2.origin()
+  f3 = map_1.all()==map_2.all()
+  if([f1,f2,f3].count(True)!=3):
+    raise Sorry(Sorry_message)
 
 def from_map_map(map_1, map_2):
   assert_same_gridding(map_1, map_2)
