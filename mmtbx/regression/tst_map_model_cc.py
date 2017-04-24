@@ -80,25 +80,25 @@ def run(prefix="tst_map_model_cc"):
   ph.atoms().set_xyz(sites_cart_shifted)
   ph.write_pdb_file(file_name="%s_%s"%(prefix,"shifted.pdb"))
   # run phenix.real_space_refine
-#  checked = 0
-#  cmd = " ".join([
-#    "phenix.map_model_cc",
-#    "%s_shifted.pdb"%prefix,
-#    "%s_shifted.ccp4"%prefix,
-#    "resolution=1.5",
-#    "> %s.zlog"%prefix
-#  ])
-#  print cmd
-#  easy_run.call(cmd)
-#  # check results
-#  fo = open("%s.zlog"%prefix,"r")
-#  for l in fo.readlines():
-#    if(l.startswith("  CC_mask  :")):
-#      cc = float(l.split()[2])
-#      assert cc>0.989
-#      checked+=1
-#  fo.close()
-#  assert checked==1
+  checked = 0
+  cmd = " ".join([
+    "phenix.map_model_cc",
+    "%s_shifted.pdb"%prefix,
+    "%s_shifted.ccp4"%prefix,
+    "resolution=1.5",
+    "> %s.zlog"%prefix
+  ])
+  print cmd
+  easy_run.call(cmd)
+  # check results
+  fo = open("%s.zlog"%prefix,"r")
+  for l in fo.readlines():
+    if(l.startswith("  CC_mask  :")):
+      cc = float(l.split()[2])
+      assert cc>0.989
+      checked+=1
+  fo.close()
+  assert checked==1
   # Exercise corresponding library function
   params = mmtbx.maps.map_model_cc.master_params().extract()
   params.map_model_cc.resolution=1.5
@@ -113,7 +113,6 @@ def run(prefix="tst_map_model_cc"):
   assert approx_equal(result.cc_mask  , 1.0, 1.e-4)
   assert approx_equal(result.cc_peaks , 1.0, 1.e-4)
   assert approx_equal(result.cc_volume, 1.0, 1.e-4)
-  assert approx_equal(result.resolution, 1.5)
 
 if (__name__ == "__main__"):
   t0 = time.time()

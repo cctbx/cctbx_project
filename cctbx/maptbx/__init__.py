@@ -76,7 +76,6 @@ def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
      map_data.is_0_based())
   shift_frac = None
   shift_cart = None
-  #sites_cart_shifted = None
   if(shift_needed):
     N = map_data.all()
     O = map_data.origin()
@@ -86,6 +85,7 @@ def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
         raise RuntimeError("Not implemented")
       a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
       fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+      sx,sy,sz = O[0]/N[0],O[1]/N[1], O[2]/N[2]
       shift_frac = [-sx,-sy,-sz]
       shift_cart = crystal_symmetry.unit_cell().orthogonalize(shift_frac)
       sites_cart = sites_cart + flex.vec3_double(sites_cart.size(), shift_cart)

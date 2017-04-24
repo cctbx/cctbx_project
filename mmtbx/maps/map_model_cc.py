@@ -6,6 +6,7 @@ from libtbx.utils import Sorry
 import mmtbx.maps.correlation
 from cctbx import maptbx
 import iotbx.phil
+from libtbx import adopt_init_args
 
 master_params_str = """
 map_model_cc {
@@ -18,6 +19,12 @@ map_model_cc {
   atom_radius = None
     .type = float
     .help = Atom radius for masking. If undefined then calculated automatically
+  compute_cc_per_chain = True
+    .type = bool
+    .help = Compute local model-map CC for each chain
+  compute_cc_per_residue = True
+    .type = bool
+    .help = Compute local model-map CC for each residue
 }
 """
 
@@ -26,26 +33,28 @@ def master_params():
 
 class map_model_cc(object):
   def __init__(self, map_data, pdb_hierarchy, crystal_symmetry, params):
-    # XXX No default value for params because it cannot work with default
-    # resolution=None
-    self.map_data = map_data
-    self.pdb_hierarchy = pdb_hierarchy
-    self.crystal_symmetry = crystal_symmetry
-    self.params = params
+    adopt_init_args(self, locals())
+    self.five_cc_result = None
+    self.fsc = None
+    self.cc_per_chain = []
+    self.cc_per_residue = []
 
   def validate(self):
-    assert not None in [self.map_data, self.pdb_hierarchy, self.crystal_symmetry, self.params]
+    assert not None in [self.map_data, self.pdb_hierarchy,
+      self.crystal_symmetry, self.params]
     if(self.params.resolution is None):
       raise Sorry("Resolution is required.")
 
   def run(self):
-    # assert len(locals().keys()) == 4 # intentional done in validate()
     xrs = self.pdb_hierarchy.extract_xray_structure(
       crystal_symmetry=self.crystal_symmetry)
     xrs.scattering_type_registry(table = self.params.scattering_table)
-    soi = maptbx.shift_origin_if_needed(map_data=self.map_data, xray_structure=xrs)
-    map_data = soi.map_data
-    xrs = soi.xray_structure
+    soin = maptbx.shift_origin_if_needed(
+      map_data         = self.map_data,
+      sites_cart       = xrs.sites_cart(),
+      crystal_symmetry = self.crystal_symmetry)
+    map_data = soin.map_data
+    xrs.set_sites_cart(soin.sites_cart)
     self.five_cc_result = mmtbx.maps.correlation.five_cc(
       map            = map_data,
       xray_structure = xrs,
@@ -71,33 +80,33 @@ class map_model_cc(object):
         n_atoms    = atoms.size(),
         cc         = cc_calculator.cc(selection = sel, atom_radius = atom_radius))
     # CC per chain
-    self.cc_per_chain = []
-    for chain in self.pdb_hierarchy.chains():
-      cd = get_common_data(atoms=chain.atoms(), atom_radius=atom_radius)
-      self.cc_per_chain.append(group_args(
-        chain_id   = chain.id,
-        b_iso_mean = cd.b_iso_mean,
-        occ_mean   = cd.occ_mean,
-        n_atoms    = cd.n_atoms,
-        cc         = cd.cc))
+    if(self.params.compute_cc_per_chain):
+      for chain in self.pdb_hierarchy.chains():
+        cd = get_common_data(atoms=chain.atoms(), atom_radius=atom_radius)
+        self.cc_per_chain.append(group_args(
+          chain_id   = chain.id,
+          b_iso_mean = cd.b_iso_mean,
+          occ_mean   = cd.occ_mean,
+          n_atoms    = cd.n_atoms,
+          cc         = cd.cc))
     # CC per residue
-    self.cc_per_residue = []
-    for rg in self.pdb_hierarchy.residue_groups():
-      for conformer in rg.conformers():
-        for residue in conformer.residues():
-          cd = get_common_data(atoms=residue.atoms(), atom_radius=atom_radius)
-          self.cc_per_residue.append(group_args(
-            chain_id   = chain.id,
-            resname    = residue.resname,
-            resseq     = residue.resseq,
-            icode      = residue.icode,
-            b_iso_mean = cd.b_iso_mean,
-            occ_mean   = cd.occ_mean,
-            n_atoms    = cd.n_atoms,
-            cc         = cd.cc))
+    if(self.params.compute_cc_per_residue):
+      for rg in self.pdb_hierarchy.residue_groups():
+        for conformer in rg.conformers():
+          for residue in conformer.residues():
+            cd = get_common_data(atoms=residue.atoms(), atom_radius=atom_radius)
+            self.cc_per_residue.append(group_args(
+              chain_id   = chain.id,
+              resname    = residue.resname,
+              resseq     = residue.resseq,
+              icode      = residue.icode,
+              b_iso_mean = cd.b_iso_mean,
+              occ_mean   = cd.occ_mean,
+              n_atoms    = cd.n_atoms,
+              cc         = cd.cc))
+
   def get_results(self):
     return group_args(
-      resolution     = self.params.resolution, # Not clear why input parameter is returned as result
       cc_mask        = self.five_cc_result.cc_mask,
       cc_volume      = self.five_cc_result.cc_volume,
       cc_peaks       = self.five_cc_result.cc_peaks,

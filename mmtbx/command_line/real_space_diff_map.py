@@ -65,7 +65,7 @@ def run(args, log=sys.stdout):
   map_data = inputs.ccp4_map.map_data()
   # shift origin if needed
   soin = maptbx.shift_origin_if_needed(map_data=map_data,
-    sites_cart=xrs.sites_cart())
+    sites_cart=xrs.sites_cart(), crystal_symmetry=xrs.crystal_symmetry())
   map_data = soin.map_data
   xrs.set_sites_cart(soin.sites_cart)
   # estimate resolution

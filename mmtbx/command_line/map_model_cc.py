@@ -111,7 +111,7 @@ Feedback:
   results = task_obj.get_results()
   #
   broadcast(m="Map resolution:", log=log)
-  print >> log, "  Resolution:", results.resolution
+  print >> log, "  Resolution:", inputs.params.map_model_cc.resolution
   broadcast(m="Map-model CC (overall):", log=log)
   print >> log, "  CC_mask  : %6.4f"%results.cc_mask
   print >> log, "  CC_volume: %6.4f"%results.cc_volume

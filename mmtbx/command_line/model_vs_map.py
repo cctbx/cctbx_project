@@ -116,7 +116,7 @@ def run(args, log=sys.stdout):
     data_max=flex.max(md), log=log)
   # shift origin if needed
   soin = maptbx.shift_origin_if_needed(map_data=map_data,
-    sites_cart=xrs.sites_cart())
+    sites_cart=xrs.sites_cart(), crystal_symmetry=xrs.crystal_symmetry())
   map_data = soin.map_data
   xrs.set_sites_cart(soin.sites_cart)
   ####
