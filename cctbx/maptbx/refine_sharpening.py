@@ -213,7 +213,7 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
    model_f_array.apply_debye_waller_factors(
       b_iso=overall_b-starting_b_iso)
   final_b_iso=get_b_iso(model_f_array,d_min=resolution)
-  print "Effective b_iso of initial and "+\
+  print >>out,"Effective b_iso of initial and "+\
      "adjusted model map: %6.1f A**2  %6.1f A**2" %(starting_b_iso,final_b_iso)
   model_map_coeffs_normalized=model_f_array.phase_transfer(
      phase_source=model_phases,deg=True)

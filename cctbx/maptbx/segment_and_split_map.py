@@ -6463,7 +6463,7 @@ def auto_sharpen_map_or_map_coeffs(
         crystal_symmetry=crystal_symmetry,
         map=map,
         out=out)
-    print "Estimated solvent fraction: %s" %(si.solvent_fraction)
+    print >>out,"Estimated solvent fraction: %s" %(si.solvent_fraction)
 
     # Determine if we are running half-map or model_sharpening
     if half_map_data_list and len(half_map_data_list)==2:
