@@ -124,7 +124,7 @@ class minimizer:
       Sneg = 1. + expBneg
       expnu = 1. + exp(self.escalate)
 
-      sign_error_27Feb2014_through_15Feb2017 = False
+      sign_error_27Feb2014_through_15Feb2017 = True
       if sign_error_27Feb2014_through_15Feb2017:
         partB_partP0 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP0
         partB_partP1 = (-self.escalate/(psi_model*psi_model))*part_psi_model_partP1
