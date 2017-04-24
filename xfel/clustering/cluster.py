@@ -418,23 +418,25 @@ class Cluster:
     if schnell:
       logging.info("Using Euclidean distance")
       pair_distances = dist.pdist(g6_cells, metric='euclidean')
-      logging.info("Distances have been calculated")
-      this_linkage = hcluster.linkage(pair_distances,
-                                      method=linkage_method,
-                                      metric='euclidean')
+      metric = 'euclidean'
     else:
       logging.info("Using Andrews-Bernstein distance from Andrews & Bernstein "
                    "J Appl Cryst 47:346 (2014)")
       pair_distances = dist.pdist(g6_cells,
                                 metric=lambda a, b: NCDist(a, b))
+      metric = lambda a, b: NCDist(a, b)
+    if len(pair_distances) > 0:
       logging.info("Distances have been calculated")
       this_linkage = hcluster.linkage(pair_distances,
                                       method=linkage_method,
-                                      metric=lambda a, b: NCDist(a, b))
-    cluster_ids = hcluster.fcluster(this_linkage,
-                                    threshold,
-                                    criterion=method)
-    logging.debug("Clusters have been calculated")
+                                      metric=metric)
+      cluster_ids = hcluster.fcluster(this_linkage,
+                                      threshold,
+                                      criterion=method)
+      logging.debug("Clusters have been calculated")
+    else:
+      logging.debug("No distances were calculated. Aborting clustering.")
+      return [], None
 
     # 3. Create an array of sub-cluster objects from the clustering
     sub_clusters = []
