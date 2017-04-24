@@ -15,12 +15,14 @@ class minimization_monitor(object):
   def need_more_cycles(self):
     if self.current_cycle == 0:
       return True
+    if self.current_cycle >= self.max_number_of_cycles:
+      return False
     if self.number_of_cycles is not Auto:
       return self.current_cycle < self.number_of_cycles
     elif self.mode == "min_outliers":
       return self.geometry_improved() or not self.geometry_is_ok()
     elif self.mode == "no_outliers":
-      return not self.geometry_is_perfect()
+      return not (self.geometry_is_perfect() or self.no_5_cycles_improvement())
 
   def save_cycle_results(self, geometry=None):
     self.current_cycle += 1
@@ -36,6 +38,23 @@ class minimization_monitor(object):
           return True
     else:
       return False
+
+  def get_current_cycle_n(self):
+    return self.current_cycle
+
+  def same_geometry(self, g1, g2):
+    for geometry_param in ["ramachandran_outliers", "n_twisted_general"]:
+      if abs(getattr(g1, geometry_param) - getattr(g2, geometry_param)) > 0.01:
+        return False
+    return True
+
+  def no_5_cycles_improvement(self):
+    if len(self.cycles_geometry) < 5:
+      return False
+    for i in range(1,5):
+      if not self.same_geometry(self.cycles_geometry[-i], self.cycles_geometry[-i-1]):
+        return False
+    return True
 
   def geometry_is_perfect(self):
     if len(self.cycles_geometry) == 0:

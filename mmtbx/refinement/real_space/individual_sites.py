@@ -502,6 +502,7 @@ class minimize_wrapper_with_map():
     print >> log, "number_of_cycles", number_of_cycles
     while min_monitor.need_more_cycles():
       # for x in xrange(number_of_cycles):
+      print >> self.log, "Cycle number", min_monitor.get_current_cycle_n()
       print >> self.log, "  Updating rotamer restraints..."
       self.pdb_h, grm = add_rotamer_restraints(
         pdb_hierarchy      = self.pdb_h,
