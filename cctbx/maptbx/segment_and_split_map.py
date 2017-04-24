@@ -6070,7 +6070,9 @@ def average_from_bounds(lower,upper,grid_all=None):
      avg=avg_fract
   return avg
 
-def ncs_copies(site_cart,ncs_object=None):
+def get_ncs_copies(site_cart,ncs_object=None,
+   only_inside_box=None,unit_cell=None):
+
 
   ncs_group=ncs_object.ncs_groups()[0]
   from scitbx.array_family import flex
@@ -6081,6 +6083,17 @@ def ncs_copies(site_cart,ncs_object=None):
                  ncs_group.rota_matrices_inv()):
 
     sites_cart_ncs.append(r * col(site_cart)  + t)
+
+  if only_inside_box: 
+    assert unit_cell is not None
+    sites_frac_ncs=unit_cell.fractionalize(sites_cart_ncs)
+    new_sites_frac=flex.vec3_double()
+    for x in sites_frac_ncs:
+      if  x[0]>=0 and x[0]<=1  and \
+          x[1]>=0 and x[1]<=1  and \
+          x[2]>=0 and x[2]<=1:
+        new_sites_frac.append(x)
+    sites_cart_ncs=unit_cell.orthogonalize(new_sites_frac)
   return sites_cart_ncs
 
 
@@ -6155,8 +6168,9 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
   print >>out,"NCS ops:",ncs_obj.max_operators()
   centers_cart_ncs_list=[]
   for i in xrange(centers_cart.size()):
-    centers_cart_ncs_list.append(ncs_copies(
-       centers_cart[i],ncs_object=ncs_obj) )
+    centers_cart_ncs_list.append(get_ncs_copies(
+       centers_cart[i],ncs_object=ncs_obj,only_inside_box=True,
+       unit_cell=si.crystal_symmetry.unit_cell()) )
 
   all_cart=flex.vec3_double()
   for center_list in centers_cart_ncs_list:
