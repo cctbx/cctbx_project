@@ -156,7 +156,7 @@ class get_submit_command(object):
     path, ext = os.path.splitext(self.submit_path)
     encapsulate_path = path + "_submit" + ext
     f = open(encapsulate_path, 'wb')
-    f.write("#! /bin/%s\n\n" % ext)
+    f.write("#! /bin/%s\n\n" % ext[1:])
     f.write(self.generate_submit_command())
     f.write("\n")
 
