@@ -64,9 +64,10 @@ def run(args, log=sys.stdout):
   inputs.ccp4_map.show_summary(prefix="  ")
   map_data = inputs.ccp4_map.map_data()
   # shift origin if needed
-  soin = maptbx.shift_origin_if_needed(map_data=map_data, xray_structure=xrs)
+  soin = maptbx.shift_origin_if_needed(map_data=map_data,
+    sites_cart=xrs.sites_cart())
   map_data = soin.map_data
-  xrs = soin.xray_structure
+  xrs.set_sites_cart(soin.sites_cart)
   # estimate resolution
   d_min = params.resolution
   if(d_min is None):

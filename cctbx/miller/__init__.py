@@ -5646,7 +5646,9 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
 def structure_factor_box_from_map(crystal_symmetry, map=None, n_real=None,
                                   anomalous_flag=False, include_000=False):
   assert crystal_symmetry.space_group().type().number()==1 # must be P1 box
-  assert [map, n_real].count(None) in [0,2]
+  #assert [map, n_real].count(None) in [0,2]
+  if(map    is not None): assert n_real is None
+  if(n_real is not None): assert map is None
   if(n_real is None):
     n_real = map.focus()
   max_index = [(i-1)//2 for i in n_real]

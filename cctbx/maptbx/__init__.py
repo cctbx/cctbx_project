@@ -69,42 +69,31 @@ class d99(object):
     for d_min, cc in zip(self.result.d_mins, self.result.ccs):
       print >> log, fmt%(d_min, cc)
 
-def shift_origin_if_needed(map_data, xray_structure=None, sites_cart=None,
-                           crystal_symmetry=None):
-  assert [xray_structure, sites_cart].count(None) == 1
-  if([xray_structure, crystal_symmetry].count(None) == 0):
-    assert xray_structure.crystal_symmetry().is_similar_symmetry(
-      crystal_symmetry)
+def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
+  assert [sites_cart, crystal_symmetry].count(None) in [0, 2]
   shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
      map_data.is_0_based())
   shift_frac = None
   shift_cart = None
+  #sites_cart_shifted = None
   if(shift_needed):
     N = map_data.all()
     O = map_data.origin()
     map_data = map_data.shift_origin()
-    if(xray_structure is not None or sites_cart is not None):
-      if(crystal_symmetry is None):
-        crystal_symmetry = xray_structure.crystal_symmetry()
+    if(sites_cart is not None):
       if(not crystal_symmetry.space_group().type().number() in [0,1]):
         raise RuntimeError("Not implemented")
       a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
       fm = crystal_symmetry.unit_cell().fractionalization_matrix()
       shift_frac = [-sx,-sy,-sz]
       shift_cart = crystal_symmetry.unit_cell().orthogonalize(shift_frac)
-      if(sites_cart is None):
-        sites_cart = xray_structure.sites_cart()
-      sites_cart_shifted = sites_cart+\
-        flex.vec3_double(sites_cart.size(), shift_cart)
-      if(xray_structure is not None):
-        xray_structure.set_sites_cart(sites_cart_shifted)
+      sites_cart = sites_cart + flex.vec3_double(sites_cart.size(), shift_cart)
   return group_args(
-    map_data       = map_data,
-    xray_structure = xray_structure,
-    sites_cart     = sites_cart_shifted,
-    shift_frac     = shift_frac,
-    shift_cart     = shift_cart)
+    map_data   = map_data,
+    sites_cart = sites_cart,
+    shift_frac = shift_frac,
+    shift_cart = shift_cart)
 
 def value_at_closest_grid_point(map, x_frac):
   return map[closest_grid_point(map.accessor(), x_frac)]

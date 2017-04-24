@@ -111,9 +111,9 @@ class waters (validation) :
         # check for origin shift
         # ---------------------------------------------------------------------
         soin = maptbx.shift_origin_if_needed(
-          map_data=two_fofc_map, xray_structure=None)
+          map_data=two_fofc_map, sites_cart=xray_structure.sites_cart())
         two_fofc_map   = soin.map_data
-        xray_structure = soin.xray_structure
+        xray_structure.set_sites_cart(soin.sites_cart)
         # ---------------------------------------------------------------------
         pair_asu_table = xray_structure.pair_asu_table(
           distance_cutoff = distance_cutoff)

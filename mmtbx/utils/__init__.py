@@ -2951,14 +2951,14 @@ class shift_origin(object):
     # Shift origin if needed
     soin = maptbx.shift_origin_if_needed(
       map_data         = self.map_data,
-      xray_structure   = None,
-      sites_cart       = None,
-      crystal_symmetry = None)
+      sites_cart       = sites_cart,
+      crystal_symmetry = crystal_symmetry)
     self.map_data       = soin.map_data
     self.shift_cart     = soin.shift_cart
     self.shift_frac     = soin.shift_frac
     sites_cart_shifted  = soin.sites_cart
-    self.xray_structure = soin.xray_structure
+    if(self.xray_structure is not None):
+      self.xray_structure.set_sites_cart(sites_cart_shifted)
     if([self.pdb_hierarchy,sites_cart_shifted].count(None)==0):
       self.pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 

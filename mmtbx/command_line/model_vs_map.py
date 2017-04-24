@@ -115,9 +115,10 @@ def run(args, log=sys.stdout):
   show_histogram(data=md, n_slots=10, data_min=flex.min(md),
     data_max=flex.max(md), log=log)
   # shift origin if needed
-  soin = maptbx.shift_origin_if_needed(map_data=map_data, xray_structure=xrs)
+  soin = maptbx.shift_origin_if_needed(map_data=map_data,
+    sites_cart=xrs.sites_cart())
   map_data = soin.map_data
-  xrs = soin.xray_structure
+  xrs.set_sites_cart(soin.sites_cart)
   ####
   # Compute and show all stats
   ####
