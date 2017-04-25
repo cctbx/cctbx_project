@@ -154,15 +154,9 @@ class mtriage(object):
 
   def _compute_half_map_fsc(self):
     if(self.half_map_data_1 is not None):
-      self.fsc_curve_data = self.f1.d_min_from_fsc(
+      self.fsc_curve = self.f1.d_min_from_fsc(
         other = self.f2, bin_width=100, fsc_cutoff=0.143)
-      # XXX
-      #of = open("zz","w")
-      #for a,b in zip(fsc_obj.fsc.d_inv, fsc_obj.fsc.fsc):
-      #  print >>of, "%15.9f %15.9f"%(a,b)
-      #of.close()
-      # XXX
-      self.d_fsc = self.fsc_curve_data.d_min
+      self.d_fsc = self.fsc_curve.d_min
 
   def _compute_model_map_fsc(self):
     if(self.pdb_hierarchy is not None):
@@ -174,21 +168,8 @@ class mtriage(object):
       self.fsc_curve_model = f_calc.d_min_from_fsc(
         other=f_obs, bin_width=100, fsc_cutoff=0.0)
       self.d_fsc_model = self.fsc_curve_model.d_min
-      # XXX
-      #of = open("xx","w")
-      #for a,b in zip(self.fsc_curve_model.fsc.d_inv, self.fsc_curve_model.fsc.fsc):
-      #  print >>of, "%15.9f %15.9f"%(a,b)
-      #of.close()
-      # XXX
 
   def get_results(self):
-    #print "   d99          : ", self.d99
-    #print "   d99_1        : ", self.d99_1
-    #print "   d99_2        : ", self.d99_2
-    #print "   d_model      : ", self.d_model
-    #print "   b_iso_overall: ", self.b_iso_overall
-    #print "   d_fsc        : ", self.d_fsc
-    #print "   d_fsc_model  : ", self.d_fsc_model
     return group_args(
       d9              = self.d9,
       d99             = self.d99,

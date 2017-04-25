@@ -4023,15 +4023,18 @@ class array(set):
       if(fsc_result.fsc[i]<fsc_cutoff):
         i_mid = i
         break
-    #print "i_mid, cc:", fsc_result.d[i_mid], fsc_result.d_inv[i_mid]
+    d_mid = fsc_result.d[i_mid]
+    #print "i_mid, cc:", d_mid, fsc_result.d_inv[i_mid]
     d_min = None
     if(i_mid is not None):
       i_min = i_mid-5
       i_max = i_mid+6
-      on_slope = [
-        fsc_result.fsc[i_min]>fsc_cutoff,
-        fsc_result.fsc[i_max]<fsc_cutoff].count(True)==2
-      if(on_slope):
+      on_slope=True
+      if(fsc_cutoff>0.): # does not have to be on slope around fsc_cutoff=0
+        on_slope = [
+          fsc_result.fsc[i_min]>fsc_cutoff,
+          fsc_result.fsc[i_max]<fsc_cutoff].count(True)==2
+      if(on_slope or fsc_cutoff):
         x = fsc_result.d_inv[i_min:i_max]
         y = fsc_result.fsc[i_min:i_max]
         from scitbx.math import curve_fitting
@@ -4046,6 +4049,13 @@ class array(set):
           #print "x1,x2", 1./x1,1/x2
           if(x1*x2<0.):
             d_min = 1./max(x1,x2)
+          elif(x1>0 and x2>0):
+            d1,d2 = 1./x1, 1./x2
+            diff1 = abs(d1-d_mid)
+            diff2 = abs(d2-d_mid)
+            if(diff1<diff2): d_min = d1
+            else:            d_min = d2
+            if(abs(d_mid-d_min)>0.25): d_min = None
     return group_args(fsc=fsc_result, d_min=d_min)
 
   def map_correlation(self, other, bin_width=1000):
