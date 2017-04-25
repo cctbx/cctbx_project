@@ -233,12 +233,14 @@ class loop_idealization():
       self.p_after_minimiaztion_rama_outliers = ram.out_percent
       berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
       duke_count = ram.get_outliers_count_and_fraction()[0]
+      n_bad_omegas = utils.n_bad_omegas(self.resulting_pdb_h)
       self.berkeley_p_after_minimiaztion_rama_outliers = \
           berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after min:", berkeley_count, duke_count
       else:
         print >> self.log, "Number of Rama outliers after min:", berkeley_count
+      print >> self.log, "Number of bad omegas:", n_bad_omegas
       self.number_of_ccd_trials += 1
     # return new_h
     # return self.tried_rama_angles, self.tried_final_rama_angles
