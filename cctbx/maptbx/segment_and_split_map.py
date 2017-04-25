@@ -6585,19 +6585,20 @@ def run_auto_sharpen(
         first_half_map_data=box_first_half_map_data
       if box_second_half_map_data:
         second_half_map_data=box_second_half_map_data
-
+      # SET si for box now...
+      si=deepcopy(si).update_with_box_sharpening_info(
+        box_sharpening_info_obj=box_sharpening_info_obj)
   else:
     original_box_sharpening_info_obj=None
     box_sharpening_info_obj=None
     crystal_symmetry=si.crystal_symmetry
-
 
   map_coeffs_aa,map_coeffs,f_array,phases=effective_b_iso(
      map_data=map_data,
       resolution=si.resolution,
       d_min_ratio=si.d_min_ratio,
       remove_aniso=si.remove_aniso,
-      crystal_symmetry=crystal_symmetry,
+      crystal_symmetry=si.crystal_symmetry,
       out=out)
   original_b_iso=map_coeffs_aa.b_iso
   si.original_aniso_obj=map_coeffs_aa # set it so we can apply it later if desired
@@ -6605,7 +6606,7 @@ def run_auto_sharpen(
   if first_half_map_data:
     first_half_map_coeffs,dummy=get_f_phases_from_map(
           map_data=first_half_map_data,
-       crystal_symmetry=crystal_symmetry,
+       crystal_symmetry=si.crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
        remove_aniso=si.remove_aniso,
@@ -6617,7 +6618,7 @@ def run_auto_sharpen(
   if second_half_map_data:
     second_half_map_coeffs,dummy=get_f_phases_from_map(
       map_data=second_half_map_data,
-       crystal_symmetry=crystal_symmetry,
+       crystal_symmetry=si.crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
        remove_aniso=si.remove_aniso,
@@ -6889,7 +6890,6 @@ def effective_b_iso(map_data=None,tracking_data=None,
       remove_aniso=None,
       d_min_ratio=None,
       out=sys.stdout):
-
     if not crystal_symmetry:
       if box_sharpening_info_obj:
         crystal_symmetry=box_sharpening_info_obj.crystal_symmetry
