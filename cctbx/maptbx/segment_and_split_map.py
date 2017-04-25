@@ -1407,6 +1407,7 @@ class sharpening_info:
       target_scale_factors=None,
       remove_aniso=None,
       d_min_list=None,
+      verbose=None,
       pdb_inp=None,  # XXX probably do not need this
         ):
 
@@ -1489,6 +1490,7 @@ class sharpening_info:
       self.ncs_copies=ncs_copies
       self.seq_file=params.input_files.seq_file
       self.chain_type=params.crystal_info.chain_type
+      self.verbose=params.control.verbose
 
       self.wrapping=params.crystal_info.use_sg_symmetry
       self.fraction_occupied=params.map_modification.fraction_occupied
@@ -5798,7 +5800,7 @@ def get_iterated_solvent_fraction(map=None,
 def set_up_si(var_dict=None,crystal_symmetry=None,
       ncs_copies=None,n_residues=None,
       solvent_fraction=None,pdb_inp=None,map=None,
-      auto_sharpen=True,half_map_data_list=None):
+      auto_sharpen=True,half_map_data_list=None,verbose=None):
     si=sharpening_info(n_real=map.all())
     args=[]
     auto_sharpen_methods=var_dict.get('auto_sharpen_methods')
@@ -5806,7 +5808,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       args.append("auto_sharpen_methods=*%s" %(" *".join(auto_sharpen_methods)))
 
     for param in [
-       'seq_file','box_size','box_center','remove_aniso',
+       'verbose','seq_file','box_size','box_center','remove_aniso',
        'input_weight_map_pickle_file', 'output_weight_map_pickle_file',
        'read_sharpened_maps', 'write_sharpened_maps', 'select_sharpened_map',
        'output_directory',
@@ -5829,6 +5831,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'k_sol',
        'b_sol',
        'fraction_complete',
+       'verbose',
          ]:
      x=var_dict.get(param)
      if x is not None:
@@ -6420,6 +6423,7 @@ def auto_sharpen_map_or_map_coeffs(
         b_iso=None, # if set, use it
         b_sharpen=None, # if set, use it
         resolution_dependent_b=None, # if set, use it
+        verbose=None,
         out=sys.stdout):
 
     if si:  # 
@@ -6453,6 +6457,7 @@ def auto_sharpen_map_or_map_coeffs(
         solvent_fraction=solvent_content,
         auto_sharpen=auto_sharpen,
         map=map,
+        verbose=verbose,
         half_map_data_list=half_map_data_list,
         pdb_inp=pdb_inp,
         ncs_copies=ncs_copies,
@@ -6537,7 +6542,6 @@ def run_auto_sharpen(
       pdb_inp=None,
       auto_sharpen_methods=None,
       out=sys.stdout):
-
   #  Identifies parameters for optimal map sharpening using analysis of density,
   #    model-correlation, or half-map correlation (first_half_map_data vs
   #     vs second_half_map_data).

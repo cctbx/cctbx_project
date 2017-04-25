@@ -429,6 +429,9 @@ def scale_amplitudes(model_map_coeffs=None,
        first_half_map_coeffs and second_half_map_coeffs)
     is_model_based=False
 
+  if si.verbose and not verbose:
+    verbose=True
+
   # if si.target_scale_factors is set, just use those scale factors
 
   from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi,get_b_iso

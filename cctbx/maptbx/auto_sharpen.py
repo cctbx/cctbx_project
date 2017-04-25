@@ -587,6 +587,7 @@ def run(args=None,params=None,
   si=auto_sharpen_map_or_map_coeffs(
         resolution=params.crystal_info.resolution, # required
         crystal_symmetry=crystal_symmetry,
+        verbose=params.control.verbose,
         map=map_data,
         half_map_data_list=half_map_data_list,
         solvent_content=params.crystal_info.solvent_content,
