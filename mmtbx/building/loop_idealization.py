@@ -206,6 +206,7 @@ class loop_idealization():
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count
         self.resulting_pdb_h.write_pdb_file(file_name="%d%s_discrepancy.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
+      self.resulting_pdb_h.write_pdb_file(file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
       if self.params.minimize_whole:
         print >> self.log, "minimizing whole chain..."
         print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
