@@ -4023,6 +4023,7 @@ class array(set):
       if(fsc_result.fsc[i]<fsc_cutoff):
         i_mid = i
         break
+    #print "i_mid, cc:", fsc_result.d[i_mid], fsc_result.d_inv[i_mid]
     d_min = None
     if(i_mid is not None):
       i_min = i_mid-5
@@ -4042,6 +4043,7 @@ class array(set):
         if(well_defined):
           x1 = (-b+math.sqrt(det))/(2*a)
           x2 = (-b-math.sqrt(det))/(2*a)
+          #print "x1,x2", 1./x1,1/x2
           if(x1*x2<0.):
             d_min = 1./max(x1,x2)
     return group_args(fsc=fsc_result, d_min=d_min)
