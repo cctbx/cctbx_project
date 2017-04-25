@@ -495,12 +495,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Require improvement
        .help = Require improvement in score for sharpening to be applied
 
-     region_weight = 20
+     region_weight = 40
        .type = float
        .short_caption = Region weighting
        .help = Region weighting in adjusted surface area calculation.\
             Score is surface area minus region_weight times number of regions.\
-            Default is 20. A smaller value will give more sharpening.
+            Default is 40. A smaller value will give more sharpening.
 
      sa_percent = 30.
        .type = float
@@ -6520,6 +6520,7 @@ def auto_sharpen_map_or_map_coeffs(
        print >>out,"Sharpening did not improve map "+\
         "(%7.2f sharpened, %7.2f unsharpened). Discarding sharpened map" %(
         si.score,local_si.score)
+       print >>out,"\nUse discard_if_worse=False to keep the sharpening"
        local_si.sharpen_and_score_map(map_data=map,out=out)
        si=local_si 
     if not si.is_model_sharpening() and not si.is_half_map_sharpening():
