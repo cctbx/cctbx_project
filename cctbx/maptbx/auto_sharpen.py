@@ -214,7 +214,7 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map. Default is True.
 
-     discard_if_worse = True
+     discard_if_worse = False
        .type = bool
        .short_caption = Discard sharpening if worse
        .help = Discard sharpening if worse
