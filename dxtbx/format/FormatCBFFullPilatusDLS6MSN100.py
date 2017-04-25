@@ -69,134 +69,169 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
     if goniometer is None:
       goniometer = self.get_goniometer()
 
+    assert goniometer is not None
+
     #avoid a module-level import from the DIALS namespace that kills LABELIT
     from dials.util.masking import GoniometerShadowMaskGenerator
 
-    class SmarGonShadowMaskGenerator(GoniometerShadowMaskGenerator):
-      def __init__(SMG, goniometer):
-        from scitbx.array_family import flex
-        import math
-        SMG.goniometer = goniometer
+    if goniometer.get_names()[1] == 'GON_CHI':
+      # SmarGon
 
-        coords = flex.vec3_double()
-        axis = flex.size_t()
+      class SmarGonShadowMaskGenerator(GoniometerShadowMaskGenerator):
+        def __init__(SMG, goniometer):
+          from scitbx.array_family import flex
+          import math
+          SMG.goniometer = goniometer
 
-        # FACE A: Sample holder
-        #   Defined as semi-circle of radius r(A) = 10 mm (centred on PHI axis)
-        #   with rectangle of size a(A) = 12.8 mm (x 20 mm)
+          coords = flex.vec3_double()
+          axis = flex.size_t()
 
-        offsetA = 33.0
-        # semi-circle for phi=-90 ... +90
-        radiusA = 10.0
-        phi = flex.double_range(-90, 100, step=10) * math.pi/180
-        x = flex.double(phi.size(), -offsetA)
-        y = radiusA * flex.cos(phi)
-        z = radiusA * flex.sin(phi)
+          # FACE A: Sample holder
+          #   Defined as semi-circle of radius r(A) = 10 mm (centred on PHI axis)
+          #   with rectangle of size a(A) = 12.8 mm (x 20 mm)
 
-        # corners of square
-        sqdA = 12.8 # square depth
-        nsteps = 10
-        for i in range(nsteps+1):
-          for sign in (+1, -1):
-            x.append(-offsetA)
-            y.append(i * -sqdA/nsteps)
-            z.append(sign * radiusA)
-        x.append(-offsetA)
-        y.append(-sqdA)
-        z.append(0)
+          offsetA = 33.0
+          # semi-circle for phi=-90 ... +90
+          radiusA = 10.0
+          phi = flex.double_range(-90, 100, step=10) * math.pi/180
+          x = flex.double(phi.size(), -offsetA)
+          y = radiusA * flex.cos(phi)
+          z = radiusA * flex.sin(phi)
 
-        SMG.faceA = flex.vec3_double(x, y, z)
+          # corners of square
+          sqdA = 12.8 # square depth
+          nsteps = 10
+          for i in range(nsteps+1):
+            for sign in (+1, -1):
+              x.append(-offsetA)
+              y.append(i * -sqdA/nsteps)
+              z.append(sign * radiusA)
+          x.append(-offsetA)
+          y.append(-sqdA)
+          z.append(0)
 
-        # FACE B: Lower arm
-        sx = -28.50
-        sy = -4.90
-        sz = 8.50
-        mx = -13.80
-        my = -26.00
-        nx = -27.50
-        ny = -29.50
-        px = -65.50
-        py = -29.50
-        SMG.faceB = flex.vec3_double(((sx,sy,sz),(mx,my,0),(nx,ny,0),(px,py,0)))
+          SMG.faceA = flex.vec3_double(x, y, z)
 
-        # FACE E: Rim of sample holder
-        #   Defined as circle of radius r(E) = 6 mm (centred on PHI axis) at an
-        #   offset o(E) = 19 mm
+          # FACE B: Lower arm
+          sx = -28.50
+          sy = -4.90
+          sz = 8.50
+          mx = -13.80
+          my = -26.00
+          nx = -27.50
+          ny = -29.50
+          px = -65.50
+          py = -29.50
+          SMG.faceB = flex.vec3_double(((sx,sy,sz),(mx,my,0),(nx,ny,0),(px,py,0)))
 
-        offsetE = 19.0
-        radiusE = 6.0
-        phi = flex.double_range(0, 360, step=15) * math.pi/180
-        x = flex.double(phi.size(), -offsetE)
-        y = radiusE * flex.cos(phi)
-        z = radiusE * flex.sin(phi)
+          # FACE E: Rim of sample holder
+          #   Defined as circle of radius r(E) = 6 mm (centred on PHI axis) at an
+          #   offset o(E) = 19 mm
 
-        SMG.faceE = flex.vec3_double(x, y, z)
+          offsetE = 19.0
+          radiusE = 6.0
+          phi = flex.double_range(0, 360, step=15) * math.pi/180
+          x = flex.double(phi.size(), -offsetE)
+          y = radiusE * flex.cos(phi)
+          z = radiusE * flex.sin(phi)
 
-      def extrema_at_scan_angle(SMG, scan_angle):
-        from scitbx.array_family import flex
+          SMG.faceE = flex.vec3_double(x, y, z)
 
-        # Align end station coordinate system with ImgCIF coordinate system
-        from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
-        from scitbx import matrix
-        R = align_reference_frame(matrix.col((-1,0,0)), matrix.col((1,0,0)),
-                                  matrix.col((0,-1,0)), matrix.col((0,1,0)))
-        faceA = R.elems * SMG.faceA
-        faceE = R.elems * SMG.faceE
+        def extrema_at_scan_angle(SMG, scan_angle):
+          from scitbx.array_family import flex
 
-        axes = SMG.goniometer.get_axes()
-        angles = SMG.goniometer.get_angles()
-        scan_axis = SMG.goniometer.get_scan_axis()
-        angles[scan_axis] = scan_angle
+          # Align end station coordinate system with ImgCIF coordinate system
+          from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
+          from scitbx import matrix
+          R = align_reference_frame(matrix.col((-1,0,0)), matrix.col((1,0,0)),
+                                    matrix.col((0,-1,0)), matrix.col((0,1,0)))
+          faceA = R.elems * SMG.faceA
+          faceE = R.elems * SMG.faceE
 
-        extrema = flex.vec3_double()
+          axes = SMG.goniometer.get_axes()
+          angles = SMG.goniometer.get_angles()
+          scan_axis = SMG.goniometer.get_scan_axis()
+          angles[scan_axis] = scan_angle
 
-        for coords in (faceA, faceE):
-          coords = coords.deep_copy()
-          for i, axis in enumerate(axes):
-            if i == 0:
-              continue # shadow doesn't change with phi setting
-            sel = flex.bool(len(coords), True)
-            rotation = matrix.col(
-              axis).axis_and_angle_as_r3_rotation_matrix(angles[i], deg=True)
-            coords.set_selected(sel, rotation.elems * coords.select(sel))
+          extrema = flex.vec3_double()
+
+          for coords in (faceA, faceE):
+            coords = coords.deep_copy()
+            for i, axis in enumerate(axes):
+              if i == 0:
+                continue # shadow doesn't change with phi setting
+              sel = flex.bool(len(coords), True)
+              rotation = matrix.col(
+                axis).axis_and_angle_as_r3_rotation_matrix(angles[i], deg=True)
+              coords.set_selected(sel, rotation.elems * coords.select(sel))
+            extrema.extend(coords)
+
+          s = matrix.col(SMG.faceB[0])
+          mx, my, _ = SMG.faceB[1]
+          nx, ny, _ = SMG.faceB[2]
+          px, py, _ = SMG.faceB[3]
+
+          Rchi = (R.inverse() * matrix.col(axes[1])).axis_and_angle_as_r3_rotation_matrix(angles[1], deg=True)
+          sk = Rchi * s
+          sxk, syk, szk = sk.elems
+          coords = flex.vec3_double((
+            (sxk, syk, 0),
+            (sxk, syk, szk),
+            (sxk+mx/2, syk+my/2, szk),
+            (sxk+mx, syk+my, szk),
+            (sxk+(mx+nx)/2, syk+(my+ny)/2, szk),
+            (sxk+nx, syk+ny, szk),
+            (sxk+(nx+px)/2, syk+(ny+py)/2, szk),
+            (sxk+px, syk+py, szk),
+            (sxk+px, syk+py, 0),
+            (sxk+px, syk+py, -szk),
+            (sxk+(nx+px)/2, syk+(ny+py)/2, -szk),
+            (sxk+nx, syk+ny, -szk),
+            (sxk+(mx+nx)/2, syk+(my+ny)/2, -szk),
+            (sxk+mx, syk+my, -szk),
+            (sxk+mx/2, syk+my/2, -szk),
+            (sxk, syk, -szk),
+          ))
+
+          coords = R.elems * coords
+          Romega = matrix.col(axes[2]).axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
+          coords = Romega.elems * coords
           extrema.extend(coords)
 
-        s = matrix.col(SMG.faceB[0])
-        mx, my, _ = SMG.faceB[1]
-        nx, ny, _ = SMG.faceB[2]
-        px, py, _ = SMG.faceB[3]
+          return extrema
 
-        Rchi = (R.inverse() * matrix.col(axes[1])).axis_and_angle_as_r3_rotation_matrix(angles[1], deg=True)
-        sk = Rchi * s
-        sxk, syk, szk = sk.elems
-        coords = flex.vec3_double((
-          (sxk, syk, 0),
-          (sxk, syk, szk),
-          (sxk+mx/2, syk+my/2, szk),
-          (sxk+mx, syk+my, szk),
-          (sxk+(mx+nx)/2, syk+(my+ny)/2, szk),
-          (sxk+nx, syk+ny, szk),
-          (sxk+(nx+px)/2, syk+(ny+py)/2, szk),
-          (sxk+px, syk+py, szk),
-          (sxk+px, syk+py, 0),
-          (sxk+px, syk+py, -szk),
-          (sxk+(nx+px)/2, syk+(ny+py)/2, -szk),
-          (sxk+nx, syk+ny, -szk),
-          (sxk+(mx+nx)/2, syk+(my+ny)/2, -szk),
-          (sxk+mx, syk+my, -szk),
-          (sxk+mx/2, syk+my/2, -szk),
-          (sxk, syk, -szk),
-        ))
+      #------------------ finished defining SmarGonShadowMaskGenerator
+      return SmarGonShadowMaskGenerator(goniometer)
 
-        coords = R.elems * coords
-        Romega = matrix.col(axes[2]).axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
-        coords = Romega.elems * coords
-        extrema.extend(coords)
+    elif goniometer.get_names()[1] == 'GON_KAPPA':
+      # mini Kappa
 
-        return extrema
-    #------------------ finished defining SmarGonShadowMaskGenerator
-    return SmarGonShadowMaskGenerator(goniometer)
+      from dials.util.masking import GoniometerShadowMaskGenerator
+      from scitbx.array_family import flex
+      import math
 
+      # Simple model of cone around goniometer phi axis
+      # Exact values don't matter, only the ratio of height/radius
+      height = 50 # mm
+      radius = 20 # mm
+
+      steps_per_degree = 1
+      theta = flex.double([range(360*steps_per_degree)]) * math.pi/180 * 1/steps_per_degree
+      y = radius * flex.cos(theta) # x
+      z = radius * flex.sin(theta) # y
+      x = flex.double(theta.size(), height) # z
+
+      coords = flex.vec3_double(zip(x, y, z))
+      coords.insert(0, (0,0,0))
+
+      if goniometer is None:
+        goniometer = self.get_goniometer()
+      return GoniometerShadowMaskGenerator(
+        goniometer, coords, flex.size_t(len(coords), 0))
+
+    else:
+      raise RuntimeError(
+        "Don't understand this goniometer: %s" %list(goniometer.get_names()))
 
 if __name__ == '__main__':
 
