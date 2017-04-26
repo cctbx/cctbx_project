@@ -145,7 +145,7 @@ class mtriage(object):
     if(self.pdb_hierarchy is not None):
       o = resolution_from_map_and_model.run(
         map_data         = self.box.map_data,
-        xray_structure   = self.box.xray_structure.deep_copy_scatterers(),
+        xray_structure   = self.box.xray_structure,
         pdb_hierarchy    = self.box.pdb_hierarchy,
         d_min_min        = 1.7,
         nproc            = self.nproc)

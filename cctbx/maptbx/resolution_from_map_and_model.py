@@ -323,6 +323,10 @@ class run(object):
     Given map and model estimate resolution by maximizing map CC(map, model-map).
     As a by-product, also provides CC and optimal overall B-factor.
     """
+    # XXX xray_structure, pdb_hierarchy are modified!
+    xray_structure = xray_structure.deep_copy_scatterers()
+    pdb_hierarchy  = pdb_hierarchy.deep_copy()
+    #
     unit_cell = xray_structure.unit_cell()
     d_mins = get_trial_resolutions(map_data=map_data,
       unit_cell=xray_structure.unit_cell(), d_min_min=d_min_min)
