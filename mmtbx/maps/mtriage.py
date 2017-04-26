@@ -169,6 +169,26 @@ class mtriage(object):
         other=f_obs, bin_width=100, fsc_cutoff=0.0)
       self.d_fsc_model = self.fsc_curve_model.d_min
 
+  def show_summary(self):
+    r = self.get_results()
+    print "d99          : ", r.d99
+    print "d99_1        : ", r.d99_1
+    print "d99_2        : ", r.d99_2
+    print "d_model      : ", r.d_model
+    print "b_iso_overall: ", r.b_iso_overall
+    print "d_fsc        : ", r.d_fsc
+    print "d_fsc_model  : ", r.d_fsc_model
+    #
+    of = open("fsc_curve_model","w")
+    for a,b in zip(r.fsc_curve_model.fsc.d_inv, r.fsc_curve_model.fsc.fsc):
+      print >>of, "%15.9f %15.9f"%(a,b)
+    of.close()
+    #
+    of = open("fsc_curve","w")
+    for a,b in zip(r.fsc_curve.fsc.d_inv, r.fsc_curve.fsc.fsc):
+      print >>of, "%15.9f %15.9f"%(a,b)
+    of.close()
+
   def get_results(self):
     return group_args(
       d9              = self.d9,
