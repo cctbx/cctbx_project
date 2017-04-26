@@ -3990,8 +3990,10 @@ class array(set):
     while i < ds.size():
       sc = 1
       if(min(i+bin_width*2, d1.size()-1)==d1.size()-1): sc = 2
-      n_next.append(min(i+bin_width*sc, d1.size()-1))
-      n.append(i)
+      p = min(i+bin_width*sc, d1.size()-1)
+      if(p!=i):
+        n_next.append(p)
+        n.append(i)
       i+=bin_width*sc
     # Compute FSC
     d_inv, d, fsc = flex.double(),flex.double(),flex.double()
@@ -4006,9 +4008,13 @@ class array(set):
       d.append(d_mean)
       fsc.append(cc)
     # Smooth FSC curve
+    half_window=50
+    ratio=d_inv.size()/half_window
+    if(ratio<10):
+      half_window = int(half_window/10)
     from scitbx import smoothing
     d_inv, fsc = smoothing.savitzky_golay_filter(
-      x=d_inv,  y=fsc,  half_window=50, degree=2)
+      x=d_inv,  y=fsc,  half_window=half_window, degree=2)
     s = flex.sort_permutation(d_inv)
     return group_args(d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
 
@@ -4043,7 +4049,7 @@ class array(set):
         c = c-fsc_cutoff
         det = b**2-4*a*c
         well_defined = [det >= 0., a != 0.]
-        if(well_defined):
+        if(well_defined.count(True)==2):
           x1 = (-b+math.sqrt(det))/(2*a)
           x2 = (-b-math.sqrt(det))/(2*a)
           #print "x1,x2", 1./x1,1/x2

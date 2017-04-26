@@ -184,10 +184,11 @@ class mtriage(object):
       print >>of, "%15.9f %15.9f"%(a,b)
     of.close()
     #
-    of = open("fsc_curve","w")
-    for a,b in zip(r.fsc_curve.fsc.d_inv, r.fsc_curve.fsc.fsc):
-      print >>of, "%15.9f %15.9f"%(a,b)
-    of.close()
+    if(r.fsc_curve is not None):
+      of = open("fsc_curve","w")
+      for a,b in zip(r.fsc_curve.fsc.d_inv, r.fsc_curve.fsc.fsc):
+        print >>of, "%15.9f %15.9f"%(a,b)
+      of.close()
 
   def get_results(self):
     return group_args(
