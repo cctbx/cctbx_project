@@ -1170,6 +1170,12 @@ Wait for the command to finish, then try again.""" % vars())
         source_file, target_file, source_is_python_exe=False):
     source_file = self.as_relocatable_path(source_file)
     target_file = self.as_relocatable_path(target_file)
+    # always skip amber.python
+    if target_file.basename() in ['amber.python',
+                                  #'rosetta.python',
+                                  #'afitt.python',
+                                 ]:
+      return
     if self.build_options.skip_phenix_dispatchers and 'phenix' in target_file.basename():
       return
     reg = self._dispatcher_registry.setdefault(target_file, source_file)
