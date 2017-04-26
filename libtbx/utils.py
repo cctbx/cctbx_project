@@ -59,6 +59,12 @@ def xfrange(start, stop=None, step=None, tolerance=None):
   for i in xrange(count):
     yield start + i * step
 
+def safe_div(a,b):
+  if abs(b) < 1e-8:
+    return 0
+  else:
+    return a/b
+
 def frange(start, stop=None, step=None):
   """
   Non-generator version of xfrange.

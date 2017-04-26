@@ -5,7 +5,7 @@ from mmtbx.secondary_structure import manager
 import iotbx.pdb
 import iotbx.phil
 from scitbx.array_family import flex
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, safe_div
 import cStringIO
 import sys
 from libtbx import easy_mp
@@ -270,10 +270,12 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
       pdb_h,
       mediocre_hbond_cutoff=work_params.mediocre_hbond_cutoff,
       bad_hbond_cutoff=work_params.bad_hbond_cutoff)
-  results = easy_mp.pool_map(
-      processes=work_params.nproc,
-      fixed_func=calc_ss_stats,
-      args=hsh_tuples)
+  results = []
+  if len(hsh_tuples) > 0:
+    results = easy_mp.pool_map(
+        processes=work_params.nproc,
+        fixed_func=calc_ss_stats,
+        args=hsh_tuples)
 
   cumm_n_hbonds = 0
   cumm_n_bad_hbonds = 0
@@ -292,39 +294,40 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
   # See also: http://proteopedia.org/wiki/index.php/Hydrogen_bonds
   #
   for ss_elem, r in zip(ss_annot.helices+ss_annot.sheets, results):
-    n_hbonds, n_bad_hbonds, n_mediocre_hbonds, hb_lens, n_outliers, n_wrong_region = r
-    cumm_n_hbonds += n_hbonds
-    cumm_n_bad_hbonds += n_bad_hbonds
-    cumm_n_mediocre_hbonds += n_mediocre_hbonds
-    cumm_n_rama_out += n_outliers
-    cumm_n_wrong_reg += n_wrong_region
-    if n_wrong_region > 0:
-      n_elem_with_wrong_rama += 1
-    if n_outliers > 0:
-      n_elem_with_rama_out += 1
-    if n_bad_hbonds > 0:
-      n_elem_with_bad_hbond += 1
-    if n_bad_hbonds + n_outliers + n_wrong_region > 0:
-      n_bad_helix_sheet_records += 1
-    if n_bad_hbonds + n_mediocre_hbonds + n_outliers + n_wrong_region > 0:
-      # this is bad annotation, printing it to log with separate stats:
-      print >> out, "Bad annotation found:"
-      print >> out, "%s" % ss_elem.as_pdb_str()
-      print >> out, "  Total hb: %d, mediocre: %d, bad: %d, Rama outliers: %d, Rama wrong %d" % (
-          n_hbonds, n_mediocre_hbonds, n_bad_hbonds, n_outliers, n_wrong_region)
-      print >> out, "-"*80
+    if r is not None:
+      n_hbonds, n_bad_hbonds, n_mediocre_hbonds, hb_lens, n_outliers, n_wrong_region = r
+      cumm_n_hbonds += n_hbonds
+      cumm_n_bad_hbonds += n_bad_hbonds
+      cumm_n_mediocre_hbonds += n_mediocre_hbonds
+      cumm_n_rama_out += n_outliers
+      cumm_n_wrong_reg += n_wrong_region
+      if n_wrong_region > 0:
+        n_elem_with_wrong_rama += 1
+      if n_outliers > 0:
+        n_elem_with_rama_out += 1
+      if n_bad_hbonds > 0:
+        n_elem_with_bad_hbond += 1
+      if n_bad_hbonds + n_outliers + n_wrong_region > 0:
+        n_bad_helix_sheet_records += 1
+      if n_bad_hbonds + n_mediocre_hbonds + n_outliers + n_wrong_region > 0:
+        # this is bad annotation, printing it to log with separate stats:
+        print >> out, "Bad annotation found:"
+        print >> out, "%s" % ss_elem.as_pdb_str()
+        print >> out, "  Total hb: %d, mediocre: %d, bad: %d, Rama outliers: %d, Rama wrong %d" % (
+            n_hbonds, n_mediocre_hbonds, n_bad_hbonds, n_outliers, n_wrong_region)
+        print >> out, "-"*80
 
   # n1 = percentage of bad SS elements (per given model);
   # bad here means: n_bad_hbonds + n_outliers + n_wrong_region > 0
-  n1 = n_bad_helix_sheet_records/n_total_helix_sheet_records*100.
+  n1 = safe_div(n_bad_helix_sheet_records,n_total_helix_sheet_records)*100.
   # n2 = percentage of SS elements that have at least one residue belonging to a wrong region of Ramachandran plot (per given model);
-  n2 = n_elem_with_wrong_rama/n_total_helix_sheet_records*100.
+  n2 = safe_div(n_elem_with_wrong_rama,n_total_helix_sheet_records)*100.
   # n3 = percentage of SS elements that have at least one residue being a Ramachandran plot outlier (per given model);
-  n3 = n_elem_with_rama_out/n_total_helix_sheet_records*100.
+  n3 = safe_div(n_elem_with_rama_out,n_total_helix_sheet_records)*100.
   # n4 = percentage of bad H bonds (per given model).
-  n4 =  cumm_n_bad_hbonds/cumm_n_hbonds*100. # No per SS element separation
+  n4 = safe_div(cumm_n_bad_hbonds,cumm_n_hbonds)*100. # No per SS element separation
   # percentage of SS elements that have at least one bad H bond (per given model)
-  n5 = n_elem_with_bad_hbond/n_total_helix_sheet_records*100.
+  n5 = safe_div(n_elem_with_bad_hbond,n_total_helix_sheet_records)*100.
   print >> out, "Overall info:"
   print >> out, "  Total HELIX+SHEET recods       :", n_total_helix_sheet_records
   print >> out, "  Total bad HELIX+SHEET recods   :", n_bad_helix_sheet_records
