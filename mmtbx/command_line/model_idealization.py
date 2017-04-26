@@ -476,7 +476,6 @@ class model_idealization():
       master_sel = flex.size_t([])
       self.filtered_ncs_restr_group_list = self.filter_ncs_restraints_group_list(
           self.whole_pdb_h, self.ncs_restr_group_list)
-      print "self.filtered_ncs_restr_group_list", self.filtered_ncs_restr_group_list
     if not self.params.ignore_ncs:
       if len(self.filtered_ncs_restr_group_list) > 0:
         self.using_ncs = True
@@ -487,7 +486,6 @@ class model_idealization():
         self.master_pdb_h = self.whole_pdb_h.select(master_sel).deep_copy()
         self.master_sel=master_sel
         self.master_pdb_h.reset_atom_i_seqs()
-        print "master_sel", list(master_sel)
 
     if self.using_ncs:
       if self.params.debug:
