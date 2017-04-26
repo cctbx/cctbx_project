@@ -2170,10 +2170,12 @@ class structure(crystal.special_position_settings):
     cif[data_name] = self.as_cif_block()
     print >> out, cif
 
-  def as_cif_block(self, covariance_matrix=None, cell_covariance_matrix=None):
+  def as_cif_block(self, covariance_matrix=None,
+    cell_covariance_matrix=None, format="mmCIF"):
 
     from iotbx.cif import atom_type_cif_loop, model
     cs_cif_block = self.crystal_symmetry().as_cif_block(
+        format=format,
         cell_covariance_matrix=cell_covariance_matrix)
     # crystal_symmetry_as_cif_block.__init__(
     #   self, xray_structure.crystal_symmetry(),
