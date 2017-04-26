@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 04/03/2017
+Last Changed: 04/25/2017
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -237,17 +237,21 @@ class InputFinder():
       input_list = self.get_file_list(path)
       suffix = "folder"
 
-    if len(input_list) > 1:
+    if len(input_list) > 0:
       input_pairs = [(filepath, self.identify_file_type(filepath)) for
         filepath in input_list]
 
       if filter:
         input_pairs = [i for i in input_pairs if 'image' in i[1]]
 
-      input_list = [i[0] for i in input_pairs]
-      input_types = [i[1] for i in input_pairs]
-      consensus_type = Counter(input_types).most_common(1)[0][0]
-      input_type = '{} {}'.format(consensus_type, suffix)
+      if len(input_pairs) > 0:
+        input_list = [i[0] for i in input_pairs]
+        input_types = [i[1] for i in input_pairs]
+        consensus_type = Counter(input_types).most_common(1)[0][0]
+        input_type = '{} {}'.format(consensus_type, suffix)
+      else:
+        input_list = []
+        input_type = None
 
     return input_list, input_type
 

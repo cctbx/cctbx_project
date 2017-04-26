@@ -1,12 +1,13 @@
-IOTA v1.1.010 - DIALS additions, run recovery and assorted bugfixes
+IOTA v1.1.011 - Real-time diffraction monitor
 
-1. Absorb the wx.PostEvent error if run is aborted
-2. Call dials.estimate_gain on image import (had cribbed code before)
-3. Option to estimate gain for each image in DIALS options dialog
-4. Changing BeamXY and distance propagates them to DIALS PHIL, image is never
- converted to pickle if using DIALS
-5. Added detector override to DIALS PHIL defaults
-6. iter.cfg and init.cfg now saved for each integration run rather than in
-the roof data processing folder
-7. Added option to "re-run" previous runs; finished runs can be repeated as
-new runs; aborted runs can be restarted and finished (within same run folder)
+1. Quick / easy monitor of incoming images (run as iota.track_images, may
+change in future or incorporate into main IOTA module)
+2. Performs basic spotfinding w/ DIALS and plots results
+3. User can
+    a. Introduce custom spotfinding params on start of run
+    b. Change min Bragg spots requirement on the fly (graphic adjusted to show)
+    c. Will have other capabilities in future
+4. Tinkered with axis objects to make plotting much faster than normal
+5. Virtually real-time with sufficient cores available for multiprocessing;
+already there for 10Hz fixed-target / synchrotron experiments.
+6. (needs more testing, though)

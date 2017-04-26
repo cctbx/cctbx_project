@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 04/13/2017
+Last Changed: 04/25/2017
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -14,6 +14,8 @@ from threading import Thread
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
 from libtbx import easy_run
+
+from dxtbx.datablock import DataBlockFactory
 
 from iota.components.iota_utils import InputFinder
 import iota.components.iota_image as img
@@ -152,10 +154,6 @@ class ImageFinderThread(Thread):
     old_file_list = [i[2] for i in self.image_list]
     new_file_list = [i for i in ext_file_list if i not in old_file_list]
 
-    # # Test if file is an image pickle or raw image (may be slow!)
-    # tested_file_list = [i for i in new_file_list if ginp.get_file_type(i) !=
-    #                     'not image']
-
     # Generate list of new images
     new_img = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
       new_file_list, len(old_file_list) + 1)]
@@ -204,3 +202,86 @@ class ImageViewerThread(Thread):
   def run(self):
     command = '{}.image_viewer {}'.format(self.backend, self.file_string)
     easy_run.fully_buffered(command)
+
+
+# ------------------------------ IMAGE TRACKING ------------------------------ #
+
+tp_EVT_SPFDONE = wx.NewEventType()
+EVT_SPFDONE = wx.PyEventBinder(tp_EVT_SPFDONE, 1)
+
+tp_EVT_SPFALLDONE = wx.NewEventType()
+EVT_SPFALLDONE = wx.PyEventBinder(tp_EVT_SPFALLDONE, 1)
+
+class SpotFinderAllDone(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, info=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.info = info
+  def GetValue(self):
+    return self.info
+
+class SpotFinderOneDone(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, info=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.info = info
+  def GetValue(self):
+    return self.info
+
+class SpotFinderOneThread():
+  def __init__(self, parent, processor):
+    self.meta_parent = parent.parent
+    self.processor = processor
+
+  def run(self, idx, datablock):
+    observed = self.processor.find_spots(datablock=datablock)
+    return [idx, len(observed)]
+
+
+class SpotFinderThread(Thread):
+  ''' Basic spotfinder (with defaults) that could be used to rapidly analyze 
+  images as they are collected '''
+  def __init__(self,
+               parent,
+               data_list,
+               term_file,
+               processor):
+    Thread.__init__(self)
+    self.parent = parent
+    self.data_list = data_list
+    self.term_file = term_file
+    self.spotfinder = SpotFinderOneThread(self, processor)
+
+  def run(self):
+    parallel_map(iterable=self.data_list,
+                 func=self.spf_wrapper,
+                 callback=self.callback,
+                 processes=None)
+
+    # Signal that this batch is finished
+    try:
+      if os.path.isfile(self.term_file):
+        print 'INFO WILL BE SET TO ZERO'
+        info = []
+      else:
+        info = self.data_list
+      evt = SpotFinderOneDone(tp_EVT_SPFALLDONE, -1, info=info)
+      wx.PostEvent(self.parent, evt)
+    except TypeError:
+      pass
+
+  def spf_wrapper(self, img):
+    if os.path.isfile(self.term_file):
+      return
+    else:
+      datablock = DataBlockFactory.from_filenames([img])[0]
+      info = self.spotfinder.run(self.data_list.index(img), datablock)
+      return info
+
+
+  def callback(self, info):
+    try:
+      evt = SpotFinderOneDone(tp_EVT_SPFDONE, -1, info=info)
+      wx.PostEvent(self.parent, evt)
+    except TypeError:
+      pass

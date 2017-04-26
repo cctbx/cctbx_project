@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/13/2017
+Last Changed: 04/25/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -451,7 +451,7 @@ class ProcessingTab(wx.Panel):
     int_sizer = wx.BoxSizer(wx.VERTICAL)
     self.int_panel.SetSizer(int_sizer)
     self.int_figure = Figure()
-    self.int_figure.patch.set_alpha(0)    # create transparent background
+    self.int_figure.patch.set_visible(False)    # create transparent background
 
     int_gsp = gridspec.GridSpec(4, 5)
     int_gsub = gridspec.GridSpecFromSubplotSpec(2, 1,
@@ -468,6 +468,7 @@ class ProcessingTab(wx.Panel):
     self.nsref_axes.set_ylabel('Strong Spots')
     self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+
 
     # UC Histogram / cluster figure
     uc_gsub = gridspec.GridSpecFromSubplotSpec(2, 3,
@@ -513,7 +514,7 @@ class ProcessingTab(wx.Panel):
     proc_sizer = wx.BoxSizer(wx.VERTICAL)
     self.proc_panel.SetSizer(proc_sizer)
     self.proc_figure = Figure()
-    self.proc_figure.patch.set_alpha(0)
+    self.proc_figure.patch.set_visible(False)
 
     self.sum_axes = self.proc_figure.add_subplot(111)
     self.sum_axes.axis('off')
@@ -593,6 +594,7 @@ class ProcessingTab(wx.Panel):
           self.alpha_axes.clear()
           self.beta_axes.clear()
           self.gamma_axes.clear()
+
           a = [i.final['a'] for i in finished]
           b = [i.final['b'] for i in finished]
           c = [i.final['c'] for i in finished]
@@ -1035,8 +1037,7 @@ class ProcWindow(wx.Frame):
 
   def __init__(self, parent, id, title,
                phil,
-               target_phil=None,
-               recover=None):
+               target_phil=None):
     wx.Frame.__init__(self, parent, id, title, size=(800, 900),
                       style= wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER)
 

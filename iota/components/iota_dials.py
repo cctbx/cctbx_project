@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/13/2017
+Last Changed: 04/25/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -144,6 +144,7 @@ class Triage(object):
 
     # Modify settings
     self.phil.output.strong_filename = None
+    self.processor = IOTADialsProcessor(params=self.phil)
 
     # Convert raw image into single-image datablock
     with misc.Capturing() as junk_output:
@@ -152,9 +153,6 @@ class Triage(object):
   def triage_image(self):
     """ Perform triage by running spotfinding and analyzing results
     """
-
-    self.processor = IOTADialsProcessor(params=self.phil)
-
     # Perform spotfinding
     observed = self.processor.find_spots(datablock=self.datablock)
 
