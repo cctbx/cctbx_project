@@ -236,17 +236,22 @@ class iterate_over_residues (object) :
       elif not crystal_symmetry_map.is_similar_symmetry(crystal_symmetry_model):
         print >> self.log, """Warning: The map and model appear to have different crystal symmetry information.
           EMRinger will assume the map symmetry data is correct and process."""
-      # assert crystal_symmetry_map.is_similar_symmetry(crystal_symmetry_model)
-      import mmtbx.utils
-      shift_manager = mmtbx.utils.shift_origin(
-      map_data = ccp4_map.data.as_double(),
-      pdb_hierarchy = pdb_hierarchy,
-      crystal_symmetry = crystal_symmetry_map)
-      if not shift_manager.shift_cart == None:
-        print >> self.log, "Warning: Model and Map use different origin. Applying origin shift to compensate."
-      pdb_hierarchy = shift_manager.pdb_hierarchy # gives you shifted model
+      # If map space group is P1, then check that model space group is also either not present or is P1.
+      # If both are p1 or model symmetry is not present, then do the shift. Otherwise, no shift.
+      if space_group_number == 1 and not (crystal_symmetry_model and crystal_symmetry_model.space_group() and crystal_symmetry_model.space_group().info().type().number() != 1):
+        import mmtbx.utils
+        shift_manager = mmtbx.utils.shift_origin(
+        map_data = ccp4_map.data.as_double(),
+        pdb_hierarchy = pdb_hierarchy,
+        crystal_symmetry = crystal_symmetry_map)
+        if not shift_manager.shift_cart == None:
+          print >> self.log, "Warning: Model and Map use different origin. Applying origin shift to compensate."
+        pdb_hierarchy = shift_manager.pdb_hierarchy # gives you shifted model
 
-      self.real_map = shift_manager.map_data # gives you shifted map
+        self.real_map = shift_manager.map_data # gives you shifted map
+      else:
+        print >> self.log, """Warning: Structure is not P1, so automatic origin shifts cannot currently be applied"""
+        self.real_map = ccp4_map.data.as_double()
       # XXX assume that the map is already scaled properly (in the original
       # unit cell)
       models = pdb_hierarchy.models()

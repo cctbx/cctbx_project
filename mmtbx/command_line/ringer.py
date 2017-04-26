@@ -86,6 +86,8 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
   validate_params(params)
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
   pdb_in.check_file_type("pdb")
+  crystal_symmetry_model = pdb_in.file_object.crystal_symmetry()
+  crystal_symmetry_model.show_summary()
   hierarchy = pdb_in.file_object.hierarchy
   hierarchy.atoms().reset_i_seq()
   map_coeffs = ccp4_map = difference_map_coeffs = None
@@ -134,6 +136,7 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
     map_coeffs=map_coeffs,
     difference_map_coeffs=difference_map_coeffs,
     ccp4_map=ccp4_map,
+    crystal_symmetry_model=crystal_symmetry_model,
     params=params,
     log=out).results
   t2 = time.time()
