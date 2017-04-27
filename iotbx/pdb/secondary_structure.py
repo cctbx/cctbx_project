@@ -1644,7 +1644,7 @@ class pdb_helix (structure_base) :
     else:
       assert isinstance(self.helix_id, str)
     if self.start_chain_id != self.end_chain_id:
-      raise RuntimeError("Don't know how to deal with helices with multiple "+
+      raise Sorry("Don't know how to deal with helices with multiple "+
         "chain IDs ('%s' vs. '%s')." % (self.start_chain_id, self.end_chain_id))
 
   @classmethod
