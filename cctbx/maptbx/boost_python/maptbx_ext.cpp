@@ -425,6 +425,13 @@ namespace {
       arg("cutoff"),
       arg("index_span")));
 
+    def("map_box_average",
+      (void(*)
+        (af::ref<double, af::c_grid<3> >,
+         int const&)) map_box_average, (
+      arg("map_data"),
+      arg("index_span")));
+
     def("center_of_mass",
       (cctbx::cartesian<>(*)
         (af::const_ref<double, af::c_grid<3> > const&,

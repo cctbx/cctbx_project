@@ -42,6 +42,45 @@ class _(boost.python.injector, connectivity):
       max_boundaries.append(maxb)
     return min_boundaries, max_boundaries
 
+def smooth_map(map, crystal_symmetry, rad_smooth, method="exp"):
+  from cctbx import miller
+  assert method in ["exp", "box_average"]
+  map_smooth = None
+  if(method=="exp"):
+    f_map = miller.structure_factor_box_from_map(
+      map              = map,
+      crystal_symmetry = crystal_symmetry,
+      include_000      = True)
+    ss = 1./flex.pow2(f_map.d_spacings().data()) / 4.
+    b_smooth = 8*math.pi**2*rad_smooth**2
+    smooth_scale = flex.exp(-b_smooth*ss)
+    f_map = f_map.array(data = f_map.data()*smooth_scale)
+    cg = crystal_gridding(
+      unit_cell             = crystal_symmetry.unit_cell(),
+      space_group_info      = crystal_symmetry.space_group_info(),
+      pre_determined_n_real = map.all())
+    fft_map = miller.fft_map(
+      crystal_gridding     = cg,
+      fourier_coefficients = f_map)
+    fft_map.apply_volume_scaling()
+    map_smooth = fft_map.real_map_unpadded()
+    map_smooth = map_smooth.set_selected(map_smooth<0., 0)
+  elif(method=="box_average"): # assume 0/1 binary map
+    assert abs(flex.max(map)-1.)<1.e-6
+    mmin = flex.min(map)
+    assert mmin<1.e-6 and mmin>=0.0
+    map_smooth = map.deep_copy()
+    for i in xrange(3):
+      maptbx.map_box_average(
+        map_data      = map_smooth,
+        index_span    = 1)
+    for i in xrange(3):
+      maptbx.map_box_average(
+        map_data      = map_smooth,
+        cutoff        = 0.99,
+        index_span    = 1)
+  return map_smooth
+
 class d99(object):
   def __init__(self, map, crystal_symmetry):
     adopt_init_args(self, locals())

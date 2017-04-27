@@ -928,6 +928,37 @@ template <typename DataType>
 void
 map_box_average(
   af::ref<DataType, af::c_grid<3> > map_data,
+  int const& index_span)
+{
+  int nx = map_data.accessor()[0];
+  int ny = map_data.accessor()[1];
+  int nz = map_data.accessor()[2];
+  for (int lx = 0; lx < nx; lx++) {
+    for (int ly = 0; ly < ny; ly++) {
+      for (int lz = 0; lz < nz; lz++) {
+          DataType rho = 0.0;
+          int counter = 0;
+          for (int i = lx-index_span; i <= lx+index_span; i++) {
+            int mx = i;
+            if(i<0 || i>=nx) mx = scitbx::math::mod_positive(i, nx);
+            for (int j = ly-index_span; j <= ly+index_span; j++) {
+              int my = j;
+              if(j<0 || j>=ny) my = scitbx::math::mod_positive(j, ny);
+              for (int k = lz-index_span; k <= lz+index_span; k++) {
+                int mz = k;
+                if(k<0 || k>=nz) mz = scitbx::math::mod_positive(k, nz);
+                rho += map_data(mx,my,mz);
+                counter += 1;
+          }}}
+          map_data(lx,ly,lz) = rho / counter;
+  }}}
+}
+
+
+template <typename DataType>
+void
+map_box_average(
+  af::ref<DataType, af::c_grid<3> > map_data,
   DataType const& cutoff,
   int const& index_span)
 {
@@ -941,11 +972,14 @@ map_box_average(
           DataType rho = 0.0;
           int counter = 0;
           for (int i = lx-index_span; i <= lx+index_span; i++) {
+            int mx = i;
+            if(i<0 || i>=nx) mx = scitbx::math::mod_positive(i, nx);
             for (int j = ly-index_span; j <= ly+index_span; j++) {
+              int my = j;
+              if(j<0 || j>=ny) my = scitbx::math::mod_positive(j, ny);
               for (int k = lz-index_span; k <= lz+index_span; k++) {
-                int mx = scitbx::math::mod_positive(i, nx);
-                int my = scitbx::math::mod_positive(j, ny);
-                int mz = scitbx::math::mod_positive(k, nz);
+                int mz = k;
+                if(k<0 || k>=nz) mz = scitbx::math::mod_positive(k, nz);
                 rho += map_data(mx,my,mz);
                 counter += 1;
           }}}
