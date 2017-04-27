@@ -1,5 +1,5 @@
-IOTA v1.1.012 - Updates to image monitor
+IOTA v1.1.013 - Only find new images
 
-1. Option to create a finite chart window of any size
-2. Different color scheme helps with visualizing hit-finding
-3. Various minor bugfixes
+1. Updated InputFinder with option to only find new images, i.e. only ones
+that have been acquired after the final image in an existing input list
+2. Propagated to iota.image_tracker

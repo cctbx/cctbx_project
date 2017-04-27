@@ -521,8 +521,15 @@ class TrackerWindow(wx.Frame):
       self.find_new_images()
 
   def find_new_images(self):
-    self.data_list = [i for i in ginp.make_input_list([self.data_folder]) if
-                      i not in self.done_list]
+    if self.done_list != []:
+      last_file = self.done_list[-1]
+    else:
+      last_file = None
+    found_files = ginp.make_input_list([self.data_folder], last=last_file)
+
+    print 'DEBUG: ACQUIRED {} FILES!'.format(len(found_files))
+
+    self.data_list = [i for i in found_files if i not in self.done_list]
     if len(self.data_list) == 0:
       self.msg = 'Waiting for new images in {} ...'.format(self.data_folder)
     else:

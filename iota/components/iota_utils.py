@@ -28,7 +28,8 @@ class InputFinder():
   def get_file_list(self, path,
                     as_string=False,
                     ignore_ext=None,
-                    ext_only=None):
+                    ext_only=None,
+                    last=None):
     ''' Runs the 'find' command to recursively get a list of filepaths. Has
     a few advangages over os.walk():
       1. Faster (by quite a lot when lots of files involved)
@@ -38,10 +39,16 @@ class InputFinder():
     :param as_string: boolean, if true will return file list as a string, if false, as list
     :param ignore_ext:  will ignore extensions as supplied
     :param ext_only: will only find files with these extensions
-    :param path: path to all data (top of folder tree),
+    :param path: path to all data (top of folder tree)
+    :param last: path to last file in a previously-generated input list (
+    useful when using this to look for new files in the same folder)
     :return filepaths: list of absolute file paths
     '''
-    command = 'find {} -type f'.format(path)
+    if last is not None:
+      newer_than = '-newer {}'.format(last)
+    else:
+      newer_than = ''
+    command = 'find {} -type f {}'.format(path, newer_than)
     filepaths = easy_run.fully_buffered(command).stdout_lines
 
     if ignore_ext is not None:
@@ -213,7 +220,7 @@ class InputFinder():
     except Exception:
       return 'text'
 
-  def get_input(self, path, filter=True):
+  def get_input(self, path, filter=True, last=None):
     ''' Obtain list of files (or single file) from any input; obtain file type in input
     :param path: path to input file(s) or folder(s)
     :return: input_list: list of input file(s) (could be just one file)
@@ -234,7 +241,7 @@ class InputFinder():
         input_list = [os.path.abspath(path)]
         input_type = self.identify_file_type(path)
     elif os.path.isdir(path):
-      input_list = self.get_file_list(path)
+      input_list = self.get_file_list(path, last=last)
       suffix = "folder"
 
     if len(input_list) > 0:
@@ -279,7 +286,7 @@ class InputFinder():
     else:
       return 'unknown'
 
-  def make_input_list(self, input_entries):
+  def make_input_list(self, input_entries, last=None):
     ''' Makes input list from multiple entries
     :param input_entries: a list of input paths
     :return: input list: a list of input files
@@ -287,7 +294,7 @@ class InputFinder():
 
     input_list = []
     for path in input_entries:
-      filepaths, _ = self.get_input(path)
+      filepaths, _ = self.get_input(path, last=last)
       input_list.extend(filepaths)
 
     return input_list
