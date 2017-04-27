@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 04/25/2017
+Last Changed: 04/26/2017
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -261,7 +261,6 @@ class SpotFinderThread(Thread):
     # Signal that this batch is finished
     try:
       if os.path.isfile(self.term_file):
-        print 'INFO WILL BE SET TO ZERO'
         info = []
       else:
         info = self.data_list

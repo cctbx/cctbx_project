@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/26/2014
-Last Changed: 08/17/2016
+Last Changed: 04/26/2017
 Description : IOTA image processing submission module
 '''
 
@@ -26,7 +26,6 @@ class ProcessImage():
     if self.input_type == 'image':
       img_object = img.SingleImage(self.input_entry, self.init)
       img_object.import_image()
-      print 'DEBUG: Imported image'
     elif self.input_type == 'object':
       img_object = self.input_entry[2]
       img_object.import_int_file(self.init)
@@ -35,8 +34,6 @@ class ProcessImage():
       return img_object
     else:
       img_object.process()
-      #result_file = os.path.splitext(img_object.obj_file)[0] + '.fin'
-      #ep.dump(result_file, img_object)
       return img_object
 
 class ProcessAll():

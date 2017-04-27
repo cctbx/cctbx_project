@@ -1,13 +1,5 @@
-IOTA v1.1.011 - Real-time diffraction monitor
+IOTA v1.1.012 - Updates to image monitor
 
-1. Quick / easy monitor of incoming images (run as iota.track_images, may
-change in future or incorporate into main IOTA module)
-2. Performs basic spotfinding w/ DIALS and plots results
-3. User can
-    a. Introduce custom spotfinding params on start of run
-    b. Change min Bragg spots requirement on the fly (graphic adjusted to show)
-    c. Will have other capabilities in future
-4. Tinkered with axis objects to make plotting much faster than normal
-5. Virtually real-time with sufficient cores available for multiprocessing;
-already there for 10Hz fixed-target / synchrotron experiments.
-6. (needs more testing, though)
+1. Option to create a finite chart window of any size
+2. Different color scheme helps with visualizing hit-finding
+3. Various minor bugfixes

@@ -6,7 +6,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/19/2017
-Last Changed: 04/25/2017
+Last Changed: 04/26/2017
 Description : IOTA image-tracking GUI module
 '''
 
@@ -140,10 +140,9 @@ class TrackChart(wx.Panel):
     self.track_figure.patch.set_visible(False)
     self.track_axes.patch.set_visible(False)
 
-    self.acc_plot = self.track_axes.plot([], [], 'o', color='#0570b0')[0]
-    self.rej_plot = self.track_axes.plot([], [], 'o', color='#0570b0',
-                                         alpha=0.25)[0]
-    self.bragg_line = self.track_axes.axhline(0, c='#0571b0', ls=':', alpha=0)
+    self.acc_plot = self.track_axes.plot([], [], 'o', color='#4575b4')[0]
+    self.rej_plot = self.track_axes.plot([], [], 'o', color='#d73027')[0]
+    self.bragg_line = self.track_axes.axhline(0, c='#4575b4', ls=':', alpha=0)
 
     self.track_axes.set_autoscaley_on(True)
 
@@ -154,14 +153,19 @@ class TrackChart(wx.Panel):
     self.track_figure.canvas.mpl_connect('scroll_event', self.onScroll)
 
   def onScroll(self, event):
-    step = event.step*10
+    step = int(event.step)
     cur_bragg = self.main_window.tracker_panel.options.min_bragg.ctr.GetValue()
     new_bragg = cur_bragg + step
     self.main_window.tracker_panel.options.min_bragg.ctr.SetValue(new_bragg)
     self.draw_plot(min_bragg=new_bragg)
 
-  def draw_plot(self, min_bragg=0, new_x=[], new_y=[]):
+  def draw_plot(self, min_bragg=0, new_x=None, new_y=None):
     self.track_axes.patch.set_visible(False)
+
+    if new_x is None:
+      new_x = []
+    if new_y is None:
+      new_y = []
 
     nref_x = np.append(self.acc_plot.get_xdata(),
                        np.array(new_x).astype(np.double))
@@ -184,8 +188,27 @@ class TrackChart(wx.Panel):
     else:
       self.bragg_line.set_alpha(0)
 
-    self.track_axes.relim()
-    self.track_axes.autoscale_view()
+    # self.track_axes.relim()
+    # self.track_axes.autoscale_view()
+
+    if nref_x != [] and nref_y != []:
+      if self.main_window.tracker_panel.options.chart_window.toggle:
+        window_size = self.main_window.tracker_panel.options.chart_window.window.GetValue()
+        if window_size == '':
+          x_min = -0.5
+          x_max = np.max(nref_x) + 0.5
+        elif np.max(nref_x) > int(window_size):
+          x_min = np.max(nref_x) - int(window_size) - 0.5
+          x_max = np.max(nref_x)
+        else:
+          x_min = -0.5
+          x_max = int(window_size) + 0.5
+      else:
+        x_min = -0.5
+        x_max = np.max(nref_x) + 0.5
+      self.track_axes.set_xlim(x_min, x_max)
+      self.track_axes.set_ylim(0, np.max(nref_y) + int(0.1 * np.max(nref_y)))
+
     self.Layout()
 
     self.track_axes.draw_artist(self.acc_plot)
@@ -203,17 +226,26 @@ class SpotfinderSettings(wx.Panel):
 
     # Minimum Bragg spots cutoff (maybe make a slider?)
     common_size = (150, -1)
-    self.bragg = wx.Panel(self)
-    self.bragg_box = wx.StaticBox(self.bragg, label='Triage Options')
-    self.bragg_sizer = wx.StaticBoxSizer(self.bragg_box, wx.VERTICAL)
-    self.bragg.SetSizer(self.bragg_sizer)
-    self.min_bragg = ct.SpinCtrl(self.bragg,
+    self.display = wx.Panel(self)
+    self.display_box = wx.StaticBox(self.display, label='Display Options')
+    self.display_sizer = wx.StaticBoxSizer(self.display_box, wx.VERTICAL)
+    self.display.SetSizer(self.display_sizer)
+    self.min_bragg = ct.SpinCtrl(self.display,
                                  label='Min. Bragg spots',
                                  label_size=common_size,
                                  ctrl_size=(100, -1),
                                  ctrl_value=10,
                                  ctrl_min = 0)
-    self.bragg_sizer.Add(self.min_bragg, flag=wx.BOTTOM, border=10)
+    self.display_sizer.Add(self.min_bragg, flag=wx.BOTTOM, border=10)
+
+    self.chart_window = ct.OptionCtrl(self.display,
+                                      items=[('window', '100')],
+                                      checkbox=True,
+                                      checkbox_label='Finite chart window',
+                                      checkbox_state=True,
+                                      label_size=common_size,
+                                      ctrl_size=(100, -1))
+    self.display_sizer.Add(self.chart_window, flag=wx.BOTTOM, border=10)
 
     #Spotfinding settings
     self.options = wx.Panel(self)
@@ -262,7 +294,7 @@ class SpotfinderSettings(wx.Panel):
                                      ctrl_size=(100, -1))
     self.options_sizer.Add(self.kernel_size, flag=wx.BOTTOM, border=10)
 
-    self.main_sizer.Add(self.bragg, flag=wx.EXPAND | wx.BOTTOM, border=10)
+    self.main_sizer.Add(self.display, flag=wx.EXPAND | wx.BOTTOM, border=10)
     self.main_sizer.Add(self.options, 1, wx.EXPAND)
 
     self.Fit()
@@ -499,8 +531,8 @@ class TrackerWindow(wx.Frame):
         self.obs_counts = [-1] * len(self.data_list)
         self.frame_count = range(len(self.data_list))
       else:
-        self.obs_counts = self.obs_counts + ([-1] * len(self.done_list))
-        self.frame_count = self.frame_count + range(len(self.done_list))
+        self.obs_counts = self.obs_counts + ([-1] * len(self.data_list))
+        self.frame_count = self.frame_count + range(len(self.data_list))
       self.run_spotfinding()
 
   def onTimer(self, e):
