@@ -1632,11 +1632,12 @@ class sharpening_info:
 
     elif self.sharpening_method=="half_map_sharpening":
       print >>out,"Resolution-dependent half-map sharpening"
-      print >>out,"Scale vs resolution:"
-      for d_min,sc in zip(
-        self.d_min_list,
-        self.target_scale_factors):
-        print >>out,"Dmin: %7.2f  Scale: %7.2f" %(d_min,sc)
+      if self.d_min_list and self.target_scale_factors:
+        print >>out,"Scale vs resolution:"
+        for d_min,sc in zip(
+          self.d_min_list,
+          self.target_scale_factors):
+          print >>out,"Dmin: %7.2f  Scale: %7.2f" %(d_min,sc)
 
     if self.sharpening_method in ["b_iso_to_d_cut"] and \
       self.k_sharpen and self.resolution:
