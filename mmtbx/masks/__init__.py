@@ -13,6 +13,8 @@ from libtbx.utils import Sorry
 from libtbx import introspection
 from libtbx import adopt_init_args
 from copy import deepcopy
+from cctbx import miller
+import math
 import mmtbx.masks
 asu_map_ext = boost.python.import_ext("cctbx_asymmetric_map_ext")
 
@@ -344,7 +346,8 @@ class mask_from_xray_structure(object):
         n_real,
         solvent_radius=None,
         shrink_truncation_radius=None,
-        in_asu=False):
+        in_asu=False,
+        rad_extra=None):
     if([solvent_radius, shrink_truncation_radius].count(None)>0):
       mask_params = mask_master_params.extract()
       if(solvent_radius is None): solvent_radius = mask_params.solvent_radius
@@ -354,6 +357,8 @@ class mask_from_xray_structure(object):
     sgt = xrs.space_group().type() # must be BEFORE going to P1, obviously!
     if(p1): xrs = xrs.expand_to_p1(sites_mod_positive=True)
     atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+    if(rad_extra is not None):
+      atom_radii = atom_radii+rad_extra
     self.asu_mask = mmtbx.masks.atom_mask(
       unit_cell                = xrs.unit_cell(),
       space_group              = xrs.space_group(),
@@ -368,3 +373,34 @@ class mask_from_xray_structure(object):
       assert p1
       asu_map_ = asu_map_ext.asymmetric_map(sgt, self.mask_data)
       self.mask_data = asu_map_.data()
+
+class smooth_mask(object):
+  def __init__(self, xray_structure, n_real, rad_smooth):
+    adopt_init_args(self, locals())
+    self.mask_binary = mask_from_xray_structure(
+      xray_structure        = self.xray_structure,
+      p1                    = True,
+      for_structure_factors = False,
+      n_real                = self.n_real,
+      rad_extra             = rad_smooth).mask_data
+    s = self.mask_binary==1
+    self.mask_binary = self.mask_binary.set_selected(s, 0)
+    self.mask_binary = self.mask_binary.set_selected(~s, 1)
+    maptbx.unpad_in_place(map=self.mask_binary)
+    f_mask = miller.structure_factor_box_from_map(
+      map              = self.mask_binary,
+      crystal_symmetry = self.xray_structure.crystal_symmetry(),
+      include_000      = True)
+    ss = 1./flex.pow2(f_mask.d_spacings().data()) / 4.
+    b_smooth = 8*math.pi**2*rad_smooth**2
+    smooth_scale = flex.exp(-b_smooth*ss)
+    f_mask = f_mask.array(data = f_mask.data()*smooth_scale)
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell             = self.xray_structure.unit_cell(),
+      space_group_info      = self.xray_structure.space_group_info(),
+      pre_determined_n_real = self.n_real)
+    fft_map = miller.fft_map(
+      crystal_gridding     = crystal_gridding,
+      fourier_coefficients = f_mask)
+    fft_map.apply_volume_scaling()
+    self.mask_smooth = fft_map.real_map_unpadded()

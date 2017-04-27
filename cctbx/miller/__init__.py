@@ -5663,7 +5663,8 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
   return fft_map(crystal_gridding, i_patt, f_000)
 
 def structure_factor_box_from_map(crystal_symmetry, map=None, n_real=None,
-                                  anomalous_flag=False, include_000=False):
+                                  anomalous_flag=False, include_000=False,
+                                  f_000=None):
   assert crystal_symmetry.space_group().type().number()==1 # must be P1 box
   #assert [map, n_real].count(None) in [0,2]
   if(map    is not None): assert n_real is None
@@ -5675,7 +5676,7 @@ def structure_factor_box_from_map(crystal_symmetry, map=None, n_real=None,
     crystal_symmetry = crystal_symmetry,
     anomalous_flag   = anomalous_flag,
     max_index        = max_index)
-  if(include_000):
+  if(include_000 or f_000 is not None):
     indices = complete_set.indices()
     indices.append((0,0,0))
     complete_set = complete_set.customized_copy(indices = indices)

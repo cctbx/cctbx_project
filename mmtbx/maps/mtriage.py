@@ -26,6 +26,18 @@ master_params_str = """
   atom_radius = None
     .type = float
     .help = Atom radius for masking. If undefined then calculated automatically
+  compute_fsc_curve_model = True
+    .type = bool
+    .help = Compute model-map CC in reciprocal space: FSC(model map, data map)
+  compute_d_model = True
+    .type = bool
+    .help = Resolution estimate using model and map
+  compute_d99 = True
+    .type = bool
+    .help = Resolution estimate d99
+  mask_maps = True
+    .type = bool
+    .help = Mask out region outside molecule
 """
 
 def master_params():
@@ -96,6 +108,8 @@ class mtriage(object):
   def run(self):
     # Extract xrs from pdb_hierarchy
     self._get_xray_structure()
+    # Compute mask
+#    self._compute_mask()
     # Extract box around model with map
     self._get_box()
     # Compute d99
@@ -121,6 +135,7 @@ class mtriage(object):
         xray_structure = self.xray_structure)
 
   def _compute_d99(self):
+    if(not self.params.compute_d99): return
     d99_obj = maptbx.d99(
       map              = self.map_data,
       crystal_symmetry = self.crystal_symmetry)
@@ -142,6 +157,7 @@ class mtriage(object):
       self.f2 = d99_obj_2.f
 
   def _compute_d_model(self):
+    if(not self.params.compute_d_model): return
     if(self.pdb_hierarchy is not None):
       o = resolution_from_map_and_model.run(
         map_data         = self.box.map_data,
@@ -159,6 +175,7 @@ class mtriage(object):
       self.d_fsc = self.fsc_curve.d_min
 
   def _compute_model_map_fsc(self):
+    if(not self.params.compute_fsc_curve_model): return
     if(self.pdb_hierarchy is not None):
       f_obs = miller.structure_factor_box_from_map(
         map              = self.box.map_data,
