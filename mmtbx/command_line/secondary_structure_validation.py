@@ -210,6 +210,9 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
     print >> out, "Number of bad sheets: %d" % n_bad_sheets
   if len(pdb_h.models()) != 1 :
     raise Sorry("Multiple models not supported.")
+  if not pdb_h.contains_protein():
+    print >> out, "Protein is not found in the model"
+    return
   if pdb_h.is_ca_only():
     print >> out, "Error: CA-only model"
     return
