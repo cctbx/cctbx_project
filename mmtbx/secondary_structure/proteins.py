@@ -217,6 +217,10 @@ def _create_hbond_proxy (
           print >> log, "      removed outlier: %.3fA  %s --> %s (cutoff:%.3fA)"%(
               dist, donor.id_str(), acceptor.id_str(), distance_cut)
           return result, angle_proxies
+        if dist > 10:
+          print >> log, "      removed unreasonable: %.3fA  %s --> %s (cutoff:%.3fA)"%(
+              dist, donor.id_str(), acceptor.id_str(), distance_cut)
+          return results, angle_proxies
       limit = -1
       if (top_out) :
         limit = (distance_cut - distance_ideal)**2 * weight/(sigma**2)

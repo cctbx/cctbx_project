@@ -715,7 +715,8 @@ class manager(object):
         log=log)
     self.add_new_hbond_restraints_in_place(
         proxies=hb_proxies,
-        sites_cart=hierarchy.atoms().extract_xyz())
+        sites_cart=hierarchy.atoms().extract_xyz(),
+        max_distance_between_connecting_atoms=10)
     self.add_angles_in_place(hb_angle_proxies)
     self.add_planarities_in_place(planarity_proxies)
     self.add_parallelities_in_place(parallelity_proxies)
