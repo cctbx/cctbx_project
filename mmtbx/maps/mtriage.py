@@ -9,6 +9,7 @@ import mmtbx.utils
 from libtbx import group_args
 from cctbx import miller
 from mmtbx.maps import correlation
+from mmtbx import masks
 
 master_params_str = """
   map_file_name = None
@@ -38,6 +39,9 @@ master_params_str = """
   mask_maps = True
     .type = bool
     .help = Mask out region outside molecule
+  radius_smooth = None
+    .type = bool
+    .help = Mask smoothing radius (by default set to max(10,d99)
 """
 
 def master_params():
@@ -83,6 +87,7 @@ class mtriage(object):
     self.d_fsc_model     = None
     self.fsc_curve       = None
     self.fsc_curve_model = None
+    self.mask_object     = None
     # Internal work objects
     self.f   = None
     self.f1  = None
@@ -109,7 +114,9 @@ class mtriage(object):
     # Extract xrs from pdb_hierarchy
     self._get_xray_structure()
     # Compute mask
-#    self._compute_mask()
+    self._compute_mask()
+    # Apply mask to map data
+    self._apply_mask()
     # Extract box around model with map
     self._get_box()
     # Compute d99
@@ -126,6 +133,26 @@ class mtriage(object):
       self.pdb_hierarchy.atoms().reset_i_seq()
       self.xray_structure = self.pdb_hierarchy.extract_xray_structure(
         crystal_symmetry = self.crystal_symmetry)
+
+  def _compute_mask(self):
+    if(not self.params.mask_maps): return
+    rad_smooth = self.params.radius_smooth
+    if(rad_smooth is None):
+      d99 = maptbx.d99(
+        map              = self.map_data,
+        crystal_symmetry = self.crystal_symmetry).result.d99
+      rad_smooth = min(10., d99)
+    self.mask_object = masks.smooth_mask(
+      xray_structure = self.xray_structure,
+      n_real         = self.map_data.all(),
+      rad_smooth     = rad_smooth)
+
+  def _apply_mask(self):
+    if(not self.params.mask_maps): return
+    self.map_data = self.map_data * self.mask_object.mask_smooth
+    if(self.half_map_data_1 is not None):
+      self.half_map_data_1 = self.half_map_data_1 * self.mask_object.mask_smooth
+      self.half_map_data_2 = self.half_map_data_2 * self.mask_object.mask_smooth
 
   def _get_box(self):
     if(self.pdb_hierarchy is not None):
