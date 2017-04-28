@@ -56,6 +56,11 @@ ATOM      8  CE  MET A   1       5.000   6.694   6.892  1.00 74.93           C
 END
 """.splitlines()
 
+raw_records5 = """\
+CRYST1  258.687  258.687   47.103  90.00  90.00 120.00 P 63          6
+ATOM    213  N   ILE A  78      87.236 -55.209   0.578  1.00179.51           N
+ATOM    321  O   LYS A  93      81.801 -49.470  26.164  1.00197.87           O
+"""
 
 # excluded:
 #ATOM      1  N   MET A   1       9.821   6.568   5.000  1.00 66.07           N
@@ -100,6 +105,25 @@ def exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib):
   assert simple.size() + asu.size() == 8
   assert geometry.pair_proxies().nonbonded_proxies.simple.size() == 8
   assert geometry.pair_proxies().nonbonded_proxies.asu.size() == 0
+
+def exercise_add_super_long_bond(mon_lib_srv, ener_lib):
+  # distance between the two is 26A, they are not added because of
+  # max_distance_between_connecting_atoms=5 is default.
+  #
+  geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records5)
+  proxy = geometry_restraints.bond_simple_proxy(
+    i_seqs=(0,1),
+    distance_ideal=2.0,
+    weight=3000)
+  assert not geometry.is_bonded_atoms(0,1)
+  assert not geometry.is_bonded_atoms(1,0)
+  geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart(),
+      max_distance_between_connecting_atoms=5)
+  assert not geometry.is_bonded_atoms(0,1)
+  assert not geometry.is_bonded_atoms(1,0)
+  # !!! This will fail, but should not. Left for future investigation.
+  # geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart(),
+  #     max_distance_between_connecting_atoms=30)
 
 def exercise_single_atom(mon_lib_srv, ener_lib):
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records1)
@@ -201,6 +225,7 @@ def exercise():
     exercise_single_atom(mon_lib_srv, ener_lib)
     exercise_multiple_atoms(mon_lib_srv, ener_lib)
     exercise_is_bonded_atoms(mon_lib_srv, ener_lib)
+    exercise_add_super_long_bond(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()

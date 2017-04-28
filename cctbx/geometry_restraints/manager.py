@@ -904,8 +904,10 @@ class manager(object):
           max_p_distance)
     bonded_distance_cutoff = max(
         [existing_max_bonded_distance,
-         max_p_distance,
-         max_distance_between_connecting_atoms]) + 0.1
+        max_p_distance,
+        max_distance_between_connecting_atoms])
+    bonded_distance_cutoff = min(bonded_distance_cutoff,
+        max_distance_between_connecting_atoms)+0.1
     t2 = time.time()
     # print "bonded_distance_cutoff:", bonded_distance_cutoff
     # make asu mappings
