@@ -119,6 +119,8 @@ class mtriage(object):
       raise Sorry("Symmetry must be P1")
 
   def run(self):
+    # Shift origin if needed
+    self._shift_origin()
     # Extract xrs from pdb_hierarchy
     self._get_xray_structure()
     # Compute mask
@@ -135,6 +137,14 @@ class mtriage(object):
     self._compute_half_map_fsc()
     # Map-model FSC and d_fsc_model
     self._compute_model_map_fsc()
+
+  def _shift_origin(self):
+    soin = maptbx.shift_origin_if_needed(
+      map_data         = self.map_data,
+      sites_cart       = self.pdb_hierarchy.atoms().extract_xyz(),
+      crystal_symmetry = self.crystal_symmetry)
+    self.map_data = soin.map_data
+    self.pdb_hierarchy.atoms().set_xyz(soin.sites_cart)
 
   def _get_xray_structure(self):
     if(self.pdb_hierarchy is not None):
