@@ -74,6 +74,14 @@ class mtriage(object):
                pdb_hierarchy=None,
                nproc=1):
     adopt_init_args(self, locals())
+    # Objects may be altered inside
+    self.map_data = self.map_data.deep_copy()
+    if(self.half_map_data_1 is not None):
+      self.half_map_data_1 = self.half_map_data_1.deep_copy()
+      self.half_map_data_2 = self.half_map_data_2.deep_copy()
+    if(self.pdb_hierarchy is not None):
+      self.pdb_hierarchy = self.pdb_hierarchy.deep_copy()
+    #
     assert [half_map_data_1, half_map_data_2].count(None) in [0,2]
     # Results
     self.d9              = None
@@ -213,23 +221,24 @@ class mtriage(object):
         other=f_obs, bin_width=100, fsc_cutoff=0.0)
       self.d_fsc_model = self.fsc_curve_model.d_min
 
-  def show_summary(self):
+  def show_summary(self, log=None, fsc_file_prefix="fsc_curve"):
+    if(log is None): log = sys.stdout
     r = self.get_results()
-    print "d99          : ", r.d99
-    print "d99_1        : ", r.d99_1
-    print "d99_2        : ", r.d99_2
-    print "d_model      : ", r.d_model
-    print "b_iso_overall: ", r.b_iso_overall
-    print "d_fsc        : ", r.d_fsc
-    print "d_fsc_model  : ", r.d_fsc_model
+    print >> log, "d99          : ", r.d99
+    print >> log, "d99_1        : ", r.d99_1
+    print >> log, "d99_2        : ", r.d99_2
+    print >> log, "d_model      : ", r.d_model
+    print >> log, "b_iso_overall: ", r.b_iso_overall
+    print >> log, "d_fsc        : ", r.d_fsc
+    print >> log, "d_fsc_model  : ", r.d_fsc_model
     #
-    of = open("fsc_curve_model","w")
+    of = open("%s_model"%fsc_file_prefix,"w")
     for a,b in zip(r.fsc_curve_model.fsc.d_inv, r.fsc_curve_model.fsc.fsc):
       print >>of, "%15.9f %15.9f"%(a,b)
     of.close()
     #
     if(r.fsc_curve is not None):
-      of = open("fsc_curve","w")
+      of = open("%s"%fsc_file_prefix,"w")
       for a,b in zip(r.fsc_curve.fsc.d_inv, r.fsc_curve.fsc.fsc):
         print >>of, "%15.9f %15.9f"%(a,b)
       of.close()

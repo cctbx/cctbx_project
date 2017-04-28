@@ -4031,6 +4031,7 @@ class array(set):
         break
     #print "i_mid, cc:", fsc_result.d[i_mid], fsc_result.d_inv[i_mid]
     d_min = None
+    d_min = None
     if(i_mid is not None):
       d_mid = fsc_result.d[i_mid]
       if(i_mid is not None):
@@ -4063,6 +4064,7 @@ class array(set):
               if(diff1<diff2): d_min = d1
               else:            d_min = d2
               if(abs(d_mid-d_min)>0.25): d_min = None
+    if(d_min is None): d_min = d_mid
     return group_args(fsc=fsc_result, d_min=d_min)
 
   def map_correlation(self, other, bin_width=1000):
