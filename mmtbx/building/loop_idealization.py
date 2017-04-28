@@ -68,6 +68,10 @@ loop_idealization
     .type = int
     .help = how many first variants to take from generated
     .expert_level = 2
+  debug = False
+    .type = bool
+    .help = Output of intermediate files
+    .expert_level = 3
 }
 """
 
@@ -198,7 +202,6 @@ class loop_idealization():
           berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
       if len(self.ref_exclusion_selection) > 0:
         self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
-      # self.resulting_pdb_h.write_pdb_file(file_name="%d%s_before_minimization.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
       ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
       self.p_before_minimization_rama_outliers = ram.out_percent
 
@@ -206,7 +209,10 @@ class loop_idealization():
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count
         self.resulting_pdb_h.write_pdb_file(file_name="%d%s_discrepancy.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
-      self.resulting_pdb_h.write_pdb_file(file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
+      if self.params.debug:
+        self.resulting_pdb_h.write_pdb_file(
+            file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
+                self.params.output_prefix))
       if self.params.minimize_whole:
         print >> self.log, "minimizing whole chain..."
         print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
@@ -228,7 +234,10 @@ class loop_idealization():
               grm=self.grm,
               ss_annotation=self.secondary_structure_annotation,
               log=self.log)
-      self.resulting_pdb_h.write_pdb_file(file_name="%d%s_all_minized.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
+      if self.params.debug:
+        self.resulting_pdb_h.write_pdb_file(
+            file_name="%d%s_all_minized.pdb" % (self.number_of_ccd_trials,
+                self.params.output_prefix))
       ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
       self.p_after_minimiaztion_rama_outliers = ram.out_percent
       berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")

@@ -11,7 +11,7 @@ from iotbx.phil import process_command_line_with_files
 from scitbx.array_family import flex
 from iotbx.pdb import write_whole_pdb_file
 import iotbx.phil
-from libtbx.utils import Sorry, multi_out
+from libtbx.utils import Sorry, multi_out, null_out
 from mmtbx.building.loop_idealization import loop_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
@@ -90,6 +90,9 @@ debug = False
   .type = bool
   .help = Output all intermediate files
   .expert_level = 3
+verbose = False
+  .type = bool
+  .help = More output to log
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -418,6 +421,9 @@ class model_idealization():
     params.pdb_interpretation.max_reasonable_bond_distance = None
     params.pdb_interpretation.ncs_search.enabled = True
     params.pdb_interpretation.restraints_library.rdl = True
+    log = self.log
+    if not self.verbose:
+      log = null_out()
     if self.params.ignore_ncs:
       params.pdb_interpretation.ncs_search.enabled = False
     processed_pdb_files_srv = mmtbx.utils.\
@@ -425,10 +431,11 @@ class model_idealization():
             crystal_symmetry= self.whole_xrs.crystal_symmetry(),
             pdb_interpretation_params = params.pdb_interpretation,
             stop_for_unknowns         = False,
-            log=self.log,
+            log=log,
             cif_objects=None)
     processed_pdb_file, junk = processed_pdb_files_srv.\
-        process_pdb_files(raw_records=flex.split_lines(self.whole_pdb_h.as_pdb_string()))
+        process_pdb_files(
+            raw_records=flex.split_lines(self.whole_pdb_h.as_pdb_string()))
 
     self.mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
     self.ener_lib = processed_pdb_files_srv.ener_lib
@@ -446,13 +453,13 @@ class model_idealization():
           params=None,
           mon_lib_srv=self.mon_lib_srv,
           verbose=-1,
-          log=self.log)
+          log=log)
       # self.whole_pdb_h.write_pdb_file(file_name="for_ss.pdb")
       self.whole_pdb_h.reset_atom_i_seqs()
       self.whole_grm.geometry.set_secondary_structure_restraints(
           ss_manager=ss_manager,
           hierarchy=self.whole_pdb_h,
-          log=self.log)
+          log=log)
 
     # now select part of it for working with master hierarchy
     if self.using_ncs:
@@ -631,7 +638,7 @@ class model_idealization():
           grm=self.working_grm,
           fix_rotamer_outliers=True,
           cif_objects=self.cif_objects,
-          verbose=True,
+          verbose=self.params.verbose,
           reference_map=self.master_map,
           rotamer_manager=self.rotamer_manager,
           log=self.log)
@@ -1048,7 +1055,7 @@ def run(args):
       crystal_symmetry = crystal_symmetry,
       params=work_params,
       log=log,
-      verbose=True)
+      verbose=False)
   mi_object.run()
   mi_object.print_stat_comparison()
   print >> log, "RMSD from starting model (backbone, all): %.4f, %.4f" % (

@@ -332,6 +332,8 @@ def set_xyz_smart(dest_h, source_h):
   """
   # try shortcut
   # print "SHORTCUT atoms:", dest_h.atoms_size(), source_h.atoms_size()
+  # dest_h.write_pdb_file(file_name="dest_h.pdb")
+  # source_h.write_pdb_file(file_name="source_h.pdb")
   if dest_h.atoms_size() == source_h.atoms_size():
     # print "TRYING SHORTCUT"
     good = True
@@ -371,7 +373,9 @@ def set_xyz_smart(dest_h, source_h):
             a.set_xyz(atom.xyz)
 
 def set_xyz_carefully(dest_h, source_h):
-  assert dest_h.atoms_size() >= source_h.atoms_size()
+  # This assertion fails when in dest_h some main-chain atoms were missing
+  # Nevertheless, the function should work anyway.
+  # assert dest_h.atoms_size() >= source_h.atoms_size()
   for d_ag, s_ag in zip(dest_h.atom_groups(), source_h.atom_groups()):
     for s_atom in s_ag.atoms():
       d_atom = d_ag.get_atom(s_atom.name.strip())
@@ -480,6 +484,8 @@ def substitute_ss(real_h,
   t0 = time()
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
+  if real_h.models_size() > 1:
+    raise Sorry("Multi model files are not supported")
   for model in real_h.models():
     for chain in model.chains():
       if len(chain.conformers()) > 1:
@@ -487,6 +493,8 @@ def substitute_ss(real_h,
 
   processed_params = process_params(params)
   if not processed_params.enabled:
+    return None
+  if ss_annotation is None:
     return None
 
   expected_n_hbonds = 0
@@ -557,6 +565,7 @@ def substitute_ss(real_h,
                           rotamer_manager=rotamer_manager)
       # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
       set_xyz_carefully(dest_h=edited_h.select(all_bsel), source_h=ideal_h)
+      # set_xyz_smart(dest_h=edited_h.select(all_bsel), source_h=ideal_h) # does not work here
   for sh in ann.sheets:
     s = "  %s\n" % sh.as_pdb_str()
     ss = s.replace("\n", "\n  ")
@@ -701,6 +710,9 @@ def substitute_ss(real_h,
       processed_pdb_file, xray_structure)
     t8 = time()
   else:
+    ssm_log = null_out()
+    if verbose:
+      ssm_log = log
     ss_params = secondary_structure.sec_str_master_phil.fetch().extract()
     ss_params.secondary_structure.protein.remove_outliers=False
     ss_manager = secondary_structure.manager(
@@ -710,11 +722,11 @@ def substitute_ss(real_h,
         params=ss_params.secondary_structure,
         mon_lib_srv=None,
         verbose=-1,
-        log=log)
+        log=ssm_log)
     grm.geometry.set_secondary_structure_restraints(
         ss_manager=ss_manager,
         hierarchy=real_h,
-        log=log)
+        log=ssm_log)
   real_h.reset_i_seq_if_necessary()
   from mmtbx.geometry_restraints import reference
   if reference_map is None:
