@@ -109,6 +109,8 @@ def exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib):
 def exercise_add_super_long_bond(mon_lib_srv, ener_lib):
   # distance between the two is 26A, they are not added because of
   # max_distance_between_connecting_atoms=5 is default.
+  # Inspired by 4c8q, atoms are from offending SHEET with wrong parallel/
+  # antiparallel definition.
   #
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records5)
   proxy = geometry_restraints.bond_simple_proxy(
