@@ -269,12 +269,12 @@ class model_idealization():
     asc = pdb_h.atom_selection_cache()
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
           rama_score_selection(pdb_h, self.rama_manager, "outlier",1)
-    print >> self.log, "rama outlier selection:", outlier_selection_txt
+    # print >> self.log, "rama outlier selection:", outlier_selection_txt
     rama_out_sel = asc.selection(outlier_selection_txt)
 
     allowed_selection_txt = mmtbx.building.loop_closure.utils. \
           rama_score_selection(pdb_h, self.rama_manager, "allowed",0)
-    print >> self.log, "rama allowed selection:", allowed_selection_txt
+    # print >> self.log, "rama allowed selection:", allowed_selection_txt
     rama_allowed_sel = asc.selection(allowed_selection_txt)
 
 
@@ -355,7 +355,7 @@ class model_idealization():
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
           rama_score_selection(pdb_h, self.rama_manager, "outlier",1)
     asc = pdb_h.atom_selection_cache()
-    print >> self.log, "rama outlier selection:", outlier_selection_txt
+    # print >> self.log, "rama outlier selection:", outlier_selection_txt
     rama_out_sel = asc.selection(outlier_selection_txt)
     xrs=xrs.set_b_iso(value=50)
 
@@ -385,8 +385,6 @@ class model_idealization():
       # here we are negating non-master part of the model
       # self.master_sel=master_sel
       # self.master_map = self.reference_map.deep_copy()
-      print type(self.reference_map), dir(self.reference_map)
-      print type(self.master_map), dir(self.master_map)
       mask = maptbx.mask(
               xray_structure=xrs.select(self.master_sel),
               n_real=self.master_map.focus(),

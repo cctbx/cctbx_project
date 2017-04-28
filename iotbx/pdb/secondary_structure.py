@@ -54,6 +54,7 @@ import sys
 from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
 import iotbx.cif.model
 import copy
+from libtbx.utils import null_out
 
 
 def segments_are_similar(atom_selection_1=None,
@@ -431,7 +432,6 @@ class structure_base (object) :
 
     from mmtbx.secondary_structure.find_ss_from_ca import \
       find_secondary_structure
-    from libtbx.utils import null_out
     fss=find_secondary_structure(hierarchy=ph,
       user_annotation_text=self.as_pdb_str(),
       force_secondary_structure_input=True,
@@ -819,7 +819,9 @@ class annotation(structure_base):
           # find new sheet structure for this sheet
           sh_hierarchy = hierarchy.select(sh_atom_selections[i])
           n_rgs = len(list(sh_hierarchy.residue_groups()))
-          ss_m = ss_manager(pdb_hierarchy=sh_hierarchy)
+          ss_m = ss_manager(
+              pdb_hierarchy=sh_hierarchy,
+              log=null_out())
           fresh_sheets = ss_m.actual_sec_str.sheets
           # checking for bug occuring in 4a7h where one strand happens to be
           # too long
@@ -836,7 +838,8 @@ class annotation(structure_base):
             ss_def_pars.secondary_structure.protein.search_method="from_ca"
             ss_m = ss_manager(
               pdb_hierarchy=sh_hierarchy,
-              params=ss_def_pars.secondary_structure)
+              params=ss_def_pars.secondary_structure,
+              log=null_out())
           new_sheets += ss_m.actual_sec_str.sheets
     if len(sh_indeces_to_delete) > 0:
       for i in reversed(sh_indeces_to_delete):
