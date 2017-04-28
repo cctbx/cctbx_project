@@ -249,8 +249,8 @@ def secondary_structure_from_sequence(pdb_str,
       raise Sorry(
           "Hierarchy template in secondary_structure_from_sequence is empty")
     else:
-      assert len(pht.altloc_indices().keys()) == 1, \
-          "Alternative conformations are not supported"
+      if len(pht.altloc_indices().keys()) != 1:
+        raise Sorry("Alternative conformations are not supported")
   number_of_residues = len(sequence) if sequence!=None else \
     len(pht.models()[0].chains()[0].conformers()[0].residues())
   if number_of_residues<1:
