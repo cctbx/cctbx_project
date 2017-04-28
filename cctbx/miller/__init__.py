@@ -4031,7 +4031,7 @@ class array(set):
         break
     #print "i_mid, cc:", fsc_result.d[i_mid], fsc_result.d_inv[i_mid]
     d_min = None
-    d_min = None
+    d_mid = None
     if(i_mid is not None):
       d_mid = fsc_result.d[i_mid]
       if(i_mid is not None):
