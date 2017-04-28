@@ -16,6 +16,7 @@ from scitbx.array_family import flex
 from cStringIO import StringIO
 from mmtbx.conformation_dependent_library import generate_protein_threes
 import math
+from libtbx import easy_pickle
 
 
 import boost.python
@@ -587,6 +588,12 @@ class loop_idealization():
         if anchor_present:
           fixed_ref_atoms_coors = [x.xyz for x in fixed_ref_atoms]
           # print "params to constructor", fixed_ref_atoms, h, moving_ref_atoms_iseqs
+          easy_pickle.dump(file_name="crash.pkl", obj=[
+              fixed_ref_atoms_coors,
+              h,
+              moving_ref_atoms_iseqs,
+              direction_forward,
+              self.params.save_states])
           ccd_obj = ccd_cpp(fixed_ref_atoms_coors, h, moving_ref_atoms_iseqs)
           ccd_obj.run(direction_forward=direction_forward, save_states=self.params.save_states)
           resulting_rmsd = ccd_obj.resulting_rmsd
