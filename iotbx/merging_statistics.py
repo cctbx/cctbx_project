@@ -63,6 +63,12 @@ cc_one_half_method = *half_dataset sigma_tau
   .type = choice
 """ % sigma_filtering_phil_str
 
+class StatisticsError(RuntimeError):
+  '''Custom error class, so that these errors can be caught and dealt with appropriately.'''
+
+class StatisticsErrorNoReflectionsInRange(StatisticsError):
+  '''Attempted to calculate statistics for an empty resolution range.'''
+
 class model_based_arrays (object) :
   """
   Container for observed and calculated intensities, along with the selections
@@ -235,8 +241,8 @@ class merging_stats (object) :
         d_min=self.d_min).resolution_filter(d_min=self.d_min, d_max=self.d_max)
     n_expected = len(complete_set.indices())
     if (n_expected == 0) :
-      raise RuntimeError(("No reflections within specified resolution range "+
-        "(%g - %g)") % (self.d_max, self.d_min))
+      raise StatisticsErrorNoReflectionsInRange(
+          ("No reflections within specified resolution range (%g - %g)") % (self.d_max, self.d_min))
     self.completeness = min(self.n_uniq / n_expected, 1.)
     self.anom_completeness = None
     # TODO also calculate when anomalous=False, since it is customary to
