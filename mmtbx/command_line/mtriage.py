@@ -216,6 +216,7 @@ Feedback:
     print >> log, "FSC(model map, map) is written to %s"%fn
   #
   if(results.fsc_curve is not None):
+    fn = "fsc_half_maps.mtriage.log"
     of = open("fsc_half_maps.mtriage.log","w")
     for a,b in zip(results.fsc_curve.fsc.d_inv, results.fsc_curve.fsc.fsc):
       print >>of, "%15.9f %15.9f"%(a,b)
