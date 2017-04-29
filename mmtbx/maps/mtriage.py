@@ -12,16 +12,7 @@ from mmtbx.maps import correlation
 from mmtbx import masks
 
 master_params_str = """
-  map_file_name = None
-    .type = str
-    .help = Map file name
-  model_file_name = None
-    .type = str
-    .help = Model file name
-  resolution = None
-    .type = float
-    .help = Data (map) resolution
-  scattering_table = wk1995  it1992  *n_gaussian  neutron electron
+  scattering_table = wk1995  it1992  n_gaussian  neutron *electron
     .type = choice
     .help = Scattering table (X-ray, neutron or electron)
   atom_radius = None
@@ -42,6 +33,9 @@ master_params_str = """
   radius_smooth = None
     .type = bool
     .help = Mask smoothing radius (by default set to max(10,d99)
+  nproc = 1
+    .type = int
+    .help = Number of processors to use
 """
 
 def master_params():
@@ -71,8 +65,7 @@ class mtriage(object):
                params=master_params(),
                half_map_data_1=None,
                half_map_data_2=None,
-               pdb_hierarchy=None,
-               nproc=1):
+               pdb_hierarchy=None):
     adopt_init_args(self, locals())
     # Objects may be altered inside
     self.map_data = self.map_data.deep_copy()
@@ -119,8 +112,6 @@ class mtriage(object):
       raise Sorry("Symmetry must be P1")
 
   def run(self):
-    # Shift origin if needed
-    self._shift_origin()
     # Extract xrs from pdb_hierarchy
     self._get_xray_structure()
     # Compute mask
@@ -138,14 +129,6 @@ class mtriage(object):
     # Map-model FSC and d_fsc_model
     self._compute_model_map_fsc()
 
-  def _shift_origin(self):
-    soin = maptbx.shift_origin_if_needed(
-      map_data         = self.map_data,
-      sites_cart       = self.pdb_hierarchy.atoms().extract_xyz(),
-      crystal_symmetry = self.crystal_symmetry)
-    self.map_data = soin.map_data
-    self.pdb_hierarchy.atoms().set_xyz(soin.sites_cart)
-
   def _get_xray_structure(self):
     if(self.pdb_hierarchy is not None):
       self.pdb_hierarchy.atoms().reset_i_seq()
@@ -154,6 +137,7 @@ class mtriage(object):
 
   def _compute_mask(self):
     if(not self.params.mask_maps): return
+    if(self.pdb_hierarchy is None): return
     rad_smooth = self.params.radius_smooth
     if(rad_smooth is None):
       d99 = maptbx.d99(
@@ -167,6 +151,7 @@ class mtriage(object):
 
   def _apply_mask(self):
     if(not self.params.mask_maps): return
+    if(self.mask_object is None): return
     self.map_data = self.map_data * self.mask_object.mask_smooth
     if(self.half_map_data_1 is not None):
       self.half_map_data_1 = self.half_map_data_1 * self.mask_object.mask_smooth
@@ -209,7 +194,7 @@ class mtriage(object):
         xray_structure   = self.box.xray_structure,
         pdb_hierarchy    = self.box.pdb_hierarchy,
         d_min_min        = 1.7,
-        nproc            = self.nproc)
+        nproc            = self.params.nproc)
       self.d_model       = o.d_min
       self.b_iso_overall = o.b_iso
 
