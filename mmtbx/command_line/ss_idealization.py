@@ -18,8 +18,9 @@ def run(args):
     use_plane_peptide_bond_restr=True,
     log=sys.stdout,
     ss_annotation=ss_ann)
+  out_fname = "%s_ss_ideal.pdb" % os.path.basename(args[0])
   iotbx.pdb.write_whole_pdb_file(
-    file_name="%s_ss_ideal.pdb" % args[0],
+    file_name=out_fname,
     output_file=None,
     processed_pdb_file=None,
     pdb_hierarchy=pdb_h,
@@ -28,7 +29,7 @@ def run(args):
     append_end=True,
     atoms_reset_serial_first_value=None,
     link_records=None)
-  print "File saved: %s_ss_ideal.pdb" % args[0]
+  print "File saved: %s" % out_fname
   print "All done."
 
 if __name__ == "__main__" :
