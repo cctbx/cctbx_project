@@ -24,15 +24,17 @@ def pypi_pkg_url(package):
     pkgname = package
   return "%s/%s/%s" % (BASE_PIPY_PKG_URL, package[0], pkgname)
 
-# OpenSSL - needed for Mac OS X 10.11
+# OpenSSL - needed for Mac OS X 10.11 and later
 BASE_OPENSSL_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/master/"
 OPENSSL_PKG = "openssl-1.0.2k.tar.gz"
+
+# root certificates for macOS 10.11 and later
+CERTIFI_PKG = "certifi-2017.4.17.tar.gz"
 
 # base packages updated on 2/15/2015 by bkpoon
 
 # from CCI
-PYTHON_PKG = "Python-2.7.8_cci.tar.gz"
-#PYTHON_PKG = "Python-2.7.12.tar.gz"
+PYTHON_PKG = "Python-2.7.13.tgz"
 NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
