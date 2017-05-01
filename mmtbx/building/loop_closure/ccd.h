@@ -31,7 +31,8 @@ class ccd_cpp {
   {
     scitbx::vec3<FloatType> ab = axis_point_2 - axis_point_1;
     scitbx::vec3<FloatType> ap = point - axis_point_1;
-    return axis_point_1 + ((ap*ab) / (ab*ab)) * ab;
+    scitbx::vec3<FloatType> result = axis_point_1 + ((ap*ab) / (ab*ab)) * ab;
+    return result;
   }
 
   public:
@@ -46,7 +47,7 @@ class ccd_cpp {
       scitbx::vec3<double> fixed_coor = fixed_ref_atoms[i];
       scitbx::vec3<double> moving_coor = moving_h_atoms[moving_ref_atoms_iseqs[i]].data->xyz;
       // _get_f_r_s
-      scitbx::vec3<double> f, s_home, r_home;
+      scitbx::vec3<double> f, s_home(0,0,0), r_home(0,0,0);
       double r_norm;
       scitbx::vec3<double> fc_proj, mc_proj, r, ap_21;
       fc_proj = project_point_on_axis(axis_point_1, axis_point_2, fixed_coor);
@@ -55,11 +56,13 @@ class ccd_cpp {
       r = moving_coor - mc_proj;
       ap_21 = axis_point_2 - axis_point_1;
       r_norm = r.length();
-      r_home = r.normalize();
+      // std::cout << "r.length() is godd";
+      if (fabs(r_norm) > 1e-10) r_home = r.normalize();
       // double ap_21_norm = ap_21.length(); // not needed?
-      scitbx::vec3<double> theta_home = ap_21.normalize();
+      scitbx::vec3<double> theta_home(0,0,0);
+      if (fabs(ap_21.length()) > 1e-10) theta_home = ap_21.normalize();
       scitbx::vec3<double> tt = theta_home.cross(r_home);
-      s_home = tt.normalize();
+      if (fabs(tt.length()) > 1e-10) s_home = tt.normalize();
 
 
       b += 2*r_norm*(f*r_home);
