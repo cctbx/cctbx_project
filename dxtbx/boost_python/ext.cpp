@@ -21,6 +21,24 @@ namespace dxtbx { namespace boost_python {
   }
 
   scitbx::af::shared<int>
+  read_uint8(boost_adaptbx::python::streambuf & input,
+             size_t count)
+  {
+    scitbx::af::shared<int> result;
+    boost_adaptbx::python::streambuf::istream is(input);
+    std::vector<unsigned char> data;
+    data.resize(count);
+
+    is.read((char *) &data[0], count * sizeof(unsigned char));
+
+    for (size_t j = 0; j < count; j++) {
+      result.push_back((int) data[j]);
+    }
+
+    return result;
+  }
+
+  scitbx::af::shared<int>
   read_uint16(boost_adaptbx::python::streambuf & input,
               size_t count)
   {
@@ -146,6 +164,7 @@ namespace dxtbx { namespace boost_python {
   void init_module()
   {
     using namespace boost::python;
+    def("read_uint8", read_uint8, (arg("file"), arg("count")));
     def("read_uint16", read_uint16, (arg("file"), arg("count")));
     def("read_uint32", read_uint32, (arg("file"), arg("count")));
     def("read_uint16_bs", read_uint16_bs, (arg("file"), arg("count")));
