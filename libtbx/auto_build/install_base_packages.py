@@ -1054,6 +1054,7 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=CERTIFI_PKG,
       pkg_name_label="certifi",
       confirm_import_module="certifi")
+    if self.check_download_only(): return
 
     # set environment variable for root certificates
     # this affects future pip commands in the installation process and only
