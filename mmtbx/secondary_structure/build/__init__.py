@@ -481,6 +481,7 @@ def substitute_ss(real_h,
       get_geometry_restraints_manager for no obvious reason).
   ss_annotation - iotbx.pdb.annotation object.
   """
+  import mmtbx.utils
   t0 = time()
   if rotamer_manager is None:
     rotamer_manager = RotamerEval()
@@ -543,6 +544,7 @@ def substitute_ss(real_h,
 
   t2 = time()
   # Actually idelizing SS elements
+  fixed_ss_selection = flex.bool(n_atoms_in_real_h, False)
   log.write("Replacing ss-elements with ideal ones:\n")
   log.flush()
   ss_stats = gather_ss_stats(pdb_h=real_h)
@@ -557,6 +559,7 @@ def substitute_ss(real_h,
       log.write("    substitute with idealized one.\n")
       selstring = h.as_atom_selections()
       isel = selection_cache.iselection(selstring[0])
+      fixed_ss_selection.set_selected(isel, True)
       all_bsel = flex.bool(n_atoms_in_real_h, False)
       all_bsel.set_selected(isel, True)
       sel_h = real_h.select(all_bsel, copy_atoms=True)
@@ -581,6 +584,7 @@ def substitute_ss(real_h,
         isel = selection_cache.iselection(selstring)
         all_bsel = flex.bool(n_atoms_in_real_h, False)
         all_bsel.set_selected(isel, True)
+        fixed_ss_selection.set_selected(isel, True)
         sel_h = real_h.select(all_bsel, copy_atoms=True)
         ideal_h = secondary_structure_from_sequence(
             pdb_str=beta_pdb_str,
@@ -747,8 +751,31 @@ def substitute_ss(real_h,
             sites_cart = real_h.atoms().extract_xyz().select(other_selection),
             selection  = other_selection,
             sigma      = processed_params.sigma_on_reference_non_ss))
+
+  # XXX Somewhere here we actually should check placed side-chains for
+  # clashes because we used ones that were in original model and just moved
+  # them to nearest allowed rotamer. The idealization may affect a lot
+  # the orientation of side chain thus justifying changing rotamer on it
+  # to avoid clashes.
+  print >> log, "Fixing/checking rotamers..."
+  pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
+  pre_result_h = mmtbx.utils.fix_rotamer_outliers(
+    pdb_hierarchy=pre_result_h,
+    grm=grm.geometry,
+    xrs=real_h.extract_xray_structure(crystal_symmetry=xray_structure.crystal_symmetry()),
+    map_data=reference_map,
+    radius=5,
+    mon_lib_srv=None,
+    rotamer_manager=rotamer_manager,
+    backrub_range=None, # don't sample backrub at this point
+    non_outliers_to_check=fixed_ss_selection, # bool selection
+    asc=selection_cache,
+    verbose=True,
+    log=log)
+
   if verbose:
     print >> log, "Adding chi torsion restraints..."
+  # only backbone
   grm.geometry.add_chi_torsion_restraints_in_place(
           pdb_hierarchy   = pre_result_h,
           sites_cart      = pre_result_h.atoms().extract_xyz().\

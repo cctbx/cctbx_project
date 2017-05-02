@@ -12,12 +12,16 @@ def run(args):
     file_name=args[0])
   ss_ann = pdb_inp.extract_secondary_structure()
   pdb_h = pdb_inp.construct_hierarchy()
+  params = ssb.master_phil.extract()
+  params.ss_idealization.file_name_before_regularization="before_reg.pdb"
+  params.ss_idealization.enabled=True
   rm = ssb.substitute_ss(
     real_h=pdb_h,
     xray_structure=pdb_inp.xray_structure_simple(),
     use_plane_peptide_bond_restr=True,
     log=sys.stdout,
-    ss_annotation=ss_ann)
+    ss_annotation=ss_ann,
+    params=params)
   out_fname = "%s_ss_ideal.pdb" % os.path.basename(args[0])
   iotbx.pdb.write_whole_pdb_file(
     file_name=out_fname,

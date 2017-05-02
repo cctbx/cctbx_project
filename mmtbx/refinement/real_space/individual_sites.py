@@ -500,6 +500,12 @@ class minimize_wrapper_with_map():
     import mmtbx.refinement.real_space.weight
     self.w = 1
     print >> log, "number_of_cycles", number_of_cycles
+    print >> log, "Stats before minimization:"
+    ms = geometry_no_grm(
+        pdb_hierarchy=self.pdb_h,
+        molprobity_scores=True)
+    print >> self.log, ms.format_molprobity_scores(prefix="    ")
+
     while min_monitor.need_more_cycles():
       # for x in xrange(number_of_cycles):
       print >> self.log, "Cycle number", min_monitor.get_current_cycle_n()

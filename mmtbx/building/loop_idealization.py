@@ -16,7 +16,7 @@ from scitbx.array_family import flex
 from cStringIO import StringIO
 from mmtbx.conformation_dependent_library import generate_protein_threes
 import math
-from libtbx import easy_pickle
+from libtbx import easy_pickle, Auto
 
 
 import boost.python
@@ -218,6 +218,26 @@ class loop_idealization():
         print >> self.log, "minimizing whole chain..."
         print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
         # print >> sel
+        # XXX but first let's check and fix rotamers...
+        print >> self.log, "Fixing/checking rotamers in loop idealization..."
+        excl_sel = self.ref_exclusion_selection
+        if len(excl_sel) == 0:
+          excl_sel = None
+        non_outliers_for_check = asc.selection("(%s)" % self.ref_exclusion_selection)
+        pre_result_h = mmtbx.utils.fix_rotamer_outliers(
+          pdb_hierarchy=self.resulting_pdb_h,
+          grm=self.grm.geometry,
+          xrs=self.xrs,
+          map_data=self.reference_map,
+          radius=5,
+          mon_lib_srv=None,
+          rotamer_manager=self.rotamer_manager,
+          backrub_range=None, # don't sample backrub at this point
+          non_outliers_to_check=non_outliers_for_check, # bool selection
+          asc=asc,
+          verbose=True,
+          log=self.log)
+
         if self.reference_map is None:
           minimize_wrapper_for_ramachandran(
               hierarchy=self.resulting_pdb_h,
@@ -234,6 +254,7 @@ class loop_idealization():
               target_map=self.reference_map,
               grm=self.grm,
               ss_annotation=self.secondary_structure_annotation,
+              number_of_cycles=Auto,
               log=self.log)
       if self.params.debug:
         self.resulting_pdb_h.write_pdb_file(
