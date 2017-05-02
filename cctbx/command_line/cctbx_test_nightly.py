@@ -14,6 +14,7 @@ if (__name__ == "__main__") :
     "module=iotbx",
     "module=dxtbx",
     "module=smtbx",
+    "module=simtbx",
     "nproc=Auto",
   ]
   if (libtbx.env.find_in_repositories("chem_data") is not None and
