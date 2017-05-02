@@ -2108,7 +2108,8 @@ class _(boost.python.injector, ext.conformer):
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
-    if ((n_aa > n_na) and ((n_aa / len(rn_seq)) >= min_content)) :
+    non_water = len(rn_seq)-residue_classes.get('common_water', 0)
+    if ((n_aa > n_na) and ((n_aa / non_water) >= min_content)) :
       return True
     return False
 
@@ -2117,7 +2118,8 @@ class _(boost.python.injector, ext.conformer):
     rn_seq, residue_classes = self.get_residue_names_and_classes()
     n_aa = residue_classes["common_amino_acid"]
     n_na = residue_classes["common_rna_dna"]
-    if ((n_na > n_aa) and ((n_na / len(rn_seq)) >= min_content)) :
+    non_water = len(rn_seq)-residue_classes.get('common_water', 0)
+    if ((n_na > n_aa) and ((n_na / non_water) >= min_content)) :
       return True
     return False
 
