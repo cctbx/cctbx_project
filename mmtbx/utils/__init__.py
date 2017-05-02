@@ -2487,6 +2487,111 @@ def backrub_move(
                 deg          = True)
         a.xyz = new_xyz
 
+def sample_and_fix_rotamer(
+    residues,
+    i_res,
+    res,
+    pdb_hierarchy,
+    xrs,
+    map_data,
+    grm,
+    rotamer_manager,
+    crystal_gridding,
+    mon_lib_srv,
+    special_position_settings,
+    radius,
+    backrub_range,
+    log,
+    verbose):
+  from scitbx_array_family_flex_ext import reindexing_array
+  n_res = len(residues)
+  n_atoms = pdb_hierarchy.atoms_size()
+  hd_sel = xrs.hd_selection()
+
+  sample_backrub_angles = [0]
+  if backrub_range is not None:
+    inc = 3
+    f = 3
+    while f <= backrub_range:
+      sample_backrub_angles.append(-f)
+      sample_backrub_angles.append(f)
+      f += inc
+  all_inf = []
+  sel, bsel_around_no_mc, selection_around_residue = _get_selections_around_residue(
+      n_atoms,
+      xrs,
+      res,
+      special_position_settings,
+      radius)
+  r_a = list(reindexing_array(n_atoms,
+      selection_around_residue.iselection().as_int()))
+  reindexing_dict = {}
+  for i in sel:
+    reindexing_dict[i] = r_a[i]
+  pdb_selected = pdb_hierarchy.select(selection_around_residue)
+  bsel_around_no_mc_selected = bsel_around_no_mc.select(selection_around_residue)
+  hd_sel_selected = hd_sel.select(selection_around_residue)
+  grm_selected = grm.select(selection_around_residue)
+  for backrub_angle in sample_backrub_angles:
+    if verbose:
+      print >> log, "  Backrub angle:", backrub_angle
+    # make backrub, check ramachandran status
+    prev_res = None
+    if i_res > 0:
+      prev_res = residues[i_res-1]
+    next_res = None
+    if i_res+1 < n_res:
+      next_res = residues[i_res+1]
+    backrub_move(
+        prev_res = prev_res,
+        cur_res = res,
+        next_res = next_res,
+        angle=backrub_angle,
+        move_oxygens=False,
+        accept_worse_rama=False,
+        rotamer_manager=rotamer_manager)
+    # sample rotamers
+    s_inf = _get_rotamers_evaluated(
+        pdb_hierarchy=pdb_selected,
+        sel=sel,
+        xrs=xrs.select(selection_around_residue),
+        crystal_gridding=crystal_gridding,
+        bsel_around_no_mc=bsel_around_no_mc_selected,
+        hd_sel=hd_sel_selected,
+        res=res,
+        grm=grm_selected,
+        reind_dict=reindexing_dict,
+        mon_lib_srv=mon_lib_srv,
+        map_data=map_data,
+        prefix="%d" % backrub_angle)
+    if s_inf is None:
+      continue
+    all_inf.extend(s_inf)
+    all_inf = sorted(all_inf, key=lambda x: (x[5], x[2]))
+    if verbose:
+      for inf_elem in all_inf:
+        print >> log, "    ", inf_elem[:-1]
+    # see if need to continue to another backrubs
+    # pdb_hierarchy.write_pdb_file(
+    #     file_name="%s_%d.pdb" % (res.id_str()[7:], backrub_angle))
+    if verbose:
+      print >> log, "  The best clashscore 2:", all_inf[-1][5]
+    if all_inf[-1][5] > -0.01:
+      break
+    backrub_move(
+        prev_res = prev_res,
+        cur_res = res,
+        next_res = next_res,
+        angle=-backrub_angle,
+        move_oxygens=False,
+        accept_worse_rama=False,
+        rotamer_manager=rotamer_manager)
+  if len(all_inf) == 0:
+    return
+  if verbose:
+    print >> log, "Setting best available rotamer:", all_inf[-1][:-1]
+  res.atoms().set_xyz(all_inf[-1][-1])
+
 def fix_rotamer_outliers(
     pdb_hierarchy,
     grm,
@@ -2496,13 +2601,12 @@ def fix_rotamer_outliers(
     mon_lib_srv=None,
     rotamer_manager=None,
     backrub_range=10,
+    non_outliers_to_check=None, # bool selection
     asc=None,
     verbose=False,
     log=None):
   import boost.python
   boost.python.import_ext("scitbx_array_family_flex_ext")
-  from scitbx_array_family_flex_ext import reindexing_array
-
   if mon_lib_srv is None:
     mon_lib_srv = mmtbx.monomer_library.server.server()
   if rotamer_manager is None:
@@ -2518,7 +2622,6 @@ def fix_rotamer_outliers(
   special_position_settings = crystal.special_position_settings(
       crystal_symmetry = xrs.crystal_symmetry())
   n_atoms = pdb_hierarchy.atoms_size()
-  hd_sel = xrs.hd_selection()
 
   crystal_gridding = None
   if map_data is not None:
@@ -2531,99 +2634,43 @@ def fix_rotamer_outliers(
     for chain in model.chains():
       for conf in chain.conformers():
         residues = conf.residues()
-        n_res = len(residues)
         for i_res, res in enumerate(residues):
+          fix_residue = False
           if verbose:
-            print >> log, "Working on", res.id_str()
+            print >> log, "Working on", res.id_str(),
           cl = get_class(res.resname)
-          if cl not in ["common_amino_acid","modified_amino_acid"]:
-            continue
+          # if cl not in ["common_amino_acid","modified_amino_acid"]:
+          #   fix_residue = False
+          if non_outliers_to_check is not None:
+            if non_outliers_to_check[res.atoms()[0].i_seq]:
+              fix_residue = True
+              if verbose:
+                print >> log, "Checking"
           ev = rotamer_manager.evaluate_residue_2(res)
-          if ev != "OUTLIER":
-            continue
-          sample_backrub_angles = [0]
-          if backrub_range is not None:
-            inc = 3
-            f = 3
-            while f <= backrub_range:
-              sample_backrub_angles.append(-f)
-              sample_backrub_angles.append(f)
-              f += inc
-          all_inf = []
-          sel, bsel_around_no_mc, selection_around_residue = _get_selections_around_residue(
-              n_atoms,
-              xrs,
-              res,
-              special_position_settings,
-              radius)
-          r_a = list(reindexing_array(n_atoms,
-              selection_around_residue.iselection().as_int()))
-          reindexing_dict = {}
-          for i in sel:
-            reindexing_dict[i] = r_a[i]
-          pdb_selected = pdb_hierarchy.select(selection_around_residue)
-          bsel_around_no_mc_selected = bsel_around_no_mc.select(selection_around_residue)
-          hd_sel_selected = hd_sel.select(selection_around_residue)
-          grm_selected = grm.select(selection_around_residue)
-          for backrub_angle in sample_backrub_angles:
+          if ev == "OUTLIER":
+            fix_residue = True
             if verbose:
-              print >> log, "  Backrub angle:", backrub_angle
-            # make backrub, check ramachandran status
-            prev_res = None
-            if i_res > 0:
-              prev_res = residues[i_res-1]
-            next_res = None
-            if i_res+1 < n_res:
-              next_res = residues[i_res+1]
-            backrub_move(
-                prev_res = prev_res,
-                cur_res = res,
-                next_res = next_res,
-                angle=backrub_angle,
-                move_oxygens=False,
-                accept_worse_rama=False,
-                rotamer_manager=rotamer_manager)
-            # sample rotamers
-            s_inf = _get_rotamers_evaluated(
-                pdb_hierarchy=pdb_selected,
-                sel=sel,
-                xrs=xrs.select(selection_around_residue),
-                crystal_gridding=crystal_gridding,
-                bsel_around_no_mc=bsel_around_no_mc_selected,
-                hd_sel=hd_sel_selected,
-                res=res,
-                grm=grm_selected,
-                reind_dict=reindexing_dict,
-                mon_lib_srv=mon_lib_srv,
-                map_data=map_data,
-                prefix="%d" % backrub_angle)
-            if s_inf is None:
-              continue
-            all_inf.extend(s_inf)
-            all_inf = sorted(all_inf, key=lambda x: (x[5], x[2]))
+              print >> log, "OUTLIER"
+          if not fix_residue:
             if verbose:
-              for inf_elem in all_inf:
-                print >> log, "    ", inf_elem[:-1]
-            # see if need to continue to another backrubs
-            # pdb_hierarchy.write_pdb_file(
-            #     file_name="%s_%d.pdb" % (res.id_str()[7:], backrub_angle))
-            if verbose:
-              print >> log, "  The best clashscore 2:", all_inf[-1][5]
-            if all_inf[-1][5] > -0.01:
-              break
-            backrub_move(
-                prev_res = prev_res,
-                cur_res = res,
-                next_res = next_res,
-                angle=-backrub_angle,
-                move_oxygens=False,
-                accept_worse_rama=False,
-                rotamer_manager=rotamer_manager)
-          if len(all_inf) == 0:
-            continue
-          if verbose:
-            print >> log, "Setting best available rotamer:", all_inf[-1][:-1]
-          res.atoms().set_xyz(all_inf[-1][-1])
+              print >> log, "Skipping"
+          if fix_residue:
+            sample_and_fix_rotamer(
+                residues,
+                i_res,
+                res,
+                pdb_hierarchy,
+                xrs,
+                map_data,
+                grm,
+                rotamer_manager,
+                crystal_gridding,
+                mon_lib_srv,
+                special_position_settings,
+                radius,
+                backrub_range,
+                log,
+                verbose)
   return pdb_hierarchy
 
 def switch_rotamers(
