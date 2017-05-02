@@ -900,12 +900,14 @@ _replace_sysconfig_paths(build_time_vars)
                              'raise ValueError("pkg-config must be installed")',
                              "FALLBACK_CONFIG['include_dirs'] = [d for d in FALLBACK_CONFIG['include_dirs']", "if path.isdir(d)]",
                              "FALLBACK_CONFIG['library_dirs'] = [d for d in FALLBACK_CONFIG['library_dirs']", "if path.isdir(d)]",
+                             "except subprocess.CalledProcessError:",
                             ],
                      replace_with=[
                              "COMPILE_FLAGS = ['-O3', '-std=c99']",
                              "pass",
                              "FALLBACK_CONFIG['include_dirs'] = ['%s/include']"%self.base_dir, "",
                              "FALLBACK_CONFIG['library_dirs'] = ['%s/lib']"%self.base_dir, "",
+                             "except subprocess.CalledProcessError, OSError:",
                              ])
     self.chdir("hdf5_lz4",log=log)
     self.call("make", log=log)
