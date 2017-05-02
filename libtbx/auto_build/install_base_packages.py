@@ -902,7 +902,7 @@ _replace_sysconfig_paths(build_time_vars)
                              "pass",
                              "FALLBACK_CONFIG['include_dirs'] = ['%s/include']"%self.base_dir, "",
                              "FALLBACK_CONFIG['library_dirs'] = ['%s/lib']"%self.base_dir, "",
-                             "except subprocess.CalledProcessError, OSError:",
+                             "except (subprocess.CalledProcessError, OSError):",
                              ])
     self.chdir("hdf5_lz4",log=log)
     self.call("make", log=log)
