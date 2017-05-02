@@ -640,11 +640,6 @@ Installation of Python packages may fail.
     for i in packages_order:
       self.set_cppflags_ldflags() # up-to-date LDFLAGS/CPPFLAGS
       self.print_sep()
-      if ( hasattr(self, "built_%s" % i) and
-           getattr(self, "built_%s" % i)()
-         ):
-        print >> self.log, "Installation of %s is OK - skipping" % i
-        continue
       t0=time.time()
       getattr(self, 'build_%s'%i)()
       print >> self.log, "  package %s took %0.1fs to %s" % (
@@ -970,11 +965,6 @@ _replace_sysconfig_paths(build_time_vars)
         pkg_name_label="pyopengl",
         confirm_import_module="OpenGL")
 
-  def built_cython(self):
-    log_filename = "cython_install_log"
-    line = "Finished processing dependencies for Cython"
-    return self.simple_log_parse_test(log_filename, line)
-
   def build_cython(self):
     self.build_python_module_simple(
       pkg_url=pypi_pkg_url('Cython'),
@@ -988,16 +978,6 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=JINJA2_PKG,
       pkg_name_label="cython",
       confirm_import_module="jinja2")
-
-  def built_jinja2(self):
-    log_filename = "jinja2_install_log"
-    line = "Finished processing dependencies for Jinja2"
-    return self.simple_log_parse_test(log_filename, line)
-
-  def built_hdf5(self):
-    log_filename = "HDF5_install_log"
-    line = "Finished processing dependencies for h5py"
-    return self.simple_log_parse_test(log_filename, line)
 
   def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")
