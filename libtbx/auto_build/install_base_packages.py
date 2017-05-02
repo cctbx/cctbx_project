@@ -342,7 +342,8 @@ class installer (object) :
         print >> self.log, "  installing %s..." % pkg_name
     return self.options.download_only
 
-  def patch_src (self, src_file, target, replace_with, output_file=None) :
+  @staticmethod
+  def patch_src(src_file, target, replace_with, output_file=None):
     from shutil import copymode
     if isinstance(target, str) :
       assert isinstance(replace_with, str)
@@ -357,8 +358,8 @@ class installer (object) :
     if (output_file is None) :
       output_file = src_file
     src_out = open(output_file, "w")
-    for line in src_in.readlines() :
-      for target_str, replacement_str in zip(target, replace_with) :
+    for line in src_in.readlines():
+      for target_str, replacement_str in zip(target, replace_with):
         line = line.replace(target_str, replacement_str)
       src_out.write(line)
     src_in.close()
@@ -896,16 +897,16 @@ _replace_sysconfig_paths(build_time_vars)
       print >> log, "Patching bitshuffle/setup.py"
       self.patch_src(src_file="bitshuffle/setup.py",
                      target=["COMPILE_FLAGS = ['-O3', '-ffast-math', '-march=native', '-std=c99']",
-                             "INCLUDE_DIRS = []",
-                             "LIBRARY_DIRS = []",
-                             "'/opt/local/include'",
-                             "'/opt/local/lib'",
-                             "'/usr/local/include'",
-                             "'/usr/local/lib'"],
-                     replace_with=["COMPILE_FLAGS = ['-O3', '-std=c99']",
-                             "INCLUDE_DIRS = ['%s/include']"%self.base_dir,
-                             "LIBRARY_DIRS = ['%s/lib']"%self.base_dir,
-                             "","","",""])
+                             'raise ValueError("pkg-config must be installed")',
+                             "FALLBACK_CONFIG['include_dirs'] = [d for d in FALLBACK_CONFIG['include_dirs']", "if path.isdir(d)]",
+                             "FALLBACK_CONFIG['library_dirs'] = [d for d in FALLBACK_CONFIG['library_dirs']", "if path.isdir(d)]",
+                            ],
+                     replace_with=[
+                             "COMPILE_FLAGS = ['-O3', '-std=c99']",
+                             "pass",
+                             "FALLBACK_CONFIG['include_dirs'] = ['%s/include']"%self.base_dir, "",
+                             "FALLBACK_CONFIG['library_dirs'] = ['%s/lib']"%self.base_dir, "",
+                             ])
     self.chdir("hdf5_lz4",log=log)
     self.call("make", log=log)
     self.chdir("../bitshuffle",log=log)
