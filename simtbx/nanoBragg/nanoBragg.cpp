@@ -1,9 +1,7 @@
-#include <simtbx/nanoBragg/nanoBragg.h>
+#include <simtbx/nanoBragg/nanoBragg.h> 
 
 
 //Contributed by James Holton, LBNL.
-
-using std::isnan;
 
 namespace simtbx {
 namespace nanoBragg {
@@ -2527,8 +2525,8 @@ double *umat2misset(double umat[9],double *missets)
     }
     else
     {
-        rotx = atan2(1,1)*4;
-        roty = atan2(1,1)*2;
+        rotx = atan2(1.,1.)*4;
+        roty = atan2(1.,1.)*2;
         rotz = atan2(uxy,-uyy);
     }
 
@@ -2777,11 +2775,11 @@ void polin3(double *x1a, double *x2a, double *x3a, double ***ya, double x1,
 /* FWHM = integral = 1 */
 double ngauss2D(double x,double y)
 {
-    return log(16)/M_PI*exp(-log(16)*(x*x+y*y));
+    return log(16.)/M_PI*exp(-log(16.)*(x*x+y*y));
 }
 double ngauss2Dinteg(double x,double y)
 {
-    return 0.125*(erf(2*x*sqrt(log(2)))*erf(y*sqrt(log(16)))*sqrt(log(16)/log(2)));
+    return 0.125*(erf(2*x*sqrt(log(2.)))*erf(y*sqrt(log(16.)))*sqrt(log(16.)/log(2.)));
 }
 
 
@@ -3030,13 +3028,13 @@ double polarization_factor(double kahn_factor, double *incident, double *diffrac
 /* 2D Gaussian integral=1 */
 double ngauss2D(double x, double y, double fwhm)
 {
-    return log(16)/M_PI*fwhm*fwhm*exp(-log(16)*((x*x+y*y)/(fwhm*fwhm) ));
+    return log(16.)/M_PI*fwhm*fwhm*exp(-log(16.)*((x*x+y*y)/(fwhm*fwhm) ));
 }
 
 /* integral of Gaussian fwhm=1 integral=1 */
 double ngauss2D_integ(double x, double y)
     {
-    return 0.125*(erf(2*x*sqrt(log(2)))*erf(y*sqrt(log(16)))*sqrt(log(16)/log(2)));
+    return 0.125*(erf(2*x*sqrt(log(2.)))*erf(y*sqrt(log(16.)))*sqrt(log(16.)/log(2.)));
 }
 
 /* unit volume integrated over a pixel, fwhm = 1 */
@@ -3142,7 +3140,7 @@ double *apply_psf(double *inimage, int fpixels, int spixels, psf_type psftype, d
         if(psftype == GAUSS)
             {
             /* calculate the radius beyond which only 0.5 photons will fall */
-            psf_radius = 1+ceil( sqrt(-log(lost_photons/max_I)/log(4)/2)*fwhm_pixels );
+            psf_radius = 1+ceil( sqrt(-log(lost_photons/max_I)/log(4.)/2)*fwhm_pixels );
             if(verbose) printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
             }
         if(psftype == FIBER)
@@ -3213,7 +3211,7 @@ double *apply_psf(double *inimage, int fpixels, int spixels, psf_type psftype, d
             {
                 /* calculate the radius beyond which only 0.5 photons will fall
                    r = sqrt(-log(lost_photons/total_photons)/log(4)/2)*fwhm */
-                psf_radius = 1+ceil( sqrt(-log(lost_photons/inimage[i])/log(16))*fwhm_pixels );
+                psf_radius = 1+ceil( sqrt(-log(lost_photons/inimage[i])/log(16.))*fwhm_pixels );
 //              printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
 }
             if(psftype == FIBER)
@@ -3239,7 +3237,7 @@ double *apply_psf(double *inimage, int fpixels, int spixels, psf_type psftype, d
             rsq = psf_radius;
             rsq = rsq/fwhm_pixels;
             rsq = rsq*rsq;
-            lost_photons = inimage[i]*exp(-log(16)*rsq);
+            lost_photons = inimage[i]*exp(-log(16.)*rsq);
         }
         if(psftype == FIBER)
         {

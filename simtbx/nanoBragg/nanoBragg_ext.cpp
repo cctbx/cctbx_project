@@ -10,8 +10,6 @@
 
 #include <simtbx/nanoBragg/nanoBragg.h>
 
-
-
 using namespace boost::python;
 
 namespace simtbx {
@@ -23,7 +21,7 @@ namespace boost_python { namespace {
   testuple()
   {
     double test = NAN;
-    return boost::python::make_tuple(std::isnan(test),2,3,4);
+    return boost::python::make_tuple(isnan(test),2,3,4);
   }
 
   /* getter/setter functions for convenient python-side members

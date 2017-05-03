@@ -7,6 +7,7 @@
 #include <limits>
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
+#include <scitbx/constants.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
@@ -14,6 +15,9 @@
 #include <cctbx/crystal_orientation.h>
 #include <cctbx/miller.h>
 #include <dxtbx/model/detector.h>
+#include <boost/math/special_functions/erf.hpp>
+
+using boost::math::erf;
 
 
 /* need this on macs */
@@ -22,10 +26,16 @@
 #include <cmath>
 #include <cfloat>
 #ifndef NAN
-//#define NAN strtod("NAN",NULL)
+#define NAN strtod("NAN",NULL)
+#endif
+#ifndef isnan
+#define isnan _isnan
 #endif
 #ifndef DBL_MIN
 //#define DBL_MIN 1e-99
+#endif
+#ifndef M_PI
+#define M_PI scitbx::constants::pi
 #endif
 /* need this for read_text_file() */
 #include <stdarg.h>
@@ -45,7 +55,7 @@ typedef af::shared<miller_t > indices;
 /* Avogadro's number */
 static const double Avogadro = 6.02214179e23;
 /* convert from radians to degrees: 180/pi */
-static const double RTD = 180.0*M_1_PI;
+static const double RTD = 1/scitbx::constants::pi_180;
 /* Thomson cross section ((e^2)/(4*PI*epsilon0*m*c^2))^2 */
 static const double r_e_sqr = 7.94079248018965e-30;
 
