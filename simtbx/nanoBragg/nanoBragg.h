@@ -28,9 +28,15 @@ using boost::math::erf;
 #ifndef NAN
 #define NAN strtod("NAN",NULL)
 #endif
+
 #ifndef isnan
+#ifdef  _WIN32
 #define isnan _isnan
+#else
+using std::isnan;
 #endif
+#endif
+
 #ifndef DBL_MIN
 //#define DBL_MIN 1e-99
 #endif
