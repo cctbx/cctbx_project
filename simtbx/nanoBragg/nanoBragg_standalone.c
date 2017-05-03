@@ -1,4 +1,4 @@
-/* perfect-lattice nanocrystal diffraction simulator            -James Holton and Ken Frankel           6-9-16
+/* perfect-lattice nanocrystal diffraction simulator            -James Holton and Ken Frankel           5-3-17
 
 example:
 
@@ -301,6 +301,7 @@ int main(int argc, char** argv)
     double phase,Fa,Fb;
     double F,F_bg,*stol_of,*F_of;
     double ***Fhkl;
+    double default_F=0.0;
     int    hkls;
     double F_latt,F_cell;
     double F_highangle,F_lowangle;
@@ -906,6 +907,10 @@ int main(int argc, char** argv)
             {
                 hklfilename = argv[i+1];
             }
+            if(strstr(argv[i], "-default_F") && (argc > (i+1)))
+            {
+                default_F = atof(argv[i+1]);
+            }
             if(strstr(argv[i], "-img") && (argc > (i+1)))
             {
                 imginfilename = argv[i+1];
@@ -1061,6 +1066,11 @@ int main(int argc, char** argv)
             printf("WARNING: clipping sample (%lg m wide) with beam (%lg m)\n",sample_z,beamsize);
             sample_z = beamsize;
         }
+    }
+    if(exposure > 0.0)
+    {
+        /* make sure flux is consistent with everything else */
+        flux = fluence/exposure*beamsize*beamsize;
     }
 
     /* straighten up sample properties */
@@ -1478,7 +1488,15 @@ int main(int argc, char** argv)
             mosaic_spread = 0.0;
         } else {
             /* user-speficied mosaicity, but not number of domains */
-            mosaic_domains = 10;
+            if(mosaic_spread == 0.0)
+            {
+                mosaic_domains = 1;
+            }
+            else
+            {
+                printf("WARNING: finite mosaicity with only one domain! upping to 10 mosaic domains\n");
+                mosaic_domains = 10;
+            }
         }
     } else {
         /* user-specified number of domains */
@@ -1987,6 +2005,17 @@ int main(int argc, char** argv)
                         if(Fhkl[h0][k0]==NULL){perror("ERROR");exit(9);};
                 }
         }
+        if(default_F != 0.0) {
+ 	    printf("initializing to default_F = %g:\n",default_F);
+            for (h0=0; h0<h_range;h0++) {
+                for (k0=0; k0<k_range;k0++) {
+                    for (l0=0; l0<l_range;l0++) {
+                        Fhkl[h0][k0][l0] = default_F;
+                    }
+                }
+            }
+            printf("done initializing:\n");
+        }
 
 
         printf("re-reading %s\n",hklfilename);
@@ -2240,7 +2269,7 @@ int main(int argc, char** argv)
     subpixel_size = pixel_size/oversample;
 
 
-    printf("  %d initialized hkls (all others zero)\n",hkls);
+    printf("  %d initialized hkls (all others =%g)\n",hkls,default_F);
     printf("  ");
     if(round_xtal){
         printf("ellipsoidal");
@@ -2537,6 +2566,7 @@ int main(int argc, char** argv)
                                             printf ("WARNING: out of range for three point interpolation: h,k,l,h0,k0,l0: %g,%g,%g,%d,%d,%d \n", h,k,l,h0,k0,l0);
                                             printf("WARNING: further warnings will not be printed! ");
                                         }
+					F_cell = default_F;
                                         continue;
                                     }
 
@@ -2589,7 +2619,7 @@ int main(int argc, char** argv)
                                     }
                                     else
                                     {
-                                        F_cell = 0.0;
+                                        F_cell = default_F;  // usually zero
                                     }
                                 }
 
@@ -3175,8 +3205,8 @@ double *umat2misset(double umat[9],double *missets)
     }
     else
     {
-        rotx = atan2(1,1)*4;
-        roty = atan2(1,1)*2;
+        rotx = atan2(1.0,1.0)*4.0;
+        roty = atan2(1.0,1.0)*2.0;
         rotz = atan2(uxy,-uyy);
     }
 
@@ -3422,11 +3452,11 @@ void polin3(double *x1a, double *x2a, double *x3a, double ***ya, double x1,
 /* FWHM = integral = 1 */
 double ngauss2D(double x,double y)
 {
-    return log(16)/M_PI*exp(-log(16)*(x*x+y*y));
+    return log(16.0)/M_PI*exp(-log(16.0)*(x*x+y*y));
 }
 double ngauss2Dinteg(double x,double y)
 {
-    return 0.125*(erf(2*x*sqrt(log(2)))*erf(y*sqrt(log(16)))*sqrt(log(16)/log(2)));
+    return 0.125*(erf(2.0*x*sqrt(log(2)))*erf(y*sqrt(log(16.0)))*sqrt(log(16.0)/log(2)));
 }
 
 
