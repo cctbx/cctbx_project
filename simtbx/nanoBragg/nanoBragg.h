@@ -31,7 +31,9 @@ using boost::math::isnan;
 #ifndef NAN
 #define NAN strtod("NAN",NULL)
 #endif
-
+#ifndef isnan
+#define isnan(X) std::isnan(X)
+#endif
 #ifndef DBL_MIN
 //#define DBL_MIN 1e-99
 #endif
