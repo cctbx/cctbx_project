@@ -16,8 +16,10 @@
 #include <cctbx/miller.h>
 #include <dxtbx/model/detector.h>
 #include <boost/math/special_functions/erf.hpp>
+#include <boost/math/special_functions/fpclassify.hpp>
 
 using boost::math::erf;
+using boost::math::isnan;
 
 
 /* need this on macs */
@@ -27,14 +29,6 @@ using boost::math::erf;
 #include <cfloat>
 #ifndef NAN
 #define NAN strtod("NAN",NULL)
-#endif
-
-#ifndef isnan
-#ifdef  _WIN32
-#define isnan _isnan
-#else
-using std::isnan;
-#endif
 #endif
 
 #ifndef DBL_MIN
