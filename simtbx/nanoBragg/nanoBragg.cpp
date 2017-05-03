@@ -1,4 +1,4 @@
-#include <simtbx/nanoBragg/nanoBragg.h> 
+#include <simtbx/nanoBragg/nanoBragg.h>
 
 
 //Contributed by James Holton, LBNL.
@@ -374,8 +374,8 @@ nanoBragg::init_detector()
     if(spixels) {
             detsize_s = pixel_size*spixels;
             }
-    this->fpixels = ceil(detsize_f/pixel_size);
-    this->spixels = ceil(detsize_s/pixel_size);
+    this->fpixels = ceil(detsize_f/pixel_size+0.5);
+    this->spixels = ceil(detsize_s/pixel_size+0.5);
     pixels = this->fpixels*this->spixels;
     /* actually allocate memory */
     if(pixels) {
@@ -768,8 +768,8 @@ nanoBragg::init_steps()
             else
             {
                 if(verbose) printf("WARNING: finite mosaicity with only one domain! upping to 10 mosaic domains\n");
-            mosaic_domains = 10;
-        }
+                mosaic_domains = 10;
+            }
         }
     } else {
         /* user-specified number of domains */
@@ -903,6 +903,11 @@ nanoBragg::update_beamcenter()
     newvector[1]=-1;newvector[2]=+0;newvector[3]=+0;
     dials_origin[3] = 1000.0*dot_product(pix0_vector,newvector);
 
+    /* find the beam in the detector frame */
+    newvector[1] = dot_product(beam_vector,fdet_vector);
+    newvector[2] = dot_product(beam_vector,sdet_vector);
+    newvector[3] = dot_product(beam_vector,odet_vector);
+    if(verbose) printf("XDS incident beam: %g %g %g\n",newvector[1],newvector[2],newvector[3]);
 }
 // end of update_beamcenter()
 
@@ -2525,8 +2530,8 @@ double *umat2misset(double umat[9],double *missets)
     }
     else
     {
-        rotx = atan2(1.,1.)*4;
-        roty = atan2(1.,1.)*2;
+        rotx = atan2(1.0,1.0)*4.0;
+        roty = atan2(1.0,1.0)*2.0;
         rotz = atan2(uxy,-uyy);
     }
 
@@ -2775,11 +2780,11 @@ void polin3(double *x1a, double *x2a, double *x3a, double ***ya, double x1,
 /* FWHM = integral = 1 */
 double ngauss2D(double x,double y)
 {
-    return log(16.)/M_PI*exp(-log(16.)*(x*x+y*y));
+    return log(16.0)/M_PI*exp(-log(16.0)*(x*x+y*y));
 }
 double ngauss2Dinteg(double x,double y)
 {
-    return 0.125*(erf(2*x*sqrt(log(2.)))*erf(y*sqrt(log(16.)))*sqrt(log(16.)/log(2.)));
+    return 0.125*(erf(2.0*x*sqrt(log(2.0)))*erf(y*sqrt(log(16.0)))*sqrt(log(16.0)/log(2.0)));
 }
 
 
@@ -3028,13 +3033,13 @@ double polarization_factor(double kahn_factor, double *incident, double *diffrac
 /* 2D Gaussian integral=1 */
 double ngauss2D(double x, double y, double fwhm)
 {
-    return log(16.)/M_PI*fwhm*fwhm*exp(-log(16.)*((x*x+y*y)/(fwhm*fwhm) ));
+    return log(16.0)/M_PI*fwhm*fwhm*exp(-log(16.0)*((x*x+y*y)/(fwhm*fwhm) ));
 }
 
 /* integral of Gaussian fwhm=1 integral=1 */
 double ngauss2D_integ(double x, double y)
     {
-    return 0.125*(erf(2*x*sqrt(log(2.)))*erf(y*sqrt(log(16.)))*sqrt(log(16.)/log(2.)));
+    return 0.125*(erf(2.0*x*sqrt(log(2.0)))*erf(y*sqrt(log(16.0)))*sqrt(log(16.0)/log(2.0)));
 }
 
 /* unit volume integrated over a pixel, fwhm = 1 */
@@ -3140,7 +3145,7 @@ double *apply_psf(double *inimage, int fpixels, int spixels, psf_type psftype, d
         if(psftype == GAUSS)
             {
             /* calculate the radius beyond which only 0.5 photons will fall */
-            psf_radius = 1+ceil( sqrt(-log(lost_photons/max_I)/log(4.)/2)*fwhm_pixels );
+            psf_radius = 1+ceil( sqrt(-log(lost_photons/max_I)/log(4.0)/2.0)*fwhm_pixels );
             if(verbose) printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
             }
         if(psftype == FIBER)
@@ -3211,7 +3216,7 @@ double *apply_psf(double *inimage, int fpixels, int spixels, psf_type psftype, d
             {
                 /* calculate the radius beyond which only 0.5 photons will fall
                    r = sqrt(-log(lost_photons/total_photons)/log(4)/2)*fwhm */
-                psf_radius = 1+ceil( sqrt(-log(lost_photons/inimage[i])/log(16.))*fwhm_pixels );
+                psf_radius = 1+ceil( sqrt(-log(lost_photons/inimage[i])/log(16.0))*fwhm_pixels );
 //              printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
 }
             if(psftype == FIBER)
@@ -3237,7 +3242,7 @@ double *apply_psf(double *inimage, int fpixels, int spixels, psf_type psftype, d
             rsq = psf_radius;
             rsq = rsq/fwhm_pixels;
             rsq = rsq*rsq;
-            lost_photons = inimage[i]*exp(-log(16.)*rsq);
+            lost_photons = inimage[i]*exp(-log(16.0)*rsq);
         }
         if(psftype == FIBER)
         {

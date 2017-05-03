@@ -27,6 +27,7 @@ using boost::math::isnan;
 /* need NAN and isnan() to define uninitialized values */
 #include <cmath>
 #include <cfloat>
+/* seem to need these on windoze and MacOS */
 #ifndef NAN
 #define NAN strtod("NAN",NULL)
 #endif
@@ -55,7 +56,7 @@ typedef af::shared<miller_t > indices;
 /* Avogadro's number */
 static const double Avogadro = 6.02214179e23;
 /* convert from radians to degrees: 180/pi */
-static const double RTD = 1/scitbx::constants::pi_180;
+static const double RTD = 180.0*M_1_PI;
 /* Thomson cross section ((e^2)/(4*PI*epsilon0*m*c^2))^2 */
 static const double r_e_sqr = 7.94079248018965e-30;
 
