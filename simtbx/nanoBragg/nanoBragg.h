@@ -20,6 +20,7 @@
 
 using boost::math::erf;
 using boost::math::isnan;
+#define isnan(X) boost::math::isnan(X)
 
 
 /* need this on macs */
@@ -30,10 +31,6 @@ using boost::math::isnan;
 /* seem to need these on windoze and MacOS */
 #ifndef NAN
 #define NAN strtod("NAN",NULL)
-#endif
-/* can break things on a mac */
-#ifndef isnan
-//#define isnan(X) std::isnan(X)
 #endif
 #ifndef DBL_MIN
 //#define DBL_MIN 1e-99
