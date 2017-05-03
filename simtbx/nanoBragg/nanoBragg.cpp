@@ -3,6 +3,8 @@
 
 //Contributed by James Holton, LBNL.
 
+using std::isnan;
+
 namespace simtbx {
 namespace nanoBragg {
 
