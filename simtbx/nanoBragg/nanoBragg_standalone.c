@@ -1588,10 +1588,14 @@ int main(int argc, char** argv)
     dials_origin[1] = 1000.0*dot_product(pix0_vector,newvector);
     newvector[1]=+0;newvector[2]=+1;newvector[3]=+0;
     dials_origin[2] = 1000.0*dot_product(pix0_vector,newvector);
-    newvector[1]=+1;newvector[2]=+0;newvector[3]=+0;
+    newvector[1]=-1;newvector[2]=+0;newvector[3]=+0;
     dials_origin[3] = 1000.0*dot_product(pix0_vector,newvector);
 
-
+    /* find the beam in the detector frame */
+    newvector[1] = dot_product(beam_vector,fdet_vector);
+    newvector[2] = dot_product(beam_vector,sdet_vector);
+    newvector[3] = dot_product(beam_vector,odet_vector);
+    printf("XDS incident beam: %g %g %g\n",newvector[1],newvector[2],newvector[3]);
 
     if(interpolate > 1){
         /* no user options */

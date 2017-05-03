@@ -900,7 +900,7 @@ nanoBragg::update_beamcenter()
     dials_origin[1] = 1000.0*dot_product(pix0_vector,newvector);
     newvector[1]=+0;newvector[2]=+1;newvector[3]=+0;
     dials_origin[2] = 1000.0*dot_product(pix0_vector,newvector);
-    newvector[1]=+1;newvector[2]=+0;newvector[3]=+0;
+    newvector[1]=-1;newvector[2]=+0;newvector[3]=+0;
     dials_origin[3] = 1000.0*dot_product(pix0_vector,newvector);
 
 }
