@@ -508,8 +508,12 @@ Installation of Python packages may fail.
 
     return
 
-  def configure_and_build (self, config_args=(), log=None, make_args=(), limit_nproc=None) :
-    self.call("./configure %s" % " ".join(list(config_args)), log=log)
+  def configure_and_build(self, config_args=(), log=None, make_args=(), limit_nproc=None) :
+    # case sensitive file system workaround
+    configure = 'configure'
+    if not os.path.exists('configure') and os.path.exists('Configure'):
+      configure = 'Configure'
+    self.call("./%s %s" % " ".join([configure] + list(config_args)), log=log)
     self.workarounds()
     nproc = self.nproc
     if limit_nproc is not None:
