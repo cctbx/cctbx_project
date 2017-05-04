@@ -62,7 +62,7 @@ class mtriage(object):
   def __init__(self,
                map_data,
                crystal_symmetry,
-               params=master_params(),
+               params=master_params().extract(),
                half_map_data_1=None,
                half_map_data_2=None,
                pdb_hierarchy=None):
