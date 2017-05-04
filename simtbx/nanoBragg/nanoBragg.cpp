@@ -374,8 +374,8 @@ nanoBragg::init_detector()
     if(spixels) {
             detsize_s = pixel_size*spixels;
             }
-    this->fpixels = ceil(detsize_f/pixel_size+0.5);
-    this->spixels = ceil(detsize_s/pixel_size+0.5);
+    this->fpixels = static_cast<int>(ceil(detsize_f/pixel_size+0.5));
+    this->spixels = static_cast<int>(ceil(detsize_s/pixel_size+0.5));
     pixels = this->fpixels*this->spixels;
     /* actually allocate memory */
     if(pixels) {
@@ -574,7 +574,7 @@ nanoBragg::init_steps()
                 phistep = osc/2.0;
             } else {
                 /* osc and phi step specified */
-                phisteps = ceil(osc/phistep);
+                phisteps = static_cast<int>(ceil(osc/phistep));
             }
         }
     } else {
@@ -624,7 +624,7 @@ nanoBragg::init_steps()
                 hdivsteps = 2;
             } else {
                 /* range and step specified, but not number of steps */
-                hdivsteps = ceil(hdivrange/hdivstep);
+                hdivsteps = static_cast<int>(ceil(hdivrange/hdivstep));
             }
         }
     } else {
@@ -674,7 +674,7 @@ nanoBragg::init_steps()
                 vdivsteps = 2;
             } else {
                 /* range and step specified, but not number of steps */
-                vdivsteps = ceil(vdivrange/vdivstep);
+                vdivsteps = static_cast<int>(ceil(vdivrange/vdivstep));
             }
         }
     } else {
@@ -725,7 +725,7 @@ nanoBragg::init_steps()
                 dispsteps = 2;
             } else {
                 /* range and step specified, but not number of steps */
-                dispsteps = ceil(dispersion/dispstep);
+                dispsteps = static_cast<int>(ceil(dispersion/dispstep));
             }
         }
     } else {
@@ -1252,7 +1252,7 @@ nanoBragg::update_oversample()
     if(xtalsize_max < xtalsize_b) xtalsize_max = xtalsize_b;
     if(xtalsize_max < xtalsize_c) xtalsize_max = xtalsize_c;
     reciprocal_pixel_size = lambda0*distance/pixel_size;
-    recommended_oversample = ceil(3.0 * xtalsize_max/reciprocal_pixel_size);
+    recommended_oversample = static_cast<int>(ceil(3.0 * xtalsize_max/reciprocal_pixel_size));
     if(recommended_oversample <= 0) recommended_oversample = 1;
     if(! user_oversample) {
         oversample = recommended_oversample;
@@ -1320,19 +1320,19 @@ nanoBragg::init_Fhkl()
             if(verbose) printf("ERROR: unable to open %s.",hklfilename);
             exit(9);
         }
-        h_min=k_min=l_min=1e9;
-        h_max=k_max=l_max=-1e9;
+        h_min=k_min=l_min=static_cast<int>(1e9);
+        h_max=k_max=l_max=static_cast<int>(-1e9);
         if(verbose) printf("counting entries in %s\n",hklfilename);
         while(4 == fscanf(infile,"%lg%lg%lg%lg",&h,&k,&l,&F_cell)){
             if(verbose && h != ceil(h-0.4)) printf("WARNING: non-integer value for h (%g) at line %d\n",h,hkls);
             if(verbose && k != ceil(k-0.4)) printf("WARNING: non-integer value for k (%g) at line %d\n",k,hkls);
             if(verbose && l != ceil(l-0.4)) printf("WARNING: non-integer value for l (%g) at line %d\n",l,hkls);
-            if(h_min > h) h_min = h;
-            if(k_min > k) k_min = k;
-            if(l_min > l) l_min = l;
-            if(h_max < h) h_max = h;
-            if(k_max < k) k_max = k;
-            if(l_max < l) l_max = l;
+            if(h_min > h) h_min = static_cast<int>(h);
+            if(k_min > k) k_min = static_cast<int>(k);
+            if(l_min > l) l_min = static_cast<int>(l);
+            if(h_max < h) h_max = static_cast<int>(h);
+            if(k_max < k) k_max = static_cast<int>(k);
+            if(l_max < l) l_max = static_cast<int>(l);
             ++hkls;
         }
         rewind(infile);
@@ -1922,9 +1922,9 @@ nanoBragg::sweep_over_detector()
                                 l = dot_product(c,scattering);
 
                                 /* round off to nearest whole index */
-                                h0 = ceil(h-0.5);
-                                k0 = ceil(k-0.5);
-                                l0 = ceil(l-0.5);
+                                h0 = static_cast<int>(ceil(h-0.5));
+                                k0 = static_cast<int>(ceil(k-0.5));
+                                l0 = static_cast<int>(ceil(l-0.5));
 
 
                                 /* structure factor of the lattice (paralelpiped crystal)
@@ -2017,9 +2017,9 @@ nanoBragg::sweep_over_detector()
 
                                 /* structure factor of the unit cell */
                                 if(interpolate){
-                                    h0_flr = floor(h);
-                                    k0_flr = floor(k);
-                                    l0_flr = floor(l);
+                                    h0_flr = static_cast<int>(floor(h));
+                                    k0_flr = static_cast<int>(floor(k));
+                                    l0_flr = static_cast<int>(floor(l));
 
 
                                     if ( ((h-h_min+3)>h_range) ||
