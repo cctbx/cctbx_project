@@ -513,7 +513,7 @@ Installation of Python packages may fail.
     # configure = 'configure'
     #if not os.path.exists('configure') and os.path.exists('Configure'):
     #  configure = 'Configure'
-    self.call("./configure %s" % (" ".join(list(config_args)), log=log))
+    self.call("./configure %s" % " ".join(list(config_args)), log=log)
     self.workarounds()
     nproc = self.nproc
     if limit_nproc is not None:
