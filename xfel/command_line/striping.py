@@ -13,8 +13,6 @@ from libtbx import easy_run
 from xfel.util.dials_file_matcher import match_dials_files
 from xfel.util.mp import mp_phil_str as multiprocessing_str
 from xfel.util.mp import get_submit_command_chooser
-# from dials.command_line.combine_experiments import phil_scope as combine_phil_scope
-# from dials.command_line.refine import phil_scope as refine_phil_scope
 
 import os, math
 
@@ -239,10 +237,8 @@ def script_to_expand_over_clusters(clustered_json_name,
   contain an asterisk, and substitution in phil_template itself will occur at
   each instance of CLUSTER.
   """
-  import pdb; pdb.set_trace()
   clj_part_first, clj_part_last = clustered_json_name.split("CLUSTER")
   ph_part_first, ph_part_last = phil_template_name.split("CLUSTER")
-  # ph_part_first = "refine_" + ph_part_first.split("combine_")[1]
   clustered_template_name = "*".join([clj_part_first, clj_part_last])
 
   bash_str = '''
@@ -356,7 +352,7 @@ class Script(object):
         submit_path = os.path.join(cwd, dirname, "combine_%s.sh" % filename)
         command = "dials.combine_experiments %s && %s" % \
           (combine_phil_filename, refine_command)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         if self.params.combine_experiments.interactive:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:
