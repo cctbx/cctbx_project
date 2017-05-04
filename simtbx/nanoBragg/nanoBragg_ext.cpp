@@ -156,9 +156,9 @@ namespace boost_python { namespace {
   /* number of unit cells along edge in each cell axis direction */
   static scitbx::vec3<int> get_Nabc(nanoBragg const& nanoBragg) {
       scitbx::vec3<int> value;
-      value[0]=nanoBragg.Na;
-      value[1]=nanoBragg.Nb;
-      value[2]=nanoBragg.Nc;
+      value[0]=static_cast<int>(nanoBragg.Na);
+      value[1]=static_cast<int>(nanoBragg.Nb);
+      value[2]=static_cast<int>(nanoBragg.Nc);
       return value;
   }
   static void   set_Nabc(nanoBragg& nanoBragg, scitbx::vec3<int> const& value) {
@@ -536,7 +536,7 @@ namespace boost_python { namespace {
       if(nanoBragg.verbose>3) printf(" expecting %d hkls\n",hkls);
 //      nanoBragg.pythony_indices = indices();
 //      nanoBragg.pythony_amplitudes = af::shared<double>();
-      nanoBragg.pythony_indices = indices(hkls,af::init_functor_null<miller_t >());
+      nanoBragg.pythony_indices = indices(hkls,af::init_functor_null<scitbx::vec3<int> >());
       nanoBragg.pythony_amplitudes = af::shared<double>(hkls,af::init_functor_null<double>());
 //      nanoBragg.pythony_indices = indices(hkls);
 //      nanoBragg.pythony_amplitudes = af::shared<double>(hkls);
