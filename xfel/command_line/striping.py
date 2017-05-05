@@ -190,18 +190,18 @@ def allocate_chunks_per_rungroup(results_dir, trial_no, stripe=False, max_size=1
     expts, refls = match_dials_files(expts, refls, expt_ending, refl_ending)
     if stripe:
       for i in xrange(num):
-        expts_stripe = expts[i::size]
-        refls_stripe = refls[i::size]
+        expts_stripe = expts[i::num]
+        refls_stripe = refls[i::num]
         rg_chunks[rg].append((expts_stripe, refls_stripe))
-      print "striped %s with %d experiments per stripe and %d stripes" % \
-        (rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg]))
+      print "striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
+        (len(expts), rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg]))
     else:
       for i in xrange(num):
         expts_chunk = expts[i*size:(i+1)*size]
         refls_chunk = refls[i*size:(i+1)*size]
         rg_chunks[rg].append((expts_chunk, refls_chunk))
-      print "chunked %s with %d experiments per chunk and %d chunks" % \
-        (rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg]))
+      print "chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
+        (len(expts), rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg]))
   return rg_chunks
 
 def parse_retaining_scope(args, master_scope=master_scope):
