@@ -43,6 +43,11 @@ apply_at_hierarchy_level = None
   .type = int
   .help = If None, apply shift at panel level.  If not None, apply shift \
           at specified hierarchy level.
+fit_target = *corners centers
+  .type = choice
+  .help = Corners: perform superpose using corners of panels. Centers:\
+          perform superpose using centers of panels (requires at least 3\
+          panels
 ''', process_includes=True)
 
 class Script(object):
@@ -87,22 +92,44 @@ class Script(object):
       assert max_p_id < len(moving), "Moving detector must be at least %d panels long given the panel list"%(max_p_id+1)
       panel_ids = params.panel_list
 
-    # Treat panels as a list of 4 sites for use with lsq superpose
+    if params.fit_target == "centers":
+      assert len(panel_ids) >= 3, "When using centers as target for superpose, detector needs at least 3 panels"
+
+    # Treat panels as a list of 4 sites (corners) or 1 site (centers) for use with lsq superpose
     reference_sites = flex.vec3_double()
     moving_sites = flex.vec3_double()
     for panel_id in panel_ids:
       for detector, sites in zip([reference, moving], [reference_sites, moving_sites]):
         panel = detector[panel_id]
         size = panel.get_image_size()
-        for point in [(0,0),(0,size[1]-1),(size[0]-1,size[1]-1),(size[0]-1,0)]:
-          sites.append(panel.get_pixel_lab_coord(point))
+        corners = flex.vec3_double([panel.get_pixel_lab_coord(point) for point in [(0,0),(0,size[1]-1),(size[0]-1,size[1]-1),(size[0]-1,0)]])
+        if params.fit_target == "corners":
+          sites.extend(corners)
+        elif params.fit_target == "centers":
+          sites.append(corners.mean())
+
+    def rmsd_from_centers(a, b):
+      assert len(a) == len(b)
+      assert len(a)%4 == len(b)%4 == 0
+      ca = flex.vec3_double()
+      cb = flex.vec3_double()
+      for i in xrange(len(a)//4):
+        ca.append(a[i:i+4].mean())
+        cb.append(b[i:i+4].mean())
+      return 1000*math.sqrt((ca-cb).sum_sq()/len(ca))
 
     # Compute super position
     rmsd = 1000*math.sqrt((reference_sites-moving_sites).sum_sq()/len(reference_sites))
     print "RMSD before fit: %.1f microns"%rmsd
+    if params.fit_target =="corners":
+      rmsd = rmsd_from_centers(reference_sites, moving_sites)
+      print "RMSD of centers before fit: %.1f microns"%rmsd
     lsq = least_squares_fit(reference_sites, moving_sites)
     rmsd = 1000*math.sqrt((reference_sites-lsq.other_sites_best_fit()).sum_sq()/len(reference_sites))
     print "RMSD of fit: %.1f microns"%rmsd
+    if params.fit_target =="corners":
+      rmsd = rmsd_from_centers(reference_sites, lsq.other_sites_best_fit())
+      print "RMSD of fit of centers: %.1f microns"%rmsd
     angle, axis = lsq.r.r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(deg=True)
     print "Axis and angle of rotation: (%.3f, %.3f, %.3f), %.2f degrees"%(axis[0], axis[1], axis[2], angle)
     print "Translation (x, y, z, in microns): (%.3f, %.3f, %.3f)"% (1000 * lsq.t).elems
@@ -131,12 +158,38 @@ class Script(object):
     for panel_id in panel_ids:
       panel = moving[panel_id]
       size = panel.get_image_size()
-      for point in [(0,0),(0,size[1]-1),(size[0]-1,size[1]-1),(size[0]-1,0)]:
-        moved_sites.append(panel.get_pixel_lab_coord(point))
+      corners = flex.vec3_double([panel.get_pixel_lab_coord(point) for point in [(0,0),(0,size[1]-1),(size[0]-1,size[1]-1),(size[0]-1,0)]])
+      if params.fit_target == "corners":
+        moved_sites.extend(corners)
+      elif params.fit_target == "centers":
+        moved_sites.append(corners.mean())
+
 
     # Re-compute RMSD after moving detector components
     rmsd = 1000*math.sqrt((reference_sites-moved_sites).sum_sq()/len(reference_sites))
     print "RMSD of fit after movement: %.1f microns"%rmsd
+    if params.fit_target =="corners":
+      rmsd = rmsd_from_centers(reference_sites, moved_sites)
+      print "RMSD of fit of centers after movement: %.1f microns"%rmsd
+
+    if params.panel_list is not None:
+      reference_sites = flex.vec3_double()
+      moved_sites = flex.vec3_double()
+      for panel_id in xrange(len(reference)):
+        for detector, sites in zip([reference, moving], [reference_sites, moved_sites]):
+          panel = detector[panel_id]
+          size = panel.get_image_size()
+          corners = flex.vec3_double([panel.get_pixel_lab_coord(point) for point in [(0,0),(0,size[1]-1),(size[0]-1,size[1]-1),(size[0]-1,0)]])
+          if params.fit_target == "corners":
+            sites.extend(corners)
+          elif params.fit_target == "centers":
+            sites.append(corners.mean())
+      # Re-compute RMSD for full detector after moving detector components
+      rmsd = 1000*math.sqrt((reference_sites-moved_sites).sum_sq()/len(reference_sites))
+      print "RMSD of whole detector fit after movement: %.1f microns"%rmsd
+      if params.fit_target =="corners":
+        rmsd = rmsd_from_centers(reference_sites, moved_sites)
+        print "RMSD of whole detector fit of centers after movement: %.1f microns"%rmsd
 
 if __name__ == '__main__':
   from dials.util import halraiser
