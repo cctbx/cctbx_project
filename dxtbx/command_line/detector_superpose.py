@@ -36,6 +36,9 @@ reference_experiments = None
 moving_experiments = None
   .type = str
   .help = Experiments list with moving detector
+output_experiments = superposed_experiments.json
+  .type = str
+  .help = Output file name with superposed detector
 panel_list = None
   .type = ints
   .help = List of panels to use as reference. Use all if set to None.
@@ -152,7 +155,7 @@ class Script(object):
       ori = col(group.get_origin())
 
     from dxtbx.serialize import dump
-    dump.experiment_list(moving_experiments, "superposed_experiments.json")
+    dump.experiment_list(moving_experiments, params.output_experiments)
 
     moved_sites = flex.vec3_double()
     for panel_id in panel_ids:
