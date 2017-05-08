@@ -1096,6 +1096,7 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
         pdb_hierarchy=pdb_hierarchy,
         crystal_symmetry=crystal_symmetry)
   utils.print_header("Done", out = log)
+  output_files.append(ofn)
   return output_files
 
 class interpreter:
@@ -1337,4 +1338,4 @@ def finish_job (result) :
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
-    return run(args=list(self.args))
+    return run(args=list(self.args), out=sys.stdout)
