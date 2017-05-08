@@ -78,7 +78,8 @@ class map_model_cc(object):
         b_iso_mean = flex.mean(atoms.extract_b()),
         occ_mean   = flex.mean(atoms.extract_occ()),
         n_atoms    = atoms.size(),
-        cc         = cc_calculator.cc(selection = sel, atom_radius = atom_radius))
+        cc         = cc_calculator.cc(selection = sel, atom_radius = atom_radius),
+        xyz_mean   = atoms.extract_xyz().mean())
     # CC per chain
     if(self.params.compute_cc_per_chain):
       for chain in self.pdb_hierarchy.chains():
@@ -96,14 +97,16 @@ class map_model_cc(object):
           for residue in conformer.residues():
             cd = get_common_data(atoms=residue.atoms(), atom_radius=atom_radius)
             self.cc_per_residue.append(group_args(
-              chain_id   = chain.id,
+              chain_id   = rg.parent().id,
               resname    = residue.resname,
               resseq     = residue.resseq,
               icode      = residue.icode,
               b_iso_mean = cd.b_iso_mean,
               occ_mean   = cd.occ_mean,
               n_atoms    = cd.n_atoms,
-              cc         = cd.cc))
+              cc         = cd.cc,
+              xyz_mean   = cd.xyz_mean,
+              residue    = residue)) # for compatibility with GUI
 
   def get_results(self):
     return group_args(
