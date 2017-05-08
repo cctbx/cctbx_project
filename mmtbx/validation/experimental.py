@@ -190,11 +190,19 @@ class real_space (validation) :
           use_maps = True
       # use mmtbx/command_line/map_model_cc.py for maps
       if (use_maps):
-        from mmtbx.command_line import map_model_cc
-        self.overall_rsc, rsc = map_model_cc.run(
-          args=[molprobity_map_params.map_file_name,
-                'resolution=' + str(molprobity_map_params.d_min)],
-          pdb_hierarchy=pdb_hierarchy, crystal_symmetry=crystal_symmetry)
+        from mmtbx.maps import map_model_cc
+        from iotbx.file_reader import any_file
+        params = map_model_cc.master_params().extract()
+        params.map_model_cc.resolution = molprobity_map_params.d_min
+        map_data = any_file(molprobity_map_params.map_file_name).file_object.\
+                   map_data()
+        rsc_object = map_model_cc.map_model_cc(
+          map_data, pdb_hierarchy, crystal_symmetry, params.map_model_cc)
+        rsc_object.validate()
+        rsc_object.run()
+        rsc = rsc_object.get_results()
+        self.overall_rsc = (rsc.cc_mask, rsc.cc_volume, rsc.cc_peaks)
+        rsc = rsc.cc_per_residue
       # mmtbx/real_space_correlation.py for X-ray/neutron data and map
       # coefficients
       else:
@@ -208,19 +216,32 @@ class real_space (validation) :
     else :
       assert ( (self.overall_rsc is not None) and (rsc is not None) )
       for i, result_ in enumerate(rsc) :
-        result = residue_real_space(
-          chain_id=result_.chain_id,
-          resname=result_.residue.resname,
-          resseq=result_.residue.resseq,
-          icode=result_.residue.icode,
-          altloc="",
-          score=result_.cc,
-          b_iso=result_.b,
-          occupancy=result_.occupancy,
-          fmodel=result_.map_value_1,
-          two_fofc=result_.map_value_2,
-          outlier=result_.cc < cc_min,
-          xyz=result_.residue.atoms().extract_xyz().mean())
+        if (use_maps): # new rsc calculation (mmtbx/maps/model_map_cc.py)
+          result = residue_real_space(
+            chain_id=result_.chain_id,
+            resname=result_.resname,
+            resseq=result_.resseq,
+            icode=result_.icode,
+            altloc="",
+            score=result_.cc,
+            b_iso=result_.b_iso_mean,
+            occupancy=result_.occ_mean,
+            outlier=result_.cc < cc_min,
+            xyz=result_.xyz_mean)
+        else: # old rsc calculation (mmtbx/maps/real_space_correlation.py)
+          result = residue_real_space(
+            chain_id=result_.chain_id,
+            resname=result_.residue.resname,
+            resseq=result_.residue.resseq,
+            icode=result_.residue.icode,
+            altloc="",
+            score=result_.cc,
+            b_iso=result_.b,
+            occupancy=result_.occupancy,
+            fmodel=result_.map_value_1,
+            two_fofc=result_.map_value_2,
+            outlier=result_.cc < cc_min,
+            xyz=result_.residue.atoms().extract_xyz().mean())
         if result.is_outlier() :
           self.n_outliers += 1
         # XXX unlike other validation metrics, we always save the results for
