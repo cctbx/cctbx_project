@@ -180,15 +180,21 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   };
 
-  void experiment_list_setitem(ExperimentList &self, std::size_t n, Experiment item) {
-    if (n >= self.size()) {
+  void experiment_list_setitem(ExperimentList &self, int n, Experiment item) {
+    if (n < 0) {
+      n += self.size();
+    }
+    if (n >= self.size() || n < 0) {
       scitbx::boost_python::raise_index_error();
     }
     self[n] = item;
   }
 
-  Experiment& experiment_list_getitem(ExperimentList &self, std::size_t n) {
-    if (n >= self.size()) {
+  Experiment& experiment_list_getitem(ExperimentList &self, int n) {
+    if (n < 0) {
+      n += self.size();
+    }
+    if (n >= self.size() || n < 0) {
       scitbx::boost_python::raise_index_error();
     }
     return self[n];
@@ -205,8 +211,11 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;
   }
 
-  void experiment_list_delitem(ExperimentList &self, std::size_t n) {
-    if (n >= self.size()) {
+  void experiment_list_delitem(ExperimentList &self, int n) {
+    if (n < 0) {
+      n += self.size();
+    }
+    if (n >= self.size() || n < 0) {
       scitbx::boost_python::raise_index_error();
     }
     self.erase(n);
