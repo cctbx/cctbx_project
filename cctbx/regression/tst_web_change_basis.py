@@ -22,7 +22,7 @@ def exercise():
     change_basis.p_from_string("0")
   except Sorry, e:
     assert str(e) == \
-      'Uninterpretable expression for change-of-basis matrix: "0"'
+      'Uninterpretable expression for change-of-basis matrix'
   else: raise Exception_expected
   #
   rt = change_basis.w_from_string("1/2,1/3,1/4")
@@ -32,7 +32,7 @@ def exercise():
     change_basis.w_from_string("0")
   except Sorry, e:
     assert str(e) == \
-      'Uninterpretable expression for symmetry matrix: "0"'
+      'Uninterpretable expression for symmetry matrix'
   else: raise Exception_expected
   #
   xyz = change_basis.xyz_from_string("0.5,1/3,4")
@@ -41,7 +41,7 @@ def exercise():
     change_basis.xyz_from_string("0")
   except Sorry, e:
     assert str(e) == \
-      'Uninterpretable expression for coordinates: "0"'
+      'Uninterpretable expression for coordinates'
   else: raise Exception_expected
 
 def run(args):
