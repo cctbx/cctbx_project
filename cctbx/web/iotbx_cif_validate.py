@@ -1,5 +1,4 @@
 from __future__ import division
-from cctbx import crystal
 from cctbx.web import cgi_utils
 import iotbx.cif
 from iotbx.cif import validation
@@ -28,12 +27,7 @@ def run_implementation(server_info, inp, status):
 
   reader = iotbx.cif.reader(input_string=cif_text, raise_if_errors=False)
   if reader.error_count():
-    print "Errors encountered during parsing:"
-    errors = reader.parser.lexer_errors()
-    errors.extend(reader.parser.parser_errors())
-    for i, error in enumerate(errors):
-      print error
-      if i > 50: break
+    print "Errors encountered during parsing"
     return
   else:
     print "No parsing errors."

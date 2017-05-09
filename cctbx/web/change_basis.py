@@ -56,9 +56,7 @@ def rt_from_string(string, default_r_identity=False, r_den=12**2, t_den=12**3):
 
 def raise_uninterpretable(what, expression):
   from libtbx.utils import Sorry
-  raise Sorry(
-    'Uninterpretable expression for %s: "%s"' % (
-      what, expression.replace("\n", " ").replace("\r", " ")))
+  raise Sorry('Uninterpretable expression for %s' % (what))
 
 def p_from_string(string):
   p = rt_from_string(string, default_r_identity=True)

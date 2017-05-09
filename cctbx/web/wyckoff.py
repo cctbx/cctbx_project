@@ -22,6 +22,16 @@ def interpret_form_data(form):
 
 def run(server_info, inp, status):
   print "<pre>"
+  # check input to prevent XSS
+  try:
+    unit_cell = uctbx.unit_cell(inp.ucparams)
+    space_group_info = sgtbx.space_group_info(
+      symbol=inp.sgsymbol,
+      table_id=inp.convention)
+  except Exception:
+    print "Please check your inputs."
+    print "</pre>"
+    return
   io_utils.show_input_symbol(inp.sgsymbol, inp.convention)
   special_position_settings = crystal.special_position_settings(
     crystal.symmetry(

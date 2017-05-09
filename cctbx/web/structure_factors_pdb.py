@@ -12,16 +12,33 @@ def interpret_form_data(form):
   return inp
 
 def run(server_info, inp, status):
-  print "<h2>Structure factor calculation</h2>"
-  print "<pre>"
-  print "Atomic form factors: %s" % inp.form_factors
-  print
+
+  # check input to avoid XSS
+  # ---------------------------------------------------------------------------
+  try:
+    d_min = float(inp.d_min)
+  except Exception:
+    print 'Please provide a number for Minimum d-spacing.'
+    raise
+
   print "Minimum d-spacing (highest resolution): %s" % inp.d_min
   if (float(inp.d_min) <= 0.):
     raise ValueError("d-spacing must be greater than zero.")
   print
 
+  if (inp.form_factors not in ['wk1995', 'it1992', 'n_gaussian']):
+    print 'Atomic form factors not correct. Using default value.'
+    inp.form_factors = 'wk1995'
+
+  # ---------------------------------------------------------------------------
+
+  print "<h2>Structure factor calculation</h2>"
+  print "<pre>"
+  print "Atomic form factors: %s" % inp.form_factors
+  print
+
   structure = io_utils.structure_from_inp_pdb(inp, status)
+
   structure.scattering_type_registry(
     table=inp.form_factors,
     d_min=float(inp.d_min))

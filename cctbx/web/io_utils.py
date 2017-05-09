@@ -35,7 +35,7 @@ def interpret_coordinate_line(line, skip_columns):
   coordinates = [0,0,0]
   for i in xrange(3):
     try: coordinates[i] = float(flds[skip_columns + i])
-    except Exception: raise FormatError, line
+    except Exception: raise cgi_utils.FormatError
   return " ".join(flds[:skip_columns]), coordinates
 
 def read_scatterer(flds, default_b_iso=3.0):
@@ -67,7 +67,8 @@ def read_scatterer(flds, default_b_iso=3.0):
       else:
         assert (len(flds) < offs + 5)
   except Exception:
-    raise cgi_utils.FormatError, flds
+    print "Please check your formatting."
+    raise cgi_utils.FormatError
   return scatterer
 
 def special_position_settings_from_inp(inp):
@@ -122,10 +123,8 @@ def structure_from_inp(inp, status, special_position_settings):
 def structure_from_inp_pdb(inp, status):
   pdb_file = inp.coordinates
   print "Input PDB file content:\n"
-  for line in pdb_file:
-    print line
-  print
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_file)
+  print pdb_inp.as_pdb_string()  # avoid XSS
   xray_structure = pdb_inp.xray_structure_simple(
     enable_scattering_type_unknown=True)
   u_tidy = xray_structure.scatterers().extract_u_cart(
