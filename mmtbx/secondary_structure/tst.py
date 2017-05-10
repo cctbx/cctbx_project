@@ -41,7 +41,7 @@ def exercise_protein () :
         annotation=None, log=log)
     print proxies.size(), hb_angles.size()
     assert proxies.size() == 109
-    assert hb_angles.size() == 294, hb_angles.size()
+    assert hb_angles.size() == 294+27, hb_angles.size() # helix+sheet angles
     assert isinstance(proxies, geometry_restraints.shared_bond_simple_proxy)
     (frac_alpha, frac_beta) = m.calculate_structure_content()
     assert ("%.3f" % frac_alpha == "0.643")
@@ -68,7 +68,7 @@ def exercise_protein () :
       proxies, angle_p = m.create_protein_hbond_proxies(
           annotation=None, log=log)
       assert proxies.size() == 90
-      assert angle_p.size() == 243, angle_p.size()
+      assert angle_p.size() == 243+18, angle_p.size()
 
 def exercise_sheet_ends () :
   pdb_in = iotbx.pdb.input(source_info=None, lines="""\
@@ -216,7 +216,7 @@ END
   log.close()
   # probably the determination of SS by ksdssp is not stable.
   assert proxies.size() == 12, proxies.size()
-  assert hb_angles.size() == 0, hb_angles.size()
+  assert hb_angles.size() == 27, hb_angles.size()
 
 
 def exercise_helix_bonding_pattern():
@@ -1067,7 +1067,7 @@ SHEET    2   B 2 THR A  20  THR A  21  1  O  THR A  20   N  ALA A  46
     n_hangles.append(h_angles.size())
   print n_hbonds, n_hangles
   assert n_hbonds == [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 3, 4, 2, 2, 8]
-  assert n_hangles ==[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  assert n_hangles ==[15, 15, 18, 18, 18, 18, 18, 18, 18, 18, 6, 6, 9, 6, 3, 24]
 
 def exercise_segid():
   if (not libtbx.env.has_module(name="ksdssp")):
