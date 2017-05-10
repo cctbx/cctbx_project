@@ -463,7 +463,7 @@ class manager (object) :
         print >> log, "    Processing sheet with id=%s, first strand: %s" % (
             sheet.sheet_id, sheet.first_strand)
         if sheet.first_strand is not None:
-          proxies = proteins.create_sheet_hydrogen_bond_proxies(
+          proxies, angle_proxies = proteins.create_sheet_hydrogen_bond_proxies(
             sheet_params=sheet,
             pdb_hierarchy=self.pdb_hierarchy,
             selection_cache=self.selection_cache,
@@ -472,6 +472,7 @@ class manager (object) :
             distance_ideal=distance_ideal,
             distance_cut=distance_cut,
             remove_outliers=remove_outliers,
+            restrain_hbond_angles=self.params.secondary_structure.protein.restrain_hbond_angles,
             log=log)
           if (proxies.size() == 0) :
             print >> log, \
@@ -479,6 +480,7 @@ class manager (object) :
             continue
           else:
             generated_proxies.extend(proxies)
+            hb_angle_proxies += angle_proxies
 
     n_proxies = generated_proxies.size()
     print >> log, ""
