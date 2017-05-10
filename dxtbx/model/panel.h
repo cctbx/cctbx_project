@@ -173,11 +173,13 @@ namespace dxtbx { namespace model {
 
     /** Map coordinates in mm to pixels */
     vec2<double> millimeter_to_pixel(vec2<double> xy) const {
+      DXTBX_ASSERT(convert_coord_ != NULL);
       return convert_coord_->to_pixel(*this, xy);
     }
 
     /** Map the coordinates in pixels to millimeters */
     vec2<double> pixel_to_millimeter(vec2<double> xy) const {
+      DXTBX_ASSERT(convert_coord_ != NULL);
       return convert_coord_->to_millimeter(*this, xy);
     }
 
