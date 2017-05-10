@@ -496,6 +496,7 @@ class server(process_cif_mixin):
                               comp_id,
                               pH_range=None, # low *neutral high
                               specific_residue_restraints=None,
+                              return_filename=False,
                              ):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
@@ -571,6 +572,7 @@ class server(process_cif_mixin):
     cache=True
     if specific_residue_restraints:
       cache=False
+    if return_filename: return file_name
     self.process_cif(file_name=file_name, cache=cache)
     if (len(std_comp_id) > 0):
       result = self.comp_comp_id_dict.get(std_comp_id)

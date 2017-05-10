@@ -6,6 +6,42 @@ from cctbx.array_family import flex
 from scitbx.math import superpose
 from mmtbx.conformation_dependent_library import mcl_sf4_coordination
 
+def get_pdb_hierarchy_from_restraints(code):
+  from mmtbx.monomer_library import server
+  from iotbx import pdb
+  mon_lib_server = server.server()
+  path = mon_lib_server.get_comp_comp_id_direct(code, return_filename=True)
+  cif_obj = server.read_cif(path)
+  ligand_inp=pdb.pdb_input(source_info="Model from %s" % path,
+                          lines=flex.split_lines(""))
+  ligand_hierarchy = ligand_inp.construct_hierarchy()
+  model=pdb.hierarchy.model()
+  chain=pdb.hierarchy.chain()
+  chain.id='Z'
+  rg=pdb.hierarchy.residue_group()
+  ag=pdb.hierarchy.atom_group()
+  for block, loops in cif_obj.blocks.items():
+    if block=='comp_list': continue
+    for loop in loops.iterloops():
+      for row in loop.iterrows():
+        if '_chem_comp_atom.comp_id' not in row: break
+        ag.resname = row['_chem_comp_atom.comp_id']
+        atom = pdb.hierarchy.atom()
+        atom.name = row['_chem_comp_atom.atom_id']
+        atom.element = '%2s' % row['_chem_comp_atom.type_symbol']
+        atom.xyz = (
+          float(row['_chem_comp_atom.x']),
+          float(row['_chem_comp_atom.y']),
+          float(row['_chem_comp_atom.z']),
+                )
+        ag.append_atom(atom)
+  rg.append_atom_group(ag)
+  chain.append_residue_group(rg)
+  model.append_chain(chain)
+  ligand_hierarchy.append_model(model)
+  ligand_hierarchy.atoms().reset_i_seq()
+  return ligand_hierarchy
+
 def update(grm,
            pdb_hierarchy,
            link_records=None,
@@ -56,24 +92,35 @@ def generate_sites_fixed(pdb_hierarchy, resname, element=None):
     if ag.resname.strip().upper()==resname.upper():
       yield _extract_sites_cart(ag, element), ag
 
-def superpose_ideal_sf4_coordinates(pdb_hierarchy, resname='SF4'):
+def superpose_ideal_residue_coordinates(pdb_hierarchy,
+                                        resname,
+                                        superpose_element=None,
+                                        ):
+  element_lookup = {'SF4' : 'Fe',
+                    'F3S' : 'Fe',
+                    #'F4S' : 'S', # not done yet
+                    #'CLF' : 'Fe', # too flexible
+                    }
   from iotbx import pdb
+  from mmtbx.monomer_library import pdb_interpretation
   t0=time.time()
   rmsd_list = {}
-  if resname=='SF4':
-    ideal = pdb.input(lines=mcl_sf4_coordination.ideal_sf4,
-                      source_info='ideal',
-                    )
-  elif resname=='F3S':
-    ideal = pdb.input(lines=mcl_sf4_coordination.ideal_f3s,
-                      source_info='ideal',
-                    )
+  if superpose_element is None:
+    superpose_element = element_lookup.get(resname, None)
+  if resname in pdb_interpretation.ideal_ligands:
+    ideal_hierarchy = get_pdb_hierarchy_from_restraints(resname)
   else:
     assert 0
-  ideal_hierarchy = ideal.construct_hierarchy()
-  sites_moving = _extract_sites_cart(ideal_hierarchy, 'Fe')
+  if superpose_element:
+    sites_moving = _extract_sites_cart(ideal_hierarchy, superpose_element)
+    assert len(sites_moving), 'No atoms %s found' % superpose_element
+  else:
+    assert 0
   for ideal_ag in ideal_hierarchy.atom_groups(): break
-  for sites_fixed, ag in generate_sites_fixed(pdb_hierarchy, resname, 'Fe'):
+  for sites_fixed, ag in generate_sites_fixed(pdb_hierarchy,
+                                              resname,
+                                              superpose_element,
+                                              ):
     assert sites_fixed.size() == sites_moving.size(), '%(resname)s residue is missing atoms' % locals()
     lsq_fit = superpose.least_squares_fit(
       reference_sites = sites_fixed,
@@ -99,13 +146,6 @@ def superpose_ideal_sf4_coordinates(pdb_hierarchy, resname='SF4'):
       outl += '\n    "%s"   %0.1f' % (id_str, rmsd)
     outl += '\n  Time to superpose : %0.2fs\n' % (time.time()-t0)
   return outl
-
-def superpose_ideal_residue_coordinates(pdb_hierarchy, resname='SF4'):
-  if resname in ['SF4', 'F3S']:
-    rc = superpose_ideal_sf4_coordinates(pdb_hierarchy, resname=resname)
-  else:
-    assert 0
-  return rc
 
 if __name__=="__main__":
   args = sys.argv[1:]
