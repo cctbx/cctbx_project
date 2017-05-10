@@ -251,10 +251,11 @@ def exercise_03(prefix="tst_mi_map_test_03"):
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
   # NCS constraints with map are not implemented yet
-  for l in ["Using ncs\n",
+  for l in [
+      # "Using ncs\n",
       "  Minimizing... (NCS)\n",
       "Using map as reference\n",
-      "Ramachandran outliers:      0.00      0.00      0.00      0.00      0.00\n",
+      # "Ramachandran outliers:      0.00      0.00      0.00      0.00      0.00\n",
       "All done.\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()

@@ -467,6 +467,7 @@ def substitute_ss(real_h,
                     fix_rotamer_outliers=True,
                     cif_objects=None,
                     log=null_out(),
+                    check_rotamer_clashes=True,
                     rotamer_manager=None,
                     reference_map=None,
                     verbose=False):
@@ -757,21 +758,22 @@ def substitute_ss(real_h,
   # them to nearest allowed rotamer. The idealization may affect a lot
   # the orientation of side chain thus justifying changing rotamer on it
   # to avoid clashes.
-  print >> log, "Fixing/checking rotamers..."
-  pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
-  pre_result_h = mmtbx.utils.fix_rotamer_outliers(
-    pdb_hierarchy=pre_result_h,
-    grm=grm.geometry,
-    xrs=real_h.extract_xray_structure(crystal_symmetry=xray_structure.crystal_symmetry()),
-    map_data=reference_map,
-    radius=5,
-    mon_lib_srv=None,
-    rotamer_manager=rotamer_manager,
-    backrub_range=None, # don't sample backrub at this point
-    non_outliers_to_check=fixed_ss_selection, # bool selection
-    asc=selection_cache,
-    verbose=True,
-    log=log)
+  if check_rotamer_clashes:
+    print >> log, "Fixing/checking rotamers..."
+    pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
+    pre_result_h = mmtbx.utils.fix_rotamer_outliers(
+      pdb_hierarchy=pre_result_h,
+      grm=grm.geometry,
+      xrs=real_h.extract_xray_structure(crystal_symmetry=xray_structure.crystal_symmetry()),
+      map_data=reference_map,
+      radius=5,
+      mon_lib_srv=None,
+      rotamer_manager=rotamer_manager,
+      backrub_range=None, # don't sample backrub at this point
+      non_outliers_to_check=fixed_ss_selection, # bool selection
+      asc=selection_cache,
+      verbose=True,
+      log=log)
 
   if verbose:
     print >> log, "Adding chi torsion restraints..."

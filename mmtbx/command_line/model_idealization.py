@@ -756,10 +756,13 @@ class model_idealization():
     # else:
     #   # still need to run gm if rotamers were fixed
     #   print >> self.log, "Not using ncs"
+    # assert 0
     if self.using_ncs:
       print >> self.log, "Using ncs"
+      # assert 0
     else:
       print >> self.log, "Not using ncs"
+      # assert 0
 
     # need to update SS manager for the whole model here.
     # print "self.filtered_ncs_restr_group_list", self.filtered_ncs_restr_group_list

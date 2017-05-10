@@ -28,7 +28,8 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   assert not easy_run.call(cmd)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
-  for l in ["Replacing ss-elements with ideal ones:\n",
+  for l in [
+      # "Replacing ss-elements with ideal ones:\n",
       "All done.\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()

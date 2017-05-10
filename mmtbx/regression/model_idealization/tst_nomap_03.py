@@ -245,7 +245,8 @@ def exercise_03(prefix="tst_mi_test_03"):
   assert os.path.isfile("%s_start.pdb_all_idealized.pdb" % prefix)
   res_log = open("%s.log" % prefix, "r")
   log_lines = res_log.readlines()
-  for l in ["Using NCS constraints.\n",
+  for l in [
+      # "Using NCS constraints.\n",
       "All done.\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   res_log.close()

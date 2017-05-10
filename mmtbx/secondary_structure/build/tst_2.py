@@ -1129,12 +1129,13 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
     rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
+      check_rotamer_clashes=False,
       ss_annotation=ann)
   d2 = get_distances(h, n_neighbours=20)
   h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  # print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
   # assert dmmm[1] < 0.8
   assert dmmm[2] < 0.2, dmmm[2]
   assert dist.standard_deviation_of_the_sample() < 0.25, dist.standard_deviation_of_the_sample()
@@ -1183,6 +1184,7 @@ HELIX   13  13 SER A  466  TYR A  472  1                                   7
   rm = ssb.substitute_ss(
       real_h=h,
       xray_structure=pdb_inp.xray_structure_simple(),
+      check_rotamer_clashes=False,
       ss_annotation=ann)
   # h.write_pdb_file(file_name="result.pdb")
   d1 = get_distances(h, 5)
