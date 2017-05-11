@@ -452,7 +452,7 @@ class InMemScript(DialsProcessScript):
     # set up psana
     if params.input.cfg is not None:
       psana.setConfigFile(params.input.cfg)
-    dataset_type = 'smd' #use smd for stripping mode (default) - this will fail for old data (no smalldata).
+    dataset_type = 'smd' #smd only works in striping mode now (*to be updated)
     if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
       dataset_type = 'idx'
     dataset_name = "exp=%s:run=%s:%s"%(params.input.experiment,params.input.run_num,dataset_type)
@@ -577,6 +577,7 @@ class InMemScript(DialsProcessScript):
         would_process = -1
         for nevent, evt in enumerate(ds.events()):
           if nevent%size != rank: continue
+          if nevent >= max_events: continue
           would_process += 1
           if process_fractions:
             if would_process % process_fractions.denominator >= process_fractions.numerator: continue
