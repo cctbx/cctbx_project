@@ -452,7 +452,10 @@ class InMemScript(DialsProcessScript):
     # set up psana
     if params.input.cfg is not None:
       psana.setConfigFile(params.input.cfg)
-    dataset_name = "exp=%s:run=%s:idx"%(params.input.experiment,params.input.run_num)
+    dataset_type = 'smd' #use smd for stripping mode (default) - this will fail for old data (no smalldata).
+    if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
+      dataset_type = 'idx'
+    dataset_name = "exp=%s:run=%s:%s"%(params.input.experiment,params.input.run_num,dataset_type)
     if params.input.xtc_dir is not None:
       if params.input.use_ffb:
         raise Sorry("Cannot specify the xtc_dir and use SLAC's ffb system")
@@ -510,20 +513,26 @@ class InMemScript(DialsProcessScript):
       else:
         self.integration_mask = None
 
-      # list of all events
-      times = run.times()
-      nevents = min(len(times),max_events)
-      times = times[:nevents]
-      if params.dispatch.process_percent is not None:
+      # prepare fractions of process_percent, if given
+      process_fractions = None
+      if params.dispatch.process_percent:
         import fractions
         percent = params.dispatch.process_percent / 100
-        f = fractions.Fraction(percent).limit_denominator(100)
-        times = [times[i] for i in xrange(len(times)) if i % f.denominator < f.numerator]
-        print "Dividing %d of %d events (%4.1f%%) between all processes"%(len(times), nevents, 100*len(times)/nevents)
-        nevents = len(times)
-      else:
-        print "Dividing %d events between all processes" % nevents
+        process_fractions = fractions.Fraction(percent).limit_denominator(100)
+
+      # list of all events
+      # only cycle through times in client_server mode
       if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
+        times = run.times()
+        nevents = min(len(times),max_events)
+        times = times[:nevents]
+        if process_fractions:
+          times = [times[i] for i in xrange(len(times)) if i % process_fractions.denominator < process_fractions.numerator]
+          print "Dividing %d of %d events (%4.1f%%) between all processes"%(len(times), nevents, 100*len(times)/nevents)
+          nevents = len(times)
+        else:
+          print "Dividing %d events between all processes" % nevents
+
         print "Using MPI client server"
         # use a client/server approach to be sure every process is busy as much as possible
         # only do this if there are more than 2 processes, as one process will be a server
@@ -552,7 +561,8 @@ class InMemScript(DialsProcessScript):
               comm.send(rank,dest=0)
               evttime = comm.recv(source=0)
               if evttime == 'endrun': break
-              self.process_event(run, evttime)
+              evt = run.event(evttime)
+              self.process_event(run, evt)
         except Exception, e:
           print "Error caught in main loop"
           print str(e)
@@ -561,25 +571,27 @@ class InMemScript(DialsProcessScript):
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
         print "Striping events"
-        mytimes = [times[i] for i in xrange(len(times)) if (i+rank)%size == 0]
 
         last = 0
         first = 0
-        for i in xrange(len(mytimes)):
-          self.process_event(run, mytimes[i])
+        would_process = -1
+        for nevent, evt in enumerate(ds.events()):
+          if nevent%size != rank: continue
+          would_process += 1
+          if process_fractions:
+            if would_process % process_fractions.denominator >= process_fractions.numerator: continue
+
+          self.process_event(run, evt)
 
           mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-          if i < 50:
+          if nevent < 50:
             #print "Mem test rank %03d"%rank, i, mem
             continue
           #print "Mem test rank %03d"%rank, 'Cycle %6d total %7dkB increase %4dkB' % (i, mem, mem - last)
           if not first:
             first = mem
           last = mem
-        print 'Total memory leaked in %d cycles: %dkB' % (i+1-50, mem - first)
-
-      run.end()
-    ds.end()
+        print 'Total memory leaked in %d cycles: %dkB' % (nevent+1-50, mem - first)
 
     if params.joint_reintegration.enable:
       if rank == 0:
@@ -662,13 +674,19 @@ class InMemScript(DialsProcessScript):
           except Exception, e:
             print "Couldn't reintegrate", img_file, str(e)
 
-  def process_event(self, run, timestamp):
+  def process_event(self, run, evt):
     """
     Process a single event from a run
     @param run psana run object
     @param timestamp psana timestamp object
     """
-    ts = cspad_tbx.evt_timestamp((timestamp.seconds(),timestamp.nanoseconds()/1e6))
+    time = evt.get(psana.EventId).time()
+    fid = evt.get(psana.EventId).fiducials()
+
+    sec  = time[0]
+    nsec = time[1]
+
+    ts = cspad_tbx.evt_timestamp((sec,nsec/1e6))
     if ts is None:
       print "No timestamp, skipping shot"
       return
@@ -692,7 +710,6 @@ class InMemScript(DialsProcessScript):
 
     self.debug_start(ts)
 
-    evt = run.event(timestamp)
     if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
       print "Skipping event",ts
       self.debug_write("psana_skip", "skip")
