@@ -877,6 +877,7 @@ class manager(object):
     paired atoms is determined here, therefore the proxy.rt_mx_ji may be
     anything."""
     import time
+    rt_mx_ji_options = [[]] * len(proxies)
     # Get current max bond distance, copied from pair_proxies()
     t0 = time.time()
     bonded_distance_cutoff = max_distance_between_connecting_atoms
@@ -974,22 +975,36 @@ class manager(object):
         rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
         rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
         rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
-        # Add new defined bond
+        rt_mx_ji_options[n_proxy].append(rt_mx_ji)
+        # print "pair:",  pair.i_seq, pair.j_seq, "n_proxy ", n_proxy,rt_mx_ji
+    for proxy, rt_mx_ji_option in zip(proxies, rt_mx_ji_options):
+      # choose rt_mx_ji
+      rt_mx_ji = None
+      if len(rt_mx_ji_option) >= 1:
+        rt_mx_ji = rt_mx_ji_option[0]
+      if len(rt_mx_ji_option) > 1:
+        # search for unit mx or pick the first one
+        for rmj in rt_mx_ji_option:
+          if rmj.is_unit_mx():
+            rt_mx_ji = rmj
+      # Add new defined bond
+      if rt_mx_ji is not None:
+        # print "Adding new bond:", proxy.i_seqs[0], proxy.i_seqs[1], rt_mx_ji
         all_bonds_asu_table.add_pair(
-          i_seq=proxies[n_proxy].i_seqs[0],
-          j_seq=proxies[n_proxy].i_seqs[1],
+          i_seq=proxy.i_seqs[0],
+          j_seq=proxy.i_seqs[1],
           rt_mx_ji=rt_mx_ji)
         # Update with new bond
         self.bond_params_table.update(
-            i_seq=proxies[n_proxy].i_seqs[0],
-            j_seq=proxies[n_proxy].i_seqs[1],
+            i_seq=proxy.i_seqs[0],
+            j_seq=proxy.i_seqs[1],
             params=geometry_restraints.bond_params(
-                distance_ideal=proxies[n_proxy].distance_ideal,
-                weight=proxies[n_proxy].weight,
-                slack=proxies[n_proxy].slack,
-                limit=proxies[n_proxy].limit,
-                top_out=proxies[n_proxy].top_out,
-                origin_id=proxies[n_proxy].origin_id)
+                distance_ideal = proxy.distance_ideal,
+                weight         = proxy.weight,
+                slack          = proxy.slack,
+                limit          = proxy.limit,
+                top_out        = proxy.top_out,
+                origin_id      = proxy.origin_id)
             )
         n_added_proxies += 1
     t6 = time.time()
