@@ -230,9 +230,11 @@ class Script(object):
     tmp = []
     for refls in reflections:
       print "N reflections total:", len(refls)
-      refls = refls.select(refls.get_flags(refls.flags.used_in_refinement))
-      print "N reflections used in refinement", len(refls)
-      print "Reporting only on those reflections used in refinement"
+      sel = refls.get_flags(refls.flags.used_in_refinement)
+      if sel.count(True) > 0:
+        refls = refls.select(sel)
+        print "N reflections used in refinement", len(refls)
+        print "Reporting only on those reflections used in refinement"
 
       refls['difference_vector_norms'] = (refls['xyzcal.mm']-refls['xyzobs.mm.value']).norms()
       tmp.append(refls)
@@ -393,7 +395,7 @@ class Script(object):
 
         dists.append((ori-bc).length())
 
-        ori_lab = get_center_lab(pg)
+        ori_lab = pg.get_origin()
         lab_x.append(ori_lab[0])
         lab_y.append(ori_lab[1])
         lab_z.append(ori_lab[2])
@@ -669,7 +671,10 @@ class Script(object):
           continue
         stats = flex.mean_and_variance(data, weights)
         r1.append(fmt%stats.mean())
-        r2.append(fmt%stats.gsl_stats_wsd())
+        if len(data) > 1:
+          r2.append(fmt%stats.gsl_stats_wsd())
+        else:
+          r2.append("-")
 
       r1.append("")
       r2.append("")
