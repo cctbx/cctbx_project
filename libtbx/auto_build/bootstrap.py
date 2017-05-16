@@ -288,16 +288,18 @@ class Toolbox(object):
       # otherwise pass on the error message
       raise
     except urllib2.URLError, e:
+      if localcopy:
+        # Download failed for some reason, but a valid local copy of
+        # the file exists, so use that one instead.
+        log.write("%s\n" % str(e))
+        return -2
       # if url fails to open, try using curl
       # temporary fix for old OpenSSL in system Python on macOS
       # https://github.com/cctbx/cctbx_project/issues/33
-      try:
-        subprocess.call(['/usr/bin/curl', '-o', file, url], stdout=sys.stdout,
-                        stderr=sys.stderr)
-        socket = None     # prevent later socket code from being run
-        received = 1      # satisfy (filesize > 0) checks later on
-      except Exception:
-        raise
+      subprocess.call(['/usr/bin/curl', '-o', file, url], stdout=sys.stdout,
+                      stderr=sys.stderr)
+      socket = None     # prevent later socket code from being run
+      received = 1      # satisfy (filesize > 0) checks later on
 
     if (socket is not None):
       try:
