@@ -30,7 +30,7 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
 from iotbx.file_reader import any_file
 from mmtbx.validation.clashscore import check_and_add_hydrogen
-from libtbx import Auto
+from libtbx import Auto, easy_pickle
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -70,6 +70,9 @@ use_starting_model_for_final_gm = False
 output_prefix = None
   .type = str
   .expert_level = 0
+output_pkl = False
+  .type = bool
+  .expert_level = 3
 use_map_for_reference = True
   .type = bool
   .expert_level = 1
@@ -568,6 +571,10 @@ class model_idealization():
           molprobity_scores=True)
       # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
       self.time_for_run = time() - t_0
+      if self.params.output_pkl:
+        easy_pickle.dump(
+            file_name="%s.pkl" % self.params.output_prefix,
+            obj = self.get_stats_obj())
       return
 
 
@@ -803,6 +810,10 @@ class model_idealization():
           lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
         molprobity_scores=True)
     # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
+    if self.params.output_pkl:
+      easy_pickle.dump(
+          file_name="%s.pkl" % self.params.output_prefix,
+          obj = self.get_stats_obj())
     self.time_for_run = time() - t_0
 
   def add_hydrogens(self):
@@ -913,9 +924,8 @@ class model_idealization():
         self.whole_pdb_h,
         backbone_only=False)
 
-  def print_stat_comparison(self):
+  def get_stats_obj(self):
     if self.params.run_minimization_first:
-      print >> self.log, "                        Starting    Init GM   SS ideal    Rama      Rota     Final"
       stat_obj_list = [self.init_model_statistics,
           self.init_gm_model_statistics,
           self.after_ss_idealization,
@@ -923,12 +933,19 @@ class model_idealization():
           self.after_rotamer_fixing,
           self.final_model_statistics,]
     else:
-      print >> self.log, "                        Starting    SS ideal    Rama      Rota     Final"
       stat_obj_list = [self.init_model_statistics,
           self.after_ss_idealization,
           self.after_loop_idealization,
           self.after_rotamer_fixing,
           self.final_model_statistics,]
+    return stat_obj_list
+
+  def print_stat_comparison(self):
+    stat_obj_list = self.get_stats_obj()
+    if self.params.run_minimization_first:
+      print >> self.log, "                        Starting    Init GM   SS ideal    Rama      Rota     Final"
+    else:
+      print >> self.log, "                        Starting    SS ideal    Rama      Rota     Final"
     #                         Starting    SS ideal    Rama      Rota     Final
     # Molprobity Score     :      4.50      3.27      2.66      2.32      2.54
     for val_caption, val_name, val_format in [

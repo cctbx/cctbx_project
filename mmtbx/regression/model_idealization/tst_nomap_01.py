@@ -20,6 +20,7 @@ def exercise_01(prefix="tst_mi_test_01"):
       "use_map_for_reference=False",
       "number_of_refinement_cycles=1",
       "n_macro=1",
+      "output_pkl=True",
       ">%s.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
