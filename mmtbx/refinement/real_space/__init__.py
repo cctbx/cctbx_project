@@ -440,7 +440,10 @@ class structure_monitor(object):
       pass
     self.stats_evaluations.append(
         group_args(
-          cc = self.five_cc,
+          cc = group_args(
+              cc_mask   = self.five_cc.cc_mask,
+              cc_volume = self.five_cc.cc_volume,
+              cc_peaks  = self.five_cc.cc_peaks),
           geometry = mso))
     if mso is not None and self.five_cc is not None:
       print >> log, fmt%(

@@ -227,10 +227,10 @@ def molprobity_stats(model_statistics_geometry, resname_classes):
   if(need_ramachandran): # FIXME no clashscore for nucleic acids???
     msg = model_statistics_geometry
     return group_args(
-      ramalyze_outliers = msg.ramalyze_obj.get_outliers_count_and_fraction(),
-      ramalyze_allowed  = msg.ramalyze_obj.get_allowed_count_and_fraction(),
-      ramalyze_favored  = msg.ramalyze_obj.get_favored_count_and_fraction(),
-      rotalyze          = msg.rotalyze_obj.get_outliers_count_and_fraction(),
+      ramalyze_outliers = msg.ramachandran_outliers_cf,
+      ramalyze_allowed  = msg.ramachandran_allowed_cf,
+      ramalyze_favored  = msg.ramachandran_favored_cf,
+      rotalyze          = msg.rotamer_cf,
       cbetadev          = msg.c_beta_dev,
       clashscore        = msg.clashscore,
       mpscore           = msg.mpscore)

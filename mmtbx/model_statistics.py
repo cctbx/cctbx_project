@@ -15,6 +15,7 @@ from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
+import iotbx.cif.model
 
 class geometry_no_grm(object):
   def __init__(
@@ -22,7 +23,9 @@ class geometry_no_grm(object):
       pdb_hierarchy,
       molprobity_scores=False,
       ):
-    self.pdb_hierarchy = pdb_hierarchy
+    """ This class is being pickled. Try not to introduce huge members, e.g.
+    self.hierarchy, etc. This is the reason ramalyze_obj, rotalyze_obj etc
+    are not members of the class (not self.ramalyze_obj). """
     self.clashscore            = None
     self.ramachandran_outliers = None
     self.ramachandran_allowed  = None
@@ -36,31 +39,35 @@ class geometry_no_grm(object):
     self.n_twisted_proline = None
     self.n_twisted_general = None
     if(molprobity_scores):
-      self.ramalyze_obj = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-      self.ramachandran_outliers = self.ramalyze_obj.percent_outliers
-      self.ramachandran_allowed  = self.ramalyze_obj.percent_allowed
-      self.ramachandran_favored  = self.ramalyze_obj.percent_favored
-      self.rotalyze_obj = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-      self.rotamer_outliers = self.rotalyze_obj.percent_outliers
-      self.cbetadev_obj = cbetadev(
+      ramalyze_obj = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
+      self.ramachandran_outliers = ramalyze_obj.percent_outliers
+      self.ramachandran_outliers_cf = ramalyze_obj.get_outliers_count_and_fraction()
+      self.ramachandran_allowed  = ramalyze_obj.percent_allowed
+      self.ramachandran_allowed_cf  = ramalyze_obj.get_allowed_count_and_fraction()
+      self.ramachandran_favored  = ramalyze_obj.percent_favored
+      self.ramachandran_favored_cf  = ramalyze_obj.get_favored_count_and_fraction()
+      rotalyze_obj = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
+      self.rotamer_outliers = rotalyze_obj.percent_outliers
+      self.rotamer_cf = rotalyze_obj.get_outliers_count_and_fraction()
+      cbetadev_obj = cbetadev(
         pdb_hierarchy = pdb_hierarchy,
         outliers_only = True,
         out           = null_out())
-      self.c_beta_dev = self.cbetadev_obj.get_outlier_count()
-      self.c_beta_dev_percent = self.cbetadev_obj.get_weighted_outlier_percent()
+      self.c_beta_dev = cbetadev_obj.get_outlier_count()
+      self.c_beta_dev_percent = cbetadev_obj.get_weighted_outlier_percent()
       self.clashscore = clashscore(pdb_hierarchy=pdb_hierarchy).get_clashscore()
       self.mpscore = molprobity_score(
         clashscore = self.clashscore,
         rota_out   = self.rotamer_outliers,
         rama_fav   = self.ramachandran_favored)
-      self.omglz = omegalyze.omegalyze(
-        pdb_hierarchy=self.pdb_hierarchy, quiet=True)
-      self.n_proline = self.omglz.n_proline()
-      self.n_general = self.omglz.n_general()
-      self.n_cis_proline = self.omglz.n_cis_proline()
-      self.n_cis_general = self.omglz.n_cis_general()
-      self.n_twisted_proline = self.omglz.n_twisted_proline()
-      self.n_twisted_general = self.omglz.n_twisted_general()
+      omglz = omegalyze.omegalyze(
+        pdb_hierarchy=pdb_hierarchy, quiet=True)
+      self.n_proline = omglz.n_proline()
+      self.n_general = omglz.n_general()
+      self.n_cis_proline = omglz.n_cis_proline()
+      self.n_cis_general = omglz.n_cis_general()
+      self.n_twisted_proline = omglz.n_twisted_proline()
+      self.n_twisted_general = omglz.n_twisted_general()
       self.cis_general = 0
       self.twisted_general = 0
       self.cis_proline = 0
@@ -331,7 +338,6 @@ class geometry(geometry_no_grm):
     return result
 
   def as_cif_block(self, cif_block=None):
-    import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     cif_block["_refine.pdbx_stereochemistry_target_values"] = "GeoStd + Monomer Library"
@@ -602,7 +608,6 @@ class adp(object):
     out.flush()
 
   def as_cif_block(self, cif_block=None):
-    import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     cif_block["_reflns.B_iso_Wilson_estimate"] = self.wilson_b
@@ -692,7 +697,6 @@ class model(object):
         print >> out,pr+"   RMSD               : %-10.3f" % rms
 
   def ncs_as_cif_block(self, cif_block=None):
-    import iotbx.cif.model
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
 
