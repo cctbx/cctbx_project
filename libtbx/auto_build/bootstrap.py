@@ -275,7 +275,7 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except (pysocket.timeout, urllib2.URLError, urllib2.HTTPError), e:
+    except (pysocket.timeout, urllib2.HTTPError), e:
       if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:
         # When using ETag. a 304 error means everything is fine
         log.write("local copy is current (etag)\n")
@@ -287,90 +287,102 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
+    except urllib2.URLError, e:
+      # if url fails to open, try using curl
+      # temporary fix for old OpenSSL in system Python on macOS
+      # https://github.com/cctbx/cctbx_project/issues/33
+      try:
+        subprocess.call(['/usr/bin/curl', '-o', file, url], stdout=sys.stdout,
+                        stderr=sys.stderr)
+        socket = None     # prevent later socket code from being run
+        received = 1      # satisfy (filesize > 0) checks later on
+      except Exception:
+        raise
 
-    try:
-      file_size = int(socket.info().getheader('Content-Length'))
-    except Exception:
-      file_size = 0
+    if (socket is not None):
+      try:
+        file_size = int(socket.info().getheader('Content-Length'))
+      except Exception:
+        file_size = 0
 
-    if os.path.isfile(tagfile):
-      # ETag did not match, so delete any existing ETag.
-      os.remove(tagfile)
+      if os.path.isfile(tagfile):
+        # ETag did not match, so delete any existing ETag.
+        os.remove(tagfile)
 
-    remote_mtime = 0
-    try:
-      remote_mtime = time.mktime(socket.info().getdate('last-modified'))
-    except Exception:
-      pass
+      remote_mtime = 0
+      try:
+        remote_mtime = time.mktime(socket.info().getdate('last-modified'))
+      except Exception:
+        pass
 
-    if (file_size > 0):
-      if (remote_mtime > 0):
-        # check if existing file matches remote size and timestamp
-        try:
-          (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(file)
-          if (size == file_size) and (remote_mtime == mtime):
-            log.write("local copy is current\n")
-            socket.close()
-            return -2
-        except Exception:
-          # proceed with download if timestamp/size check fails for any reason
-          pass
+      if (file_size > 0):
+        if (remote_mtime > 0):
+          # check if existing file matches remote size and timestamp
+          try:
+            (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime) = os.stat(file)
+            if (size == file_size) and (remote_mtime == mtime):
+              log.write("local copy is current\n")
+              socket.close()
+              return -2
+          except Exception:
+            # proceed with download if timestamp/size check fails for any reason
+            pass
 
-      hr_size = (file_size, "B")
-      if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "kB")
-      if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "MB")
-      log.write("%.1f %s\n" % hr_size)
-      if status:
-        log.write("    [0%")
-        log.flush()
-
-    received = 0
-    block_size = 8192
-    progress = 1
-    # Allow for writing the file immediately so we can empty the buffer
-    tmpfile = file + '.tmp'
-
-    f = open(tmpfile, 'wb')
-    while 1:
-      block = socket.read(block_size)
-      received += len(block)
-      f.write(block)
-      if status and (file_size > 0):
-        while (100 * received / file_size) > progress:
-          progress += 1
-          if (progress % 20) == 0:
-            log.write("%d%%" % progress)
-          elif (progress % 2) == 0:
-            log.write(".")
+        hr_size = (file_size, "B")
+        if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "kB")
+        if (hr_size[0] > 500): hr_size = (hr_size[0] / 1024, "MB")
+        log.write("%.1f %s\n" % hr_size)
+        if status:
+          log.write("    [0%")
           log.flush()
 
-      if not block: break
-    f.close()
-    socket.close()
+      received = 0
+      block_size = 8192
+      progress = 1
+      # Allow for writing the file immediately so we can empty the buffer
+      tmpfile = file + '.tmp'
 
-    if status and (file_size > 0):
-      log.write("]\n")
-    else:
-      log.write("%d kB\n" % (received / 1024))
-    log.flush()
+      f = open(tmpfile, 'wb')
+      while 1:
+        block = socket.read(block_size)
+        received += len(block)
+        f.write(block)
+        if status and (file_size > 0):
+          while (100 * received / file_size) > progress:
+            progress += 1
+            if (progress % 20) == 0:
+              log.write("%d%%" % progress)
+            elif (progress % 2) == 0:
+              log.write(".")
+            log.flush()
 
-    # Do not overwrite file during the download. If a download temporarily fails we
-    # may still have a clean, working (yet older) copy of the file.
-    shutil.move(tmpfile, file)
+        if not block: break
+      f.close()
+      socket.close()
 
-    if (file_size > 0) and (file_size != received):
-      return -1
+      if status and (file_size > 0):
+        log.write("]\n")
+      else:
+        log.write("%d kB\n" % (received / 1024))
+      log.flush()
 
-    if remote_mtime > 0:
-      # set file timestamp if timestamp information is available
-      from stat import ST_ATIME
-      st = os.stat(file)
-      atime = st[ST_ATIME] # current access time
-      os.utime(file,(atime,remote_mtime))
+      # Do not overwrite file during the download. If a download temporarily fails we
+      # may still have a clean, working (yet older) copy of the file.
+      shutil.move(tmpfile, file)
 
-    if cache and socket.info().getheader('ETag'):
-      # If the server sent an ETAG, then keep it alongside the file
-      open(tagfile, 'w').write(socket.info().getheader('ETag'))
+      if (file_size > 0) and (file_size != received):
+        return -1
+
+      if remote_mtime > 0:
+        # set file timestamp if timestamp information is available
+        from stat import ST_ATIME
+        st = os.stat(file)
+        atime = st[ST_ATIME] # current access time
+        os.utime(file,(atime,remote_mtime))
+
+      if cache and socket.info().getheader('ETag'):
+        # If the server sent an ETAG, then keep it alongside the file
+        open(tagfile, 'w').write(socket.info().getheader('ETag'))
 
     return received
 
