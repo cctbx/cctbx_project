@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/25/2017
+Last Changed: 05/16/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -1290,6 +1290,7 @@ class ProcWindow(wx.Frame):
         self.res_list = [0] * len(self.img_list)
         self.status_txt.SetLabel('Processing {} remaining images ({} total)...'
                                  ''.format(len(iterable), len(self.img_list)))
+        self.start_object_finder = True
       else:
         self.img_list = [[i, len(self.init.input_list) + 1, j] for
                          i, j in enumerate(self.init.input_list, 1)]

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/13/2017
+Last Changed: 05/16/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -195,9 +195,12 @@ class SingleImage(object):
       from dxtbx.datablock import DataBlockFactory
       from dials.command_line.estimate_gain import estimate_gain
       with misc.Capturing() as junk_output:
-        datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
-        imageset = datablock.extract_imagesets()[0]
-        self.gain = estimate_gain(imageset)
+        try:
+          datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
+          imageset = datablock.extract_imagesets()[0]
+          self.gain = estimate_gain(imageset)
+        except IndexError, e:
+          self.gain = 1.0
     else:
       self.gain = 1.0
 

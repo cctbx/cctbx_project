@@ -6,7 +6,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/19/2017
-Last Changed: 04/26/2017
+Last Changed: 05/16/2017
 Description : IOTA image-tracking GUI module
 '''
 
@@ -18,8 +18,8 @@ import numpy as np
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-# from dxtbx.datablock import DataBlockFactory
-# from dials.algorithms.background import RadialAverage
+from dxtbx.datablock import DataBlockFactory
+from dials.algorithms.background import RadialAverage
 from iotbx import phil as ip
 from libtbx import easy_run
 
@@ -123,6 +123,46 @@ default_target = '\n'.join(['verbosity=10',
                             ])
 
 
+class RadAverageCalculator(object):
+  def __init__(self, image):
+    self.datablock = DataBlockFactory.from_filenames([image])[0]
+
+  def calculate(self):
+    return self.make_radial_average(datablock=self.datablock)
+
+
+  def make_radial_average(self, datablock):
+    imageset = datablock.extract_imagesets()[0]
+    beam = imageset.get_beam()
+    detector = imageset.get_detector()
+    scan_range = (0, len(imageset))
+
+    summed_data = None
+    summed_mask = None
+    for i in range(*scan_range):
+      data = imageset.get_raw_data(i)
+      mask = imageset.get_mask(i)
+      assert isinstance(data, tuple)
+      assert isinstance(mask, tuple)
+      if summed_data is None:
+        summed_mask = mask
+        summed_data = data
+      else:
+        summed_data = [ sd + d for sd, d in zip(summed_data, data) ]
+        summed_mask = [ sm & m for sm, m in zip(summed_mask, mask) ]
+    num_bins = int(sum(sum(p.get_image_size()) for p in detector) / 50)
+    vmin = (1.0 / 20) ** 2  #0
+    vmax = (1.0 / 1.5) ** 2 #detector.get_max_resolution(beam.get_s0())) ** 2
+
+    # Compute the radial average
+    radial_average = RadialAverage(beam, detector, vmin, vmax, num_bins)
+    for d, m in zip(summed_data, summed_mask):
+      radial_average.add(d.as_double() / (scan_range[1] - scan_range[0]), m)
+    mean = radial_average.mean()
+    reso = radial_average.inv_d2()
+
+    return mean, reso
+
 class TrackChart(wx.Panel):
   def __init__(self, parent, main_window):
     wx.Panel.__init__(self, parent)
@@ -172,24 +212,11 @@ class TrackChart(wx.Panel):
     nref_y = np.append(self.acc_plot.get_ydata(),
                        np.array(new_y).astype(np.double))
     nref_xy = zip(nref_x, nref_y)
-    acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
-    rej = [i[0] for i in nref_xy if i[1] < min_bragg]
-
-    self.acc_plot.set_xdata(nref_x)
-    self.rej_plot.set_xdata(nref_x)
-    self.acc_plot.set_ydata(nref_y)
-    self.rej_plot.set_ydata(nref_y)
-    self.bragg_line.set_ydata(min_bragg)
-    self.acc_plot.set_markevery(acc)
-    self.rej_plot.set_markevery(rej)
 
     if min_bragg > 0:
      self.bragg_line.set_alpha(1)
     else:
       self.bragg_line.set_alpha(0)
-
-    # self.track_axes.relim()
-    # self.track_axes.autoscale_view()
 
     if nref_x != [] and nref_y != []:
       if self.main_window.tracker_panel.options.chart_window.toggle:
@@ -209,8 +236,27 @@ class TrackChart(wx.Panel):
       self.track_axes.set_xlim(x_min, x_max)
       self.track_axes.set_ylim(0, np.max(nref_y) + int(0.1 * np.max(nref_y)))
 
+    acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
+    rej = [i[0] for i in nref_xy if i[1] < min_bragg]
+
+    try:
+      self.acc_plot.set_xdata(nref_x)
+      self.rej_plot.set_xdata(nref_x)
+      self.acc_plot.set_ydata(nref_y)
+      self.rej_plot.set_ydata(nref_y)
+      self.bragg_line.set_ydata(min_bragg)
+      self.acc_plot.set_markevery(acc)
+      self.rej_plot.set_markevery(rej)
+    except ValueError:
+      print acc
+      print rej
+      exit()
+
     self.Layout()
 
+    count = '{}'.format(len(acc))
+    self.main_window.tracker_panel.count_txt.SetLabel(count)
+    self.main_window.tracker_panel.status_sizer.Layout()
     self.track_axes.draw_artist(self.acc_plot)
     self.track_axes.draw_artist(self.rej_plot)
 
@@ -224,8 +270,8 @@ class SpotfinderSettings(wx.Panel):
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.main_sizer)
 
-    # Minimum Bragg spots cutoff (maybe make a slider?)
-    common_size = (150, -1)
+    # Minimum Bragg spots cutoff
+    common_size = (180, -1)
     self.display = wx.Panel(self)
     self.display_box = wx.StaticBox(self.display, label='Display Options')
     self.display_sizer = wx.StaticBoxSizer(self.display_box, wx.VERTICAL)
@@ -236,7 +282,7 @@ class SpotfinderSettings(wx.Panel):
                                  ctrl_size=(100, -1),
                                  ctrl_value=10,
                                  ctrl_min = 0)
-    self.display_sizer.Add(self.min_bragg, flag=wx.BOTTOM, border=10)
+    self.display_sizer.Add(self.min_bragg, flag=wx.ALL, border=5)
 
     self.chart_window = ct.OptionCtrl(self.display,
                                       items=[('window', '100')],
@@ -245,7 +291,7 @@ class SpotfinderSettings(wx.Panel):
                                       checkbox_state=True,
                                       label_size=common_size,
                                       ctrl_size=(100, -1))
-    self.display_sizer.Add(self.chart_window, flag=wx.BOTTOM, border=10)
+    self.display_sizer.Add(self.chart_window, flag=wx.ALL, border=5)
 
     #Spotfinding settings
     self.options = wx.Panel(self)
@@ -257,44 +303,44 @@ class SpotfinderSettings(wx.Panel):
                                           label='Sigma background',
                                           label_size=common_size,
                                           ctrl_size=(100, -1))
-    self.options_sizer.Add(self.sigma_background, flag=wx.BOTTOM, border=10)
+    self.options_sizer.Add(self.sigma_background, flag=wx.ALL, border=5)
 
     self.sigma_strong = ct.OptionCtrl(self.options,
                                       items=[('s_strong', 3)],
                                       label='Sigma strong',
                                       label_size=common_size,
                                       ctrl_size=(100, -1))
-    self.options_sizer.Add(self.sigma_strong, flag=wx.BOTTOM, border=10)
+    self.options_sizer.Add(self.sigma_strong, flag=wx.ALL, border=5)
 
     self.global_threshold = ct.OptionCtrl(self.options,
                                           items=[('threshold', 0)],
                                           label='Global threshold',
                                           label_size=common_size,
                                           ctrl_size=(100, -1))
-    self.options_sizer.Add(self.global_threshold, flag=wx.BOTTOM, border=10)
+    self.options_sizer.Add(self.global_threshold, flag=wx.ALL, border=5)
 
     self.min_local = ct.OptionCtrl(self.options,
                                    items=[('min_local', 2)],
                                    label='Min. local',
                                    label_size=common_size,
                                    ctrl_size=(100, -1))
-    self.options_sizer.Add(self.min_local, flag=wx.BOTTOM, border=10)
+    self.options_sizer.Add(self.min_local, flag=wx.ALL, border=5)
 
     self.gain = ct.OptionCtrl(self.options,
                               items=[('gain', 1.0)],
                               label='Detector gain',
                               label_size=common_size,
                               ctrl_size=(100, -1))
-    self.options_sizer.Add(self.gain, flag=wx.BOTTOM, border=10)
+    self.options_sizer.Add(self.gain, flag=wx.ALL, border=5)
 
     self.kernel_size = ct.OptionCtrl(self.options,
                                      items=[('kernel', '3 3')],
                                      label='Kernel size',
                                      label_size=common_size,
                                      ctrl_size=(100, -1))
-    self.options_sizer.Add(self.kernel_size, flag=wx.BOTTOM, border=10)
+    self.options_sizer.Add(self.kernel_size, flag=wx.ALL, border=5)
 
-    self.main_sizer.Add(self.display, flag=wx.EXPAND | wx.BOTTOM, border=10)
+    self.main_sizer.Add(self.display, flag=wx.EXPAND | wx.BOTTOM, border=5)
     self.main_sizer.Add(self.options, 1, wx.EXPAND)
 
     self.Fit()
@@ -310,7 +356,8 @@ class TrackerPanel(wx.Panel):
 
     # Status box
     self.status_panel = wx.Panel(self)
-    self.status_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.status_sizer = wx.FlexGridSizer(1, 2, 0, 0)
+    self.status_sizer.AddGrowableCol(0)
     self.status_box = wx.StaticBox(self.status_panel, label='Status')
     self.status_box_sizer = wx.StaticBoxSizer(self.status_box, wx.HORIZONTAL)
     self.status_txt = wx.StaticText(self.status_panel, label='')
@@ -319,6 +366,16 @@ class TrackerPanel(wx.Panel):
     self.status_sizer.Add(self.status_box_sizer,
                           flag=wx.EXPAND | wx.ALL, border=3)
     self.status_panel.SetSizer(self.status_sizer)
+    self.count_box = wx.StaticBox(self.status_panel, label='Hit Count')
+    self.count_box_sizer = wx.StaticBoxSizer(self.count_box, wx.HORIZONTAL)
+    self.count_txt = wx.StaticText(self.status_panel, label='')
+    self.count_box_sizer.Add(self.count_txt, flag=wx.ALL | wx.ALIGN_CENTER,
+                             border=10)
+    font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+    self.count_txt.SetFont(font)
+
+    self.status_sizer.Add(self.count_box_sizer,
+                          flag=wx.EXPAND | wx.ALL, border=3)
     self.main_sizer.Add(self.status_panel, flag=wx.EXPAND|wx.ALL, border=10)
 
     self.graph_panel = wx.Panel(self)
@@ -366,6 +423,11 @@ class TrackerWindow(wx.Frame):
                                                 bitmap=open_bmp,
                                                 shortHelp='Open',
                                                 longHelp='Open Images')
+    run_calc = bitmaps.fetch_icon_bitmap('apps', 'calc')
+    self.tb_btn_calc = self.toolbar.AddLabelTool(wx.ID_ANY, label='Average',
+                                                bitmap=run_calc,
+                                                shortHelp='Average',
+                                                longHelp='Calculate radial averages')
     run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=run_bmp,
@@ -378,6 +440,7 @@ class TrackerWindow(wx.Frame):
                                                 longHelp='Stop Spotfinding')
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
+    self.toolbar.EnableTool(self.tb_btn_calc.GetId(), False)
     self.toolbar.Realize()
 
     # Setup timer
@@ -385,7 +448,6 @@ class TrackerWindow(wx.Frame):
 
     self.tracker_panel = TrackerPanel(self)
     self.main_sizer.Add(self.tracker_panel, 1, wx.EXPAND)
-
 
     # Generate default PHIL file and instantiate DIALS stills processor
     default_phil = ip.parse(default_target)
@@ -399,6 +461,7 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onGetImages, self.tb_btn_open)
     self.Bind(wx.EVT_TOOL, self.onRunSpotfinding, self.tb_btn_run)
     self.Bind(wx.EVT_TOOL, self.onStop, self.tb_btn_stop)
+    self.Bind(wx.EVT_TOOL, self.onCalc, self.tb_btn_calc)
 
     # Spotfinder / timer bindings
     self.Bind(thr.EVT_SPFDONE, self.onSpfOneDone)
@@ -416,8 +479,20 @@ class TrackerWindow(wx.Frame):
       tf.write('')
     self.msg = 'Stopping...'
 
-  def onResume(self, e):
-    os.remove(self.term_file)
+  # def onResume(self, e):
+  #   os.remove(self.term_file)
+
+  def onCalc(self, e):
+    print 'CALCULATING RADIAL AVERAGES...'
+    data_list = ginp.make_input_list([self.data_folder])
+    min_means = []
+    for img in data_list[:10]:
+      rad_avg = RadAverageCalculator(image=img)
+      means, res = rad_avg.calculate()
+      print 'IMG: {}, MIN MEAN: {}'.format(os.path.basename(img), np.min(means))
+      min_means.append(np.min(means))
+    print '*** MEDIAN MIN MEAN = {}'.format(np.median(min_means))
+
 
   def remove_term_file(self):
     try:
@@ -434,6 +509,7 @@ class TrackerWindow(wx.Frame):
       open_dlg.Destroy()
       self.remove_term_file()
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
+      self.toolbar.EnableTool(self.tb_btn_calc.GetId(), True)
       timer_txt = '[ ------ ]'
       self.msg = 'Ready to track images in {}'.format(self.data_folder)
       self.tracker_panel.status_txt.SetLabel('{} {}'.format(timer_txt, self.msg))
@@ -527,12 +603,11 @@ class TrackerWindow(wx.Frame):
       last_file = None
     found_files = ginp.make_input_list([self.data_folder], last=last_file)
 
-    print 'DEBUG: ACQUIRED {} FILES!'.format(len(found_files))
-
     self.data_list = [i for i in found_files if i not in self.done_list]
     if len(self.data_list) == 0:
       self.msg = 'Waiting for new images in {} ...'.format(self.data_folder)
     else:
+      print 'DEBUG: {} IMAGES FOUND'.format(len(self.data_list))
       self.msg = 'Tracking new images in {} ...'.format(self.data_folder)
       if self.obs_counts == [] and self.frame_count == []:
         self.obs_counts = [-1] * len(self.data_list)
@@ -579,6 +654,7 @@ class MainApp(wx.App):
     self.frame.SetMinSize(self.frame.GetEffectiveMinSize())
     self.frame.SetPosition((150, 150))
     self.frame.Show(True)
+    self.frame.Layout()
     self.SetTopWindow(self.frame)
     return True
 
@@ -590,40 +666,44 @@ if __name__ == '__main__':
 
 
 # ---------------------------------------------------------------------------- #
-# Below are un-used functions for radial average calculations. I probably
-# won't use them now, but maybe later...
+# Class for radial average calculations
 
-# def do_calculation(self, img):
-#   # Create datablock
-#   datablock = DataBlockFactory.from_filenames([img])[0]
-#   self.make_radial_average(datablock=datablock)
-#
-# def make_radial_average(self, datablock):
-#   imageset = datablock.extract_imagesets()[0]
-#   beam = imageset.get_beam()
-#   detector = imageset.get_detector()
-#   scan_range = (0, len(imageset))
-#
-#   summed_data = None
-#   summed_mask = None
-#   for i in range(*scan_range):
-#     data = imageset.get_raw_data(i)
-#     mask = imageset.get_mask(i)
-#     assert isinstance(data, tuple)
-#     assert isinstance(mask, tuple)
-#     if summed_data is None:
-#       summed_mask = mask
-#       summed_data = data
-#     else:
-#       summed_data = [ sd + d for sd, d in zip(summed_data, data) ]
-#       summed_mask = [ sm & m for sm, m in zip(summed_mask, mask) ]
-#   num_bins = sum(sum(p.get_image_size()) for p in detector)
-#   vmin = (1.0 / 20) ** 2  #0
-#   vmax = (1.0 / 1.5) ** 2 #detector.get_max_resolution(beam.get_s0())) ** 2
-#
-#   # Compute the radial average
-#   radial_average = RadialAverage(beam, detector, vmin, vmax, num_bins)
-#   for d, m in zip(summed_data, summed_mask):
-#     radial_average.add(d.as_double() / (scan_range[1] - scan_range[0]), m)
-#   mean = radial_average.mean()
-#   reso = radial_average.inv_d2()
+class RadAverageCalculator(object):
+  def __init__(self, datablock):
+    self.datablock = datablock
+
+  def calculate(self):
+    return self.make_radial_average(datablock=self.datablock)
+
+
+  def make_radial_average(self, datablock):
+    imageset = datablock.extract_imagesets()[0]
+    beam = imageset.get_beam()
+    detector = imageset.get_detector()
+    scan_range = (0, len(imageset))
+
+    summed_data = None
+    summed_mask = None
+    for i in range(*scan_range):
+      data = imageset.get_raw_data(i)
+      mask = imageset.get_mask(i)
+      assert isinstance(data, tuple)
+      assert isinstance(mask, tuple)
+      if summed_data is None:
+        summed_mask = mask
+        summed_data = data
+      else:
+        summed_data = [ sd + d for sd, d in zip(summed_data, data) ]
+        summed_mask = [ sm & m for sm, m in zip(summed_mask, mask) ]
+    num_bins = sum(sum(p.get_image_size()) for p in detector)
+    vmin = (1.0 / 20) ** 2  #0
+    vmax = (1.0 / 1.5) ** 2 #detector.get_max_resolution(beam.get_s0())) ** 2
+
+    # Compute the radial average
+    radial_average = RadialAverage(beam, detector, vmin, vmax, num_bins)
+    for d, m in zip(summed_data, summed_mask):
+      radial_average.add(d.as_double() / (scan_range[1] - scan_range[0]), m)
+    mean = radial_average.mean()
+    reso = radial_average.inv_d2()
+
+    return mean, reso

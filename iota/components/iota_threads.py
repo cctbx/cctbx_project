@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 04/26/2017
+Last Changed: 05/16/2017
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -273,10 +273,13 @@ class SpotFinderThread(Thread):
     if os.path.isfile(self.term_file):
       return
     else:
-      datablock = DataBlockFactory.from_filenames([img])[0]
-      info = self.spotfinder.run(self.data_list.index(img), datablock)
-      return info
-
+      try:
+        datablock = DataBlockFactory.from_filenames([img])[0]
+        info = self.spotfinder.run(self.data_list.index(img), datablock)
+        return info
+      except IndexError, e:
+        print img, e
+        return
 
   def callback(self, info):
     try:

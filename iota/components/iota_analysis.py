@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 04/13/2017
+Last Changed: 05/16/2017
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -105,10 +105,13 @@ class Plotter(object):
 
     # Import relevant info
     for i in [j.final['final'] for j in self.final_objects]:
-      beam = ep.load(i)
-      info.append([i, beam['xbeam'], beam['ybeam'],
-                  beam['wavelength'], beam['distance'],
-                  beam['observations'][0].unit_cell().parameters()])
+      try:
+        beam = ep.load(i)
+        info.append([i, beam['xbeam'], beam['ybeam'],
+                    beam['wavelength'], beam['distance'],
+                    beam['observations'][0].unit_cell().parameters()])
+      except IOError, e:
+        pass
 
     # Calculate beam center coordinates and distances
     beamX = [i[1] for i in info]
@@ -494,8 +497,10 @@ class Analyzer(object):
                                           cluster.medians[5], cluster.stdevs[5],
                                           mark_output)
           uc_table.append(uc_line)
+          lattices = ', '.join(['{} ({})'.format(i[0], i[1]) for
+                                i in sorted_pg_comp])
           uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
-                     output_file, uc_line]
+                     output_file, uc_line, lattices]
           uc_summary.append(uc_info)
       else:
 
@@ -510,6 +515,7 @@ class Analyzer(object):
         uc_gamma = [i.final['gamma'] for i in self.final_objects]
         uc_sg = [i.final['sg'] for i in self.final_objects]
         cons_pg = Counter(uc_sg).most_common(1)[0][0]
+        all_pgs = Counter(uc_sg).most_common()
         uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
                   "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
                   "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
@@ -523,7 +529,9 @@ class Analyzer(object):
         unit_cell = (np.median(uc_a), np.median(uc_b), np.median(uc_c),
                      np.median(uc_alpha), np.median(uc_beta), np.median(uc_gamma))
         uc_table.append(uc_line)
-        uc_info = [len(self.final_objects), cons_pg, unit_cell, None, uc_line]
+        lattices = ', '.join(['{} ({})'.format(i[0], i[1]) for i in all_pgs])
+        uc_info = [len(self.final_objects), cons_pg, unit_cell, None,
+                   uc_line, lattices]
         uc_summary.append(uc_info)
 
       uc_table.append('\nMost common unit cell:\n')
@@ -532,6 +540,8 @@ class Analyzer(object):
       uc_freqs = [i[0] for i in uc_summary]
       uc_pick = uc_summary[np.argmax(uc_freqs)]
       uc_table.append(uc_pick[4])
+      uc_table.append('\nBravais Lattices in Biggest Cluster: {}'
+                      ''.format(uc_pick[5]))
 
       self.cons_pg = uc_pick[1]
       self.cons_uc = uc_pick[2]
