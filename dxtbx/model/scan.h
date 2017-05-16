@@ -24,6 +24,7 @@ namespace dxtbx { namespace model {
 
   using scitbx::vec2;
   using scitbx::rad_as_deg;
+  using scitbx::constants::pi;
 
   /** A scan base class */
   class ScanBase {};
@@ -344,9 +345,16 @@ namespace dxtbx { namespace model {
      * @returns The array of frame numbers
      */
     scitbx::af::shared< vec2<double> > get_array_indices_with_angle(
-        double angle) const {
+        double angle, double padding=0, bool deg=false) const {
+      DXTBX_ASSERT(padding >= 0);
+      if (deg == true) {
+        padding = padding * pi / 180.0;
+      }
+      vec2<double> range = get_oscillation_range();
+      range[0] -= padding;
+      range[1] += padding;
       scitbx::af::shared<double> angles = get_mod2pi_angles_in_range(
-        get_oscillation_range(), angle);
+        range, angle);
       scitbx::af::shared< vec2<double> > result(angles.size());
       for (std::size_t i = 0; i < result.size(); ++i) {
         result[i][0] = angles[i];
