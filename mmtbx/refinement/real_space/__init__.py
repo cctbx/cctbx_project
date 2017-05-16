@@ -1,5 +1,5 @@
 from __future__ import division
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, group_args
 from scitbx.array_family import flex
 from scitbx.matrix import rotate_point_around_axis
 import time, sys
@@ -15,6 +15,7 @@ from mmtbx.utils import rotatable_bonds
 from cctbx.eltbx import tiny_pse
 from cctbx import eltbx
 from libtbx.test_utils import approx_equal
+from mmtbx.maps.correlation import five_cc
 
 def flatten(l):
   if l is None: return None
@@ -244,6 +245,7 @@ class structure_monitor(object):
     self.rotamer_manager = RotamerEval()
     self.assert_pdb_hierarchy_xray_structure_sync()
     #
+    self.five_cc = None
     self.map_cc_whole_unit_cell = None
     self.map_cc_around_atoms = None
     self.map_cc_per_atom = None
@@ -253,6 +255,7 @@ class structure_monitor(object):
     self.dist_from_previous = 0
     self.number_of_rotamer_outliers = 0
     self.residue_monitors = None
+    self.stats_evaluations = []
     #
     self.initialize()
 
@@ -323,6 +326,10 @@ class structure_monitor(object):
                 selection_all = residue_i_seqs_all,
                 map_cc_all    = cca))
     # globals
+    self.five_cc = five_cc(
+        map            = self.target_map_object.map_data,
+        xray_structure = self.xray_structure,
+        d_min          = self.target_map_object.d_min)
     self.map_cc_whole_unit_cell = self.map_cc(other_map = current_map)
     self.map_cc_around_atoms = self.map_cc(other_map = current_map,
       sites_cart = sites_cart)
@@ -389,8 +396,9 @@ class structure_monitor(object):
   def show(self, prefix="", log=None):
     self.assert_pdb_hierarchy_xray_structure_sync()
     if(log is None): log = sys.stdout
-    fmt = """%s Map CC (whole unit cell):  %-6.3f
-%s Map CC (around atoms):     %-6.3f
+    fmt = """%s CC_mask:                   %-6.3f
+%s CC_volume:                 %-6.3f
+%s CC_peaks:                  %-6.3f
 %s rmsd (bonds):              %-s
 %s rmsd (angles):             %-s
 %s Dist. moved from start:    %-6.3f
@@ -430,10 +438,17 @@ class structure_monitor(object):
     except Exception:
       # some part of validation failed
       pass
-    if mso is not None:
+    self.stats_evaluations.append(
+        group_args(
+          cc = self.five_cc,
+          geometry = mso))
+    if mso is not None and self.five_cc is not None:
       print >> log, fmt%(
-        prefix, self.map_cc_whole_unit_cell,
-        prefix, self.map_cc_around_atoms,
+        # prefix, self.map_cc_whole_unit_cell,
+        # prefix, self.map_cc_around_atoms,
+        prefix, self.five_cc.cc_mask,
+        prefix, self.five_cc.cc_volume,
+        prefix, self.five_cc.cc_peaks,
         prefix, format_value("%-6.2f", self.rmsd_b).strip(),
         prefix, format_value("%-6.2f", self.rmsd_a).strip(),
         prefix, self.dist_from_start,

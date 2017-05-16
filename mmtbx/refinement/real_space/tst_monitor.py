@@ -206,7 +206,8 @@ def exercise(d_min=1.5, resolution_factor = 0.25):
   target_map_object = group_args(
     map_data         = target_map,
     miller_array     = f_calc,
-    crystal_gridding = fft_map)
+    crystal_gridding = fft_map,
+    d_min            = d_min)
   grm = mmtbx.restraints.manager(
     geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
     normalization = True)
