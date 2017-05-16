@@ -64,7 +64,7 @@ CYTHON_PKG = "cython-0.22.tar.gz"
 JINJA2_PKG = "Jinja2-2.8.tar.gz"
 
 # HDF5
-BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/"
+BASE_HDF5_PKG_URL = "http://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/"
 HDF5_PKG = "hdf5-1.10.0-patch1.tar.bz2"
 BASE_H5PY_PKG_URL = "https://pypi.python.org/packages/11/6b/32cee6f59e7a03ab7c60bb250caff63e2d20c33ebca47cf8c28f6a2d085c" # workaround because Python <2.7.9
 H5PY_PKG = "h5py-2.7.0.tar.gz" # dxtbx
