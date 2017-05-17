@@ -493,8 +493,8 @@ class Script(object):
                              "%6d"%total_refls])
 
       lab_delta_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
-                                   "%9.3f"%dx, "%9.3f"%dy, "%9.3f"%dz, "%9.3f"%dxy, "%9.3f"%dxyz,
-                                   "%9.3f"%dr, "%9.3f"%dt, "%9.3f"%dnorm,
+                                   "%9.3f"%(dx*1000), "%9.3f"%(dy*1000), "%9.3f"%dz, "%9.3f"%(dxy*1000), "%9.3f"%dxyz,
+                                   "%9.3f"%(dr*1000), "%9.3f"%(dt*1000), "%9.3f"%dnorm,
                                    "%6d"%total_refls])
 
       if params.hierarchy_level > 0:
@@ -593,7 +593,7 @@ class Script(object):
                                "%6d"%total_refls])
 
         local_delta_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
-                                       "%9.3f"%ldx, "%9.3f"%ldy, "%9.3f"%ldz, "%9.3f"%ldxy, "%9.3f"%ldxyz,
+                                       "%9.3f"%(ldx*1000), "%9.3f"%(ldy*1000), "%9.3f"%ldz, "%9.3f"%(ldxy*1000), "%9.3f"%ldxyz,
                                        "%6d"%total_refls])
 
     # Set up table output, starting with lab table
@@ -647,7 +647,7 @@ class Script(object):
     table_d = {d:row for d, row in zip(pg_bc_dists, lab_delta_table_data)}
     table_header = ["PanelG","Radial","Lab dX","Lab dY","Lab dZ","Lab dXY","Lab dXYZ","Lab dR","Lab dT","Lab dNorm","N"]
     table_header2 = ["Id","Dist","","","","","","","","","Refls"]
-    table_header3 = ["","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)","(deg)",""]
+    table_header3 = ["","(mm)","(microns)","(microns)","(mm)","(microns)","(mm)","(microns)","(microns)","(deg)",""]
     lab_delta_table_data = [table_header, table_header2, table_header3]
     lab_delta_table_data.extend([table_d[key] for key in sorted(table_d)])
 
@@ -747,7 +747,7 @@ class Script(object):
       table_d = {d:row for d, row in zip(pg_bc_dists, local_delta_table_data)}
       table_header = ["PanelG","Radial","Local dX","Local dY","Local dZ","Local dXY","Local dXYZ","N"]
       table_header2 = ["Id","Dist","","","","","","Refls"]
-      table_header3 = ["","(mm)","(mm)","(mm)","(mm)","(mm)","(mm)",""]
+      table_header3 = ["","(mm)","(microns)","(microns)","(mm)","(microns)","(mm)",""]
       local_delta_table_data = [table_header, table_header2, table_header3]
       local_delta_table_data.extend([table_d[key] for key in sorted(table_d)])
 
