@@ -41,7 +41,7 @@ class five_cc(object):
       symmetry_flags        = maptbx.use_space_group_symmetry)
     #####
     if(self.map_calc is None):
-      f_calc = structure_factor_box_from_map(
+      f_calc = miller.structure_factor_box_from_map(
         crystal_symmetry = xray_structure.crystal_symmetry(),
         n_real           = map.focus()).structure_factors_from_scatterers(
           xray_structure = xray_structure).f_calc()
