@@ -109,8 +109,7 @@ class simple(object):
           real_space_gradients_delta = self.real_space_gradients_delta,
           restraints_manager         = self.geometry_restraints_manager,
           data_weight                = weight,
-          refine_sites               = True,
-          refine_transformations     = False)
+          refine_sites               = True)
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         target_and_grads_object      = self.refined,
         xray_structure               = xray_structure.deep_copy_scatterers(),
@@ -118,8 +117,7 @@ class simple(object):
         refine_selection             = refine_selection,
         finite_grad_differences_test = False,
         max_iterations               = self.max_iterations,
-        refine_sites                 = True,
-        refine_transformations       = False)
+        refine_sites                 = True)
 
   def sites_cart(self):
     assert self.refined is not None
@@ -588,33 +586,25 @@ class minimize_wrapper_with_map():
           for s in self.weight.msg_strings:
             print >> self.log, s
         print >> self.log, "  Minimizing... (NCS)"
-
-        actions = [[True, False], ]
-        if refine_ncs_operators:
-          actions = [[False, True], [True, False]]
-        for action in actions:
-          refine_sites, refine_transformations = action
-          tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
-            target_function_and_grads_real_space(
-              map_data                   = target_map,
-              xray_structure             = self.xrs,
-              ncs_restraints_group_list  = ncs_restraints_group_list,
-              refine_selection           = None,
-              real_space_gradients_delta = 1,
-              restraints_manager         = grm,
-              data_weight                = self.w,
-              refine_sites               = refine_sites,
-              refine_transformations     = refine_transformations)
-          minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
-            target_and_grads_object      = tfg_obj,
-            xray_structure               = self.xrs,
-            ncs_restraints_group_list    = ncs_restraints_group_list,
-            refine_selection             = None,
-            finite_grad_differences_test = False,
-            max_iterations               = 100,
-            refine_sites                 = refine_sites,
-            refine_transformations       = refine_transformations)
-          self.xrs = tfg_obj.xray_structure
+        tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
+          target_function_and_grads_real_space(
+            map_data                   = target_map,
+            xray_structure             = self.xrs,
+            ncs_restraints_group_list  = ncs_restraints_group_list,
+            refine_selection           = None,
+            real_space_gradients_delta = 1,
+            restraints_manager         = grm,
+            data_weight                = self.w,
+            refine_sites               = True)
+        minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
+          target_and_grads_object      = tfg_obj,
+          xray_structure               = self.xrs,
+          ncs_restraints_group_list    = ncs_restraints_group_list,
+          refine_selection             = None,
+          finite_grad_differences_test = False,
+          max_iterations               = 100,
+          refine_sites                 = True)
+        self.xrs = tfg_obj.xray_structure
           # self.structure_monitor.update(
           #   xray_structure = tfg_obj.xray_structure,
           #   accept_as_is   = True)

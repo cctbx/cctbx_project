@@ -55,7 +55,6 @@ class ncs_minimization_test(object):
                n_macro_cycle,
                sites,
                u_iso,
-               transformations,
                finite_grad_differences_test,
                use_geometry_restraints,
                shake_site_mean_distance = 1.5,
@@ -101,17 +100,6 @@ class ncs_minimization_test(object):
     if self.u_iso:
       u_random = flex.random_double(xrs_shaken.scatterers().size())
       xrs_shaken = xrs_shaken.set_u_iso(values=u_random)
-    if self.transformations:
-      transforms_obj = ncs.input(
-      transform_info = mtrix_object,
-      hierarchy = ph)
-      x = nu.concatenate_rot_tran(transforms_obj=transforms_obj)
-      x = nu.shake_transformations(
-        x = x,
-        shake_angles_sigma=self.shake_angles_sigma,
-        shake_translation_sigma=self.shake_translation_sigma)
-      transforms_obj = nu.update_rot_tran(x=x,transforms_obj=transforms_obj)
-      mtrix_object = transforms_obj.build_MTRIX_object()
     ph.adopt_xray_structure(xrs_shaken)
     of = open("one_ncs_in_asu_shaken.pdb", "w")
     print >> of, mtrix_object.as_pdb_string()
@@ -197,10 +185,9 @@ class ncs_minimization_test(object):
     assert r_start > 0.1, r_start
     print "start r_factor: %6.4f" % r_start
     for macro_cycle in xrange(self.n_macro_cycle):
-      if self.transformations and \
-              not self.ncs_restraints_group_list: continue
       data_weight = None
       if(self.use_geometry_restraints):
+        self.transformations=False
         data_weight = nu.get_weight(minimized_obj=self)
       target_and_grads_object = mmtbx.refinement.minimization_ncs_constraints.\
         target_function_and_grads_reciprocal_space(
@@ -211,7 +198,6 @@ class ncs_minimization_test(object):
           data_weight            = data_weight,
           refine_sites           = self.sites,
           refine_u_iso           = self.u_iso,
-          refine_transformations = self.transformations,
           iso_restraints         = self.iso_restraints)
       minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
         target_and_grads_object      = target_and_grads_object,
@@ -221,10 +207,8 @@ class ncs_minimization_test(object):
         finite_grad_differences_test = self.finite_grad_differences_test,
         max_iterations               = 100,
         refine_sites                 = self.sites,
-        refine_u_iso                 = self.u_iso,
-        refine_transformations       = self.transformations)
-      refine_type = 'adp'*self.u_iso + 'sites'*self.sites \
-                    + 'transformation'*self.transformations
+        refine_u_iso                 = self.u_iso)
+      refine_type = 'adp'*self.u_iso + 'sites'*self.sites
       outstr = "  macro_cycle {0:3} ({1})   r_factor: {2:6.4f}   " + \
             self.finite_grad_differences_test * \
             "finite_grad_difference_val: {3:.4f}"
@@ -243,8 +227,6 @@ class ncs_minimization_test(object):
         assert approx_equal(self.fmodel.r_work(), 0, 0.00018)
       else:
         assert approx_equal(self.fmodel.r_work(), 0, 3.e-4)
-    elif self.transformations:
-        assert approx_equal(self.fmodel.r_work(), 0, 0.00025)
     else: assert 0
     # output refined model
     xrs_refined = self.fmodel.xray_structure
@@ -296,7 +278,6 @@ def exercise_without_geometry_restaints():
       n_macro_cycle   = n_macro_cycle,
       sites           = sites,
       u_iso           = u_iso,
-      transformations = False,
       finite_grad_differences_test = True,
       use_geometry_restraints = False,
       shake_site_mean_distance = 0.5,
@@ -310,7 +291,6 @@ def exercise_site_refinement():
     n_macro_cycle   = 40,
     sites           = True,
     u_iso           = False,
-    transformations = False,
     finite_grad_differences_test = True,
     use_geometry_restraints = True,
     shake_site_mean_distance = 1.5,
@@ -324,26 +304,9 @@ def exercise_u_iso_refinement():
     n_macro_cycle   = 40,
     sites           = False,
     u_iso           = True,
-    transformations = False,
     finite_grad_differences_test = True,
     use_geometry_restraints = True,
     shake_site_mean_distance = 1.5,
-    d_min = 2)
-  t.run_test()
-  t.clean_up_temp_test_files()
-
-def exercise_transformation_refinement():
-  """  Test transformation refinement  """
-  print 'Running ',sys._getframe().f_code.co_name
-  t = ncs_minimization_test(
-    n_macro_cycle   = 40,
-    sites           = False,
-    u_iso           = False,
-    transformations = True,
-    finite_grad_differences_test = True,
-    use_geometry_restraints = True,
-    shake_angles_sigma = 0.032,
-    shake_translation_sigma = 0.5,
     d_min = 2)
   t.run_test()
   t.clean_up_temp_test_files()
@@ -354,4 +317,3 @@ if __name__ == "__main__":
   exercise_without_geometry_restaints()
   exercise_site_refinement()
   exercise_u_iso_refinement()
-  exercise_transformation_refinement()

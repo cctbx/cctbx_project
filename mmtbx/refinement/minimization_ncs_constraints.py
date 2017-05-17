@@ -198,8 +198,7 @@ class target_function_and_grads_real_space(object):
         use_ncs_constraints=True,
         restraints_manager=None,
         data_weight=None,
-        refine_sites=False,
-        refine_transformations=False):
+        refine_sites=False):
     adopt_init_args(self, locals())
     self.refine_selection = nu.get_refine_selection(
       refine_selection=self.refine_selection,
@@ -210,14 +209,7 @@ class target_function_and_grads_real_space(object):
     self.unit_cell = self.xray_structure.unit_cell()
     # get selection to refine
     asu_size = xray_structure.scatterers().size()
-    if refine_sites:
-      # Use all atoms to refine
-      self.selection = flex.bool(asu_size, refine_selection)
-    elif refine_transformations:
-      # use only NCS related atoms (Without the Master NCS copy)
-      self.selection = nu.get_ncs_related_selection(
-        ncs_restraints_group_list=ncs_restraints_group_list,
-        asu_size=asu_size)
+    self.selection = flex.bool(asu_size, refine_selection)
 
   def data_target_and_grads(self, compute_gradients,x):
     """
@@ -236,13 +228,6 @@ class target_function_and_grads_real_space(object):
     if compute_gradients:
       if self.refine_sites:
         g = tg.gradients()
-      elif self.refine_transformations:
-        grad_wrt_xyz = tg.gradients().as_double()
-        g = nu.compute_transform_grad(
-          grad_wrt_xyz              = grad_wrt_xyz,
-          ncs_restraints_group_list = self.ncs_restraints_group_list,
-          xyz_asu                   = self.xray_structure.sites_cart(),
-          x                         = x)
     return t, g
 
   def target_and_gradients(self,compute_gradients,xray_structure,x):
@@ -260,22 +245,20 @@ class target_function_and_grads_real_space(object):
       xray_structure         = self.xray_structure,
       ncs_restraints_group_list = self.ncs_restraints_group_list,
       refine_sites           = self.refine_sites,
-      refine_transformations = self.refine_transformations,
       x                      = x,
       grad                   = g_data)
     if(self.data_weight is None): self.data_weight=1. #XXX BAD!
     t = t_data*self.data_weight + t_restraints
     if(compute_gradients):
       g = g_data*self.data_weight + g_restraints
-      if(not self.refine_transformations):
-        if self.use_ncs_constraints:
-          g = grads_asu_to_one_ncs(
-            ncs_restraints_group_list = self.ncs_restraints_group_list,
-            extended_ncs_selection    = self.extended_ncs_selection,
-            grad                      = g,
-            refine_sites              = self.refine_sites).as_double()
-        else:
-          g = g.as_double()
+      if self.use_ncs_constraints:
+        g = grads_asu_to_one_ncs(
+          ncs_restraints_group_list = self.ncs_restraints_group_list,
+          extended_ncs_selection    = self.extended_ncs_selection,
+          grad                      = g,
+          refine_sites              = self.refine_sites).as_double()
+      else:
+        g = g.as_double()
     return t, g
 
 class target_function_and_grads_reciprocal_space(object):

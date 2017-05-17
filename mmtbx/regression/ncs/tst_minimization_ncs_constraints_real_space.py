@@ -155,35 +155,31 @@ def run(prefix="tst", d_min=1.0):
   refine_selection = flex.size_t(xrange(transforms_obj.total_asu_length))
   for i in xrange(5):
     data_weight = 1
-    for action in [[False, True], [True, False]]:
-      refine_sites, refine_transformations = action
-      tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
-        target_function_and_grads_real_space(
-          map_data                   = map_data,
-          xray_structure             = xrs_poor,
-          ncs_restraints_group_list  = ncs_restraints_group_list,
-          refine_selection           = refine_selection,
-          real_space_gradients_delta = d_min/4,
-          restraints_manager         = restraints_manager,
-          data_weight                = data_weight,
-          refine_sites               = refine_sites,
-          refine_transformations     = refine_transformations)
-      minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
-        target_and_grads_object      = tfg_obj,
-        xray_structure               = xrs_poor,
-        ncs_restraints_group_list    = ncs_restraints_group_list,
-        refine_selection             = refine_selection,
-        finite_grad_differences_test = False,
-        max_iterations               = 60,
-        refine_sites                 = refine_sites,
-        refine_transformations       = refine_transformations)
-      xrs_poor = tfg_obj.xray_structure
-      ph_poor.adopt_xray_structure(tfg_obj.xray_structure)
-      #
-      ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_poor,
-        add_identity=False)
-      rm,tv = nu.get_rotation_translation_as_list(
-        ncs_restraints_group_list= ncs_restraints_group_list)
+    tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
+      target_function_and_grads_real_space(
+        map_data                   = map_data,
+        xray_structure             = xrs_poor,
+        ncs_restraints_group_list  = ncs_restraints_group_list,
+        refine_selection           = refine_selection,
+        real_space_gradients_delta = d_min/4,
+        restraints_manager         = restraints_manager,
+        data_weight                = data_weight,
+        refine_sites               = True)
+    minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
+      target_and_grads_object      = tfg_obj,
+      xray_structure               = xrs_poor,
+      ncs_restraints_group_list    = ncs_restraints_group_list,
+      refine_selection             = refine_selection,
+      finite_grad_differences_test = False,
+      max_iterations               = 60,
+      refine_sites                 = True)
+    xrs_poor = tfg_obj.xray_structure
+    ph_poor.adopt_xray_structure(tfg_obj.xray_structure)
+    #
+    ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_poor,
+      add_identity=False)
+    rm,tv = nu.get_rotation_translation_as_list(
+      ncs_restraints_group_list= ncs_restraints_group_list)
   #
   ph_poor.write_pdb_file(file_name="refined.pdb")
 

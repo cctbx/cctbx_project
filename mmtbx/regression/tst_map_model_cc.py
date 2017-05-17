@@ -110,9 +110,9 @@ def run(prefix="tst_map_model_cc"):
   task_obj.validate()
   task_obj.run()
   result = task_obj.get_results()
-  assert approx_equal(result.cc_mask  , 1.0, 1.e-4)
-  assert approx_equal(result.cc_peaks , 1.0, 1.e-4)
-  assert approx_equal(result.cc_volume, 1.0, 1.e-4)
+  assert approx_equal(result.cc_mask  , 1.0, 1.e-3)
+  assert approx_equal(result.cc_peaks , 1.0, 1.e-3)
+  assert approx_equal(result.cc_volume, 1.0, 1.e-3)
 
 if (__name__ == "__main__"):
   t0 = time.time()

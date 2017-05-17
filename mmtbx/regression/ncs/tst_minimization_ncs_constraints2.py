@@ -8,6 +8,8 @@ import iotbx.pdb
 import time
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
+import mmtbx.refinement.real_space.rigid_body
+from libtbx.utils import null_out
 
 pdb_answer_0 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1
@@ -242,7 +244,7 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
   phil_groups = ncs_group_master_phil.fetch(
       iotbx.phil.parse(ncs_params_str)).extract()
 
-  pdb_inp = iotbx.pdb.input(lines=pdb_poor,source_info=None)
+  pdb_inp = iotbx.pdb.input(lines=pdb_answer,source_info=None)
   ncs_inp = ncs.input(
       hierarchy=pdb_inp.construct_hierarchy(),
       ncs_phil_groups=phil_groups.ncs_group)
@@ -289,49 +291,47 @@ def macro_cycle(
       map_data,
       d_min,
       xrs_poor,
+      pdb_poor,
       ncs_groups,
       refine_selection,
       actions):
   assert [fmodel, map_data].count(None) == 1
   for cycle in xrange(100):
-    for action in actions:
-      refine_sites, refine_transformations = action
-      data_weight = 1
-      if(fmodel is not None):
-        tg_object = mmtbx.refinement.minimization_ncs_constraints.\
-          target_function_and_grads_reciprocal_space(
-            fmodel                    = fmodel,
-            ncs_restraints_group_list = ncs_groups,
-            refine_selection          = refine_selection,
-            restraints_manager        = restraints_manager,
-            data_weight               = data_weight,
-            refine_sites              = refine_sites,
-            refine_transformations    = refine_transformations)
-      else:
-        tg_object = mmtbx.refinement.minimization_ncs_constraints.\
-          target_function_and_grads_real_space(
-            map_data                   = map_data,
-            xray_structure             = xrs_poor,
-            ncs_restraints_group_list  = ncs_groups,
-            refine_selection           = refine_selection,
-            real_space_gradients_delta = d_min/4,
-            restraints_manager         = restraints_manager,
-            data_weight                = data_weight,
-            refine_sites               = refine_sites,
-            refine_transformations     = refine_transformations)
-      minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
-        target_and_grads_object      = tg_object,
-        xray_structure               = xrs_poor,
-        ncs_restraints_group_list    = ncs_groups,
-        refine_selection             = refine_selection,
-        finite_grad_differences_test = False,
-        max_iterations               = 100,
-        refine_sites                 = refine_sites,
-        refine_transformations       = refine_transformations)
-      if(fmodel is not None):
-        fmodel.update_xray_structure(
-          xray_structure = xrs_poor, update_f_calc=True)
-        if(0): print cycle, fmodel.r_work()
+    #for action in actions:
+    #  refine_sites, refine_transformations = action
+    data_weight = 1
+    if(fmodel is not None):
+      tg_object = mmtbx.refinement.minimization_ncs_constraints.\
+        target_function_and_grads_reciprocal_space(
+          fmodel                    = fmodel,
+          ncs_restraints_group_list = ncs_groups,
+          refine_selection          = refine_selection,
+          restraints_manager        = restraints_manager,
+          data_weight               = data_weight,
+          refine_sites              = True)
+    else:
+      tg_object = mmtbx.refinement.minimization_ncs_constraints.\
+        target_function_and_grads_real_space(
+          map_data                   = map_data,
+          xray_structure             = xrs_poor,
+          ncs_restraints_group_list  = ncs_groups,
+          refine_selection           = refine_selection,
+          real_space_gradients_delta = d_min/4,
+          restraints_manager         = restraints_manager,
+          data_weight                = data_weight,
+          refine_sites               = True)
+    minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
+      target_and_grads_object      = tg_object,
+      xray_structure               = xrs_poor,
+      ncs_restraints_group_list    = ncs_groups,
+      refine_selection             = refine_selection,
+      finite_grad_differences_test = False,
+      max_iterations               = 100,
+      refine_sites                 = True)
+    if(fmodel is not None):
+      fmodel.update_xray_structure(
+        xray_structure = xrs_poor, update_f_calc=True)
+      if(0): print cycle, fmodel.r_work()
   if(fmodel is not None):
     rf = fmodel.r_work()
     print "R(final):", rf
@@ -348,12 +348,15 @@ def call(prefix, refine_selection, pdb_poor, pdb_answer, ncs_params_str,
     ncs_params_str = ncs_params_str,
     real_space     = real_space,
     d_min          = d_min)
+  ph_poor = inp.ph.deep_copy()
+  ph_poor.adopt_xray_structure(inp.xrs_poor)
   result = macro_cycle(
     restraints_manager = inp.restraints_manager,
     fmodel             = inp.fmodel,
     map_data           = inp.map_data,
     d_min              = inp.d_min,
     xrs_poor           = inp.xrs_poor,
+    pdb_poor           = ph_poor,
     ncs_groups         = inp.ncs_groups,
     refine_selection   = refine_selection,
     actions            = actions)
@@ -373,6 +376,7 @@ def run():
   NCS constrained refinement of coordinates. Chains A, B and C are
   NCS related, chain D is refined without NCS constraints, chain E is fixed.
   Real- and reciprocal-space refinement.
+  THIS TEST NOW DOES NOT EXERCISE REFINEMENT OF NCS OPERATORS !!!
   """
   refine_selection = flex.size_t(xrange(3,31))
   for real_space in [True, False]:
@@ -382,55 +386,7 @@ def run():
       d_min  = 1.0
     else:
       suffix = "Reciprocal"
-      d_min  = 3.5
-    if(1):
-      #
-      # Refine NCS operators only.
-      #
-      print "groups are normal"
-      prefix = "tst_%s_TransformsOnly_1"%suffix
-      rf = call(
-        prefix           = prefix,
-        refine_selection = refine_selection,
-        pdb_poor         = pdb_poor_0,
-        pdb_answer       = pdb_answer_0,
-        ncs_params_str   = ncs_params_str_0,
-        actions          = [[False,True],],
-        real_space       = real_space,
-        d_min            = d_min)
-      r = check_result(result_file_name=prefix+".pdb")
-      if(real_space):
-        assert r[1]<0.1
-        assert r[2]<0.05
-        assert rf is None
-      else:
-        assert r[1]<0.005
-        assert r[2]<0.001
-        assert rf < 1.e-4
-    if(1):
-      #
-      # Refine NCS operators only (same as above with NCS groups permutted).
-      #
-      print "groups permutted"
-      prefix = "tst_%s_TransformsOnly_2"%suffix
-      rf = call(
-        prefix           = prefix,
-        refine_selection = refine_selection,
-        pdb_poor         = pdb_poor_1,
-        pdb_answer       = pdb_answer_0,
-        ncs_params_str   = ncs_params_str_1,
-        actions          = [[False,True],],
-        real_space       = real_space,
-        d_min            = d_min)
-      r = check_result(result_file_name=prefix+".pdb")
-      if(real_space):
-        assert r[1]<0.1, r[1]
-        assert r[2]<0.05, r[2]
-        assert rf is None, rf
-      else:
-        assert r[1]<0.005
-        assert r[2]<0.001
-        assert rf < 1.e-4
+      d_min  = 1.5
     if(1):
       #
       # Refine NCS constrained sites and NCS operators.
@@ -447,13 +403,13 @@ def run():
         d_min            = d_min)
       r = check_result(result_file_name=prefix+".pdb")
       if(real_space):
-        assert r[1]<0.1
-        assert r[2]<0.05
+        assert r[1]<0.1  , r[1]
+        assert r[2]<0.05 , r[2]
         assert rf is None
       else:
-        assert r[1]<0.05
-        assert r[2]<0.0055
-        assert rf < 0.0022
+        assert r[1]<0.05    , r[1]
+        assert r[2]<0.0055  , r[2]
+        assert rf  < 0.005 , rf
 
 if (__name__ == "__main__"):
   t0=time.time()

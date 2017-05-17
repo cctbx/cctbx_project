@@ -21,12 +21,19 @@ class five_cc(object):
                xray_structure,
                d_min,
                map_calc=None,
+               box=None,
                compute_cc_box=False,
                compute_cc_image=False,
                compute_cc_mask=True,
                compute_cc_volume=True,
                compute_cc_peaks=True):
     adopt_init_args(self, locals())
+    #
+    if(box is None and
+       xray_structure.crystal_symmetry().space_group().type().number()==1):
+      box=True
+    else:
+      box=False
     #
     self.cc_box    = None
     self.cc_image  = None
@@ -41,13 +48,16 @@ class five_cc(object):
       symmetry_flags        = maptbx.use_space_group_symmetry)
     #####
     if(self.map_calc is None):
-      f_calc = miller.structure_factor_box_from_map(
-        crystal_symmetry = xray_structure.crystal_symmetry(),
-        n_real           = map.focus()).structure_factors_from_scatterers(
-          xray_structure = xray_structure).f_calc()
-      d_spacings = f_calc.d_spacings().data()
-      sel = d_spacings > d_min
-      f_calc = f_calc.select(sel)
+      if(box is True):
+        f_calc = miller.structure_factor_box_from_map(
+          crystal_symmetry = xray_structure.crystal_symmetry(),
+          n_real           = map.focus()).structure_factors_from_scatterers(
+            xray_structure = xray_structure).f_calc()
+        d_spacings = f_calc.d_spacings().data()
+        sel = d_spacings > d_min
+        f_calc = f_calc.select(sel)
+      else:
+        f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
       fft_map = miller.fft_map(
         crystal_gridding     = self.crystal_gridding,
         fourier_coefficients = f_calc)
