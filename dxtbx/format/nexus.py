@@ -15,7 +15,9 @@ try:
   from dxtbx_format_nexus_ext import *
 except ImportError:
   # Workaround for psana build, which doesn't link HDF5 properly
-  pass
+  import os
+  if 'SIT_ROOT' not in os.environ:
+    raise
 
 class check_dtype(object):
   '''
