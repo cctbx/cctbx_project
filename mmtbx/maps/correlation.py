@@ -20,6 +20,7 @@ class five_cc(object):
                map,
                xray_structure,
                d_min,
+               map_calc=None,
                compute_cc_box=False,
                compute_cc_image=False,
                compute_cc_mask=True,
@@ -38,12 +39,21 @@ class five_cc(object):
       space_group_info      = xray_structure.space_group_info(),
       pre_determined_n_real = map.accessor().all(),
       symmetry_flags        = maptbx.use_space_group_symmetry)
-    f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
-    fft_map = miller.fft_map(
-      crystal_gridding     = self.crystal_gridding,
-      fourier_coefficients = f_calc)
+    #####
+    if(self.map_calc is None):
+      f_calc = structure_factor_box_from_map(
+        crystal_symmetry = xray_structure.crystal_symmetry(),
+        n_real           = map.focus()).structure_factors_from_scatterers(
+          xray_structure = xray_structure).f_calc()
+      d_spacings = f_calc.d_spacings().data()
+      sel = d_spacings > d_min
+      f_calc = f_calc.select(sel)
+      fft_map = miller.fft_map(
+        crystal_gridding     = self.crystal_gridding,
+        fourier_coefficients = f_calc)
+      self.map_calc = fft_map.real_map_unpadded()
+    #####
     self.atom_radius = self._atom_radius()
-    self.map_calc = fft_map.real_map_unpadded()
     self.bs_mask = masks.mask_from_xray_structure(
       xray_structure        = self.xray_structure,
       p1                    = True,
