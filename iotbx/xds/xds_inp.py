@@ -52,10 +52,11 @@ class reader:
     #STARTING_FRAME=first data image (as specified by DATA_RANGE=)
     self.starting_frame = None
     self.include_resolution_range = [20.0, 0.0]
-    self.unit_cell_constants = None
     self.space_group_number = 1
     self.max_fac_rmeas = 2.0
     self.data_range = None
+    self.sensor_thickness = 0
+    self.silicon = None
 
     self.num_segments = 0
     self.segment_orgx = []
@@ -137,6 +138,8 @@ class reader:
         self.trusted_region = map(float, parameter[-2:])
       elif name == 'SENSOR_THICKNESS=':
         self.sensor_thickness = float(parameter[1])
+      elif name == 'SILICON=':
+        self.silicon = float(parameter[1])
       elif name == 'UNTRUSTED_RECTANGLE=':
         self.untrusted_rectangle.append(map(int, parameter[-4:]))
       elif name == 'MAXIMUM_NUMBER_OF_PROCESSORS=':

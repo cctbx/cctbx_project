@@ -54,12 +54,15 @@ def to_imageset(input_filename, extra_filename=None):
   if extra_filename:
     models = dxtbx.load(extra_filename)
     detector = models.get_detector()
-    if detector_name.strip() == 'PILATUS':
+    if detector_name.strip() in ('PILATUS', 'EIGER') or handle.silicon is not None:
       from dxtbx.model import ParallaxCorrectedPxMmStrategy
       from cctbx.eltbx import attenuation_coefficient
-      table = attenuation_coefficient.get_table("Si")
-      wavelength = models.get_beam().get_wavelength()
-      mu = table.mu_at_angstrom(wavelength) / 10.0
+      if handle.silicon is None:
+        table = attenuation_coefficient.get_table("Si")
+        wavelength = models.get_beam().get_wavelength()
+        mu = table.mu_at_angstrom(wavelength) / 10.0
+      else:
+        mu = handle.silicon
       t0 = handle.sensor_thickness
       for panel in detector:
         panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, t0))
