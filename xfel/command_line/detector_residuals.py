@@ -419,8 +419,9 @@ class Script(DCScript):
 
     detector = detectors[0]
 
-    #from dials.algorithms.refinement.prediction import ExperimentsPredictor
-    #ref_predictor = ExperimentsPredictor(experiments, force_stills=experiments.all_stills())
+    from dials.algorithms.refinement.prediction import ExperimentsPredictor
+    ref_predictor = ExperimentsPredictor(experiments, force_stills=experiments.all_stills())
+    reflections = ref_predictor(reflections)
 
     print "N reflections total:", len(reflections)
     if params.residuals.exclude_outliers:
