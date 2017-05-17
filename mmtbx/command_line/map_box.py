@@ -8,19 +8,27 @@ import libtbx.phil
 from libtbx.utils import Sorry
 import os, sys
 from iotbx import reflection_file_utils
+from iotbx.file_reader import any_file
 from cctbx import maptbx
 
 master_phil = libtbx.phil.parse("""
+  include scope libtbx.phil.interface.tracking_params
   pdb_file = None
     .type = path
+    .short_caption = Model file
+    .style = file_type:pdb bold input_file
   map_coefficients_file = None
     .type = path
+    .style = file_type:hkl bold input_file process_hkl child:map_labels:label
   label = None
     .type = str
+    .short_caption = Map labels
+    .style = renderer:draw_map_arrays_widget parent:file_name:map_coefficients_file
   ccp4_map_file = None
     .type = str
   selection = all
     .type = str
+    .input_size = 400
   selection_radius = 3.0
     .type = float
   box_cushion = 3.0
@@ -48,9 +56,18 @@ master_phil = libtbx.phil.parse("""
   value_outside_atoms = None
     .type = str
     .help = Set to 'mean' to make average value same inside and outside mask.
-""")
+  gui
+    .help = "GUI-specific parameter required for output directory"
+  {
+    output_dir = None
+    .type = path
+    .style = output_dir
+  }
+""", process_includes=True)
 
-def run(args, crystal_symmetry=None, 
+master_params = master_phil
+
+def run(args, crystal_symmetry=None,
      pdb_hierarchy=None,
      map_data=None,
      write_output_files=True,
@@ -95,33 +112,51 @@ Parameters:"""%h
     pdb_hierarchy=None
   # Map or map coefficients
   map_coeff = None
-  if(inputs.ccp4_map is None and not map_data):
-    if(len(inputs.reflection_file_names)!=1):
-      raise Sorry("Map or map coefficients file is needed.")
-    map_coeff = reflection_file_utils.extract_miller_array_from_file(
-      file_name = inputs.reflection_file_names[0],
-      label     = params.label,
-      type      = "complex",
-      log       = log)
-    fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
-    fft_map.apply_sigma_scaling()
-    map_data = fft_map.real_map_unpadded()
-    map_or_map_coeffs_prefix=os.path.basename(
-       inputs.reflection_file_names[0][:-4])
-  elif not map_data:
-    print_statistics.make_sub_header("CCP4 map", out=log)
-    ccp4_map = inputs.ccp4_map
-    ccp4_map.show_summary(prefix="  ",out=log)
-    map_data = ccp4_map.data#map_data()
-    if inputs.ccp4_map_file_name.endswith(".ccp4"):
+  if (not map_data):
+    # read first mtz file
+    if ( (len(inputs.reflection_file_names) > 0) or
+         (params.map_coefficients_file is not None) ):
+      # file in phil takes precedent
+      if (params.map_coefficients_file is not None):
+        if (len(inputs.reflection_file_names) == 0):
+          inputs.reflection_file_names.append(params.map_coefficients_file)
+        else:
+          inputs.reflection_file_names[0] = params.map_coefficients_file
+      map_coeff = reflection_file_utils.extract_miller_array_from_file(
+        file_name = inputs.reflection_file_names[0],
+        label     = params.label,
+        type      = "complex",
+        log       = log)
+      fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
+      fft_map.apply_sigma_scaling()
+      map_data = fft_map.real_map_unpadded()
       map_or_map_coeffs_prefix=os.path.basename(
-       inputs.ccp4_map_file_name[:-5])
-    else:
-      map_or_map_coeffs_prefix=os.path.basename(
-       inputs.ccp4_map_file_name[:-4])
+         inputs.reflection_file_names[0][:-4])
+    # or read CCP4 map
+    elif ( (inputs.ccp4_map is not None) or
+           (params.ccp4_map_file is not None) ):
+      if (params.ccp4_map_file is not None):
+        af = any_file(params.ccp4_map_file)
+        if (af.file_type == 'ccp4_map'):
+          inputs.ccp4_map = af.file_content
+          inputs.ccp4_map_file_name = params.ccp4_map_file
+      print_statistics.make_sub_header("CCP4 map", out=log)
+      ccp4_map = inputs.ccp4_map
+      ccp4_map.show_summary(prefix="  ",out=log)
+      map_data = ccp4_map.data#map_data()
+      if inputs.ccp4_map_file_name.endswith(".ccp4"):
+        map_or_map_coeffs_prefix=os.path.basename(
+          inputs.ccp4_map_file_name[:-5])
+      else:
+        map_or_map_coeffs_prefix=os.path.basename(
+          inputs.ccp4_map_file_name[:-4])
   else: # have map_data
-      map_or_map_coeffs_prefix=None
-  #
+    map_or_map_coeffs_prefix=None
+
+  # final check that map_data exists
+  if(map_data is None):
+    raise Sorry("Map or map coefficients file is needed.")
+
   if len(inputs.pdb_file_names)>0:
     output_prefix=os.path.basename(inputs.pdb_file_names[0])[:-4]
   else:
@@ -251,6 +286,23 @@ Parameters:"""%h
     box.ncs_object=None
   print >> log
   return box
+
+# =============================================================================
+# GUI-specific class for running command
+from libtbx import runtime_utils
+from wxGUI2 import utils
+
+def validate_params(params):
+  return True
+
+class launcher (runtime_utils.target_with_save_result) :
+  def run (self) :
+    utils.safe_makedirs(self.output_dir)
+    os.chdir(self.output_dir)
+    result = run(args=self.args, log=sys.stdout)
+    return result
+
+# =============================================================================
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
