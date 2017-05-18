@@ -444,7 +444,7 @@ class structure_monitor(object):
               cc_mask   = self.five_cc.cc_mask,
               cc_volume = self.five_cc.cc_volume,
               cc_peaks  = self.five_cc.cc_peaks),
-          geometry = mso),
+          geometry = mso,
           rmsd_a = self.rmsd_a,
           rmsd_b = self.rmsd_b)
     if mso is not None and self.five_cc is not None:
