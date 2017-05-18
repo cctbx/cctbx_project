@@ -150,6 +150,12 @@ the output images in the folder cxi49812.
                         dest="calib_dir",
                         metavar="PATH",
                         help="calibration directory")
+                .option(None, "--pickle_calib_dir", "-P",
+                        type="string",
+                        default=None,
+                        dest="pickle_calib_dir",
+                        metavar="PATH",
+                        help="pickle calibration directory specification. Replaces --calib_dir functionality.")
                 .option(None, "--xtc_dir", "-D",
                         type="string",
                         default=None,
@@ -213,6 +219,8 @@ the output images in the folder cxi49812.
   elif command_line.options.use_ffb:
     # as ffb is only at SLAC, ok to hardcode /reg/d here
     dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(command_line.options.experiment[0:3],command_line.options.experiment)
+  if command_line.options.calib_dir is not None:
+    psana.setOption('psana.calib-dir',command_line.options.calib_dir)
   ds = psana.DataSource(dataset_name)
   address = command_line.options.address
   src = psana.Source('DetInfo(%s)'%address)
@@ -453,8 +461,8 @@ the output images in the folder cxi49812.
         active_areas = xpp_active_areas[version_lookup]['active_areas']
         beam_center = [1765 // 2, 1765 // 2]
       else:
-        if command_line.options.calib_dir is not None:
-          metro_path = command_line.options.calib_dir
+        if command_line.options.pickle_calib_dir is not None:
+          metro_path = command_line.options.pickle_calib_dir
         elif command_line.options.pickle_optical_metrology:
           from xfel.cftbx.detector.cspad_cbf_tbx import get_calib_file_path
           metro_path = get_calib_file_path(run.env(), address, run)
