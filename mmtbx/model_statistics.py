@@ -125,7 +125,7 @@ class geometry_no_grm(object):
         prefix, str(self.n_twisted_proline),
         prefix, str(self.n_twisted_general))
     if not prefix:
-      result = self._capitalize(result)
+      result = result.capitalize()
     return result
 
 
@@ -272,9 +272,6 @@ class geometry(geometry_no_grm):
     print >> out, self.format_molprobity_scores(prefix=prefix)
     out.flush()
 
-  def _capitalize(self, s):
-    return s.capitalize()
-
   def format_basic_geometry_statistics(self,
                                        prefix="",
                                        include_rmsz=False,
@@ -334,7 +331,7 @@ class geometry(geometry_no_grm):
        prefix,
        )
     if not prefix:
-      result = self._capitalize(result)
+      result = result.capitalize()
     return result
 
   def as_cif_block(self, cif_block=None):
