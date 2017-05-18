@@ -446,7 +446,7 @@ class structure_monitor(object):
               cc_peaks  = self.five_cc.cc_peaks),
           geometry = mso,
           rmsd_a = self.rmsd_a,
-          rmsd_b = self.rmsd_b)
+          rmsd_b = self.rmsd_b))
     if mso is not None and self.five_cc is not None:
       print >> log, fmt%(
         # prefix, self.map_cc_whole_unit_cell,
