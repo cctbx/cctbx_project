@@ -562,7 +562,6 @@ planarity
     .type = choice
   atom_selection = None
     .type = atom_selection
-    .multiple = True
     .input_size = 400
   sigma = None
     .type = float
@@ -4463,8 +4462,11 @@ class build_all_chain_proxies(linking_mixins):
         continue
         # raise Sorry("Custom planarity sigma is undefined or zero/negative - "+
         #   "this must be a positive decimal number.")
-      i_seqs = self.phil_atom_selections_as_i_seqs_multiple(
-        cache=sel_cache, scope_extract=planarity, sel_attrs=sel_attrs)
+      i_seqs = self.phil_atom_selections_as_i_seqs(
+          cache=sel_cache,
+          scope_extract=planarity,
+          sel_attrs=sel_attrs,
+          n_atoms_needed="many")[0]
       weights = []
       for i_seq in i_seqs:
         weights.append(geometry_restraints.sigma_as_weight(
