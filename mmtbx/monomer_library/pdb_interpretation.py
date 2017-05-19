@@ -4510,7 +4510,7 @@ class build_all_chain_proxies(linking_mixins):
           scope_extract=parallelity,
           sel_attrs=["atom_selection_2"],
           n_atoms_needed="many")[0]
-      weight = parallelity.sigma
+      weight = 1./parallelity.sigma**2
       target_angle_deg = parallelity.target_angle_deg
       print i_seqs, j_seqs, weight
       proxy = geometry_restraints.parallelity_proxy(

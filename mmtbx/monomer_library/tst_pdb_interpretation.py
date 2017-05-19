@@ -2195,7 +2195,7 @@ pdb_interpretation.geometry_restraints {
   # print dir(pp)
   assert list(pp.i_seqs) == [5,8,9]
   assert list(pp.j_seqs) == [27,30,32]
-  assert approx_equal(pp.weight, 0.027)
+  assert approx_equal(pp.weight, 1371.74211248)
   assert approx_equal(pp.target_angle_deg, 0)
 
 def exercise_edits_planarity(mon_lib_srv, ener_lib):
