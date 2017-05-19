@@ -4124,7 +4124,15 @@ class build_all_chain_proxies(linking_mixins):
           parameter_name(), show_string(string)))
     return result
 
-  def phil_atom_selections_as_i_seqs(self, cache, scope_extract, sel_attrs):
+  def phil_atom_selections_as_i_seqs(self, cache, scope_extract, sel_attrs, n_atoms_needed="one"):
+    """ This function should be used when selection parameter is .multiple=False
+    On top of that it can demand exactly one atom to be selected or more than 2
+    atoms shoud be selected. Other options are not required at the moment.
+    n_atoms_needed:
+      one - exactly one
+      many - 3 and more for parallelity
+    """
+    assert n_atoms_needed in ["one", "many"]
     result = []
     for attr in sel_attrs:
       iselection = self.phil_atom_selection(
@@ -4132,7 +4140,7 @@ class build_all_chain_proxies(linking_mixins):
         scope_extract=scope_extract,
         attr=attr,
         raise_if_empty_selection=False).iselection()
-      if (iselection.size() != 1):
+      if (iselection.size() != 1) and n_atoms_needed=="one":
         atom_sel = getattr(scope_extract, attr)
         if (iselection.size() == 0):
           raise Sorry("No atom selected: %s" % show_string(atom_sel))
@@ -4141,13 +4149,24 @@ class build_all_chain_proxies(linking_mixins):
             "More than one atom selected: %s\n"
             "  Number of selected atoms: %d" % (
               show_string(atom_sel), iselection.size()))
-      result.append(iselection[0])
+      if (iselection.size() < 3) and n_atoms_needed=="many":
+        atom_sel = getattr(scope_extract, attr)
+        raise Sorry(
+          "Slelected less than 3 atoms: %s\n"
+          "  Number of selected atoms: %d" % (
+            show_string(atom_sel), iselection.size()))
+      if n_atoms_needed == "one":
+        result.append(iselection[0])
+      elif n_atoms_needed == "many":
+        result.append(iselection)
     return result
 
   def phil_atom_selections_as_i_seqs_multiple(self,
                                               cache,
                                               scope_extract,
                                               sel_attrs):
+    """ This function should be used when selection parameter is .multiple=True
+    """
     result = []
     for attr in sel_attrs:
         iselection = self.phil_atom_selection_multiple(
@@ -4479,16 +4498,22 @@ class build_all_chain_proxies(linking_mixins):
       elif (parallelity.action != "add"):
         raise Sorry("%s = %s not implemented." %
           parallelity.__phil_path_and_value__("action"))
-      i_seqs = self.phil_atom_selections_as_i_seqs_multiple(
-        cache=sel_cache, scope_extract=parallelity, sel_attrs=["atom_selection_1"])
-      j_seqs = self.phil_atom_selections_as_i_seqs_multiple(
-        cache=sel_cache, scope_extract=parallelity, sel_attrs=["atom_selection_2"])
+      i_seqs = self.phil_atom_selections_as_i_seqs(
+          cache=sel_cache,
+          scope_extract=parallelity,
+          sel_attrs=["atom_selection_1"],
+          n_atoms_needed="many")[0]
+      j_seqs = self.phil_atom_selections_as_i_seqs(
+          cache=sel_cache,
+          scope_extract=parallelity,
+          sel_attrs=["atom_selection_2"],
+          n_atoms_needed="many")[0]
       weight = parallelity.sigma
       target_angle_deg = parallelity.target_angle_deg
-      #print i_seqs, j_seqs, weight
+      print i_seqs, j_seqs, weight
       proxy = geometry_restraints.parallelity_proxy(
-        i_seqs=i_seqs,
-        j_seqs=j_seqs,
+        i_seqs=flex.size_t(i_seqs),
+        j_seqs=flex.size_t(j_seqs),
         weight=weight,
         target_angle_deg=target_angle_deg)
       result.append(proxy)

@@ -2119,6 +2119,85 @@ END
   assert str(e)=="""Bad ATOM record:
 ATOM      1  W   HOH 21100      44.341  86.390 -10.071  1.00 50.00"""
 
+def exercise_edits_parallelity(mon_lib_srv, ener_lib):
+  raw_records = """\
+CRYST1   47.935   37.102   30.520  90.00  90.00  90.00 P 1
+ATOM     55  N   PHE A 431      31.800  18.971   9.354  1.00187.57           N
+ATOM     56  CA  PHE A 431      30.664  18.262   9.908  1.00187.57           C
+ATOM     57  C   PHE A 431      29.679  19.392  10.042  1.00187.57           C
+ATOM     58  O   PHE A 431      29.961  20.372  10.729  1.00187.57           O
+ATOM     59  CB  PHE A 431      30.976  17.709  11.288  1.00192.11           C
+ATOM     60  CG  PHE A 431      32.191  16.840  11.330  1.00192.11           C
+ATOM     61  CD1 PHE A 431      32.307  15.750  10.487  1.00192.11           C
+ATOM     62  CD2 PHE A 431      33.209  17.101  12.221  1.00192.11           C
+ATOM     63  CE1 PHE A 431      33.426  14.943  10.527  1.00192.11           C
+ATOM     64  CE2 PHE A 431      34.331  16.298  12.265  1.00192.11           C
+ATOM     65  CZ  PHE A 431      34.439  15.217  11.418  1.00192.11           C
+ATOM    225  P   A   P  36      27.448   9.314  19.851  1.00 76.88           P
+ATOM    226  OP1 A   P  36      26.648   9.676  21.048  1.00 78.59           O
+ATOM    227  OP2 A   P  36      28.571   8.351  19.976  1.00 75.20           O
+ATOM    228  O5' A   P  36      27.998  10.652  19.190  1.00 78.76           O
+ATOM    229  C5' A   P  36      29.217  11.250  19.656  1.00 77.93           C
+ATOM    230  C4' A   P  36      30.389  10.753  18.844  1.00 78.66           C
+ATOM    231  O4' A   P  36      29.987  10.611  17.462  1.00 79.49           O
+ATOM    232  C3' A   P  36      31.616  11.662  18.873  1.00 78.23           C
+ATOM    233  O3' A   P  36      32.665  11.095  19.647  1.00 77.17           O
+ATOM    234  C2' A   P  36      32.056  11.820  17.411  1.00 79.34           C
+ATOM    235  O2' A   P  36      33.369  11.376  17.124  1.00 79.34           O
+ATOM    236  C1' A   P  36      31.046  10.987  16.617  1.00 78.22           C
+ATOM    237  N9  A   P  36      30.484  11.736  15.494  1.00 20.00           N
+ATOM    238  C8  A   P  36      29.463  12.653  15.522  1.00 20.00           C
+ATOM    239  N7  A   P  36      29.182  13.166  14.348  1.00 20.00           N
+ATOM    240  C5  A   P  36      30.081  12.548  13.491  1.00 20.00           C
+ATOM    241  C6  A   P  36      30.298  12.660  12.106  1.00 20.00           C
+ATOM    242  N6  A   P  36      29.597  13.468  11.310  1.00 20.00           N
+ATOM    243  N1  A   P  36      31.274  11.902  11.561  1.00 20.00           N
+ATOM    244  C2  A   P  36      31.978  11.092  12.360  1.00 20.00           C
+ATOM    245  N3  A   P  36      31.869  10.898  13.673  1.00 20.00           N
+ATOM    246  C4  A   P  36      30.890  11.665  14.184  1.00 20.00           C
+END
+  """.splitlines()
+  edits = """\
+pdb_interpretation.geometry_restraints {
+    edits {
+      plane1 = chain A and resseq 431 and (name cg or name ce1 or name ce2)
+      plane2 = chain P and resseq 36 and (name c2 or name c4 or name c6)
+      parallelity {
+        action = *add delete change
+        atom_selection_1 = $plane1
+        atom_selection_2 = $plane2
+        sigma = 0.027
+        target_angle_deg = 0
+      }
+    }
+}"""
+  gm_phil = iotbx.phil.parse(
+      monomer_library.pdb_interpretation.grand_master_phil_str,
+      process_includes=True)
+  edits_phil = iotbx.phil.parse(edits)
+  working_phil = gm_phil.fetch(edits_phil)
+  params = working_phil.extract()
+  # print params.geometry_restraints.edits.parallelity[0].atom_selection_1
+  assert params.geometry_restraints.edits.parallelity[0].atom_selection_1 == \
+      "chain A and resseq 431 and (name cg or name ce1 or name ce2)"
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=None,
+      raw_records=raw_records,
+      params = params.pdb_interpretation,
+      log=None)
+  grm = processed_pdb_file.geometry_restraints_manager(
+      params_edits=params.geometry_restraints.edits,
+      params_remove=params.geometry_restraints.remove)
+  assert grm.parallelity_proxies.size() == 1
+  pp = grm.parallelity_proxies[0]
+  # print dir(pp)
+  assert list(pp.i_seqs) == [5,8,9]
+  assert list(pp.j_seqs) == [27,30,32]
+  assert approx_equal(pp.weight, 0.027)
+  assert approx_equal(pp.target_angle_deg, 0)
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
@@ -2144,11 +2223,12 @@ def run(args):
   exercise_d_amino_acid_chain_perfect_in_box()
   exercise_d_amino_acid_chain_perfect_in_box_peptide_plane()
   exercise_rna_v3(mon_lib_srv, ener_lib)
-  # exercise_scale_restraints() removed during CDL=True update
+  # exercise_scale_restraints() # removed during CDL=True update
   exercise_asp_glu_acid()
   exercise_rna_dna_synonyms()
   exercise_ss_bond_angles(mon_lib_srv, ener_lib)
   exercise_ss_bond_angles_alt_loc(mon_lib_srv, ener_lib)
+  exercise_edits_parallelity(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
