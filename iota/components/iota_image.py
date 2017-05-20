@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/16/2017
+Last Changed: 05/19/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -326,6 +326,17 @@ class SingleImage(object):
     data['DATA'] = img_masked
     return data
 
+  def apply_mask_from_file(self, data, mask_file):
+    img_raw_bytes = data['DATA']
+
+    mask = ep.load(mask_file)
+    assert len(mask) == 1
+    mask = mask[0]
+    img_masked = img_raw_bytes.set_selected(mask, -2)
+
+    data['DATA'] = img_masked
+    return data
+
   def import_image(self):
     """ Image conversion:
           - Writes out data in pickle format (cctbx.xfel only)
@@ -438,6 +449,7 @@ class SingleImage(object):
       beam_center = [self.params.image_conversion.beam_center.x,
                      self.params.image_conversion.beam_center.y]
       square = self.params.image_conversion.square_mode
+      mask_file = self.params.image_conversion.mask
       if beam_center != [0,0]:
         pixel_size = img_data['PIXEL_SIZE']
         img_data['BEAM_CENTER_X'] = int(round(beam_center[0] * pixel_size))
@@ -448,6 +460,8 @@ class SingleImage(object):
         img_data = self.square_pickle(img_data)
       if beamstop != 0:
         img_data = self.mask_image(img_data)
+      if mask_file is not None:
+        img_data = self.apply_mask_from_file(img_data, mask_file)
 
       # Log converted image information
       self.log_info.append('Converted image : {}'.format(self.conv_img))

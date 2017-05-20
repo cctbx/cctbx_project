@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/13/2017
+Last Changed: 05/19/2017
 Description : IOTA GUI Dialogs
 '''
 
@@ -404,6 +404,12 @@ class ImportWindow(BaseDialog):
                                     ctrl_size=(100, -1))
     conv_box_sizer.Add(self.mod_beamXY, flag=wx.ALL | wx.EXPAND, border=10)
 
+    self.mod_mask = ct.InputCtrl(self,
+                                 label='Mask',
+                                 label_size=wx.DefaultSize,
+                                 buttons=True)
+    conv_box_sizer.Add(self.mod_mask, 1, flag=wx.ALL | wx.EXPAND, border=10)
+
 
     # Image triage options
     trg_box = wx.StaticBox(self, label='Diffraction Triage Options')
@@ -457,12 +463,37 @@ class ImportWindow(BaseDialog):
 
     self.Bind(wx.EVT_CHOICE, self.onTriageChoice, self.img_triage.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    self.Bind(wx.EVT_BUTTON, self.onMaskBrowse, self.mod_mask.btn_browse)
+    self.Bind(wx.EVT_BUTTON, self.onViewMask, self.mod_mask.btn_mag)
 
     self.read_phil()
 
   def onTriageChoice(self, e):
     selection = self.img_triage.ctr.GetString(self.img_triage.ctr.GetSelection())
     self.triage_choice(selection=selection)
+
+  def onMaskBrowse(self, e):
+    dlg = wx.FileDialog(
+      self, message="Select mask file",
+      defaultDir=os.curdir,
+      defaultFile="*.pickle",
+      wildcard="*.pickle",
+      style=wx.OPEN | wx.CHANGE_DIR
+    )
+    if dlg.ShowModal() == wx.ID_OK:
+      filepath = dlg.GetPaths()[0]
+      self.mod_mask.ctr.SetValue(filepath)
+
+  def onViewMask(self, e):
+    import iota.components.iota_threads as thr
+    # backend = self.parent.int_box.ctr.GetString(
+    #   self.parent.int_box.ctr.GetSelection()).lower()
+    filepath = self.mod_mask.ctr.GetValue()
+    if os.path.isfile(filepath):
+      viewer = thr.ImageViewerThread(self,
+                                     backend='cctbx',
+                                     file_string=filepath)
+      viewer.start()
 
   def triage_choice(self, selection):
 
@@ -520,7 +551,10 @@ class ImportWindow(BaseDialog):
     else:
       idx = 1
     self.mod_square.ctr.SetSelection(idx)
-
+    if str(self.params.image_conversion.mask).lower() == 'none':
+      self.mod_mask.ctr.SetValue('')
+    else:
+      self.mod_mask.ctr.SetValue(str(self.params.image_conversion.mask))
     self.mod_beamstop.threshold.SetValue(
       str(self.params.image_conversion.beamstop))
     self.mod_detZ.detZ.SetValue(str(self.params.image_conversion.distance))
@@ -533,6 +567,10 @@ class ImportWindow(BaseDialog):
   def onOK(self, e):
     ''' Accept changes and populate the PHIL scope '''
 
+    if self.mod_mask.ctr.GetValue() == '':
+      maskpath = None
+    else:
+      maskpath = self.mod_mask.ctr.GetValue()
     if self.triage_spot_area.min.GetValue() == '':
       triage_spot_area_min = None
     else:
@@ -567,6 +605,7 @@ class ImportWindow(BaseDialog):
     '  rename_pickle_prefix = {}'.format(conv_pickle_prefix),
     '  square_mode = {}'.format(self.mod_square.ctr.GetString(
       self.mod_square.ctr.GetSelection())),
+    '  mask = {}'.format(maskpath),
     '  beamstop = {}'.format(self.mod_beamstop.threshold.GetValue()),
     '  distance = {}'.format(self.mod_detZ.detZ.GetValue()),
     '  beam_center',

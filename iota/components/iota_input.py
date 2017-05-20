@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/13/2017
+Last Changed: 05/19/2017
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -48,6 +48,9 @@ image_conversion
   square_mode = None no_modification *pad crop
     .type = choice
     .help = Method to generate square image
+  mask = None
+    .type = path
+    .help = Mask for ignored pixels
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip

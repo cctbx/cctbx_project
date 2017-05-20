@@ -1,5 +1,5 @@
-IOTA v1.1.013 - bugfix to plot display
+IOTA v1.1.014 - added image masking
 
-1. Fixed bug where resumed runs did not show plot updates
-2. Added hit counter to image tracker
-3. Fixed a number of minor bugs
+1. Added image_conversion.mask to parameters (file path to mask)
+2. For cctbx, mask applied at image conversion
+3. Added GUI widget to browse for the mask file and view via image viewer
