@@ -249,14 +249,9 @@ class installer (object) :
     if self.python_exe:
       self.set_python(self.python_exe)
     else:
-      packages += ['python']
-
-    if (self.flag_is_mac and get_os_version() in ("10.11", "10.12")) or options.download_only:
-      # Apple no longer ships openssl headers, therefore need to provide our own
-      # https://forums.developer.apple.com/thread/3897
-      # http://lists.apple.com/archives/macnetworkprog/2015/Jun/msg00025.html
-      # Also, root certificates (certifi) are needed for OpenSSL to work
-      packages += ['openssl', 'certifi']
+      # for better platform independence, build OpenSSL for Linux and macOS
+      # whenever Python is built
+      packages += ['python', 'openssl', 'certifi']
 
     # Always build hdf5 and numpy.
     packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'pythonextra', 'docutils']
@@ -510,9 +505,15 @@ Installation of Python packages may fail.
 
   def configure_and_build(self, config_args=(), log=None, make_args=(), limit_nproc=None) :
     # case sensitive file system workaround
-    configure = filter(os.path.exists, ('configure', 'Configure'))
-    assert configure, 'No configure script found'
-    self.call("./%s %s" % (configure[0], " ".join(list(config_args))), log=log)
+    configure = filter(os.path.exists, ('config', 'configure', 'Configure'))
+    working_configure = False
+    for c in configure:
+      if ( os.path.isfile(c) and os.access(c, os.X_OK) ):
+        configure = c
+        working_configure = True
+        break
+    assert working_configure, 'No configure script found'
+    self.call("./%s %s" % (configure, " ".join(list(config_args))), log=log)
     self.workarounds()
     nproc = self.nproc
     if limit_nproc is not None:
@@ -700,6 +701,20 @@ Installation of Python packages may fail.
         configure_args.append("--enable-shared")
         configure_args.append("LDFLAGS=-Wl,-rpath=\$$ORIGIN/../lib")
         #configure_args.append("--enable-unicode=ucs4")
+
+      # patch Modules/Setup.dist to find custom OpenSSL
+      targets = ['#SSL=/usr/local/ssl',
+                 '#_ssl _ssl.c \\',
+                 '#\t-DUSE_SSL -I$(SSL)/include -I$(SSL)/include/openssl \\',
+                 '#\t-L$(SSL)/lib -lssl -lcrypto']
+      replacements = ['SSL=%s' % self.base_dir,
+                      '_ssl _ssl.c \\',
+                      '  -DUSE_SSL -I$(SSL)/include -I$(SSL)/include/openssl \\',
+                      '  -L$(SSL)/lib -lssl -lcrypto']
+      for target,replacement in zip(targets,replacements):
+        self.patch_src(src_file='Modules/Setup.dist',
+                       target=target, replace_with=replacement)
+
       self.call([os.path.join(python_dir, 'configure')] + configure_args,
         log=log,
         cwd=python_dir,
@@ -1027,12 +1042,15 @@ _replace_sysconfig_paths(build_time_vars)
     pkg = self.fetch_package(pkg_name=pkg_name, pkg_url=pkg_url)
     if self.check_download_only(pkg_name): return
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
+    if (self.flag_is_mac):
+      # help config select darwin64-x86_64-cc (required for 10.9)
+      os.environ['KERNEL_BITS'] = '64'
     self.configure_and_build(
-      config_args=["darwin64-x86_64-cc", self.prefix,
-                   "no-hw", "--openssldir=share",
-                   ],
+      config_args=[self.prefix, "-fPIC", "no-hw", "--openssldir=share"],
       log=pkg_log, limit_nproc=1) # openssl is not parallel buildable
     self.include_dirs.append(op.join(self.base_dir, "include", "openssl"))
+    if (self.flag_is_mac):
+      os.environ['KERNEL_BITS'] = ''
 
   def build_certifi(self):
     self.build_python_module_simple(

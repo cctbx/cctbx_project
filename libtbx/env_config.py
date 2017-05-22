@@ -949,14 +949,13 @@ Wait for the command to finish, then try again.""" % vars())
   def write_bin_sh_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
 
-    # set SSL_CERT_FILE if certifi is available (macOS 10.11 and later)
+    # set SSL_CERT_FILE if certifi is available
     cert_file = None
-    if (sys.platform == 'darwin'):
-      try:  # only builds on macOS >= 10.11 will have certifi installed
-        import certifi
-        cert_file = self.as_relocatable_path(certifi.where())
-      except ImportError:
-        pass
+    try:
+      import certifi
+      cert_file = self.as_relocatable_path(certifi.where())
+    except ImportError:
+      pass
 
     # determine LC_ALL from environment (Python UTF-8 compatibility in Linux)
     LC_ALL = os.environ.get('LC_ALL')     # user setting
