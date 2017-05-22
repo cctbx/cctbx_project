@@ -706,6 +706,11 @@ namespace dxtbx { namespace model {
      */
     double get_max_inscribed_resolution(vec3<double> s0) const {
 
+      // If only 1 panel then use simple method
+      if (size() == 1) {
+        return (*this)[0].get_max_resolution_ellipse(s0);
+      }
+
       // Save the length of the s0 vector
       double s0_length = s0.length();
 
