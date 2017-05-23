@@ -810,7 +810,7 @@ class model_idealization():
           lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
         molprobity_scores=True)
     # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
-    if self.params.output_pkl:
+    if self.params.output_pkl or self.params.debug:
       easy_pickle.dump(
           file_name="%s.pkl" % self.params.output_prefix,
           obj = self.get_stats_obj())
