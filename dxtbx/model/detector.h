@@ -711,7 +711,7 @@ namespace dxtbx { namespace model {
         if (size() == 1) {
           return (*this)[0].get_max_resolution_ellipse(s0);
         }
-      } catch (dxtbx::error error) {
+      } catch (dxtbx::error) {
         // do nothing
       }
 
