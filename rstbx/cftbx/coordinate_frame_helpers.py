@@ -160,8 +160,9 @@ def align_reference_frame(primary_axis, primary_target,
 
     # check properties of input axes
 
-    assert(math.fabs(primary_axis.angle(secondary_axis) % math.pi) > 0.001)
-    assert(primary_target.dot(secondary_target) < 0.001)
+    assert math.fabs(primary_axis.angle(secondary_axis) % math.pi) > 0.001
+    p_dot_s = primary_target.dot(secondary_target)
+    assert p_dot_s < 0.001, p_dot_s
 
     if primary_target.angle(primary_axis) % math.pi:
       axis_p = primary_target.cross(primary_axis)
