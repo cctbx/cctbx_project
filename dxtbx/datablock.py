@@ -427,7 +427,7 @@ class DataBlockTemplateImporter(object):
     imageset = ImageSetFactory.make_sweep(
       template, range(*image_range),
       format_class,
-      b, d, g, s, format_kwargs=kwargs)
+      b, d, g, s, format_kwargs=kwargs.get('format_kwargs'))
 
     # Return the imageset
     return imageset
