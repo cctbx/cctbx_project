@@ -340,6 +340,46 @@ def exercise_str_unicode():
   assert(to_unicode(s) == u)
   assert(to_str(u) == s)
 
+def exercise_group_args():
+  from libtbx import group_args
+  from cStringIO import StringIO
+  out = StringIO()
+  a = group_args(
+      a=1,
+      b=2,
+      c=3)
+  assert a.a==1
+  assert a.b==2
+  assert a.c==3
+  b = group_args(
+      d = 'd',
+      e = 'e')
+  assert b.d=='d'
+  assert b.e=='e'
+  print >> out, a
+  v = out.getvalue()
+  assert not show_diff(v, """group_args
+  a                              : 1
+  b                              : 2
+  c                              : 3\n""")
+  a.merge(b)
+  assert a.a==1
+  assert a.b==2
+  assert a.c==3
+  assert a.d=='d'
+  assert a.e=='e'
+  assert b.d=='d'
+  assert b.e=='e'
+  c = group_args(
+      a = 11,
+      b = 12)
+  a.merge(c)
+  assert a.a==11
+  assert a.b==12
+  assert a.c==3
+  assert c.a==11
+  assert c.b==12
+
 def run(args):
   assert len(args) == 0
   if '--exercise-retrieve-unless-exists' in args:
@@ -371,6 +411,7 @@ def run(args):
   exercise_approx_equal()
   exercise_file_utils()
   exercise_dir_utils()
+  exercise_group_args()
   print utils.format_cpu_times()
 
 if (__name__ == "__main__"):

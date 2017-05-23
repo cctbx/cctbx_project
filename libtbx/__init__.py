@@ -294,6 +294,11 @@ class group_args(object):
         outl += "\n  %-30s : %s" % (attr, tmp)
     return outl
 
+  def merge(self, other):
+    """ To merge other group_args into self.
+    Overwrites matching fields!!!"""
+    self.__dict__.update(other.__dict__)
+
 if (os.environ.has_key("LIBTBX_PRINT_TRACE")):
   import libtbx.start_print_trace
 
