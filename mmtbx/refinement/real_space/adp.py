@@ -8,21 +8,39 @@ from libtbx import easy_mp
 import mmtbx.secondary_structure
 from mmtbx import bulk_solvent
 from libtbx.test_utils import approx_equal
+from cctbx import maptbx
+from mmtbx import masks
 
 class real_space_group_adp_refinery_via_reciprocal_space(object):
   def __init__(self,
-               target_map,
+               map,
+               d_min,
                pdb_hierarchy,
+               crystal_symmetry,
                atom_radius,
                use_adp_restraints,
                nproc,
                log=None):
     adopt_init_args(self, locals())
     self.xray_structure = self.pdb_hierarchy.extract_xray_structure(
-      crystal_symmetry = self.target_map.miller_array.crystal_symmetry())
+      crystal_symmetry = self.crystal_symmetry)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    self.chain_selections = mmtbx.secondary_structure.contiguous_ss_selections(
-      pdb_hierarchy = self.pdb_hierarchy)
+    self.chain_selections = []
+    for chain in self.pdb_hierarchy.chains():
+      self.chain_selections.append(chain.atoms().extract_i_seq())
+    # XXX Probably better is to use this...
+    # self.chain_selections = mmtbx.secondary_structure.contiguous_ss_selections(
+    #     pdb_hierarchy = self.pdb_hierarchy)
+    # XXX ...but splitting needs to be improved (can result to tiny fragments).
+    #
+    self.chain_selections = [pdb_hierarchy.atoms().extract_i_seq()]
+    # Soft mask out the map
+    rad_smooth = min(5., d_min)
+    mask_object = masks.smooth_mask(
+      xray_structure = self.xray_structure,
+      n_real         = self.map.all(),
+      rad_smooth     = rad_smooth)
+    self.map = self.map * mask_object.mask_smooth
 
   def refine_box_with_selected(self, selection=None):
     if(selection is None): selections = self.xray_structure.all_selection()
@@ -30,15 +48,13 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
     ph_box.atoms().reset_i_seq()
     box = mmtbx.utils.extract_box_around_model_and_map(
       xray_structure         = self.xray_structure.select(selection),
-      map_data               = self.target_map.map_data,
-      box_cushion            = self.atom_radius,
-      mask_atoms             = True,
-      mask_atoms_atom_radius = 2.0)
+      map_data               = self.map,
+      box_cushion            = self.atom_radius)
     ph_box.adopt_xray_structure(box.xray_structure_box)
     group_adp_sel = []
     for rg in ph_box.residue_groups():
       group_adp_sel.append(rg.atoms().extract_i_seq())
-    f_obs_box_complex =  box.box_map_coefficients(d_min = self.target_map.d_min)
+    f_obs_box_complex =  box.box_map_coefficients(d_min = self.d_min)
     f_obs_box = abs(f_obs_box_complex)
     #
     xrs = box.xray_structure_box.deep_copy_scatterers().set_b_iso(value=0)
@@ -49,7 +65,7 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
     o = bulk_solvent.complex_f_kb_scaled(
       f1      = f_obs_box_complex.data(),
       f2      = f_calc.data(),
-      b_range = flex.double(range(5,205,5)),
+      b_range = flex.double(range(5,505,5)),
       ss      = 1./flex.pow2(f_calc.d_spacings().data()) / 4.)
     #
     xrs = xrs.set_b_iso(value=o.b())
