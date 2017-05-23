@@ -1079,21 +1079,23 @@ class process_pdb_file_srv(object):
     if(self.log == False): self.log = None
 
   def process_pdb_files(self, pdb_file_names = None, raw_records = None,
+                        pdb_inp=None,
                         stop_if_duplicate_labels = True,
                         allow_missing_symmetry=False):
-    assert [pdb_file_names, raw_records].count(None) == 1
+    assert [pdb_file_names, raw_records, pdb_inp].count(None) == 2
     if(self.cif_objects is not None):
       self._process_monomer_cif_files()
     return self._process_pdb_file(
       pdb_file_names           = pdb_file_names,
       raw_records              = raw_records,
+      pdb_inp                  = pdb_inp,
       stop_if_duplicate_labels = stop_if_duplicate_labels,
-      allow_missing_symmetry            = allow_missing_symmetry)
+      allow_missing_symmetry   = allow_missing_symmetry)
 
-  def _process_pdb_file(self, pdb_file_names, raw_records,
+  def _process_pdb_file(self, pdb_file_names, raw_records, pdb_inp,
                         stop_if_duplicate_labels,
                         allow_missing_symmetry=False):
-    if(raw_records is None):
+    if(raw_records is None and pdb_inp is None):
       pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
       pdb_combined.report_non_unique(out=self.log)
       if (len(pdb_combined.unique_file_names) == 0):
@@ -1103,13 +1105,14 @@ class process_pdb_file_srv(object):
           for file_name in pdb_combined.unique_file_names]
       raw_records = pdb_combined.raw_records
     self.raw_records = raw_records
-    try :
-      pdb_inp = iotbx.pdb.input(source_info = None,
-                                lines       = flex.std_string(raw_records))
-      if(self.crystal_symmetry is None):
-        self.crystal_symmetry = pdb_inp.crystal_symmetry()
-    except ValueError, e :
-      raise Sorry("PDB format error:\n%s" % str(e))
+    if(raw_records is not None):
+      try :
+        pdb_inp = iotbx.pdb.input(source_info = None,
+                                  lines       = flex.std_string(raw_records))
+        if(self.crystal_symmetry is None):
+          self.crystal_symmetry = pdb_inp.crystal_symmetry()
+      except ValueError, e :
+        raise Sorry("PDB format error:\n%s" % str(e))
     if(pdb_inp.atoms().size() == 0):
       msg = ["No atomic coordinates found in PDB files:"]
       if(pdb_file_names is not None):
@@ -1133,11 +1136,14 @@ class process_pdb_file_srv(object):
          [self.crystal_symmetry.unit_cell(),
           self.crystal_symmetry.space_group()].count(None)>0):
         raise Sorry("Crystal symmetry is missing or cannot be extracted.")
+    if raw_records is not None: pdb_inp_=None
+    else:                       pdb_inp_=pdb_inp
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv              = self.mon_lib_srv,
       ener_lib                 = self.ener_lib,
       params                   = self.pdb_interpretation_params,
       raw_records              = raw_records,
+      pdb_inp                  = pdb_inp_,
       strict_conflict_handling = False,
       crystal_symmetry         = self.crystal_symmetry,
       force_symmetry           = True,
@@ -3115,6 +3121,7 @@ class extract_box_around_model_and_map(object):
       self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
     else:
       self.shift_to_map_boxed_sites_back = None
+    self.shift_cart = self.total_shift_cart # XXX
     ###
     if(mask_atoms):
       import boost.python
@@ -3137,6 +3144,13 @@ class extract_box_around_model_and_map(object):
         n_tot=mask.size()
         mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
         self.map_box=self.map_box+(1-mask)*mean_in_box
+
+  def shift_back(self, pdb_hierarchy):
+    sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    shift_back = [-self.shift_cart[0], -self.shift_cart[1], -self.shift_cart[2]]
+    sites_cart_shifted = sites_cart+\
+      flex.vec3_double(sites_cart.size(), shift_back)
+    pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
   def cut_and_copy_map(self,map_data=None):
     return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
