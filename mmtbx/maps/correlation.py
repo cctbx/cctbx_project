@@ -20,7 +20,6 @@ class five_cc(object):
                map,
                xray_structure,
                d_min,
-               map_calc=None,
                box=None,
                compute_cc_box=False,
                compute_cc_image=False,
@@ -47,44 +46,45 @@ class five_cc(object):
       pre_determined_n_real = map.accessor().all(),
       symmetry_flags        = maptbx.use_space_group_symmetry)
     #####
-    if(self.map_calc is None):
-      if(box is True):
-        f_calc = miller.structure_factor_box_from_map(
-          crystal_symmetry = xray_structure.crystal_symmetry(),
-          n_real           = map.focus()).structure_factors_from_scatterers(
-            xray_structure = xray_structure).f_calc()
-        d_spacings = f_calc.d_spacings().data()
-        sel = d_spacings > d_min
-        f_calc = f_calc.select(sel)
-      else:
-        f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
-      fft_map = miller.fft_map(
-        crystal_gridding     = self.crystal_gridding,
-        fourier_coefficients = f_calc)
-      self.map_calc = fft_map.real_map_unpadded()
-    #####
+    map_calc = self.get_map_calc()
     self.atom_radius = self._atom_radius()
-    self.bs_mask = masks.mask_from_xray_structure(
+    bs_mask = masks.mask_from_xray_structure(
       xray_structure        = self.xray_structure,
       p1                    = True,
       for_structure_factors = False,
       n_real                = self.map.accessor().all()).mask_data
-    maptbx.unpad_in_place(map=self.bs_mask)
-    self.sel_inside = (self.bs_mask==0.).iselection()
+    maptbx.unpad_in_place(map=bs_mask)
+    self.sel_inside = (bs_mask==0.).iselection()
     #
     if(compute_cc_box):
-      self.cc_box = from_map_map(map_1=self.map, map_2=self.map_calc)
+      self.cc_box = from_map_map(map_1=self.map, map_2=map_calc)
     if(compute_cc_image):
-      self.cc_image = self._cc_image()
+      self.cc_image = self._cc_image(map_calc = map_calc)
     if(compute_cc_mask):
-      self.cc_mask = from_map_map_selection(map_1=self.map, map_2=self.map_calc,
+      self.cc_mask = from_map_map_selection(map_1=self.map, map_2=map_calc,
         selection = self.sel_inside)
     if(compute_cc_volume):
-      self.cc_volume = self._cc_volume()
+      self.cc_volume = self._cc_volume(map_calc=map_calc)
     if(compute_cc_peaks):
-      self.cc_peaks = self._cc_peaks()
+      self.cc_peaks = self._cc_peaks(map_calc=map_calc)
     # Free memory
     del self.sel_inside
+
+  def get_map_calc(self):
+    if(self.box is True):
+      f_calc = miller.structure_factor_box_from_map(
+        crystal_symmetry = self.xray_structure.crystal_symmetry(),
+        n_real           = self.map.focus()).structure_factors_from_scatterers(
+          xray_structure = self.xray_structure).f_calc()
+      d_spacings = f_calc.d_spacings().data()
+      sel = d_spacings > d_min
+      f_calc = f_calc.select(sel)
+    else:
+      f_calc = self.xray_structure.structure_factors(d_min=self.d_min).f_calc()
+    fft_map = miller.fft_map(
+      crystal_gridding     = self.crystal_gridding,
+      fourier_coefficients = f_calc)
+    return fft_map.real_map_unpadded()
 
   def _atom_radius(self):
     b_iso = adptbx.u_as_b(
@@ -93,39 +93,39 @@ class five_cc(object):
     return o.image(d_min=self.d_min, b_iso=b_iso,
       radius_max=max(15.,self.d_min), radius_step=0.01).radius
 
-  def _cc_image(self):
+  def _cc_image(self, map_calc):
     return from_map_map_atoms(
       map_1      = self.map,
-      map_2      = self.map_calc,
+      map_2      = map_calc,
       sites_cart = self.xray_structure.sites_cart(),
       unit_cell  = self.xray_structure.unit_cell(),
       radius     = self.atom_radius)
 
-  def _cc_peaks(self):
+  def _cc_peaks(self, map_calc):
     n_nodes_inside = self.sel_inside.size()
     s1 = get_selection_above_cutoff(m=self.map, n=n_nodes_inside)
-    s2 = get_selection_above_cutoff(m=self.map_calc, n=n_nodes_inside)
+    s2 = get_selection_above_cutoff(m=map_calc, n=n_nodes_inside)
     s = s1 | s2
     #G = flex.double(flex.grid(self.map.all()), 0)
     #G = G.set_selected(s, 1)
     #ccp4_map(cg=self.crystal_gridding, file_name="m1.ccp4", map_data=self.map)
-    #ccp4_map(cg=self.crystal_gridding, file_name="m2.ccp4", map_data=self.map_calc)
+    #ccp4_map(cg=self.crystal_gridding, file_name="m2.ccp4", map_data=map_calc)
     #ccp4_map(cg=self.crystal_gridding, file_name="m3.ccp4", map_data=G)
     return flex.linear_correlation(
       x=self.map.select(s.iselection()).as_1d(),
-      y=self.map_calc.select(s.iselection()).as_1d()).coefficient()
+      y=map_calc.select(s.iselection()).as_1d()).coefficient()
 
-  def _cc_volume(self):
+  def _cc_volume(self, map_calc):
     n_nodes_inside = self.sel_inside.size()
-    s = get_selection_above_cutoff(m=self.map_calc, n=n_nodes_inside)
+    s = get_selection_above_cutoff(m=map_calc, n=n_nodes_inside)
     #G = flex.double(flex.grid(self.map.all()), 0)
     #G = G.set_selected(s, 1)
     #ccp4_map(cg=self.crystal_gridding, file_name="m1.ccp4", map_data=self.map)
-    #ccp4_map(cg=self.crystal_gridding, file_name="m2.ccp4", map_data=self.map_calc)
+    #ccp4_map(cg=self.crystal_gridding, file_name="m2.ccp4", map_data=map_calc)
     #ccp4_map(cg=self.crystal_gridding, file_name="m3.ccp4", map_data=G)
     return flex.linear_correlation(
       x=self.map.select(s.iselection()).as_1d(),
-      y=self.map_calc.select(s.iselection()).as_1d()).coefficient()
+      y=map_calc.select(s.iselection()).as_1d()).coefficient()
 
 class fsc_model_vs_map(object):
   def __init__(self,
