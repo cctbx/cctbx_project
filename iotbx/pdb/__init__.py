@@ -920,6 +920,7 @@ class pdb_input_mixin(object):
     Create a single cctbx.xray.structure object from the atom records, using
     only the first model found.
     """
+    if(crystal_symmetry is not None): self._scale_matrix = None
     return self.xray_structures_simple(
       one_structure_for_each_model=False,
       crystal_symmetry=crystal_symmetry,
