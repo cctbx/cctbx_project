@@ -117,6 +117,8 @@ def strip_shelx_format_extension (file_name) :
   return file_name
 
 def splitext (file_name) :
+  # XXX The same function name exists ~100 lines below. This one is not
+  # used because the latter overwrites it.
   file_name = strip_shelx_format_extension(file_name)
   base, ext = os.path.splitext(file_name)
   if (ext == ".gz") :
@@ -205,6 +207,8 @@ def any_file (file_name,
       raise_sorry_if_not_expected_format=raise_sorry_if_not_expected_format)
 
 def splitext (file_name) :
+  # The same function name exists ~100 lines before.
+  # This one is actually used.
   (file_base, file_ext) = os.path.splitext(file_name)
   if file_ext in [".gz"] : # XXX: does this work for anything other than pdb?
     (base2, ext2) = os.path.splitext(file_base)
