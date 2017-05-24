@@ -57,12 +57,19 @@ residuals {
   histogram_ymax=None
     .type = float
     .help = Maximum y value to be shown in the histogram
-  exclude_outliers=True
+  exclude_outliers=None
+    .type = bool
+    .deprecated = True
+    .help = Deprecated. Use residuals.exclude_outliers_from_refinement instead
+  exclude_outliers_from_refinement=True
     .type = bool
     .help = Whether to exclude outliers while computing statistics
   i_sigi_cutoff=None
     .type = float
     .help = Minimum I/sigI filter for RMSD plots
+  recompute_outliers = False
+    .type = bool
+    .help = If True, use sauter_poon to recompute outliers and remove them
 }
 save_pdf = False
   .type = bool
@@ -424,10 +431,21 @@ class Script(DCScript):
     reflections = ref_predictor(reflections)
 
     print "N reflections total:", len(reflections)
-    if params.residuals.exclude_outliers:
+    if params.residuals.exclude_outliers_from_refinement:
       reflections = reflections.select(reflections.get_flags(reflections.flags.used_in_refinement))
       print "N reflections used in refinement:", len(reflections)
       print "Reporting only on those reflections used in refinement"
+
+    if params.residuals.recompute_outliers:
+      print "Performing outlier rejection on %d reflections"%len(reflections)
+      from dials.algorithms.refinement.outlier_detection.sauter_poon import SauterPoon
+      outlier = SauterPoon(px_sz=experiments[0].detector[0].get_pixel_size(), separate_panels=False)
+      rejection_occured = outlier(reflections)
+      if rejection_occured:
+        reflections = reflections.select(~reflections.get_flags(reflections.flags.centroid_outlier))
+        print "N reflections after outlier rejection:", len(reflections)
+      else:
+        print "No rejections found"
 
     if self.params.residuals.i_sigi_cutoff is not None:
       sel = (reflections['intensity.sum.value']/flex.sqrt(reflections['intensity.sum.variance'])) >= self.params.residuals.i_sigi_cutoff
