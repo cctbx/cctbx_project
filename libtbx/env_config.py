@@ -13,7 +13,7 @@ except ImportError:
   import pickle
 from cStringIO import StringIO
 import re
-import sys, os
+import site, sys, os
 op = os.path
 
 if os.environ.get('LIBTBX_WINGIDE_DEBUG'):
@@ -1538,7 +1538,16 @@ selfx:
       except IOError: pass
 
   def assemble_pythonpath(self):
-    pythonpath = [self.lib_path]
+    # explicitly add site-packages path to avoid conflicts with per user site-packages
+    # https://www.python.org/dev/peps/pep-0370/
+    if (hasattr(site, 'getsitepackages')):
+      pythonpath = [self.as_relocatable_path(p) for p in site.getsitepackages()]
+    else:
+      # fallback in case of virtualenv
+      # https://github.com/pypa/virtualenv/issues/355
+      pythonpath = [self.as_relocatable_path(
+        op.join(sys.prefix,'lib',self.python_exe.basename(),'site-packages'))]
+    pythonpath.append(self.lib_path)
     for module in self.module_list:
       pythonpath.extend(module.assemble_pythonpath())
     pythonpath.reverse()

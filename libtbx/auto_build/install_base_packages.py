@@ -429,6 +429,10 @@ Installation of Python packages may fail.
     # Update paths.
     self.update_paths()
 
+    # Turn off user site-packages directory to avoid conflicts
+    # https://www.python.org/dev/peps/pep-0370/
+    os.environ['PYTHONNOUSERSITE'] = '1'
+
   def update_paths(self):
     os.environ["PATH"] = ("%s/bin:" % self.base_dir) + os.environ['PATH']
     lib_paths = [ op.join(self.base_dir, "lib") ]
