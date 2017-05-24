@@ -118,6 +118,42 @@ def setup_stats(detector, experiments, reflections, two_theta_only = False):
   reflections = tmp
   return reflections
 
+def reflection_wavelength_from_pixels(experiments, reflections):
+  if 'shoebox' not in reflections:
+    return reflections
+
+  print "Computing per-reflection wavelengths from shoeboxes"
+
+  from dials.algorithms.shoebox import MaskCode
+  valid_code = MaskCode.Valid | MaskCode.Foreground
+
+  table = flex.reflection_table()
+  wavelengths = flex.double()
+  for expt_id, expt in enumerate(experiments):
+    refls = reflections.select(reflections['id'] == expt_id)
+    table.extend(refls)
+
+    beam = expt.beam
+    unit_cell = expt.crystal.get_unit_cell()
+    d = unit_cell.d(refls['miller_index'])
+
+    for i in xrange(len(refls)):
+      sb = refls['shoebox'][i]
+      # find the coordinates with signal
+      mask = flex.bool([(m & valid_code) != 0 for m in sb.mask])
+      coords = sb.coords().select(mask)
+      panel = expt.detector[refls['panel'][i]]
+
+      # compute two theta angle for each pixel
+      s1 = panel.get_lab_coord(panel.pixel_to_millimeter(flex.vec2_double(coords.parts()[0], coords.parts()[1])))
+      two_theta = s1.angle(beam.get_s0())
+
+      # nLambda = 2dST
+      wavelengths.append(flex.mean(2*d[i]*flex.sin(two_theta/2)))
+
+  table['reflection_wavelength_from_pixels'] = wavelengths
+  return table
+
 from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels, id_from_name, get_center
 from xfel.command_line.cspad_detector_congruence import Script as DCScript
 class Script(DCScript):
@@ -147,7 +183,8 @@ class Script(DCScript):
       vmax = flex.max(data)
     if vmin is None:
       vmin = min(flex.min(data), 0)
-    assert vmax > vmin
+    if len(data) > 1:
+      assert vmax > vmin, "vmax: %f, vmin: %f"%(vmax, vmin)
 
     # initialize the color map
     norm = Normalize(vmin=vmin, vmax=vmax)
@@ -202,6 +239,25 @@ class Script(DCScript):
     assert panel is not None and ax is not None and bounds is not None
     data = reflections['delpsical.rad'] * (180/math.pi)
     norm, cmap, color_vals, sm = self.get_normalized_colors(data, vmin=-0.1, vmax=0.1)
+    deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.delta_scalar
+
+    x, y = panel.get_image_size_mm()
+    offset = col((x, y, 0))/2
+    deltas += offset
+    mm_panel_coords = flex.vec2_double(deltas.parts()[0], deltas.parts()[1])
+
+    lab_coords = panel.get_lab_coord(mm_panel_coords)
+
+    ax.scatter(lab_coords.parts()[0], lab_coords.parts()[1], c = data, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
+
+    return sm, color_vals
+
+  def plot_obs_colored_by_mean_pixel_wavelength(self, reflections, panel = None, ax = None, bounds = None):
+    if 'reflection_wavelength_from_pixels' not in reflections:
+      return
+    assert panel is not None and ax is not None and bounds is not None
+    data = 12398.4/reflections['reflection_wavelength_from_pixels']
+    norm, cmap, color_vals, sm = self.get_normalized_colors(data, vmin=self.min_energy, vmax=self.max_energy)
     deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.delta_scalar
 
     x, y = panel.get_image_size_mm()
@@ -503,6 +559,12 @@ class Script(DCScript):
 
     reflections = setup_stats(detector, experiments, reflections)
 
+    reflections = reflection_wavelength_from_pixels(experiments, reflections)
+    stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
+    print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+    self.min_energy = stats.mean() - stats.unweighted_sample_standard_deviation()
+    self.max_energy = stats.mean() + stats.unweighted_sample_standard_deviation()
+
     # The radial vector points from the center of the reflection to the beam center
     radial_vectors = (reflections['obs_lab_coords'] - reflections['beam_centre_lab']).each_normalize()
     # The transverse vector is orthogonal to the radial vector and the beam vector
@@ -621,6 +683,7 @@ class Script(DCScript):
       self.detector_plot_refls(detector, reflections, '%sRadial positional displacements (mm)'%tag, show=False, plot_callback=self.plot_obs_colored_by_radial_deltas)
       self.detector_plot_refls(detector, reflections, '%sTransverse positional displacements (mm)'%tag, show=False, plot_callback=self.plot_obs_colored_by_transverse_deltas)
       self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$'%tag, show=False, plot_callback=self.plot_obs_colored_by_deltapsi, colorbar_units=r"$\circ$")
+      self.detector_plot_refls(detector, reflections, '%sMean pixel energy'%tag, show=False, plot_callback=self.plot_obs_colored_by_mean_pixel_wavelength, colorbar_units="eV")
       self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY*%s'%(tag, self.delta_scalar), show=False, plot_callback=self.plot_deltas)
       self.detector_plot_refls(detector, reflections, '%sSP Manual CDF'%tag, show=False, plot_callback=self.plot_cdf_manually)
       self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY Histograms'%tag, show=False, plot_callback=self.plot_histograms)
