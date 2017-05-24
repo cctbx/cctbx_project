@@ -85,9 +85,11 @@ class compute_polder_map():
       mask_data     = self.mask_data_all.deep_copy(),
       sites_cart    = self.sites_cart_ligand)
     # compute fmodel and map coeffs for input, biased, polder, omit case
-    self.fmodel_input, self.mc_input = self.get_fmodel_and_map_coefficients(
-      xray_structure = self.xray_structure,
-      mask_data      = self.mask_data_all)
+    self.fmodel_input = mmtbx.f_model.manager(
+     f_obs          = self.f_obs,
+     r_free_flags   = self.r_free_flags,
+     xray_structure = self.xray_structure)
+    self.fmodel_input.update_all_scales()
     self.fmodel_biased, self.mc_biased = self.get_fmodel_and_map_coefficients(
         xray_structure = self.xray_structure_noligand,
         mask_data      = self.mask_data_all)
@@ -145,7 +147,6 @@ class compute_polder_map():
     return fmodel, mc_fofc
 
   def get_polder_diff_map(self, f_obs, r_free_flags, f_calc, f_mask, xrs_selected):
-    #f_obs, flags = f_obs.common_sets(other=flags)
     fmodel = mmtbx.f_model.manager(
       f_obs        = f_obs,
       r_free_flags = r_free_flags,
@@ -203,28 +204,28 @@ class compute_polder_map():
     pdb_hierarchy_selected = self.pdb_hierarchy.select(self.selection_bool)
     xrs_selected = pdb_hierarchy_selected.extract_xray_structure(
       crystal_symmetry = self.f_obs.crystal_symmetry())
-    f_calc = self.f_obs.structure_factors_from_scatterers(
+    f_calc = fmodel.f_obs().structure_factors_from_scatterers(
       xray_structure = self.xray_structure_noligand).f_calc()
-    f_mask = self.f_obs.structure_factors_from_map(
+    f_mask = fmodel.f_obs().structure_factors_from_map(
       map            = self.mask_data_polder,
       use_scale      = True,
       anomalous_flag = False,
       use_sg         = False)
     self.box_1 = self.get_polder_diff_map(
       f_obs = f_obs_1,
-      r_free_flags = self.r_free_flags,
+      r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
       xrs_selected = xrs_selected)
     self.box_2 = self.get_polder_diff_map(
       f_obs = f_obs_2,
-      r_free_flags = self.r_free_flags,
+      r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
       xrs_selected = xrs_selected)
     self.box_3 = self.get_polder_diff_map(
-      f_obs = self.f_obs,
-      r_free_flags = self.r_free_flags,
+      f_obs = fmodel.f_obs(),
+      r_free_flags = fmodel.r_free_flags(),
       f_calc = f_calc,
       f_mask = f_mask,
       xrs_selected = xrs_selected)
