@@ -75,9 +75,15 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     y = matrix.col((0, 1, 0))
     z = matrix.col((0, 0, 1))
 
-    obs_beam_y = 2587
+    beam_xy = self._cif_header_dictionary['Beam_xy']
+    beam_xy = beam_xy.replace('(', '').replace(')', '').replace(',', '').split()[:2]
+    obs_beam_x, obs_beam_y = [float(f) for f in beam_xy]
+
+    ideal_beam_x = 1075
     ideal_beam_y = 2594
-    beam_shift_y = 0.172 * (2594 - 2587)
+
+    beam_shift_x = 0.172 * (ideal_beam_x - obs_beam_x)
+    beam_shift_y = 0.172 * (ideal_beam_y - obs_beam_y)
 
     distance = float(
         self._cif_header_dictionary['Detector_distance'].split()[0]) * 1000.0
@@ -99,7 +105,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     root.set_frame(
       x.elems,
       y.elems,
-      (-distance * z + (beam_shift_y * y)).elems)
+      (-distance * z + (beam_shift_x * x) + (beam_shift_y * y)).elems)
 
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
