@@ -1684,11 +1684,9 @@ class scaling_manager (intensity_data) :
         data.summed_N[pair[0]] += 1
         data.summed_wt_I[pair[0]] += Intensity / variance
         data.summed_weight[pair[0]] += 1 / variance
+    print >> out, "Selected file %s to %5.2f Angstrom resolution limit" % (file_name, observations.d_min())
     data.set_log_out(out.getvalue())
-    if corr > 0.5:
-      print >> out, "Selected file %s"%file_name.replace("integration","out").replace("int","idx")
-      print >> out, "Selected distance %6.2f mm"%float(result["distance"])
-      data.show_log_out(sys.stdout)
+    data.show_log_out(sys.stdout)
     return data
 
 def consistent_set_and_model(work_params,i_model=None):
