@@ -16,9 +16,9 @@ from iotbx import file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 from cStringIO import StringIO
-#from cctbx import maptbx
+from cctbx import maptbx
 #from cctbx import miller
-#from cctbx.array_family import flex
+from cctbx.array_family import flex
 #from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx.utils import multi_out
@@ -115,6 +115,22 @@ compute_box = False
   .short_caption = Reset mask within a box defined by atom selection
   .help = Reset mask within a box (parallel to unit cell axes) defined by an \
    atom selection
+output_file_name_prefix = None
+  .type = str
+  .short_caption = Output prefix
+  .help = Prefix for output filename
+mask_output = False
+  .type = bool
+  .short_caption = Output masks
+  .help = Additional output: ccp4 maps containing the solvent mask for inital \
+   model (mask_all.ccp4), when ligand is omitted (mask_omit.ccp4) and the mask \
+   used for polder (mask_polder.ccp4)
+debug = False
+  .type = bool
+  .expert_level = 3
+  .short_caption = Output biased map
+  .help = Additional output: biased omit map (ligand used for mask calculation \
+   but omitted from model)
 gui
   .help = "GUI-specific parameter required for output directory"
 {
@@ -187,6 +203,121 @@ def obtain_cs_if_gui_input(model_file_name, reflection_file_name):
       raise Sorry("Crystal symmetry mismatch between different files.")
     crystal_symmetry = crystal_symmetries[0]
   return crystal_symmetry
+
+def format_print_rfactors(log, r_work, r_free):
+  print >> log, "R_work = %6.4f R_free = %6.4f" % (r_work, r_free)
+  print >> log, "*"*79
+
+def print_rfactors(debug, results, log):
+  fmodel_input  = results.fmodel_input
+  fmodel_biased = results.fmodel_biased
+  fmodel_omit   = results.fmodel_omit
+  fmodel_polder = results.fmodel_polder
+  print >> log, "R factors for unmodified input model and data:"
+  format_print_rfactors(log, fmodel_input.r_work(), fmodel_input.r_free())
+  if (debug):
+    print >> log, "R factor when ligand is used for mask calculation (biased map):"
+    format_print_rfactors(log, fmodel_biased.r_work(), fmodel_biased.r_free())
+  print >> log, "R factor for polder map"
+  format_print_rfactors(log, fmodel_polder.r_work(), fmodel_polder.r_free())
+  print >> log, "R factor for OMIT map (ligand is excluded for mask calculation):"
+  format_print_rfactors(log, fmodel_omit.r_work(), fmodel_omit.r_free())
+
+def result_message(cc12, cc13, cc23):
+  if (cc13 < 0.7 or
+      (cc23 > cc12 and cc23 > cc13) or (cc13 < cc12 and cc13 < cc23)):
+    msg = """The polder map is very likely to show bulk-solvent or noise."""
+  elif (cc13 >= 0.8):
+    msg = 'The polder map is likely to show the ligand.'
+  elif (cc13 >= 0.7 and cc13 < 0.8):
+    if (cc23 < 0.7*cc13):
+      msg = """The polder map is more likely to show ligand than bulk solvent.
+It is recommended to carefully inspect the maps to confirm."""
+    else:
+      msg = """The polder map is more likely to show bulk-solvent or noise
+instead of the ligand. But it is recommended to inspect the maps to confirm."""
+  return msg
+
+def print_validation(log, results, debug, pdb_hierarchy_selected):
+  box_1 = results.box_1
+  box_2 = results.box_2
+  box_3 = results.box_3
+  sites_cart_box = box_1.xray_structure_box.sites_cart()
+  sel = maptbx.grid_indices_around_sites(
+    unit_cell  = box_1.xray_structure_box.unit_cell(),
+    fft_n_real = box_1.map_box.focus(),
+    fft_m_real = box_1.map_box.all(),
+    sites_cart = sites_cart_box,
+    site_radii = flex.double(sites_cart_box.size(), 2.0))
+  b1 = box_1.map_box.select(sel).as_1d()
+  b2 = box_2.map_box.select(sel).as_1d()
+  b3 = box_3.map_box.select(sel).as_1d()
+  print >> log, "Map 1: calculated Fobs with ligand"
+  print >> log, "Map 2: calculated Fobs without ligand"
+  print >> log, "Map 3: real Fobs data"
+  cc12 = flex.linear_correlation(x=b1,y=b2).coefficient()
+  cc13 = flex.linear_correlation(x=b1,y=b3).coefficient()
+  cc23 = flex.linear_correlation(x=b2,y=b3).coefficient()
+  print >> log, "CC(1,2): %6.4f" % cc12
+  print >> log, "CC(1,3): %6.4f" % cc13
+  print >> log, "CC(2,3): %6.4f" % cc23
+  #### D-function
+  b1 = maptbx.volume_scale_1d(map=b1, n_bins=10000).map_data()
+  b2 = maptbx.volume_scale_1d(map=b2, n_bins=10000).map_data()
+  b3 = maptbx.volume_scale_1d(map=b3, n_bins=10000).map_data()
+  print >> log, "Peak CC:"
+  print >> log, "CC(1,2): %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient()
+  print >> log, "CC(1,3): %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient()
+  print >> log, "CC(2,3): %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient()
+  cutoffs = flex.double(
+    [i/10. for i in range(1,10)]+[i/100 for i in range(91,100)])
+  d12 = maptbx.discrepancy_function(map_1=b1, map_2=b2, cutoffs=cutoffs)
+  d13 = maptbx.discrepancy_function(map_1=b1, map_2=b3, cutoffs=cutoffs)
+  d23 = maptbx.discrepancy_function(map_1=b2, map_2=b3, cutoffs=cutoffs)
+  print >> log, "q    D(1,2) D(1,3) D(2,3)"
+  for c,d12_,d13_,d23_ in zip(cutoffs,d12,d13,d23):
+    print >> log, "%4.2f %6.4f %6.4f %6.4f"%(c,d12_,d13_,d23_)
+  ###
+  if(debug):
+    box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
+    box_2.write_ccp4_map(file_name="box_2_polder.ccp4")
+    box_3.write_ccp4_map(file_name="box_3_polder.ccp4")
+    pdb_hierarchy_selected.adopt_xray_structure(box_1.xray_structure_box)
+    pdb_hierarchy_selected.write_pdb_file(file_name="box_polder.pdb",
+      crystal_symmetry=box_1.box_crystal_symmetry)
+  #
+  print >> log, '*' * 79
+  message = result_message(cc12 = cc12, cc13 = cc13, cc23 = cc23)
+  print >> log, message
+
+def write_files(results, mask_output, debug, f_obs, prefix, log):
+  # write mask files (if specified)
+  if (mask_output):
+    masks = [results.mask_data_all, results.mask_data_omit, results.mask_data_polder]
+    filenames = ["all", "omit", "polder"]
+    for mask_data, filename in zip(masks, filenames):
+      ccp4_map.write_ccp4_map(
+        file_name   = "mask_" + filename + ".ccp4",
+        unit_cell   = f_obs.unit_cell(),
+        space_group = f_obs.space_group(),
+        map_data    = mask_data,
+        labels      = flex.std_string([""]))
+  mtz_dataset = results.mc_polder.as_mtz_dataset(
+    column_root_label = "mFo-DFc_polder")
+  # add map coeffs for biased map if debug=True
+  if (debug):
+    mtz_dataset.add_miller_array(
+      miller_array      = results.mc_biased,
+      column_root_label = "mFo-DFc_bias_omit")
+  mtz_dataset.add_miller_array(
+    miller_array      = results.mc_omit,
+    column_root_label = "mFo-DFc_omit")
+  mtz_object = mtz_dataset.mtz_object()
+  polder_file_name = "polder_map_coeffs.mtz"
+  if (prefix is not None):
+    polder_file_name = prefix + "_" + polder_file_name
+  mtz_object.write(file_name = polder_file_name)
+  print >> log, 'File %s was written.' % polder_file_name
 
 def cmd_run(args, validated = False):
   # processing command-line (out of the polder class)
@@ -270,8 +401,8 @@ def cmd_run(args, validated = False):
     print >> log, "  Free-R flags: Not present"
   model_basename = os.path.basename(params.model_file_name.split(".")[0])
   if (len(model_basename) > 0 and
-    params.polder.output_file_name_prefix is None):
-    params.polder.output_file_name_prefix = model_basename
+    params.output_file_name_prefix is None):
+    params.output_file_name_prefix = model_basename
   #print params.output_file_name_prefix
   new_params =  master_params().format(python_object = params)
   print >> log, "*"*79
@@ -328,9 +459,23 @@ def cmd_run(args, validated = False):
     selection_bool    = selection_bool)
   polder_object.validate()
   polder_object.run()
-  polder_object.print_rfactors()
-  polder_object.write_files()
-  polder_object.validate_polder_map()
+  results = polder_object.get_results()
+  print_rfactors(
+    debug   = params.debug,
+    results = results,
+    log     = log)
+  write_files(
+    results     = results,
+    mask_output = params.mask_output,
+    debug       = params.debug,
+    f_obs       = f_obs,
+    prefix      = params.output_file_name_prefix,
+    log         = log)
+  print_validation(
+    log     = log,
+    pdb_hierarchy_selected = pdb_hierarchy_selected,
+    results = results,
+    debug   = params.debug)
   #
   print >> log, '*' * 79
   print >> log, "Finished."
