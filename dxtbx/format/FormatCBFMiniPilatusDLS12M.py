@@ -94,14 +94,12 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     else:
       off_x = 184.9
 
-    z += beam_shift_y * y
-
     detector = Detector()
     root = detector.hierarchy()
     root.set_frame(
       x.elems,
       y.elems,
-      (-distance * z).elems)
+      (-distance * z + (beam_shift_y * y)).elems)
 
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
