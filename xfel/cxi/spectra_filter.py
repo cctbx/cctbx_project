@@ -59,7 +59,10 @@ class spectra_filter(object):
     self.src = psana.Source(params.spectra_filter.detector_address)
     self.roi = params.spectra_filter.roi
     self.bg_roi = params.spectra_filter.background_roi
-    self.dark_pickle = easy_pickle.load(params.spectra_filter.background_path)['DATA'].as_numpy_array()
+    if params.spectra_filter.background_path is None:
+      self.dark_pickle = None
+    else:
+      self.dark_pickle = easy_pickle.load(params.spectra_filter.background_path)['DATA'].as_numpy_array()
     self.peak_range = params.spectra_filter.peak_range
     self.params = params
 
@@ -79,14 +82,16 @@ class spectra_filter(object):
       print "No data"
       return False, None, None, None, None, None
     print cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)),
+    data = np.array(all_data.data16().astype(np.int32))
+    if self.dark_pickle is None:
+      self.dark_pickle = np.zeros(data.shape)
     if self.bg_roi is None:
       dc_offset = None
       dc_offset_mean = 0.0
     else:
       xmin, xmax, ymin, ymax = self.bg_roi
-      dc_offset = np.array(all_data.data16().astype(np.int32))[ymin:ymax,xmin:xmax] - self.dark_pickle[ymin:ymax,xmin:xmax] #dc: direct current
+      dc_offset = data[ymin:ymax,xmin:xmax] - self.dark_pickle[ymin:ymax,xmin:xmax] #dc: direct current
       dc_offset_mean = np.mean(dc_offset)
-    data = np.array(all_data.data16().astype(np.int32))
     if self.roi is None:
       xmin = 0; ymin = 0
       ymax, xmax = data.shape
