@@ -94,11 +94,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     thickness = float(
       self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
 
-    # for longer wavelength data sets move 192.3 below to 184.9
-    if wavelength < 1.128:
-      off_x = 191.9
-    else:
-      off_x = 184.9
+    off_x = 184.9
 
     detector = Detector()
     root = detector.hierarchy()
