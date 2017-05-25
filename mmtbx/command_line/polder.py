@@ -19,7 +19,7 @@ from cStringIO import StringIO
 from cctbx import maptbx
 #from cctbx import miller
 from cctbx.array_family import flex
-#from libtbx import group_args
+from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx.utils import multi_out
 #from libtbx.math_utils import ifloor, iceil
@@ -319,30 +319,20 @@ def write_files(results, mask_output, debug, f_obs, prefix, log):
   mtz_object.write(file_name = polder_file_name)
   print >> log, 'File %s was written.' % polder_file_name
 
-def cmd_run(args, validated = False):
-  # processing command-line (out of the polder class)
-  log = multi_out()
-  log.register("stdout", sys.stdout)
-  log_file_name = "polder.log"
-  logfile = open(log_file_name, "w")
-  log.register("logfile", logfile)
-  if len(args) == 0:
-    print_legend_and_usage(log)
-    return
-  print >> log, "phenix.polder is running..."
-  print >> log, "input parameters:\n", args
+def get_inputs(args, log, master_params, validated):
   inputs = mmtbx.utils.process_command_line_args(
     args                             = args,
-    master_params                    = master_params(),
+    master_params                    = master_params,
     suppress_symmetry_related_errors = True)
   params = inputs.params.extract()
-  #
+  print params.model_file_name
   # Check model file
   if (len(inputs.pdb_file_names) == 0 and (params.model_file_name is None)):
     raise Sorry("No model file found.")
   elif (len(inputs.pdb_file_names) == 1):
     params.model_file_name = inputs.pdb_file_names[0]
-  else:
+  elif (len(inputs.pdb_file_names) > 1):
+  #else:
     raise Sorry("Only one model file should be given")
   #
   # Check reflection file(s)
@@ -403,8 +393,7 @@ def cmd_run(args, validated = False):
   if (len(model_basename) > 0 and
     params.output_file_name_prefix is None):
     params.output_file_name_prefix = model_basename
-  #print params.output_file_name_prefix
-  new_params =  master_params().format(python_object = params)
+  new_params =  master_params.format(python_object = params)
   print >> log, "*"*79
   new_params.show()
   if (not validated):
@@ -433,29 +422,55 @@ def cmd_run(args, validated = False):
     f_obs, r_free_flags = prepare_f_obs_and_flags(
       f_obs        = f_obs,
       r_free_flags = r_free_flags)
+  return group_args(
+    f_obs             = f_obs,
+    r_free_flags      = r_free_flags,
+    xray_structure    = xray_structure,
+    pdb_hierarchy     = pdb_hierarchy,
+    params            = params)
+
+def run(args, validated = False, out=sys.stdout):
+  # processing command-line (out of the polder class)
+  log = multi_out()
+  log.register("stdout", sys.stdout)
+  log_file_name = "polder.log"
+  logfile = open(log_file_name, "w")
+  log.register("logfile", logfile)
+  if len(args) == 0:
+    print_legend_and_usage(log)
+    return
+  print >> log, "phenix.polder is running..."
+  print >> log, "input parameters:\n", args
+  #
+  inputs = get_inputs(
+    args          = args,
+    log           = log,
+    master_params = master_params(),
+    validated     = validated)
+  params = inputs.params
   #
   # Check if selection syntax makes sense
   print >> log, "*"*79
   print >> log, "selecting atoms..."
   print >> log, "Selection string:", params.solvent_exclusion_mask_selection
-  selection_bool = pdb_hierarchy.atom_selection_cache().selection(
+  selection_bool = inputs.pdb_hierarchy.atom_selection_cache().selection(
     string = params.solvent_exclusion_mask_selection)
   n_selected = selection_bool.count(True)
   if(n_selected == 0):
     raise Sorry("No atoms where selected. Check selection syntax again.")
   print >> log, "Number of atoms selected:", n_selected
-  pdb_hierarchy_selected = pdb_hierarchy.select(selection_bool)
+  pdb_hierarchy_selected = inputs.pdb_hierarchy.select(selection_bool)
   ligand_str = pdb_hierarchy_selected.as_pdb_string()
   print >> log, "Atoms selected:\n", ligand_str
   print >> log, "*"*79
   #
   # Calculate polder map
   polder_object = mmtbx.maps.polder_lib.compute_polder_map(
-    f_obs             = f_obs,
-    r_free_flags      = r_free_flags,
-    xray_structure    = xray_structure,
-    pdb_hierarchy     = pdb_hierarchy,
-    params            = params.polder,
+    f_obs             = inputs.f_obs,
+    r_free_flags      = inputs.r_free_flags,
+    xray_structure    = inputs.xray_structure,
+    pdb_hierarchy     = inputs.pdb_hierarchy,
+    params            = inputs.params.polder,
     selection_bool    = selection_bool)
   polder_object.validate()
   polder_object.run()
@@ -468,7 +483,7 @@ def cmd_run(args, validated = False):
     results     = results,
     mask_output = params.mask_output,
     debug       = params.debug,
-    f_obs       = f_obs,
+    f_obs       = inputs.f_obs,
     prefix      = params.output_file_name_prefix,
     log         = log)
   print_validation(
@@ -490,7 +505,7 @@ class launcher (runtime_utils.target_with_save_result) :
     from wxGUI2 import utils
     utils.safe_makedirs(self.output_dir)
     os.chdir(self.output_dir)
-    result = cmd_run(args=self.args, validated=True, out=sys.stdout)
+    result = run(args=self.args, validated=True, out=sys.stdout)
     return result
 
 # =============================================================================
@@ -498,6 +513,6 @@ class launcher (runtime_utils.target_with_save_result) :
 #  assert cmd_run(args=sys.argv[1:]) is None # assert here is intentional
 if __name__ == "__main__":
   t0 = time.time()
-  cmd_run(args = sys.argv[1:])
+  run(args = sys.argv[1:])
   print "Time:", round(time.time()-t0, 2)
   print 'polder_new'
