@@ -33,6 +33,12 @@ phil_scope = parse('''
     address = None
       .type = str
       .help = Detector address, e.g. CxiDs2.0:Cspad.0 or detector alias, e.g. Ds1CsPad
+    calib_dir = None
+      .type = str
+      .help = Non-standard calib directory location
+    xtc_dir = None
+      .type = str
+      .help = Non-standard xtc directory location
   }
   format {
     file_format = *cbf pickle
@@ -124,7 +130,13 @@ class Script(object):
     if params.input.cfg is not None:
       psana.setConfigFile(params.input.cfg)
 
+    if params.input.calib_dir is not None:
+      psana.setOption('psana.calib-dir',params.input.calib_dir)
+
     dataset_name = "exp=%s:run=%s:idx"%(params.input.experiment,params.input.run_num)
+    if params.input.xtc_dir is not None:
+      dataset_name = "exp=%s:run=%s:idx:dir=%s"%(params.input.experiment,params.input.run_num,params.input.xtc_dir)
+
     ds = psana.DataSource(dataset_name)
 
     if params.format.file_format == "cbf":

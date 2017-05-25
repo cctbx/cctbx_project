@@ -132,6 +132,10 @@ xtc_phil_str = '''
       .type = str
       .help = Optional path to data directory if it's non-standard. Only needed if xtc \
               streams are not in the standard location for your PSDM installation.
+    calib_dir = None
+      .type = str
+      .help = Optional path to calib directory if it's non-standard. Only needed if calib \
+              data are not in the standard location for your PSDM installation.
     trial = None
       .type = int
       .help = Optional. Trial number for this run.
@@ -465,6 +469,8 @@ class InMemScript(DialsProcessScript):
       dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
     if params.input.stream is not None:
       dataset_name += ":stream=%d"%params.input.stream
+    if params.input.calib_dir is not None:
+      psana.setOption('psana.calib-dir',params.input.calib_dir)
     ds = psana.DataSource(dataset_name)
 
     if params.format.file_format == "cbf":
@@ -497,11 +503,11 @@ class InMemScript(DialsProcessScript):
           self.dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
           assert len(self.dials_mask) == 64
           if self.params.format.cbf.mask_nonbonded_pixels:
-            psana_mask = self.psana_det.mask(run,calib=False,status=False,edges=False,central=False,unbond=True,unbondnbrs=True)
+            psana_mask = self.psana_det.mask(run.run(),calib=False,status=False,edges=False,central=False,unbond=True,unbondnbrs=True)
             dials_mask = self.psana_mask_to_dials_mask(psana_mask)
             self.dials_mask = [self.dials_mask[i] & dials_mask[i] for i in xrange(len(dials_mask))]
         else:
-          psana_mask = self.psana_det.mask(run,calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
+          psana_mask = self.psana_det.mask(run.run(),calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
           self.dials_mask = self.psana_mask_to_dials_mask(psana_mask)
 
       if self.params.spotfinder.lookup.mask is not None:
