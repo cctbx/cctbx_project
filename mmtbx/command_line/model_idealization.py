@@ -45,6 +45,10 @@ map_file_name = None
   .type = path
   .help = User-provided map that will be used as reference
   .expert_level = 0
+ligands_file_name = None
+  .type = path
+  .help = User-provided ligand restraints
+  .expert_level = 0
 trim_alternative_conformations = False
   .type = bool
   .help = Leave only atoms with empty altloc
@@ -433,7 +437,7 @@ class model_idealization():
             pdb_interpretation_params = params.pdb_interpretation,
             stop_for_unknowns         = False,
             log=log,
-            cif_objects=None)
+            cif_objects=self.cif_objects)
     processed_pdb_file, junk = processed_pdb_files_srv.\
         process_pdb_files(
             raw_records=flex.split_lines(self.whole_pdb_h.as_pdb_string()))
@@ -1012,7 +1016,8 @@ def run(args):
       args=args,
       master_phil=master_params(),
       pdb_file_def="file_name",
-      map_file_def="map_file_name")
+      map_file_def="map_file_name",
+      cif_file_def="ligands_file_name")
   work_params = input_objects.work.extract()
   input_objects.work.show(prefix=" ", out=log)
   if len(work_params.file_name) == 0:
@@ -1022,6 +1027,11 @@ def run(args):
   log_file_name = "%s.log" % work_params.output_prefix
   logfile = open(log_file_name, "w")
   log.register("logfile", logfile)
+  err_log = multi_out()
+  err_log.register(label="log", file_object=log)
+  # err_log.register(label="stderr", file_object=sys.stderr)
+  sys.stderr = err_log
+
   if work_params.loop_idealization.output_prefix is None:
     work_params.loop_idealization.output_prefix = "%s_rama_fixed" % work_params.output_prefix
 
@@ -1035,10 +1045,10 @@ def run(args):
   crystal_symmetry = None
   map_data = None
 
-  if work_params.map_file_name is not None:
-    af = any_file(work_params.map_file_name)
-    print >> log, "Processing input CCP4 map file..."
-    map_data = af.file_content.data.as_double()
+  if input_objects.get_file(work_params.map_file_name) is not None:
+    # af = any_file(work_params.map_file_name)
+    # print >> log, "Processing input CCP4 map file..."
+    map_data = input_objects.map_file_def.file_content.data.as_double()
     try:
       map_cs = af.crystal_symmetry()
     except NotImplementedError as e:
@@ -1065,7 +1075,6 @@ def run(args):
       pass
     else:
       raise e
-
   mi_object = model_idealization(
       pdb_input=pdb_input,
       cif_objects=input_objects.cif_file_def,

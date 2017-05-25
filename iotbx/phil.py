@@ -245,6 +245,8 @@ Full parameters:
     return self._cache.get(file_name, None)
 
   def get_file (self, file_name, force_type=None) :
+    if file_name is None:
+      return None
     input_file = self._cache.get(file_name)
     if (input_file is None) :
       from iotbx import file_reader
