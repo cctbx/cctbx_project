@@ -637,8 +637,6 @@ class annotation(structure_base):
         result.filter_sheets_with_long_hbonds(hierarchy, asc)
     return result
 
-
-
   def remove_empty_annotations(self, hierarchy, asc=None):
     # returns annotation of deleted helices and sheets
     if asc is None:
@@ -708,6 +706,9 @@ class annotation(structure_base):
           h2_hierarchy = hierarchy.select(asc.selection(self.helices[i].as_atom_selections()[0]))
           xrs1 = h1_hierarchy.extract_xray_structure()
           xrs2 = h2_hierarchy.extract_xray_structure()
+          if xrs1.sites_cart().size() < 2 or xrs2.sites_cart().size() < 2:
+            new_helices.append(self.helices[i])
+            continue
           a1, a2, angle = calculate_axes_and_angle_directional(
               xrs1,
               xrs2)
@@ -731,18 +732,22 @@ class annotation(structure_base):
           else:
             # or separate them by moving borders by 1 residue
             h1_rg = [x for x in h1_hierarchy.residue_groups()][-2]
-            h2_rg = [x for x in h2_hierarchy.residue_groups()][1]
-            new_helices[-1].end_resname = h1_rg.atom_groups()[0].resname
-            new_helices[-1].set_end_resseq(h1_rg.resseq)
-            new_helices[-1].end_icode = h1_rg.icode
-            new_helices[-1].length -= 1
+            h2_rgs = [x for x in h2_hierarchy.residue_groups()]
+            if len(h2_rgs) > 3:
+              # short one could creep here
+              h2_rg = [x for x in h2_hierarchy.residue_groups()][1]
 
-            self.helices[i].start_resname = h2_rg.atom_groups()[0].resname
-            self.helices[i].set_start_resseq(h2_rg.resseq)
-            self.helices[i].start_icode = h2_rg.icode
-            self.helices[i].length -= 1
+              new_helices[-1].end_resname = h1_rg.atom_groups()[0].resname
+              new_helices[-1].set_end_resseq(h1_rg.resseq)
+              new_helices[-1].end_icode = h1_rg.icode
+              new_helices[-1].length -= 1
 
-            new_helices.append(self.helices[i])
+              self.helices[i].start_resname = h2_rg.atom_groups()[0].resname
+              self.helices[i].set_start_resseq(h2_rg.resseq)
+              self.helices[i].start_icode = h2_rg.icode
+              self.helices[i].length -= 1
+
+              new_helices.append(self.helices[i])
 
         else:
           new_helices.append(self.helices[i])

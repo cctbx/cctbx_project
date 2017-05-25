@@ -1493,6 +1493,131 @@ def tst_concatenate_consecutive_helices3():
   assert ann.helices[1].get_start_resseq_as_int() == 243
   assert ann.helices[1].get_end_resseq_as_int() == 260
 
+def tst_concatenate_consecutive_helices4():
+  pdb_str = """\
+HELIX  130 AO4 ASP i  421  GLY i  433  1                                  25
+HELIX  131 AO5 GLY i  434  UNK i  441  1                                   8
+ATOM  29887  N   ASP i 421     299.903 227.017 234.954  1.00 60.00           N
+ATOM  29888  CA  ASP i 421     298.473 226.790 234.820  1.00 60.00           C
+ATOM  29889  C   ASP i 421     298.155 226.535 233.351  1.00 60.00           C
+ATOM  29890  O   ASP i 421     297.473 225.562 233.002  1.00 60.00           O
+ATOM  29891  CB  ASP i 421     297.680 227.986 235.352  1.00 60.00           C
+ATOM  29892  CG  ASP i 421     296.231 227.646 235.639  1.00 60.00           C
+ATOM  29893  OD1 ASP i 421     295.733 226.637 235.095  1.00 60.00           O
+ATOM  29894  OD2 ASP i 421     295.586 228.390 236.409  1.00 60.00           O1-
+ATOM  29895  N   ASP i 422     298.673 227.411 232.492  1.00 60.00           N
+ATOM  29896  CA  ASP i 422     298.476 227.272 231.053  1.00 60.00           C
+ATOM  29897  C   ASP i 422     299.031 225.943 230.539  1.00 60.00           C
+ATOM  29898  O   ASP i 422     298.395 225.273 229.722  1.00 60.00           O
+ATOM  29899  CB  ASP i 422     299.132 228.437 230.309  1.00 60.00           C
+ATOM  29900  CG  ASP i 422     298.563 229.783 230.718  1.00 60.00           C
+ATOM  29901  OD1 ASP i 422     297.410 229.825 231.194  1.00 60.00           O
+ATOM  29902  OD2 ASP i 422     299.274 230.798 230.560  1.00 60.00           O1-
+ATOM  29903  N   MET i 423     300.208 225.559 231.027  1.00 60.00           N
+ATOM  29904  CA  MET i 423     300.834 224.314 230.589  1.00 60.00           C
+ATOM  29905  C   MET i 423     300.122 223.092 231.164  1.00 60.00           C
+ATOM  29906  O   MET i 423     300.167 222.012 230.579  1.00 60.00           O
+ATOM  29907  CB  MET i 423     302.314 224.291 230.974  1.00 60.00           C
+ATOM  29908  CG  MET i 423     303.096 225.488 230.468  1.00 60.00           C
+ATOM  29909  SD  MET i 423     302.799 225.820 228.722  1.00 60.00           S
+ATOM  29910  CE  MET i 423     302.434 227.573 228.771  1.00 60.00           C
+ATOM  29911  N   GLN i 424     299.477 223.265 232.315  1.00 60.00           N
+ATOM  29912  CA  GLN i 424     298.638 222.217 232.893  1.00 60.00           C
+ATOM  29913  C   GLN i 424     297.452 221.966 231.973  1.00 60.00           C
+ATOM  29914  O   GLN i 424     297.170 220.820 231.589  1.00 60.00           O
+ATOM  29915  CB  GLN i 424     298.157 222.611 234.295  1.00 60.00           C
+ATOM  29916  CG  GLN i 424     297.207 221.609 234.945  1.00 60.00           C
+ATOM  29917  CD  GLN i 424     296.714 222.061 236.312  1.00 60.00           C
+ATOM  29918  OE1 GLN i 424     297.059 221.470 237.336  1.00 60.00           O
+ATOM  29919  NE2 GLN i 424     295.895 223.107 236.333  1.00 60.00           N
+ATOM  29920  N   ARG i 425     296.767 223.051 231.620  1.00 60.00           N
+ATOM  29921  CA  ARG i 425     295.650 222.977 230.687  1.00 60.00           C
+ATOM  29922  C   ARG i 425     296.091 222.293 229.399  1.00 60.00           C
+ATOM  29923  O   ARG i 425     295.457 221.346 228.945  1.00 60.00           O
+ATOM  29924  CB  ARG i 425     295.092 224.370 230.377  1.00 60.00           C
+ATOM  29925  CG  ARG i 425     293.590 224.512 230.605  1.00 60.00           C
+ATOM  29926  CD  ARG i 425     292.980 225.574 229.700  1.00 60.00           C
+ATOM  29927  NE  ARG i 425     291.868 226.275 230.339  1.00 60.00           N
+ATOM  29928  CZ  ARG i 425     291.310 227.385 229.870  1.00 60.00           C
+ATOM  29929  NH1 ARG i 425     291.756 227.932 228.749  1.00 60.00           N1+
+ATOM  29930  NH2 ARG i 425     290.306 227.953 230.524  1.00 60.00           N
+ATOM  29931  N   MET i 426     297.200 222.769 228.837  1.00 60.00           N
+ATOM  29932  CA  MET i 426     297.726 222.249 227.576  1.00 60.00           C
+ATOM  29933  C   MET i 426     298.063 220.762 227.672  1.00 60.00           C
+ATOM  29934  O   MET i 426     297.832 220.003 226.728  1.00 60.00           O
+ATOM  29935  CB  MET i 426     298.965 223.045 227.158  1.00 60.00           C
+ATOM  29936  CG  MET i 426     299.272 222.986 225.672  1.00 60.00           C
+ATOM  29937  SD  MET i 426     297.903 223.582 224.659  1.00 60.00           S
+ATOM  29938  CE  MET i 426     297.647 225.215 225.350  1.00 60.00           C
+ATOM  29939  N   MET i 427     298.608 220.357 228.815  1.00 60.00           N
+ATOM  29940  CA  MET i 427     298.910 218.957 229.074  1.00 60.00           C
+ATOM  29941  C   MET i 427     297.629 218.130 229.045  1.00 60.00           C
+ATOM  29942  O   MET i 427     297.599 217.034 228.481  1.00 60.00           O
+ATOM  29943  CB  MET i 427     299.623 218.797 230.420  1.00 60.00           C
+ATOM  29944  CG  MET i 427     299.974 217.361 230.776  1.00 60.00           C
+ATOM  29945  SD  MET i 427     301.027 216.576 229.543  1.00 60.00           S
+ATOM  29946  CE  MET i 427     302.516 217.559 229.687  1.00 60.00           C
+ATOM  29947  N   LYS i 428     296.566 218.668 229.639  1.00 60.00           N
+ATOM  29948  CA  LYS i 428     295.287 217.960 229.648  1.00 60.00           C
+ATOM  29949  C   LYS i 428     294.684 217.856 228.244  1.00 60.00           C
+ATOM  29950  O   LYS i 428     294.204 216.790 227.846  1.00 60.00           O
+ATOM  29951  CB  LYS i 428     294.293 218.638 230.591  1.00 60.00           C
+ATOM  29952  CG  LYS i 428     292.995 217.862 230.757  1.00 60.00           C
+ATOM  29953  CD  LYS i 428     293.268 216.449 231.255  1.00 60.00           C
+ATOM  29954  CE  LYS i 428     292.556 215.408 230.404  1.00 60.00           C
+ATOM  29955  NZ  LYS i 428     292.980 214.020 230.745  1.00 60.00           N1+
+ATOM  29956  N   LYS i 429     294.712 218.960 227.504  1.00 60.00           N
+ATOM  29957  CA  LYS i 429     294.172 218.989 226.148  1.00 60.00           C
+ATOM  29958  C   LYS i 429     294.929 218.009 225.261  1.00 60.00           C
+ATOM  29959  O   LYS i 429     294.346 217.366 224.388  1.00 60.00           O
+ATOM  29960  CB  LYS i 429     294.242 220.400 225.555  1.00 60.00           C
+ATOM  29961  CG  LYS i 429     293.617 221.490 226.417  1.00 60.00           C
+ATOM  29962  CD  LYS i 429     292.188 221.161 226.813  1.00 60.00           C
+ATOM  29963  CE  LYS i 429     291.587 222.262 227.676  1.00 60.00           C
+ATOM  29964  NZ  LYS i 429     290.229 221.908 228.178  1.00 60.00           N1+
+ATOM  29965  N   MET i 430     296.234 217.901 225.494  1.00 60.00           N
+ATOM  29966  CA  MET i 430     297.067 216.954 224.765  1.00 60.00           C
+ATOM  29967  C   MET i 430     296.716 215.527 225.165  1.00 60.00           C
+ATOM  29968  O   MET i 430     296.753 214.611 224.342  1.00 60.00           O
+ATOM  29969  CB  MET i 430     298.549 217.227 225.033  1.00 60.00           C
+ATOM  29970  CG  MET i 430     299.494 216.622 224.008  1.00 60.00           C
+ATOM  29971  SD  MET i 430     299.571 217.597 222.493  1.00 60.00           S
+ATOM  29972  CE  MET i 430     300.171 219.160 223.133  1.00 60.00           C
+ATOM  29973  N   LYS i 431     296.369 215.348 226.436  1.00 60.00           N
+ATOM  29974  CA  LYS i 431     296.049 214.027 226.968  1.00 60.00           C
+ATOM  29975  C   LYS i 431     294.744 213.476 226.401  1.00 60.00           C
+ATOM  29976  O   LYS i 431     294.664 212.306 226.030  1.00 60.00           O
+ATOM  29977  CB  LYS i 431     295.967 214.077 228.496  1.00 60.00           C
+ATOM  29978  N   LYS i 432     293.725 214.326 226.335  1.00 60.00           N
+ATOM  29979  CA  LYS i 432     292.386 213.879 225.955  1.00 60.00           C
+ATOM  29980  C   LYS i 432     292.198 213.671 224.449  1.00 60.00           C
+ATOM  29981  O   LYS i 432     291.551 212.713 224.030  1.00 60.00           O
+ATOM  29982  CB  LYS i 432     291.343 214.877 226.461  1.00 60.00           C
+ATOM  29983  CG  LYS i 432     291.590 216.291 225.986  1.00 60.00           C
+ATOM  29984  CD  LYS i 432     290.369 217.161 226.134  1.00 60.00           C
+ATOM  29985  CE  LYS i 432     290.549 218.436 225.337  1.00 60.00           C
+ATOM  29986  NZ  LYS i 432     289.514 219.436 225.680  1.00 60.00           N1+
+ATOM  29987  N   GLY i 433     292.750 214.573 223.643  1.00 60.00           N
+ATOM  29988  CA  GLY i 433     292.514 214.550 222.211  1.00 60.00           C
+ATOM  29989  C   GLY i 433     293.553 213.806 221.400  1.00 60.00           C
+ATOM  29990  O   GLY i 433     294.685 213.618 221.845  1.00 60.00           O
+ATOM  29991  N   GLY i 434     293.168 213.376 220.205  1.00 60.00           N
+ATOM  29992  CA  GLY i 434     294.107 212.724 219.309  1.00 60.00           C
+ATOM  29993  C   GLY i 434     295.180 213.712 218.931  1.00 60.00           C
+ATOM  29994  O   GLY i 434     294.922 214.909 218.843  1.00 60.00           O
+TER
+END
+  """
+  pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
+  h = pdb_inp.construct_hierarchy()
+  ss_ann = pdb_inp.extract_secondary_structure()
+  assert ss_ann.get_n_helices() == 2
+  ss_ann.concatenate_consecutive_helices(hierarchy=h)
+  assert ss_ann.get_n_helices() == 1
+  # print ss_ann
+  assert ss_ann.helices[0].get_start_resseq_as_int() == 421
+  assert ss_ann.helices[0].get_end_resseq_as_int() == 433
+
 def tst_simple_elements():
   ann_str = """\
 HELIX    3 AA3 SER B   26  LYS B   30  5                                   5
@@ -1536,7 +1661,7 @@ def tst_filter_sheets_with_long_hbonds():
   h = inp.construct_hierarchy()
   ann = original_ann.deep_copy()
   ann.filter_sheets_with_long_hbonds(hierarchy=h)
-  print ann
+  # print ann
   assert ann.get_n_helices() == 1, ann.get_n_helices()
   assert ann.get_n_sheets() == 2, ann.get_n_sheets() # with filtering out short ones
 
@@ -1668,6 +1793,7 @@ if (__name__ == "__main__"):
   tst_concatenate_consecutive_helices()
   tst_concatenate_consecutive_helices2()
   tst_concatenate_consecutive_helices3()
+  tst_concatenate_consecutive_helices4()
   tst_filter_sheets_with_long_hbonds()
   tst_filter_sheets_with_long_hbonds2()
   tst_reset_sheet_ids()
