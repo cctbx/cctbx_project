@@ -10,7 +10,7 @@ import iotbx.pdb
 import mmtbx.maps.polder_lib
 #-----
 #from mmtbx import map_tools
-#from iotbx import ccp4_map
+from iotbx import ccp4_map
 from iotbx import file_reader
 #from iotbx import phil
 from iotbx import reflection_file_utils
@@ -105,16 +105,6 @@ scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
   .short_caption = Scattering table
   .help = Scattering table for structure factors calculations
-box_buffer = None
-  .type = float
-  .short_caption = Buffer around selection box
-  .help = Buffer around selection box: Increase the box for resetting the mask \
-   by a buffer.
-compute_box = False
-  .type = bool
-  .short_caption = Reset mask within a box defined by atom selection
-  .help = Reset mask within a box (parallel to unit cell axes) defined by an \
-   atom selection
 output_file_name_prefix = None
   .type = str
   .short_caption = Output prefix
@@ -139,6 +129,7 @@ gui
   .style = output_dir
 }
 include scope mmtbx.maps.polder_lib.master_params
+include scope libtbx.phil.interface.tracking_params
 """
 
 def master_params():
@@ -486,11 +477,12 @@ def run(args, validated = False, out=sys.stdout):
     f_obs       = inputs.f_obs,
     prefix      = params.output_file_name_prefix,
     log         = log)
-  print_validation(
-    log     = log,
-    pdb_hierarchy_selected = pdb_hierarchy_selected,
-    results = results,
-    debug   = params.debug)
+  if (not params.polder.compute_box):
+    print_validation(
+      log     = log,
+      pdb_hierarchy_selected = pdb_hierarchy_selected,
+      results = results,
+      debug   = params.debug)
   #
   print >> log, '*' * 79
   print >> log, "Finished."
@@ -515,4 +507,3 @@ if __name__ == "__main__":
   t0 = time.time()
   run(args = sys.argv[1:])
   print "Time:", round(time.time()-t0, 2)
-  print 'polder_new'

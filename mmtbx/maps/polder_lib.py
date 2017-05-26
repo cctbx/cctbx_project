@@ -19,7 +19,7 @@ from cctbx.array_family import flex
 from libtbx import group_args
 #from libtbx.utils import Sorry
 #from libtbx.utils import multi_out
-#from libtbx.math_utils import ifloor, iceil
+from libtbx.math_utils import ifloor, iceil
 
 
 master_params_str = """
@@ -32,6 +32,16 @@ polder {
     .type = float
     .short_caption = Solvent exclusion radius
     .help = Radius of sphere around atoms where solvent mask is reset to zero
+  box_buffer = None
+    .type = float
+    .short_caption = Buffer around selection box
+    .help = Buffer around selection box: Increase the box for resetting the mask \
+     by a buffer.
+  compute_box = False
+    .type = bool
+    .short_caption = Reset mask within a box defined by atom selection
+    .help = Reset mask within a box (parallel to unit cell axes) defined by an \
+     atom selection
 }
 """
 
@@ -55,6 +65,8 @@ class compute_polder_map():
     #
     self.resolution_factor = self.params.resolution_factor
     self.sphere_radius = self.params.sphere_radius
+    self.box_1, self.box_2, self.box_3 = None, None, None
+    self.fmodel_biased, self.mc_biased = None, None
     #
 
   def validate(self):
@@ -62,44 +74,62 @@ class compute_polder_map():
       self.params, self.selection_bool]
 
   def run(self):
-    # when extracting cartesian coordinates, xray_structure needs to be in P1:
-    self.sites_cart_ligand = self.xray_structure.select(
+    # When extracting cartesian coordinates, xray_structure needs to be in P1:
+    sites_cart_ligand_expanded = self.xray_structure.select(
       self.selection_bool).expand_to_p1(sites_mod_positive = True).sites_cart()
-    # xray structure object without ligand/selection
-    self.xray_structure_noligand = self.xray_structure.select(~self.selection_bool)
+    sites_frac_ligand_expanded = self.xray_structure.select(
+      self.selection_bool).expand_to_p1(sites_mod_positive = False).sites_frac()
+    # xray_structure object without ligand/selection
+    if (self.params.compute_box):
+      self.xray_structure_noligand = self.xray_structure
+    else:
+      self.xray_structure_noligand = self.xray_structure.select(~self.selection_bool)
     self.crystal_gridding = self.f_obs.crystal_gridding(
       d_min             = self.f_obs.d_min(),
       symmetry_flags    = maptbx.use_space_group_symmetry,
       resolution_factor = self.resolution_factor)
     n_real = self.crystal_gridding.n_real()
-    # mask using all atoms
+    # Mask using all atoms
     self.mask_data_all = self.mask_from_xrs_unpadded(
       xray_structure = self.xray_structure,
       n_real         = n_real)
-    # mask if ligand is not in model
+    # Mask if ligand is not in model
     self.mask_data_omit = self.mask_from_xrs_unpadded(
       xray_structure = self.xray_structure_noligand,
       n_real         = n_real)
-    # polder mask
-    self.mask_data_polder = self.modify_mask(
-      mask_data     = self.mask_data_all.deep_copy(),
-      sites_cart    = self.sites_cart_ligand)
-    # compute fmodel and map coeffs for input, biased, polder, omit case
+    # Polder mask
+    if (self.params.compute_box):
+      # TODO: check if mask_omit = mask_all
+      self.mask_data_polder = self.modify_mask_box(
+        mask_data  = self.mask_data_all.deep_copy(),
+        sites_frac =  sites_frac_ligand_expanded)
+    else:
+      self.mask_data_polder = self.modify_mask(
+        mask_data     = self.mask_data_all.deep_copy(),
+        sites_cart    = sites_cart_ligand_expanded)
+    # Compute fmodel and map coeffs for input, biased, polder, omit case
+    # Input model
     self.fmodel_input = mmtbx.f_model.manager(
      f_obs          = self.f_obs,
      r_free_flags   = self.r_free_flags,
      xray_structure = self.xray_structure)
     self.fmodel_input.update_all_scales()
-    self.fmodel_biased, self.mc_biased = self.get_fmodel_and_map_coefficients(
-        xray_structure = self.xray_structure_noligand,
-        mask_data      = self.mask_data_all)
+    # Biased map
+    if (not self.params.compute_box):
+      self.fmodel_biased, self.mc_biased = self.get_fmodel_and_map_coefficients(
+          xray_structure = self.xray_structure_noligand,
+          mask_data      = self.mask_data_all)
+    # Polder map
     self.fmodel_polder, self.mc_polder = self.get_fmodel_and_map_coefficients(
       xray_structure = self.xray_structure_noligand,
       mask_data      = self.mask_data_polder)
+    # OMIT map
     self.fmodel_omit, self.mc_omit = self.get_fmodel_and_map_coefficients(
       xray_structure = self.xray_structure_noligand,
       mask_data      = self.mask_data_omit)
-    self.validate_polder_map()
+    # Validation only applies if selection present in model:
+    if not(self.params.compute_box):
+      self.validate_polder_map()
 
   def modify_mask(self, mask_data, sites_cart):
     sel = maptbx.grid_indices_around_sites(
@@ -112,6 +142,41 @@ class compute_polder_map():
     mask.set_selected(sel, 0)
     mask.reshape(mask_data.accessor())
     return mask
+
+  def modify_mask_box(self, mask_data, sites_frac):
+    #box_cushion = params.box_buffer
+    # Number of selected atoms
+    n_selected = self.selection_bool.count(True)
+    na = mask_data.all()
+    n_selected_p1 = sites_frac.size()
+    #print 'sites in p1:', n_selected_p1
+    n_boxes = int(n_selected_p1/n_selected)
+    box_list = [[] for i in range(n_boxes)]
+    for n_box in range(n_boxes):
+      for i in range(n_selected):
+        box_list[n_box].append(sites_frac[n_box + n_boxes*i])
+    na = self.mask_data_all.all()
+    k = 0
+    for box in box_list:
+      k+=1
+      x_min = min(frac[0] for frac in box)
+      y_min = min(frac[1] for frac in box)
+      z_min = min(frac[2] for frac in box)
+      x_max = max(frac[0] for frac in box)
+      y_max = max(frac[1] for frac in box)
+      z_max = max(frac[2] for frac in box)
+      frac_min = [x_min, y_min, z_min]
+      frac_max = [x_max, y_max, z_max]
+      gridding_first = [ifloor(f * n) for f,n in zip(frac_min, na)]
+      gridding_last  = [iceil(f * n) for f,n in zip(frac_max, na)]
+      #print '----------------'
+      #print 'box number ', k
+      maptbx.set_box(
+        value         = 0,
+        map_data_to   = mask_data,
+        start         = gridding_first,
+        end           = gridding_last)
+    return mask_data
 
   def mask_from_xrs_unpadded(self, xray_structure, n_real):
     mask_params = mmtbx.masks.mask_master_params.extract()
