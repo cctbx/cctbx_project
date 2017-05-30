@@ -148,7 +148,7 @@ class real_space (validation) :
   """
 
   __slots__ = validation.__slots__ + \
-              [ 'overall_rsc', 'everything', 'protein', 'other', 'water' ]
+              ['overall_rsc', 'fsc', 'everything', 'protein', 'other', 'water']
   program_description = "Analyze real space correlation"
   output_header = None
   gui_list_headers = [ "Residue", "B_iso", "Occupancy", "2Fo-Fc", "Fmodel", "CC" ]
@@ -189,6 +189,7 @@ class real_space (validation) :
         if (molprobity_map_params.map_file_name is not None):
           use_maps = True
       # use mmtbx/command_line/map_model_cc.py for maps
+      self.fsc = None
       if (use_maps):
         from mmtbx.maps import map_model_cc
         from iotbx.file_reader import any_file
@@ -202,6 +203,7 @@ class real_space (validation) :
         rsc_object.run()
         rsc = rsc_object.get_results()
         self.overall_rsc = (rsc.cc_mask, rsc.cc_volume, rsc.cc_peaks)
+        self.fsc = rsc.fsc
         rsc = rsc.cc_per_residue
       # mmtbx/real_space_correlation.py for X-ray/neutron data and map
       # coefficients
