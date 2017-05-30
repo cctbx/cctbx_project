@@ -136,6 +136,7 @@ Full parameters:
     self.pdb_file_def = pdb_file_def
     self.reflection_file_def = reflection_file_def
     self.cif_file_def = cif_file_def
+    self.cif_objects = []
     self.map_file_def = map_file_def
     self.seq_file_def = seq_file_def
     self.pickle_file_def = pickle_file_def
@@ -186,6 +187,7 @@ Full parameters:
         file_def_name = self.map_file_def
       elif (f.file_type == "cif") and (self.cif_file_def is not None) :
         file_def_name = self.cif_file_def
+        self.cif_objects.append((file_def_name, f.file_object.model()))
       elif (f.file_type == "seq") and (self.seq_file_def is not None) :
         file_def_name = self.seq_file_def
       elif (f.file_type == "ncs") and (self.ncs_file_def is not None) :

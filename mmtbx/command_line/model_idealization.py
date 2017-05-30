@@ -1079,7 +1079,7 @@ def run(args):
       raise e
   mi_object = model_idealization(
       pdb_input=pdb_input,
-      cif_objects=input_objects.cif_file_def,
+      cif_objects=input_objects.cif_objects,
       map_data = map_data,
       crystal_symmetry = crystal_symmetry,
       params=work_params,
