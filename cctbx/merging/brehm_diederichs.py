@@ -42,6 +42,9 @@ class algorithm2:
   def generate_twin_operators(self):
     from mmtbx.scaling.twin_analyses import twin_laws
     TL = twin_laws(miller_array=self.data)
+    if len(TL.operators) == 0:
+      from libtbx.utils import Sorry
+      raise Sorry("No twin laws are possible for this crystal lattice.")
     for twin_law in TL.operators:
       if self.verbose: print twin_law.operator.r().as_hkl()
     return TL.operators
