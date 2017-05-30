@@ -47,6 +47,7 @@ map_file_name = None
   .expert_level = 0
 ligands_file_name = None
   .type = path
+  .multiple = True
   .help = User-provided ligand restraints
   .expert_level = 0
 trim_alternative_conformations = False
@@ -674,6 +675,7 @@ class model_idealization():
           fname_suffix="ss_ideal",
           grm=self.working_grm)
     self.params.loop_idealization.minimize_whole = not self.using_ncs
+    self.params.loop_idealization.debug = self.params.debug or self.params.loop_idealization.debug
     # self.params.loop_idealization.enabled = False
     # self.params.loop_idealization.variant_search_level = 0
     print >> self.log, "Starting loop idealization"
