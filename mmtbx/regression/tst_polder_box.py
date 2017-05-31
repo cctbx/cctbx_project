@@ -130,9 +130,9 @@ def get_map_stats(map, sites_frac):
 def format_map_stat(m):
   return m.min_max_mean().as_tuple(), (m>flex.mean(m)).count(True)
 
-def exercise_00(prefix="tst_box"):
+def exercise_00(prefix="tst_polder_box"):
   """
-  Test for phenix.polder.
+  Test for phenix.polder using the compute_box=True option.
   """
   f = open("%s.pdb" % prefix, "w")
   f.write(pdb_str)
@@ -162,8 +162,6 @@ def exercise_00(prefix="tst_box"):
     "%s.mtz" % prefix,
     "compute_box=True",
     'solvent_exclusion_mask_selection="%s" ' % selection_string,
-#    'solvent_exclusion_mask_selection="resseq 88"',
-#    'debug="True"',
     'mask_output=True',
     "> %s.log" % prefix
   ])
@@ -181,7 +179,6 @@ def exercise_00(prefix="tst_box"):
       mc_bias_omit = ma.deep_copy()
     if(lbl == "mFo-DFc_omit,PHImFo-DFc_omit"):
       mc_omit = ma.deep_copy()
-  #assert [mc_polder, mc_bias_omit, mc_omit].count(None)==0
   assert [mc_polder, mc_omit].count(None)==0
   cg = maptbx.crystal_gridding(
     unit_cell         = mc_polder.unit_cell(),
@@ -189,7 +186,6 @@ def exercise_00(prefix="tst_box"):
     resolution_factor = 0.25,
     space_group_info  = mc_polder.space_group_info())
   map_polder   = get_map(cg=cg, mc=mc_polder)
-  #map_bias_omit = get_map(cg=cg, mc=mc_bias_omit)
   map_omit     = get_map(cg=cg, mc=mc_omit)
   pdb_hierarchy = iotbx.pdb.input(
     source_info=None, lines=pdb_str).construct_hierarchy()
@@ -197,13 +193,11 @@ def exercise_00(prefix="tst_box"):
   sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
   sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
   mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
-  #mlo = get_map_stats(map=map_bias_omit, sites_frac=sites_frac_lig)
   mo  = get_map_stats(map=map_omit,     sites_frac=sites_frac_lig)
   #
   mmm_mp = mp.min_max_mean().as_tuple()
   mmm_o = mo.min_max_mean().as_tuple()
   print "Polder map : %7.3f %7.3f %7.3f"%mmm_mp
-  #print "Biased map : %7.3f %7.3f %7.3f"%mlo.min_max_mean().as_tuple()
   print "Omit       : %7.3f %7.3f %7.3f"%mmm_o
   #
   assert approx_equal(mmm_mp, [-2.397, 1.706, -0.208], eps=0.1)
