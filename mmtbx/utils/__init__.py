@@ -2323,13 +2323,13 @@ def _get_rotamers_evaluated(
   inf = []
 
   special_position_settings = crystal.special_position_settings(
-    crystal_symmetry = xray_structure.crystal_symmetry())
-  unconditional_general_position_flags = (
-          pdb_hierarchy.atoms().extract_occ() != 1)
+    crystal_symmetry = xrs.crystal_symmetry())
+  # unconditional_general_position_flags = (
+  #         pdb_hierarchy.atoms().extract_occ() != 1)
   site_symmetry_table = \
       special_position_settings.site_symmetry_table(
         sites_cart = xrs.sites_cart(),
-        unconditional_general_position_flags=unconditional_general_position_flags)
+        unconditional_general_position_flags=None)
   original_spi = site_symmetry_table.special_position_indices()
   if len(original_spi) > 0:
     return inf
@@ -2347,7 +2347,7 @@ def _get_rotamers_evaluated(
     site_symmetry_table = \
         special_position_settings.site_symmetry_table(
           sites_cart = rotamer_sites_cart,
-          unconditional_general_position_flags=unconditional_general_position_flags)
+          unconditional_general_position_flags=None)
     spi = site_symmetry_table.special_position_indices()
     if len(spi) > 0:
       continue
