@@ -2320,6 +2320,20 @@ def _get_rotamers_evaluated(
     prefix="a"):
   from cctbx.geometry_restraints import nonbonded_overlaps as nbo
   assert xrs.scatterers().size() == pdb_hierarchy.atoms_size()
+  inf = []
+
+  special_position_settings = crystal.special_position_settings(
+    crystal_symmetry = xray_structure.crystal_symmetry())
+  unconditional_general_position_flags = (
+          pdb_hierarchy.atoms().extract_occ() != 1)
+  site_symmetry_table = \
+      special_position_settings.site_symmetry_table(
+        sites_cart = xrs.sites_cart(),
+        unconditional_general_position_flags=unconditional_general_position_flags)
+  original_spi = site_symmetry_table.special_position_indices()
+  if len(original_spi) > 0:
+    return inf
+
   rotamer_iterator = mmtbx.rotamer.iterator(
       mon_lib_srv         = mon_lib_srv,
       residue             = res,
@@ -2327,10 +2341,17 @@ def _get_rotamers_evaluated(
   if rotamer_iterator is None:
     return None
   i = 0
-  inf = []
   sites_for_nb_overlaps = pdb_hierarchy.atoms().extract_xyz().deep_copy()
   for rotamer, rotamer_sites_cart in rotamer_iterator:
     assert rotamer_sites_cart.size() == res.atoms().size()
+    site_symmetry_table = \
+        special_position_settings.site_symmetry_table(
+          sites_cart = rotamer_sites_cart,
+          unconditional_general_position_flags=unconditional_general_position_flags)
+    spi = site_symmetry_table.special_position_indices()
+    if len(spi) > 0:
+      continue
+
     for j, i_seq in enumerate(sel):
       sites_for_nb_overlaps[reind_dict[i_seq]] = rotamer_sites_cart[j]
     nb_overlaps = nbo.info(
