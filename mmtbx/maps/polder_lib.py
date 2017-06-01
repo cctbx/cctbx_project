@@ -1,6 +1,4 @@
 from __future__ import division
-#import time
-#import os, sys
 import sys
 import mmtbx.f_model
 import mmtbx.utils
@@ -17,8 +15,6 @@ from cctbx import maptbx
 from cctbx import miller
 from cctbx.array_family import flex
 from libtbx import group_args
-#from libtbx.utils import Sorry
-#from libtbx.utils import multi_out
 from libtbx.math_utils import ifloor, iceil
 
 
@@ -144,12 +140,11 @@ class compute_polder_map():
     return mask
 
   def modify_mask_box(self, mask_data, sites_frac):
-    #box_cushion = params.box_buffer
+    box_buffer = self.params.box_buffer
     # Number of selected atoms
     n_selected = self.selection_bool.count(True)
     na = mask_data.all()
     n_selected_p1 = sites_frac.size()
-    #print 'sites in p1:', n_selected_p1
     n_boxes = int(n_selected_p1/n_selected)
     box_list = [[] for i in range(n_boxes)]
     for n_box in range(n_boxes):
@@ -167,10 +162,18 @@ class compute_polder_map():
       z_max = max(frac[2] for frac in box)
       frac_min = [x_min, y_min, z_min]
       frac_max = [x_max, y_max, z_max]
+
+      cs = self.xray_structure.crystal_symmetry()
+
+      # Add buffer to box if indicated.
+      if (box_buffer is not None):
+        cushion = flex.double(cs.unit_cell().fractionalize((box_buffer,)*3))
+        frac_min = list(flex.double(frac_min) - cushion)
+        frac_max = list(flex.double(frac_max) + cushion)
+
       gridding_first = [ifloor(f * n) for f,n in zip(frac_min, na)]
       gridding_last  = [iceil(f * n) for f,n in zip(frac_max, na)]
-      #print '----------------'
-      #print 'box number ', k
+
       maptbx.set_box(
         value         = 0,
         map_data_to   = mask_data,
