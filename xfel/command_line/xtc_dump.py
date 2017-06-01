@@ -117,6 +117,15 @@ class Script(object):
     if not os.path.exists(params.output.output_dir):
       raise Sorry("Output path not found:" + params.output.output_dir)
 
+    #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
+    tmp_dir = params.output.output_dir + '/.tmp'
+    if not os.path.exists(tmp_dir):
+      try:
+        os.makedirs(tmp_dir)
+      except Exception as e:
+        halraiser(e)
+    os.environ['CBF_TMP_DIR'] = tmp_dir
+
     # Save the paramters
     self.params = params
     self.options = options
