@@ -33,6 +33,7 @@ master_params_str = """
   radius_smooth = None
     .type = bool
     .help = Mask smoothing radius (by default set to max(10,d99)
+    .short_caption = Smooth mask
   nproc = 1
     .type = int
     .help = Number of processors to use
