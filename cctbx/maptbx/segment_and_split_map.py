@@ -6138,7 +6138,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
         'density_select=False', ]
     ncs_group_obj,remainder_ncs_group_obj,tracking_data=run(
      args,
-     map_data=map,
+     map_data=map.deep_copy(),
      ncs_obj=ncs_obj,
      crystal_symmetry=si.crystal_symmetry)
 
@@ -6147,7 +6147,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
     file_name=os.path.join(si.output_directory,si.output_weight_map_pickle_file)
     print >>out,"Dumping segmentation data to %s" %(file_name)
     easy_pickle.dump(file_name,tracking_data)
-  
+ 
   if not ncs_obj or ncs_obj.max_operators()==0:
     from mmtbx.ncs.ncs import ncs
     ncs_obj=ncs()
@@ -6318,6 +6318,7 @@ def run_local_sharpening(si=None,
     for xyz_cart in centers_ncs_cart:
       scatterers.append( xray.scatterer(scattering_type="H", label="H",
         site=unit_cell.fractionalize(xyz_cart), u=u, occupancy=1.0))
+    xrs = xray.structure(xrs, scatterers=scatterers)
 
     f_array,phases=get_f_phases_from_map(map_data=map,
        crystal_symmetry=si.crystal_symmetry,
@@ -6332,11 +6333,10 @@ def run_local_sharpening(si=None,
     weight_map=get_map_from_map_coeffs(map_coeffs=weight_f_array,
       crystal_symmetry=si.crystal_symmetry,n_real=map.all())
     min_value=weight_map.as_1d().min_max_mean().min
-    weight_map+=min_value # all positive or zero
+    weight_map=weight_map-min_value # all positive or zero
 
     max_value=weight_map.as_1d().min_max_mean().max
     weight_map=weight_map/max(1.e-10,max_value)  # normalize; max=1 now
-
     min_value=1.e-10  # just a small value for all distances far from center
     s = (weight_map <min_value )  # make extra sure every point is above this
     weight_map=weight_map.set_selected(s,min_value)
@@ -6351,7 +6351,6 @@ def run_local_sharpening(si=None,
  
   print >>out,"\nOverall map created from total of %s local maps" %(i)
 
-  sum_weight_map+=weight_map
   si.map_data=sum_weight_value_map/sum_weight_map
 
   # Get overall b_iso...
