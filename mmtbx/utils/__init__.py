@@ -2332,7 +2332,7 @@ def _get_rotamers_evaluated(
         unconditional_general_position_flags=None)
   original_spi = site_symmetry_table.special_position_indices()
   if len(original_spi) > 0:
-    return inf
+    return None
 
   rotamer_iterator = mmtbx.rotamer.iterator(
       mon_lib_srv         = mon_lib_srv,

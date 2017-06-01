@@ -713,6 +713,9 @@ class manager(object):
         pdb_hierarchy=hierarchy,
         grm=self,
         log=log)
+    # for p in hb_proxies:
+    #   print p.i_seqs[0], p.i_seqs[1], hierarchy.atoms()[p.i_seqs[0]].id_str(), '<-->', hierarchy.atoms()[p.i_seqs[1]].id_str(),
+    #   print hierarchy.atoms()[p.i_seqs[0]].distance(hierarchy.atoms()[p.i_seqs[1]])
     self.add_new_hbond_restraints_in_place(
         proxies=hb_proxies,
         sites_cart=hierarchy.atoms().extract_xyz(),
@@ -877,7 +880,7 @@ class manager(object):
     paired atoms is determined here, therefore the proxy.rt_mx_ji may be
     anything."""
     import time
-    rt_mx_ji_options = [[]] * len(proxies)
+    rt_mx_ji_options = [[] for x in proxies]
     # Get current max bond distance, copied from pair_proxies()
     t0 = time.time()
     bonded_distance_cutoff = max_distance_between_connecting_atoms
@@ -970,14 +973,21 @@ class manager(object):
         # there is no proxy for this pair, so we will not make a bond for it
         continue
       # Sanity check (not necessary because of 'continue' in previous line)
+      # print "n_proxy", n_proxy
       if n_proxy is not None:
+        # print "Adding to options,", n_proxy, rt_mx_ji_options
         #Trying to find rt_mx_ji for connecting atoms
         rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
         rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
         rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
         rt_mx_ji_options[n_proxy].append(rt_mx_ji)
         # print "pair:",  pair.i_seq, pair.j_seq, "n_proxy ", n_proxy,rt_mx_ji
+    # print "rt_mx_ji_options:", rt_mx_ji_options
+    # for i, op in enumerate(rt_mx_ji_options):
+    #   print len(op)
+    # STOP()
     for proxy, rt_mx_ji_option in zip(proxies, rt_mx_ji_options):
+      # print "rt_mx_ji_option", rt_mx_ji_option
       # choose rt_mx_ji
       rt_mx_ji = None
       if len(rt_mx_ji_option) >= 1:
@@ -988,6 +998,7 @@ class manager(object):
           if rmj.is_unit_mx():
             rt_mx_ji = rmj
       # Add new defined bond
+      # print "rt_mx_ji", rt_mx_ji
       if rt_mx_ji is not None:
         # print "Adding new bond:", proxy.i_seqs[0], proxy.i_seqs[1], rt_mx_ji
         all_bonds_asu_table.add_pair(
