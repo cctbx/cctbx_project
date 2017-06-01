@@ -360,7 +360,7 @@ class InMemScript(DialsProcessScript):
       raise Sorry("Output path not found:" + params.output.output_dir)
 
     #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
-    tmp_dir = params.output.output_dir + '/.tmp'
+    tmp_dir = os.path.join(params.output.output_dir, '.tmp')
     if not os.path.exists(tmp_dir):
       try:
         os.makedirs(tmp_dir)
