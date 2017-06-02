@@ -64,7 +64,7 @@ tst_list = (
   ["$D/regression/tst_fmodel_fd.py", "P31"],
   "$D/maps/tst_composite_omit_map.py",
   "$D/maps/tst_composite_omit_map_2.py",
-  "$D/maps/tst_composite_omit_map_3.py",
+#  "$D/maps/tst_composite_omit_map_3.py",
   "$D/maps/tst_correlation.py",
   "$D/regression/ncs/tst_ncs_utils.py",
   "$D/regression/ncs/tst_ncs_search.py",
