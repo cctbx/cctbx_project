@@ -280,6 +280,7 @@ def print_validation(log, results, debug, pdb_hierarchy_selected):
   print >> log, '*' * 79
   message = result_message(cc12 = cc12, cc13 = cc13, cc23 = cc23)
   print >> log, message
+  return message
 
 def write_files(results, mask_output, debug, f_obs, prefix, log):
   # write mask files (if specified)
@@ -477,8 +478,9 @@ def run(args, validated = False, out=sys.stdout):
     f_obs       = inputs.f_obs,
     prefix      = params.output_file_name_prefix,
     log         = log)
+  message = None
   if (not params.polder.compute_box):
-    print_validation(
+    message = print_validation(
       log     = log,
       pdb_hierarchy_selected = pdb_hierarchy_selected,
       results = results,
@@ -486,7 +488,8 @@ def run(args, validated = False, out=sys.stdout):
   #
   print >> log, '*' * 79
   print >> log, "Finished."
-  return True
+  # results object not returned because it contains maps
+  return group_args(message=message)
 
 # =============================================================================
 # GUI-specific class for running command

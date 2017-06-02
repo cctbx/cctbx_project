@@ -1,13 +1,13 @@
 from __future__ import division
-import sys
+#import sys
 import mmtbx.f_model
 import mmtbx.utils
 import mmtbx.masks
-import iotbx.pdb
+#import iotbx.pdb
 from mmtbx import map_tools
-from iotbx import ccp4_map
+#from iotbx import ccp4_map
 #from iotbx import file_reader
-#from iotbx import phil
+from iotbx import phil
 #from iotbx import reflection_file_utils
 #from iotbx import crystal_symmetry_from_any
 #from cStringIO import StringIO
@@ -30,19 +30,19 @@ polder {
     .help = Radius of sphere around atoms where solvent mask is reset to zero
   box_buffer = None
     .type = float
-    .short_caption = Buffer around selection box
+    .short_caption = Selection box buffer
     .help = Buffer around selection box: Increase the box for resetting the mask \
      by a buffer.
   compute_box = False
     .type = bool
-    .short_caption = Reset mask within a box defined by atom selection
+    .short_caption = Use box
     .help = Reset mask within a box (parallel to unit cell axes) defined by an \
      atom selection
 }
 """
 
 def master_params():
-  return iotbx.phil.parse(master_params_str, process_includes = False)
+  return phil.parse(master_params_str, process_includes = False)
 
 class compute_polder_map():
   def __init__(self,
@@ -302,4 +302,3 @@ class compute_polder_map():
 
 #if (__name__ == "__main__"):
 #  run(args=sys.argv[1:])
-
