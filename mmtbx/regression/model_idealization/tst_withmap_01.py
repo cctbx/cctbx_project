@@ -17,6 +17,7 @@ def exercise_01(prefix="tst_mi_map_test_01"):
       "%s_start.pdb" % prefix,
       "use_map_for_reference=True",
       "number_of_refinement_cycles=1",
+      "run_minimization_first=False",
       "loop_idealization.number_of_ccd_trials=1",
       "n_macro=1",
       "debug=True",
