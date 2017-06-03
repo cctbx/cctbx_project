@@ -11,7 +11,6 @@ from scitbx.array_family import flex
 import mmtbx.maps.mtriage
 
 master_params_str = """\
-  include scope libtbx.phil.interface.tracking_params
   map_file_name = None
     .type = path
     .help = Map file name
@@ -33,13 +32,10 @@ master_params_str = """\
     .short_caption = Model file
     .style = file_type:pdb input_file
   include scope mmtbx.maps.mtriage.master_params
-  gui
-    .help = "GUI-specific parameter required for output directory"
-  {
-    output_dir = None
-    .type = path
-    .style = output_dir
-  }
+  fsc_model_plot_file_name_prefix = fsc_model
+    .type = str
+  fsc_half_maps_file_name_prefix = fsc_half_maps
+    .type = str
 """
 
 master_params = iotbx.phil.parse(master_params_str, process_includes=True)
@@ -101,10 +97,9 @@ def get_inputs(args, log, master_params):
     half_map_data_2  = half_map_data_2,
     crystal_symmetry = crystal_symmetry)
 
-def show_histogram(data, n_slots, log, data_1=None, data_2=None):
-  histograms = list()
-  hm = flex.histogram(data = data.as_1d(), n_slots = n_slots)
-  if(data_1 is None):
+def show_histogram(map_histograms, log):
+  if(map_histograms.h_half_map_1 is None):
+    hm = map_histograms.h_map
     print >> log, "                   Values                 Map"
     lc_1 = hm.data_min()
     s_1 = enumerate(hm.slots())
@@ -112,18 +107,13 @@ def show_histogram(data, n_slots, log, data_1=None, data_2=None):
       hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
       print >> log, "%15.4f - %-15.4f : %d" % (lc_1, hc_1, n_1)
       lc_1 = hc_1
-    histograms = [hm]
   else:
     print >> log, \
       "                   Values                 Map Half-map1 Half-map2"
-    data_min = min(flex.min(data), flex.min(data_1), flex.min(data_2))
-    data_max = min(flex.max(data), flex.max(data_1), flex.max(data_2))
-    h0 = flex.histogram(data = data.as_1d(), data_min=data_min,
-      data_max=data_max, n_slots = n_slots)
-    h1 = flex.histogram(data = data_1.as_1d(), data_min=data_min,
-      data_max=data_max, n_slots = n_slots)
-    h2 = flex.histogram(data = data_2.as_1d(), data_min=data_min,
-      data_max=data_max, n_slots = n_slots)
+    h0 = map_histograms.h_map
+    h1 = map_histograms.h_half_map_1
+    h2 = map_histograms.h_half_map_2
+    data_min = map_histograms._data_min
     lc_1 = data_min
     s_0 = enumerate(h0.slots())
     s_1 = h1.slots()
@@ -133,8 +123,6 @@ def show_histogram(data, n_slots, log, data_1=None, data_2=None):
       print >> log, "%15.4f - %-15.4f : %9d %9d %9d" % (
         lc_1, hc_1, n_1, s_1[i_1], s_2[i_1])
       lc_1 = hc_1
-    histograms = [h0, h1, h2]
-  return histograms
 
 def run(args, log=sys.stdout):
   """phenix.mtriage:
@@ -174,51 +162,6 @@ Feedback:
     raise Sorry("Box (unit cell) parameters are not defined.")
   inputs.crystal_symmetry.show_summary(f=log)
   #
-  # Map statistics
-  #
-  broadcast(m="Map statistics:", log=log)
-  map_stats = list()
-  print >> log, "Map:"
-  a = map_data.accessor()
-  map_stats.append(group_args(
-    origin       = a.origin(),
-    last         = a.last(),
-    focus        = a.focus(),
-    all          = a.all(),
-    min_max_mean = map_data.as_1d().min_max_mean().as_tuple() ))
-  print >> log, "  origin:      ", map_stats[0].origin
-  print >> log, "  last:        ", map_stats[0].last
-  print >> log, "  focus:       ", map_stats[0].focus
-  print >> log, "  all:         ", map_stats[0].all
-  print >> log, "  min,max,mean:", map_stats[0].min_max_mean
-  print >> log, "Half-maps:"
-  if(inputs.half_map_data_1 is None):
-    print >> log, "  Half-maps are not provided."
-  else:
-    for i, m in enumerate([inputs.half_map_data_1,inputs.half_map_data_2]):
-      a = m.accessor()
-      m_stats = group_args(
-        origin       = a.origin(),
-        last         = a.last(),
-        focus        = a.focus(),
-        all          = a.all(),
-        min_max_mean = m.as_1d().min_max_mean().as_tuple() )
-      map_stats.append(m_stats)
-      print >> log, "  half-map:", i+1
-      print >> log, "    origin:", m_stats.origin
-      print >> log, "    last:  ", m_stats.last
-      print >> log, "    focus: ", m_stats.focus
-      print >> log, "    all:   ", m_stats.all
-      print >> log, "    min,max,mean:", m_stats.min_max_mean
-  # Map
-  print >> log, "Histogram of map values:"
-  histograms = show_histogram(
-    data    = map_data,
-    data_1  = inputs.half_map_data_1,
-    data_2  = inputs.half_map_data_2,
-    n_slots = 20,
-    log     = log)
-  #
   task_obj = mmtbx.maps.mtriage.mtriage(
     map_data         = inputs.map_data,
     crystal_symmetry = inputs.crystal_symmetry,
@@ -229,10 +172,32 @@ Feedback:
   task_obj.validate()
   task_obj.run()
   results = task_obj.get_results()
-  assert (len(map_stats) == len(histograms))
-  results.crystal_symmetry = inputs.crystal_symmetry
-  results.map_stats = map_stats
-  results.histograms = histograms
+  #
+  # Map statistics
+  #
+  broadcast(m="Map statistics:", log=log)
+  print >> log, "Map:"
+  print >> log, "  origin:      ", results.map_counts.origin
+  print >> log, "  last:        ", results.map_counts.last
+  print >> log, "  focus:       ", results.map_counts.focus
+  print >> log, "  all:         ", results.map_counts.all
+  print >> log, "  min,max,mean:", results.map_counts.min_max_mean
+  #
+  print >> log, "Half-maps:"
+  if(inputs.half_map_data_1 is None):
+    print >> log, "  Half-maps are not provided."
+  else:
+    for i, m in enumerate([results.half_map_1_counts,
+                           results.half_map_2_counts]):
+      print >> log, "  half-map:", i+1
+      print >> log, "    origin:", m.origin
+      print >> log, "    last:  ", m.last
+      print >> log, "    focus: ", m.focus
+      print >> log, "    all:   ", m.all
+      print >> log, "    min,max,mean:", m.min_max_mean
+  #
+  print >> log, "Histogram(s) of map values:"
+  show_histogram(map_histograms = results.map_histograms, log = log)
   # show results
   print >> log, "Map resolution estimates:"
   print >> log, "  using map alone (d99)             :", results.d99
@@ -244,27 +209,34 @@ Feedback:
   print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)   :", results.d_fsc
   print >> log
   #
-  if(results.fsc_curve_model is not None):
-    fn = "fsc_model.mtriage.log"
-    of = open(fn,"w")
-    for a,b in zip(results.fsc_curve_model.fsc.d_inv,
-                   results.fsc_curve_model.fsc.fsc):
-      print >>of, "%15.9f %15.9f"%(a,b)
-    of.close()
-    print >> log, "FSC(model map, map) is written to %s"%fn
+  file_name = "%s.mtriage.log"%inputs.params.fsc_model_plot_file_name_prefix
+  task_obj.write_fsc_curve_model_plot_data(file_name = file_name)
+  print >> log, "FSC(model map, map) is written to %s"%file_name
   #
-  if(results.fsc_curve is not None):
-    fn = "fsc_half_maps.mtriage.log"
-    of = open("fsc_half_maps.mtriage.log","w")
-    for a,b in zip(results.fsc_curve.fsc.d_inv, results.fsc_curve.fsc.fsc):
-      print >>of, "%15.9f %15.9f"%(a,b)
-    of.close()
-    print >> log, "FSC(half map 1, half map 1) is written to %s"%fn
+  file_name = "%s.mtriage.log"%inputs.params.fsc_half_maps_file_name_prefix
+  task_obj.write_fsc_curve_plot_data(file_name = file_name)
+  print >> log, "FSC(half map 1, half map 1) is written to %s"%file_name
   #
-  return results
+  return None
 
 # =============================================================================
+# XXX THIS SHOULD GO TO GUI SPECIFIC LOCATION AS THIS HAS NOTHING TO DO WITH
+# XXX COMMAND LINE!
+# XXX
+
 # GUI-specific class for running command
+
+master_params_GUI_str = """\
+  include scope libtbx.phil.interface.tracking_params
+  gui
+    .help = "GUI-specific parameter required for output directory"
+  {
+    output_dir = None
+    .type = path
+    .style = output_dir
+  }
+"""
+
 from libtbx import runtime_utils
 from wxGUI2 import utils
 import os
@@ -282,4 +254,4 @@ class launcher (runtime_utils.target_with_save_result) :
 # =============================================================================
 
 if (__name__ == "__main__"):
-  run(args=sys.argv[1:])
+  assert run(args=sys.argv[1:]) is None # intentional

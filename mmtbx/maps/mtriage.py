@@ -10,6 +10,7 @@ from libtbx import group_args
 from cctbx import miller
 from mmtbx.maps import correlation
 from mmtbx import masks
+from scitbx.array_family import flex
 
 master_params_str = """
   scattering_table = wk1995  it1992  n_gaussian  neutron *electron
@@ -59,6 +60,33 @@ def get_box(map_data, pdb_hierarchy, xray_structure):
   else:
     return None
 
+def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
+  h0, h1, h2 = None, None, None
+  if(data_1 is None):
+    h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
+  else:
+    data_min = min(flex.min(data), flex.min(data_1), flex.min(data_2))
+    data_max = min(flex.max(data), flex.max(data_1), flex.max(data_2))
+    h0 = flex.histogram(data = data.as_1d(), data_min=data_min,
+      data_max=data_max, n_slots = n_slots)
+    h1 = flex.histogram(data = data_1.as_1d(), data_min=data_min,
+      data_max=data_max, n_slots = n_slots)
+    h2 = flex.histogram(data = data_2.as_1d(), data_min=data_min,
+      data_max=data_max, n_slots = n_slots)
+  return group_args(h_map = h0, h_half_map_1 = h1, h_half_map_2 = h2,
+    _data_min = data_min)
+
+def get_map_counts(map_data):
+  if(map_data is None): return None
+  a = map_data.accessor()
+  map_counts = group_args(
+    origin       = a.origin(),
+    last         = a.last(),
+    focus        = a.focus(),
+    all          = a.all(),
+    min_max_mean = map_data.as_1d().min_max_mean().as_tuple())
+  return map_counts
+
 class mtriage(object):
   def __init__(self,
                map_data,
@@ -90,6 +118,11 @@ class mtriage(object):
     self.fsc_curve       = None
     self.fsc_curve_model = None
     self.mask_object     = None
+    # Info (results)
+    self.crystal_symmetry = crystal_symmetry
+    self.map_counts        = get_map_counts(map_data = self.map_data)
+    self.half_map_1_counts = get_map_counts(map_data = self.half_map_data_1)
+    self.half_map_2_counts = get_map_counts(map_data = self.half_map_data_2)
     # Internal work objects
     self.f   = None
     self.f1  = None
@@ -217,6 +250,21 @@ class mtriage(object):
         other=f_obs, bin_width=100, fsc_cutoff=0.0)
       self.d_fsc_model = self.fsc_curve_model.d_min
 
+  def write_fsc_curve_model_plot_data(self, file_name):
+    if(self.fsc_curve_model is not None):
+      of = open(file_name,"w")
+      for a,b in zip(self.fsc_curve_model.fsc.d_inv,
+                     self.fsc_curve_model.fsc.fsc):
+        print >> of, "%15.9f %15.9f"%(a,b)
+      of.close()
+
+  def write_fsc_curve_plot_data(self, file_name):
+    if(self.fsc_curve is not None):
+      of = open(file_name,"w")
+      for a,b in zip(self.fsc_curve.fsc.d_inv, self.fsc_curve.fsc.fsc):
+        print >> of, "%15.9f %15.9f"%(a,b)
+      of.close()
+
   def show_summary(self, log=None, fsc_file_prefix="fsc_curve"):
     if(log is None): log = sys.stdout
     r = self.get_results()
@@ -240,18 +288,28 @@ class mtriage(object):
       of.close()
 
   def get_results(self):
+    map_histograms = get_map_histograms(
+      data    = self.map_data,
+      n_slots = 20,
+      data_1  = self.half_map_data_1,
+      data_2  = self.half_map_data_2)
     return group_args(
-      d9              = self.d9,
-      d99             = self.d99,
-      d999            = self.d999,
-      d99_1           = self.d99_1,
-      d99_2           = self.d99_2,
-      d_model         = self.d_model,
-      b_iso_overall   = self.b_iso_overall,
-      d_fsc           = self.d_fsc,
-      d_fsc_model     = self.d_fsc_model,
-      fsc_curve       = self.fsc_curve,
-      fsc_curve_model = self.fsc_curve_model)
+      d9                = self.d9,
+      d99               = self.d99,
+      d999              = self.d999,
+      d99_1             = self.d99_1,
+      d99_2             = self.d99_2,
+      d_model           = self.d_model,
+      b_iso_overall     = self.b_iso_overall,
+      d_fsc             = self.d_fsc,
+      d_fsc_model       = self.d_fsc_model,
+      fsc_curve         = self.fsc_curve,
+      fsc_curve_model   = self.fsc_curve_model,
+      crystal_symmetry  = self.crystal_symmetry,
+      map_counts        = self.map_counts,
+      half_map_1_counts = self.half_map_1_counts,
+      half_map_2_counts = self.half_map_2_counts,
+      map_histograms    = map_histograms)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
