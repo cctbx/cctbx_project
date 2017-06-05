@@ -493,8 +493,8 @@ class Script(object):
                              "%6d"%total_refls])
 
       lab_delta_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
-                                   "%9.3f"%(dx*1000), "%9.3f"%(dy*1000), "%9.3f"%dz, "%9.3f"%(dxy*1000), "%9.3f"%dxyz,
-                                   "%9.3f"%(dr*1000), "%9.3f"%(dt*1000), "%9.3f"%dnorm,
+                                   "%9.1f"%(dx*1000), "%9.1f"%(dy*1000), "%9.3f"%dz, "%9.1f"%(dxy*1000), "%9.3f"%dxyz,
+                                   "%9.1f"%(dr*1000), "%9.1f"%(dt*1000), "%9.3f"%dnorm,
                                    "%6d"%total_refls])
 
       if params.hierarchy_level > 0:
@@ -593,7 +593,7 @@ class Script(object):
                                "%6d"%total_refls])
 
         local_delta_table_data.append(["%d"%pg_id, "%5.1f"%dist_m,
-                                       "%9.3f"%(ldx*1000), "%9.3f"%(ldy*1000), "%9.3f"%ldz, "%9.3f"%(ldxy*1000), "%9.3f"%ldxyz,
+                                       "%9.1f"%(ldx*1000), "%9.1f"%(ldy*1000), "%9.3f"%ldz, "%9.1f"%(ldxy*1000), "%9.3f"%ldxyz,
                                        "%6d"%total_refls])
 
     # Set up table output, starting with lab table
@@ -656,13 +656,13 @@ class Script(object):
       r2 = ["WStddev"]
       r3 = ["Mean"]
       for data, weights, fmt in [[None,None,None],
-                                 [all_delta_x,               all_refls_count.as_double(),     "%9.3f"],
-                                 [all_delta_y,               all_refls_count.as_double(),     "%9.3f"],
+                                 [all_delta_x*1000,          all_refls_count.as_double(),     "%9.1f"],
+                                 [all_delta_y*1000,          all_refls_count.as_double(),     "%9.1f"],
                                  [all_delta_z,               all_refls_count.as_double(),     "%9.3f"],
-                                 [all_delta_xy,              all_refls_count.as_double(),     "%9.3f"],
+                                 [all_delta_xy*1000,         all_refls_count.as_double(),     "%9.1f"],
                                  [all_delta_xyz,             all_refls_count.as_double(),     "%9.3f"],
-                                 [all_delta_r,               all_refls_count.as_double(),     "%9.3f"],
-                                 [all_delta_t,               all_refls_count.as_double(),     "%9.3f"],
+                                 [all_delta_r*1000,          all_refls_count.as_double(),     "%9.1f"],
+                                 [all_delta_t*1000,          all_refls_count.as_double(),     "%9.1f"],
                                  [all_delta_norm,            all_refls_count.as_double(),     "%9.3f"]]:
         r3.append("")
         if data is None and weights is None:
@@ -756,10 +756,10 @@ class Script(object):
         r2 = ["WStddev"]
         r3 = ["Mean"]
         for data, weights, fmt in [[None,None,None],
-                                   [all_local_delta_x,               all_refls_count.as_double(),     "%9.3f"],
-                                   [all_local_delta_y,               all_refls_count.as_double(),     "%9.3f"],
+                                   [all_local_delta_x*1000,          all_refls_count.as_double(),     "%9.1f"],
+                                   [all_local_delta_y*1000,          all_refls_count.as_double(),     "%9.1f"],
                                    [all_local_delta_z,               all_refls_count.as_double(),     "%9.3f"],
-                                   [all_local_delta_xy,              all_refls_count.as_double(),     "%9.3f"],
+                                   [all_local_delta_xy*1000,         all_refls_count.as_double(),     "%9.1f"],
                                    [all_local_delta_xyz,             all_refls_count.as_double(),     "%9.3f"]]:
           r3.append("")
           if data is None and weights is None:
