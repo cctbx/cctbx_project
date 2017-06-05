@@ -378,7 +378,20 @@ master_phil = iotbx.phil.parse("""
      local_sharpening = None
        .type = bool
        .short_caption = Local sharpening
-       .help = Sharpen locally using overlapping regions
+       .help = Sharpen locally using overlapping regions. \
+               NOTE: Best to turn off local_aniso_in_local_sharpening \
+               if NCS is present.\
+               If local_aniso_in_local_sharpening is True and NCS is \
+               present this can distort the map for some NCS copies \
+               because an anisotropy correction is applied\
+               based on local density in one copy and is transferred without \
+               rotation to other copies.
+
+     local_aniso_in_local_sharpening = None
+       .type = bool
+       .short_caption = Local anisotropy 
+       .help = Use local anisotropy in local sharpening.  \
+               Default is True unless NCS is present.
 
      select_sharpened_map = None
        .type = int
@@ -400,11 +413,6 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Smoothing radius 
        .help = Sharpen locally using smoothing_radius. Default is 2/3 of \
                  mean distance between centers for sharpening
-
-     local_aniso_in_local_sharpening = True
-       .type = bool
-       .short_caption = Local anisotropy 
-       .help = Use local anisotropy in local sharpening
 
      box_center = None
        .type = floats
@@ -5714,7 +5722,8 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 
   if si.remove_aniso: 
     if si.use_local_aniso and \
-         si.local_aniso_in_local_sharpening and \
+      (si.local_aniso_in_local_sharpening or 
+       (si.local_aniso_in_local_sharpening is None and si.ncs_copies==1)) and \
          si.original_aniso_obj: # use original
       aniso_obj=si.original_aniso_obj
       print >>out,\
@@ -6444,6 +6453,11 @@ def auto_sharpen_map_or_map_coeffs(
     else:  # convert from structure factors to create map if necessary
       map=get_fft_map(n_real=n_real, map_coeffs=map_coeffs).real_map_unpadded()
       return_as_map=False
+
+    # Set ncs_copies if possible
+    if ncs_copies is None and ncs_obj and ncs_obj.max_operators():
+      ncs_copies=ncs_obj.max_operators()
+      print >>out,"Set ncs copies based on ncs_obj to %s" %(ncs_copies)
 
     # Determine if we are running model_sharpening
     if pdb_inp:

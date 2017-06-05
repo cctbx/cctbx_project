@@ -222,7 +222,20 @@ master_phil = iotbx.phil.parse("""
      local_sharpening = None
        .type = bool
        .short_caption = Local sharpening
-       .help = Sharpen locally using overlapping regions
+       .help = Sharpen locally using overlapping regions. \
+               NOTE: Best to turn off local_aniso_in_local_sharpening \
+               if NCS is present.\
+               If local_aniso_in_local_sharpening is True and NCS is \
+               present this can distort the map for some NCS copies \
+               because an anisotropy correction is applied\
+               based on local density in one copy and is transferred without \
+               rotation to other copies.
+
+     local_aniso_in_local_sharpening = None
+       .type = bool
+       .short_caption = Local anisotropy 
+       .help = Use local anisotropy in local sharpening.  \
+               Default is True unless NCS is present.
 
 
      select_sharpened_map = None
@@ -245,11 +258,6 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Smoothing radius
        .help = Sharpen locally using smoothing_radius. Default is 2/3 of \
                  mean distance between centers for sharpening
-
-     local_aniso_in_local_sharpening = True
-       .type = bool
-       .short_caption = Local anisotropy
-       .help = Use local anisotropy in local sharpening
 
      box_center = None
        .type = floats
