@@ -46,11 +46,11 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
     # take into consideration here the thickness of the sensor also the
     # wavelength of the radiation (which we have in the same file...)
     wavelength = beam.get_wavelength()
-    thickness = 0.5
+    thickness = 0.5 # mm, see Hart et al. 2012
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
     # mu_at_angstrom returns cm^-1
-    mu = table.mu_at_angstrom(wavelength) / 10.0
+    mu = table.mu_at_angstrom(wavelength) / 10.0 # mu: mm^-1
     t0 = thickness
 
     for panel in d:
