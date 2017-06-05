@@ -30,7 +30,7 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
 from iotbx.file_reader import any_file
 from mmtbx.validation.clashscore import check_and_add_hydrogen
-from libtbx import Auto, easy_pickle
+from libtbx import Auto, easy_pickle, group_args
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -816,11 +816,11 @@ class model_idealization():
           lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
         molprobity_scores=True)
     # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
+    self.time_for_run = time() - t_0
     if self.params.output_pkl or self.params.debug:
       easy_pickle.dump(
           file_name="%s.pkl" % self.params.output_prefix,
           obj = self.get_stats_obj())
-    self.time_for_run = time() - t_0
 
   def add_hydrogens(self):
     # self.wo
@@ -944,7 +944,11 @@ class model_idealization():
           self.after_loop_idealization,
           self.after_rotamer_fixing,
           self.final_model_statistics,]
-    return stat_obj_list
+    return group_args(
+        geoms=stat_obj_list,
+        rmsds=(self.get_rmsd_from_start(), self.get_rmsd_from_start2()),
+        runtime=self.time_for_init + self.time_for_run)
+
 
   def print_stat_comparison(self):
     stat_obj_list = self.get_stats_obj()
@@ -969,7 +973,7 @@ class model_idealization():
         ("CaBLAM disfavored", "cablam_disfavored", "{:10.2f}"),
         ("CaBLAM CA outliers", "cablam_ca_outliers", "{:10.2f}")]:
       l = "%-21s:" % val_caption
-      for stat_obj in stat_obj_list:
+      for stat_obj in stat_obj_list.geoms:
         value = 99999
         if stat_obj is not None:
           l += val_format.format(getattr(stat_obj, val_name, 99999))
