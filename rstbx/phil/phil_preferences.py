@@ -3,6 +3,11 @@ from libtbx.phil.command_line import argument_interpreter as model_argument_inte
 from libtbx.utils import Sorry
 from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs # implicit import
 
+try:
+  from dials.algorithms.integration.kapton_correction import absorption_defs
+except ImportError:
+  absorption_defs = ""
+
 libtbx_misc_defs = """
 predictions_file = ""
     .type = str
@@ -163,51 +168,9 @@ integration {
     strategy = *distance wavelength fix
       .type = choice
       .help = either refine the distance or the wavelength for XFEL stills, or fix them both in place
-  }
-  absorption_correction
-    .multiple = True {
-    apply = False
-      .type = bool
-      .help = must be supplied as a user-defined function with a specific interface (not documented)
-    algorithm = fuller_kapton other
-      .type = choice
-      .help = a specific absorption correction, or implementation thereof
-    fuller_kapton {
-      xtal_height_above_kapton_mm {
-        value = 0.02
-          .type = float
-          .help = height of the beam (or the irradiated crystal) above the kapton tape
-        sigma = 0.01
-          .type = float
-        }
-      rotation_angle_deg {
-        value = 1.15
-          .type = float
-          .help = angle of the tape from vertical
-        sigma = 0.1
-          .type = float
-        }
-      kapton_half_width_mm {
-        value = 1.5875
-          .type = float
-          .help = forward distance from irradiated crystal to edge of tape nearest detector
-        sigma = 0.5
-          .type = float
-        }
-      kapton_thickness_mm {
-        value = 0.05
-          .type = float
-          .help = tape thickness
-        sigma = 0.005
-          .type = float
-        }
-      smart_sigmas = False
-        .type = bool
-        .help = apply spot-specific sigma corrections using kapton param sigmas
-    }
-  }
+  }%s
 }
-"""
+""" % absorption_defs
 indexing_defs = """
 include scope spotfinder.command_line.signal_strength.master_params
 spotfinder = *distl speck
