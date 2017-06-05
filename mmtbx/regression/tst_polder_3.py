@@ -292,7 +292,9 @@ def exercise(prefix="tst_polder_3"):
                    [-0.358, 2.008,  0.843],
                    [-0.358, 2.008,  0.843],
                    [-0.358, 2.008,  0.843] ]
-
+  print '*' *79
+  print 'Assertion error expected, working on it (DL, June 2017).'
+  print '*' *79
   for i in range(6):
     assert approx_equal(mmm_mp_list[i], mmm_mp_target[i], eps = 0.1)
     assert approx_equal(mmm_o_list[i], mmm_o_target[i], eps = 0.1)
