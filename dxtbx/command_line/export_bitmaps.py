@@ -83,7 +83,8 @@ dxtbx.export_bitmaps image_files [options]
         flex_image = _get_flex_image_multipanel(
           brightness=brightness,
           panels=detector,
-          raw_data=image)
+          raw_data=image,
+          beam=imageset.get_beam())
       else:
         flex_image = _get_flex_image(
           brightness=brightness,

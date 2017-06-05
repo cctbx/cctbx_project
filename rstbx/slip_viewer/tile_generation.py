@@ -47,7 +47,7 @@ def _get_flex_image(
   )
 
 
-def _get_flex_image_multipanel(panels, raw_data, brightness=1.0,
+def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
                                show_untrusted=False, color_scheme=0):
   # From xfel.cftbx.cspad_detector.readHeader() and
   # xfel.cftbx.cspad_detector.get_flex_image().  XXX Is it possible to
@@ -98,20 +98,11 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0,
     color_scheme=color_scheme
   )
 
-  # Calculate the center of mass of the panels, in meters.
-  center_of_mass = col((0, 0, 0))
-  mass_tot = 0
+  # Calculate the average beam center across all panels, in meters
+  beam_center = col((0, 0, 0))
   for panel in panels:
-    fast = (data.focus()[1] - 1) / 2 \
-           * panel.get_pixel_size()[0] \
-           * col(panel.get_fast_axis())
-    slow = (data.focus()[0] - 1) / 2 \
-           * panel.get_pixel_size()[1] \
-           * col(panel.get_slow_axis())
-
-    center_of_mass += data.size() * (col(panel.get_origin()) + slow + fast)
-    mass_tot += data.size()
-  center_of_mass /= mass_tot / 1e-3
+    beam_center += col(panel.get_beam_centre_lab(beam.get_s0()))
+  beam_center /= len(panels) / 1e-3
 
   # XXX If a point is contained in two panels simultaneously, it will
   # be assigned to the panel defined first.  XXX Use a Z-buffer
@@ -153,14 +144,12 @@ def _get_flex_image_multipanel(panels, raw_data, brightness=1.0,
 
     # Get unit vectors in the fast and slow directions, as well as the
     # the locations of the origin and the center of the panel, in
-    # meters.  The origin is taken w.r.t. to the center of mass of all
+    # meters.  The origin is taken w.r.t. to average beam center of all
     # panels.  This avoids excessive translations that can result from
-    # rotations around the laboratory origin.  Another possibility
-    # would have been to calculate the transformation w.r.t. the beam
-    # center, but s0 is not known to this function.
+    # rotations around the laboratory origin.
     fast = col(panel.get_fast_axis())
     slow = col(panel.get_slow_axis())
-    origin = col(panel.get_origin()) * 1e-3  - center_of_mass
+    origin = col(panel.get_origin()) * 1e-3  - beam_center
 
     center = origin \
              + (data.focus()[0] - 1) / 2 * pixel_size[1] * slow \
@@ -269,6 +258,7 @@ class _Tiles(object):
             panels=detector,
             show_untrusted=self.show_untrusted,
             raw_data=raw_data,
+            beam = self.raw_image.get_beam(),
             color_scheme=self.current_color_scheme)
         else:
           self.flex_image = _get_flex_image(
@@ -298,7 +288,8 @@ class _Tiles(object):
         self.flex_image = _get_flex_image_multipanel(
           brightness=self.current_brightness / 100,
           panels=detector,
-          raw_data=raw_image_data)
+          raw_data=raw_image_data,
+          beam = self.raw_image.get_beam())
       else:
         self.flex_image = _get_flex_image(
           brightness=self.current_brightness / 100,
@@ -323,6 +314,7 @@ class _Tiles(object):
             panels=self.raw_image.get_detector(),
             show_untrusted=self.show_untrusted,
             raw_data=raw_data,
+            beam=self.raw_image.get_beam(),
             color_scheme=color_scheme)
         else:
           self.flex_image = _get_flex_image(

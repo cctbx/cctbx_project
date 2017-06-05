@@ -651,7 +651,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
           flex_img = _get_flex_image_multipanel(
             brightness=self.settings.brightness / 100,
             panels=detector,
-            raw_data=data)
+            raw_data=data,
+            beam=raw_img.get_beam())
         else:
           from tile_generation import _get_flex_image
           flex_img = _get_flex_image(
@@ -740,7 +741,8 @@ class XrayFrame (AppFrame,XFBaseClass) :
           flex_img = _get_flex_image_multipanel(
             brightness=self.settings.brightness / 100,
             panels=detector,
-            raw_data=data)
+            raw_data=data,
+            beam=raw_img.get_beam())
         else:
           from tile_generation import _get_flex_image
           flex_img = _get_flex_image(
