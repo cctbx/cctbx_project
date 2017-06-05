@@ -108,10 +108,6 @@ class loop_idealization():
     self.resulting_pdb_h = pdb_hierarchy.deep_copy()
     self.resulting_pdb_h.reset_atom_i_seqs()
     self.params = self.process_params(params)
-
-    # print type(self.params.variant_deviation_accept_level), self.params.variant_deviation_accept_level
-    # STOP()
-
     self.log = log
     self.verbose = verbose
     self.grm = grm
@@ -396,9 +392,9 @@ class loop_idealization():
     adaptive_mc_rmsd = {1:3.0, 2:3.5, 3:4.0, 4:4.5, 5:5.5, 6:7.0, 7:8.5, 8:10.0, 9:12.0}
     num_of_run = max(self.number_of_ccd_trials, self.n_run)
     accept_level_coeff = 1
-    if self.variant_deviation_accept_level == "low":
+    if self.params.variant_deviation_accept_level == "low":
       accept_level_coeff = 0.5
-    elif self.variant_deviation_accept_level == "high":
+    elif self.params.variant_deviation_accept_level == "high":
       accept_level_coeff = 1.5
     for k in adaptive_mc_rmsd:
       adaptive_mc_rmsd[k] = adaptive_mc_rmsd[k] * (1 + 0.3*num_of_run) * accept_level_coeff
