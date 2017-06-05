@@ -1,7 +1,7 @@
 from __future__ import division
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
-# LIBTBX_SET_DISPATCHER_NAME cctbx.stripe_experiment
+# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.stripe_experiment
 #
 # Given an LCLS experiment results directory and a trial, group results by
 # run group and then distrbute each run group's results into subgroups and run
@@ -62,6 +62,9 @@ combine_experiments {
     reflections_filename = %s_combined_reflections.pickle
     delete_shoeboxes = True
   }
+  reference_from_experiment {
+    detector = 0
+  }
 }
 '''
 
@@ -96,7 +99,6 @@ refinement {
       auto_reduction {
         action = remove
       }
-      compose_model_per = image
       beam {
         fix = all
       }
@@ -109,7 +111,7 @@ refinement {
         algorithm = sauter_poon
         minimum_number_of_reflections = 3
         separate_experiments = False
-        separate_panels = True
+        separate_panels = False
       }
     }
   }
@@ -371,7 +373,12 @@ if __name__ == "__main__":
   from dials.util import halraiser
   import sys
   if "-c" in sys.argv[1:]:
-    master_scope.show(attributes_level=2)
+    if "-e" in sys.argv[1:]:
+      expert_level = int(sys.argv[sys.argv.index("-e") + 1])
+    else:
+      expert_level = 0
+    master_defaults_scope.fetch_diff(master_scope).show(attributes_level=expert_level)
+    # master_scope.show(attributes_level=expert_level)
     with open("striping_defaults.phil", "wb") as defaults:
       defaults.write(master_scope.as_str())
     exit()
