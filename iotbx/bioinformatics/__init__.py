@@ -1805,6 +1805,15 @@ def composition_from_sequence (sequence) :
     n_residues += len(seq)
   return n_residues, n_bases
 
+def clear_empty_lines(text):
+  # make empty lines just a blank line.  Includes >>> etc.
+  new_lines=[]
+  for line in text.splitlines():
+    if not line.replace(">","").replace(" ",""):
+       line=""
+    new_lines.append(line)
+  return "\n".join(new_lines)
+  
 def guess_chain_types_from_sequences(file_name=None,text=None,
     return_as_dict=False):
   # Guess what chain types are in this sequence file
@@ -1814,11 +1823,15 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
       raise Sorry("Missing file for guess_chain_types_from_sequences: %s" %(
         file_name))
     text=open(file_name).read()
+  # clear any lines that have only > and nothing else
+  text=clear_empty_lines(text)
   chain_types=[]
   ( sequences, unknowns ) = parse_sequence( text )
   if return_as_dict: dd={}
   for sequence in sequences:
     chain_type,n_residues=chain_type_and_residues(text=sequence.sequence)
+    if chain_type is None and n_residues is None:
+      continue
     if chain_type and not chain_type in chain_types:
       chain_types.append(chain_type)
       if return_as_dict: dd[chain_type]=[]
