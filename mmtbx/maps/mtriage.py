@@ -62,11 +62,12 @@ def get_box(map_data, pdb_hierarchy, xray_structure):
 
 def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
   h0, h1, h2 = None, None, None
+  data_min = None
   if(data_1 is None):
     h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
   else:
     data_min = min(flex.min(data), flex.min(data_1), flex.min(data_2))
-    data_max = min(flex.max(data), flex.max(data_1), flex.max(data_2))
+    data_max = max(flex.max(data), flex.max(data_1), flex.max(data_2))
     h0 = flex.histogram(data = data.as_1d(), data_min=data_min,
       data_max=data_max, n_slots = n_slots)
     h1 = flex.histogram(data = data_1.as_1d(), data_min=data_min,
