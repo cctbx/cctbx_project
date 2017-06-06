@@ -1812,7 +1812,7 @@ def clear_empty_lines(text):
     if not line.replace(">","").replace(" ",""):
        line=""
     new_lines.append(line)
-  return "\n".join(new_lines)
+  return "\n".join(new_lines)+"\n"
   
 def guess_chain_types_from_sequences(file_name=None,text=None,
     return_as_dict=False):
