@@ -7,8 +7,18 @@ from libtbx import group_args
 from libtbx.utils import Sorry
 import mmtbx.utils
 from cctbx import crystal
-from scitbx.array_family import flex
 import mmtbx.maps.mtriage
+
+master_params_GUI_str = """\
+  include scope libtbx.phil.interface.tracking_params
+  gui
+    .help = "GUI-specific parameter required for output directory"
+  {
+    output_dir = None
+    .type = path
+    .style = output_dir
+  }
+"""
 
 master_params_str = """\
   map_file_name = None
@@ -36,7 +46,8 @@ master_params_str = """\
     .type = str
   fsc_half_maps_file_name_prefix = fsc_half_maps
     .type = str
-"""
+  %(master_params_GUI_str)s
+""" % vars()
 
 master_params = iotbx.phil.parse(master_params_str, process_includes=True)
 
@@ -217,7 +228,8 @@ Feedback:
   task_obj.write_fsc_curve_plot_data(file_name = file_name)
   print >> log, "FSC(half map 1, half map 1) is written to %s"%file_name
   #
-  return None
+  # required for GUI
+  return results
 
 # =============================================================================
 # XXX THIS SHOULD GO TO GUI SPECIFIC LOCATION AS THIS HAS NOTHING TO DO WITH
@@ -225,17 +237,7 @@ Feedback:
 # XXX
 
 # GUI-specific class for running command
-
-master_params_GUI_str = """\
-  include scope libtbx.phil.interface.tracking_params
-  gui
-    .help = "GUI-specific parameter required for output directory"
-  {
-    output_dir = None
-    .type = path
-    .style = output_dir
-  }
-"""
+# required for GUI
 
 from libtbx import runtime_utils
 from wxGUI2 import utils
@@ -254,4 +256,4 @@ class launcher (runtime_utils.target_with_save_result) :
 # =============================================================================
 
 if (__name__ == "__main__"):
-  assert run(args=sys.argv[1:]) is None # intentional
+  run(args=sys.argv[1:])
