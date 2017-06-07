@@ -112,10 +112,14 @@ class indamb_handler(object):
     if flag_plot:
       import matplotlib.pyplot as plt
       xinp_set = np.array(xinp_copy).reshape((len(xinp_copy)/2,2))
-      plt.subplot(2,1,1)
-      plt.scatter(xinp_set[:,0], xinp_set[:,1], s=10, marker='x', c='r')
-      plt.subplot(2,1,2)
-      plt.scatter(x_set[:,0], x_set[:,1], s=10, marker='x', c='r')
+      ax1 = plt.subplot(2,1,1)
+      ax1.scatter(xinp_set[:,0], xinp_set[:,1], s=10, marker='o', c='b')
+      ax1.set_xlim([-0.2, 1.2])
+      ax1.set_ylim([-0.2, 1.2])
+      ax2 = plt.subplot(2,1,2)
+      ax2.scatter(x_set[:,0], x_set[:,1], s=10, marker='o', c='b')
+      ax2.set_xlim([-0.2, 1.2])
+      ax2.set_ylim([-0.2, 1.2])
       plt.show()
     return x_set
 
