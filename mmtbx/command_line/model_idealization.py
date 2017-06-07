@@ -145,8 +145,10 @@ class model_idealization():
     self.after_loop_idealization = None
     self.after_rotamer_fixing = None
     self.final_model_statistics = None
-    self.reference_map = map_data
-    self.master_map = None
+    self.user_supplied_map = map_data
+    self.reference_map = None # Whole map for all NCS copies
+    self.master_map = None # Map for only one NCS copy, or == reference_map if no NCS
+    self.init_ref_map = None # separate map for initial GM. Should be tighter than the 2 above
 
     self.whole_grm = None
     self.master_grm = None
@@ -246,6 +248,7 @@ class model_idealization():
     #       lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
     #     molprobity_scores=True)
     for_stat_h = self.get_intermediate_result_hierarchy()
+
     self.init_model_statistics = geometry_no_grm(
         pdb_hierarchy=for_stat_h,
         molprobity_scores=True)
@@ -269,8 +272,43 @@ class model_idealization():
       result_h.reset_atom_i_seqs()
     return result_h
 
+  def prepare_user_map(self):
+    print >> self.log, "Preparing user map..."
+    self.map_shift_manager = mmtbx.utils.shift_origin(
+      map_data         = self.user_supplied_map,
+      xray_structure   = self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
+      crystal_symmetry = self.cs)
+    if(self.map_shift_manager.shift_cart is not None):
+      # Need to figure out way to save the shift to shift back
+      # and apply it to whole_pdb, master_pdb, etc. Don't forget about
+      # boxing hierarchy when symmetry is not available or corrupted...
+      raise Sorry("Map origin is not at (0,0,0). This is not implemented for model_idealization")
+    map_data = self.map_shift_manager.map_data
+    self.reference_map = map_data
+    self.master_map = self.reference_map.deep_copy()
+    if self.using_ncs and self.master_pdb_h is not None:
+      # here we are negating non-master part of the model
+      # self.master_sel=master_sel
+      # self.master_map = self.reference_map.deep_copy()
+      mask = maptbx.mask(
+              xray_structure=xrs.select(self.master_sel),
+              n_real=self.master_map.focus(),
+              mask_value_inside_molecule=1,
+              mask_value_outside_molecule=-1,
+              solvent_radius=0,
+              atom_radius=1.)
+      self.master_map = self.reference_map * mask
+      if self.params.debug:
+        iotbx.ccp4_map.write_ccp4_map(
+            file_name="%s_3_master.map" % self.params.output_prefix,
+            unit_cell=xrs.unit_cell(),
+            space_group=xrs.space_group(),
+            map_data=self.master_map,
+            labels=flex.std_string([""]))
+      self.master_map = map_data
+
   def prepare_init_reference_map(self, xrs, pdb_h):
-    print >> self.log, "Preparing reference map"
+    print >> self.log, "Preparing map for initial GM..."
     # new_h = pdb_h.deep_copy()
     # truncate_to_poly_gly(new_h)
     # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
@@ -310,7 +348,7 @@ class model_idealization():
     init_reference_map = fft_map.real_map_unpadded(in_place=False)
     if self.params.debug:
       fft_map.as_xplor_map(file_name="%s_init.map" % self.params.output_prefix)
-    return init_reference_map
+    self.init_ref_map = init_reference_map
 
   def prepare_reference_map(self, xrs, pdb_h):
     print >> self.log, "Preparing reference map"
@@ -531,13 +569,23 @@ class model_idealization():
 
     self.get_filtered_ncs_group_list()
 
+    # Here we are preparing maps if needed.
+    if self.user_supplied_map is not None:
+      self.prepare_user_map()
+
+    if self.reference_map is None and self.params.use_map_for_reference:
+      # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+      # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+      self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
+
     if self.params.run_minimization_first:
       # running simple minimization and updating all
       # self.master, self.working, etc...
       self.whole_pdb_h.reset_atom_i_seqs()
-      init_ref_map = self.prepare_init_reference_map(
-        self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
-        self.whole_pdb_h)
+      if self.init_ref_map is None:
+        self.prepare_init_reference_map(
+            self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
+            self.whole_pdb_h)
       print >> self.log, "Minimization first"
       self.minimize(
           hierarchy=self.whole_pdb_h,
@@ -547,7 +595,9 @@ class model_idealization():
           ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
           excl_string_selection=None, # don't need if we have map
           ss_annotation=self.ann,
-          reference_map=init_ref_map)
+          reference_map=self.init_ref_map,
+          # reference_map=self.reference_map,
+          )
       self.init_gm_model_statistics = geometry_no_grm(
           pdb_hierarchy=self.whole_pdb_h,
           molprobity_scores=True)
@@ -581,14 +631,6 @@ class model_idealization():
             file_name="%s.pkl" % self.params.output_prefix,
             obj = self.get_stats_obj())
       return
-
-
-
-    if self.reference_map is None and self.params.use_map_for_reference:
-      # self.prepare_reference_map(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-      # self.prepare_reference_map_2(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-      self.prepare_reference_map_3(xrs=self.whole_xrs, pdb_h=self.whole_pdb_h)
-
 
     self.original_ann = None
     if self.ann is not None:
@@ -1051,22 +1093,29 @@ def run(args):
   crystal_symmetry = None
   map_data = None
 
-  if input_objects.get_file(work_params.map_file_name) is not None:
+  map_content = input_objects.get_file(work_params.map_file_name)
+  if map_content is not None:
     # af = any_file(work_params.map_file_name)
     # print >> log, "Processing input CCP4 map file..."
-    map_data = input_objects.map_file_def.file_content.data.as_double()
+    map_data = map_content.file_object.data.as_double()
     try:
-      map_cs = af.crystal_symmetry()
+      # map_cs = map_content.file_object.crystal_symmetry()
+      map_cs = crystal.symmetry(
+          unit_cell=map_content.file_object.unit_cell(),
+          space_group=map_content.file_object.space_group_number)
     except NotImplementedError as e:
       pass
     print >> log, "Input map min,max,mean: %7.3f %7.3f %7.3f"%\
         map_data.as_1d().min_max_mean().as_tuple()
+    if map_cs.space_group().type().number() not in [0,1]:
+      print map_cs.space_group().type().number()
+      raise Sorry("Only P1 group for maps is supported.")
     map_data = map_data - flex.mean(map_data)
     sd = map_data.sample_standard_deviation()
     map_data = map_data/sd
     print >> log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
       map_data.as_1d().min_max_mean().as_tuple()
-    af.file_content.ccp4_map.show_summary(prefix="  ")
+    map_content.file_content.show_summary(prefix="  ")
 
   # Crystal symmetry: validate and finalize consensus object
   try:

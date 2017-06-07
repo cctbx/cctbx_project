@@ -408,7 +408,10 @@ class minimize_wrapper_with_map():
     self.pdb_h = pdb_h
     self.xrs = xrs
     self.log = log
-    self.cs = self.xrs.crystal_symmetry()
+    # self.cs = self.xrs.crystal_symmetry()
+    self.cs = crystal.symmetry(
+        unit_cell=self.xrs.crystal_symmetry().unit_cell(),
+        space_group=1)
     print >> self.log, "Minimizing using reference map..."
     self.log.flush()
     self.grm = grm

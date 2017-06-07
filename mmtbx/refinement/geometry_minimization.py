@@ -553,7 +553,7 @@ def minimize_wrapper_for_ramachandran(
 
 
   if original_pdb_h is not None:
-    if len(excl_string_selection) == 0:
+    if not excl_string_selection or len(excl_string_selection) == 0:
       excl_string_selection = "all"
     asc = original_pdb_h.atom_selection_cache()
     sel = asc.selection("(%s) and (name CA or name C or name N or name O)" % excl_string_selection)
