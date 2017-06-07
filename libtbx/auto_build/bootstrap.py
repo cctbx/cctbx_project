@@ -2037,21 +2037,11 @@ class PhenixExternalRegression(PhenixBuilder):
                             env = self.get_environment()
                            )
 
-class QRBuilder(CCTBXBuilder):
-  #
-  # subclassed from CCTBX builder but can only be run in a complete
-  # Phenix install because of the dependence on restraints - GeoStd
-  #
+class QRBuilder(PhenixBuilder):
   EXTERNAL_CODEBASES = ["qrefine"]
-  #CODEBASES_EXTRA = [
-  #  'geostd',
-  #  ]
-  #HOT_EXTRA = [
-  #  'mon_lib',
-  #  ]
 
   def add_make(self):
-    CCTBXBuilder.add_make(self)
+    PhenixBuilder.add_make(self)
     pip_installs = ['ase', 'JPype1','pymongo']
     instructions = []
     for pi in pip_installs:
@@ -2065,9 +2055,7 @@ class QRBuilder(CCTBXBuilder):
                            ['modules']])
 
     for name, command, workdir in instructions:
-      print name,
-      print command,
-      print workdir
+      #print name, command, workdir
       self.add_step(self.shell(
         name       = name,
         command    = command,
