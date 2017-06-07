@@ -2037,14 +2037,14 @@ class PhenixExternalRegression(PhenixBuilder):
                             env = self.get_environment()
                            )
 
-class QRBuilder(CCTBXBuilder):
+class QRBuilder(PhenixBuilder):
   #
   # Designed to be run in Phenix build to add Q|R
   #
   EXTERNAL_CODEBASES = ["qrefine"]
 
   def add_make(self):
-    CCTBXBuilder.add_make(self)
+    PhenixBuilder.add_make(self)
     pip_installs = ['ase', 'JPype1','pymongo']
     instructions = []
     for pi in pip_installs:
@@ -2069,8 +2069,12 @@ class QRBuilder(CCTBXBuilder):
     self.add_refresh()
 
   def get_libtbx_configure(self): # modified in derived class PhenixBuilder
-    return PhenixBuilder.LIBTBX + PhenixBuilder.LIBTBX_EXTRA \
-      + self.EXTERNAL_CODEBASES + PhenixBuilder.HOT_EXTRA
+    return self.LIBTBX + self.LIBTBX_EXTRA + self.EXTERNAL_CODEBASES
+
+  def get_codebases(self):
+    if self.isPlatformWindows(): assert 0, 'not supported'
+    rc = self.EXTERNAL_CODEBASES + ['cctbx_project']
+    return rc
 
   def add_tests(self):
     pass
