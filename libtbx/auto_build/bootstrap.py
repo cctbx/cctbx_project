@@ -1649,55 +1649,6 @@ class CCTBXBuilder(CCIBuilder):
   def rebuild_docs(self):
     pass
 
-class QRBuilder(CCTBXBuilder):
-  EXTERNAL_CODEBASES = ["qrefine"]
-  CODEBASES_EXTRA = [
-    'geostd',
-    ]
-  HOT_EXTRA = [
-    'mon_lib',
-    ]
-
-  def add_make(self):
-    CCTBXBuilder.add_make(self)
-    pip_installs = [] #'aes']
-    instructions = []
-    for pi in pip_installs:
-      instructions.append(['Q|R pip %s' % pi,
-                           [self.python_base,
-                            '-m',
-                            'pip',
-                            'install',
-                            pi
-                          ],
-                           ['modules']])
-
-    for name, command, workdir in instructions:
-      print name,
-      print command,
-      print workdir
-      self.add_step(self.shell(
-        name       = name,
-        command    = command,
-        workdir    = workdir,
-        description= "",
-        haltOnFailure = 1, #haltOnFailure,
-        ))
-    self.add_refresh()
-
-  def get_libtbx_configure(self): # modified in derived class PhenixBuilder
-    return self.LIBTBX + self.LIBTBX_EXTRA + self.EXTERNAL_CODEBASES \
-      + self.HOT_EXTRA
-
-  def add_tests(self):
-    pass
-
-  def add_dispatchers(self):
-    pass
-
-  def rebuild_docs(self):
-    pass
-
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
   LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip-phenix-dispatchers']
@@ -2085,6 +2036,59 @@ class PhenixExternalRegression(PhenixBuilder):
       self.add_test_command('erraser.run_tests',
                             env = self.get_environment()
                            )
+
+class QRBuilder(CCTBXBuilder):
+  #
+  # subclassed from CCTBX builder but can only be run in a complete
+  # Phenix install because of the dependence on restraints - GeoStd
+  #
+  EXTERNAL_CODEBASES = ["qrefine"]
+  #CODEBASES_EXTRA = [
+  #  'geostd',
+  #  ]
+  #HOT_EXTRA = [
+  #  'mon_lib',
+  #  ]
+
+  def add_make(self):
+    CCTBXBuilder.add_make(self)
+    pip_installs = ['aes']
+    instructions = []
+    for pi in pip_installs:
+      instructions.append(['Q|R pip %s' % pi,
+                           [self.python_base,
+                            '-m',
+                            'pip',
+                            'install',
+                            pi
+                          ],
+                           ['modules']])
+
+    for name, command, workdir in instructions:
+      print name,
+      print command,
+      print workdir
+      self.add_step(self.shell(
+        name       = name,
+        command    = command,
+        workdir    = workdir,
+        description= "",
+        haltOnFailure = 1, #haltOnFailure,
+        ))
+    self.add_refresh()
+
+  def get_libtbx_configure(self): # modified in derived class PhenixBuilder
+    return self.LIBTBX + self.LIBTBX_EXTRA + self.EXTERNAL_CODEBASES \
+      + self.HOT_EXTRA
+
+  def add_tests(self):
+    pass
+
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
 
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
