@@ -2037,11 +2037,14 @@ class PhenixExternalRegression(PhenixBuilder):
                             env = self.get_environment()
                            )
 
-class QRBuilder(PhenixBuilder):
+class QRBuilder(CCTBXBuilder):
+  #
+  # Designed to be run in Phenix build to add Q|R
+  #
   EXTERNAL_CODEBASES = ["qrefine"]
 
   def add_make(self):
-    PhenixBuilder.add_make(self)
+    CCTBXBuilder.add_make(self)
     pip_installs = ['ase', 'JPype1','pymongo']
     instructions = []
     for pi in pip_installs:
@@ -2066,8 +2069,8 @@ class QRBuilder(PhenixBuilder):
     self.add_refresh()
 
   def get_libtbx_configure(self): # modified in derived class PhenixBuilder
-    return self.LIBTBX + self.LIBTBX_EXTRA + self.EXTERNAL_CODEBASES \
-      + self.HOT_EXTRA
+    return PhenixBuilder.LIBTBX + PhenixBuilder.LIBTBX_EXTRA \
+      + self.EXTERNAL_CODEBASES + PhenixBuilder.HOT_EXTRA
 
   def add_tests(self):
     pass
