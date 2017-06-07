@@ -2052,7 +2052,7 @@ class QRBuilder(CCTBXBuilder):
 
   def add_make(self):
     CCTBXBuilder.add_make(self)
-    pip_installs = ['aes']
+    pip_installs = ['ase', 'JPype1','pymongo']
     instructions = []
     for pi in pip_installs:
       instructions.append(['Q|R pip %s' % pi,
