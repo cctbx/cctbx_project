@@ -345,7 +345,7 @@ master_params_str = """\
     .short_caption = Chiral volume E.S.D.
   peptide_link
     .short_caption = Peptide link settings
-    .style = box auto_align noauto
+    .style = box
   {
     ramachandran_restraints = False
       .type = bool
