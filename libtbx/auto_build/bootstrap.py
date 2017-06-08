@@ -2068,6 +2068,10 @@ class QRBuilder(PhenixBuilder):
         ))
     self.add_refresh()
 
+  def get_hot(self):
+    return [] # don't have any HOT downloads and the difference between
+              # anonymous and cciuser is making a mess
+
   def get_libtbx_configure(self): # modified in derived class PhenixBuilder
     return self.LIBTBX + self.LIBTBX_EXTRA + self.EXTERNAL_CODEBASES
 
