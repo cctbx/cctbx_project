@@ -308,6 +308,10 @@ class model_idealization():
       self.master_map = map_data
 
   def prepare_init_reference_map(self, xrs, pdb_h):
+    if self.user_supplied_map is not None:
+      print >> self.log, "Using user-supplied map for initial GM."
+      self.init_ref_map = self.reference_map
+      return
     print >> self.log, "Preparing map for initial GM..."
     # new_h = pdb_h.deep_copy()
     # truncate_to_poly_gly(new_h)
