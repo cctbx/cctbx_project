@@ -50,6 +50,8 @@ class _(boost.python.injector, ccd_cpp):
         for i, atoms in enumerate(phi_psi_pair):
           # current phi-psi angles:
           # find the optimal angle
+          if atoms is None:
+            continue
           if direction_forward:
             ccd_angle = self._find_angle(atoms[1].xyz, atoms[2].xyz)
           else:
