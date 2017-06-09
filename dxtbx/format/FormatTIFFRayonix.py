@@ -119,6 +119,7 @@ class FormatTIFFRayonix(FormatTIFF):
 
     # NKS removed the assertion that two-theta offset is 0.0; support the general case
     assert(starts[0] == ends[0])
+    two_theta = starts[0]
 
     # assert that the rotations are all 0.0
 
@@ -140,9 +141,9 @@ class FormatTIFFRayonix(FormatTIFF):
 
     beam = beam_x * pixel_size[0], beam_y * pixel_size[1]
 
-    return self._detector_factory.simple(
-        'CCD', distance, beam, '+x', '-y', pixel_size,
-        image_size, (underload, overload), [])
+    return self._detector_factory.two_theta(
+      'CCD', distance, beam, '+x', '-y', '+x', two_theta,
+      pixel_size, image_size, (underload, overload), [])
 
   def _beam(self):
     '''Return a simple model for the beam.'''
