@@ -4915,8 +4915,17 @@ def write_output_files(params,
   # Map
   map_data_ncs_au=map_data.deep_copy()
   s=(bool_selected_regions==True)
-  map_data_ncs_au=map_data_ncs_au.set_selected(~s,
-    params.segmentation.value_outside_mask)
+  mask=map_data.deep_copy()
+  mask=mask.set_selected(s,1)
+  mask=mask.set_selected(~s,0)
+  map_data_ncs_au=map_data_ncs_au*mask
+
+  one_d=map_data_ncs_au.as_1d()
+  n_zero=mask.count(0)
+  n_tot=mask.size()
+  mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
+  map_data_ncs_au=map_data_ncs_au+(1-mask)*mean_in_box
+  del one_d,mask
 
   if au_map_output_file: # Write out the NCS au of density
     write_ccp4_map(tracking_data.crystal_symmetry,au_map_output_file,
