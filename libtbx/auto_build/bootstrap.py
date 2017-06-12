@@ -235,10 +235,10 @@ class Toolbox(object):
 
     try:
       import ssl
-      ssl_error = ssl.SSLError
+      from ssl import SSLError
     except ImportError:
       ssl = None
-      ssl_error = None
+      SSLError = None
 
     # Open connection to remote server
     try:
@@ -266,7 +266,7 @@ class Toolbox(object):
         socket = urllib2.urlopen(url_request, None, 7)
       else:
         socket = urllib2.urlopen(url_request)
-    except ssl.SSLError, e:
+    except SSLError, e:
       # This could be a timeout
       if localcopy:
         # Download failed for some reason, but a valid local copy of
@@ -552,8 +552,15 @@ class cleanup_ext_class(object):
   def run(self):
     self.remove_ext_files()
 
-class cleanup_dirs_class(object):
+class cleanup_dirs(object):
+  """Command to remove unwanted subdirectories"""
+
   def __init__(self, dirs, workdir=None):
+    """
+    :param dirs:    List of subdirectories to remove from workdir
+    :param workdir: The root directory for everything in dirs. If None, then
+                    the command will be run in the current working directory.
+    """
     self.dirs = dirs
     self.workdir = workdir
 
@@ -562,18 +569,25 @@ class cleanup_dirs_class(object):
 
   def remove_dirs(self):
     cwd=os.getcwd()
-    if self.workdir is not None:
-      if os.path.exists(self.workdir):
-        os.chdir(self.workdir)
-      else:
-        return
-    print "===== Removing directories in %s" % (os.getcwd())
+    try:
+      # Move to the workdir
+      if self.workdir is not None:
+        if os.path.exists(self.workdir):
+          os.chdir(self.workdir)
+        else:
+          return
 
-    for d in self.dirs:
-      if os.path.exists(d):
-        print "      removing %s" % (os.path.join(os.getcwd(),d))
-        shutil.rmtree(d)
-    os.chdir(cwd)
+      # Don't notify the user if we aren't doing anything
+      if any(os.path.exists(d) for d in self.dirs):
+        print "===== Removing directories in %s" % (os.getcwd())
+
+        for d in self.dirs:
+          if os.path.exists(d):
+            print "      removing %s" % (os.path.join(os.getcwd(),d))
+            shutil.rmtree(d)
+    finally:
+      # Leave the directory untouched even if we failed
+      os.chdir(cwd)
 
   def run(self):
     self.remove_dirs()
@@ -1134,7 +1148,7 @@ class Builder(object):
         description="deleting " + ", ".join(dirs),
       ))
     else:
-      self.add_step(cleanup_dirs_class(dirs, "modules"))
+      self.add_step(cleanup_dirs(dirs, "modules"))
 
   def add_rm_bootstrap_on_slave(self):
     # if file is not found error flag is set. Mask it with cmd shell
@@ -1832,11 +1846,11 @@ class PhenixExternalRegression(PhenixBuilder):
     # Preparation
     # AFITT
     if self.subcategory in [None, "afitt"]:
-      self.add_step(cleanup_dirs_class(['openeye'], 'modules'))
+      self.add_step(cleanup_dirs(['openeye'], 'modules'))
     # Amber
     if self.subcategory in [None, "amber"]:
-      self.add_step(cleanup_dirs_class(['amber16'], 'modules'))
-      self.add_step(cleanup_dirs_class(['amber17'], 'modules'))
+      self.add_step(cleanup_dirs(['amber16'], 'modules'))
+      self.add_step(cleanup_dirs(['amber17'], 'modules'))
     PhenixBuilder.cleanup(self, cleaning)
 
   def get_environment(self, add_build_python_to_path=True):
