@@ -235,10 +235,10 @@ class Toolbox(object):
 
     try:
       import ssl
-      ssl_error = ssl.SSLError
+      from ssl import SSLError
     except ImportError:
       ssl = None
-      ssl_error = None
+      SSLError = None
 
     # Open connection to remote server
     try:
@@ -266,7 +266,7 @@ class Toolbox(object):
         socket = urllib2.urlopen(url_request, None, 7)
       else:
         socket = urllib2.urlopen(url_request)
-    except ssl.SSLError, e:
+    except SSLError, e:
       # This could be a timeout
       if localcopy:
         # Download failed for some reason, but a valid local copy of
