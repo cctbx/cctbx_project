@@ -291,7 +291,7 @@ class model_idealization():
       # self.master_sel=master_sel
       # self.master_map = self.reference_map.deep_copy()
       mask = maptbx.mask(
-              xray_structure=xrs.select(self.master_sel),
+              xray_structure=self.whole_xrs.select(self.master_sel),
               n_real=self.master_map.focus(),
               mask_value_inside_molecule=1,
               mask_value_outside_molecule=-1,
@@ -301,8 +301,8 @@ class model_idealization():
       if self.params.debug:
         iotbx.ccp4_map.write_ccp4_map(
             file_name="%s_3_master.map" % self.params.output_prefix,
-            unit_cell=xrs.unit_cell(),
-            space_group=xrs.space_group(),
+            unit_cell=self.cs.unit_cell(),
+            space_group=self.cs.space_group(),
             map_data=self.master_map,
             labels=flex.std_string([""]))
       self.master_map = map_data
