@@ -6,6 +6,8 @@
 #include <cctype>
 #include <fstream>
 #include <vector>
+#include <limits>
+#include <dxtbx/error.h>
 
 namespace dxtbx { namespace boost_python {
 
@@ -68,6 +70,7 @@ namespace dxtbx { namespace boost_python {
     is.read((char *) &data[0], count * sizeof(unsigned int));
 
     for (size_t j = 0; j < count; j++) {
+      DXTBX_ASSERT (data[j] <= std::numeric_limits<int>::max());
       result.push_back((int) data[j]);
     }
 
@@ -114,6 +117,7 @@ namespace dxtbx { namespace boost_python {
 
     for (size_t j = 0; j < count; j++) {
       unsigned int x = data[j];
+      DXTBX_ASSERT (x <= std::numeric_limits<int>::max());
       data[j] = (x << 24) | (x << 8 & 0xff0000) |
         (x >> 8 & 0xff00) | (x >> 24);
     }
