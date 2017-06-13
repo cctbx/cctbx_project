@@ -13,7 +13,7 @@ input {{
 }}
 output {{
   output_dir = {output_dir}
-  split_logs = True
+  split_logs = False
 }}
 mp {{
   method = *lsf sge pbs custom
