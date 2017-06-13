@@ -126,6 +126,12 @@ master_phil = iotbx.phil.parse("""
                cryo-EM data this should be set to False and for crystal data \
                it should be set to True.
 
+     is_crystal = False
+       .type = bool
+       .short_caption = Is crystal
+       .help = If is_crystal is set then NCS can be space-group symmetry. \
+                Normally set at the same time as use_sg_symmetry.
+
      resolution = None
        .type = float
        .short_caption = Resolution
@@ -595,6 +601,7 @@ def run(args=None,params=None,
   si=auto_sharpen_map_or_map_coeffs(
         resolution=params.crystal_info.resolution, # required
         crystal_symmetry=crystal_symmetry,
+        is_crystal=params.crystal_info.is_crystal,
         verbose=params.control.verbose,
         map=map_data,
         half_map_data_list=half_map_data_list,

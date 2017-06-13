@@ -193,8 +193,8 @@ master_phil = iotbx.phil.parse("""
      is_crystal = False
        .type = bool
        .short_caption = Is a crystal
-       .help = Defines whether this is a crystal (or cryo-EM). Only affects \
-               printout of what the NCS represents.
+       .help = Defines whether this is a crystal (or cryo-EM). Normally set \
+                is_crystal along with use_sg_symmetry.
 
      use_sg_symmetry = False
        .type = bool
@@ -1358,6 +1358,7 @@ class sharpening_info:
   def __init__(self,
       tracking_data=None,
       crystal_symmetry=None,
+      is_crystal=None,
       sharpening_method=None,
       solvent_fraction=None,
       n_residues=None,
@@ -1486,12 +1487,15 @@ class sharpening_info:
       return self
 
   def update_with_params(self,params=None,
-     crystal_symmetry=None,solvent_fraction=None,
+     crystal_symmetry=None,
+     is_crystal=None,
+     solvent_fraction=None,
      auto_sharpen=None,
      pdb_inp=None,
      half_map_data_list=None,
      n_residues=None,ncs_copies=None):
       self.crystal_symmetry=crystal_symmetry
+      self.is_crystal=is_crystal
       self.solvent_fraction=solvent_fraction
       self.auto_sharpen=auto_sharpen
       self.n_residues=n_residues
@@ -5817,6 +5821,7 @@ def get_iterated_solvent_fraction(map=None,
     return None  # was not available
 
 def set_up_si(var_dict=None,crystal_symmetry=None,
+      is_crystal=None,
       ncs_copies=None,n_residues=None,
       solvent_fraction=None,pdb_inp=None,map=None,
       auto_sharpen=True,half_map_data_list=None,verbose=None):
@@ -5864,6 +5869,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
     local_params=get_params_from_args(args)
     si.update_with_params(params=local_params,
       crystal_symmetry=crystal_symmetry,
+      is_crystal=is_crystal,
       solvent_fraction=solvent_fraction,
       ncs_copies=ncs_copies,
       n_residues=n_residues,
@@ -6154,6 +6160,9 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
         'write_output_maps=True',
         'add_neighbors=False',
         'density_select=False', ]
+    if not si.is_crystal: a=b
+    if si.is_crystal:
+      args.append("is_crystal=True")
     ncs_group_obj,remainder_ncs_group_obj,tracking_data=run(
      args,
      map_data=map.deep_copy(),
@@ -6265,7 +6274,6 @@ def run_local_sharpening(si=None,
   s = (sum_weight_map != 0)
   sum_weight_map=sum_weight_map.set_selected(s,0.0)
   sum_weight_value_map=sum_weight_map.deep_copy()
-
   upper_bounds_list,lower_bounds_list,\
      centers_cart_ncs_list,centers_cart,all_cart=\
      get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,out=out)
@@ -6391,6 +6399,7 @@ def auto_sharpen_map_or_map_coeffs(
         crystal_symmetry=None,  # supply crystal_symmetry and map or
         map=None,               #  map and n_real
         half_map_data_list=None,     #  two half-maps matching map
+        is_crystal=None,
         map_coeffs=None,
         pdb_inp=None,
         ncs_obj=None,
@@ -6477,6 +6486,7 @@ def auto_sharpen_map_or_map_coeffs(
       # Copy parameters to si (sharpening_info_object)
       si=set_up_si(var_dict=locals(),
         crystal_symmetry=crystal_symmetry,
+        is_crystal=is_crystal,
         solvent_fraction=solvent_content,
         auto_sharpen=auto_sharpen,
         map=map,
