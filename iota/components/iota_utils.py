@@ -298,3 +298,55 @@ class InputFinder():
       input_list.extend(filepaths)
 
     return input_list
+
+class RadAverageCalculator(object):
+  def __init__(self, image=None, datablock=None):
+    if (image is None and datablock is None):
+      print 'ERROR: Need image or datablock for Radial Average Calculator'
+      return
+    if datablock is None:
+      from dxtbx.datablock import DataBlockFactory
+      self.datablock = DataBlockFactory.from_filenames([image])[0]
+    else:
+      self.datablock = datablock
+
+  def make_radial_average(self, num_bins=None, hires=None, lowres=None):
+    from dials.algorithms.background import RadialAverage
+
+    imageset = self.datablock.extract_imagesets()[0]
+    beam = imageset.get_beam()
+    detector = imageset.get_detector()
+    scan_range = (0, len(imageset))
+
+    summed_data = None
+    summed_mask = None
+    for i in range(*scan_range):
+      data = imageset.get_raw_data(i)
+      mask = imageset.get_mask(i)
+      assert isinstance(data, tuple)
+      assert isinstance(mask, tuple)
+      if summed_data is None:
+        summed_mask = mask
+        summed_data = data
+      else:
+        summed_data = [ sd + d for sd, d in zip(summed_data, data) ]
+        summed_mask = [ sm & m for sm, m in zip(summed_mask, mask) ]
+
+    if num_bins is None:
+      num_bins = int(sum(sum(p.get_image_size()) for p in detector) / 50)
+    if lowres is not None:
+      vmin = (1 / lowres) ** 2
+    else:
+      vmin = 0
+    if hires is not None:
+      vmax = (1 / hires) ** 2
+    else:
+      vmax = (1 / detector.get_max_resolution(beam.get_s0())) ** 2
+
+    # Compute the radial average
+    radial_average = RadialAverage(beam, detector, vmin, vmax, num_bins)
+    for d, m in zip(summed_data, summed_mask):
+      radial_average.add(d.as_double() / (scan_range[1] - scan_range[0]), m)
+    mean = radial_average.mean()
+    reso = radial_average.inv_d2()
+    return mean, reso

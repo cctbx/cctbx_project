@@ -180,6 +180,9 @@ dials
   determine_sg_and_reindex = True
     .type = bool
     .help = Will determine sg and reindex if no target space group supplied
+  auto_threshold = True
+    .type = bool
+    .help = Set to True to estimate global threshold for each image
 }
 analysis
   .help = "Analysis / visualization options."

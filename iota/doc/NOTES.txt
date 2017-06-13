@@ -1,5 +1,5 @@
-IOTA v1.1.014 - added image masking
+IOTA v1.1.013a - minor interface tweaks
 
-1. Added image_conversion.mask to parameters (file path to mask)
-2. For cctbx, mask applied at image conversion
-3. Added GUI widget to browse for the mask file and view via image viewer
+1. Can specify mask file and use in processing (cctbx for now)
+2. Can attempt to estimate global threshold in DIALS from radial averaging
+3. Moved radial average calculator to iota_utils

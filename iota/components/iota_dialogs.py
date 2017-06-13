@@ -1037,7 +1037,7 @@ class DIALSOptions(BaseDialog):
 
 
     # Create options panel (all objects should be called as self.options.object)
-    self.options = ScrolledPanel(self, size=(200, 120))
+    self.options = ScrolledPanel(self, size=(200, 200))
     options_sizer = wx.BoxSizer(wx.VERTICAL)
     self.options.SetSizer(options_sizer)
 
@@ -1064,23 +1064,13 @@ class DIALSOptions(BaseDialog):
 
     self.estimate_gain = wx.CheckBox(self.options,
                                      label='Estimate gain for each image')
-    self.reindex.SetValue(True)
+    self.estimate_gain.SetValue(True)
     dials_box_sizer.Add(self.estimate_gain, flag=wx.ALL, border=10)
-    # self.min_spot_size = ct.OptionCtrl(self.options,
-    #                                    items = [('min_spot_size', '6')],
-    #                                    label='Minimum spot size:',
-    #                                    label_size=(200, -1),
-    #                                    ctrl_size=(80, -1))
-    # dials_box_sizer.Add(self.min_spot_size, flag=f.stack, border=10)
-    #
-    # self.global_threshold = ct.OptionCtrl(self.options,
-    #                                       items=[('threshold', '0')],
-    #                                       label='Global threshold:',
-    #                                       label_size=(200, -1),
-    #                                       ctrl_size=(80, -1))
-    # dials_box_sizer.Add(self.global_threshold, flag=wx.ALL, border=10)
 
-
+    self.auto_threshold = wx.CheckBox(self.options,
+                                      label='Estimate threshold for each image')
+    self.auto_threshold.SetValue(True)
+    dials_box_sizer.Add(self.auto_threshold, flag=wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
@@ -1142,10 +1132,8 @@ class DIALSOptions(BaseDialog):
     # DIALS options
     self.reindex.SetValue(self.params.dials.determine_sg_and_reindex)
     self.estimate_gain.SetValue(self.params.advanced.estimate_gain)
-    # self.min_spot_size.min_spot_size.SetValue(
-    #   str(self.params.dials.min_spot_size))
-    # self.global_threshold.threshold.SetValue(
-    #   str(self.params.dials.global_threshold))
+    self.auto_threshold.SetValue(self.params.dials.auto_threshold)
+
 
   def onOK(self, e):
     ''' Populate param PHIL file for DIALS options '''
@@ -1166,6 +1154,7 @@ class DIALSOptions(BaseDialog):
       'dials',
       '{',
       '  determine_sg_and_reindex = {}'.format(self.reindex.GetValue()),
+      '  auto_threshold = {}'.format(self.auto_threshold.GetValue()),
       '}',
       'advanced',
       '{',

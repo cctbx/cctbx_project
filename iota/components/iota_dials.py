@@ -12,6 +12,7 @@ Description : Runs DIALS spotfinding, indexing, refinement and integration
 import os
 import sys
 
+import numpy as np
 from iotbx.phil import parse
 from dxtbx.datablock import DataBlockFactory
 from cctbx import sgtbx
@@ -23,6 +24,7 @@ from dials.command_line.refine_bravais_settings import \
   bravais_lattice_to_space_group_table
 
 import iota.components.iota_misc as misc
+from iota.components.iota_utils import RadAverageCalculator
 
 class IOTADialsProcessor(Processor):
   ''' Subclassing the Processor module from dials.stills_process to introduce
@@ -33,7 +35,8 @@ class IOTADialsProcessor(Processor):
     Processor.__init__(self, params=params)
 
   def refine_bravais_settings(self, reflections, experiments):
-    sgparams = sg_scope.extract()
+    proc_scope = phil_scope.format(python_object=self.phil)
+    sgparams = sg_scope.fetch(proc_scope).extract()
     sgparams.refinement.reflections.outlier.algorithm = 'tukey'
 
     from dials.algorithms.indexing.symmetry \
@@ -224,6 +227,13 @@ class Integrator(object):
     self.datablock = DataBlockFactory.from_filenames(self.img)[0]
     self.obj_filename = "int_{}".format(os.path.basename(self.img[0]))
 
+    if self.params.dials.auto_threshold:
+      rad_avg = RadAverageCalculator(datablock=self.datablock)
+      means, res = rad_avg.make_radial_average(num_bins=20, lowres=90)
+      threshold = int(np.min(means) * 5)
+      print 'IMG: {}, THRESHOLD: {}'.format(self.img, threshold)
+      self.phil.spotfinder.threshold.xds.global_threshold = threshold
+
   def find_spots(self):
     # Perform spotfinding
     self.observed = self.processor.find_spots(datablock=self.datablock)
@@ -270,7 +280,7 @@ class Integrator(object):
         else:
           print "Spotfinding error for %s:"%self.img[0],
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-        print e
+        print error_message
         self.fail = 'failed spotfinding'
 
       if self.fail == None:
@@ -285,7 +295,7 @@ class Integrator(object):
           else:
             print "Indexing error for %s:"%self.img[0],
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-          print e
+          print error_message
           self.fail = 'failed indexing'
 
       if (                                        self.fail is None and
@@ -298,7 +308,10 @@ class Integrator(object):
           sg = self.experiments[0].crystal.get_space_group().info()
           print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
         except Exception, e:
-          print e
+          print "Bravais / Reindexing Error: ", e
+
+        sg = self.experiments[0].crystal.get_space_group().info()
+        print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
 
       if self.fail == None:
         try:
@@ -313,7 +326,7 @@ class Integrator(object):
           else:
             print "Integration error for %s:"%self.img[0],
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-          print e
+          print error_message
           self.fail = 'failed integration'
 
     with open(self.int_log, 'w') as tf:

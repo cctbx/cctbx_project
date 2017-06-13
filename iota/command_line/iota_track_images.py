@@ -18,13 +18,12 @@ import numpy as np
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from dxtbx.datablock import DataBlockFactory
-from dials.algorithms.background import RadialAverage
 from iotbx import phil as ip
 from libtbx import easy_run
 
 from iota import iota_version
 from iota.components.iota_utils import InputFinder
+from iota.components.iota_utils import RadAverageCalculator
 from iota.components.iota_dials import phil_scope, IOTADialsProcessor
 import iota.components.iota_threads as thr
 import iota.components.iota_controls as ct
@@ -51,7 +50,6 @@ elif (wx.Platform == '__WXMSW__'):
 
 ginp = InputFinder()
 user = os.getlogin()
-
 
 default_target = '\n'.join(['verbosity=10',
                             'spotfinder {',
@@ -121,47 +119,6 @@ default_target = '\n'.join(['verbosity=10',
                             '  }',
                             '}'
                             ])
-
-
-class RadAverageCalculator(object):
-  def __init__(self, image):
-    self.datablock = DataBlockFactory.from_filenames([image])[0]
-
-  def calculate(self):
-    return self.make_radial_average(datablock=self.datablock)
-
-
-  def make_radial_average(self, datablock):
-    imageset = datablock.extract_imagesets()[0]
-    beam = imageset.get_beam()
-    detector = imageset.get_detector()
-    scan_range = (0, len(imageset))
-
-    summed_data = None
-    summed_mask = None
-    for i in range(*scan_range):
-      data = imageset.get_raw_data(i)
-      mask = imageset.get_mask(i)
-      assert isinstance(data, tuple)
-      assert isinstance(mask, tuple)
-      if summed_data is None:
-        summed_mask = mask
-        summed_data = data
-      else:
-        summed_data = [ sd + d for sd, d in zip(summed_data, data) ]
-        summed_mask = [ sm & m for sm, m in zip(summed_mask, mask) ]
-    num_bins = int(sum(sum(p.get_image_size()) for p in detector) / 50)
-    vmin = (1.0 / 20) ** 2  #0
-    vmax = (1.0 / 1.5) ** 2 #detector.get_max_resolution(beam.get_s0())) ** 2
-
-    # Compute the radial average
-    radial_average = RadialAverage(beam, detector, vmin, vmax, num_bins)
-    for d, m in zip(summed_data, summed_mask):
-      radial_average.add(d.as_double() / (scan_range[1] - scan_range[0]), m)
-    mean = radial_average.mean()
-    reso = radial_average.inv_d2()
-
-    return mean, reso
 
 class TrackChart(wx.Panel):
   def __init__(self, parent, main_window):
@@ -423,11 +380,11 @@ class TrackerWindow(wx.Frame):
                                                 bitmap=open_bmp,
                                                 shortHelp='Open',
                                                 longHelp='Open Images')
-    run_calc = bitmaps.fetch_icon_bitmap('apps', 'calc')
-    self.tb_btn_calc = self.toolbar.AddLabelTool(wx.ID_ANY, label='Average',
-                                                bitmap=run_calc,
-                                                shortHelp='Average',
-                                                longHelp='Calculate radial averages')
+    # run_calc = bitmaps.fetch_icon_bitmap('apps', 'calc')
+    # self.tb_btn_calc = self.toolbar.AddLabelTool(wx.ID_ANY, label='Average',
+    #                                             bitmap=run_calc,
+    #                                             shortHelp='Average',
+    #                                             longHelp='Calculate radial averages')
     run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=run_bmp,
@@ -440,7 +397,7 @@ class TrackerWindow(wx.Frame):
                                                 longHelp='Stop Spotfinding')
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
-    self.toolbar.EnableTool(self.tb_btn_calc.GetId(), False)
+    # self.toolbar.EnableTool(self.tb_btn_calc.GetId(), False)
     self.toolbar.Realize()
 
     # Setup timer
@@ -461,7 +418,7 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onGetImages, self.tb_btn_open)
     self.Bind(wx.EVT_TOOL, self.onRunSpotfinding, self.tb_btn_run)
     self.Bind(wx.EVT_TOOL, self.onStop, self.tb_btn_stop)
-    self.Bind(wx.EVT_TOOL, self.onCalc, self.tb_btn_calc)
+    # self.Bind(wx.EVT_TOOL, self.onCalc, self.tb_btn_calc)
 
     # Spotfinder / timer bindings
     self.Bind(thr.EVT_SPFDONE, self.onSpfOneDone)
@@ -482,16 +439,16 @@ class TrackerWindow(wx.Frame):
   # def onResume(self, e):
   #   os.remove(self.term_file)
 
-  def onCalc(self, e):
-    print 'CALCULATING RADIAL AVERAGES...'
-    data_list = ginp.make_input_list([self.data_folder])
-    min_means = []
-    for img in data_list[:10]:
-      rad_avg = RadAverageCalculator(image=img)
-      means, res = rad_avg.calculate()
-      print 'IMG: {}, MIN MEAN: {}'.format(os.path.basename(img), np.min(means))
-      min_means.append(np.min(means))
-    print '*** MEDIAN MIN MEAN = {}'.format(np.median(min_means))
+  # def onCalc(self, e):
+  #   print 'CALCULATING RADIAL AVERAGES...'
+  #   data_list = ginp.make_input_list([self.data_folder])
+  #   min_means = []
+  #   for img in data_list[:10]:
+  #     rad_avg = RadAverageCalculator(image=img)
+  #     means, res = rad_avg.make_radial_average(num_bins=20)
+  #     print 'IMG: {}, MIN MEAN: {}'.format(os.path.basename(img), np.min(means))
+  #     min_means.append(np.min(means))
+  #   print '*** MEDIAN MIN MEAN = {}'.format(np.median(min_means))
 
 
   def remove_term_file(self):
