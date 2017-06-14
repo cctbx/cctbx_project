@@ -208,9 +208,13 @@ def exercise(prefix="tst_polder_3"):
     if(ma.info().label_string() == "f-obs"):
       fobs = ma.deep_copy()
 
-  mmm_mp_list = []
-  mmm_o_list  = []
-  result_list = []
+  mmm_list = []
+  mask_mmm = [[0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8901388888888889],
+              [0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8583379629629629],
+              [0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8025601851851852] ]
 
   for radius in [3, 5, 7]:
     params.polder.sphere_radius = radius
@@ -224,7 +228,23 @@ def exercise(prefix="tst_polder_3"):
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
-    result_list.append(results)
+
+    mmm_list.append(polder_object.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(polder_object.mask_data_polder.as_1d().min_max_mean().as_tuple())
+
+  for i in range(6):
+    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
+    #print mask_mmm[i], mmm_list[i]
+
+#-------------------------------------------------------------------------
+
+  mmm_list = []
+  mask_mmm = [ [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.8642268518518519],
+               [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.7957083333333334],
+               [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.6772777777777778] ]
 
   for box_buffer in [3, 5, 7]:
     params.polder.box_buffer = box_buffer
@@ -239,65 +259,14 @@ def exercise(prefix="tst_polder_3"):
     polder_object.validate()
     polder_object.run()
     results = polder_object.get_results()
-    result_list.append(results)
 
-  for results in result_list:
-    mc_polder = results.mc_polder
-    mc_omit   = results.mc_omit
-    cg = maptbx.crystal_gridding(
-      unit_cell         = mc_polder.unit_cell(),
-      d_min             = mc_polder.d_min(),
-      resolution_factor = 0.25,
-      space_group_info  = mc_polder.space_group_info())
-    map_polder = get_map(
-      cg = cg,
-      mc = mc_polder)
-    map_omit = get_map(
-      cg = cg,
-      mc = mc_omit)
-    sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(selection_bool)
-    sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
-    mp  = get_map_stats(
-      map        = map_polder,
-      sites_frac = sites_frac_lig)
-    mo  = get_map_stats(
-      map        = map_omit,
-      sites_frac = sites_frac_lig)
-    #
-    mmm_mp = mp.min_max_mean().as_tuple()
-    mmm_o = mo.min_max_mean().as_tuple()
-    mmm_mp_list.append(mmm_mp)
-    mmm_o_list.append(mmm_o)
+    mmm_list.append(polder_object.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(polder_object.mask_data_polder.as_1d().min_max_mean().as_tuple())
 
-    print "Polder map : %7.3f %7.3f %7.3f"%mmm_mp
-    print "Omit       : %7.3f %7.3f %7.3f"%mmm_o
-    #mtz_dataset = results.mc_polder.as_mtz_dataset(
-    #  column_root_label = "mFo-DFc_polder")
-    #mtz_dataset.add_miller_array(
-    #  miller_array      = results.mc_omit,
-    #  column_root_label = "mFo-DFc_omit")
-    #mtz_object = mtz_dataset.mtz_object()
-    #mtz_object.write(file_name = 'bla_'+str(radius)+'.mtz')
-
-  mmm_mp_target = [ [1.846, 5.860, 4.248],
-                    [-0.791, 0.520, -0.032],
-                    [-1.667, -0.589, -1.053],
-                    [-3.486, -2.065, -2.725],
-                    [-4.100, -2.963, -3.493],
-                    [-4.115, -2.663, -3.276] ]
-
-  mmm_o_target = [ [-1.820, 1.577, -0.699],
-                   [-1.820, 1.577, -0.699],
-                   [-1.820, 1.577, -0.699],
-                   [-0.358, 2.008,  0.843],
-                   [-0.358, 2.008,  0.843],
-                   [-0.358, 2.008,  0.843] ]
-  print '*' *79
-  print 'Assertion error expected, working on it (DL, June 2017).'
-  print '*' *79
   for i in range(6):
-    assert approx_equal(mmm_mp_list[i], mmm_mp_target[i], eps = 0.1), 'Assertion error expected, working on it (DL, June 2017).'
-    assert approx_equal(mmm_o_list[i], mmm_o_target[i], eps = 0.1), 'Assertion error expected, working on it (DL, June 2017).'
+    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
+    #print mask_mmm[i], mmm_list[i]
+
 
 if (__name__ == "__main__"):
   t0 = time.time()
