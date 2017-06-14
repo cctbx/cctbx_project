@@ -234,13 +234,12 @@ class refine_mz(object):
       xrs_p1 = self.xray_structure.expand_to_p1(sites_mod_positive=True)
       radii = flex.double(xrs_p1.scatterers().size(), self.masking_atom_radius)
       mask_data = cctbx_maptbx_ext.mask(
-        sites_frac = xrs_p1.sites_frac(),
-        unit_cell  = xrs_p1.unit_cell(),
-        n_real     = self.map_data.all(),
-        radii      = radii)
-      s = mask_data>0.9                         # XXX make it option of mask
-      mask_data = mask_data.set_selected( s, 0) # XXX make it option of mask
-      mask_data = mask_data.set_selected(~s, 1) # XXX make it option of mask
+        sites_frac                  = xrs_p1.sites_frac(),
+        unit_cell                   = xrs_p1.unit_cell(),
+        n_real                      = self.map_data.all(),
+        mask_value_inside_molecule  = 1,
+        mask_value_outside_molecule = 0,
+        radii                       = radii)
     return mask_data
 
   def _get_map(self):
