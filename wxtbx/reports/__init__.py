@@ -36,8 +36,8 @@ class PDBLinkMixin (object) :
         self.web_frame.Open(url)
         self.web_frame.Refresh()
       else :
-        from libtbx import easy_run
-        easy_run.call("env LD_LIBRARY_PATH='' firefox %s" % url)
+        import webbrowser
+        webbrowser.open( url )
 
   def OnDownload (self, event) :
     pdb_id = self.get_pdb_id_for_viewing()
