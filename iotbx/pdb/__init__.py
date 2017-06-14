@@ -1910,4 +1910,5 @@ def write_whole_pdb_file(
         atoms_reset_serial_first_value=atoms_reset_serial_first_value,
         append_end=append_end))
   if file_name is not None:
+    out.flush()
     out.close()

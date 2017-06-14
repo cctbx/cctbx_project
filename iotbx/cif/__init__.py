@@ -492,4 +492,5 @@ def write_whole_cif_file(
     cif.update(processed_pdb_file.all_chain_proxies.cif)
   cif.show(out=out,align_columns=align_columns)
   if file_name is not None:
+    out.flush()
     out.close()
