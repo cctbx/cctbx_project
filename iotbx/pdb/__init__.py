@@ -22,6 +22,23 @@ import sys
 import os
 op = os.path
 
+def construct_special_position_settings(
+      crystal_symmetry,
+      special_position_settings=None,
+      weak_symmetry=False,
+      min_distance_sym_equiv=0.5,
+      u_star_tolerance=0):
+  #crystal_symmetry = crystal_symmetry(
+  #  crystal_symmetry=special_position_settings,
+  #  weak_symmetry=weak_symmetry)
+  if (crystal_symmetry is None): return None
+  if (special_position_settings is not None):
+    min_distance_sym_equiv=special_position_settings.min_distance_sym_equiv()
+    u_star_tolerance = special_position_settings.u_star_tolerance()
+  return crystal_symmetry.special_position_settings(
+    min_distance_sym_equiv=min_distance_sym_equiv,
+    u_star_tolerance=u_star_tolerance)
+
 def is_pdb_file(file_name):
   pdb_raw_records = smart_open.for_reading(
     file_name = file_name).read().splitlines()
@@ -816,11 +833,10 @@ class pdb_input_mixin(object):
     crystal_symmetry = self.crystal_symmetry(
       crystal_symmetry=special_position_settings,
       weak_symmetry=weak_symmetry)
-    if (crystal_symmetry is None): return None
-    if (special_position_settings is not None):
-      min_distance_sym_equiv=special_position_settings.min_distance_sym_equiv()
-      u_star_tolerance = special_position_settings.u_star_tolerance()
-    return crystal_symmetry.special_position_settings(
+    return construct_special_position_settings(
+      crystal_symmetry = crystal_symmetry,
+      special_position_settings=special_position_settings,
+      weak_symmetry=weak_symmetry,
       min_distance_sym_equiv=min_distance_sym_equiv,
       u_star_tolerance=u_star_tolerance)
 

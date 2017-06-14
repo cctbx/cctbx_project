@@ -2914,6 +2914,7 @@ class build_all_chain_proxies(linking_mixins):
         file_name=None,
         raw_records=None,
         pdb_inp=None,
+        pdb_hierarchy=None,
         atom_selection_string=None,
         special_position_settings=None,
         crystal_symmetry=None,
@@ -2945,6 +2946,8 @@ class build_all_chain_proxies(linking_mixins):
     elif (file_name is not None):
       assert raw_records is None
       self.pdb_inp = pdb.input(file_name=file_name)
+    elif (pdb_hierarchy is not None):
+      self.pdb_inp = None # do something a few lines below
     else:
       if (isinstance(raw_records, str)):
         raw_records = flex.split_lines(raw_records)
@@ -2952,7 +2955,13 @@ class build_all_chain_proxies(linking_mixins):
         assert raw_records is not None
         raw_records = flex.std_string(raw_records)
       self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
-    self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
+    if(pdb_hierarchy is None):
+      self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(
+        sort_atoms=self.params.sort_atoms)
+    else: # here is that "something" mentioned just above
+      self.pdb_hierarchy = pdb_hierarchy
+      if(self.params.sort_atoms):
+        self.pdb_hierarchy.sort_atoms_in_place()
     #
     # optionally modify the model before processing
     #
@@ -3084,14 +3093,24 @@ class build_all_chain_proxies(linking_mixins):
         and crystal_symmetry is not None):
       special_position_settings = crystal_symmetry.special_position_settings(
         min_distance_sym_equiv=params.min_distance_sym_equiv)
-    self.special_position_settings = self.pdb_inp.special_position_settings(
-      special_position_settings=special_position_settings,
-      min_distance_sym_equiv=params.min_distance_sym_equiv,
-      weak_symmetry=not force_symmetry)
+    if(self.pdb_inp is None):
+      self.special_position_settings = \
+        iotbx.pdb.construct_special_position_settings(
+          crystal_symmetry          = crystal_symmetry,
+          special_position_settings = special_position_settings,
+          weak_symmetry             = not force_symmetry,
+          min_distance_sym_equiv    = params.min_distance_sym_equiv)
+      occ = self.pdb_hierarchy.atoms().extract_occ()
+    else:
+      self.special_position_settings = self.pdb_inp.special_position_settings(
+        special_position_settings=special_position_settings,
+        min_distance_sym_equiv=params.min_distance_sym_equiv,
+        weak_symmetry=not force_symmetry)
+      occ = self.pdb_inp.atoms().extract_occ()
     if(self.special_position_settings is not None and
        self.special_position_settings.unit_cell() is not None and
        self.special_position_settings.unit_cell().volume() <
-       flex.sum(self.pdb_inp.atoms().extract_occ())*5 and
+       flex.sum(occ)*5 and
        not self.params.disable_uc_volume_vs_n_atoms_check):
       msg = """Unit cell volume is incompatible with number of atoms.
   Unit cell parameters: %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f
@@ -5353,6 +5372,7 @@ class process(object):
         file_name=None,
         raw_records=None,
         pdb_inp=None,
+        pdb_hierarchy=None,
         atom_selection_string=None,
         strict_conflict_handling=False,
         special_position_settings=None,
@@ -5379,6 +5399,7 @@ class process(object):
       file_name=file_name,
       raw_records=raw_records,
       pdb_inp=pdb_inp,
+      pdb_hierarchy=pdb_hierarchy,
       atom_selection_string=atom_selection_string,
       special_position_settings=special_position_settings,
       crystal_symmetry=crystal_symmetry,
