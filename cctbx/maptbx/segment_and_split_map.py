@@ -190,11 +190,11 @@ master_phil = iotbx.phil.parse("""
        .help = Chain type. Determined automatically from sequence file if \
                not given. Mixed chain types are fine (leave blank if so).
 
-     is_crystal = False
+     is_a_crystal = False
        .type = bool
        .short_caption = Is a crystal
        .help = Defines whether this is a crystal (or cryo-EM). Normally set \
-                is_crystal along with use_sg_symmetry.
+                is_a_crystal along with use_sg_symmetry.
 
      use_sg_symmetry = False
        .type = bool
@@ -581,6 +581,12 @@ master_phil = iotbx.phil.parse("""
       .type = float
       .help = Radius for constructing asymmetric unit.
       .short_caption = Radius for constructing asymmetric unit
+
+    soft_mask = True
+      .type = bool
+      .help = Use soft mask (smooth change from inside to outside with radius\
+             based on resolution of map).
+      .short_caption = Soft mask
 
     value_outside_mask = 0.0
       .type = float
@@ -1358,7 +1364,7 @@ class sharpening_info:
   def __init__(self,
       tracking_data=None,
       crystal_symmetry=None,
-      is_crystal=None,
+      is_a_crystal=None,
       sharpening_method=None,
       solvent_fraction=None,
       n_residues=None,
@@ -1407,6 +1413,7 @@ class sharpening_info:
       mask_atoms=None,
       mask_atoms_atom_radius=None,
       value_outside_atoms=None,
+      soft_mask=None,
       search_b_min=None,
       search_b_max=None,
       search_b_n=None,
@@ -1488,14 +1495,14 @@ class sharpening_info:
 
   def update_with_params(self,params=None,
      crystal_symmetry=None,
-     is_crystal=None,
+     is_a_crystal=None,
      solvent_fraction=None,
      auto_sharpen=None,
      pdb_inp=None,
      half_map_data_list=None,
      n_residues=None,ncs_copies=None):
       self.crystal_symmetry=crystal_symmetry
-      self.is_crystal=is_crystal
+      self.is_a_crystal=is_a_crystal
       self.solvent_fraction=solvent_fraction
       self.auto_sharpen=auto_sharpen
       self.n_residues=n_residues
@@ -1523,6 +1530,7 @@ class sharpening_info:
       self.mask_atoms=params.map_modification.mask_atoms
       self.mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius
       self.value_outside_atoms=params.map_modification.value_outside_atoms
+      self.soft_mask=params.segmentation.soft_mask
       self.k_sharpen=params.map_modification.k_sharpen
       self.sharpening_target=params.map_modification.sharpening_target
       self.residual_target=params.map_modification.residual_target
@@ -2828,7 +2836,7 @@ def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
       is_helical_symmetry=True
     elif ncs_object.is_point_group_symmetry(abs_tol_t=.50):
       print >>out,"This NCS is point-group symmetry"
-    elif params.crystal_info.is_crystal:
+    elif params.crystal_info.is_a_crystal:
       print >>out,"This NCS is crystal symmetry"
     else:
       raise Sorry("Need point-group or helical symmetry.")
@@ -5821,7 +5829,7 @@ def get_iterated_solvent_fraction(map=None,
     return None  # was not available
 
 def set_up_si(var_dict=None,crystal_symmetry=None,
-      is_crystal=None,
+      is_a_crystal=None,
       ncs_copies=None,n_residues=None,
       solvent_fraction=None,pdb_inp=None,map=None,
       auto_sharpen=True,half_map_data_list=None,verbose=None):
@@ -5839,7 +5847,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'smoothing_radius','use_local_aniso','local_aniso_in_local_sharpening',
        'local_sharpening','box_in_auto_sharpen','resolution','d_min_ratio',
        'discard_if_worse',
-       'mask_atoms','mask_atoms_atom_radius','value_outside_atoms',
+       'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
        'max_box_fraction','k_sharpen',
         'residual_target','sharpening_target',
        'search_b_min','search_b_max','search_b_n','maximum_low_b_adjusted_sa',
@@ -5869,7 +5877,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
     local_params=get_params_from_args(args)
     si.update_with_params(params=local_params,
       crystal_symmetry=crystal_symmetry,
-      is_crystal=is_crystal,
+      is_a_crystal=is_a_crystal,
       solvent_fraction=solvent_fraction,
       ncs_copies=ncs_copies,
       n_residues=n_residues,
@@ -5900,6 +5908,8 @@ def select_box_map_data(si=None,
         args.append('mask_atoms_atom_radius=%s' %(si.mask_atoms_atom_radius))
       if si.value_outside_atoms:
         args.append('value_outside_atoms=%s' %(si.value_outside_atoms))
+      if si.soft_mask:
+        args.append('soft_mask=%s' %(si.soft_mask))
     hierarchy=pdb_inp.construct_hierarchy()
     print >>out,"Getting map as box"
     box=run_map_box(args,
@@ -6160,9 +6170,8 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
         'write_output_maps=True',
         'add_neighbors=False',
         'density_select=False', ]
-    if not si.is_crystal: a=b
-    if si.is_crystal:
-      args.append("is_crystal=True")
+    if si.is_a_crystal:
+      args.append("is_a_crystal=True")
     ncs_group_obj,remainder_ncs_group_obj,tracking_data=run(
      args,
      map_data=map.deep_copy(),
@@ -6399,7 +6408,7 @@ def auto_sharpen_map_or_map_coeffs(
         crystal_symmetry=None,  # supply crystal_symmetry and map or
         map=None,               #  map and n_real
         half_map_data_list=None,     #  two half-maps matching map
-        is_crystal=None,
+        is_a_crystal=None,
         map_coeffs=None,
         pdb_inp=None,
         ncs_obj=None,
@@ -6442,6 +6451,7 @@ def auto_sharpen_map_or_map_coeffs(
         mask_atoms=None,
         mask_atoms_atom_radius=None,
         value_outside_atoms=None,
+        soft_mask=None,
         k_sharpen=None,
         search_b_min=None,
         search_b_max=None,
@@ -6486,7 +6496,7 @@ def auto_sharpen_map_or_map_coeffs(
       # Copy parameters to si (sharpening_info_object)
       si=set_up_si(var_dict=locals(),
         crystal_symmetry=crystal_symmetry,
-        is_crystal=is_crystal,
+        is_a_crystal=is_a_crystal,
         solvent_fraction=solvent_content,
         auto_sharpen=auto_sharpen,
         map=map,
@@ -7009,7 +7019,7 @@ def get_one_au(tracking_data=None,
     print "Points in starting mask:",starting_mask.count(True)
     print "Points in overall mask:",overall_mask.count(True)
     print "Points in both:",(starting_mask & overall_mask).count(True)
-    if tracking_data.params.crystal_info.is_crystal:
+    if tracking_data.params.crystal_info.is_a_crystal:
       # take starting mask as overall...
       overall_mask= starting_mask
     else: # usual
