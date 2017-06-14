@@ -163,7 +163,7 @@ xtc_phil_str = '''
       detz_offset = None
         .type = float
         .help = Distance from back of detector rail to sample interaction region (CXI) \
-                or actual detector distance (XPP)
+                or actual detector distance (XPP/MFX)
       override_energy = None
         .type = float
         .help = If not None, use the input energy for every event instead of the energy \
@@ -177,26 +177,39 @@ xtc_phil_str = '''
         .help = Path to invalid pixel mask, in the dials.generate_mask format. If not set, use the \
                 psana computed invalid pixel mask. Regardless, pixels outside of the trusted range \
                 for each image will also be masked out. See cxi.make_dials_mask.
-      mask_nonbonded_pixels = False
-        .type = bool
-        .help = If true, try to get non-bonded pixels from psana calibrations and apply them. Includes \
-                the 4 pixels on each side of each pixel. Only used if a custom invalid_pixel_mask is \
-                provided (otherwise the psana calibration will mask these out automatically).
-      gain_mask_value = None
-        .type = float
-        .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
-      common_mode {
-        algorithm = default custom
-          .type = choice
-          .help = Choice of SLAC's common mode correction algorithms. If not specified, use no common \
-                  mode correction, only dark pedestal subtraction. Default: use the default common_mode \
-                  correction. Custom, see \
-                  https://confluence.slac.stanford.edu/display/PSDM/Common+mode+correction+algorithms
-        custom_parameterization = None
-          .type = ints
-          .help = Parameters to control SLAC's common mode correction algorithms. Should be None if \
-                  common_mode.algorithm is default or None.  See \
-                  https://confluence.slac.stanford.edu/display/PSDM/Common+mode+correction+algorithms
+      mode = *cspad rayonix
+        .type = choice
+        .help = CBFs output in the designated mode
+      cspad {
+        mask_nonbonded_pixels = False
+          .type = bool
+          .help = If true, try to get non-bonded pixels from psana calibrations and apply them. Includes \
+                  the 4 pixels on each side of each pixel. Only used if a custom invalid_pixel_mask is \
+                  provided (otherwise the psana calibration will mask these out automatically).
+        gain_mask_value = None
+          .type = float
+          .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
+        common_mode {
+          algorithm = default custom
+            .type = choice
+            .help = Choice of SLAC's common mode correction algorithms. If not specified, use no common \
+                    mode correction, only dark pedestal subtraction. Default: use the default common_mode \
+                    correction. Custom, see \
+                    https://confluence.slac.stanford.edu/display/PSDM/Common+mode+correction+algorithms
+          custom_parameterization = None
+            .type = ints
+            .help = Parameters to control SLAC's common mode correction algorithms. Should be None if \
+                    common_mode.algorithm is default or None.  See \
+                    https://confluence.slac.stanford.edu/display/PSDM/Common+mode+correction+algorithms
+        }
+      }
+      rayonix {
+        bin_size = 2
+          .type = int
+        override_beam_x = None
+          .type = float
+        override_beam_y = None
+          .type = float
       }
     }
   }
@@ -338,8 +351,17 @@ class InMemScript(DialsProcessScript):
   def run(self):
     """ Process all images assigned to this thread """
 
-    params, options = self.parser.parse_args(
-      show_diff_phil=True)
+    try:
+      params, options = self.parser.parse_args(
+        show_diff_phil=True)
+    except Exception, e:
+      if "Unknown command line parameter definition" in str(e):
+        deprecated_params = ['mask_nonbonded_pixels','gain_mask_value','algorithm','custom_parameterization']
+        deprecated_strs = ['%s','%s','common_mode.%s','common_mode.%s']
+        for i in xrange(len(deprecated_params)):
+          if deprecated_params[i] in str(e):
+            print "format.cbf.%s"%(deprecated_strs[i]%deprecated_params[i]), "has changed to format.cbf.cspad.%s"%(deprecated_strs[i]%deprecated_params[i])
+      raise
 
     # Check inputs
     if params.input.experiment is None or \
@@ -502,16 +524,16 @@ class InMemScript(DialsProcessScript):
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
         if params.format.file_format == 'cbf':
-          if params.format.cbf.common_mode.algorithm == "custom":
-            self.common_mode = params.format.cbf.common_mode.custom_parameterization
+          if params.format.cbf.cspad.common_mode.algorithm == "custom":
+            self.common_mode = params.format.cbf.cspad.common_mode.custom_parameterization
             assert self.common_mode is not None
           else:
-            self.common_mode = params.format.cbf.common_mode.algorithm # could be None or default
+            self.common_mode = params.format.cbf.cspad.common_mode.algorithm # could be None or default
 
         if params.format.cbf.invalid_pixel_mask is not None:
           self.dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
           assert len(self.dials_mask) == 64
-          if self.params.format.cbf.mask_nonbonded_pixels:
+          if self.params.format.cbf.cspad.mask_nonbonded_pixels:
             psana_mask = self.psana_det.mask(run.run(),calib=False,status=False,edges=False,central=False,unbond=True,unbondnbrs=True)
             dials_mask = self.psana_mask_to_dials_mask(psana_mask)
             self.dials_mask = [self.dials_mask[i] & dials_mask[i] for i in xrange(len(dials_mask))]
@@ -739,8 +761,8 @@ class InMemScript(DialsProcessScript):
       # get numpy array, 32x185x388
       data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
                                                     common_mode=self.common_mode,
-                                                    apply_gain_mask=self.params.format.cbf.gain_mask_value is not None,
-                                                    gain_mask_value=self.params.format.cbf.gain_mask_value,
+                                                    apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
+                                                    gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
                                                     per_pixel_gain=False)
       if data is None:
         print "No data"

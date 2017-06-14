@@ -53,16 +53,18 @@ phil_scope = parse('''
       detz_offset = None
         .type = int
         .help = Distance from back of detector rail to sample interaction region (CXI) \
-                or actual detector distance (XPP)
+                or actual detector distance (XPP/MFX)
       override_energy = None
         .type = float
         .help = If not None, use the input energy for every event instead of the energy \
                 from the XTC stream
-      gain_mask_value = None
-        .type = float
-        .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
       mode = *cspad rayonix
         .type = choice
+      cspad {
+        gain_mask_value = None
+          .type = float
+          .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
+      }
       rayonix {
         bin_size = 2
           .type = int
@@ -215,8 +217,8 @@ class Script(object):
             # get numpy array, 32x185x388
             data = cspad_cbf_tbx.get_psana_corrected_data(psana_det, evt, use_default=False, dark=True,
                                                           common_mode=None,
-                                                          apply_gain_mask=params.format.cbf.gain_mask_value is not None,
-                                                          gain_mask_value=params.format.cbf.gain_mask_value,
+                                                          apply_gain_mask=params.format.cbf.cspad.gain_mask_value is not None,
+                                                          gain_mask_value=params.format.cbf.cspad.gain_mask_value,
                                                           per_pixel_gain=False)
 
             distance = cspad_tbx.env_distance(params.input.address, run.env(), params.format.cbf.detz_offset)
