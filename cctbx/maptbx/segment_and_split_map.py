@@ -595,10 +595,10 @@ master_phil = iotbx.phil.parse("""
       .help = Radius for constructing asymmetric unit.
       .short_caption = Radius for constructing asymmetric unit
 
-    soft_mask = True
+    soft_mask = False
       .type = bool
       .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map).
+             based on resolution of map). In development
       .short_caption = Soft mask
 
     value_outside_mask = 0.0
