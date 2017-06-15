@@ -67,6 +67,8 @@ class lazy_file_cache():
     # StringIO object containing cached information
     self._cache_object = StringIO()
     self._cache_size = 0
+    self._cache_limit = 40 * 1024 * 1024
+    self._cache_limit_reached = False
 
     # Current status of lazy cache towards client objects.
     # Opening new file handles is disallowed when the object is closing.
@@ -93,6 +95,10 @@ class lazy_file_cache():
 
   def _cache_up_to(self, position):
     '''Ensure that the file has been read up to "position"'''
+
+    # Limit reads to upper cache size limit
+    if position > self._cache_limit:
+      position = self._cache_limit
 
     # Is read actually necessary?
     if self._all_cached or (position < self._cache_size):
@@ -124,6 +130,10 @@ class lazy_file_cache():
         self._all_cached = True
         self._close_file()
 
+      if self._cache_size >= self._cache_limit:
+        self._cache_limit_reached = True
+        self._debug("Cache limit reached with %d bytes" % self._cache_size)
+
   def _cache_all(self):
     '''Read entire remaining file into cache.'''
 
@@ -131,9 +141,13 @@ class lazy_file_cache():
     if self._all_cached:
       return
 
+    # Is read actually possible?
+    if self._cache_limit_reached:
+      return
+
     with self._file_lock:
       # Check again with lock held, required for concurrency
-      if self._all_cached: return
+      if self._all_cached or self._cache_limit_reached: return
 
       self._debug("Reading remaining file into cache")
 
@@ -142,6 +156,13 @@ class lazy_file_cache():
       self._cache_object.write(data)
       self._debug("Read %d bytes" % len(data))
       self._cache_size += len(data)
+
+      if self._cache_size >= self._cache_limit:
+        # Don't cache more than the set limit. In this case keep file handler
+        # open and pass read requests through.
+        self._cache_limit_reached = True
+        self._debug("Cache size limit reached")
+        return
 
       self._all_cached = True
       self._close_file()
@@ -203,18 +224,35 @@ class lazy_file_cache():
     '''Read from position start up to maxbytes bytes from file.
        If maxbytes is not set, read the entire file.'''
     self._check_not_closed()
+
+    # Do we need to pass the read request to the underlying file object?
+    passthrough = False
+
     if not self._all_cached:
       # Ensure that relevant data is in cache
       if maxbytes is None:
         self._cache_all()
+        if not self._all_cached:
+          passthrough = True
       else:
         self._cache_up_to(start + maxbytes)
+        passthrough = start + maxbytes > self._cache_size
 
-    self._cache_object.seek(start)
-    if maxbytes is None:
-      return self._cache_object.read(), self._cache_object.tell()
+    if passthrough:
+      with self._file_lock:
+        self._file.seek(start)
+        if maxbytes is None:
+          self._debug("Passing through read from %d" % start)
+          return self._file.read(), self._file.tell()
+        else:
+          self._debug("Passing through read from %d to %d" % (start, start + maxbytes - 1))
+          return self._file.read(maxbytes), self._file.tell()
     else:
-      return self._cache_object.read(maxbytes), self._cache_object.tell()
+      self._cache_object.seek(start)
+      if maxbytes is None:
+        return self._cache_object.read(), self._cache_object.tell()
+      else:
+        return self._cache_object.read(maxbytes), self._cache_object.tell()
 
   def pass_readline(self, start=0, maxbytes=None):
     '''Read a line from file, but no more than maxbytes bytes.'''
@@ -238,7 +276,7 @@ class lazy_file_cache():
 
     end_position = self._cache_object.tell()
 
-    if end_position < self._cache_size:
+    if end_position < self._cache_size or line_candidate.endswith('\n'):
       # Found a complete line within the cache
       return line_candidate, end_position
 
@@ -246,7 +284,8 @@ class lazy_file_cache():
       # Fulfilled maxbytes condition within the cache
       return line_candidate, end_position
 
-    while end_position == self._cache_size:
+    # Need more data
+    while end_position == self._cache_size and not self._cache_limit_reached:
       # Do we have a complete line?
       if line_candidate.endswith('\n'):
         return line_candidate, end_position
@@ -263,7 +302,19 @@ class lazy_file_cache():
         line_candidate += self._cache_object.readline(maxbytes - foundbytes)
       end_position = self._cache_object.tell()
 
-    return line_candidate, end_position
+    # Do we have a complete line?
+    if line_candidate.endswith('\n') or self._all_cached:
+      return line_candidate, end_position
+
+    assert self._cache_limit_reached # Only legitimate way of reaching here
+
+    with self._file_lock:
+      self._file.seek(end_position)
+      if maxbytes is None:
+        return line_candidate + self._file.readline(), self._file.tell()
+      else:
+        foundbytes = end_position - start
+        return line_candidate + self._file.readline(maxbytes - foundbytes), self._file.tell()
 
 
 class pseudo_file():
