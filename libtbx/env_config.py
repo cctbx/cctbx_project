@@ -1020,8 +1020,10 @@ Wait for the command to finish, then try again.""" % vars())
       ld_library_path_var_name(),
       self.ld_library_path_additions()))
     essentials.append(("PATH", [self.bin_path]))
+
     if (cert_file is not None):
-      essentials.append(('SSL_CERT_FILE', [cert_file]))
+      print >> f, 'SSL_CERT_FILE=%s' % cert_file.sh_value()
+      print >> f, 'export SSL_CERT_FILE'
 
     pangorc = abs(self.build_path / '..' / 'base' / 'etc' / 'pango' / 'pangorc')
     if os.path.exists(pangorc):
