@@ -61,3 +61,14 @@ class simple_controller():
 #     else:
 #       print "(%5s) Controller %s reporting cache hit on %s" % (os.getpid(), format(id(self), '#x'), self._cache_tag)
       return self._cache.open()
+
+class non_caching_controller():
+  '''A controller that does not do any caching.'''
+  @staticmethod
+  def check(tag, open_method):
+    '''Open the file. No caching required.'''
+    print "Caching disabled for", tag
+    return open_method()
+
+# To disable all caching uncomment the following line:
+# simple_controller = non_caching_controller
