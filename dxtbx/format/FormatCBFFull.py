@@ -41,6 +41,7 @@ class FormatCBFFull(FormatCBF):
       raise IncorrectFormatError(self, image_file)
 
     FormatCBF.__init__(self, image_file, **kwargs)
+    self._raw_data = None
 
     return
 
@@ -89,20 +90,23 @@ class FormatCBFFull(FormatCBF):
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a
     flex array.'''
+    if self._raw_data is not None:
+      return self._raw_data
+
     self.detectorbase_start()
     try:
       image = self.detectorbase
       image.read()
-      raw_data = image.get_raw_data()
+      self._raw_data = image.get_raw_data()
 
-      return raw_data
+      return self._raw_data
     except Exception:
       return None
 
 from dxtbx.format.FormatStill import FormatStill
 class FormatCBFFullStill(FormatStill, FormatCBFFull):
   '''An image reading class for full CBF format images i.e. those from
-  a variety of cameras which support this format. Custom derifed from
+  a variety of cameras which support this format. Custom derived from
   the FormatStill to handle images without a gonimeter or scan'''
 
   @staticmethod
@@ -141,6 +145,8 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a
     flex array.'''
+    if self._raw_data is not None:
+      return self._raw_data
 
     # Override parent's get_raw_data, which relies on iotbx, which in turn
     # relies on cbflib_adaptbx, which in turn expects a gonio
@@ -175,14 +181,14 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
     # handle floats vs ints
     if dtype == 'signed 32-bit integer':
       array_string = cbf.get_integerarray_as_string()
-      array = flex.int(numpy.fromstring(array_string, numpy.int32))
+      self._raw_data = flex.int(numpy.fromstring(array_string, numpy.int32))
       parameters = cbf.get_integerarrayparameters_wdims_fs()
       slow, mid, fast = (parameters[11], parameters[10], parameters[9])
       assert slow == 1 # sections not supported
       array_size = mid, fast
     elif dtype == 'signed 64-bit real IEEE':
       array_string = cbf.get_realarray_as_string()
-      array = flex.double(numpy.fromstring(array_string, numpy.float))
+      self._raw_data = flex.double(numpy.fromstring(array_string, numpy.float))
       parameters = cbf.get_realarrayparameters_wdims_fs()
       slow, mid, fast = (parameters[7], parameters[6], parameters[5])
       assert slow == 1 # sections not supported
@@ -190,8 +196,8 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
     else:
       return None # type not supported
 
-    array.reshape(flex.grid(*array_size))
-    return array
+    self._raw_data.reshape(flex.grid(*array_size))
+    return self._raw_data
 
 if __name__ == '__main__':
 

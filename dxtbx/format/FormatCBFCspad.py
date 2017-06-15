@@ -9,12 +9,12 @@
 from __future__ import absolute_import, division
 
 from dxtbx.format.FormatCBFMultiTileHierarchy import FormatCBFMultiTileHierarchy
-from dxtbx.format.FormatStill import FormatStill
+from dxtbx.format.FormatCBFFull import FormatCBFFullStill
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 from scitbx.matrix import col, sqr
 import pycbf
 
-class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
+class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatCBFFullStill):
   '''An image reading class CSPAD CBF files'''
 
   @staticmethod
@@ -185,8 +185,7 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatStill):
 
     recursive_sync(cbf, root, mapped_detectors, True)
 
-from dxtbx.format.FormatCBFFull import FormatCBFFull
-class FormatCBFFullStillInMemory(FormatCBFFull, FormatStill):
+class FormatCBFFullStillInMemory(FormatCBFFullStill):
   """ Overrides the Format object's init method to accept a cbf handle instead
       of a file name. Used with XFELs when it is desirable to never write
       a file to disk, but to process it only in memory.
