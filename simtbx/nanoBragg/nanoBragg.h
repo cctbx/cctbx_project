@@ -128,9 +128,25 @@ double sinc3(double x);
 double sinc_conv_sinc3(double x);
 
 /* typedefs to help remember options */
-typedef enum { UNKNOWN, FIBER, GAUSS } psf_type;
 typedef enum { SAMPLE, BEAM } pivot;
+typedef enum { SQUARE, ROUND, GAUSS, TOPHAT, FIBER, UNKNOWN } shapetype;
 typedef enum { CUSTOM, ADXV, MOSFLM, XDS, DIALS, DENZO } convention;
+
+/* math functions for point spread */
+/* 2D Gaussian integral=1 */
+double ngauss2D(double x, double y, double fwhm);
+/* integral of Gaussian fwhm=1 integral=1 */
+double ngauss2D_integ(double x, double y);
+/* unit volume integrated over a pixel, fwhm = 1 */
+double ngauss2D_pixel(double x,double y,double pix);
+double integrate_gauss_over_pixel(double x, double y, double fwhm, double pix);
+
+/* fiber-coupled CCD PSF: g/(2*pi)*(g**2+x**2+y**2)**(-3/2) see Holton JSR (2012) */
+double fiber2D(double x,double y,double g);
+double fiber2D_integ(double x,double y,double g);
+double fiber2D_pixel(double x,double y,double g,double pix);
+double integrate_fiber_over_pixel(double x, double y, double g, double pix);
+
 
 
 //! Simulation of nanocrystal diffraction.  Contributed by James Holton, LBNL.
@@ -195,7 +211,8 @@ class nanoBragg {
     double xtalsize_max,xtalsize_a,xtalsize_b,xtalsize_c;
     double reciprocal_pixel_size;
 
-    bool    round_xtal;
+    shapetype xtal_shape;
+    double hrad_sqr,fudge;
     double sample_x;            /* m */
     double sample_y;            /* m */
     double sample_z;            /* m */
@@ -204,9 +221,13 @@ class nanoBragg {
     double volume,molecules;
     /* scale factor = F^2*r_e_sqr*fluence*Avogadro*volume*density/molecular_weight
                            m^2     ph/m^2  /mol      m^3   g/m^3    g/mol   */
-    double water_size;
-    double water_F;
-    double water_MW;
+
+    /* amorphous material properties */
+    double amorphous_thick;
+    double amorphous_default_F;
+    double amorphous_MW;
+    double amorphous_density;
+    double amorphous_molecules;
     /* water F = 2.57 in forward direction */
 
     /* detector stuff */
@@ -216,6 +237,10 @@ class nanoBragg {
     double distance; // = 100.0e-3;
     double detsize_f; // = 102.4e-3;
     double detsize_s; // = 102.4e-3;
+    double detector_mu; //=0.0;
+    double detector_thick; // =0.0;
+    double detector_thickstep,parallax,capture_fraction;
+    int    thick_tic,detector_thicksteps; // =-1;
     double fdet_vector[4]; //  = {0,0,0,1};
     double sdet_vector[4]; //  = {0,0,-1,0};
     double odet_vector[4]; //  = {0,1,0,0};
@@ -230,7 +255,7 @@ class nanoBragg {
     bool point_pixel; // = 0;
     double Xbeam,Ybeam; //=NAN;
     double Fbeam,Sbeam; //=NAN;
-    double Fdet,Sdet,Rdet;
+    double Fdet,Sdet,Odet;
     double Fdet0,Sdet0;
     double Xclose,Yclose,close_distance; //=NAN;
     double Fclose,Sclose; //=NAN;
@@ -328,7 +353,7 @@ class nanoBragg {
     long calib_seed;  // = different seed for calibration error, since this is the same for all images
 
     /* point-spread function parameters */
-    psf_type psftype;
+    shapetype psf_type;
     double psf_fwhm;
     int psf_radius;
     double photons,photons0,adu;
@@ -372,10 +397,9 @@ class nanoBragg {
 
 
     /* special options */
-    bool calculate_noise; // = 1;
-    bool write_pgm; // = 1;
-    bool binary_spots; // = 0; no inter-Bragg spots, flat-top spots inside FWHM of sinc function instead
-
+//    bool calculate_noise; // = 1;
+//    bool write_pgm; // = 1;
+//    bool binary_spots; // = 0; no inter-Bragg spots, flat-top spots inside FWHM of sinc function instead
 
     /* the constructor that takes a DIALS detector model */
     nanoBragg(const dxtbx::model::Detector&);
@@ -423,10 +447,19 @@ class nanoBragg {
     void show_mosaic_blocks();  // print out individual mosaic block orientations to screen
     void show_params();         // print out everything to screen, just like standalone program
 
-    /* member function for doing full sweep */
-    void sweep_over_detector();
+    /* member function for triggering spot simulation over region of interest */
+    void add_nanoBragg_spots();
 
-    void to_smv_format(std::string const& fileout, double intfile_scale, double photon_scale, bool noisify);
+    /* member function for triggering background simulation */
+    void add_background();
+
+    /* member function for applying the point-spread function */
+    void apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius);
+
+    /* member function for triggering noise calculation */
+    void add_noise();
+
+    void to_smv_format(std::string const& fileout, double intfile_scale, double adc_offset);
 
 };
 

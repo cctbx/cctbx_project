@@ -22,7 +22,7 @@ nanoBragg::nanoBragg(const dxtbx::model::Detector& detector)
 }
 
 
-// constructor for the nanoBragg class that takes most any member as an argument, defaults in nanoBragg_etc.cpp
+// constructor for the nanoBragg class that takes most any member as an argument, defaults in nanoBragg_ext.cpp
 nanoBragg::nanoBragg(
         scitbx::vec2<int> detpixels_slowfast, // = 1024, 1024
         scitbx::vec3<int> Ncells_abc, // 1 1 1
@@ -199,7 +199,8 @@ nanoBragg::init_defaults()
     xtalsize_max=xtalsize_a=xtalsize_b=xtalsize_c=0.0;
     reciprocal_pixel_size=0.0;
 
-    round_xtal = 0;
+    xtal_shape = SQUARE;
+    fudge=1;
     sample_x   = 0;             /* m */
     sample_y   = 0;             /* m */
     sample_z   = 0;             /* m */
@@ -209,10 +210,12 @@ nanoBragg::init_defaults()
     /* scale factor = F^2*r_e_sqr*fluence*Avogadro*volume*density/molecular_weight
                            m^2     ph/m^2  /mol      m^3   g/m^3    g/mol   */
 
-    /* optional rudimentary background, better to use nonBragg */
-    water_size = 0.0;
-    water_F = 2.57;
-    water_MW = 18.0;
+    /* amorphous material properties */
+    amorphous_thick = 0.0;
+    amorphous_default_F = 2.57;
+    amorphous_MW = 18.0;
+    amorphous_density = 1.0;
+    amorphous_molecules = 0;
     /* water F = 2.57 in forward direction */
 
     /* default detector stuff */
@@ -221,6 +224,10 @@ nanoBragg::init_defaults()
     distance = 100.0e-3;
     detsize_f = 102.4e-3;
     detsize_s = 102.4e-3;
+    detector_mu=0.0;
+    detector_thick=0.0;
+    detector_thickstep=0.0;
+    detector_thicksteps=-1;
 //    double fdet_vector[4]  = {0,0,0,1};  this->fdet_vector = fdet_vector;
     fdet_vector[0] = 0;
     fdet_vector[1] = 0;
@@ -255,7 +262,7 @@ nanoBragg::init_defaults()
     point_pixel= 0;
     Xbeam=NAN;Ybeam=NAN;
     Fbeam=NAN;Sbeam=NAN;
-    Fdet=Sdet=Rdet=Fdet0=Sdet0=0.0;
+    Fdet=Sdet=Odet=Fdet0=Sdet0=0.0;
     Xclose=NAN;Yclose=NAN;close_distance=NAN;
     Fclose=NAN;Sclose=NAN;
     ORGX=NAN;ORGY=NAN;
@@ -358,10 +365,13 @@ nanoBragg::init_defaults()
 
 
     /* special options */
-    calculate_noise = 1;
-    write_pgm = 1;
-    binary_spots = false;
-    }
+//    calculate_noise = 1;
+//    write_pgm = 1;
+//    binary_spots = false;
+}
+// end of init_defaults
+
+
 
 /* initialize detector size from mm or pixel specs */
 void
@@ -1262,7 +1272,7 @@ nanoBragg::update_oversample()
     {
         if(verbose)
         {
-        printf("WARNING: maximum dimension of sample is %g A\n",xtalsize_max*1e10);
+        printf("WARNING: maximum dimension of xtal is %g A\n",xtalsize_max*1e10);
         printf("         but reciprocal pixel size is %g A\n", reciprocal_pixel_size*1e10 );
         printf("         intensity may vary significantly across a pixel!\n");
             printf("         recommend oversample=%d to work around this\n",recommended_oversample);
@@ -1450,7 +1460,7 @@ nanoBragg::init_background()
         }
     }
 
-    if(stols == 0 && water_size != 0.0)
+    if(stols == 0 && amorphous_thick != 0.0)
     {
         /* do something clever here */
     }
@@ -1710,13 +1720,10 @@ nanoBragg::show_params()
 
     printf("  %d initialized hkls (all others =%g)\n",hkls,default_F);
     printf("  ");
-    if(round_xtal){
-        printf("ellipsoidal");
-    }
-    else
-    {
-        printf("parallelpiped");
-    }
+    if(xtal_shape == ROUND)  printf("ellipsoidal");
+    if(xtal_shape == SQUARE) printf("parallelpiped");
+    if(xtal_shape == GAUSS ) printf("gaussian");
+    if(xtal_shape == TOPHAT) printf("tophat-spot");
     printf(" xtal: %.0fx%.0fx%.0f cells\n",Na,Nb,Nc);
     printf("Unit Cell: %g %g %g %g %g %g\n", a_A[0],b_A[0],c_A[0],alpha*RTD,beta*RTD,gamma*RTD);
     printf("Recp Cell: %g %g %g %g %g %g\n", a_star[0],b_star[0],c_star[0],alpha_star*RTD,beta_star*RTD,gamma_star*RTD);
@@ -1764,17 +1771,16 @@ nanoBragg::show_params()
     printf("  %dx%d pixel oversample steps\n",oversample,oversample);
     if(maskimage != NULL) printf("  skipping zero-flagged pixels in %s\n",maskfilename);
 //    printf("  coherent source: %d\n",coherent);
-    if(calculate_noise){
-        printf("\n  noise image paramters:\n");
-        printf("  seed: %ld\n",seed);
-        printf("  water droplet size: %g m\n",water_size);
-    }
 }
 // end of show_params()
 
 
+
+
+
+/* add spots from nanocrystal simulation */
 void
-nanoBragg::sweep_over_detector()
+nanoBragg::add_nanoBragg_spots()
 {
     max_I = 0.0;
     int j = 0;
@@ -1810,13 +1816,6 @@ nanoBragg::sweep_over_detector()
             /* reset photon count for this pixel */
             I = 0;
 
-            /* add background from something amorphous */
-            F_bg = water_F;
-            I_bg = F_bg*F_bg*r_e_sqr*fluence*polar*water_size*water_size*water_size*1e6*Avogadro/water_MW*omega_pixel;
-
-            /* add this now to avoid problems with skipping later */
-            floatimage[j] = I_bg;
-
             /* loop over sub-pixels */
             for(subS=0;subS<oversample;++subS)
             {
@@ -1829,17 +1828,24 @@ nanoBragg::sweep_over_detector()
 //                  Fdet = pixel_size*fpixel;
 //                  Sdet = pixel_size*spixel;
 
+                    for(thick_tic=0;thick_tic<detector_thicksteps;++thick_tic)
+                    {
+                        /* assume "distance" is to the front of the detector sensor layer */
+                        Odet = thick_tic*detector_thickstep;
+
                     /* construct detector subpixel position in 3D space */
 //                  pixel_X = distance;
 //                  pixel_Y = Sdet-Ybeam;
 //                  pixel_Z = Fdet-Xbeam;
-                    pixel_pos[1] = Fdet*fdet_vector[1]+Sdet*sdet_vector[1]+pix0_vector[1];
-                    pixel_pos[2] = Fdet*fdet_vector[2]+Sdet*sdet_vector[2]+pix0_vector[2];
-                    pixel_pos[3] = Fdet*fdet_vector[3]+Sdet*sdet_vector[3]+pix0_vector[3];
+                        pixel_pos[1] = Fdet*fdet_vector[1]+Sdet*sdet_vector[1]+Odet*odet_vector[1]+pix0_vector[1];
+                        pixel_pos[2] = Fdet*fdet_vector[2]+Sdet*sdet_vector[2]+Odet*odet_vector[2]+pix0_vector[2];
+                        pixel_pos[3] = Fdet*fdet_vector[3]+Sdet*sdet_vector[3]+Odet*odet_vector[3]+pix0_vector[3];
                     pixel_pos[0] = 0.0;
                     if(curved_detector) {
                         /* construct detector pixel that is always "distance" from the sample */
-                        vector[1] = distance*beam_vector[1]; vector[2]=distance*beam_vector[2] ; vector[3]=distance*beam_vector[3];
+                            vector[1] = distance*beam_vector[1];
+                            vector[2]=distance*beam_vector[2] ;
+                            vector[3]=distance*beam_vector[3];
                         /* treat detector pixel coordinates as radians */
                         rotate_axis(vector,newvector,sdet_vector,pixel_pos[2]/distance);
                         rotate_axis(newvector,pixel_pos,fdet_vector,pixel_pos[3]/distance);
@@ -1853,6 +1859,19 @@ nanoBragg::sweep_over_detector()
                     /* option to turn off obliquity effect, inverse-square-law only */
                     if(point_pixel) omega_pixel = 1.0/airpath/airpath;
                     omega_sum += omega_pixel;
+
+                        /* now calculate detector thickness effects */
+                        if(detector_thick > 0.0)
+                        {
+                            /* inverse of effective thickness increase */
+                            parallax = dot_product(diffracted,odet_vector);
+                            capture_fraction = exp(-thick_tic*detector_thickstep*detector_mu/parallax)
+                                              -exp(-(thick_tic+1)*detector_thickstep*detector_mu/parallax);
+                        }
+                        else
+                        {
+                            capture_fraction = 1.0;
+                        }
 
                     /* loop over sources now */
                     for(source=0;source<sources;++source){
@@ -1931,11 +1950,7 @@ nanoBragg::sweep_over_detector()
                                     F_latt = sin(M_PI*Na*h)*sin(M_PI*Nb*k)*sin(M_PI*Nc*l)/sin(M_PI*h)/sin(M_PI*k)/sin(M_PI*l);
                                 */
                                 F_latt = 1.0;
-                                if(round_xtal){
-                                    /* use sinc3 for elliptical xtal shape */
-                                    F_latt = Na*Nb*Nc*sinc3(M_PI*sqrt(Na*Na*(h-h0)*(h-h0) + Nb*Nb*(k-k0)*(k-k0) + Nc*Nc*(l-l0)*(l-l0) ) );
-                                }
-                                else
+                                    if(xtal_shape == SQUARE)
                                 {
                                     /* xtal is a paralelpiped */
                                     if(Na>1){
@@ -1948,9 +1963,26 @@ nanoBragg::sweep_over_detector()
                                         F_latt *= sincg(M_PI*l,Nc);
                                     }
                                 }
-                                if(binary_spots) {
-                                    /* make a flat-top spot of same volume */
-                                    F_latt = (fabs(F_latt) > 0.5*Na*Nb*Nc)*Na*Nb*Nc;
+                                    else
+                                    {
+                                        /* handy radius in reciprocal space, squared */
+                                        hrad_sqr = (h-h0)*(h-h0)*Na*Na + (k-k0)*(k-k0)*Nb*Nb + (l-l0)*(l-l0)*Nc*Nc ;
+                                    }
+                                    if(xtal_shape == ROUND)
+                                    {
+                                        /* use sinc3 for elliptical xtal shape,
+                                           correcting for sqrt of volume ratio between cube and sphere */
+                                        F_latt = Na*Nb*Nc*0.723601254558268*sinc3(M_PI*sqrt( hrad_sqr * fudge ) );
+                                    }
+                                    if(xtal_shape == GAUSS)
+                                    {
+                                        /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
+                                        F_latt = Na*Nb*Nc*exp(-( hrad_sqr / 0.63 * fudge ));
+                                    }
+                                    if(xtal_shape == TOPHAT)
+                                    {
+                                        /* make a flat-top spot of same height and volume as square_xtal spots */
+                                        F_latt = Na*Nb*Nc*(hrad_sqr*fudge < 0.3969 );
                                 }
                                 /* no need to go further if result will be zero */
                                 if(F_latt == 0.0) continue;
@@ -2103,13 +2135,15 @@ nanoBragg::sweep_over_detector()
                                 }
 
                                 /* convert amplitudes into intensity (photons per steradian) */
-                                I += F_cell*F_cell*F_latt*F_latt;
+                                    I += F_cell*F_cell*F_latt*F_latt*capture_fraction;
                             }
                             /* end of mosaic loop */
                         }
                         /* end of phi loop */
                     }
                     /* end of source loop */
+                }
+                    /* end of detector thickness loop */
                 }
                 /* end of sub-pixel y loop */
             }
@@ -2168,13 +2202,434 @@ nanoBragg::sweep_over_detector()
     if(verbose) printf("done with pixel loop\n");
 
     if(verbose) printf("solid angle subtended by detector = %g steradian ( %g%% sphere)\n",omega_sum/steps,100*omega_sum/steps/4/M_PI);
+    if(verbose) printf("max_I= %g sum= %g avg= %g\n",max_I,sum,sum/sumn);
 
+}
+// end of add_nanoBragg_spots()
+
+
+
+
+
+void
+nanoBragg::add_background()
+{
+    max_I = 0.0;
+    int j = 0;
+    double* floatimage(raw.begin());
+//    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
+
+    sum = sumsqr = 0.0;
+    j = sumn = 0;
+    progress_pixel = 0;
+    omega_sum = 0.0;
+    for(spixel=0;spixel<spixels;++spixel)
+    {
+        for(fpixel=0;fpixel<fpixels;++fpixel)
+        {
+
+            /* allow for just one part of detector to be rendered */
+            if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
+            {
+                ++j; continue;
+            }
+            /* allow for the use of a mask */
+            if(maskimage != NULL)
+            {
+                /* skip any flagged pixels in the mask */
+                if(maskimage[j] == 0)
+                {
+                    ++j; continue;
+                }
+            }
+
+            /* reset photon count for this pixel */
+            I = 0;
+
+            /* add background from something amorphous */
+            floatimage[j] += r_e_sqr*fluence*polar*F_bg*F_bg*amorphous_molecules*omega_pixel;
+//          floatimage[j] = test;
+            if(floatimage[j] > max_I) {
+                max_I = floatimage[j];
+                max_I_x = Fdet;
+                max_I_y = Sdet;
+            }
+            sum += floatimage[j];
+            sumsqr += floatimage[j]*floatimage[j];
+            ++sumn;
+
+            if( printout )
+            {
+                if((fpixel==printout_fpixel && spixel==printout_spixel) || printout_fpixel < 0)
+                {
+                    twotheta = atan2(sqrt(pixel_pos[2]*pixel_pos[2]+pixel_pos[3]*pixel_pos[3]),pixel_pos[1]);
+                    test = sin(twotheta/2.0)/(lambda0*1e10);
+                    printf("%4d %4d : stol = %g or %g\n", fpixel,spixel,stol,test);
+                    printf("at %g %g %g\n", pixel_pos[1],pixel_pos[2],pixel_pos[3]);
+                    printf("hkl= %f %f %f  hkl0= %d %d %d\n", h,k,l,h0,k0,l0);
+                    printf(" F_cell=%g  F_latt=%g   I = %g\n", F_cell,F_latt,I);
+                    printf("I/steps %15.10g\n", I/steps);
+                    printf("polar   %15.10g\n", polar);
+                    printf("omega   %15.10g\n", omega_pixel);
+                    printf("pixel   %15.10g\n", floatimage[j]);
+                    printf("real-space cell vectors (Angstrom):\n");
+                    printf("     %-10s  %-10s  %-10s\n","a","b","c");
+                    printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
+                    printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
+                    printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
+                }
+            }
+            else
+            {
+                if(progress_meter && progress_pixels/100 > 0)
+                {
+                    if(progress_pixel % ( progress_pixels/20 ) == 0 ||
+                       ((10*progress_pixel<progress_pixels ||
+                         10*progress_pixel>9*progress_pixels) &&
+                        (progress_pixel % (progress_pixels/100) == 0)))
+                    {
+                        printf("%lu%% done\n",progress_pixel*100/progress_pixels);
+                    }
+                }
+                ++j;
+                ++progress_pixel;
+            }
+        }
     }
+    if(verbose) printf("done with pixel loop\n");
+
+    if(verbose) printf("solid angle subtended by detector = %g steradian ( %g%% sphere)\n",omega_sum/steps,100*omega_sum/steps/4/M_PI);
+    if(verbose) printf("max_I= %g sum= %g avg= %g\n",max_I,sum,sum/sumn);
+
+}
+// end of add_background()
+
+
+
+
+
+
+/* function for applying the PSF, copies over raw pixels with blurred version of itself */
+void
+nanoBragg::apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius)
+    {
+    double max_I;
+    double* inimage(raw.begin());
+    double *outimage=NULL;
+    double *kernel;
+    int x0,y0,x,y,dx,dy;
+    double g,rsq;
+    double photon_noise,lost_photons=0.0,total_lost_photons=0.0;
+    int pixels,maxwidth,kernel_size,psf_radius;
+    int i,j,k;
+    double photonloss_factor = 10.0;
+    int verbose=1;
+
+
+
+    /* convert fwhm to "g" distance : fwhm = sqrt((2**(2./3)-1))/2*g */
+    g = fwhm_pixels * 0.652383013252053;
+
+    if(psf_type != GAUSS && psf_type != FIBER)
+    {
+        if(verbose) printf("ERROR: unknown PSF type\n");
+        return;
+    }
+
+    pixels = fpixels*spixels;
+    if(pixels == 0)
+    {
+        if(verbose) printf("ERROR: apply_psf image has zero size\n");
+        return;
+    }
+
+    if(fwhm_pixels <= 0.0)
+    {
+        if(verbose) printf("WARNING: apply_psf function has zero size\n");
+        return;
+    }
+
+    /* start with a clean slate */
+    if(outimage!=NULL) free(outimage);
+    outimage = (double *) calloc(pixels+10,sizeof(double));
+
+    psf_radius = user_psf_radius;
+    if(psf_radius <= 0)
+    {
+        /* auto-select radius */
+
+        /* preliminary stats */
+        max_I = 0.0;
+        for(i=0;i<pixels;++i)
+        {
+            /* optionally scale the input file */
+            if(max_I < inimage[i]) max_I = inimage[i];
+        }
+        if(verbose) printf("  maximum input photon/pixel: %g\n",max_I);
+
+        if(max_I<=0.0)
+        {
+            /* nothing to blur */
+            if(verbose) printf("WARNING: no photons, PSF skipped\n");
+            return;
+        }
+
+        /* at what level will an error in intensity be lost? */
+        photon_noise = sqrt(max_I);
+        lost_photons = photon_noise/photonloss_factor;
+
+        if(psf_type == GAUSS)
+        {
+            /* calculate the radius beyond which only 0.5 photons will fall */
+            psf_radius = 1+ceil( sqrt(-log(lost_photons/max_I)/log(4.0)/2.0)*fwhm_pixels );
+            if(verbose) printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
+        }
+        if(psf_type == FIBER)
+        {
+            /* calculate the radius r beyond which only 0.5 photons will fall */
+            /* r = sqrt((g*(max_I/0.5))**2-g**2)
+                 ~ 2*g*max_I */
+            psf_radius = 1+ceil( g*(max_I/lost_photons)  );
+            if(verbose) printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
+        }
+        if(psf_radius == 0) psf_radius = 1;
+    }
+    /* limit psf kernel to be no bigger than 4x the input image */
+    maxwidth = fpixels;
+    if(spixels > maxwidth) maxwidth = spixels;
+    if(psf_radius > maxwidth) psf_radius = maxwidth;
+    kernel_size = 2*psf_radius+1;
+
+    /* now alocate enough space to store the PSF kernel image */
+    kernel = (double *) calloc(kernel_size*kernel_size,sizeof(double));
+    if(kernel == NULL)
+    {
+        perror("apply_psf: could not allocate memory for PSF kernel");
+        exit(9);
+    }
+
+    /* cache the PSF in an array */
+    for(dy=-psf_radius;dy<=psf_radius;++dy)
+    {
+        for(dx=-psf_radius;dx<=psf_radius;++dx)
+        {
+            rsq = dx*dx+dy*dy;
+            if(rsq > psf_radius*psf_radius) continue;
+
+            /* this could be more efficient */
+            k = kernel_size*(kernel_size/2+dy)+kernel_size/2+dx;
+
+
+            if( psf_type == GAUSS ) {
+                kernel[k] = integrate_gauss_over_pixel(dx,dy,fwhm_pixels,1.0);
+            }
+            if( psf_type == FIBER ) {
+                kernel[k] = integrate_fiber_over_pixel(dx,dy,g,1.0);
+            }
+        }
+    }
+
+    /* implement PSF  */
+    for(i=0;i<pixels;++i)
+    {
+        x0 = i%fpixels;
+        y0 = (i-x0)/fpixels;
+
+        /* skip if there is nothing to add */
+        if(inimage[i] <= 0.0) continue;
+
+        if(user_psf_radius != 0)
+        {
+            psf_radius = user_psf_radius;
+        }
+        else
+        {
+            /* at what level will an error in intensity be lost? */
+            photon_noise = sqrt(inimage[i]);
+            lost_photons = photon_noise/photonloss_factor;
+
+            if(psf_type == GAUSS)
+            {
+                /* calculate the radius beyond which only 0.5 photons will fall
+                   r = sqrt(-log(lost_photons/total_photons)/log(4)/2)*fwhm */
+                psf_radius = 1+ceil( sqrt(-log(lost_photons/inimage[i])/log(16.0))*fwhm_pixels );
+//              printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
+            }
+            if(psf_type == FIBER)
+            {
+                /* calculate the radius beyond which only 0.5 photons will fall
+                   r = sqrt((g*(total_photons/lost_photons))**2-g**2)
+                     ~ g*total_photons/lost_photons */
+                psf_radius = 1+ceil( g*(inimage[i]/lost_photons)  );
+//              printf("  (%d,%d) auto-selected psf_radius = %d pixels\n",x0,y0,psf_radius);
+            }
+        }
+        if(psf_radius == 0) psf_radius = 1;
+        /* limit psf kernel to be no bigger than 4x the input image */
+        maxwidth = fpixels;
+        if(spixels > maxwidth) maxwidth = spixels;
+        if(psf_radius > maxwidth) psf_radius = maxwidth;
+
+        /* given the radius, how many photons will escape? */
+        if(psf_type == GAUSS)
+        {
+            /* r = sqrt(-log(lost_photons/total_photons)/log(16))*fwhm */
+            /* lost_photons = total_photons*exp(-log(16)*(r^2/fwhm^2)) */
+            rsq = psf_radius;
+            rsq = rsq/fwhm_pixels;
+            rsq = rsq*rsq;
+            lost_photons = inimage[i]*exp(-log(16.0)*rsq);
+        }
+        if(psf_type == FIBER)
+        {
+            /* r ~ g*total_photons/lost_photons
+               normalized integral from r=inf to "r" :  g/sqrt(g**2+r**2) */
+            lost_photons = inimage[i]*g/sqrt(g*g+psf_radius*psf_radius);
+        }
+        /* accumulate this so we can add it to the whole image */
+        total_lost_photons += lost_photons;
+
+        for(dx=-psf_radius;dx<=psf_radius;++dx)
+        {
+            for(dy=-psf_radius;dy<=psf_radius;++dy)
+            {
+                /* this could be more efficient */
+                k = kernel_size*(kernel_size/2+dy)+kernel_size/2+dx;
+                if(kernel[k] == 0.0) continue;
+
+                rsq = dx*dx+dy*dy;
+                if(rsq > psf_radius*psf_radius) continue;
+                x = x0+dx;
+                y = y0+dy;
+                if(x<0 || x>fpixels) continue;
+                if(y<0 || y>spixels) continue;
+
+                /* index into output array */
+                j = y*fpixels+x;
+                /* do not wander off the output array */
+                if(j<0 || j > pixels) continue;
+
+                outimage[j] += inimage[i]*kernel[k];
+            }
+        }
+    }
+    /* now we have some lost photons, add them back "everywhere" */
+    lost_photons = total_lost_photons/pixels;
+    if(verbose) printf("adding back %g lost photons\n",total_lost_photons);
+    for(i=0;i<pixels;++i)
+    {
+        outimage[i] += lost_photons;
+    }
+
+    /* don't need kernel anymore. but should we always allocate outimage? */
+    free(kernel);
+
+    /* and now.  No idea how to exchange buffers, so lets just copy it back */
+    memcpy(outimage,inimage,pixels);
+    free(outimage);
+
+    return;
+}
+// end of apply_psf()
+
+
+
+
+// function to add noise to the image
+void
+nanoBragg::add_noise()
+{
+    max_I = 0.0;
+    int j = 0;
+    double* floatimage(raw.begin());
+//    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
+
+    sum = sumsqr = 0.0;
+    j = sumn = 0;
+    progress_pixel = 0;
+    omega_sum = 0.0;
+    for(spixel=0;spixel<spixels;++spixel)
+    {
+        for(fpixel=0;fpixel<fpixels;++fpixel)
+        {
+
+            /* allow for just one part of detector to be rendered */
+            if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
+            {
+                ++j; continue;
+            }
+            /* allow for the use of a mask */
+            if(maskimage != NULL)
+            {
+                /* skip any flagged pixels in the mask */
+                if(maskimage[j] == 0)
+                {
+                    ++j; continue;
+                }
+            }
+
+            floatimage[j] += r_e_sqr*fluence*polar*I/steps*omega_pixel;
+//          floatimage[j] = test;
+            if(floatimage[j] > max_I) {
+                max_I = floatimage[j];
+                max_I_x = Fdet;
+                max_I_y = Sdet;
+            }
+            sum += floatimage[j];
+            sumsqr += floatimage[j]*floatimage[j];
+            ++sumn;
+
+            if( printout )
+            {
+                if((fpixel==printout_fpixel && spixel==printout_spixel) || printout_fpixel < 0)
+                {
+                    twotheta = atan2(sqrt(pixel_pos[2]*pixel_pos[2]+pixel_pos[3]*pixel_pos[3]),pixel_pos[1]);
+                    test = sin(twotheta/2.0)/(lambda0*1e10);
+                    printf("%4d %4d : stol = %g or %g\n", fpixel,spixel,stol,test);
+                    printf("at %g %g %g\n", pixel_pos[1],pixel_pos[2],pixel_pos[3]);
+                    printf("hkl= %f %f %f  hkl0= %d %d %d\n", h,k,l,h0,k0,l0);
+                    printf(" F_cell=%g  F_latt=%g   I = %g\n", F_cell,F_latt,I);
+                    printf("I/steps %15.10g\n", I/steps);
+                    printf("polar   %15.10g\n", polar);
+                    printf("omega   %15.10g\n", omega_pixel);
+                    printf("pixel   %15.10g\n", floatimage[j]);
+                    printf("real-space cell vectors (Angstrom):\n");
+                    printf("     %-10s  %-10s  %-10s\n","a","b","c");
+                    printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
+                    printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
+                    printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
+                }
+            }
+            else
+            {
+                if(progress_meter && progress_pixels/100 > 0)
+                {
+                    if(progress_pixel % ( progress_pixels/20 ) == 0 ||
+                       ((10*progress_pixel<progress_pixels ||
+                         10*progress_pixel>9*progress_pixels) &&
+                        (progress_pixel % (progress_pixels/100) == 0)))
+                    {
+                        printf("%lu%% done\n",progress_pixel*100/progress_pixels);
+                    }
+                }
+                ++j;
+                ++progress_pixel;
+            }
+        }
+    }
+    if(verbose) printf("done with pixel loop\n");
+
+    if(verbose) printf("solid angle subtended by detector = %g steradian ( %g%% sphere)\n",omega_sum/steps,100*omega_sum/steps/4/M_PI);
+
+}
+// end of add_noise()
+
+
 
 
 void
 nanoBragg::to_smv_format(
-    std::string const& fileout, double intfile_scale, double photon_scale, bool noisify){
+    std::string const& fileout, double intfile_scale, double adc_offset){
 
     int pixels = spixels * fpixels;
     floatimage = raw.begin();
@@ -2188,10 +2643,9 @@ nanoBragg::to_smv_format(
       af::c_grid<2> (spixels,fpixels));
     unsigned short int * intimage = intimage_v.begin();
 
-    if(photon_scale <= 0) photon_scale=1.0;
     if(intfile_scale <= 0.0){
         if(verbose) printf("providing default scaling: max_I = %g at (%g %g)\n",max_I,max_I_x,max_I_y);
-        intfile_scale = 55000.0/(max_I*photon_scale);
+        intfile_scale = 55000.0/(max_I);
         if(verbose) printf("providing default scaling: intfile_scale = %f\n",intfile_scale);
     }
 
@@ -2199,19 +2653,10 @@ nanoBragg::to_smv_format(
     for(int ypixel=0;ypixel<spixels;++ypixel){
       for(int xpixel=0;xpixel<fpixels;++xpixel){
 
-        if(noisify)
-            {
-            /* apply photon-counting noise only */
-            intimage[j] = (unsigned short int) (std::min(saturation,
-                           poidev(floatimage[j]*photon_scale, &seed)*intfile_scale + adc_offset ));
-            }
-        else
-            {
-            /* no noise, just use intfile_scale */
-            intimage[j] = (unsigned short int) (std::min(saturation,
-                           floatimage[j]*photon_scale*intfile_scale + adc_offset ));
-            }
-            ++j;
+        /* no noise, just use intfile_scale */
+        intimage[j] = (unsigned short int) (std::min(saturation,
+                           floatimage[j]*intfile_scale + adc_offset ));
+        ++j;
         }
     }
     if (verbose){
@@ -2239,6 +2684,7 @@ nanoBragg::to_smv_format(
     fwrite(intimage,sizeof(unsigned short int),pixels,outfile);
     fclose(outfile);
 
+    return;
 }
 
 
@@ -3038,18 +3484,18 @@ double ngauss2D(double x, double y, double fwhm)
 
 /* integral of Gaussian fwhm=1 integral=1 */
 double ngauss2D_integ(double x, double y)
-    {
+{
     return 0.125*(erf(2.0*x*sqrt(log(2.0)))*erf(y*sqrt(log(16.0)))*sqrt(log(16.0)/log(2.0)));
 }
 
 /* unit volume integrated over a pixel, fwhm = 1 */
 double ngauss2D_pixel(double x,double y,double pix)
-    {
+{
     return ngauss2D_integ(x+pix/2.,y+pix/2.)-ngauss2D_integ(x+pix/2.,y-pix/2.)-ngauss2D_integ(x-pix/2.,y+pix/2.)+ngauss2D_integ(x-pix/2.,y-pix/2.);
-    }
+}
 
 double integrate_gauss_over_pixel(double x, double y, double fwhm, double pix)
-    {
+{
     return ngauss2D_pixel(x/fwhm,y/fwhm,pix/fwhm);
 }
 
@@ -3067,227 +3513,14 @@ double fiber2D_integ(double x,double y,double g)
     return atan((x*y)/(g*sqrt(g*g + x*x + y*y)))/2.0/M_PI;
 }
 double fiber2D_pixel(double x,double y,double g,double pix)
-    {
-  return fiber2D_integ(x+pix/2.,y+pix/2.,g)-fiber2D_integ(x+pix/2.,y-pix/2.,g)-fiber2D_integ(x-pix/2.,y+pix/2.,g)+fiber2D_integ(x-pix/2.,y-pix/2.,g);
+{
+     return fiber2D_integ(x+pix/2.,y+pix/2.,g)-fiber2D_integ(x+pix/2.,y-pix/2.,g)-fiber2D_integ(x-pix/2.,y+pix/2.,g)+fiber2D_integ(x-pix/2.,y-pix/2.,g);
 }
 double integrate_fiber_over_pixel(double x, double y, double g, double pix)
-        {
+{
     return fiber2D_pixel(x,y,g,pix);
-        }
-
-
-
-/* function for applying the PSF, returns NEW image that is blurred version of input */
-double *apply_psf(double *inimage, int fpixels, int spixels, psf_type psftype, double fwhm_pixels, int user_psf_radius)
-        {
-    double max_I;
-    double *outimage=NULL;
-    double *kernel;
-    int x0,y0,x,y,dx,dy;
-    double g,rsq;
-    double photon_noise,lost_photons=0.0,total_lost_photons=0.0;
-    int pixels,maxwidth,kernel_size,psf_radius;
-    int i,j,k;
-    double photonloss_factor = 10.0;
-    int verbose=1;
-
-    /* convert fwhm to "g" distance : fwhm = sqrt((2**(2./3)-1))/2*g */
-    g = fwhm_pixels * 0.652383013252053;
-
-    if(psftype == UNKNOWN)
-    {
-        if(verbose) printf("ERROR: unknown PSF type\n");
-        return inimage;
-        }
-
-    pixels = fpixels*spixels;
-    if(pixels == 0)
-        {
-        if(verbose) printf("ERROR: apply_psf image has zero size\n");
-        return inimage;
-    }
-
-    if(fwhm_pixels <= 0.0)
-                {
-        if(verbose) printf("WARNING: apply_psf function has zero size\n");
-        return inimage;
-            }
-
-    /* start with a clean slate */
-    if(outimage!=NULL) free(outimage);
-    outimage = (double *) calloc(pixels+10,sizeof(double));
-
-    psf_radius = user_psf_radius;
-    if(psf_radius <= 0)
-            {
-        /* auto-select radius */
-
-        /* preliminary stats */
-        max_I = 0.0;
-        for(i=0;i<pixels;++i)
-            {
-            /* optionally scale the input file */
-            if(max_I < inimage[i]) max_I = inimage[i];
-            }
-        if(verbose) printf("  maximum input photon/pixel: %g\n",max_I);
-
-        if(max_I<=0.0)
-            {
-            /* nothing to blur */
-            if(verbose) printf("WARNING: no photons, PSF skipped\n");
-            return outimage;
-            }
-
-        /* at what level will an error in intensity be lost? */
-        photon_noise = sqrt(max_I);
-        lost_photons = photon_noise/photonloss_factor;
-
-        if(psftype == GAUSS)
-            {
-            /* calculate the radius beyond which only 0.5 photons will fall */
-            psf_radius = 1+ceil( sqrt(-log(lost_photons/max_I)/log(4.0)/2.0)*fwhm_pixels );
-            if(verbose) printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
-            }
-        if(psftype == FIBER)
-            {
-            /* calculate the radius r beyond which only 0.5 photons will fall */
-            /* r = sqrt((g*(max_I/0.5))**2-g**2)
-                 ~ 2*g*max_I */
-            psf_radius = 1+ceil( g*(max_I/lost_photons)  );
-            if(verbose) printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
-            }
-        if(psf_radius == 0) psf_radius = 1;
-    }
-    /* limit psf kernel to be no bigger than 4x the input image */
-    maxwidth = fpixels;
-    if(spixels > maxwidth) maxwidth = spixels;
-    if(psf_radius > maxwidth) psf_radius = maxwidth;
-    kernel_size = 2*psf_radius+1;
-
-    /* now alocate enough space to store the PSF kernel image */
-    kernel = (double *) calloc(kernel_size*kernel_size,sizeof(double));
-    if(kernel == NULL)
-            {
-        perror("apply_psf: could not allocate memory for PSF kernel");
-                exit(9);
-            }
-
-    /* cache the PSF in an array */
-    for(dy=-psf_radius;dy<=psf_radius;++dy)
-    {
-        for(dx=-psf_radius;dx<=psf_radius;++dx)
-        {
-            rsq = dx*dx+dy*dy;
-            if(rsq > psf_radius*psf_radius) continue;
-
-            /* this could be more efficient */
-            k = kernel_size*(kernel_size/2+dy)+kernel_size/2+dx;
-
-
-            if( psftype == GAUSS ) {
-                kernel[k] = integrate_gauss_over_pixel(dx,dy,fwhm_pixels,1.0);
-        }
-            if( psftype == FIBER ) {
-                kernel[k] = integrate_fiber_over_pixel(dx,dy,g,1.0);
-    }
-    }
 }
 
-    /* implement PSF  */
-    for(i=0;i<pixels;++i)
-{
-        x0 = i%fpixels;
-        y0 = (i-x0)/fpixels;
 
-        /* skip if there is nothing to add */
-        if(inimage[i] <= 0.0) continue;
-
-        if(user_psf_radius != 0)
-    {
-            psf_radius = user_psf_radius;
-    }
-        else
-        {
-            /* at what level will an error in intensity be lost? */
-            photon_noise = sqrt(inimage[i]);
-            lost_photons = photon_noise/photonloss_factor;
-
-            if(psftype == GAUSS)
-            {
-                /* calculate the radius beyond which only 0.5 photons will fall
-                   r = sqrt(-log(lost_photons/total_photons)/log(4)/2)*fwhm */
-                psf_radius = 1+ceil( sqrt(-log(lost_photons/inimage[i])/log(16.0))*fwhm_pixels );
-//              printf("  auto-selected psf_radius = %d pixels\n",psf_radius);
-}
-            if(psftype == FIBER)
-{
-                /* calculate the radius beyond which only 0.5 photons will fall
-                   r = sqrt((g*(total_photons/lost_photons))**2-g**2)
-                     ~ g*total_photons/lost_photons */
-                psf_radius = 1+ceil( g*(inimage[i]/lost_photons)  );
-//              printf("  (%d,%d) auto-selected psf_radius = %d pixels\n",x0,y0,psf_radius);
-            }
-        }
-        if(psf_radius == 0) psf_radius = 1;
-        /* limit psf kernel to be no bigger than 4x the input image */
-        maxwidth = fpixels;
-        if(spixels > maxwidth) maxwidth = spixels;
-        if(psf_radius > maxwidth) psf_radius = maxwidth;
-
-        /* given the radius, how many photons will escape? */
-        if(psftype == GAUSS)
-    {
-            /* r = sqrt(-log(lost_photons/total_photons)/log(16))*fwhm */
-            /* lost_photons = total_photons*exp(-log(16)*(r^2/fwhm^2)) */
-            rsq = psf_radius;
-            rsq = rsq/fwhm_pixels;
-            rsq = rsq*rsq;
-            lost_photons = inimage[i]*exp(-log(16.0)*rsq);
-        }
-        if(psftype == FIBER)
-        {
-            /* r ~ g*total_photons/lost_photons
-               normalized integral from r=inf to "r" :  g/sqrt(g**2+r**2) */
-            lost_photons = inimage[i]*g/sqrt(g*g+psf_radius*psf_radius);
-        }
-        /* accumulate this so we can add it to the whole image */
-        total_lost_photons += lost_photons;
-
-        for(dx=-psf_radius;dx<=psf_radius;++dx)
-        {
-            for(dy=-psf_radius;dy<=psf_radius;++dy)
-            {
-                /* this could be more efficient */
-                k = kernel_size*(kernel_size/2+dy)+kernel_size/2+dx;
-                if(kernel[k] == 0.0) continue;
-
-                rsq = dx*dx+dy*dy;
-                if(rsq > psf_radius*psf_radius) continue;
-                x = x0+dx;
-                y = y0+dy;
-                if(x<0 || x>fpixels) continue;
-                if(y<0 || y>spixels) continue;
-
-                /* index into output array */
-                j = y*fpixels+x;
-                /* do not wander off the output array */
-                if(j<0 || j > pixels) continue;
-
-                outimage[j] += inimage[i]*kernel[k];
-            }
-        }
-    }
-    /* now we have some lost photons, add them back "everywhere" */
-    lost_photons = total_lost_photons/pixels;
-    if(verbose) printf("adding back %g lost photons\n",total_lost_photons);
-    for(i=0;i<pixels;++i)
-    {
-        outimage[i] += lost_photons;
-    }
-
-    /* don't need kernel anymore. but should we always allocate outimage? */
-    free(kernel);
-    return outimage;
-}
 
 }}// namespace simtbx::nanoBragg

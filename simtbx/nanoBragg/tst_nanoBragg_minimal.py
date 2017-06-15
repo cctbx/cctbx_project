@@ -47,12 +47,12 @@ def run_sim2smv(fileout):
   #sfall = fcalc_from_pdb(resolution=2.,algorithm="direct",wavelength=SIM.wavelength_A)
   #
   #SIM.Fhkl=sfall
-  SIM.binary_spots=True
+  SIM.xtal_shape=Tophat
   SIM.progress_meter=False
   #SIM.printout_pixel_fastslow=(0,0)
   #SIM.printout=True
   SIM.show_params()
-  SIM.sweep_over_detector()
+  SIM.add_nanoBragg_spots()
   SIM.to_smv_format(fileout=fileout)
 
 

@@ -189,8 +189,22 @@ namespace boost_python { namespace {
       nanoBragg.update_steps();
   }
 
-  /* amorphous material density */
-  /* sample material molecular weight */
+  /* amorphous material thickness along beam (mm)  */
+  static double get_amorphous_thick_mm(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_thick*1000.;}
+  static void   set_amorphous_thick_mm(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.amorphous_thick = value/1000.;
+  }
+  /* amorphous material molecular weight (Da) */
+  static double get_amorphous_MW_Da(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_MW;}
+  static void   set_amorphous_MW_Da(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.amorphous_MW = value;
+  }
+  /* amorphous material density (g/cm^3) */
+  static double get_amorphous_density_gcm3(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_density*1e6;}
+  static void   set_amorphous_density_gcm3(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.amorphous_density = value*1e6;
+  }
+  /* now we can compute the scale factor of intensity from amorphous material structure factor */
 
   /* unit cell dimensions */
   static cctbx::uctbx::unit_cell get_cell_Adeg(nanoBragg const& nanoBragg) {
@@ -594,10 +608,6 @@ namespace boost_python { namespace {
       nanoBragg.init_Fhkl();
   }
 
-  /* allow flat background equivalent to a sphere of water in the same beam */
-  static double get_waterdrop_um(nanoBragg const& nanoBragg) {return nanoBragg.water_size*1e6;}
-  static void   set_waterdrop_um(nanoBragg& nanoBragg, double const& value) {nanoBragg.water_size = value/1e6;}
-
 
 
   /* X-ray wavelength */
@@ -812,6 +822,16 @@ namespace boost_python { namespace {
   }
 
 
+  /* hijack detctor_pivot as an int */
+  static int get_hijack_detector_pivot(nanoBragg const& nanoBragg) {
+      if(nanoBragg.detector_pivot == SAMPLE) return 1;
+      return 0;
+  }
+  static void   set_hijack_detector_pivot(nanoBragg& nanoBragg, int const& value) {
+      if(value == 0) nanoBragg.detector_pivot = BEAM;
+      if(value == 1) nanoBragg.detector_pivot = SAMPLE;
+  }
+
 
   void
   init_module() {
@@ -822,7 +842,6 @@ namespace boost_python { namespace {
 
     def("testuple", &testuple,
         "test that basic python stuff works, as well as NAN implementation");
-
 
     class_<nanoBragg>("nanoBragg",no_init)
       /* constructor that takes a dials detector model */
@@ -893,6 +912,28 @@ namespace boost_python { namespace {
                      make_function(&set_xtalsize_mm,dcp()),
                      "alternative: specify crystal size (mm) instead of Ncells_abc")
 
+
+
+      /* specify properties of amorphous material contribution to background */
+      .add_property("amorphous_thick_mm",
+                     make_function(&get_amorphous_thick_mm,rbv()),
+                     make_function(&set_amorphous_thick_mm,dcp()),
+                     "thickness of amorphous material (mm), most important along beam path")
+      .add_property("amorphous_density_gcm3",
+                     make_function(&get_amorphous_density_gcm3,rbv()),
+                     make_function(&set_amorphous_density_gcm3,dcp()),
+                     "density of amorphous material (g/cm^3), needed to calculate scale factor")
+      .add_property("amorphous_MW_Da",
+                     make_function(&get_amorphous_MW_Da,rbv()),
+                     make_function(&set_amorphous_MW_Da,dcp()),
+                     "molecular weight of amorphous material (Da, or g/mol), needed to calculate scale factor")
+//      .add_property("amorphous_F_vs_stol",
+//                     make_function(&get_amorphous_F_vs_stol,rbv()),
+//                     make_function(&set_amorphous_F_vs_stol,dcp()),
+//                     "structure factor of amorphous material (electrons/molecule) vs sin(theta)/lambda (Angstrom), same as tabulated for individual atom form factors in International Tables")
+
+
+
       /* unit cell dimensions */
       .add_property("unit_cell_Adeg",
                      make_function(&get_cell_Adeg,rbv()),
@@ -924,7 +965,20 @@ namespace boost_python { namespace {
                      make_function(&set_XDS_ORGXY,dcp()),
                      "XDS-convention beam center is nearest pixel in detector plane to sample position (fast,slow)")
 
-      /* specify the pivot point? */
+      /* specify the detector pivot point, note: this is an enum */
+      .add_property("detector_pivot",
+                     make_getter(&nanoBragg::detector_pivot,rbv()),
+                     make_setter(&nanoBragg::detector_pivot,dcp()),
+                     "specify the center of detector rotations, either the sample, or the direct-beam spot")
+
+      /* specify the detector pivot point, note: this is an enum */
+      .add_property("hijack_detector_pivot",
+                     make_function(&get_hijack_detector_pivot,rbv()),
+                     make_function(&set_hijack_detector_pivot,dcp()),
+                     "hijack setting detector pivot from a string becaues python enums suck ")
+
+
+
       /* specify convention? MOSFLM, XDS, Denzo, ADXV, DIALS */
 
       /* unit vectors specifying coordinate system */
@@ -1153,12 +1207,6 @@ namespace boost_python { namespace {
                      make_function(&set_default_F,dcp()),
                      "override value of missing Fs, default 0 (useful if you just want spots fast)")
 
-      /* simple background, flat with total scattering equal to forward scattering from a sphere of water, default 0 */
-      .add_property("waterdrop_um",
-                     make_function(&get_waterdrop_um,rbv()),
-                     make_function(&set_waterdrop_um,dcp()),
-                     "simple background, flat with total scattering equal to forward scattering from a sphere of water, default 0")
-
 
       /* toggle interpolation between structure factors */
       .add_property("interpolate",
@@ -1166,10 +1214,10 @@ namespace boost_python { namespace {
                      make_setter(&nanoBragg::interpolate,dcp()),
                      "toggle interpolation between structure factors for inter-Bragg peaks")
       /* True turns spots into flat-tops same width as sinc function */
-      .add_property("binary_spots",
-                     make_getter(&nanoBragg::binary_spots,rbv()),
-                     make_setter(&nanoBragg::binary_spots,dcp()),
-                     "True turns spots into flat-top functions with same width and volume as sinc function")
+      .add_property("xtal_shape",
+                     make_getter(&nanoBragg::xtal_shape,rbv()),
+                     make_setter(&nanoBragg::xtal_shape,dcp()),
+                     "select crystal shape transform: square is exact, round is approximate ellipsoid, gauss for gaussian spots, or tophat for top-hat-spots")
       /* experimental: use integral form instead of oversamling */
       .add_property("integral_form",
                      make_getter(&nanoBragg::integral_form,rbv()),
@@ -1202,19 +1250,65 @@ namespace boost_python { namespace {
       .def("show_params",&nanoBragg::show_params,
        "print out all simulation parameters, just like the standalone program")
 
-      /* actual run of the simulation */
-      .def("sweep_over_detector",&nanoBragg::sweep_over_detector,
-       "actually run the simulation, going pixel-by-pixel over the region-of-interst")
+      /* actual run of the spot simulation */
+      .def("add_nanoBragg_spots",&nanoBragg::add_nanoBragg_spots,
+       "actually run the spot simulation, going pixel-by-pixel over the region-of-interst")
+
+      /* actual run of the background simulation */
+      .def("add_background",&nanoBragg::add_background,
+       "run the non-Bragg simulation, adding background from speficied amorphous materials")
+
+      /* blur the image with specified point-spread function */
+      .def("apply_psf",&nanoBragg::apply_psf,
+        (arg_("psf_type")=0,arg_("fwhm_pixels")=0,arg_("psf_radius")=0),
+       "blur the image with specified point-spread function, may be done before or after adding noise")
+
+      /* actual run of the noise simulation */
+      .def("add_noise",&nanoBragg::add_noise,
+       "apply specified Poisson, calibration, flicker and read-out noise to the pixels")
 
       .def("to_smv_format",&nanoBragg::to_smv_format,
-        (arg_("fileout"),arg_("intfile_scale")=0,arg_("photon_scale")=0,arg_("noisify")=false),
-        "interally produce an SMV-format image file on disk from the raw pixel array\nintfile_scale is applied before rounding off to integral pixel values and photon_scale is applied before computing photon-counting noise if noisify=True")
+        (arg_("fileout"),arg_("intfile_scale")=0,arg_("adc_offset")=40),
+        "interally produce an SMV-format image file on disk from the raw pixel array\nintfile_scale is applied before rounding off to integral pixel values")
     ;
-  }
+    // end of nanoBragg class definition
 
-}}}} // namespace simtbx::nanoBragg::boost_python::<anonymous>
+    // Expose enums to Python
+    enum_<pivot>("pivot",
+     "description of detector pivot point for detector rotation angles")
+      .value("Beam",BEAM)
+      .value("Sample",SAMPLE)
+      .export_values();
+    enum_<shapetype>("shapetype",
+       "select shape of the crystal, spot, or point-spread function" )
+      .value("SQUARE",SQUARE)
+      .value("ROUND",ROUND)
+      .value("GAUSS",GAUSS)
+      .value("TOPHAT",TOPHAT)
+      .value("FIBER",FIBER)
+      .value("UNKNOWN",UNKNOWN)
+      .export_values();
+    enum_<convention>("convention",
+       "beam center convention to use when interpreting Xbeam Ybeam")
+      .value("CUSTOM",CUSTOM)
+      .value("ADXV",ADXV)
+      .value("MOSFLM",MOSFLM)
+      .value("XDS",XDS)
+      .value("DIALS",DIALS)
+      .value("DENZO",DENZO)
+      .export_values();
+
+  } // end of init_module
+
+} // end of namespace
+} // end of namespace boost_python
+} // end of namespace nanoBragg
+} // end of namespace simtbx
+
 
 BOOST_PYTHON_MODULE(simtbx_nanoBragg_ext)
 {
   simtbx::nanoBragg::boost_python::init_module();
 }
+
+
