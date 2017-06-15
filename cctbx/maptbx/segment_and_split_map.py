@@ -237,6 +237,19 @@ master_phil = iotbx.phil.parse("""
                solvent content in boxed maps.
        .short_caption = Solvent fraction iterations
        .style = hidden
+
+     wang_radius = None
+       .type = float
+       .help = Wang radius for solvent identification. \
+           Default is 1.5* resolution
+       .short_caption = Wang radius 
+
+     buffer_radius = None
+       .type = float
+       .help = Buffer radius for mask smoothing. \
+           Default is resolution
+       .short_caption = Buffer radius 
+
   }
 
   reconstruction_symmetry {
@@ -2501,6 +2514,68 @@ def get_params_from_args(args):
 
   return command_line.work.extract()
 
+
+def get_mask_around_molecule(map_data=None,
+        wang_radius=None,
+        buffer_radius=None,
+        crystal_symmetry=None, out=sys.stdout):
+  # use iterated solvent fraction tool to identify mask around molecule
+  try:
+    from phenix.autosol.map_to_model import iterated_solvent_fraction
+    solvent_fraction,mask=iterated_solvent_fraction(
+      crystal_symmetry=crystal_symmetry,
+      wang_radius=wang_radius,
+      buffer_radius=buffer_radius,
+      map_as_double=map_data,
+      out=out)
+  except Exception,e:
+    solvent_fraction,mask=None,None
+  return mask
+
+def apply_soft_mask(map_data=None,
+          mask_data=None,
+          rad_smooth=None,
+          crystal_symmetry=None,
+          set_mean_to_zero=True,
+          out=sys.stdout):
+
+  # apply a soft mask based on mask_data to map_data.
+  # if set_mean_to_zero then outside of the mask average==inside==0 at end
+  
+  # set value outside mask==mean value inside mask
+
+  s = mask_data < 0.5  # zero out outside mask
+  masked_map=map_data.deep_copy()
+
+  if set_mean_to_zero:
+
+    #  make mean outside==mean inside and then set overall to zero
+    masked_map.set_selected(s,0)
+    one_d=masked_map.as_1d()
+    n_zero=one_d.count(0)
+    n_tot=one_d.size()
+    mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
+
+    # Add mean inside value to outside box, then subtract it off everything
+    masked_map.set_selected(s,mean_in_box) # set outside==mean inside
+    masked_map=masked_map - mean_in_box # set overall mean to zero
+   
+  # Make smooth transition from inside mask to outside
+
+  mask_data = mask_data.set_selected( s, 0)  # outside mask==0
+  mask_data = mask_data.set_selected(~s, 1)
+  maptbx.unpad_in_place(map=mask_data)
+  mask_smooth = maptbx.smooth_map(
+    map              = mask_data,
+    crystal_symmetry = crystal_symmetry,
+    rad_smooth       = rad_smooth)
+
+  # multiply smoothing mask times masked map
+  masked_map=masked_map * mask_smooth
+
+  return masked_map
+
+
 def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   params=get_params_from_args(args)
@@ -2696,6 +2771,35 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(
         origin_shift)
     # NOTE: size and cell params are now different!
+
+    if params.segmentation.soft_mask:
+      rad_smooth=params.crystal_info.resolution
+      print >>out,"\nApplying soft mask with smoothing radius of %s\n" %(
+        rad_smooth)
+      if params.crystal_info.wang_radius:
+        wang_radius=params.crystal_info.wang_radius
+      else:
+        wang_radius=1.5*params.crystal_info.resolution
+
+      if params.crystal_info.buffer_radius:
+        buffer_radius=params.crystal_info.buffer_radius
+      else:
+        buffer_radius=params.crystal_info.resolution
+
+      mask_data=get_mask_around_molecule(map_data=map_data,
+        crystal_symmetry=crystal_symmetry,
+        wang_radius=wang_radius,
+        buffer_radius=buffer_radius,
+        out=out)
+      if mask_data:
+        map_data=apply_soft_mask(map_data=map_data,
+          mask_data=mask_data.as_double(),
+          rad_smooth=rad_smooth,
+          crystal_symmetry=crystal_symmetry,
+          out=out)
+      else:
+        print >>out,"Unable to get mask...skipping"
+
     new_half_map_data_list=[]
     for hm in half_map_data_list:
       hm=hm.shift_origin() # shift if necessary
