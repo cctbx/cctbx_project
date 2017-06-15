@@ -117,7 +117,8 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   url = None
   compressed = False
   if (mirror == "rcsb") :
-    url_base = "http://www.rcsb.org/pdb/files/"
+    # url_base = "http://www.rcsb.org/pdb/files/"
+    url_base = 'https://files.rcsb.org/download/'
     pdb_ext = ".pdb"
     sf_prefix = ""
     sf_ext = "-sf.cif"
