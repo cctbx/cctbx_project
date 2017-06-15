@@ -133,7 +133,7 @@ class fsc_model_vs_map(object):
                map,
                atom_radius,
                d_min):
-    adopt_init_args(self, locals())
+    self.atom_radius = atom_radius
     sgn = xray_structure.crystal_symmetry().space_group().type().number()
     assert sgn == 1 # P1 only
     def compute_mc(map_coeffs, map_data):
@@ -144,14 +144,14 @@ class fsc_model_vs_map(object):
         use_sg         = False)
     # Crystal gridding
     crystal_gridding = maptbx.crystal_gridding(
-      unit_cell             = self.xray_structure.unit_cell(),
-      space_group_info      = self.xray_structure.space_group_info(),
-      pre_determined_n_real = self.map.accessor().all())
+      unit_cell             = xray_structure.unit_cell(),
+      space_group_info      = xray_structure.space_group_info(),
+      pre_determined_n_real = map.accessor().all())
     # Compute mask
-    sites_frac = self.xray_structure.sites_frac()
+    sites_frac = xray_structure.sites_frac()
     mask = cctbx_maptbx_ext.mask(
       sites_frac                  = sites_frac,
-      unit_cell                   = self.xray_structure.unit_cell(),
+      unit_cell                   = xray_structure.unit_cell(),
       n_real                      = map.all(),
       mask_value_inside_molecule  = 1,
       mask_value_outside_molecule = 0,

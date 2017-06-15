@@ -4,7 +4,7 @@ from __future__ import division
 
 import sys
 import iotbx.pdb
-from libtbx import group_args
+from libtbx import group_args, easy_pickle
 from libtbx.utils import Sorry
 import mmtbx.utils
 import mmtbx.maps.map_model_cc
@@ -16,6 +16,10 @@ master_params_str = """\
   model_file_name = None
     .type = str
     .help = Model file name
+  pkl_file_name = None
+    .type = path
+    .help = File name for pickle file with results
+    .expert_level = 3
   include scope mmtbx.maps.map_model_cc.master_params
 """
 
@@ -109,6 +113,15 @@ Feedback:
   task_obj.validate()
   task_obj.run()
   results = task_obj.get_results()
+  if inputs.params.pkl_file_name is not None:
+    easy_pickle.dump(file_name=inputs.params.pkl_file_name, obj=group_args(
+      cc_mask        = results.cc_mask,
+      cc_volume      = results.cc_volume,
+      cc_peaks       = results.cc_peaks,
+      cc_per_chain   = results.cc_per_chain,
+      # cc_per_residue = results.cc_per_residue, # not pickleable because of residue in it and big size
+      fsc            = results.fsc,
+      ))
   #
   broadcast(m="Map resolution:", log=log)
   print >> log, "  Resolution:", inputs.params.map_model_cc.resolution
