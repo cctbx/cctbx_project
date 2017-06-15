@@ -216,12 +216,15 @@ def is_xds_integrate_hkl(putative_integrate_hkl_file):
 def is_xds_ascii_hkl(putative_xds_ascii_hkl_file):
     '''See if this looks like an XDS INTEGRATE.HKL file.'''
 
-    lines = open(putative_xds_ascii_hkl_file).readlines()
-    if len(lines) < 2:
-        return False
+    lines = []
+    with open(putative_xds_ascii_hkl_file) as f:
+      lines.append(f.readline())
+      lines.append(f.readline())
+      if lines[1] == "":
+          return False
 
-    if '!OUTPUT_FILE=XDS_ASCII.HKL' in lines[1]:
-        return True
+      if '!OUTPUT_FILE=XDS_ASCII.HKL' in lines[1]:
+          return True
 
     return False
 
