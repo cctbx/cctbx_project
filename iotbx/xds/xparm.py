@@ -37,9 +37,8 @@ class reader(object):
     with open(filename, 'r') as file_handle:
       tokens = []
       version = 1
-      lines = file_handle.readlines()
-      assert len(lines)
-      for count, line in enumerate(lines):
+      count = 0
+      for count, line in enumerate(file_handle):
         line_tokens = line.split()
         if count == 0:
           if len(line_tokens) > 0 and line_tokens[0] == 'XPARM.XDS':
@@ -57,6 +56,7 @@ class reader(object):
           if len(line_tokens) not in (5, 9):
             return None
         tokens.extend(line_tokens)
+      assert count
 
       if version == 1:
         if count+1 != 11 or len(tokens) != 42:
