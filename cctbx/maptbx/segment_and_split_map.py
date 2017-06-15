@@ -2525,11 +2525,40 @@ def get_mask_around_molecule(map_data=None,
     solvent_fraction,mask=iterated_solvent_fraction(
       crystal_symmetry=crystal_symmetry,
       wang_radius=wang_radius,
-      buffer_radius=buffer_radius,
       map_as_double=map_data,
       out=out)
   except Exception,e:
     solvent_fraction,mask=None,None
+
+  # Now expand the mask to increase molecular region
+  expand_size=estimate_expand_size(
+       crystal_symmetry=crystal_symmetry,
+       map_data=map_data,
+       expand_target=buffer_radius,
+       out=out)
+
+  print >>out,\
+    "Target mask expand size is %d based on buffer_radius of %7.1f A" %(
+     expand_size,buffer_radius)
+
+  co,sorted_by_volume,min_b,max_b=get_co(map_data=mask,
+     threshold=0.5,wrapping=False)
+  masked_fraction=sorted_by_volume[1][0]/mask.size()
+  print >>out,"\nMasked fraction before buffering: %7.2f" %(masked_fraction)
+
+  s=None
+  for v1,i1 in sorted_by_volume[1:]:
+    bool_region_mask = co.expand_mask(
+      id_to_expand=i1, expand_size=expand_size)
+    if s is None:
+      s = (bool_region_mask==True)
+    else:
+      s |= (bool_region_mask==True)
+  mask.set_selected(s,1)
+  mask.set_selected(~s,0)
+  masked_fraction=mask.count(1)/mask.size()
+  print >>out,"Masked fraction after buffering:  %7.2f" %(masked_fraction)
+
   return mask
 
 def apply_soft_mask(map_data=None,
@@ -2544,8 +2573,11 @@ def apply_soft_mask(map_data=None,
   
   # set value outside mask==mean value inside mask
 
+
   s = mask_data < 0.5  # zero out outside mask
   masked_map=map_data.deep_copy()
+  write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
+  
 
   if set_mean_to_zero:
 
@@ -2564,17 +2596,36 @@ def apply_soft_mask(map_data=None,
 
   mask_data = mask_data.set_selected( s, 0)  # outside mask==0
   mask_data = mask_data.set_selected(~s, 1)
+  write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
   maptbx.unpad_in_place(map=mask_data)
   mask_smooth = maptbx.smooth_map(
     map              = mask_data,
     crystal_symmetry = crystal_symmetry,
     rad_smooth       = rad_smooth)
+  write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_smooth)
 
   # multiply smoothing mask times masked map
   masked_map=masked_map * mask_smooth
+  write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
 
   return masked_map
 
+def estimate_expand_size(
+       crystal_symmetry=None,
+       map_data=None,
+       expand_target=None,
+       out=sys.stdout):
+    abc = crystal_symmetry.unit_cell().parameters()[:3]
+    N_ = map_data.all()
+    nn=0.
+    for i in xrange(3):
+      delta=abc[i]/N_[i]
+      nn+=expand_target/delta
+    nn=max(1,int(0.5+nn/3.))
+    print >>out,\
+      "Expand size (grid units): %d (about %4.1f A) " %(
+      nn,nn*abc[0]/N_[0])
+    return max(1,nn)
 
 def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
@@ -2600,7 +2651,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "b_iso, \nb_sharpen, or resolution_dependent_b"
     params.map_modification.auto_sharpen=False
 
-
+  if params.segmentation.soft_mask and not params.segmentation.density_select:
+    raise Sorry("Need to specify density_select=True for soft_mask")
 
   if params.output_files.output_directory and  \
      not os.path.isdir(params.output_files.output_directory):
@@ -2788,7 +2840,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       if params.crystal_info.buffer_radius:
         buffer_radius=params.crystal_info.buffer_radius
       else:
-        buffer_radius=params.crystal_info.resolution
+        buffer_radius=2.*params.crystal_info.resolution
 
       mask_data=get_mask_around_molecule(map_data=map_data,
         crystal_symmetry=crystal_symmetry,
@@ -2898,18 +2950,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "\nPlease supply an ncs_file with symmetry matrices.")
 
   if params.segmentation.expand_size is None:
-
-    abc = crystal_symmetry.unit_cell().parameters()[:3]
-    N_ = map_data.all()
-    nn=0.
-    for i in xrange(3):
-      delta=abc[i]/N_[i]
-      nn+=params.segmentation.expand_target/delta
-    nn=max(1,int(0.5+nn/3.))
-    params.segmentation.expand_size=nn
-    print >>out,\
-      "Expand size for segmentation (grid units): %d (about %4.1f A) " %(
-      nn,nn*abc[0]/N_[0])
+    params.segmentation.expand_size=estimate_expand_size(
+       crystal_symmetry=crystal_symmetry,
+       map_data=map_data,
+       expand_target=params.segmentation.expand_target,
+       out=out)
 
   return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data
 
