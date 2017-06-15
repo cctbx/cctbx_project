@@ -691,7 +691,7 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges):
    intensities. Items may be looped to identify and assign weights
    to distinct wavelength components from a polychromatic beam."""
   cbf.add_category("diffrn_radiation_wavelength", ["id","wavelength","wt"])
-  cbf.add_row(["WAVELENGTH1","%f"%wavelength,"1.0"])
+  cbf.add_row(["WAVELENGTH1",str(wavelength),"1.0"])
 
   """Data items in the DIFFRN_MEASUREMENT category record details
    about the device used to orient and/or position the crystal
@@ -1023,7 +1023,7 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
 
       aname = "D%dQ%dS%dA%d"%key
 
-      cbf.add_row(["AXIS_"+ aname + "_S", "translation","detector",basis.axis_name    ,"0", "-1","0","%f"%offset_fast,"%f"%offset_slow,"0.0", "detector_asic"])
+      cbf.add_row(["AXIS_"+ aname + "_S", "translation","detector",basis.axis_name    ,"0", "-1","0",str(offset_fast),str(offset_slow),"0.0", "detector_asic"])
       cbf.add_row(["AXIS_"+ aname + "_F", "translation","detector","AXIS_"+aname +"_S","1","0","0","0","0","0.0", "detector_asic"])
       axis_names.append("AXIS_"+ aname + "_F"); axis_names.append("AXIS_"+ aname + "_S")
       axis_settings.append(["AXIS_"+ aname + "_F","FRAME1","0","0"])
@@ -1095,8 +1095,8 @@ def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelen
      ARRAY_STRUCTURE_LIST category."""
   cbf.add_category("array_structure_list_axis",["axis_set_id","axis_id","displacement","displacement_increment"])
   for tilename,tilekey in zip(tilestrs,tilekeys):
-    cbf.add_row(["AXIS_"+tilename+"_F","AXIS_"+tilename+"_F","0.0","%f"%(metro[tilekey].pixel_size[0])])
-    cbf.add_row(["AXIS_"+tilename+"_S","AXIS_"+tilename+"_S","0.0","%f"%(metro[tilekey].pixel_size[1])])
+    cbf.add_row(["AXIS_"+tilename+"_F","AXIS_"+tilename+"_F","0.0",str(metro[tilekey].pixel_size[0])])
+    cbf.add_row(["AXIS_"+tilename+"_S","AXIS_"+tilename+"_S","0.0",str(metro[tilekey].pixel_size[1])])
 
   if not header_only:
     add_tiles_to_cbf(cbf, tiles)

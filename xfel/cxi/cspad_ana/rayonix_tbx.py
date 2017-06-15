@@ -162,7 +162,7 @@ def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distan
 
     aname = "D%d"%key
 
-    cbf.add_row(["AXIS_"+ aname + "_S", "translation","detector",basis.axis_name,"0", "-1","0","%f"%offset_fast,"%f"%offset_slow,"0.0", "detector_asic"])
+    cbf.add_row(["AXIS_"+ aname + "_S", "translation","detector",basis.axis_name,"0", "-1","0",str(offset_fast),str(offset_slow),"0.0", "detector_asic"])
     cbf.add_row(["AXIS_"+ aname + "_F", "translation","detector","AXIS_"+aname +"_S","1","0","0","0","0","0.0", "detector_asic"])
     axis_names.append("AXIS_"+ aname + "_F"); axis_names.append("AXIS_"+ aname + "_S")
     axis_settings.append(["AXIS_"+ aname + "_F","FRAME1","0","0"])
@@ -215,8 +215,8 @@ def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distan
      correspond to data points described in the
      ARRAY_STRUCTURE_LIST category."""
   cbf.add_category("array_structure_list_axis",["axis_set_id","axis_id","displacement","displacement_increment"])
-  cbf.add_row([dname+"_F",dname+"_F","0.0","%f"%(metro[root_key].pixel_size[0])])
-  cbf.add_row([dname+"_S",dname+"_S","0.0","%f"%(metro[root_key].pixel_size[1])])
+  cbf.add_row([dname+"_F",dname+"_F","0.0",str(metro[root_key].pixel_size[0])])
+  cbf.add_row([dname+"_S",dname+"_S","0.0",str(metro[root_key].pixel_size[1])])
 
   if not header_only:
     add_data_to_cbf(cbf, tiles)
