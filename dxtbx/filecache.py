@@ -151,7 +151,7 @@ class lazy_file_cache():
 
       self._debug("Reading remaining file into cache")
 
-      data = self._file.read()
+      data = self._file.read(self._cache_limit - self._cache_size)
       self._cache_object.seek(self._cache_size)
       self._cache_object.write(data)
       self._debug("Read %d bytes" % len(data))
