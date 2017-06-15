@@ -8,7 +8,7 @@ try:
 except ImportError:
   pass # for running at home without psdm build
 from xfel.cftbx.detector import cspad_cbf_tbx
-from xfel.cxi.cspad_ana import cspad_tbx
+from xfel.cxi.cspad_ana import cspad_tbx, rayonix_tbx
 import pycbf, os, sys, copy, socket
 import libtbx.load_env
 from libtbx.utils import Sorry, Usage
@@ -206,10 +206,13 @@ xtc_phil_str = '''
       rayonix {
         bin_size = 2
           .type = int
+          .help = Detector binning mode
         override_beam_x = None
           .type = float
+          .help = If set, override the beam X position
         override_beam_y = None
           .type = float
+          .help = If set, override the beam Y position
       }
     }
   }
@@ -355,7 +358,8 @@ class InMemScript(DialsProcessScript):
       params, options = self.parser.parse_args(
         show_diff_phil=True)
     except Exception, e:
-      if "Unknown command line parameter definition" in str(e):
+      if "Unknown command line parameter definition" in str(e) or \
+          "The following definitions were not recognised" in str(e):
         deprecated_params = ['mask_nonbonded_pixels','gain_mask_value','algorithm','custom_parameterization']
         deprecated_strs = ['%s','%s','common_mode.%s','common_mode.%s']
         for i in xrange(len(deprecated_params)):
@@ -515,11 +519,16 @@ class InMemScript(DialsProcessScript):
 
     for run in ds.runs():
       if params.format.file_format == "cbf":
-        # load a header only cspad cbf from the slac metrology
-        try:
-          self.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
-        except Exception, e:
-          raise Sorry("Couldn't load calibration file for run %d, %s"%(run.run(), str(e)))
+        if params.format.cbf.mode == "cspad":
+          # load a header only cspad cbf from the slac metrology
+          try:
+            self.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
+          except Exception, e:
+            raise Sorry("Couldn't load calibration file for run %d, %s"%(run.run(), str(e)))
+        elif params.format.cbf.mode == "rayonix":
+          # load a header only rayonix cbf from the input parameters
+          self.base_dxtbx = rayonix_tbx.get_dxtbx_from_params(params.format.cbf.rayonix)
+
         if self.base_dxtbx is None:
           raise Sorry("Couldn't load calibration file for run %d"%run.run())
 
@@ -532,14 +541,18 @@ class InMemScript(DialsProcessScript):
 
         if params.format.cbf.invalid_pixel_mask is not None:
           self.dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
-          assert len(self.dials_mask) == 64
-          if self.params.format.cbf.cspad.mask_nonbonded_pixels:
-            psana_mask = self.psana_det.mask(run.run(),calib=False,status=False,edges=False,central=False,unbond=True,unbondnbrs=True)
-            dials_mask = self.psana_mask_to_dials_mask(psana_mask)
-            self.dials_mask = [self.dials_mask[i] & dials_mask[i] for i in xrange(len(dials_mask))]
+          if params.format.cbf.mode == "cspad":
+            assert len(self.dials_mask) == 64
+            if self.params.format.cbf.cspad.mask_nonbonded_pixels:
+              psana_mask = self.psana_det.mask(run.run(),calib=False,status=False,edges=False,central=False,unbond=True,unbondnbrs=True)
+              dials_mask = self.psana_mask_to_dials_mask(psana_mask)
+              self.dials_mask = [self.dials_mask[i] & dials_mask[i] for i in xrange(len(dials_mask))]
         else:
-          psana_mask = self.psana_det.mask(run.run(),calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
-          self.dials_mask = self.psana_mask_to_dials_mask(psana_mask)
+          if params.format.cbf.mode == "cspad":
+            psana_mask = self.psana_det.mask(run.run(),calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)
+            self.dials_mask = self.psana_mask_to_dials_mask(psana_mask)
+          else:
+            self.dials_mask = None
 
       if self.params.spotfinder.lookup.mask is not None:
         self.spotfinder_mask = easy_pickle.load(self.params.spotfinder.lookup.mask)
@@ -758,19 +771,25 @@ class InMemScript(DialsProcessScript):
 
     # the data needs to have already been processed and put into the event by psana
     if self.params.format.file_format == 'cbf':
-      # get numpy array, 32x185x388
-      data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
-                                                    common_mode=self.common_mode,
-                                                    apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
-                                                    gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
-                                                    per_pixel_gain=False)
+      if self.params.format.cbf.mode == "cspad":
+        # get numpy array, 32x185x388
+        data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
+                                                      common_mode=self.common_mode,
+                                                      apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
+                                                      gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
+                                                      per_pixel_gain=False)
+      elif self.params.format.cbf.mode == "rayonix":
+        data = rayonix_tbx.get_data_from_psana_event(evt, self.params.input.address)
       if data is None:
         print "No data"
         self.debug_write("no_data", "skip")
         return
 
       if self.params.format.cbf.override_distance is None:
-        distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
+        if self.params.format.cbf.mode == "cspad":
+          distance = cspad_tbx.env_distance(self.params.input.address, run.env(), self.params.format.cbf.detz_offset)
+        elif self.params.format.cbf.mode == "rayonix":
+          distance = self.params.format.cbf.detz_offset
         if distance is None:
           print "No distance, skipping shot"
           self.debug_write("no_distance", "skip")
@@ -797,26 +816,30 @@ class InMemScript(DialsProcessScript):
 
     if self.params.format.file_format == 'cbf':
       # stitch together the header, data and metadata into the final dxtbx format object
-      cspad_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
+      if self.params.format.cbf.mode == "cspad":
+        dxtbx_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
+      elif self.params.format.cbf.mode == "rayonix":
+        dxtbx_img = rayonix_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
 
       if self.params.input.reference_geometry is not None:
         from dxtbx.model import Detector
         # copy.deep_copy(self.reference_detctor) seems unsafe based on tests. Use from_dict(to_dict()) instead.
-        cspad_img._detector_instance = Detector.from_dict(self.reference_detector.to_dict())
-        cspad_img.sync_detector_to_cbf()
+        dxtbx_img._detector_instance = Detector.from_dict(self.reference_detector.to_dict())
+        if self.params.format.cbf.mode == "cspad":
+          dxtbx_img.sync_detector_to_cbf() #FIXME need a rayonix version of this??
 
     elif self.params.format.file_format == 'pickle':
       from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
-      cspad_img = FormatPYunspecifiedStillInMemory(image_dict)
+      dxtbx_img = FormatPYunspecifiedStillInMemory(image_dict)
 
     self.tag = s # used when writing integration pickle
 
     if self.params.dispatch.dump_all:
-      self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "shot-" + s))
+      self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "shot-" + s))
 
-    self.cache_ranges(cspad_img, self.params)
+    self.cache_ranges(dxtbx_img, self.params)
 
-    imgset = MemImageSet([cspad_img])
+    imgset = MemImageSet([dxtbx_img])
     if self.params.dispatch.estimate_gain_only:
       from dials.command_line.estimate_gain import estimate_gain
       estimate_gain(imgset)
@@ -853,7 +876,7 @@ class InMemScript(DialsProcessScript):
     from dials.util.masking import MaskGenerator
     generator = MaskGenerator(self.params.border_mask)
     mask = generator.generate(imgset)
-    if self.params.format.file_format == "cbf":
+    if self.params.format.file_format == "cbf" and self.dials_mask is not None:
       mask = tuple([a&b for a, b in zip(mask,self.dials_mask)])
     if self.spotfinder_mask is None:
       self.params.spotfinder.lookup.mask = mask
@@ -887,11 +910,11 @@ class InMemScript(DialsProcessScript):
       self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
-    self.restore_ranges(cspad_img, self.params)
+    self.restore_ranges(dxtbx_img, self.params)
 
     # save cbf file
     if self.params.dispatch.dump_strong:
-      self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "hit-" + s))
+      self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "hit-" + s))
 
       # save strong reflections.  self.find_spots() would have done this, but we only
       # want to save data if it is enough to try and index it
@@ -926,7 +949,7 @@ class InMemScript(DialsProcessScript):
       return
 
     if self.params.dispatch.dump_indexed:
-      self.save_image(cspad_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
+      self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
 
     self.debug_write("refine_start")
     try:
@@ -1000,7 +1023,7 @@ class InMemScript(DialsProcessScript):
     except Exception:
       print "Warning, couldn't save image:", dest_path
 
-  def cache_ranges(self, cspad_img, params):
+  def cache_ranges(self, dxtbx_img, params):
     """ Save the current trusted ranges, and replace them with the given overrides, if present.
     @param cspad_image dxtbx format object
     @param params phil scope
@@ -1008,7 +1031,7 @@ class InMemScript(DialsProcessScript):
     if params.input.override_trusted_max is None and params.input.override_trusted_min is None:
       return
 
-    detector = cspad_img.get_detector()
+    detector = dxtbx_img.get_detector()
     self.cached_ranges = []
     for panel in detector:
       new_range = cached_range = panel.get_trusted_range()
@@ -1020,7 +1043,7 @@ class InMemScript(DialsProcessScript):
 
       panel.set_trusted_range(new_range)
 
-  def restore_ranges(self, cspad_img, params):
+  def restore_ranges(self, dxtbx_img, params):
     """ Restore the previously cached trusted ranges, if present.
     @param cspad_image dxtbx format object
     @param params phil scope
@@ -1028,7 +1051,7 @@ class InMemScript(DialsProcessScript):
     if params.input.override_trusted_max is None and params.input.override_trusted_min is None:
       return
 
-    detector = cspad_img.get_detector()
+    detector = dxtbx_img.get_detector()
     for cached_range, panel in zip(self.cached_ranges, detector):
       panel.set_trusted_range(cached_range)
 

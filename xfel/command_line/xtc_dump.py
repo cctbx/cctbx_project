@@ -68,10 +68,13 @@ phil_scope = parse('''
       rayonix {
         bin_size = 2
           .type = int
+          .help = Detector binning mode
         override_beam_x = None
           .type = float
+          .help = If set, override the beam X position
         override_beam_y = None
           .type = float
+          .help = If set, override the beam Y position
       }
     }
   }
