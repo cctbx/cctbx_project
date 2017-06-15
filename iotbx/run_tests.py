@@ -93,6 +93,7 @@ tst_list = (
   "$D/regression/tst_show_systematic_absences.py",
   "$D/regression/tst_miller_sort_asu.py",
   "$D/regression/tst_reflection_file_reader.py",
+  "$D/regression/tst_xray_scale.py",
   )
 
 def run():

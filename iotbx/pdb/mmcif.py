@@ -508,17 +508,19 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     return extract_tls_from_cif_block(self.cif_block, hierarchy)
 
   def scale_matrix(self):
-    fractionalization_matrix = [
-      self.cif_block.get('_atom_sites.fract_transf_matrix[%s][%s]' %(i, j))
-      for i,j in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-    if fractionalization_matrix.count(None) == 9:
-      return None
-    assert fractionalization_matrix.count(None) == 0
-    fractionalization_vector = [
-      self.cif_block.get('_atom_sites.fract_transf_vector[%s]' %i) for i in '123']
-    assert fractionalization_matrix.count(None) == 0
-    return [[float(i) for i in fractionalization_matrix],
-            [float(i) for i in fractionalization_vector]]
+    if (not hasattr(self, "_scale_matrix")):
+      fractionalization_matrix = [
+        self.cif_block.get('_atom_sites.fract_transf_matrix[%s][%s]' %(i, j))
+        for i,j in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
+      if fractionalization_matrix.count(None) == 9:
+        return None
+      assert fractionalization_matrix.count(None) == 0
+      fractionalization_vector = [
+        self.cif_block.get('_atom_sites.fract_transf_vector[%s]' %i) for i in '123']
+      assert fractionalization_matrix.count(None) == 0
+      self._scale_matrix = [[float(i) for i in fractionalization_matrix],
+                            [float(i) for i in fractionalization_vector]]
+    return self._scale_matrix
 
   def model_ids(self):
     return flex.std_string([model.id for model in self.hierarchy.models()])
