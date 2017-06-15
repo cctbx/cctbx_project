@@ -236,7 +236,8 @@ class lazy_file_cache():
           passthrough = True
       else:
         self._cache_up_to(start + maxbytes)
-        passthrough = start + maxbytes > self._cache_size
+        if self._cache_limit_reached:
+          passthrough = start + maxbytes > self._cache_size
 
     if passthrough:
       with self._file_lock:

@@ -97,5 +97,37 @@ def test_filecache():
               sh.read(random_b))
   assert(actual == expected)
 
+def test_filecache_more():
+  import dxtbx.filecache
+  import libtbx.load_env
+  import os
+
+  try:
+    dials_regression = libtbx.env.dist_path('dials_regression')
+  except KeyError, e:
+    print 'SKIP: dials_regression not configured'
+    exit(0)
+
+  filename = os.path.join(dials_regression, 'image_examples', 'MacScience', 'reallysurprise_001.ipf')
+  cache = dxtbx.filecache.lazy_file_cache(open(filename, 'rb'))
+  with dxtbx.filecache.pseudo_file(cache) as fh:
+    fh.seek(3000 * 3000 * 2)
+    fh.read(1024)
+    assert fh.read(1) == ''
+
+  cache = dxtbx.filecache.lazy_file_cache(open(filename, 'rb'))
+  with dxtbx.filecache.pseudo_file(cache) as fh:
+    data = fh.read(3000 * 3000 * 2)
+    assert len(data) == 3000 * 3000 * 2
+    assert len(fh.read(1024)) == 1024
+    assert fh.read(1) == ''
+
+  cache = dxtbx.filecache.lazy_file_cache(open(filename, 'rb'))
+  with dxtbx.filecache.pseudo_file(cache) as fh:
+    fh.read(1024)
+    data = fh.read()
+    assert len(data) == 3000 * 3000 * 2
+
 if __name__ == '__main__':
   test_filecache()
+  test_filecache_more()
