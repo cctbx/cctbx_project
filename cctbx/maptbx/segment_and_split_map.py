@@ -2773,7 +2773,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     # NOTE: size and cell params are now different!
 
     if params.segmentation.soft_mask:
+      if not params.crystal_info.resolution:
+        raise Sorry("Need resolution for soft_mask")
+
       rad_smooth=params.crystal_info.resolution
+     
       print >>out,"\nApplying soft mask with smoothing radius of %s\n" %(
         rad_smooth)
       if params.crystal_info.wang_radius:
