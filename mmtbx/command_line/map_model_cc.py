@@ -8,6 +8,7 @@ from libtbx import group_args, easy_pickle
 from libtbx.utils import Sorry
 import mmtbx.utils
 import mmtbx.maps.map_model_cc
+from libtbx.str_utils import format_value
 
 master_params_str = """\
   map_file_name = None
@@ -126,23 +127,27 @@ Feedback:
   broadcast(m="Map resolution:", log=log)
   print >> log, "  Resolution:", inputs.params.map_model_cc.resolution
   broadcast(m="Map-model CC (overall):", log=log)
-  print >> log, "  CC_mask  : %6.4f"%results.cc_mask
-  print >> log, "  CC_volume: %6.4f"%results.cc_volume
-  print >> log, "  CC_peaks : %6.4f"%results.cc_peaks
-  broadcast(m="Model-map FSC:", log=log)
-  results.fsc.show(prefix="  ")
-  broadcast(m="Map-model CC (local):", log=log)
+  print >> log, "  CC_mask  : %s" % format_value("%6.4f", results.cc_mask)
+  print >> log, "  CC_volume: %s" % format_value("%6.4f", results.cc_volume)
+  print >> log, "  CC_peaks : %s" % format_value("%6.4f", results.cc_peaks)
+  if results.fsc is not None:
+    broadcast(m="Model-map FSC:", log=log)
+    results.fsc.show(prefix="  ")
+  if len(results.cc_per_chain) + len(results.cc_per_residue) > 0:
+    broadcast(m="Map-model CC (local):", log=log)
   # Per chain
-  print >> log, "Per chain:"
-  print >> log, "chain ID  CC       <B>    <occ>   N atoms"
-  fmt = "%s        %7.4f %8.3f %4.2f    %d"
-  for r in results.cc_per_chain:
-    print fmt%(r.chain_id, r.cc, r.b_iso_mean, r.occ_mean, r.n_atoms)
+  if len(results.cc_per_chain) > 0:
+    print >> log, "Per chain:"
+    print >> log, "chain ID  CC       <B>    <occ>   N atoms"
+    fmt = "%s        %7.4f %8.3f %4.2f    %d"
+    for r in results.cc_per_chain:
+      print fmt%(r.chain_id, r.cc, r.b_iso_mean, r.occ_mean, r.n_atoms)
   # Per residue
-  print >> log, "Per residue:"
-  fmt = "%s %s %s %7.4f %8.3f %4.2f"
-  for r in results.cc_per_residue:
-    print fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean, r.occ_mean)
+  if len(results.cc_per_residue) > 0:
+    print >> log, "Per residue:"
+    fmt = "%s %s %s %7.4f %8.3f %4.2f"
+    for r in results.cc_per_residue:
+      print fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean, r.occ_mean)
   return None
 
 if (__name__ == "__main__"):

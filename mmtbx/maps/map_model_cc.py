@@ -25,6 +25,15 @@ map_model_cc {
   compute_cc_per_residue = True
     .type = bool
     .help = Compute local model-map CC for each residue
+  compute_fsc = True
+    .type = bool
+    .help = Compute FSC
+  compute_cc_mask = True
+    .type = bool
+  compute_cc_volume = True
+    .type = bool
+  compute_cc_peaks = True
+    .type = bool
 }
 """
 
@@ -56,17 +65,21 @@ class map_model_cc(object):
     map_data = soin.map_data
     xrs.set_sites_cart(soin.sites_cart)
     self.five_cc_result = mmtbx.maps.correlation.five_cc(
-      map            = map_data,
-      xray_structure = xrs,
-      d_min          = self.params.resolution)
+      map               = map_data,
+      xray_structure    = xrs,
+      d_min             = self.params.resolution,
+      compute_cc_mask   = self.params.compute_cc_mask,
+      compute_cc_volume = self.params.compute_cc_volume,
+      compute_cc_peaks  = self.params.compute_cc_peaks)
     atom_radius = self.params.atom_radius
     if(atom_radius is None):
       atom_radius = self.five_cc_result.atom_radius
-    self.fsc = mmtbx.maps.correlation.fsc_model_vs_map(
-      xray_structure = xrs,
-      map            = map_data,
-      atom_radius    = atom_radius,
-      d_min          = self.params.resolution)
+    if self.params.compute_fsc:
+      self.fsc = mmtbx.maps.correlation.fsc_model_vs_map(
+        xray_structure = xrs,
+        map            = map_data,
+        atom_radius    = atom_radius,
+        d_min          = self.params.resolution)
     cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       xray_structure = xrs,
       map_data       = map_data,
