@@ -10,12 +10,7 @@ class Test(object):
     from iotbx.xds import integrate_hkl
     import os
     import libtbx.load_env
-    try:
-        iotbx_dir = libtbx.env.dist_path('iotbx')
-    except KeyError, e:
-        print 'FAIL: dials_regression not configured'
-        return
-
+    iotbx_dir = libtbx.env.dist_path('iotbx')
     filename = os.path.join(iotbx_dir, 'xds', 'tests', 'INTEGRATE.HKL')
     handle = integrate_hkl.reader()
     handle.read_file(filename)
@@ -58,6 +53,5 @@ class Test(object):
     print 'OK'
 
 if __name__ == '__main__':
-
   test = Test()
   test.run()
