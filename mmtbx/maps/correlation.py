@@ -11,9 +11,7 @@ cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 from libtbx import group_args
 
 def get_selection_above_cutoff(m, n):
-  m_ = m.as_1d()
-  s = flex.sort_permutation(m_, reverse=True)
-  return m>=m_.select(s)[n]
+  return m>=m.as_1d().select(flex.sort_permutation(m.as_1d(), reverse=True))[n]
 
 class five_cc(object):
   def __init__(self,
@@ -27,7 +25,6 @@ class five_cc(object):
                compute_cc_volume=True,
                compute_cc_peaks=True):
     adopt_init_args(self, locals())
-    #
     if(box is None and
        xray_structure.crystal_symmetry().space_group().type().number()==1):
       box=True
@@ -45,8 +42,6 @@ class five_cc(object):
       space_group_info      = xray_structure.space_group_info(),
       pre_determined_n_real = map.accessor().all(),
       symmetry_flags        = maptbx.use_space_group_symmetry)
-    #####
-    map_calc = self.get_map_calc()
     self.atom_radius = self._atom_radius()
     bs_mask = masks.mask_from_xray_structure(
       xray_structure        = self.xray_structure,
@@ -55,20 +50,23 @@ class five_cc(object):
       n_real                = self.map.accessor().all()).mask_data
     maptbx.unpad_in_place(map=bs_mask)
     self.sel_inside = (bs_mask==0.).iselection()
+    self.n_nodes_inside = self.sel_inside.size()
+    del bs_mask
     #
+    map_calc = self.get_map_calc()
+    #
+    if(compute_cc_mask):
+      self.cc_mask = from_map_map_selection(map_1=self.map, map_2=map_calc,
+        selection = self.sel_inside)
+    del self.sel_inside
     if(compute_cc_box):
       self.cc_box = from_map_map(map_1=self.map, map_2=map_calc)
     if(compute_cc_image):
       self.cc_image = self._cc_image(map_calc = map_calc)
-    if(compute_cc_mask):
-      self.cc_mask = from_map_map_selection(map_1=self.map, map_2=map_calc,
-        selection = self.sel_inside)
     if(compute_cc_volume):
       self.cc_volume = self._cc_volume(map_calc=map_calc)
     if(compute_cc_peaks):
       self.cc_peaks = self._cc_peaks(map_calc=map_calc)
-    # Free memory
-    del self.sel_inside
 
   def get_map_calc(self):
     if(self.box is True):
@@ -102,30 +100,30 @@ class five_cc(object):
       radius     = self.atom_radius)
 
   def _cc_peaks(self, map_calc):
-    n_nodes_inside = self.sel_inside.size()
-    s1 = get_selection_above_cutoff(m=self.map, n=n_nodes_inside)
-    s2 = get_selection_above_cutoff(m=map_calc, n=n_nodes_inside)
-    s = s1 | s2
+    s1 = get_selection_above_cutoff(m=self.map, n=self.n_nodes_inside)
+    s2 = get_selection_above_cutoff(m=map_calc, n=self.n_nodes_inside)
+    s = (s1 | s2).iselection()
+    del s1
+    del s2
     #G = flex.double(flex.grid(self.map.all()), 0)
     #G = G.set_selected(s, 1)
     #ccp4_map(cg=self.crystal_gridding, file_name="m1.ccp4", map_data=self.map)
     #ccp4_map(cg=self.crystal_gridding, file_name="m2.ccp4", map_data=map_calc)
     #ccp4_map(cg=self.crystal_gridding, file_name="m3.ccp4", map_data=G)
     return flex.linear_correlation(
-      x=self.map.select(s.iselection()).as_1d(),
-      y=map_calc.select(s.iselection()).as_1d()).coefficient()
+      x=self.map.select(s).as_1d(),
+      y=map_calc.select(s).as_1d()).coefficient()
 
   def _cc_volume(self, map_calc):
-    n_nodes_inside = self.sel_inside.size()
-    s = get_selection_above_cutoff(m=map_calc, n=n_nodes_inside)
+    s = get_selection_above_cutoff(m=map_calc, n=self.n_nodes_inside).iselection()
     #G = flex.double(flex.grid(self.map.all()), 0)
     #G = G.set_selected(s, 1)
     #ccp4_map(cg=self.crystal_gridding, file_name="m1.ccp4", map_data=self.map)
     #ccp4_map(cg=self.crystal_gridding, file_name="m2.ccp4", map_data=map_calc)
     #ccp4_map(cg=self.crystal_gridding, file_name="m3.ccp4", map_data=G)
     return flex.linear_correlation(
-      x=self.map.select(s.iselection()).as_1d(),
-      y=map_calc.select(s.iselection()).as_1d()).coefficient()
+      x=self.map.select(s).as_1d(),
+      y=map_calc.select(s).as_1d()).coefficient()
 
 class fsc_model_vs_map(object):
   def __init__(self,
@@ -158,28 +156,31 @@ class fsc_model_vs_map(object):
       radii                       = flex.double(sites_frac.size(), atom_radius))
     # Compute Fcalc
     f_calc = xray_structure.structure_factors(
-      d_min=min(d_min, 2.0)).f_calc().resolution_filter(d_min=d_min)
+      d_min=min(d_min, 3.0)).f_calc().resolution_filter(d_min=d_min)
     # Compute Fcalc masked inplace
     fft_map = miller.fft_map(
       crystal_gridding     = crystal_gridding,
       fourier_coefficients = f_calc)
     map_calc = fft_map.real_map_unpadded()
+    del fft_map
     map_calc = map_calc * mask
-    f_calc = compute_mc(map_coeffs = f_calc, map_data = map_calc)
-    # Compute Fobs masked
     map = map*mask
+    del mask
+    f_calc = compute_mc(map_coeffs = f_calc, map_data = map_calc)
+    del map_calc
+    # Compute Fobs masked
     f_obs = compute_mc(map_coeffs = f_calc, map_data = map)
     # Binning
-    n_bins=min(30, f_calc.data().size()//500)
-    dsd = f_calc.d_spacings().data()
+    n_bins=min(30, f_obs.data().size()//500)
+    dsd = f_obs.d_spacings().data()
     if(dsd.size()>1500):
-      f_calc.setup_binner(n_bins = n_bins)
+      f_obs.setup_binner(n_bins = n_bins)
     else:
-      f_calc.setup_binner(reflections_per_bin = dsd.size())
+      f_obs.setup_binner(reflections_per_bin = dsd.size())
     # Compute FSC
     self.result = []
-    for i_bin in f_calc.binner().range_used():
-      sel       = f_calc.binner().selection(i_bin)
+    for i_bin in f_obs.binner().range_used():
+      sel       = f_obs.binner().selection(i_bin)
       d         = dsd.select(sel)
       d_min     = flex.min(d)
       d_max     = flex.max(d)
@@ -362,8 +363,10 @@ class from_map_and_xray_structure_or_fmodel(object):
       fft_map = miller.fft_map(
         crystal_gridding     = crystal_gridding,
         fourier_coefficients = f_model)
+      del f_model
       fft_map.apply_sigma_scaling()
       self.map_model = fft_map.real_map_unpadded()
+      del fft_map
     if(self.fmodel is not None):
       self.sites_cart = self.fmodel.xray_structure.sites_cart()
       self.sites_frac = self.fmodel.xray_structure.sites_frac()
