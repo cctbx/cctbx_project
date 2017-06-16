@@ -600,6 +600,7 @@ namespace dxtbx { namespace model {
       DXTBX_ASSERT(detail::is_r3_rotation_matrix(U_b));
       mat3<double> R_ab = U_b * U_a.transpose();
       scitbx::af::tiny<double,4> uq = scitbx::math::r3_rotation::matrix_as_unit_quaternion(R_ab);
+      DXTBX_ASSERT(std::abs(uq[0]) <= 1.0);
       double angle = rad_as_deg(2.0*std::acos(uq[0]));
       if (std::abs(angle) > angle_tolerance) {
         return false;
