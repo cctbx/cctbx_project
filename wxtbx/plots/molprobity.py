@@ -326,8 +326,9 @@ class multi_criterion_plot (wxtbx.plots.plot_container,
     xyz = None
     try :
       residue = self._current_bin.get_selected(idx)
-      selection_string = residue.id_str()
-      xyz = residue.xyz
+      if (residue is not None):
+        selection_string = residue.id_str()
+        xyz = residue.xyz
     except IndexError :
       pass
     else :
