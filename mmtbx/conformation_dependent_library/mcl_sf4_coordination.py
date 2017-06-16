@@ -53,6 +53,7 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
           aa=a2
           aag=ag2
         if aa.element.strip() in ['H', 'D']: continue
+        if aa.element.strip() in ['CA', 'C', 'O', 'N']: continue
         if verbose: print '%s-aa' % resname,sf4.quote(),aa.quote(),dist
         if sf4.element.lower()=="fe":
           if aag.id_str() not in done_aa:
