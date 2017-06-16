@@ -82,7 +82,7 @@ def run(prefix="iotbx_tst_xray_scale"):
   # print "======== doing xrs from cif =============="
   xrs_cif = cif_inp.xray_structure_simple(crystal_symmetry = cs)
   # xrs from PDB
-  easy_run.call("phenix.cif_as_pdb %s.cif > junk.out"%prefix)
+  easy_run.call("iotbx.cif_as_pdb %s.cif > junk.out"%prefix)
   pdb_inp = iotbx.pdb.input(file_name="%s.pdb" % prefix)
   # print "======== doing xrs from pdb =============="
   xrs_pdb = pdb_inp.xray_structure_simple(crystal_symmetry = cs)
