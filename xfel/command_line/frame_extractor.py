@@ -157,6 +157,13 @@ class ConstructFrame(object):
   def populate_residuals(self):
     pass
 
+  # collect kapton corrections if present
+  def populate_kapton_corrections(self):
+    if 'kapton_absorption_correction' in self.reflections:
+      self.frame['fuller_kapton_absorption_correction'] = [self.reflections['kapton_absorption_correction']]
+      if 'kapton_absorption_correction_sigmas' in self.reflections:
+        self.frame['fuller_kapton_absorption_correction_sigmas'] = [self.reflections['kapton_absorption_correction_sigmas']]
+
   # combine all of the above
   def make_frame(self):
     self.populate_wavelength()
@@ -175,6 +182,7 @@ class ConstructFrame(object):
     # self.populate_corrections() # works, but unnecessary
     self.populate_partialities()
     self.populate_residuals()
+    self.populate_kapton_corrections()
     return self.frame
 
 class ConstructFrameFromFiles(ConstructFrame):

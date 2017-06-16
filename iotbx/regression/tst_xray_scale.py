@@ -1,8 +1,8 @@
 from __future__ import division
-from libtbx import easy_run
 import iotbx.pdb
 from cctbx import crystal
 from libtbx.test_utils import approx_equal
+from iotbx.pdb import write_whole_pdb_file
 
 cif_str="""
 data_5JUP
@@ -82,12 +82,22 @@ def run(prefix="iotbx_tst_xray_scale"):
   # print "======== doing xrs from cif =============="
   xrs_cif = cif_inp.xray_structure_simple(crystal_symmetry = cs)
   # xrs from PDB
-  easy_run.call("phenix.cif_as_pdb %s.cif > junk.out"%prefix)
+  iotbx.pdb.write_whole_pdb_file(
+      file_name=prefix+".pdb",
+      output_file=None,
+      processed_pdb_file=None,
+      pdb_hierarchy=cif_inp.construct_hierarchy(),
+      crystal_symmetry=cif_inp.crystal_symmetry(),
+      ss_annotation=cif_inp.extract_secondary_structure(),
+      append_end=True,
+      atoms_reset_serial_first_value=None,
+      link_records=None)
   pdb_inp = iotbx.pdb.input(file_name="%s.pdb" % prefix)
   # print "======== doing xrs from pdb =============="
   xrs_pdb = pdb_inp.xray_structure_simple(crystal_symmetry = cs)
   #
   assert approx_equal(xrs_cif.sites_cart()[0], xrs_pdb.sites_cart()[0])
+  print "OK"
 
 if (__name__ == "__main__"):
   run()

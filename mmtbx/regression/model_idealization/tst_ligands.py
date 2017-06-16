@@ -157,7 +157,7 @@ MLI plan-2  O8     0.020
 MLI plan-2  O9     0.020
 """
 
-def exercise_01(prefix="tst_mi_map_test_01"):
+def exercise_01(prefix="tst_mi_ligands_test_01"):
   """
   Simple run to a completion with reference map. no SS annotations.
   """

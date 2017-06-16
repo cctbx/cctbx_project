@@ -2525,56 +2525,150 @@ def get_mask_around_molecule(map_data=None,
     solvent_fraction,mask=iterated_solvent_fraction(
       crystal_symmetry=crystal_symmetry,
       wang_radius=wang_radius,
-      buffer_radius=buffer_radius,
       map_as_double=map_data,
       out=out)
   except Exception,e:
     solvent_fraction,mask=None,None
+
+  # Now expand the mask to increase molecular region
+  expand_size=estimate_expand_size(
+       crystal_symmetry=crystal_symmetry,
+       map_data=map_data,
+       expand_target=buffer_radius,
+       out=out)
+
+  print >>out,\
+    "Target mask expand size is %d based on buffer_radius of %7.1f A" %(
+     expand_size,buffer_radius)
+
+  co,sorted_by_volume,min_b,max_b=get_co(map_data=mask,
+     threshold=0.5,wrapping=False)
+  masked_fraction=sorted_by_volume[1][0]/mask.size()
+  print >>out,"\nMasked fraction before buffering: %7.2f" %(masked_fraction)
+
+  s=None
+  for v1,i1 in sorted_by_volume[1:]:
+    bool_region_mask = co.expand_mask(
+      id_to_expand=i1, expand_size=expand_size)
+    if s is None:
+      s = (bool_region_mask==True)
+    else:
+      s |= (bool_region_mask==True)
+  mask.set_selected(s,1)
+  mask.set_selected(~s,0)
+  masked_fraction=mask.count(1)/mask.size()
+  print >>out,"Masked fraction after buffering:  %7.2f" %(masked_fraction)
+
   return mask
+
+def get_mean_in_and_out(sel=None,
+    map_data=None,
+    out=sys.stdout):
+
+  mean_value_in,fraction_in=get_mean_in_or_out(sel=sel,
+    map_data=map_data,
+    out=out)
+
+  mean_value_out,fraction_out=get_mean_in_or_out(sel= ~sel,
+    map_data=map_data,
+    out=out)
+
+  print >>out,\
+    "\nMean inside mask: %7.2f  Outside mask: %7.2f  Fraction in: %7.2f" %(
+     mean_value_in,mean_value_out,fraction_in)
+  return mean_value_in,mean_value_out,fraction_in
+
+def get_mean_in_or_out(sel=None,
+    map_data=None,
+    out=sys.stdout):
+  masked_map=map_data.deep_copy()
+  masked_map.set_selected(~sel,0)
+  mean_after_zeroing_in_or_out=masked_map.as_1d().min_max_mean().mean
+  masked_map.set_selected(sel,1)
+  fraction_in_or_out=masked_map.as_1d().min_max_mean().mean
+  if fraction_in_or_out >1.e-10:
+    mean_value=mean_after_zeroing_in_or_out/fraction_in_or_out
+  else:
+    mean_value=None
+
+  return mean_value,fraction_in_or_out
 
 def apply_soft_mask(map_data=None,
           mask_data=None,
           rad_smooth=None,
           crystal_symmetry=None,
-          set_mean_to_zero=True,
+          set_outside_to_mean_inside=False,
+          threshold=0.5,
           out=sys.stdout):
 
   # apply a soft mask based on mask_data to map_data.
-  # if set_mean_to_zero then outside of the mask average==inside==0 at end
-  
-  # set value outside mask==mean value inside mask
+  # set value outside mask==mean value inside mask or mean value outside mask
 
-  s = mask_data < 0.5  # zero out outside mask
-  masked_map=map_data.deep_copy()
+  write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
 
-  if set_mean_to_zero:
+  s = mask_data > threshold  # s marks inside mask 
 
-    #  make mean outside==mean inside and then set overall to zero
-    masked_map.set_selected(s,0)
-    one_d=masked_map.as_1d()
-    n_zero=one_d.count(0)
-    n_tot=one_d.size()
-    mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
+  # get mean inside or outside mask
+  print >>out,"\nStarting map values inside and outside mask:"
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    map_data=map_data, out=out)
 
-    # Add mean inside value to outside box, then subtract it off everything
-    masked_map.set_selected(s,mean_in_box) # set outside==mean inside
-    masked_map=masked_map - mean_in_box # set overall mean to zero
-   
-  # Make smooth transition from inside mask to outside
+  print >>out,"\nMask inside and outside values"
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    map_data=mask_data, out=out)
 
-  mask_data = mask_data.set_selected( s, 0)  # outside mask==0
-  mask_data = mask_data.set_selected(~s, 1)
+  # Smooth the mask in place. First make it a binary mask
+  mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
+  mask_data = mask_data.set_selected( s, 1)
+  write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
   maptbx.unpad_in_place(map=mask_data)
-  mask_smooth = maptbx.smooth_map(
+  mask_data = maptbx.smooth_map(
     map              = mask_data,
     crystal_symmetry = crystal_symmetry,
     rad_smooth       = rad_smooth)
+  
+  print >>out,"\nSmoothed mask inside and outside values"
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    map_data=mask_data, out=out)
 
-  # multiply smoothing mask times masked map
-  masked_map=masked_map * mask_smooth
+  write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
+  
+  # Now replace value outside mask with mean_value, value inside with current,
+  #   smoothly going from one to the other based on mask_data
+
+  outside_set_to_mean=map_data.deep_copy()
+  outside_set_to_mean.set_selected( s, 0)
+  if set_outside_to_mean_inside:
+    outside_set_to_mean.set_selected(~s, mean_value_in)
+  else:
+    outside_set_to_mean.set_selected(~s, mean_value_out)
+
+  masked_map= (map_data * mask_data )  +  (outside_set_to_mean * (1-mask_data))
+
+  print >>out,"\nFinal mean value inside and outside mask:"
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    map_data=map_data, out=out)
+  
+  write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
 
   return masked_map
 
+def estimate_expand_size(
+       crystal_symmetry=None,
+       map_data=None,
+       expand_target=None,
+       out=sys.stdout):
+    abc = crystal_symmetry.unit_cell().parameters()[:3]
+    N_ = map_data.all()
+    nn=0.
+    for i in xrange(3):
+      delta=abc[i]/N_[i]
+      nn+=expand_target/delta
+    nn=max(1,int(0.5+nn/3.))
+    print >>out,\
+      "Expand size (grid units): %d (about %4.1f A) " %(
+      nn,nn*abc[0]/N_[0])
+    return max(1,nn)
 
 def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
@@ -2600,7 +2694,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "b_iso, \nb_sharpen, or resolution_dependent_b"
     params.map_modification.auto_sharpen=False
 
-
+  if params.segmentation.soft_mask and not params.segmentation.density_select:
+    raise Sorry("Need to specify density_select=True for soft_mask")
 
   if params.output_files.output_directory and  \
      not os.path.isdir(params.output_files.output_directory):
@@ -2788,7 +2883,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       if params.crystal_info.buffer_radius:
         buffer_radius=params.crystal_info.buffer_radius
       else:
-        buffer_radius=params.crystal_info.resolution
+        buffer_radius=2.*params.crystal_info.resolution
 
       mask_data=get_mask_around_molecule(map_data=map_data,
         crystal_symmetry=crystal_symmetry,
@@ -2898,18 +2993,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "\nPlease supply an ncs_file with symmetry matrices.")
 
   if params.segmentation.expand_size is None:
-
-    abc = crystal_symmetry.unit_cell().parameters()[:3]
-    N_ = map_data.all()
-    nn=0.
-    for i in xrange(3):
-      delta=abc[i]/N_[i]
-      nn+=params.segmentation.expand_target/delta
-    nn=max(1,int(0.5+nn/3.))
-    params.segmentation.expand_size=nn
-    print >>out,\
-      "Expand size for segmentation (grid units): %d (about %4.1f A) " %(
-      nn,nn*abc[0]/N_[0])
+    params.segmentation.expand_size=estimate_expand_size(
+       crystal_symmetry=crystal_symmetry,
+       map_data=map_data,
+       expand_target=params.segmentation.expand_target,
+       out=out)
 
   return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data
 

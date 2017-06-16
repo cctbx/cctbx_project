@@ -10,7 +10,7 @@ from scitbx.array_family import flex as sciflex
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 from dials.util.options import OptionParser
-from dxtbx.model import BeamFactory, Crystal, DetectorFactory, Scan
+from dxtbx.model import BeamFactory, Crystal, DetectorFactory
 from dxtbx.format import FormatMultiImage
 from dxtbx.model import Experiment, ExperimentList
 from dxtbx import imageset
@@ -96,6 +96,11 @@ class construct_reflection_table_and_experiment_list(object):
     # observation-dependent
     self.observations = self.data['observations'][0]
     self.predictions = self.data['mapped_predictions'][0]
+
+    if 'fuller_kapton_absorption_correction' in self.data:
+      self.fuller_correction = self.data['fuller_kapton_absorption_correction'][0]
+      if 'fuller_kapton_absorption_correction_sigmas' in self.data:
+        self.fuller_correction_sigmas = self.data['fuller_kapton_absorption_correction_sigmas'][0]
 
   # construct the experiments and experiment_list objects
   def expt_beam_maker(self):
@@ -234,6 +239,12 @@ class construct_reflection_table_and_experiment_list(object):
   def refl_zeta_maker(self):
     self.reflections['zeta'] = sciflex.double(self.length)
 
+  def refl_kapton_correction_maker(self):
+    if hasattr(self, 'fuller_correction'):
+      self.reflections['kapton_absorption_correction'] = self.fuller_correction
+      if hasattr(self, 'fuller_correction_sigmas'):
+        self.reflections['kapton_absorption_correction_sigmas'] = self.fuller_correction_sigmas
+
   def assemble_reflections(self):
     self.refl_table_maker()
     self.refl_bkgd_maker()
@@ -249,6 +260,7 @@ class construct_reflection_table_and_experiment_list(object):
     self.refl_xyzcal_maker()
     self.refl_xyzobs_maker()
     self.refl_zeta_maker()
+    self.refl_kapton_correction_maker()
     self.refl_s1_maker() # depends on successful completion of refl_xyz_obs_maker
 
   def reflections_to_pickle(self, path_name=None):

@@ -15,6 +15,12 @@ class FormatEigerStream(Format, FormatMultiImage):
   '''
   @staticmethod
   def understand(image_file):
+
+    # XXXX Temporarily disable this Format because the use of json.load()
+    # causes a big overhead for dxtbx Format checking.
+    # See https://github.com/cctbx/cctbx_project/issues/41
+    return False
+
     import json
     try:
       header = json.load(open(image_file))

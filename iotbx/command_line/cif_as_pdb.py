@@ -1,5 +1,6 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_pdb
+# LIBTBX_SET_DISPATCHER_NAME iotbx.cif_as_pdb
 import os
 import iotbx.pdb
 import iotbx.pdb.mmcif
