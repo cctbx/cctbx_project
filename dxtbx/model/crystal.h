@@ -603,7 +603,7 @@ namespace dxtbx { namespace model {
       // https://github.com/cctbx/cctbx_project/issues/43 - more stable 
       // mapping from unit quaternion to angle
       double x = std::sqrt(uq[1] * uq[1] + uq[2] * uq[2] + uq[3] * uq[3]);
-      double angle = 2.0 * std::atan2(x, uq[0]);
+      double angle = rad_as_deg(2.0 * std::atan2(x, uq[0]));
       if (std::abs(angle) > angle_tolerance) {
         return false;
       }
