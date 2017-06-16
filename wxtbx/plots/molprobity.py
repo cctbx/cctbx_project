@@ -313,8 +313,9 @@ class multi_criterion_plot (wxtbx.plots.plot_container,
     except IndexError :
       pass
     else :
-      self.parent.residue_status.SetValue(residue.id_str())
-      self._reset = True
+      if (residue is not None):
+        self.parent.residue_status.SetValue(residue.id_str())
+        self._reset = True
 
   def process_mouse_click (self, mpl_event) :
     (xdata, ydata) = (mpl_event.xdata, mpl_event.ydata)
