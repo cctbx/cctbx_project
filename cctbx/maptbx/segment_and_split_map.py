@@ -2565,7 +2565,7 @@ def apply_soft_mask(map_data=None,
           mask_data=None,
           rad_smooth=None,
           crystal_symmetry=None,
-          set_mean_to_zero=True,
+          set_mean_to_zero=False,
           out=sys.stdout):
 
   # apply a soft mask based on mask_data to map_data.
