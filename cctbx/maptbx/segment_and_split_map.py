@@ -2561,51 +2561,94 @@ def get_mask_around_molecule(map_data=None,
 
   return mask
 
+def get_mean_in_and_out(sel=None,
+    map_data=None,
+    out=sys.stdout):
+
+  mean_value_in,fraction_in=get_mean_in_or_out(sel=sel,
+    map_data=map_data,
+    out=out)
+
+  mean_value_out,fraction_out=get_mean_in_or_out(sel= ~sel,
+    map_data=map_data,
+    out=out)
+
+  print >>out,\
+    "\nMean inside mask: %7.2f  Outside mask: %7.2f  Fraction in: %7.2f" %(
+     mean_value_in,mean_value_out,fraction_in)
+  return mean_value_in,mean_value_out,fraction_in
+
+def get_mean_in_or_out(sel=None,
+    map_data=None,
+    out=sys.stdout):
+  masked_map=map_data.deep_copy()
+  masked_map.set_selected(~sel,0)
+  mean_after_zeroing_in_or_out=masked_map.as_1d().min_max_mean().mean
+  masked_map.set_selected(sel,1)
+  fraction_in_or_out=masked_map.as_1d().min_max_mean().mean
+  if fraction_in_or_out >1.e-10:
+    mean_value=mean_after_zeroing_in_or_out/fraction_in_or_out
+  else:
+    mean_value=None
+
+  return mean_value,fraction_in_or_out
+
 def apply_soft_mask(map_data=None,
           mask_data=None,
           rad_smooth=None,
           crystal_symmetry=None,
-          set_mean_to_zero=False,
+          set_outside_to_mean_inside=False,
+          threshold=0.5,
           out=sys.stdout):
 
   # apply a soft mask based on mask_data to map_data.
-  # if set_mean_to_zero then outside of the mask average==inside==0 at end
-  
-  # set value outside mask==mean value inside mask
+  # set value outside mask==mean value inside mask or mean value outside mask
 
-
-  s = mask_data < 0.5  # zero out outside mask
-  masked_map=map_data.deep_copy()
   write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
-  
 
-  if set_mean_to_zero:
+  s = mask_data > threshold  # s marks inside mask 
 
-    #  make mean outside==mean inside and then set overall to zero
-    masked_map.set_selected(s,0)
-    one_d=masked_map.as_1d()
-    n_zero=one_d.count(0)
-    n_tot=one_d.size()
-    mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
+  # get mean inside or outside mask
+  print >>out,"\nStarting map values inside and outside mask:"
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    map_data=map_data, out=out)
 
-    # Add mean inside value to outside box, then subtract it off everything
-    masked_map.set_selected(s,mean_in_box) # set outside==mean inside
-    masked_map=masked_map - mean_in_box # set overall mean to zero
-   
-  # Make smooth transition from inside mask to outside
+  print >>out,"\nMask inside and outside values"
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    map_data=mask_data, out=out)
 
-  mask_data = mask_data.set_selected( s, 0)  # outside mask==0
-  mask_data = mask_data.set_selected(~s, 1)
+  # Smooth the mask in place. First make it a binary mask
+  mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
+  mask_data = mask_data.set_selected( s, 1)
   write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
   maptbx.unpad_in_place(map=mask_data)
-  mask_smooth = maptbx.smooth_map(
+  mask_data = maptbx.smooth_map(
     map              = mask_data,
     crystal_symmetry = crystal_symmetry,
     rad_smooth       = rad_smooth)
-  write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_smooth)
+  
+  print >>out,"\nSmoothed mask inside and outside values"
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    map_data=mask_data, out=out)
 
-  # multiply smoothing mask times masked map
-  masked_map=masked_map * mask_smooth
+  write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
+  
+  # Now replace value outside mask with mean_value, value inside with current,
+  #   smoothly going from one to the other based on mask_data
+
+  outside_set_to_mean=map_data.deep_copy()
+  outside_set_to_mean.set_selected( s, 0)
+  if set_outside_to_mean_inside:
+    outside_set_to_mean.set_selected(~s, mean_value_in)
+  else:
+    outside_set_to_mean.set_selected(~s, mean_value_out)
+
+  masked_map= (map_data * mask_data )  +  (outside_set_to_mean * (1-mask_data))
+
+  print >>out,"\nFinal mean value inside and outside mask:"
+  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
+    map_data=map_data, out=out)
+  
   write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
 
   return masked_map
