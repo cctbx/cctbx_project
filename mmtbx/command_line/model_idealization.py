@@ -16,6 +16,7 @@ from mmtbx.building.loop_idealization import loop_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 import iotbx.ncs
+from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
 from copy import deepcopy
 from mmtbx.utils import fix_rotamer_outliers
 from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
@@ -1031,31 +1032,31 @@ class model_idealization():
     print >> self.log, "Time taken for idealization: %s" % str(
         datetime.timedelta(seconds=int(self.time_for_init + self.time_for_run)))
 
-  @staticmethod
-  def filter_ncs_restraints_group_list(whole_h, ncs_restr_group_list):
-    def whole_chain_in_ncs(whole_h, master_iselection):
-      m_c = whole_h.select(master_iselection)
-      m_c_id = m_c.only_model().chains()[0].id
-      for chain in whole_h.only_model().chains():
-        if chain.id == m_c_id:
-          n_non_h_atoms = 0
-          for a in chain.atoms():
-            # print "'%s'" % a.element
-            if not a.element_is_hydrogen():
-              n_non_h_atoms += 1
-          # print "n_non_h_atoms, master_iselection.size()", n_non_h_atoms, master_iselection.size()
-          if n_non_h_atoms <= master_iselection.size():
-            return True
-          else:
-            return False
-    n_gr_to_remove = []
-    for i, ncs_gr in enumerate(ncs_restr_group_list):
-      if not whole_chain_in_ncs(whole_h, ncs_gr.master_iselection):
-        n_gr_to_remove.append(i)
-    result = deepcopy(ncs_restr_group_list)
-    for i in reversed(n_gr_to_remove):
-      del result[i]
-    return result
+  # @staticmethod
+  # def filter_ncs_restraints_group_list(whole_h, ncs_restr_group_list):
+  #   def whole_chain_in_ncs(whole_h, master_iselection):
+  #     m_c = whole_h.select(master_iselection)
+  #     m_c_id = m_c.only_model().chains()[0].id
+  #     for chain in whole_h.only_model().chains():
+  #       if chain.id == m_c_id:
+  #         n_non_h_atoms = 0
+  #         for a in chain.atoms():
+  #           # print "'%s'" % a.element
+  #           if not a.element_is_hydrogen():
+  #             n_non_h_atoms += 1
+  #         # print "n_non_h_atoms, master_iselection.size()", n_non_h_atoms, master_iselection.size()
+  #         if n_non_h_atoms <= master_iselection.size():
+  #           return True
+  #         else:
+  #           return False
+  #   n_gr_to_remove = []
+  #   for i, ncs_gr in enumerate(ncs_restr_group_list):
+  #     if not whole_chain_in_ncs(whole_h, ncs_gr.master_iselection):
+  #       n_gr_to_remove.append(i)
+  #   result = deepcopy(ncs_restr_group_list)
+  #   for i in reversed(n_gr_to_remove):
+  #     del result[i]
+  #   return result
 
 def run(args):
   # processing command-line stuff, out of the object

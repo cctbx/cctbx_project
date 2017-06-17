@@ -9,6 +9,7 @@ import string
 import random
 import math
 import sys
+from copy import deepcopy
 import mmtbx.monomer_library.server
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flip_residue
@@ -990,3 +991,36 @@ def recalculate_ncs_transforms(ncs_restraints_group_list,asu_site_cart):
           other_sites     = asu_site_cart.select(m_sel))
       cp.r = lsq_fit_obj.r
       cp.t = lsq_fit_obj.t
+
+def filter_ncs_restraints_group_list(whole_h, ncs_restr_group_list):
+  """ Remove ncs groups where master or copy does not cover whole chain
+  (some atoms are left behind).
+  """
+  def whole_chain_in_ncs(whole_h, master_iselection):
+    m_c = whole_h.select(master_iselection)
+    m_c_id = m_c.only_model().chains()[0].id
+    for chain in whole_h.only_model().chains():
+      if chain.id == m_c_id:
+        n_non_h_atoms = 0
+        for a in chain.atoms():
+          # print "'%s'" % a.element
+          if not a.element_is_hydrogen():
+            n_non_h_atoms += 1
+        # print "n_non_h_atoms, master_iselection.size()", n_non_h_atoms, master_iselection.size()
+        if n_non_h_atoms <= master_iselection.size():
+          return True
+        else:
+          return False
+  n_gr_to_remove = []
+  for i, ncs_gr in enumerate(ncs_restr_group_list):
+    if not whole_chain_in_ncs(whole_h, ncs_gr.master_iselection):
+      n_gr_to_remove.append(i)
+      continue
+    for c in ncs_gr.copies:
+      if not whole_chain_in_ncs(whole_h, c.iselection):
+        n_gr_to_remove.append(i)
+        break
+  result = deepcopy(ncs_restr_group_list)
+  for i in reversed(n_gr_to_remove):
+    del result[i]
+  return result
