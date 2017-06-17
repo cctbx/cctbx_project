@@ -1592,7 +1592,6 @@ class sharpening_info:
       self.search_b_n=params.map_modification.search_b_n
       self.maximum_low_b_adjusted_sa=\
          params.map_modification.maximum_low_b_adjusted_sa
-      self.verbose=params.control.verbose
 
       if sharpening_method is not None:
         self.sharpening_method=sharpening_method
@@ -1623,7 +1622,6 @@ class sharpening_info:
 
       if self.sharpening_method=='b_iso' and self.k_sharpen is not None:
         self.k_sharpen=None
-
       return self
   def show_summary(self,verbose=False,out=sys.stdout):
     method_summary_dict={
@@ -3481,9 +3479,14 @@ def create_rna_dna(cns_dna_rna_residue_names):
   return dd
 
 def get_solvent_fraction(params,
-     ncs_object=None,tracking_data=None,out=sys.stdout):
-  map_volume=tracking_data.crystal_symmetry.unit_cell().volume()
-  ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
+     ncs_object=None,ncs_copies=None,
+     crystal_symmetry=None,tracking_data=None,out=sys.stdout):
+  if tracking_data and not crystal_symmetry:
+    crystal_symmetry=tracking_data.crystal_symmetry
+  map_volume=crystal_symmetry.unit_cell().volume()
+  if tracking_data and not ncs_copies:
+    ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
+  if not ncs_copies: ncs_copies=1
   if not params.input_files.seq_file:
     raise Sorry("Please specify a sequence file with seq_file=myseq.seq")
   elif not os.path.isfile(params.input_files.seq_file):
@@ -3519,13 +3522,16 @@ def get_solvent_fraction(params,
   print >>out,\
     "Total residues: %d  Volume of all chains: %.1f  Solvent fraction: %.3f "%(
        n_residues_times_ncs,volume_of_molecules,solvent_fraction)
-  tracking_data.set_input_seq_info(file_name=params.input_files.seq_file,
+  if tracking_data:
+    tracking_data.set_input_seq_info(file_name=params.input_files.seq_file,
     n_residues=n_residues)
-  tracking_data.set_solvent_fraction(solvent_fraction)
-  tracking_data.set_n_residues(
+    tracking_data.set_solvent_fraction(solvent_fraction)
+    tracking_data.set_n_residues(
       n_residues=n_residues_times_ncs)
 
-  return tracking_data
+    return tracking_data
+  else:
+    return solvent_fraction
 
 def top_key(dd):
   if not dd:
@@ -6022,12 +6028,14 @@ def put_bounds_in_range(
   return tuple(new_lb),tuple(new_ub)
 
 def get_iterated_solvent_fraction(map=None,
+    verbose=None,
     crystal_symmetry=None,out=sys.stdout):
   try:
     from phenix.autosol.map_to_model import iterated_solvent_fraction
     return iterated_solvent_fraction(
       crystal_symmetry=crystal_symmetry,
       map_as_double=map,
+      verbose=verbose,
       return_solvent_fraction=True,
       out=out)
   except Exception,e:
@@ -6049,7 +6057,8 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       is_crystal=None,
       ncs_copies=None,n_residues=None,
       solvent_fraction=None,pdb_inp=None,map=None,
-      auto_sharpen=True,half_map_data_list=None,verbose=None):
+      auto_sharpen=True,half_map_data_list=None,verbose=None,
+      out=sys.stdout):
     si=sharpening_info(n_real=map.all())
     args=[]
     auto_sharpen_methods=var_dict.get('auto_sharpen_methods')
@@ -6096,6 +6105,13 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        else:
          args.append("%s=%s" %(param,x))
     local_params=get_params_from_args(args)
+
+    if local_params.input_files.seq_file and \
+        not local_params.crystal_info.solvent_content:
+        solvent_fraction=get_solvent_fraction(local_params,
+          crystal_symmetry=crystal_symmetry,
+          ncs_copies=ncs_copies,out=out)
+
     si.update_with_params(params=local_params,
       crystal_symmetry=crystal_symmetry,
       is_crystal=is_crystal,
@@ -6724,6 +6740,8 @@ def auto_sharpen_map_or_map_coeffs(
       crystal_symmetry=si.crystal_symmetry
       if not auto_sharpen:
         auto_sharpen=si.auto_sharpen
+      if verbose is None:
+        verbose=si.verbose
  
     if map_coeffs and not resolution:
        resolution=map_coeffs.d_min()
@@ -6760,11 +6778,12 @@ def auto_sharpen_map_or_map_coeffs(
         half_map_data_list=half_map_data_list,
         pdb_inp=pdb_inp,
         ncs_copies=ncs_copies,
-        n_residues=n_residues)
+        n_residues=n_residues,out=out)
     # Figure out solvent fraction
     if si.solvent_fraction is None:
       si.solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=crystal_symmetry,
+        verbose=si.verbose,
         map=map,
         out=out)
     print >>out,"Estimated solvent fraction: %s" %(si.solvent_fraction)

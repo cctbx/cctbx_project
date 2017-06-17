@@ -148,6 +148,12 @@ master_phil = iotbx.phil.parse("""
                solvent content in boxed maps.
        .short_caption = Solvent fraction iterations
        .style = hidden
+
+      ncs_copies = None
+        .type = int
+        .help = You can specify ncs copies and seq file to define solvent \
+            content
+        .short_caption = NCS copies
   }
 
   map_modification
@@ -476,7 +482,7 @@ def get_params(args,out=sys.stdout):
       params.map_modification.box_in_auto_sharpen=False
       print >>out,"Set box_in_auto_sharpen=False as sharpening method is %s" %(
         params.map_modification.auto_sharpen_methods[0])
-    
+   
   return params
 
 def get_map_coeffs_from_file(
@@ -602,6 +608,9 @@ def run(args=None,params=None,
   # Get the parameters
   if not params:
     params=get_params(args,out=out)
+
+  if not ncs_copies:
+    ncs_copies=params.crystal_info.ncs_copies
 
   # get map_data and crystal_symmetry
  
