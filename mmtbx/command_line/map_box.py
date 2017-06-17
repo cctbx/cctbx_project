@@ -45,6 +45,9 @@ master_phil = libtbx.phil.parse("""
   density_select_threshold = 0.05
     .type = float
     .help = Choose region where density is this fraction of maximum or greater
+  get_half_height_width = True
+    .type = bool
+    .help = Use 4 times half-width at half-height as estimate of max size
   ncs_file = None
     .type = path
     .help = NCS file (to be offset based on origin shift)
@@ -193,6 +196,9 @@ Parameters:"""%h
   #
   if params.value_outside_atoms=='mean':
     print >>log,"\nValue outside atoms mask will be set to mean inside mask"
+  if params.get_half_height_width:
+    print >>log,"\nHalf width at half height will be used to id boundaries"
+
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
     map_data         = map_data.as_double(),
@@ -200,6 +206,7 @@ Parameters:"""%h
     selection        = selection,
     density_select   = params.density_select,
     threshold        = params.density_select_threshold,
+    get_half_height_width = params.get_half_height_width,
     mask_atoms       = params.mask_atoms,
     mask_atoms_atom_radius = params.mask_atoms_atom_radius,
     value_outside_atoms = params.value_outside_atoms,

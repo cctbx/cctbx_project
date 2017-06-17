@@ -3067,6 +3067,7 @@ class extract_box_around_model_and_map(object):
                selection=None,
                density_select=None,
                threshold=None,
+               get_half_height_width=None,
                mask_atoms=False,
                mask_atoms_atom_radius=3.0,
                value_outside_atoms=None):
@@ -3087,7 +3088,8 @@ class extract_box_around_model_and_map(object):
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
     if(density_select):
       frac_min,frac_max=self.select_box(
-        threshold = threshold, xrs = xray_structure_selected)
+        threshold = threshold, xrs = xray_structure_selected,
+        get_half_height_width=get_half_height_width)
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
       for kk in xrange(3):
@@ -3176,7 +3178,7 @@ class extract_box_around_model_and_map(object):
   def cut_and_copy_map(self,map_data=None):
     return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
 
-  def select_box(self,threshold,xrs=None):
+  def select_box(self,threshold,xrs=None,get_half_height_width=None):
     # Select box where data are positive (> threshold*max)
     map_data=self.map_data
     origin=list(map_data.origin())
@@ -3190,7 +3192,8 @@ class extract_box_around_model_and_map(object):
          tuple((i,all[1],all[2]))
        )
       value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
-    x_min,x_max=self.get_range(value_list,threshold=threshold)
+    x_min,x_max=self.get_range(value_list,threshold=threshold,
+      get_half_height_width=get_half_height_width)
 
     value_list=flex.double()
     for j in xrange(0,all[1]):
@@ -3199,8 +3202,8 @@ class extract_box_around_model_and_map(object):
          tuple((all[0],j,all[2]))
        )
       value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
-    y_min,y_max=self.get_range(value_list,threshold=threshold)
-
+    y_min,y_max=self.get_range(value_list,threshold=threshold,
+      get_half_height_width=get_half_height_width)
     value_list=flex.double()
     for k in xrange(0,all[2]):
       new_map_data = maptbx.copy(map_data,
@@ -3208,7 +3211,8 @@ class extract_box_around_model_and_map(object):
          tuple((all[0],all[1],k))
        )
       value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
-    z_min,z_max=self.get_range(value_list,threshold=threshold)
+    z_min,z_max=self.get_range(value_list,threshold=threshold,
+      get_half_height_width=get_half_height_width)
 
     frac_min=(x_min,y_min,z_min)
     frac_max=(x_max,y_max,z_max)
@@ -3236,8 +3240,41 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     return frac_min,frac_max
 
   def get_range(self, value_list, threshold=None, ignore_ends=True,
-     keep_near_ends_frac=0.02):
+     keep_near_ends_frac=0.02, half_height_width=2., get_half_height_width=None,
+     cutoff_ratio=4):
     # ignore ends allows ignoring the first and last points which may be off
+    # if get_half_height_width, find width at half max hieght, go
+    #  half_height_width times this width out in either direction, use that as
+    #  baseline instead of full cell. Don't do it if the height at this point
+    #  is over cutoff_ratio times threshold above original baseline.
+
+    if get_half_height_width:
+      z_min,z_max=self.get_range(value_list,threshold=threshold,
+        ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
+        get_half_height_width=False)
+      z_min,z_max=self.get_range(value_list,threshold=0.5,
+        ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
+        get_half_height_width=False)
+      z_mid=0.5*(z_min+z_max)
+      z_width=0.5*(z_max-z_min)
+      z_low=z_mid-2*z_width
+      z_high=z_mid+2*z_width
+      i_low=max(0,min(value_list.size()-1,int(0.5+z_low*value_list.size())))
+      i_high=max(0,min(value_list.size()-1,int(0.5+z_high*value_list.size())))
+      min_value=value_list.min_max_mean().min
+      max_value=value_list.min_max_mean().max
+      ratio_low=(value_list[i_low]-min_value)/max(1.e-10,(max_value-min_value))
+      ratio_high=(value_list[i_high]-min_value)/max(1.e-10,(max_value-min_value))
+      if ratio_low <= cutoff_ratio*threshold and \
+         ratio_high <= cutoff_ratio*threshold:
+        z_min,z_max=self.get_range(
+          value_list,threshold=threshold+max(0.,min(ratio_low,ratio_high)),
+          ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
+          get_half_height_width=False)
+        return z_min,z_max
+      else:
+        return z_min,z_max
+       
     if threshold is None: threshold=0
     n_tot=value_list.size()
     assert n_tot>0

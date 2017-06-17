@@ -584,6 +584,10 @@ master_phil = iotbx.phil.parse("""
       .help = Choose region where density is this fraction of maximum or greater
       .short_caption = threshold for density_select
 
+    get_half_height_width = None
+      .type = bool
+      .help = Use 4 times half-width at half-height as estimate of max size
+      .short_caption = Half-height width estimation 
 
     mask_threshold = None
       .type = float
@@ -2870,6 +2874,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        params.segmentation.density_select_threshold)
       args.append("density_select_threshold=%s" %(
          params.segmentation.density_select_threshold))
+
+    if params.segmentation.get_half_height_width is not None:
+      args.append("get_half_height_width=%s" %(
+        params.segmentation.get_half_height_width))
     if params.input_files.ncs_file:
       args.append("ncs_file=%s" %(params.input_files.ncs_file))
     if params.input_files.pdb_file:
