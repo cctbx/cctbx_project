@@ -2490,31 +2490,3 @@ class NCS_restraint_group(object):
     """
     self.master_iselection = master_iselection
     self.copies = []
-
-class selections(object):
-  """
-  object for grouping multiple selection information for master ncs and copy
-  """
-
-  def __init__(self,
-               master_chain_id='',
-               copy_chain_id='',
-               master_sel=flex.size_t([]),
-               copy_sel=flex.size_t([]),
-               not_in_master=flex.size_t([]),
-               not_in_copy=flex.size_t([])):
-    """
-    Arg:
-      master_chain_id (str)
-      opy_chain_id (str)
-      master_sel (flex.size_t): master selection
-      copy_sel (flex.size_t): copy selection
-      not_in_master (flex.size_t): atoms in master to exclude
-      not_in_copy (flex.size_t): atoms in copy to exclude
-    """
-    self.master_chain_id  = master_chain_id
-    self.copy_chain_id    = copy_chain_id
-    self.master_sel       = master_sel
-    self.copy_sel         = copy_sel
-    self.not_in_master    = not_in_master
-    self.not_in_copy      = not_in_copy
