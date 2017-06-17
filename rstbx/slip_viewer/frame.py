@@ -34,7 +34,7 @@ class chooser_wrapper(object):
 
   def get_raw_data(self):
     if self._raw_data is None:
-      self._raw_data = self.image_set[self.index]
+      return self.image_set[self.index]
     return self._raw_data
 
   def set_raw_data(self, raw_data):
