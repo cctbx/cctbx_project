@@ -383,6 +383,12 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map.
 
+     use_weak_density = False
+       .type = bool
+       .short_caption = Use box with poor density
+       .help = When choosing box of representative density, use poor \
+               density (to get optimized map for weaker density)
+
      discard_if_worse = True
        .type = bool
        .short_caption = Discard sharpening if worse
@@ -1421,6 +1427,7 @@ class sharpening_info:
       original_aniso_obj=None,
       auto_sharpen=None,
       box_in_auto_sharpen=None,
+      use_weak_density=None,
       discard_if_worse=None,
       max_box_fraction=None,
       mask_atoms=None,
@@ -1456,10 +1463,14 @@ class sharpening_info:
     if self.resolution_dependent_b is None:
       self.resolution_dependent_b=[0,0,0]
 
-    if self.target_scale_factors and self.sharpening_type!='model_sharpening' \
-        and self.sharpening_type!='half_map_sharpening':
-      assert self.sharpening_type is None # XXX may want to print out error
-      self.sharpening_type='model_sharpening'
+    if self.target_scale_factors and \
+        self.sharpening_method!='model_sharpening' \
+        and self.sharpening_method!='half_map_sharpening':
+      assert self.sharpening_method is None # XXX may want to print out error
+      self.sharpening_method='model_sharpening'
+
+    if self.sharpening_method=='b_iso' and self.k_sharpen is not None:
+      self.k_sharpen=None
 
     if pdb_inp:
         self.sharpening_method='model_sharpening'
@@ -1511,6 +1522,7 @@ class sharpening_info:
      is_crystal=None,
      solvent_fraction=None,
      auto_sharpen=None,
+     sharpening_method=None,
      pdb_inp=None,
      half_map_data_list=None,
      n_residues=None,ncs_copies=None):
@@ -1560,6 +1572,7 @@ class sharpening_info:
       self.local_aniso_in_local_sharpening=\
          params.map_modification.local_aniso_in_local_sharpening
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
+      self.use_weak_density=params.map_modification.use_weak_density
       self.discard_if_worse=params.map_modification.discard_if_worse
       self.box_center=params.map_modification.box_center
       self.box_size=params.map_modification.box_size
@@ -1580,6 +1593,10 @@ class sharpening_info:
       self.maximum_low_b_adjusted_sa=\
          params.map_modification.maximum_low_b_adjusted_sa
       self.verbose=params.control.verbose
+
+      if sharpening_method is not None:
+        self.sharpening_method=sharpening_method
+
       if half_map_data_list or self.sharpening_method=='half_map_sharpening':
         self.sharpening_method='half_map_sharpening'
         self.sharpening_target='half_map'
@@ -1591,10 +1608,8 @@ class sharpening_info:
 
       elif params.map_modification.b_iso is not None or \
           params.map_modification.b_sharpen is not None:
-        if params.map_modification.k_sharpen:
-           self.sharpening_method='b_iso_to_d_cut'
-        else:
-           self.sharpening_method='b_iso'
+        if self.sharpening_method is None: 
+          raise Sorry("b_iso is not set")
         # if sharpening values are specified, set them
         if params.map_modification.b_iso is not None:
           self.b_iso=params.map_modification.b_iso # but we need b_sharpen
@@ -1605,6 +1620,9 @@ class sharpening_info:
         self.sharpening_method='resolution_dependent'
         self.resolution_dependent_b=\
             params.map_modification.resolution_dependent_b
+
+      if self.sharpening_method=='b_iso' and self.k_sharpen is not None:
+        self.k_sharpen=None
 
       return self
   def show_summary(self,verbose=False,out=sys.stdout):
@@ -1704,9 +1722,12 @@ class sharpening_info:
   def sharpen_and_score_map(self,map_data=None,out=sys.stdout):
     if self.n_real is None: # need to get it
       self.n_real=map_data.all()
+    #print >>out,"B-iso before sharpening:",
+    self.get_effective_b_iso(map_data=map_data,out=out)
     self.map_data=sharpen_map_with_si(
       sharpening_info_obj=self,map_data=map_data,
         resolution=self.resolution,out=out)
+    #print >>out,"B-iso after sharpening:",
     self.get_effective_b_iso(map_data=self.map_data,out=out)
     score_map(map_data=self.map_data,
         sharpening_info_obj=self,
@@ -2064,7 +2085,6 @@ def apply_sharpening(map_coeffs=None,
       n_bins=sharpening_info_obj.n_bins
       remove_aniso=sharpening_info_obj.remove_aniso
       resolution=sharpening_info_obj.resolution
-
     if target_scale_factors:
       assert sharpening_info_obj is not None
       print >>out,"\nApplying target scale factors vs resolution"
@@ -2123,6 +2143,7 @@ def apply_sharpening(map_coeffs=None,
       f_array_sharpened=f_array.customized_copy(data=data_array)
 
     actual_b_iso=get_b_iso(f_array_sharpened,d_min=d_min)
+    #print  "B-iso after sharpening by b_sharpen=%6.1f is %7.2f\n" %( b_sharpen,actual_b_iso)
     print >>out, "B-iso after sharpening by b_sharpen=%6.1f is %7.2f\n" %(
       b_sharpen,actual_b_iso)
     sharpened_map_coeffs=f_array_sharpened.phase_transfer(
@@ -2233,7 +2254,7 @@ def get_ncs_from_map(map_data=None,
   else: # Find it
     print >>out,"Finding NCS center as it is not supplied"
     ncs_center=find_ncs_center(map_data,crystal_symmetry=crystal_symmetry)
-  print "Center of NCS (A): (%7.3f, %7.3f, %7.3f) " %(
+  print >>out,"Center of NCS (A): (%7.3f, %7.3f, %7.3f) " %(
     tuple(ncs_center))
 
   print >>out,"\nFinding %s NCS" %(ncs_type)
@@ -2258,7 +2279,7 @@ def get_ncs_from_map(map_data=None,
     score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
       sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
     if score is None:
-      print "ncs_type:",ncs_type," no score",ncs_obj.max_operators()
+      print >>out,"ncs_type:",ncs_type," no score",ncs_obj.max_operators()
     else:
       results_list.append([score,cc_avg,ncs_obj,ncs_type])
   if not results_list:
@@ -2269,7 +2290,7 @@ def get_ncs_from_map(map_data=None,
 
   # Rescore top n_rescore
   if n_rescore:
-    print "Rescoring top %d results" %(min(n_rescore,len(results_list)))
+    print >>out,"Rescoring top %d results" %(min(n_rescore,len(results_list)))
     rescore_list=results_list[n_rescore:]
     new_sites_orth=get_points_in_map(
       map_data,n=10*random_points,crystal_symmetry=crystal_symmetry)
@@ -2278,7 +2299,7 @@ def get_ncs_from_map(map_data=None,
       score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
         sites_orth=new_sites_orth,crystal_symmetry=crystal_symmetry,out=out)
       if score is None:
-        print "ncs_type:",ncs_type," no score",ncs_obj.max_operators()
+        print >>out,"ncs_type:",ncs_type," no score",ncs_obj.max_operators()
       else:
         rescore_list.append([score,cc_avg,ncs_obj,ncs_type])
     rescore_list.sort()
@@ -4069,11 +4090,11 @@ def identify_ncs_regions(params,
     if dump_files:
       from libtbx import easy_pickle
       easy_pickle.dump("save.pkl",[duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data])
-      print "Dumped save.pkl"
+      print >>out,"Dumped save.pkl"
   else:
     from libtbx import easy_pickle
     [duplicate_dict,equiv_dict,region_range_dict,region_centroid_dict,region_scattered_points_dict,region_list,region_volume_dict,new_sorted_by_volume,bad_region_list,equiv_dict_ncs_copy,tracking_data]=easy_pickle.load("save.pkl")
-    print "Loaded save.pkl"
+    print >>out,"Loaded save.pkl"
 
   # Group together regions that are ncs-related. Also if one ncs
   #   copy has 2 or more regions linked together, group the other ones.
@@ -4092,11 +4113,11 @@ def identify_ncs_regions(params,
     if dump_files:
       from libtbx import easy_pickle
       easy_pickle.dump("group_list.pkl",[ncs_group_list,shared_group_dict])
-      print "Dumped to group_list.pkl"
+      print >>out,"Dumped to group_list.pkl"
   else:
     from libtbx import easy_pickle
     [ncs_group_list,shared_group_dict]=easy_pickle.load("group_list.pkl")
-    print "Loaded group_list.pkl"
+    print >>out,"Loaded group_list.pkl"
 
   ncs_group_obj=ncs_group_object(
      ncs_group_list=ncs_group_list,
@@ -4245,7 +4266,7 @@ def get_closest_neighbor_rms(ncs_group_obj=None,selected_regions=None,
     print >>out,"Distance-to-first dict:"
     keys=dist_to_first_dict.keys()
     keys.sort()
-    for key in keys: print "\n %s:  %.1f " %(key,dist_to_first_dict[key])
+    for key in keys: print >>out,"\n %s:  %.1f " %(key,dist_to_first_dict[key])
 
   if target_scattered_points:
     start_region=0 # we are getting dist to target_scattered_points
@@ -4334,7 +4355,7 @@ def add_neighbors(params,
       target_scattered_points=None,
       tracking_data=None,
       equiv_dict_ncs_copy=None,
-      ncs_group_obj=None):
+      ncs_group_obj=None,out=sys.stdout):
 
   #   Add neighboring regions on to selected_regions. 
   #   Same rules as select_from_seed
@@ -4412,7 +4433,7 @@ def add_neighbors(params,
   selected_regions.sort()
   ncs_ops_used.sort()
   for x in selected_regions:
-    print "GROUP ",x,":",ncs_group_obj.shared_group_dict.get(x,[])
+    print >>out,"GROUP ",x,":",ncs_group_obj.shared_group_dict.get(x,[])
 
   return selected_regions,dist,ncs_ops_used
 
@@ -4694,7 +4715,7 @@ def select_regions_in_au(params,
           target_scattered_points=target_scattered_points,
           equiv_dict_ncs_copy=equiv_dict_ncs_copy,
           tracking_data=tracking_data,
-          ncs_group_obj=ncs_group_obj)
+          ncs_group_obj=ncs_group_obj,out=out)
   else:
     ncs_ops_used=None
 
@@ -6032,8 +6053,11 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
     si=sharpening_info(n_real=map.all())
     args=[]
     auto_sharpen_methods=var_dict.get('auto_sharpen_methods')
-    if auto_sharpen_methods and auto_sharpen_methods != ['None']:
-      args.append("auto_sharpen_methods=*%s" %(" *".join(auto_sharpen_methods)))
+    if auto_sharpen_methods and auto_sharpen_methods != ['None'] and \
+        len(auto_sharpen_methods)==1:
+      sharpening_method=auto_sharpen_methods[0]
+    else:
+      sharpening_method=None
 
     for param in [
        'verbose','seq_file','box_size','box_center','remove_aniso',
@@ -6041,7 +6065,8 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'read_sharpened_maps', 'write_sharpened_maps', 'select_sharpened_map',
        'output_directory',
        'smoothing_radius','use_local_aniso','local_aniso_in_local_sharpening',
-       'local_sharpening','box_in_auto_sharpen','resolution','d_min_ratio',
+       'local_sharpening','box_in_auto_sharpen','use_weak_density',
+       'resolution','d_min_ratio',
        'discard_if_worse',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
        'max_box_fraction','k_sharpen',
@@ -6078,6 +6103,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       ncs_copies=ncs_copies,
       n_residues=n_residues,
       auto_sharpen=auto_sharpen,
+      sharpening_method=sharpening_method,
       pdb_inp=pdb_inp,
       half_map_data_list=half_map_data_list,
       )
@@ -6140,6 +6166,10 @@ def select_box_map_data(si=None,
     if si.box_center:  # center at box_center
       lower_bounds,upper_bounds=box_from_center(si=si,
         map_data=map_data,out=out)
+    elif si.use_weak_density:
+      lower_bounds,upper_bounds=box_of_smallest_region(si=si,
+           map_data=map_data,
+           out=out)
     else:
       lower_bounds,upper_bounds=box_of_biggest_region(si=si,
            map_data=map_data,
@@ -6214,9 +6244,20 @@ def box_from_center( si=None,
     print >>out,"Box grid centered at (%d,%d,%d)\n" %(cgx,cgy,cgz)
     return (cgx,cgy,cgz),(cgx,cgy,cgz)
 
+def box_of_smallest_region(si=None,
+           map_data=None,
+           return_as_list=None,
+           out=sys.stdout):
+  return box_of_biggest_region(si=si,
+           map_data=map_data,
+           return_as_list=return_as_list,
+           use_smallest=True,
+           out=out)
+
 def box_of_biggest_region(si=None,
            map_data=None,
            return_as_list=None,
+           use_smallest=False,
            out=sys.stdout):
     n_residues=si.n_residues
     ncs_copies=si.ncs_copies
@@ -6249,8 +6290,26 @@ def box_of_biggest_region(si=None,
     if len(sorted_by_volume)<2:
       return # nothing to do
 
-    v,i=sorted_by_volume[1]
-    print >>out,"\nVolume of largest region: %d grid points: "%(v)
+    if use_smallest:
+      small_ratio=0.25
+      maximum_position_ratio=0.75
+      v1,i1=sorted_by_volume[1]
+      v_small=small_ratio*v1
+      maximum_position_small=maximum_position_ratio*(len(sorted_by_volume)-1)+1
+
+      best_pos=1
+      ii=0
+      for v,i in sorted_by_volume[1:]:
+        ii+=1
+        if v < v_small: continue
+        if ii > maximum_position_small: continue
+        best_pos=ii
+
+      v,i=sorted_by_volume[best_pos]
+      print >>out,"\nVolume of target region %d: %d grid points: "%(best_pos,v)
+    else: # usual
+      v,i=sorted_by_volume[1]
+      print >>out,"\nVolume of largest region: %d grid points: "%(v)
 
     print >>out,\
     "Region %3d (%3d)  volume:%5d  X:%6d - %6d   Y:%6d - %6d  Z:%6d - %6d "%(
@@ -6633,6 +6692,7 @@ def auto_sharpen_map_or_map_coeffs(
         use_local_aniso=None,
         auto_sharpen=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
+        use_weak_density=None,
         discard_if_worse=None, 
         n_residues=None,
         ncs_copies=None,
@@ -6745,9 +6805,10 @@ def auto_sharpen_map_or_map_coeffs(
     print >>out,80*"="
 
     # Apply the optimal sharpening values and save map in si.map_data
-    # First test without sharpening if sharpening_method is b_iso,b
+    # First test without sharpening if sharpening_method is b_iso,b and
+    # b_iso is not set
     if si.sharpening_method in [
-       'b_iso','b_iso_to_d_cut','resolution_dependent']:
+       'b_iso','b_iso_to_d_cut','resolution_dependent'] and b_iso is None:
       local_si=deepcopy(si)
       local_si.sharpening_method='no_sharpening'
       local_si.sharpen_and_score_map(map_data=map,out=out)
@@ -7212,9 +7273,9 @@ def get_one_au(tracking_data=None,
     out=out)
 
   if starting_mask:
-    print "Points in starting mask:",starting_mask.count(True)
-    print "Points in overall mask:",overall_mask.count(True)
-    print "Points in both:",(starting_mask & overall_mask).count(True)
+    print >>out,"Points in starting mask:",starting_mask.count(True)
+    print >>out,"Points in overall mask:",overall_mask.count(True)
+    print >>out,"Points in both:",(starting_mask & overall_mask).count(True)
     if tracking_data.params.crystal_info.is_crystal:
       # take starting mask as overall...
       overall_mask= starting_mask
@@ -7253,7 +7314,7 @@ def get_one_au(tracking_data=None,
     overall_mask=overall_mask,
     every_nth_point=every_nth_point)
 
-  print "Points in au: %d  in ncs: %d  (total %7.1f%%)   both: %d Not marked: %d" %(
+  print >>out,"Points in au: %d  in ncs: %d  (total %7.1f%%)   both: %d Not marked: %d" %(
      au_mask.count(True),ncs_mask.count(True),
      100.*float(au_mask.count(True)+ncs_mask.count(True))/au_mask.size(),
      (au_mask & ncs_mask).count(True),

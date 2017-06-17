@@ -220,6 +220,12 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map. Default is True.
 
+     use_weak_density = False
+       .type = bool
+       .short_caption = Use box with poor density
+       .help = When choosing box of representative density, use poor \
+               density (to get optimized map for weaker density)
+
      discard_if_worse = False
        .type = bool
        .short_caption = Discard sharpening if worse
@@ -454,7 +460,23 @@ def get_params(args,out=sys.stdout):
   elif not os.path.isdir(params.output_files.output_directory):
     os.mkdir(params.output_files.output_directory)
 
-
+  if params.map_modification.b_iso:
+    if params.map_modification.k_sharpen and \
+        'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods:
+      params.map_modification.auto_sharpen_methods=['b_iso_to_d_cut']
+    elif 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and\
+        len(params.map_modification.auto_sharpen_methods)==1:
+      params.map_modification.auto_sharpen_methods=['b_iso_to_d_cut']
+    else:
+      params.map_modification.auto_sharpen_methods=['b_iso']
+   
+  if params.map_modification.auto_sharpen_methods in [
+     ['b_iso_to_d_cut'],['b_iso']]:
+    if params.map_modification.box_in_auto_sharpen:
+      params.map_modification.box_in_auto_sharpen=False
+      print >>out,"Set box_in_auto_sharpen=False as sharpening method is %s" %(
+        params.map_modification.auto_sharpen_methods[0])
+    
   return params
 
 def get_map_coeffs_from_file(
@@ -620,6 +642,7 @@ def run(args=None,params=None,
         local_aniso_in_local_sharpening=\
            params.map_modification.local_aniso_in_local_sharpening,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
+        use_weak_density=params.map_modification.use_weak_density,
         discard_if_worse=params.map_modification.discard_if_worse,
         box_center=params.map_modification.box_center,
         box_size=params.map_modification.box_size,
@@ -663,6 +686,11 @@ def run(args=None,params=None,
 
   new_map_data=si.as_map_data()
   new_map_coeffs=si.as_map_coeffs()
+
+  from cctbx.maptbx.segment_and_split_map import get_b_iso,map_coeffs_as_fp_phi
+  f,phi=map_coeffs_as_fp_phi(new_map_coeffs)
+  temp_b_iso=get_b_iso(f,d_min=params.crystal_info.resolution)
+
   if not si.is_model_sharpening():
     print >>out
     print >>out,80*"=","\n",80*"="
