@@ -1596,6 +1596,10 @@ class sharpening_info:
       if sharpening_method is not None:
         self.sharpening_method=sharpening_method
 
+      if not self.sharpening_method and \
+         len(params.map_modification.auto_sharpen_methods)==1:
+        self.sharpening_method=params.map_modification.auto_sharpen_methods[0]
+
       if half_map_data_list or self.sharpening_method=='half_map_sharpening':
         self.sharpening_method='half_map_sharpening'
         self.sharpening_target='half_map'
@@ -2697,6 +2701,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   print >>out,"Command used: %s\n" %(
    " ".join(['segment_and_split_map']+args))
   master_params.format(python_object=params).show(out=out)
+
+  from cctbx.maptbx.auto_sharpen import set_sharpen_params
+  params=set_sharpen_params(params,out)
 
   if not params.crystal_info.resolution and (
      params.map_modification.b_iso is not None or \

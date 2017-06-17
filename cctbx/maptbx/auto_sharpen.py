@@ -466,6 +466,10 @@ def get_params(args,out=sys.stdout):
   elif not os.path.isdir(params.output_files.output_directory):
     os.mkdir(params.output_files.output_directory)
 
+  params=set_sharpen_params(params,out)
+  return params
+
+def set_sharpen_params(params,out=sys.stdout):
   if params.map_modification.b_iso:
     if params.map_modification.k_sharpen and \
         'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods:
@@ -482,8 +486,8 @@ def get_params(args,out=sys.stdout):
       params.map_modification.box_in_auto_sharpen=False
       print >>out,"Set box_in_auto_sharpen=False as sharpening method is %s" %(
         params.map_modification.auto_sharpen_methods[0])
-   
   return params
+   
 
 def get_map_coeffs_from_file(
       map_coeffs_file=None,
