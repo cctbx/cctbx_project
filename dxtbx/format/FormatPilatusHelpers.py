@@ -91,7 +91,7 @@ def get_vendortype(xdetector):
 
 def get_vendortype_eiger(xdetector):
   array = xdetector[0].get_image_size()
-  print array,
+  #print array,
   if array == (4150,4371): return "Eiger-16M"
   elif array == (3110,3269): return "Eiger-9M"
   elif array == (2070,2167): return "Eiger-4M"
