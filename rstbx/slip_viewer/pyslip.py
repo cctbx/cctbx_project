@@ -1314,10 +1314,8 @@ class PySlip(_BufferedCanvas):
         # just in case we got None
         if id:
             # see if what we are about to remove might be visible
-            layer = self.layer_mapping[id]
-            visible = layer.visible
-
-            del layer
+            visible = self.layer_mapping[id].visible
+            del self.layer_mapping[id]
             self.layer_z_order.remove(id)
 
             # if layer was visible, refresh display
