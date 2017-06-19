@@ -51,13 +51,6 @@ class FormatSER(Format, FormatMultiImage):
 
     return True
 
-  def __init__(self, image_file, **kwargs):
-    from dxtbx import IncorrectFormatError
-    if not self.understand(image_file):
-      raise IncorrectFormatError(self, image_file)
-    FormatMultiImage.__init__(self, **kwargs)
-    Format.__init__(self, image_file, **kwargs)
-
   @staticmethod
   def _read_metadata(image_file):
 
