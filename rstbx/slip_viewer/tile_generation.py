@@ -122,22 +122,19 @@ def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
                   panel.get_pixel_size()[1] * 1e-3)
 
     if len(panels) == 24 and panels[0].get_image_size() == (2463,195):
-      #print "DLS I23 12M"
       rawdata.matrix_paste_block_in_place(
         block=data.as_double(),
         i_row=i * data_padded[0],
         i_column=0)
       # XXX hardcoded panel height and row gap
-      my_flex_image.add_transformation_and_translation((1,0,0,1), (-i*(195+17),0))
+      my_flex_image.add_transformation_and_translation((1,0,0,1),
+                                                       (-i*(195+17),0))
 
       continue
 
     elif len(panels) == 120 and panels[0].get_image_size() == (487,195):
       i_row = i // 5
       i_col = i % 5
-      #print i_row, i_col
-      #print data_padded
-      #print "DLS I23 12M"
       rawdata.matrix_paste_block_in_place(
         block=data.as_double(),
         i_row=i * data_padded[0],
@@ -150,9 +147,11 @@ def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
 
     # Get unit vectors in the fast and slow directions, as well as the
     # the locations of the origin and the center of the panel, in
-    # meters.  The origin is taken w.r.t. to average beam center of all
-    # panels.  This avoids excessive translations that can result from
-    # rotations around the laboratory origin.
+    # meters. The origin is taken w.r.t. to average beam center of all
+    # panels. This avoids excessive translations that can result from
+    # rotations around the laboratory origin. Related to beam centre above
+    # and dials#380 not sure this is right for detectors which are not
+    # coplanar since system derived from first panel...
     fast = col(panel.get_fast_axis())
     slow = col(panel.get_slow_axis())
     origin = col(panel.get_origin()) * 1e-3  - beam_center
