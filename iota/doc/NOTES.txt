@@ -1,5 +1,9 @@
-IOTA v1.1.013a - minor interface tweaks
+IOTA v1.1.014 - point picker and minor tweaks
 
-1. Can specify mask file and use in processing (cctbx for now)
-2. Can attempt to estimate global threshold in DIALS from radial averaging
-3. Moved radial average calculator to iota_utils
+1. Save text file w/ spotfinding results at every timer event in tracker
+2. "Restore" function in tracker (works only with previous run results)
+3. Live "point picker" in IOTA:
+    a. Click on any point on the "Resolution" or "Strong reflections" chart
+    b. Name of file will pop up, viewer can be used to see it
+    c. Can advance up and down to view files before and after the pick
+    (useful for dense point distribution)

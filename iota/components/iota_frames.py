@@ -10,6 +10,7 @@ Description : IOTA GUI Windows / frames
 import os
 import wx
 from wxtbx import bitmaps
+import wx.lib.buttons as btn
 
 import math
 import numpy as np
@@ -439,6 +440,12 @@ class ProcessingTab(wx.Panel):
     self.gparams = None
     self.init = None
 
+    self.finished_objects = None
+    self.img_list = None
+    self.nref_list = None
+    self.res_list = None
+    self.pick = {'image':None, 'index':0, 'axis':None}
+
     wx.Panel.__init__(self, parent)
     self.main_fig_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -453,11 +460,41 @@ class ProcessingTab(wx.Panel):
     self.int_figure = Figure()
     self.int_figure.patch.set_visible(False)    # create transparent background
 
+    # Image info sizer
+    self.info_sizer = wx.GridBagSizer(0, 5)
+    self.info_txt = wx.TextCtrl(self.int_panel, style=wx.TE_READONLY)
+    view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer16')
+    r_bmp = bitmaps.fetch_icon_bitmap('actions', '1rightarrow', size=16)
+    l_bmp = bitmaps.fetch_icon_bitmap('actions', '1leftarrow', size=16)
+    self.btn_right = btn.GenBitmapButton(self, bitmap=r_bmp)
+    self.btn_left = btn.GenBitmapButton(self, bitmap=l_bmp)
+    self.btn_viewer = btn.GenBitmapButton(self, bitmap=view_bmp)
+    self.info_sizer.Add(self.info_txt, pos=(0, 1), flag=wx.EXPAND)
+    self.info_sizer.Add(self.btn_left, pos=(0, 2))
+    self.info_sizer.Add(self.btn_right, pos=(0, 3))
+    self.info_sizer.Add(self.btn_viewer, pos=(0, 4))
+    self.info_sizer.AddGrowableCol(1)
+    int_sizer.Add(self.info_sizer, flag=wx.EXPAND)
+    self.info_txt.Hide()
+    self.btn_right.Hide()
+    self.btn_left.Hide()
+    self.btn_viewer.Hide()
+
+    self.btn_right.Disable()
+    self.btn_left.Disable()
+    self.btn_viewer.Disable()
+
+    self.Bind(wx.EVT_BUTTON, self.onImageView, self.btn_viewer)
+    self.Bind(wx.EVT_BUTTON, self.onArrow, self.btn_right)
+    self.Bind(wx.EVT_BUTTON, self.onArrow, self.btn_left)
+
+    # Charts
     int_gsp = gridspec.GridSpec(4, 5)
     int_gsub = gridspec.GridSpecFromSubplotSpec(2, 1,
                                                 subplot_spec=int_gsp[:2, :],
                                                 hspace=0)
 
+    # Resolution / No. strong reflections chart
     self.res_axes = self.int_figure.add_subplot(int_gsub[0])
     self.res_axes.set_ylabel('Resolution')
     self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
@@ -469,6 +506,18 @@ class ProcessingTab(wx.Panel):
     self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
 
+    # Determine size of plot labels and introduce sufficient spacer into
+    # info textbox sizer
+    # TODO: This needs to be better
+    ax_width = self.nsref_axes.get_window_extent().width
+    fig_width = self.int_figure.get_window_extent().width
+    spacer = fig_width - ax_width
+    self.info_sizer.Add((spacer * 0.725, -1), pos=(0, 0))
+    self.info_sizer.Add((spacer * 0.15, -1), pos=(0, 5))
+    self.info_txt.Show()
+    self.btn_right.Show()
+    self.btn_left.Show()
+    self.btn_viewer.Show()
 
     # UC Histogram / cluster figure
     uc_gsub = gridspec.GridSpecFromSubplotSpec(2, 3,
@@ -525,41 +574,48 @@ class ProcessingTab(wx.Panel):
     self.main_fig_sizer.Add(self.int_panel, 1, flag=wx.EXPAND)
     self.main_fig_sizer.Add(self.proc_panel, flag=wx.EXPAND)
 
+    cid = self.int_canvas.mpl_connect('pick_event', self.on_pick)
+    xid = self.int_canvas.mpl_connect('button_press_event', self.on_miss)
+
     self.SetSizer(self.main_fig_sizer)
 
-  def draw_plots(self,
-                 finished_objects,
-                 img_list,
-                 nref_list,
-                 res_list):
+  def draw_summary(self):
+
     try:
       # Summary horizontal stack bar graph
       categories = [
         ['failed triage', '#d73027',
-         len([i for i in finished_objects if i.fail == 'failed triage'])],
+         len([i for i in self.finished_objects if
+              i.fail == 'failed triage'])],
         ['failed indexing / integration', '#f46d43',
-         len([i for i in finished_objects if i.fail == 'failed grid search'])],
+         len([i for i in self.finished_objects if
+              i.fail == 'failed grid search'])],
         ['failed filter', '#ffffbf',
-         len([i for i in finished_objects if i.fail == 'failed prefilter'])],
+         len([i for i in self.finished_objects if
+              i.fail == 'failed prefilter'])],
         ['failed spotfinding', '#f46d43',
-         len([i for i in finished_objects if i.fail == 'failed spotfinding'])],
+         len([i for i in self.finished_objects if
+              i.fail == 'failed spotfinding'])],
         ['failed indexing', '#fdae61',
-         len([i for i in finished_objects if i.fail == 'failed indexing'])],
+         len([i for i in self.finished_objects if
+              i.fail == 'failed indexing'])],
         ['failed integration', '#fee090',
-         len([i for i in finished_objects if i.fail == 'failed integration'])],
+         len([i for i in self.finished_objects if
+              i.fail == 'failed integration'])],
         ['integrated', '#4575b4',
-         len([i for i in finished_objects if i.fail == None and i.final['final'] != None])]
+         len([i for i in self.finished_objects if
+              i.fail == None and i.final['final'] != None])]
       ]
       categories.append(['not processed', '#e0f3f8',
-                         len(img_list) - sum([i[2] for i in categories])])
+                         len(self.img_list) - sum([i[2] for i in categories])])
       nonzero = [i for i in categories if i[2] > 0]
       names = [i[0] for i in nonzero]
 
       self.sum_axes.clear()
-      self.sum_axes.axis([0, len(img_list), 0, 1])
+      self.sum_axes.axis([0, len(self.img_list), 0, 1])
       self.sum_axes.axis('off')
       for i in range(len(nonzero)):
-        percent = np.round(nonzero[i][2] / len(img_list) * 100)
+        percent = np.round(nonzero[i][2] / len(self.img_list) * 100)
 
         previous = [j[2] for j in nonzero[:i]]
         lf = np.sum(previous)
@@ -583,10 +639,13 @@ class ProcessingTab(wx.Panel):
     except ValueError, e:
       pass
 
-    if sum(nref_list) > 0 and sum(res_list) > 0:
+  def draw_plots(self):
+
+    if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
       try:
         # Unit cell histograms
-        finished = [i for i in finished_objects if i.fail == None and i.final['final'] != None]
+        finished = [i for i in self.finished_objects if
+                    i.fail == None and i.final['final'] != None]
         if len(finished) > 0:
           self.a_axes.clear()
           self.b_axes.clear()
@@ -644,27 +703,24 @@ class ProcessingTab(wx.Panel):
           self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
           plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
 
-
         # Strong reflections per frame
         self.nsref_axes.clear()
-        nsref_x = np.array([i + 1.5 for i in range(len(img_list))]).astype(np.double)
-        nsref_y = np.array([np.nan if i==0 else i for i in
-                            nref_list]).astype(np.double)
+        self.nsref_x = np.array([i + 1.5 for i in
+                            range(len(self.img_list))]).astype(np.double)
+        self.nsref_y = np.array([np.nan if i==0 else i for i in
+                            self.nref_list]).astype(np.double)
         nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
                        ''.format(r'$\sigma$',
                                  self.gparams.cctbx.selection.min_sigma)
-        nsref = self.nsref_axes.scatter(nsref_x, nsref_y, s=45,
-                                                  marker='o',
-                                                  edgecolors='black',
-                                                  color='#ca0020',
-                                                  picker=True)
+        self.nsref = self.nsref_axes.scatter(self.nsref_x, self.nsref_y, s=45,
+                                             marker='o', edgecolors='black',
+                                             color='#ca0020', picker=True)
 
-        nsref_median = np.median([i for i in nref_list if i > 0])
-        nsref_med = self.nsref_axes.axhline(nsref_median,
-                                                      c='#ca0020', ls='--')
+        nsref_median = np.median([i for i in self.nref_list if i > 0])
+        nsref_med = self.nsref_axes.axhline(nsref_median, c='#ca0020', ls='--')
 
-        self.nsref_axes.set_xlim(0, np.nanmax(nsref_x) + 2)
-        nsref_ymax = np.nanmax(nsref_y) * 1.25 + 10
+        self.nsref_axes.set_xlim(0, np.nanmax(self.nsref_x) + 2)
+        nsref_ymax = np.nanmax(self.nsref_y) * 1.25 + 10
         if nsref_ymax == 0:
           nsref_ymax = 100
         self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
@@ -675,23 +731,22 @@ class ProcessingTab(wx.Panel):
 
         # Resolution per frame
         self.res_axes.clear()
-        res_x = np.array([i + 1.5 for i in range(len(img_list))])\
+        self.res_x = np.array([i + 1.5 for i in range(len(self.img_list))])\
           .astype(np.double)
-        res_y = np.array([np.nan if i==0 else i for i in res_list])\
+        self.res_y = np.array([np.nan if i==0 else i for i in self.res_list])\
           .astype(np.double)
-        res_m = np.isfinite(res_y)
+        res_m = np.isfinite(self.res_y)
 
-        res = self.res_axes.scatter(res_x[res_m], res_y[res_m], s=45,
-                                              marker='o', edgecolors='black',
-                                              color='#0571b0',
-                                              picker=True)
-        res_median = np.median([i for i in res_list if i > 0])
+        self.res = self.res_axes.scatter(self.res_x[res_m], self.res_y[res_m],
+                                         s=45, marker='o', edgecolors='black',
+                                         color='#0571b0', picker=True)
+        res_median = np.median([i for i in self.res_list if i > 0])
         res_med = self.res_axes.axhline(res_median, c='#0571b0',
                                                   ls='--')
 
-        self.res_axes.set_xlim(0, np.nanmax(res_x) + 2)
-        res_ymax = np.nanmax(res_y) * 1.1
-        res_ymin = np.nanmin(res_y) * 0.9
+        self.res_axes.set_xlim(0, np.nanmax(self.res_x) + 2)
+        res_ymax = np.nanmax(self.res_y) * 1.1
+        res_ymin = np.nanmin(self.res_y) * 0.9
         if res_ymin == res_ymax:
           res_ymax = res_ymin + 1
         self.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
@@ -700,6 +755,33 @@ class ProcessingTab(wx.Panel):
         self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
         self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
         plt.setp(self.res_axes.get_xticklabels(), visible=False)
+
+        self.nsref_pick, = self.nsref_axes.plot(self.nsref_x[0],
+                                                self.nsref_y[0],
+                                                marker='o',
+                                                ms=12, alpha=0.5,
+                                                color='yellow', visible=False)
+        self.res_pick, = self.res_axes.plot(self.res_x[0],
+                                            self.res_x[0],
+                                            marker='o',
+                                            ms=12, alpha=0.5,
+                                            color='yellow', visible=False)
+        if self.pick['image'] is not None:
+          img = self.pick['image']
+          idx = self.pick['index']
+          axis = self.pick['axis']
+          if axis == 'nsref':
+            if not np.isnan(self.nsref_y[idx]):
+              self.nsref_pick.set_visible(True)
+              self.nsref_pick.set_data(self.nsref_x[idx], self.nsref_y[idx])
+          elif axis == 'res':
+            if not np.isnan(self.res_y[idx]):
+              self.res_pick.set_visible(True)
+              self.res_pick.set_data(self.res_x[idx], self.res_y[idx])
+          self.info_txt.SetValue(img)
+          self.btn_left.Enable()
+          self.btn_right.Enable()
+          self.btn_viewer.Enable()
 
         # Beam XY (cumulative)
         info = []
@@ -778,6 +860,63 @@ class ProcessingTab(wx.Panel):
 
     self.Layout()
 
+  def onImageView(self, e):
+    filepath = self.info_txt.GetValue()
+    backend = self.gparams.advanced.integrate_with
+    if os.path.isfile(filepath):
+      viewer = thr.ImageViewerThread(self,
+                                     backend=backend,
+                                     file_string=filepath)
+      viewer.start()
+
+  def onArrow(self, e):
+    idx = self.pick['index']
+    self.pick['image'] = None
+    if e.GetId() == self.btn_right.GetId():
+      direction = 1
+    elif e.GetId() == self.btn_left.GetId():
+      direction = -1
+
+    search = True
+    while search:
+      idx += direction
+      try:
+        if self.pick['axis'] == 'nsref':
+          if not np.isnan(self.nsref_y[idx]):
+            self.pick['index'] = idx
+            self.pick['image'] = self.finished_objects[idx].conv_img
+            search = False
+          else:
+            search = True
+        if self.pick['axis'] == 'res':
+          if not np.isnan(self.res_y[idx]):
+            self.pick['index'] = idx
+            self.pick['image'] = self.finished_objects[idx].conv_img
+            search = False
+          else:
+            search = True
+      except IndexError, e:
+        search = False
+        self.pick['index'] = idx
+        self.pick['image'] = None
+
+    self.draw_plots()
+
+  def on_pick(self, event):
+    idx = event.mouseevent.xdata
+    img = self.finished_objects[int(idx) - 1].conv_img
+    print '{}: {}'.format(int(idx), img)
+    self.pick['image'] = img
+    self.pick['index'] = int(idx) - 1
+
+    if event.mouseevent.inaxes == self.nsref_axes:
+      self.pick['axis'] = 'nsref'
+    elif event.mouseevent.inaxes == self.res_axes:
+      self.pick['axis'] = 'res'
+    self.draw_plots()
+
+  def on_miss(self, event):
+    pass
 
 class SummaryTab(wx.Panel):
   def __init__(self,
@@ -1437,10 +1576,13 @@ class ProcWindow(wx.Frame):
 
     self.chart_tab.init = self.init
     self.chart_tab.gparams = self.gparams
-    self.chart_tab.draw_plots(finished_objects=self.finished_objects,
-                              img_list=self.img_list,
-                              res_list=self.res_list,
-                              nref_list=self.nref_list)
+    self.chart_tab.finished_objects = self.finished_objects
+    self.chart_tab.img_list = self.img_list
+    self.chart_tab.res_list = self.res_list
+    self.chart_tab.nref_list = self.nref_list
+    self.chart_tab.draw_plots()
+    self.chart_tab.draw_summary()
+
 
   def onTimer(self, e):
     if os.path.isfile(self.tmp_abort_file):

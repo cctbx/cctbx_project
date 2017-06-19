@@ -217,6 +217,9 @@ class Integrator(object):
       self.phil.geometry.detector.distance = self.params.image_conversion.distance
     if self.params.advanced.estimate_gain:
       self.phil.spotfinder.threshold.xds.gain = gain
+    if self.params.image_conversion.mask is not None:
+      self.phil.spotfinder.lookup.mask = self.params.image_conversion.mask
+      self.phil.integration.lookup.mask = self.params.image_conversion.mask
 
     self.img = [source_image]
     self.obj_base = object_folder
