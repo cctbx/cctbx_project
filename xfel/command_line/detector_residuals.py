@@ -71,6 +71,32 @@ residuals {
     .type = bool
     .help = If True, use sauter_poon to recompute outliers and remove them
 }
+
+repredict
+  .expert_level = 2 {
+  enable = False
+    .type = bool
+    .help = If True, repredict reflection positions using bandpass and mosaic  \
+            approximations
+  mode = tophat_mosaicity_and_bandpass *gaussian_mosaicity_and_bandpass
+    .type = choice
+    .help = Use tophat functions or gaussians to approximate the mosaic        \
+            parameters of the crystal and spectral properties of the beam
+  refine_mode = *per_experiment all None
+    .type = choice
+    .help = Refine mosaicity for each experiment individually (per_experiment) \
+            or refine a single mosaicity of all experiments (all).  If None,   \
+            do not refine mosaicity.
+  refine_bandpass = True
+    .type = bool
+    .help = If True and if also refining mosaicity, then refine the bandpass.
+  initial_mosaic_parameters = None
+    .type = floats(size=2)
+    .help = If set, provide two numbers: domain size (angstroms) and half      \
+            mosaic angle (degrees). If unset, use the crystal model's          \
+            mosaic parameters.
+}
+
 save_pdf = False
   .type = bool
   .help = Whether to show the plots or save as a multi-page pdf
@@ -117,6 +143,23 @@ def setup_stats(detector, experiments, reflections, two_theta_only = False):
     tmp.extend(panel_refls)
   reflections = tmp
   return reflections
+
+def get_unweighted_rmsd(reflections):
+  n = len(reflections)
+  if n == 0:
+    return 0
+  #weights = 1/reflections['intensity.sum.variance']
+  reflections = reflections.select(reflections['xyzobs.mm.variance'].norms() > 0)
+  weights = 1/reflections['xyzobs.mm.variance'].norms()
+
+  un_rmsd = math.sqrt( flex.sum(reflections['difference_vector_norms']**2)/n)
+  print "Uweighted RMSD (mm)", un_rmsd
+
+  w_rmsd = math.sqrt( flex.sum( weights*(reflections['difference_vector_norms']**2) )/flex.sum(weights))
+  print "Weighted RMSD (mm)", w_rmsd
+
+  return un_rmsd
+
 
 def reflection_wavelength_from_pixels(experiments, reflections):
   if 'shoebox' not in reflections:
@@ -240,6 +283,25 @@ class Script(DCScript):
     data = reflections['delpsical.rad'] * (180/math.pi)
     norm, cmap, color_vals, sm = self.get_normalized_colors(data, vmin=-0.1, vmax=0.1)
     deltas = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value'])*self.delta_scalar
+
+    x, y = panel.get_image_size_mm()
+    offset = col((x, y, 0))/2
+    deltas += offset
+    mm_panel_coords = flex.vec2_double(deltas.parts()[0], deltas.parts()[1])
+
+    lab_coords = panel.get_lab_coord(mm_panel_coords)
+
+    ax.scatter(lab_coords.parts()[0], lab_coords.parts()[1], c = data, norm=norm, cmap = cmap, linewidths=0, s=self.params.dot_size)
+
+    return sm, color_vals
+
+  def plot_obs_colored_by_deltapsi_pxlambda(self, reflections, panel = None, ax = None, bounds = None):
+    if 'delpsical.rad' not in reflections:
+      return
+    assert panel is not None and ax is not None and bounds is not None
+    data = reflections['delpsical.rad.pxlambda'] * (180/math.pi)
+    norm, cmap, color_vals, sm = self.get_normalized_colors(data, vmin=-0.1, vmax=0.1)
+    deltas = (reflections['xyzcal.mm.pxlambda']-reflections['xyzobs.mm.value'])*self.delta_scalar
 
     x, y = panel.get_image_size_mm()
     offset = col((x, y, 0))/2
@@ -387,31 +449,49 @@ class Script(DCScript):
     for subset,c in zip(data, colors):
         ax.plot(subset.parts()[0], subset.parts()[1], '-', c=c)
 
-  def plot_difference_vector_norms_histograms(self, reflections, panel = None, ax = None, bounds = None):
-    r = reflections['difference_vector_norms']*1000
-    h = flex.histogram(r, n_slots=50, data_min=0, data_max=100)
+  def plot_radial_difference_histograms(self, reflections, panel = None, ax = None, bounds = None):
+    r = reflections['radial_displacements']*1000
+    h = flex.histogram(r, n_slots=10, data_min=-300, data_max=300)
 
-    x_extent = max(r)
-    y_extent = len(r)
-    xobs = [i/x_extent for i in sorted(r)]
-    yobs = [i/y_extent for i in xrange(y_extent)]
-    obs = [(x, y) for x, y in zip(xobs, yobs)]
+    x = h.slot_centers()
+    y = h.slots().as_double()
+    x.append(0); y.append(0)
+    x.append(0); y.append(flex.max(y))
 
     if bounds is None:
-      #ax.set_xlim((-1,1))
-      #ax.set_ylim((-1,1))
-      x = h.slot_centers().as_numpy_array()
-      y = h.slots().as_numpy_array()
+      ax.set_title("%s Radial differences"%self.params.tag)
+    else:
+      d = flex.vec2_double(x, y)
+      data = self.get_bounded_data(d, bounds)
+      x, y = data.parts()
+
+    linex = [x[-2],x[-1]]; liney = [y[-2],y[-1]]
+    x = x[:-2]; y = y[:-2]
+
+    if ax is None:
+      fig = plt.figure()
+      ax = fig.add_subplot(111)
+    ax.plot(x.as_numpy_array(), y.as_numpy_array(), '-', c='blue')
+    ax.plot(linex, liney, '-', c='red')
+
+  def plot_difference_vector_norms_histograms(self, reflections, panel = None, ax = None, bounds = None):
+    r = reflections['difference_vector_norms']*1000
+    h = flex.histogram(r, n_slots=10, data_min=0, data_max=100)
+
+    x = h.slot_centers()
+    y = h.slots().as_double()
+
+    if bounds is None:
       ax.set_title("%s Residual norms histogram"%self.params.tag)
-    if bounds is not None:
-      d = flex.vec2_double(h.slot_centers(), h.slots().as_double())
+    else:
+      d = flex.vec2_double(x, y)
       data = self.get_bounded_data(d, bounds)
       x, y = data.parts()
 
     if ax is None:
       fig = plt.figure()
       ax = fig.add_subplot(111)
-    ax.plot(x, y, '-', c='blue')
+    ax.plot(x.as_numpy_array(), y.as_numpy_array(), '-', c='blue')
 
   def get_bounded_data(self, data, bounds):
     assert len(bounds) == 4
@@ -437,24 +517,11 @@ class Script(DCScript):
       print "WARNING bad scale"
       return data
 
-    return flex.vec2_double(data.parts()[0] * (scale/abs(data_scale_x)),
-                            data.parts()[1] * (scale/abs(data_scale_y))) + origin
+    xscale = scale/abs(data_scale_x)
+    yscale = scale/abs(data_scale_y)
 
-  def get_weighted_rmsd(self, reflections):
-    n = len(reflections)
-    if n == 0:
-      return 0
-    #weights = 1/reflections['intensity.sum.variance']
-    reflections = reflections.select(reflections['xyzobs.mm.variance'].norms() > 0)
-    weights = 1/reflections['xyzobs.mm.variance'].norms()
-
-    un_rmsd = math.sqrt( flex.sum(reflections['difference_vector_norms']**2)/n)
-    print "Uweighted RMSD (mm)", un_rmsd
-
-    w_rmsd = math.sqrt( flex.sum( weights*(reflections['difference_vector_norms']**2) )/flex.sum(weights))
-    print "Weighted RMSD (mm)", w_rmsd
-
-    return un_rmsd
+    return flex.vec2_double(((data.parts()[0] * xscale) - (data_min_x * xscale)),
+                            ((data.parts()[1] * yscale) - (data_min_y * yscale))) + origin
 
   def run(self):
     ''' Parse the options. '''
@@ -508,10 +575,69 @@ class Script(DCScript):
       reflections = reflections.select(sel)
       print "After filtering by I/sigi cutoff of %f, there are %d reflections left"%(self.params.residuals.i_sigi_cutoff,len(reflections))
 
+    reflections = reflection_wavelength_from_pixels(experiments, reflections)
+    stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
+    print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+    self.min_energy = stats.mean() - stats.unweighted_sample_standard_deviation()
+    self.max_energy = stats.mean() + stats.unweighted_sample_standard_deviation()
+
+    try:
+      from dials_scratch.asb.predictions_from_reflection_wavelengths import predictions_from_per_reflection_energies, tophat_vector_wavelengths, refine_wavelengths, wavelengths_from_gaussians
+    except ImportError:
+      if params.repredict.enable:
+        raise Sorry("dials_scratch not configured so cannot do reprediction")
+    else:
+      reflections = predictions_from_per_reflection_energies(experiments, reflections, 'reflection_wavelength_from_pixels', 'pxlambda')
+
+      if params.show_plots:
+        fig = plt.figure()
+        stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
+        plt.title("Energies derived from indexed pixels, mean: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
+        plt.hist(12398.4/reflections['reflection_wavelength_from_pixels'], bins=100)
+        plt.xlabel("Energy (eV)")
+        plt.ylabel("Count")
+
+    if params.repredict.enable:
+      init_mp = params.repredict.initial_mosaic_parameters
+
+      if params.repredict.mode == 'tophat_mosaicity_and_bandpass':
+        tag = 'reflection_wavelength_from_mosaicity_and_bandpass'
+        dest = 'mosbandp'
+        func = tophat_vector_wavelengths
+        gaussians = False
+      elif params.repredict.mode == 'gaussian_mosaicity_and_bandpass':
+        tag = 'reflection_wavelength_from_gaussian_mosaicity_and_bandpass'
+        dest = 'gmosbandp'
+        func = wavelengths_from_gaussians
+        gaussians = True
+
+      if params.repredict.refine_mode == 'per_experiment':
+        refined_reflections = flex.reflection_table()
+        for expt_id in xrange(len(experiments)):
+          print "*"*80, "EXPERIMENT", expt_id
+          refls = reflections.select(reflections['id']==expt_id)
+          refls['id'] = flex.int(len(refls), 0)
+          refls = refine_wavelengths(experiments[expt_id:expt_id+1], refls, init_mp, tag, dest,
+            refine_bandpass=params.repredict.refine_bandpass, gaussians=gaussians)
+          refls['id'] = flex.int(len(refls), expt_id)
+          refined_reflections.extend(refls)
+        reflections = refined_reflections
+      elif params.repredict.refine_mode == 'all':
+        reflections = refine_wavelengths(experiments, reflections, init_mp, tag, dest,
+          refine_bandpass=params.repredict.refine_bandpass, gaussians=gaussians)
+      elif params.repredict.refine_mode is None or params.repredict.refine_mode == 'None':
+        reflections = func(experiments, reflections, init_mp)
+      reflections = predictions_from_per_reflection_energies(experiments, reflections, tag, dest)
+      stats = flex.mean_and_variance(12398.4/reflections[tag])
+      print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+      reflections['delpsical.rad'] = reflections['delpsical.rad.%s'%dest]
+      reflections['xyzcal.mm'] = reflections['xyzcal.mm.%s'%dest]
+      reflections['xyzcal.px'] = reflections['xyzcal.px.%s'%dest]
+
     reflections['difference_vector_norms'] = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
 
     n = len(reflections)
-    rmsd = self.get_weighted_rmsd(reflections)
+    rmsd = get_unweighted_rmsd(reflections)
     print "Dataset RMSD (microns)", rmsd * 1000
 
     if params.tag is None:
@@ -521,6 +647,7 @@ class Script(DCScript):
 
     if 'delpsical.rad' in reflections:
       # set up delta-psi ratio heatmap
+      fig = plt.figure()
       p = flex.int() # positive
       n = flex.int() # negative
       for i in set(reflections['id']):
@@ -558,12 +685,6 @@ class Script(DCScript):
     table_data.append(table_header2)
 
     reflections = setup_stats(detector, experiments, reflections)
-
-    reflections = reflection_wavelength_from_pixels(experiments, reflections)
-    stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
-    print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
-    self.min_energy = stats.mean() - stats.unweighted_sample_standard_deviation()
-    self.max_energy = stats.mean() + stats.unweighted_sample_standard_deviation()
 
     # The radial vector points from the center of the reflection to the beam center
     radial_vectors = (reflections['obs_lab_coords'] - reflections['beam_centre_lab']).each_normalize()
@@ -684,11 +805,13 @@ class Script(DCScript):
       self.detector_plot_refls(detector, reflections, '%sTransverse positional displacements (mm)'%tag, show=False, plot_callback=self.plot_obs_colored_by_transverse_deltas)
       self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$'%tag, show=False, plot_callback=self.plot_obs_colored_by_deltapsi, colorbar_units=r"$\circ$")
       self.detector_plot_refls(detector, reflections, '%sMean pixel energy'%tag, show=False, plot_callback=self.plot_obs_colored_by_mean_pixel_wavelength, colorbar_units="eV")
+      self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$ from mean pixel energies'%tag, show=False, plot_callback=self.plot_obs_colored_by_deltapsi_pxlambda, colorbar_units=r"$\circ$")
       self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY*%s'%(tag, self.delta_scalar), show=False, plot_callback=self.plot_deltas)
       self.detector_plot_refls(detector, reflections, '%sSP Manual CDF'%tag, show=False, plot_callback=self.plot_cdf_manually)
       self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY Histograms'%tag, show=False, plot_callback=self.plot_histograms)
       self.detector_plot_refls(detector, reflections, r'%sRadial displacements vs. $\Delta\Psi$, colored by $\Delta$XY'%tag, show=False, plot_callback=self.plot_radial_displacements_vs_deltapsi)
       self.detector_plot_refls(detector, reflections, r'%sDistance vector norms'%tag, show=False, plot_callback=self.plot_difference_vector_norms_histograms)
+      self.detector_plot_refls(detector, reflections, r'%sRadial differences'%tag, show=False, plot_callback=self.plot_radial_difference_histograms)
 
       # Plot intensity vs. radial_displacement
       fig = plt.figure()
@@ -733,10 +856,10 @@ class Script(DCScript):
       a = reflections['two_theta_obs']#[:71610]
       b = reflections['two_theta_obs'] - reflections['two_theta_cal']
       fig = plt.figure()
-      limits = -0.05, 0.05
+      limits = -0.10, 0.10
       sel = (b > limits[0]) & (b < limits[1])
-      plt.hist2d(a.select(sel), b.select(sel), bins=100, range=((0,50), limits))
-      plt.clim((0,100))
+      plt.hist2d(a.select(sel), b.select(sel), bins=100, range=((0,45), limits))
+      plt.clim((0,400))
       cb = plt.colorbar()
       cb.set_label("N reflections")
       plt.title(r'%s$\Delta2\Theta$ vs. 2$\Theta$. Showing %d of %d refls'%(tag,len(a.select(sel)),len(a)))
