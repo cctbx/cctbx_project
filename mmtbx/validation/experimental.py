@@ -193,10 +193,25 @@ class real_space (validation) :
       if (use_maps):
         from mmtbx.maps import map_model_cc
         from iotbx.file_reader import any_file
+        from cctbx import crystal, sgtbx
         params = map_model_cc.master_params().extract()
         params.map_model_cc.resolution = molprobity_map_params.d_min
-        map_data = any_file(molprobity_map_params.map_file_name).file_object.\
-                   map_data()
+        map_object = any_file(molprobity_map_params.map_file_name).file_object
+
+        # ---------------------------------------------------------------------
+        # check that model crystal symmetry matches map crystal symmetry
+        # if inconsistent, map parameters take precedence
+        # TODO: centralize data consistency checks prior to running validation
+        map_crystal_symmetry = crystal.symmetry(
+          unit_cell=map_object.unit_cell(),
+          space_group=sgtbx.space_group_info(
+            map_object.space_group_number).group())
+        if (not map_crystal_symmetry.is_similar_symmetry(crystal_symmetry)):
+          crystal_symmetry = map_crystal_symmetry
+
+        # ---------------------------------------------------------------------
+
+        map_data = map_object.map_data()
         rsc_object = map_model_cc.map_model_cc(
           map_data, pdb_hierarchy, crystal_symmetry, params.map_model_cc)
         rsc_object.validate()
