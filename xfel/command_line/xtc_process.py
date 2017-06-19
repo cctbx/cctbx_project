@@ -703,7 +703,6 @@ class InMemScript(DialsProcessScript):
         dump.as_json(os.path.join(reint_dir, "refined_experiments.json"))
         reflections.as_pickle(os.path.join(reint_dir, "refined_reflections.pickle"))
 
-        from dxtbx.datablock import DataBlockFactory
         for expt_id, (expt, img_file) in enumerate(zip(experiments, images)):
           try:
             refls = reflections.select(reflections['id'] == expt_id)
@@ -949,7 +948,15 @@ class InMemScript(DialsProcessScript):
       return
 
     if self.params.dispatch.dump_indexed:
-      self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
+      img_path = self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "idx-" + s))
+      datablock = DataBlockFactory.from_filenames([img_path])[0]
+      imgset = datablock.extract_imagesets()[0]
+      assert len(experiments.detectors()) == 1;   imgset.set_detector(experiments[0].detector)
+      assert len(experiments.beams()) == 1;       imgset.set_beam(experiments[0].beam)
+      assert len(experiments.scans()) <= 1;       imgset.set_scan(experiments[0].scan)
+      assert len(experiments.goniometers()) <= 1; imgset.set_goniometer(experiments[0].goniometer)
+      for expt_id, expt in enumerate(experiments):
+        expt.imageset = imgset
 
     self.debug_write("refine_start")
     try:
@@ -1022,6 +1029,8 @@ class InMemScript(DialsProcessScript):
         easy_pickle.dump(dest_path, image._image_file)
     except Exception:
       print "Warning, couldn't save image:", dest_path
+
+    return dest_path
 
   def cache_ranges(self, dxtbx_img, params):
     """ Save the current trusted ranges, and replace them with the given overrides, if present.
