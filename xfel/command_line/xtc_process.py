@@ -645,6 +645,7 @@ class InMemScript(DialsProcessScript):
         print 'Total memory leaked in %d cycles: %dkB' % (nevent+1-50, mem - first)
 
     if params.joint_reintegration.enable:
+      assert self.params.dispatch.dump_indexed, "Cannot do joint reintegration unless indexed files were dumped"
       if rank == 0:
         reint_dir = os.path.join(params.output.output_dir, "reint")
         if not os.path.exists(reint_dir):
@@ -707,13 +708,6 @@ class InMemScript(DialsProcessScript):
           try:
             refls = reflections.select(reflections['id'] == expt_id)
             refls['id'] = flex.int(len(refls), 0)
-            datablock = DataBlockFactory.from_filenames([img_file])[0]
-            imgset = datablock.extract_imagesets()[0]
-            imgset.set_detector(expt.detector)
-            imgset.set_beam(expt.beam)
-            imgset.set_scan(expt.scan)
-            imgset.set_goniometer(expt.goniometer)
-            expt.imageset = imgset
             base_name = os.path.splitext(os.path.basename(img_file))[0]
             self.params.output.integrated_filename = os.path.join(reint_dir, base_name + "_integrated.pickle")
 
