@@ -585,6 +585,7 @@ class Script(DCScript):
       from dials_scratch.asb.predictions_from_reflection_wavelengths import predictions_from_per_reflection_energies, tophat_vector_wavelengths, refine_wavelengths, wavelengths_from_gaussians
     except ImportError:
       if params.repredict.enable:
+        from libtbx.utils import Sorry
         raise Sorry("dials_scratch not configured so cannot do reprediction")
     else:
       reflections = predictions_from_per_reflection_energies(experiments, reflections, 'reflection_wavelength_from_pixels', 'pxlambda')
