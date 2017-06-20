@@ -9,7 +9,7 @@ Description : IOTA GUI Threads and PostEvents
 
 import os
 import wx
-from threading import Thread
+from threading import Thread, Event
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
@@ -229,13 +229,17 @@ class SpotFinderOneDone(wx.PyCommandEvent):
     return self.info
 
 class SpotFinderOneThread():
-  def __init__(self, parent, processor):
+  def __init__(self, parent, processor, term_file):
     self.meta_parent = parent.parent
     self.processor = processor
+    self.term_file = term_file
 
   def run(self, idx, datablock, img):
-    observed = self.processor.find_spots(datablock=datablock)
-    return [idx, len(observed), img]
+    if os.path.isfile(self.term_file):
+      raise Exception('IOTA_TRACKER: Termination signal received!')
+    else:
+      observed = self.processor.find_spots(datablock=datablock)
+      return [idx, len(observed), img]
 
 
 class SpotFinderThread(Thread):
@@ -250,14 +254,13 @@ class SpotFinderThread(Thread):
     self.parent = parent
     self.data_list = data_list
     self.term_file = term_file
-    self.spotfinder = SpotFinderOneThread(self, processor)
+    self.spotfinder = SpotFinderOneThread(self, processor, term_file)
 
   def run(self):
     try:
       parallel_map(iterable=self.data_list,
                    func=self.spf_wrapper,
                    callback=self.callback,
-                   use_manager=True,
                    processes=None)
     except Exception, e:
       print e
@@ -274,12 +277,12 @@ class SpotFinderThread(Thread):
       pass
 
   def spf_wrapper(self, img):
-    if os.path.isfile(self.term_file):
-      raise Exception('IOTA_TRACKER: Termination message received!')
-
-    datablock = DataBlockFactory.from_filenames([img])[0]
-    info = self.spotfinder.run(self.data_list.index(img), datablock, img)
-    return info
+    try:
+      datablock = DataBlockFactory.from_filenames([img])[0]
+      info = self.spotfinder.run(self.data_list.index(img), datablock, img)
+      return info
+    except Exception, e:
+      raise e
 
   def callback(self, info):
     try:
