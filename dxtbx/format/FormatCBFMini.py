@@ -198,6 +198,7 @@ class FormatCBFMini(FormatCBF):
     slow = 0
     length = 0
     byte_offset = False
+    no_compression = False
 
     for record in cbf_header.split('\n'):
       if 'X-Binary-Size-Fastest-Dimension' in record:
@@ -209,15 +210,28 @@ class FormatCBFMini(FormatCBF):
       elif 'X-Binary-Size:' in record:
         size = int(record.split()[-1])
       elif 'conversions' in record:
-        if 'x-CBF_BYTE_OFFSET' in record: byte_offset=True
+        if 'x-CBF_BYTE_OFFSET' in record:
+          byte_offset = True
+        elif 'x-CBF_NONE' in record:
+          no_compression = True
 
     assert(length == fast * slow)
 
     if byte_offset:
       pixel_values = uncompress(packed = data[data_offset:data_offset + size],
-                              fast = fast, slow = slow)
+                                fast = fast, slow = slow)
+    elif no_compression:
+      from boost.python import streambuf
+      from dxtbx import read_int32
+      from scitbx.array_family import flex
+      assert(len(self.get_detector()) == 1)
+      f = self.open_file(self._image_file)
+      f.read(data_offset)
+      pixel_values = read_int32(streambuf(f), int(slow * fast))
+      pixel_values.reshape(flex.grid(slow, fast))
+
     else:
-      raise ValueError("Uncompression of type other than byte_offset is not supported (contact authors)")
+      raise ValueError("Uncompression of type other than byte_offset or none is not supported (contact authors)")
 
     return pixel_values
 
