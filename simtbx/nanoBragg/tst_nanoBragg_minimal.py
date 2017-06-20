@@ -2,6 +2,9 @@ from __future__ import division
 from scitbx.array_family import flex
 from scitbx.matrix import sqr
 from simtbx.nanoBragg import testuple
+from simtbx.nanoBragg import pivot
+from simtbx.nanoBragg import shapetype
+from simtbx.nanoBragg import convention
 from simtbx.nanoBragg import nanoBragg
 import libtbx.load_env # possibly implicit
 from cctbx import crystal
@@ -36,24 +39,54 @@ def fcalc_from_pdb(resolution,algorithm=None,wavelength=0.9):
 
 
 def run_sim2smv(fileout):
-  SIM = nanoBragg(detpixels_slowfast=(1000,1000),Ncells_abc=(5,5,5),verbose=4)
+  SIM = nanoBragg(detpixels_slowfast=(1000,1000),Ncells_abc=(5,5,5),verbose=99)
   SIM.pixel_size_mm=0.1
-  SIM.distance_mm=200
+  SIM.distance_mm=100
   SIM.oversample=1
   SIM.wavelength_A=1
-  SIM.unit_cell_tuple=(100,100,100,90,90,90)
-  SIM.default_F=1
+  SIM.unit_cell_tuple=(50,50,50,90,90,90)
+  SIM.default_F=100
   #SIM.missets_deg = (10,20,30)
   #sfall = fcalc_from_pdb(resolution=2.,algorithm="direct",wavelength=SIM.wavelength_A)
   #
   #SIM.Fhkl=sfall
-  SIM.xtal_shape=Tophat
+  SIM.xtal_shape=shapetype.Tophat
   SIM.progress_meter=False
   #SIM.printout_pixel_fastslow=(0,0)
   #SIM.printout=True
   SIM.show_params()
   SIM.add_nanoBragg_spots()
-  SIM.to_smv_format(fileout=fileout)
+  SIM.to_smv_format(fileout="intimage_001.img")
+  SIM.verbose=99
+  # rough approximation to water: interpolation points for sin(theta/lambda) vs structure factor
+  bg = flex.vec2_double([(0,2.57),(0.0365,2.58),(0.07,2.8),(0.12,5),(0.162,8),(0.2,6.75),(0.18,7.32),(0.216,6.75),(0.236,6.5),(0.28,4.5),(0.3,4.3),(0.345,4.36),(0.436,3.77),(0.5,3.17)])
+  SIM.Fbg_vs_stol = bg
+  SIM.amorphous_sample_thick_mm = 0.1
+  SIM.amorphous_density_gcm3 = 1
+  SIM.amorphous_molecular_weight_Da = 18
+  SIM.flux=1e12
+  SIM.beamsize_mm=0.1
+  SIM.exposure_s=0.1
+  SIM.add_background()
+  SIM.to_smv_format(fileout="intimage_002.img")
+  # rough approximation to air
+  bg = flex.vec2_double([(0,14.1),(0.045,13.5),(0.174,8.35),(0.35,4.78),(0.5,4.22)])
+  SIM.Fbg_vs_stol = bg
+  SIM.amorphous_sample_thick_mm = 35 # between beamstop and collimator
+  SIM.amorphous_density_gcm3 = 1.2e-3
+  SIM.amorphous_sample_molecular_weight_Da = 28 # nitrogen = N2
+  SIM.add_background()
+  SIM.detector_psf_kernel_radius_pixels=5;
+  SIM.detector_psf_fwhm_mm=0.2;
+  SIM.detector_psf_type=shapetype.Fiber
+  SIM.apply_psf()
+  print SIM.raw[500000]
+  SIM.to_smv_format(fileout="intimage_003.img")
+  SIM.detector_psf_fwhm_mm=0
+  SIM.add_noise()
+
+  #fileout = "intimage_001.img"
+  SIM.to_smv_format(fileout="noiseimage_001.img",intfile_scale=1)
 
 
 #run_sim2smv("intimage_001.img")

@@ -129,7 +129,7 @@ double sinc_conv_sinc3(double x);
 
 /* typedefs to help remember options */
 typedef enum { SAMPLE, BEAM } pivot;
-typedef enum { SQUARE, ROUND, GAUSS, TOPHAT, FIBER, UNKNOWN } shapetype;
+typedef enum { UNKNOWN, SQUARE, ROUND, GAUSS, TOPHAT, FIBER } shapetype;
 typedef enum { CUSTOM, ADXV, MOSFLM, XDS, DIALS, DENZO } convention;
 
 /* math functions for point spread */
@@ -147,6 +147,11 @@ double fiber2D_integ(double x,double y,double g);
 double fiber2D_pixel(double x,double y,double g,double pix);
 double integrate_fiber_over_pixel(double x, double y, double g, double pix);
 
+/* median filter tools */
+double fmedian(unsigned int n, double arr[]);
+double fmedian_with_rejection(unsigned int n, double arr[],double sigma_cutoff, double *final_mad, int *final_n);
+double fmedian_absolute_deviation(unsigned int n, double arr[], double median_value);
+double fmean_with_rejection(unsigned int starting_points, double arr[], double sigma_cutoff, double *final_rmsd, int *final_n);
 
 
 //! Simulation of nanocrystal diffraction.  Contributed by James Holton, LBNL.
@@ -211,29 +216,32 @@ class nanoBragg {
     double xtalsize_max,xtalsize_a,xtalsize_b,xtalsize_c;
     double reciprocal_pixel_size;
 
+    /* macroscopic xtal properties, cut with beam? */
     shapetype xtal_shape;
     double hrad_sqr,fudge;
-    double sample_x;            /* m */
-    double sample_y;            /* m */
-    double sample_z;            /* m */
-    double density;             /* g/m^3 */
-    double molecular_weight;    /* g/mol */
-    double volume,molecules;
-    /* scale factor = F^2*r_e_sqr*fluence*Avogadro*volume*density/molecular_weight
-                           m^2     ph/m^2  /mol      m^3   g/m^3    g/mol   */
+    double xtal_size_x;            /* m */
+    double xtal_size_y;            /* m */
+    double xtal_size_z;            /* m */
+    double xtal_density;             /* g/m^3 */
+    double xtal_molecular_weight;    /* g/mol */
+    double xtal_volume,xtal_molecules;
 
     /* amorphous material properties */
-    double amorphous_thick;
-    double amorphous_default_F;
-    double amorphous_MW;
+    double amorphous_sample_x, amorphous_sample_y, amorphous_sample_z;
+    double amorphous_volume;
+    double amorphous_molecular_weight;
     double amorphous_density;
     double amorphous_molecules;
-    /* water F = 2.57 in forward direction */
+    /* scale factor = Fbg^2*r_e_sqr*fluence*Avogadro*volume*density/molecular_weight 
+                             m^2     ph/m^2  /mol      m^3   g/m^3    g/mol   */
+    /* water Fbg = 2.57 in forward direction */
+
 
     /* detector stuff */
     double pixel_size; // = 0.1e-3;
     double pixel_pos[4];
     int fpixel,spixel,fpixels,spixels,pixels;
+    int allocated_pixels,allocated_stols; // used to decide if we need to erase and re-calloc
     double distance; // = 100.0e-3;
     double detsize_f; // = 102.4e-3;
     double detsize_s; // = 102.4e-3;
@@ -298,19 +306,40 @@ class nanoBragg {
 
     /* structure factor representation */
     double phase,Fa,Fb;
-    double F,F_bg,*stol_of,*F_of;
+    double F,Fbg,Ibg,*stol_of,*Fbg_of;  // = NULL
     double ***Fhkl;  // = NULL
     int    hkls;
     double F_latt,F_cell;
-    double default_F;
-    double F_highangle,F_lowangle;
+    double default_F;   // for spots, usually 0
+    double default_Fbg; // for background, usually 0
+    double Fbg_highangle,Fbg_lowangle;
     int stols,nearest; // =0;
     double stol_file_mult; // =1.0e10;  convert to meters, usually from Angstrom
     double denom;
 
-    /* pythony version of structure factors, converted by init_hklF */
+    /* background extraction parameters */
+//    double *imginfileimage;
+    double *diffimage;
+    double *stolimage;
+    double *Fimage,pixel_F;
+    int ignore_values; // =0;
+    unsigned short int ignore_value[70000];
+    bool *invalid_pixel;
+    int valid_pixels;
+    bool Fmap_pixel; // = false;
+
+    /* radial median filter stuff */
+    unsigned int bin,*pixels_in,*bin_of;
+    double **bin_start;
+    double median,mad,deviate,sign;
+    double sum_arej,avg_arej,sumd_arej,rms_arej,rmsd_arej;
+
+    /* pythony version of structure factors, converted by init_Fhkl */
     indices pythony_indices;
     af::shared<double> pythony_amplitudes;
+
+    /* pythony version of amorphous structure factor table vs sin(theta)/lambda, converted by init_stolFbg */
+    af::shared<vec2> pythony_stolFbg;
 
     /* intensity stats */
     double I,I_bg;
@@ -332,7 +361,7 @@ class nanoBragg {
 //    char *byte_order; // = get_byte_order();
     /* optional input image to extract background? */
 //    SMVinfo imginfile;
-    double *imginfileimage;
+//    double *imginfileimage;
     /* optional mask file to speed up rendering */
 //    SMVinfo maskfile;
     unsigned short int *maskimage; // = NULL;
@@ -444,6 +473,7 @@ class nanoBragg {
 
     /* member functions for debugging */
     void show_phisteps();       // print out everything to screen, enumerate all phi steps
+    void show_detector_thicksteps();  // print out everything to screen, enumerate all detector layers
     void show_mosaic_blocks();  // print out individual mosaic block orientations to screen
     void show_params();         // print out everything to screen, just like standalone program
 
@@ -453,14 +483,17 @@ class nanoBragg {
     /* member function for triggering background simulation */
     void add_background();
 
+    /* member function for extracting background from raw image */
+    void extract_background();
+
     /* member function for applying the point-spread function */
     void apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius);
 
     /* member function for triggering noise calculation */
     void add_noise();
 
-    void to_smv_format(std::string const& fileout, double intfile_scale, double adc_offset);
-
+    /* utility function for outputting an image to examine */
+    void to_smv_format(std::string const& fileout, double intfile_scale);
 };
 
 

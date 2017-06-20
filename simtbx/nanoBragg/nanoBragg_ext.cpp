@@ -174,35 +174,58 @@ namespace boost_python { namespace {
   /* specify overall crystal size instead of number of cells */
   static vec3 get_xtalsize_mm(nanoBragg const& nanoBragg) {
       vec3 value;
-      value[0]=nanoBragg.sample_x*1000.;
-      value[1]=nanoBragg.sample_y*1000.;
-      value[2]=nanoBragg.sample_z*1000.;
+      value[0]=nanoBragg.xtal_size_x*1000.;
+      value[1]=nanoBragg.xtal_size_y*1000.;
+      value[2]=nanoBragg.xtal_size_z*1000.;
       return value;
   }
   static void   set_xtalsize_mm(nanoBragg& nanoBragg, vec3 const& value) {
-      nanoBragg.sample_x = value[0]/1000.;
-      nanoBragg.sample_y = value[1]/1000.;
-      nanoBragg.sample_z = value[2]/1000.;
+      nanoBragg.xtal_size_x = value[0]/1000.;
+      nanoBragg.xtal_size_y = value[1]/1000.;
+      nanoBragg.xtal_size_z = value[2]/1000.;
       /* need to update oversampling */
       nanoBragg.update_oversample();
       nanoBragg.init_interpolator();
       nanoBragg.update_steps();
   }
 
+  /* amorphous material size in 3D */
+  static vec3 get_amorphous_sample_size_mm(nanoBragg const& nanoBragg) {
+      vec3 value;
+      value[0]=nanoBragg.amorphous_sample_x*1000.;
+      value[1]=nanoBragg.amorphous_sample_y*1000.;
+      value[2]=nanoBragg.amorphous_sample_z*1000.;
+      return value;
+  }
+  static void   set_amorphous_sample_size_mm(nanoBragg& nanoBragg, vec3 const& value) {
+      nanoBragg.amorphous_sample_x = value[0]/1000.;
+      nanoBragg.amorphous_sample_y = value[1]/1000.;
+      nanoBragg.amorphous_sample_z = value[2]/1000.;
+      /* need to update amorphous molecules */
+      nanoBragg.init_background();
+  }
+
   /* amorphous material thickness along beam (mm)  */
-  static double get_amorphous_thick_mm(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_thick*1000.;}
-  static void   set_amorphous_thick_mm(nanoBragg& nanoBragg, double const& value) {
-      nanoBragg.amorphous_thick = value/1000.;
+  static double get_amorphous_sample_thick_mm(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_sample_x*1000.;}
+  static void   set_amorphous_sample_thick_mm(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.amorphous_sample_x = value/1000.;
+      /* need to update amorphous molecules */
+      nanoBragg.init_background();
   }
   /* amorphous material molecular weight (Da) */
-  static double get_amorphous_MW_Da(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_MW;}
-  static void   set_amorphous_MW_Da(nanoBragg& nanoBragg, double const& value) {
-      nanoBragg.amorphous_MW = value;
+  static double get_amorphous_molecular_weight_Da(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_molecular_weight;}
+  static void   set_amorphous_molecular_weight_Da(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.amorphous_molecular_weight = value;
+      /* need to update amorphous molecules */
+      nanoBragg.init_background();
   }
   /* amorphous material density (g/cm^3) */
-  static double get_amorphous_density_gcm3(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_density*1e6;}
+  static double get_amorphous_density_gcm3(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_density/1e6;}
   static void   set_amorphous_density_gcm3(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.amorphous_density = value*1e6;
+printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
+      /* need to update amorphous molecules */
+      nanoBragg.init_background();
   }
   /* now we can compute the scale factor of intensity from amorphous material structure factor */
 
@@ -609,6 +632,37 @@ namespace boost_python { namespace {
   }
 
 
+  /* background-scattering structure factor Fbg vs sin(theta)/lambda (stol) : populate C++ interpolation arrays */
+  static af::shared<vec2> get_Fbg_vs_stol(nanoBragg nanoBragg) {
+      int i;
+      /* create a new flex array */
+      nanoBragg.pythony_stolFbg = af::shared<vec2>();
+      /* make sure it is big enough to hold all stol,Fbg pairs */
+      nanoBragg.pythony_stolFbg.resize(nanoBragg.stols);
+      /* copy the non-edge values into the flex array (interpolation buffer of 2 values on either end) */
+      for(i=0;i<=nanoBragg.stols-4;++i){
+          nanoBragg.pythony_stolFbg[i] = vec2(nanoBragg.stol_of[i+2],nanoBragg.Fbg_of[i+2]);
+      }
+      return nanoBragg.pythony_stolFbg;
+  }
+  static void   set_Fbg_vs_stol(nanoBragg& nanoBragg, af::shared<vec2> const& value) {
+      if(nanoBragg.verbose>3) printf(" about to initialize stol,Fbg\n");
+      nanoBragg.pythony_stolFbg = value;
+      if(nanoBragg.verbose>3) printf(" done\n");
+
+      /* re-initialize stol and Fbg arrays */
+      nanoBragg.init_background();
+  }
+
+  /* allow default value for background structure factor Fbg */
+  static double get_default_Fbg(nanoBragg const& nanoBragg) {return nanoBragg.default_Fbg;}
+  static void   set_default_Fbg(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.default_Fbg = value;
+      /* make sure this gets applied! */
+      nanoBragg.init_background();
+  }
+
+
 
   /* X-ray wavelength */
   static double get_lambda_A(nanoBragg const& nanoBragg) {return nanoBragg.lambda0*1e10;}
@@ -653,7 +707,7 @@ namespace boost_python { namespace {
       return nanoBragg.beamsize*1000.0;
   }
   static void   set_beamsize_mm(nanoBragg& nanoBragg, double const& value) {
-      nanoBragg.beamsize = value;
+      nanoBragg.beamsize = value/1000.0;
       /* re-defines fluence */
       nanoBragg.init_beam();
   }
@@ -822,15 +876,80 @@ namespace boost_python { namespace {
   }
 
 
-  /* hijack detctor_pivot as an int */
-  static int get_hijack_detector_pivot(nanoBragg const& nanoBragg) {
-      if(nanoBragg.detector_pivot == SAMPLE) return 1;
-      return 0;
+  /* detector active layer thickness in mm */
+  static double get_detector_thick_mm(nanoBragg const& nanoBragg) {
+      return nanoBragg.detector_thick*1000.;
   }
-  static void   set_hijack_detector_pivot(nanoBragg& nanoBragg, int const& value) {
-      if(value == 0) nanoBragg.detector_pivot = BEAM;
-      if(value == 1) nanoBragg.detector_pivot = SAMPLE;
+  static void   set_detector_thick_mm(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.detector_thick = value/1000.;
+      /* need to re-create thick step table */
+      nanoBragg.detector_thickstep=-1.0;
+      nanoBragg.init_steps();
+      nanoBragg.update_steps();
+      nanoBragg.show_detector_thicksteps();
   }
+
+  /* number of discrete detector layers, default: 1 or 2 ; you will want more */
+  static int get_detector_thicksteps(nanoBragg const& nanoBragg) {
+      return nanoBragg.detector_thicksteps;
+  }
+  static void   set_detector_thicksteps(nanoBragg& nanoBragg, int const& value) {
+      nanoBragg.detector_thicksteps = value;
+      /* need to re-create detector layer table */
+      nanoBragg.detector_thickstep=-1.0;
+      nanoBragg.init_steps();
+      nanoBragg.update_steps();
+      nanoBragg.show_detector_thicksteps();
+  }
+
+  /* optionally specify detector sub-layer thickness, in um */
+  static double get_detector_thickstep_mm(nanoBragg const& nanoBragg) {
+      return nanoBragg.detector_thickstep*1000.;
+  }
+  static void   set_detector_thickstep_mm(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.detector_thickstep = value/1000.;
+      /* need to re-create detector layer table */
+      nanoBragg.init_steps();
+      nanoBragg.update_steps();
+      nanoBragg.show_detector_thicksteps();
+  }
+
+
+  /* noise creation parameters */
+
+  /* seed values need no scaling */
+
+  /* quantum_gain need not be scaled */
+  /* adc_ofset need not be scaled */
+
+  /* detector calibration noise, usually 2-3%  Sometimse as low as 0.9%  */
+  static double get_calibration_noise_pct(nanoBragg const& nanoBragg) {
+      return nanoBragg.calibration_noise*100.;
+  }
+  static void   set_calibration_noise_pct(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.calibration_noise = value/100.;
+  }
+
+  /* incident beam flicker noise, usually ~0.1-0.2% at synchrotron, ~100% at XFEL  */
+  static double get_flicker_noise_pct(nanoBragg const& nanoBragg) {
+      return nanoBragg.flicker_noise*100.;
+  }
+  static void   set_flicker_noise_pct(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.flicker_noise = value/100.;
+  }
+
+  /* readout_noise need not be scaled  */
+  /* psf_type need not be scaled  */
+
+  /* detector point-spread function full-width at half-maximum value, in mm */
+  static double get_psf_fwhm_mm(nanoBragg const& nanoBragg) {
+      return nanoBragg.psf_fwhm*1000.;
+  }
+  static void   set_psf_fwhm_mm(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.psf_fwhm = value/1000.;
+  }
+
+
 
 
   void
@@ -842,6 +961,31 @@ namespace boost_python { namespace {
 
     def("testuple", &testuple,
         "test that basic python stuff works, as well as NAN implementation");
+    // Expose enums to Python
+    enum_<pivot>("pivot",
+     "description of detector pivot point for detector rotation angles")
+      .value("Beam",BEAM)
+      .value("Sample",SAMPLE)
+      .export_values();
+    enum_<shapetype>("shapetype",
+       "select shape of the crystal, spot, or point-spread function" )
+      .value("Square",SQUARE)
+      .value("Round",ROUND)
+      .value("Gauss",GAUSS)
+      .value("Tophat",TOPHAT)
+      .value("Fiber",FIBER)
+      .value("Unknown",UNKNOWN)
+      .export_values();
+    enum_<convention>("convention",
+       "beam center convention to use when interpreting Xbeam Ybeam")
+      .value("Custom",CUSTOM)
+      .value("ADXV",ADXV)
+      .value("MOSFLM",MOSFLM)
+      .value("XDS",XDS)
+      .value("DIALS",DIALS)
+      .value("DENZO",DENZO)
+      .export_values();
+    // end of enum definitions
 
     class_<nanoBragg>("nanoBragg",no_init)
       /* constructor that takes a dials detector model */
@@ -915,22 +1059,22 @@ namespace boost_python { namespace {
 
 
       /* specify properties of amorphous material contribution to background */
-      .add_property("amorphous_thick_mm",
-                     make_function(&get_amorphous_thick_mm,rbv()),
-                     make_function(&set_amorphous_thick_mm,dcp()),
-                     "thickness of amorphous material (mm), most important along beam path")
+      .add_property("amorphous_sample_size_mm",
+                     make_function(&get_amorphous_sample_size_mm,rbv()),
+                     make_function(&set_amorphous_sample_size_mm,dcp()),
+                     "specify dimensions of amorphous material in beam (mm)")
+      .add_property("amorphous_sample_thick_mm",
+                     make_function(&get_amorphous_sample_thick_mm,rbv()),
+                     make_function(&set_amorphous_sample_thick_mm,dcp()),
+                     "thickness of amorphous material (mm) is most important along beam path")
       .add_property("amorphous_density_gcm3",
                      make_function(&get_amorphous_density_gcm3,rbv()),
                      make_function(&set_amorphous_density_gcm3,dcp()),
                      "density of amorphous material (g/cm^3), needed to calculate scale factor")
-      .add_property("amorphous_MW_Da",
-                     make_function(&get_amorphous_MW_Da,rbv()),
-                     make_function(&set_amorphous_MW_Da,dcp()),
+      .add_property("amorphous_molecular_weight_Da",
+                     make_function(&get_amorphous_molecular_weight_Da,rbv()),
+                     make_function(&set_amorphous_molecular_weight_Da,dcp()),
                      "molecular weight of amorphous material (Da, or g/mol), needed to calculate scale factor")
-//      .add_property("amorphous_F_vs_stol",
-//                     make_function(&get_amorphous_F_vs_stol,rbv()),
-//                     make_function(&set_amorphous_F_vs_stol,dcp()),
-//                     "structure factor of amorphous material (electrons/molecule) vs sin(theta)/lambda (Angstrom), same as tabulated for individual atom form factors in International Tables")
 
 
 
@@ -969,13 +1113,19 @@ namespace boost_python { namespace {
       .add_property("detector_pivot",
                      make_getter(&nanoBragg::detector_pivot,rbv()),
                      make_setter(&nanoBragg::detector_pivot,dcp()),
-                     "specify the center of detector rotations, either the sample, or the direct-beam spot")
+                     "specify the center of detector rotations, either the sample, or the direct-beam spot. Must import pivot to use this")
+
+      /* specify the crystal (and therefore spot) shape, note: this is an enum */
+      .add_property("xtal_shape",
+                     make_getter(&nanoBragg::xtal_shape,rbv()),
+                     make_setter(&nanoBragg::xtal_shape,dcp()),
+                     "specify the nano crystal shape, which determines the spot shape.  square is exact, round is approximate ellipsoid, gauss for gaussian spots, or tophat for top-hat-spots.  Must import shapetype to use this")
 
       /* specify the detector pivot point, note: this is an enum */
-      .add_property("hijack_detector_pivot",
-                     make_function(&get_hijack_detector_pivot,rbv()),
-                     make_function(&set_hijack_detector_pivot,dcp()),
-                     "hijack setting detector pivot from a string becaues python enums suck ")
+      .add_property("beamcenter_convention",
+                     make_getter(&nanoBragg::beam_convention,rbv()),
+                     make_setter(&nanoBragg::beam_convention,dcp()),
+                     "specify the convention used to define the beam center.  Must import convention to use this")
 
 
 
@@ -1176,6 +1326,23 @@ namespace boost_python { namespace {
                      "size of the internal phi micro-step (deg)")
 
 
+      /* detector x-ray sensitive layer thickness in micron */
+      .add_property("detector_thick_mm",
+                     make_function(&get_detector_thick_mm,rbv()),
+                     make_function(&set_detector_thick_mm,dcp()),
+                     "detector x-ray sensitive layer thickness in millimeters (mm)")
+      /* number of internal detector layers in thickness sweep */
+      .add_property("detector_thicksteps",
+                     make_function(&get_detector_thicksteps,rbv()),
+                     make_function(&set_detector_thicksteps,dcp()),
+                     "number of internal detector layers in thickness sweep, speed is inversely proportional to this")
+      /* size of the internal detector thickness micro-step, in micron */
+      .add_property("detector_thickstep_mm",
+                     make_function(&get_detector_thickstep_mm,rbv()),
+                     make_function(&set_detector_thickstep_mm,dcp()),
+                     "size of the internal detector thickness micro-step, in millimeters (mm)")
+
+
       /* crystal mosaic spread spherical cap range in deg */
       .add_property("mosaic_spread_deg",
                      make_function(&get_mosaic_spread_deg,rbv()),
@@ -1208,16 +1375,23 @@ namespace boost_python { namespace {
                      "override value of missing Fs, default 0 (useful if you just want spots fast)")
 
 
-      /* toggle interpolation between structure factors */
+      /* background intensity structure factor vs sin(theta)/lambda */
+      .add_property("Fbg_vs_stol",
+                     make_function(&get_Fbg_vs_stol,rbv()),
+                     make_function(&set_Fbg_vs_stol,dcp()),
+                     "background-scattering structure factor (Fbg) is second member of vector, first is sin(theta)/lambda (stol), just like the International Tables for individual atomic form factors ")
+      /* override value of missing background structure factor (Fbg), default 0 */
+      .add_property("default_Fbg",
+                     make_function(&get_default_Fbg,rbv()),
+                     make_function(&set_default_Fbg,dcp()),
+                     "override value of missing background-scatter structure factor (Fbg), default 0 (useful if you just want some uniform background)")
+
+
+      /* toggle interpolation between spot structure factors */
       .add_property("interpolate",
                      make_getter(&nanoBragg::interpolate,rbv()),
                      make_setter(&nanoBragg::interpolate,dcp()),
                      "toggle interpolation between structure factors for inter-Bragg peaks")
-      /* True turns spots into flat-tops same width as sinc function */
-      .add_property("xtal_shape",
-                     make_getter(&nanoBragg::xtal_shape,rbv()),
-                     make_setter(&nanoBragg::xtal_shape,dcp()),
-                     "select crystal shape transform: square is exact, round is approximate ellipsoid, gauss for gaussian spots, or tophat for top-hat-spots")
       /* experimental: use integral form instead of oversamling */
       .add_property("integral_form",
                      make_getter(&nanoBragg::integral_form,rbv()),
@@ -1240,11 +1414,55 @@ namespace boost_python { namespace {
                      make_setter(&nanoBragg::calib_seed,dcp()),
                      "random number seed for detector calibration error, keep the same for a given detector")
 
+      /* noise generation parameters */
+      .add_property("quantum_gain",
+                     make_getter(&nanoBragg::quantum_gain,rbv()),
+                     make_setter(&nanoBragg::quantum_gain,dcp()),
+                     "scale factor on observed photons applied AFTER computing Poisson photon-counting error (usually 1 or more)")
+       /* image file offset in converting photons to pixel values */
+     .add_property("adc_offset_adu",
+                     make_getter(&nanoBragg::adc_offset,rbv()),
+                     make_setter(&nanoBragg::adc_offset,dcp()),
+                     "constant offset added to all pixel values before rounding off to integers (40 on ADSC, 10 on Rayonix, 0 for Pilatus)")
+
+      /* magnitude of calibration noise */
+      .add_property("detector_calibration_noise_pct",
+                     make_function(&get_calibration_noise_pct,rbv()),
+                     make_function(&set_calibration_noise_pct,dcp()),
+                     "detector calibration error; implemented as a fixed Gaussian deviate for each pixel. (%)")
+      /* magnitude of flicker noise */
+      .add_property("flicker_noise_pct",
+                     make_function(&get_flicker_noise_pct,rbv()),
+                     make_function(&set_flicker_noise_pct,dcp()),
+                     "incident beam flicker or shot-to-shot intensity variation; implemented as a fixed Gaussian deviate for each image. (%)")
+      /* magnitude of readout noise */
+     .add_property("readout_noise_adu",
+                     make_getter(&nanoBragg::readout_noise,rbv()),
+                     make_setter(&nanoBragg::readout_noise,dcp()),
+                     "extra noise typically associated with CCD read-out event; applied after any quantum gain or adc offset before converting to integer pixel value; implemented as a fixed Gaussian deviate for each pixel. units are Arbitrary Detector Units (ADU)")
+
+      /* detector point-spread function shape type */
+      .add_property("detector_psf_type",
+                     make_getter(&nanoBragg::psf_type,rbv()),
+                     make_setter(&nanoBragg::psf_type,dcp()),
+                     "shape of the detector point-spread function. valid values are: gauss for Gaussian spots, fiber for CCD-like spots, or unknown.  Must import shapetype to use this")
+      /* detector point-spread function FWHM */
+      .add_property("detector_psf_fwhm_mm",
+                     make_function(&get_psf_fwhm_mm,rbv()),
+                     make_function(&set_psf_fwhm_mm,dcp()),
+                     "width of the detector point-spread function at half maximum in mm.  Set to zero to disable PSF.")
+      /* detector point-spread function rendering radius */
+      .add_property("detector_psf_kernel_radius_pixels",
+                     make_getter(&nanoBragg::psf_radius,rbv()),
+                     make_setter(&nanoBragg::psf_radius,dcp()),
+                     "override size of kernel used to compute PSF.  Set to zero for automatic (the default).")
+
+
       /* 2D flex array representing pixel values in expected photons, not neccesarily integers */
       .add_property("raw",
                      make_getter(&nanoBragg::raw,rbv()),
                      make_setter(&nanoBragg::raw,dcp()),
-                     "2D flex array representing floating-point pixel values in expected photons, not neccesarily integers")
+                     "2D flex array representing floating-point pixel values, this is expected photons before you call add_noise(), which converts it into detector pixel values, or ADU")
 
       /* print to screen a summary of all initialized parameters */
       .def("show_params",&nanoBragg::show_params,
@@ -1260,7 +1478,7 @@ namespace boost_python { namespace {
 
       /* blur the image with specified point-spread function */
       .def("apply_psf",&nanoBragg::apply_psf,
-        (arg_("psf_type")=0,arg_("fwhm_pixels")=0,arg_("psf_radius")=0),
+        (arg_("psf_type")=FIBER,arg_("fwhm_pixels")=-1,arg_("psf_radius")=-1),
        "blur the image with specified point-spread function, may be done before or after adding noise")
 
       /* actual run of the noise simulation */
@@ -1268,35 +1486,11 @@ namespace boost_python { namespace {
        "apply specified Poisson, calibration, flicker and read-out noise to the pixels")
 
       .def("to_smv_format",&nanoBragg::to_smv_format,
-        (arg_("fileout"),arg_("intfile_scale")=0,arg_("adc_offset")=40),
+        (arg_("fileout"),arg_("intfile_scale")=0),
         "interally produce an SMV-format image file on disk from the raw pixel array\nintfile_scale is applied before rounding off to integral pixel values")
     ;
     // end of nanoBragg class definition
 
-    // Expose enums to Python
-    enum_<pivot>("pivot",
-     "description of detector pivot point for detector rotation angles")
-      .value("Beam",BEAM)
-      .value("Sample",SAMPLE)
-      .export_values();
-    enum_<shapetype>("shapetype",
-       "select shape of the crystal, spot, or point-spread function" )
-      .value("SQUARE",SQUARE)
-      .value("ROUND",ROUND)
-      .value("GAUSS",GAUSS)
-      .value("TOPHAT",TOPHAT)
-      .value("FIBER",FIBER)
-      .value("UNKNOWN",UNKNOWN)
-      .export_values();
-    enum_<convention>("convention",
-       "beam center convention to use when interpreting Xbeam Ybeam")
-      .value("CUSTOM",CUSTOM)
-      .value("ADXV",ADXV)
-      .value("MOSFLM",MOSFLM)
-      .value("XDS",XDS)
-      .value("DIALS",DIALS)
-      .value("DENZO",DENZO)
-      .export_values();
 
   } // end of init_module
 
