@@ -84,6 +84,13 @@ def submit_job(app, job):
     trial_params = phil_scope.fetch(parse(phil_str)).extract()
     image_format = trial_params.format.file_format = job.rungroup.format
     assert image_format in ['cbf', 'pickle']
+    if image_format == 'cbf':
+      if "rayonix" in job.rungroup.detector_address.lower():
+        mode = trial_params.format.cbf.mode = "rayonix"
+      elif "cspad" in job.rungroup.detector_address.lower():
+        mode = trial_params.format.cbf.mode = "cspad"
+      else:
+        assert False, "Couldn't figure out what kind of detector is specified by address %s"%job.rungroup.detector_address
   else:
     image_format = 'pickle'
 
@@ -143,7 +150,12 @@ def submit_job(app, job):
       trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
       trial_params.format.cbf.override_energy = job.rungroup.energy
       trial_params.format.cbf.invalid_pixel_mask = job.rungroup.untrusted_pixel_mask_path
-      trial_params.format.cbf.gain_mask_value = job.rungroup.gain_mask_level
+      if mode == 'cspad':
+        trial_params.format.cbf.cspad.gain_mask_value = job.rungroup.gain_mask_level
+      elif mode == 'rayonix':
+        trial_params.format.cbf.rayonix.bin_size = job.rungroup.binning
+        trial_params.format.cbf.rayonix.override_beam_x = job.rungroup.beamx
+        trial_params.format.cbf.rayonix.override_beam_y = job.rungroup.beamy
     trial_params.dispatch.process_percent = job.trial.process_percent
 
     working_phil = phil_scope.format(python_object=trial_params)
