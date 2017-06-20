@@ -67,7 +67,7 @@ class lazy_file_cache():
     # StringIO object containing cached information
     self._cache_object = StringIO()
     self._cache_size = 0
-    self._cache_limit = 40 * 1024 * 1024
+    self._cache_limit = 4 * 1024 * 1024
     self._cache_limit_reached = False
 
     # Current status of lazy cache towards client objects.
