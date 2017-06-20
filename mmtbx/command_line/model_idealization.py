@@ -470,6 +470,37 @@ class model_idealization():
         # fft_map.as_xplor_map(file_name="%s_3.map" % self.params.output_prefix)
     # STOP()
 
+  def update_ss_in_grm(self, ss_annotation):
+    self.set_ss_restraints(ss_annotation)
+    self.update_grms()
+
+  def set_ss_restraints(self, ss_annotation):
+    log = self.log
+    if not self.verbose:
+      log = null_out()
+    if self.params.use_ss_restraints and ss_annotation is not None:
+      ss_manager = manager(
+          pdb_hierarchy=self.whole_pdb_h,
+          geometry_restraints_manager=self.whole_grm.geometry,
+          sec_str_from_pdb_file=ss_annotation,
+          params=None,
+          mon_lib_srv=self.mon_lib_srv,
+          verbose=-1,
+          log=log)
+      # self.whole_pdb_h.write_pdb_file(file_name="for_ss.pdb")
+      self.whole_pdb_h.reset_atom_i_seqs()
+      self.whole_grm.geometry.set_secondary_structure_restraints(
+          ss_manager=ss_manager,
+          hierarchy=self.whole_pdb_h,
+          log=log)
+
+  def update_grms(self):
+    if self.using_ncs:
+      self.master_grm = self.whole_grm.select(self.master_sel)
+      self.working_grm = self.master_grm
+    else:
+      self.working_grm = self.whole_grm
+
   def get_grm(self):
     # first make whole grm using self.whole_pdb_h
     params_line = grand_master_phil_str
@@ -480,7 +511,8 @@ class model_idealization():
     params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
     params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
     params.pdb_interpretation.peptide_link.apply_peptide_plane = True
-    params.pdb_interpretation.peptide_link.apply_all_trans = True
+    if self.params.loop_idealization.make_all_trans:
+      params.pdb_interpretation.peptide_link.apply_all_trans = True
     params.pdb_interpretation.nonbonded_weight = 10000
     params.pdb_interpretation.c_beta_restraints=True
     params.pdb_interpretation.max_reasonable_bond_distance = None
@@ -510,28 +542,11 @@ class model_idealization():
         processed_pdb_file, self.whole_xrs, params=params)
 
     # set SS restratins
-    if self.params.use_ss_restraints:
-      ss_manager = manager(
-          pdb_hierarchy=self.whole_pdb_h,
-          geometry_restraints_manager=self.whole_grm.geometry,
-          sec_str_from_pdb_file=self.filtered_whole_ann,
-          params=None,
-          mon_lib_srv=self.mon_lib_srv,
-          verbose=-1,
-          log=log)
-      # self.whole_pdb_h.write_pdb_file(file_name="for_ss.pdb")
-      self.whole_pdb_h.reset_atom_i_seqs()
-      self.whole_grm.geometry.set_secondary_structure_restraints(
-          ss_manager=ss_manager,
-          hierarchy=self.whole_pdb_h,
-          log=log)
+    self.set_ss_restraints(self.filtered_whole_ann)
 
     # now select part of it for working with master hierarchy
-    if self.using_ncs:
-      self.master_grm = self.whole_grm.select(self.master_sel)
-      self.working_grm = self.master_grm
-    else:
-      self.working_grm = self.whole_grm
+    self.update_grms()
+
 
   def get_filtered_ncs_group_list(self):
     if not self.params.ignore_ncs:
@@ -589,6 +604,8 @@ class model_idealization():
       self.filtered_whole_ann = self.ann.deep_copy()
 
     self.get_filtered_ncs_group_list()
+
+    self.get_grm()
 
     # Here we are preparing maps if needed.
     if self.user_supplied_map is not None:
@@ -667,10 +684,10 @@ class model_idealization():
       # print >> self.log, "Splitted SS annotation"
       # print >> self.log, ann.as_pdb_str()
       print >> self.log, "Filtered SS annotation"
-      print >> self.log, self.ann.as_pdb_str()
+      print >> self.log, self.ann.as_pdb_str(self.filtered_whole_ann)
 
     # getting grm with SS restraints
-    self.get_grm()
+    self.update_ss_in_grm(self.filtered_whole_ann)
 
     if (self.ann is None or
         self.ann.get_n_helices() + self.ann.get_n_sheets() == 0 or

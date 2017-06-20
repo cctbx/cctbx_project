@@ -402,6 +402,7 @@ class minimize_wrapper_with_map():
       refine_ncs_operators=False,
       number_of_cycles=1,
       log=None):
+    assert grm is not None
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
     from mmtbx.model_statistics import geometry_no_grm
     from mmtbx.refinement.minimization_monitor import minimization_monitor
@@ -415,70 +416,14 @@ class minimize_wrapper_with_map():
     print >> self.log, "Minimizing using reference map..."
     self.log.flush()
     self.grm = grm
-    # create a new one
     # copy-paste from cctbx_project/mmtbx/refinement/geometry_minimization.py:
     # minimize_wrapper_for_ramachandran
-    if self.grm is None:
-      from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
-      from mmtbx.geometry_restraints import reference
-      from mmtbx.command_line.geometry_minimization import \
-          get_geometry_restraints_manager
-      from libtbx.utils import null_out
-      from scitbx.array_family import flex
-      import mmtbx.utils
-      if self.log is None:
-        self.log = null_out()
-      params_line = grand_master_phil_str
-      import iotbx.phil
-      params = iotbx.phil.parse(
-          input_string=params_line, process_includes=True).extract()
-      params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-      params.pdb_interpretation.peptide_link.ramachandran_restraints = True
-      params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
-      params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
-      params.pdb_interpretation.nonbonded_weight = 500
-      params.pdb_interpretation.c_beta_restraints=True
-      params.pdb_interpretation.max_reasonable_bond_distance = None
-      params.pdb_interpretation.peptide_link.apply_peptide_plane = True
-      params.pdb_interpretation.ncs_search.enabled = True
-      params.pdb_interpretation.restraints_library.rdl = True
-      processed_pdb_files_srv = mmtbx.utils.\
-          process_pdb_file_srv(
-              crystal_symmetry= self.cs,
-              pdb_interpretation_params = params.pdb_interpretation,
-              stop_for_unknowns         = False,
-              log=self.log,
-              cif_objects=None)
-      processed_pdb_file, junk = processed_pdb_files_srv.\
-          process_pdb_files(raw_records=flex.split_lines(self.pdb_h.as_pdb_string()))
-      mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
-      ener_lib = processed_pdb_files_srv.ener_lib
-      ncs_restraints_group_list = []
-      if processed_pdb_file.ncs_obj is not None:
-        ncs_restraints_group_list = processed_pdb_file.ncs_obj.get_ncs_restraints_group_list()
-      grm = get_geometry_restraints_manager(
-          processed_pdb_file, xrs, params=params)
-      # dealing with SS
-      if ss_annotation is not None:
-        from mmtbx.secondary_structure import manager
-        ss_manager = manager(
-            pdb_hierarchy=self.pdb_h,
-            geometry_restraints_manager=grm.geometry,
-            sec_str_from_pdb_file=ss_annotation,
-            params=None,
-            mon_lib_srv=mon_lib_srv,
-            verbose=-1,
-            log=self.log)
-        grm.geometry.set_secondary_structure_restraints(
-            ss_manager=ss_manager,
-            hierarchy=self.pdb_h,
-            log=self.log)
-    else:
-      self.grm.geometry.pair_proxies(
+
+    self.grm.geometry.pair_proxies(
+        sites_cart=self.pdb_h.atoms().extract_xyz())
+    if self.grm.geometry.ramachandran_manager is not None:
+      self.grm.geometry.ramachandran_manager.update_phi_psi_targets(
           sites_cart=self.pdb_h.atoms().extract_xyz())
-      if self.grm.geometry.ramachandran_manager is not None:
-        self.grm.geometry.ramachandran_manager.update_phi_psi_targets(
-            sites_cart=self.pdb_h.atoms().extract_xyz())
 
     ncs_groups=None
     if len(ncs_restraints_group_list) > 0:
