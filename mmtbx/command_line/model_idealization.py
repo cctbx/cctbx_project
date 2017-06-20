@@ -2,41 +2,44 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_idealization
 
 import sys, os
+import datetime
+from time import time
+from libtbx.utils import Sorry, multi_out, null_out
+from libtbx import Auto, easy_pickle, group_args
+from scitbx.array_family import flex
+from cStringIO import StringIO
+
 from cctbx import crystal
 from iotbx.pdb import secondary_structure as ioss
+from iotbx.pdb import write_whole_pdb_file
+from iotbx.file_reader import any_file
+from iotbx import reflection_file_utils
+from iotbx.phil import process_command_line_with_files
+import iotbx.ncs
+import iotbx.phil
+from cctbx import maptbx, miller
+
 from mmtbx.secondary_structure import build as ssb
 from mmtbx.secondary_structure import manager, sec_str_master_phil
 import mmtbx.utils
-from iotbx.phil import process_command_line_with_files
-from scitbx.array_family import flex
-from iotbx.pdb import write_whole_pdb_file
-import iotbx.phil
-from libtbx.utils import Sorry, multi_out, null_out
+from mmtbx.utils import fix_rotamer_outliers
 from mmtbx.building.loop_idealization import loop_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
-import iotbx.ncs
 from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
-from copy import deepcopy
-from mmtbx.utils import fix_rotamer_outliers
 from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
 from mmtbx.model_statistics import geometry_no_grm
-from time import time
-import datetime
-from cctbx import maptbx, miller
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
-from iotbx.file_reader import any_file
 from mmtbx.validation.clashscore import check_and_add_hydrogen
-from libtbx import Auto, easy_pickle, group_args
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
 master_params_str = """
-file_name = None
+model_file_name = None
   .type = path
   .multiple = True
   .short_caption = Model file
@@ -46,6 +49,19 @@ map_file_name = None
   .type = path
   .help = User-provided map that will be used as reference
   .expert_level = 0
+hkl_file_name = None
+  .type = path
+  .help = User-provided X-ray data to generate 2mFo-DFc map that will be used \
+    as reference
+  .expert_level = 0
+data_labels = None
+  .type = str
+  .short_caption = Data labels
+  .help = Labels for experimental data.
+r_free_flags_labels = None
+  .type = str
+  .short_caption = Rfree labels
+  .help = Labels for free reflections.
 ligands_file_name = None
   .type = path
   .multiple = True
@@ -1032,6 +1048,85 @@ class model_idealization():
     print >> self.log, "Time taken for idealization: %s" % str(
         datetime.timedelta(seconds=int(self.time_for_init + self.time_for_run)))
 
+def get_map_from_hkl(hkl_file_object, params, xrs, log):
+  print >> log, "Processing input hkl file..."
+  crystal_symmetry = hkl_file_object.crystal_symmetry()
+  rfs = reflection_file_utils.reflection_file_server(
+    crystal_symmetry = crystal_symmetry,
+    force_symmetry   = True,
+    reflection_files = [hkl_file_object.file_content],
+    err              = StringIO())
+
+
+  parameters = mmtbx.utils.data_and_flags_master_params().extract()
+  if (params.data_labels is not None):
+    parameters.labels = params.data_labels
+  if (params.r_free_flags_labels is not None):
+    parameters.r_free_flags.label = params.r_free_flags_labels
+  determined_data_and_flags = mmtbx.utils.determine_data_and_flags(
+    reflection_file_server = rfs,
+    parameters             = parameters,
+    keep_going             = True,
+    working_point_group = crystal_symmetry.space_group().build_derived_point_group(),
+    log                    = StringIO(),
+    symmetry_safety_check  = True)
+  f_obs = determined_data_and_flags.f_obs
+
+  if (params.data_labels is None):
+    params.data_labels = f_obs.info().label_string()
+  r_free_flags = determined_data_and_flags.r_free_flags
+  assert f_obs is not None
+  print >> log,  "Input data:"
+  print >> log, "  Iobs or Fobs:", f_obs.info().labels
+  if (r_free_flags is not None):
+    print >> log, "  Free-R flags:", r_free_flags.info().labels
+    params.r_free_flags_labels = r_free_flags.info().label_string()
+  else:
+    print >> log, "  Free-R flags: Not present"
+
+  fmodel = mmtbx.f_model.manager(
+      f_obs        = f_obs,
+      r_free_flags = r_free_flags,
+      xray_structure = xrs)
+  fmodel.update_all_scales()
+
+  fft_map = fmodel.electron_density_map().fft_map(
+    resolution_factor = 0.25,
+    map_type          = "2mFo-DFc",
+    use_all_data      = False) # Exclude free reflections
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded(in_place=False)
+  if params.debug:
+    fft_map.as_xplor_map(file_name="%s_21.map" % params.output_prefix)
+    iotbx.ccp4_map.write_ccp4_map(
+        file_name="%s_21.ccp4" % params.output_prefix,
+        unit_cell=crystal_symmetry.unit_cell(),
+        space_group=crystal_symmetry.space_group(),
+        map_data=map_data,
+        labels=flex.std_string([""]))
+  return map_data, crystal_symmetry
+
+def get_map_from_map(map_file_object, log):
+  print >> log, "Processing input CCP4 map file..."
+  map_data = map_file_object.file_content.data.as_double()
+  try:
+    # map_cs = map_content.file_object.crystal_symmetry()
+    map_cs = map_file_object.crystal_symmetry()
+  except NotImplementedError as e:
+    pass
+  print >> log, "Input map min,max,mean: %7.3f %7.3f %7.3f"%\
+      map_data.as_1d().min_max_mean().as_tuple()
+  if map_cs.space_group().type().number() not in [0,1]:
+    print map_cs.space_group().type().number()
+    raise Sorry("Only P1 group for maps is supported.")
+  map_data = map_data - flex.mean(map_data)
+  sd = map_data.sample_standard_deviation()
+  map_data = map_data/sd
+  print >> log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
+    map_data.as_1d().min_max_mean().as_tuple()
+  map_file_object.file_content.show_summary(prefix="  ")
+  return map_data, map_cs
+
 def run(args):
   # processing command-line stuff, out of the object
   log = multi_out()
@@ -1042,15 +1137,18 @@ def run(args):
   input_objects = process_command_line_with_files(
       args=args,
       master_phil=master_params(),
-      pdb_file_def="file_name",
+      pdb_file_def="model_file_name",
       map_file_def="map_file_name",
+      reflection_file_def="hkl_file_name",
       cif_file_def="ligands_file_name")
   work_params = input_objects.work.extract()
+  if [work_params.map_file_name, work_params.hkl_file_name].count(None) < 1:
+    raise Sorry("Only one source of map could be supplied.")
   input_objects.work.show(prefix=" ", out=log)
-  if len(work_params.file_name) == 0:
+  if len(work_params.model_file_name) == 0:
     raise Sorry("No PDB file specified")
   if work_params.output_prefix is None:
-    work_params.output_prefix = os.path.basename(work_params.file_name[0])
+    work_params.output_prefix = os.path.basename(work_params.model_file_name[0])
   log_file_name = "%s.log" % work_params.output_prefix
   logfile = open(log_file_name, "w")
   log.register("logfile", logfile)
@@ -1064,7 +1162,7 @@ def run(args):
 
   # Here we start opening files provided,
   # collect crystal symmetries
-  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=work_params.file_name)
+  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=work_params.model_file_name)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
   pdb_cs = pdb_input.crystal_symmetry()
@@ -1074,27 +1172,15 @@ def run(args):
 
   map_content = input_objects.get_file(work_params.map_file_name)
   if map_content is not None:
-    # af = any_file(work_params.map_file_name)
-    # print >> log, "Processing input CCP4 map file..."
-    map_data = map_content.file_object.data.as_double()
-    try:
-      # map_cs = map_content.file_object.crystal_symmetry()
-      map_cs = crystal.symmetry(
-          unit_cell=map_content.file_object.unit_cell(),
-          space_group=map_content.file_object.space_group_number)
-    except NotImplementedError as e:
-      pass
-    print >> log, "Input map min,max,mean: %7.3f %7.3f %7.3f"%\
-        map_data.as_1d().min_max_mean().as_tuple()
-    if map_cs.space_group().type().number() not in [0,1]:
-      print map_cs.space_group().type().number()
-      raise Sorry("Only P1 group for maps is supported.")
-    map_data = map_data - flex.mean(map_data)
-    sd = map_data.sample_standard_deviation()
-    map_data = map_data/sd
-    print >> log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
-      map_data.as_1d().min_max_mean().as_tuple()
-    map_content.file_content.show_summary(prefix="  ")
+    map_data, map_cs = get_map_from_map(map_content, log)
+
+  hkl_content = input_objects.get_file(work_params.hkl_file_name)
+  if hkl_content is not None:
+    map_data, map_cs = get_map_from_hkl(
+        hkl_content,
+        work_params,
+        xrs=pdb_input.xray_structure_simple(), # here we don't care about atom order
+        log=log)
 
   # Crystal symmetry: validate and finalize consensus object
   try:

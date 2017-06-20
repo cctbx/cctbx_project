@@ -594,7 +594,7 @@ class loop_idealization():
           fixing_omega = fixing_omega or fixed_omega
           moving_h_set.append(setted_h)
           # print >> self.log, "Model %d, angles:" % i, comb
-          if utils.n_bad_omegas(moving_h_set[-1]) != 0:
+          if self.params.make_all_trans and utils.n_bad_omegas(moving_h_set[-1]) != 0:
             print "Model_%d_angles_%s.pdb" % (i, comb),
             print "got ", utils.n_bad_omegas(moving_h_set[-1]), "bad omegas"
             moving_h_set[-1].write_pdb_file("Model_%d_angles_%s.pdb" % (i, comb))
