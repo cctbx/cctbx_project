@@ -17,19 +17,6 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   using namespace boost::python;
 
-  std::string pxmmstrategy_to_string(const PxMmStrategy &strategy) {
-    std::stringstream ss; ss << strategy; return ss.str();
-  }
-  std::string simple_pxmmstrategy_to_string(const SimplePxMmStrategy &strategy) {
-    std::stringstream ss; ss << strategy; return ss.str();
-  }
-  std::string parallaxcorrected_pxmmstrategy_to_string(const ParallaxCorrectedPxMmStrategy &strategy) {
-    std::stringstream ss; ss << strategy; return ss.str();
-  }
-  std::string offsetparallaxcorrected_pxmmstrategy_to_string(const OffsetParallaxCorrectedPxMmStrategy &strategy) {
-    std::stringstream ss; ss << strategy; return ss.str();
-  }
-
   struct PxMmStrategyPickleSuite : boost::python::pickle_suite {
     static
     boost::python::tuple getinitargs(const PxMmStrategy& obj) {
@@ -58,11 +45,11 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("panel"), arg("xy")))
       .def("to_pixel", &PxMmStrategy::to_pixel, (
         arg("panel"), arg("xy")))
-      .def("__str__", &pxmmstrategy_to_string);
+      .def("__str__", &PxMmStrategy::strategy_name);
 
     class_<SimplePxMmStrategy, bases<PxMmStrategy> >("SimplePxMmStrategy")
       .def_pickle(PxMmStrategyPickleSuite())
-      .def("__str__", &simple_pxmmstrategy_to_string);
+      .def("__str__", &PxMmStrategy::strategy_name);
 
     class_<ParallaxCorrectedPxMmStrategy, bases<SimplePxMmStrategy> >(
       "ParallaxCorrectedPxMmStrategy", no_init)
@@ -70,7 +57,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("mu",&ParallaxCorrectedPxMmStrategy::mu)
       .def("t0",&ParallaxCorrectedPxMmStrategy::t0)
       .def_pickle(ParallaxCorrectedPxMmStrategyPickleSuite())
-      .def("__str__", &parallaxcorrected_pxmmstrategy_to_string);
+      .def("__str__", &PxMmStrategy::strategy_name);
 
     class_<OffsetParallaxCorrectedPxMmStrategy, bases<ParallaxCorrectedPxMmStrategy> >(
       "OffsetParallaxCorrectedPxMmStrategy", no_init)
@@ -86,7 +73,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("dx", &OffsetParallaxCorrectedPxMmStrategy::dx)
       .def("dy", &OffsetParallaxCorrectedPxMmStrategy::dy)
       .def_pickle(OffsetParallaxCorrectedPxMmStrategyPickleSuite())
-      .def("__str__", &offsetparallaxcorrected_pxmmstrategy_to_string);
+      .def("__str__", &PxMmStrategy::strategy_name);
 
     register_ptr_to_python<shared_ptr<PxMmStrategy> >();
     register_ptr_to_python<shared_ptr<SimplePxMmStrategy> >();

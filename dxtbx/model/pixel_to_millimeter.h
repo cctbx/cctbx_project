@@ -50,7 +50,10 @@ namespace dxtbx { namespace model {
     virtual vec2<double> to_pixel(const PanelData &panel,
       vec2<double> xy) const = 0;
 
-    friend std::ostream& operator<<(std::ostream &os, const PxMmStrategy &s);
+    virtual std::string strategy_name() const{
+      DXTBX_ERROR("Overload me");
+      return std::string();
+    }
   };
 
   /**
@@ -92,7 +95,10 @@ namespace dxtbx { namespace model {
       return vec2<double> (xy[0] / pixel_size[0], xy[1] / pixel_size[1]);
     }
 
-    friend std::ostream& operator<<(std::ostream &os, const SimplePxMmStrategy &s);
+    std::string strategy_name() const{
+      return std::string("SimplePxMmStrategy\n");
+    }
+
   };
 
   /**
@@ -159,7 +165,11 @@ namespace dxtbx { namespace model {
           panel.get_origin()));
     }
 
-    friend std::ostream& operator<<(std::ostream &os, const ParallaxCorrectedPxMmStrategy &s);
+    std::string strategy_name() const{
+      return std::string("ParallaxCorrectedPxMmStrategy\n    mu: "
+                         +std::to_string(mu_)+"\n    t0: "
+                         +std::to_string(t0_)+"\n");
+    }
 
   protected:
     double mu_;
@@ -269,7 +279,11 @@ namespace dxtbx { namespace model {
       return px;
     }
 
-    friend std::ostream& operator<<(std::ostream &os, const OffsetParallaxCorrectedPxMmStrategy &s);
+    std::string strategy_name() const{
+      return std::string("OffsetParallaxCorrectedPxMmStrategy\n    mu: "
+                         +std::to_string(mu_)+"\n    t0: "
+                         +std::to_string(t0_)+"\n");
+    }
 
   protected:
     scitbx::af::versa< double, scitbx::af::c_grid<2> > dx_;
@@ -279,27 +293,7 @@ namespace dxtbx { namespace model {
   /** Print strategy information */
   inline
   std::ostream& operator<<(std::ostream &os, const PxMmStrategy &s) {
-    os << "PxMmStrategy\n";
-    return os;
-  }
-  inline
-  std::ostream& operator<<(std::ostream &os, const SimplePxMmStrategy &s) {
-    os << "SimplePxMmStrategy\n";
-    return os;
-  }
-  inline
-  std::ostream& operator<<(std::ostream &os, const ParallaxCorrectedPxMmStrategy &s) {
-    os << "ParallaxCorrectedPxMmStrategy\n";
-    os << "    mu: " << s.mu() << "\n";
-    os << "    t0: " << s.t0() << "\n";
-    return os;
-  }
-  inline
-  std::ostream& operator<<(std::ostream &os, const OffsetParallaxCorrectedPxMmStrategy &s) {
-    os << "OffsetParallaxCorrectedPxMmStrategy\n";
-    os << "    mu: " << s.mu() << "\n";
-    os << "    t0: " << s.t0() << "\n";
-    // What to print for dx/dy?
+    os << s.strategy_name();
     return os;
   }
 }} // namespace dxtbx::model
