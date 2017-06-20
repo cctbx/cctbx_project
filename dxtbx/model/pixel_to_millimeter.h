@@ -15,6 +15,7 @@
 #include <dxtbx/model/parallax_correction.h>
 #include <dxtbx/model/panel_data.h>
 #include <dxtbx/error.h>
+#include <string>
 
 namespace dxtbx { namespace model {
 
