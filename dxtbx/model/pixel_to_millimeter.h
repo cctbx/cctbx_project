@@ -166,10 +166,14 @@ namespace dxtbx { namespace model {
           panel.get_origin()));
     }
 
+    std::string mu_t0() const {
+      std::ostringstream stringStream;
+      stringStream <<"    mu: "<< mu_ << "\n    t0: " << t0_ << "\n";
+      return stringStream.str();
+    }
+
     std::string strategy_name() const{
-      return std::string("ParallaxCorrectedPxMmStrategy\n    mu: "
-                         +std::to_string(mu_)+"\n    t0: "
-                         +std::to_string(t0_)+"\n");
+      return std::string("ParallaxCorrectedPxMmStrategy\n")+mu_t0();
     }
 
   protected:
@@ -281,9 +285,7 @@ namespace dxtbx { namespace model {
     }
 
     std::string strategy_name() const{
-      return std::string("OffsetParallaxCorrectedPxMmStrategy\n    mu: "
-                         +std::to_string(mu_)+"\n    t0: "
-                         +std::to_string(t0_)+"\n");
+      return std::string("OffsetParallaxCorrectedPxMmStrategy\n")+mu_t0();
     }
 
   protected:
