@@ -49,6 +49,8 @@ namespace dxtbx { namespace model {
      */
     virtual vec2<double> to_pixel(const PanelData &panel,
       vec2<double> xy) const = 0;
+
+    friend std::ostream& operator<<(std::ostream &os, const PxMmStrategy &s);
   };
 
   /**
@@ -89,6 +91,8 @@ namespace dxtbx { namespace model {
       vec2<double> pixel_size = panel.get_pixel_size();
       return vec2<double> (xy[0] / pixel_size[0], xy[1] / pixel_size[1]);
     }
+
+    friend std::ostream& operator<<(std::ostream &os, const SimplePxMmStrategy &s);
   };
 
   /**
@@ -154,6 +158,8 @@ namespace dxtbx { namespace model {
           panel.get_slow_axis(),
           panel.get_origin()));
     }
+
+    friend std::ostream& operator<<(std::ostream &os, const ParallaxCorrectedPxMmStrategy &s);
 
   protected:
     double mu_;
@@ -263,11 +269,39 @@ namespace dxtbx { namespace model {
       return px;
     }
 
+    friend std::ostream& operator<<(std::ostream &os, const OffsetParallaxCorrectedPxMmStrategy &s);
+
   protected:
     scitbx::af::versa< double, scitbx::af::c_grid<2> > dx_;
     scitbx::af::versa< double, scitbx::af::c_grid<2> > dy_;
   };
 
+  /** Print strategy information */
+  inline
+  std::ostream& operator<<(std::ostream &os, const PxMmStrategy &s) {
+    os << "PxMmStrategy\n";
+    return os;
+  }
+  inline
+  std::ostream& operator<<(std::ostream &os, const SimplePxMmStrategy &s) {
+    os << "SimplePxMmStrategy\n";
+    return os;
+  }
+  inline
+  std::ostream& operator<<(std::ostream &os, const ParallaxCorrectedPxMmStrategy &s) {
+    os << "ParallaxCorrectedPxMmStrategy\n";
+    os << "    mu: " << s.mu() << "\n";
+    os << "    t0: " << s.t0() << "\n";
+    return os;
+  }
+  inline
+  std::ostream& operator<<(std::ostream &os, const OffsetParallaxCorrectedPxMmStrategy &s) {
+    os << "OffsetParallaxCorrectedPxMmStrategy\n";
+    os << "    mu: " << s.mu() << "\n";
+    os << "    t0: " << s.t0() << "\n";
+    // What to print for dx/dy?
+    return os;
+  }
 }} // namespace dxtbx::model
 
 #endif /* DXTBX_MODEL_PIXEL_TO_MILLIMETER_H */

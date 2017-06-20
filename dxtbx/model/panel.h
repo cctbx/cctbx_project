@@ -314,6 +314,7 @@ namespace dxtbx { namespace model {
     os << "  fast_axis: " << p.get_fast_axis().const_ref() << std::endl;
     os << "  slow_axis: " << p.get_slow_axis().const_ref() << std::endl;
     os << "  origin: " << p.get_origin().const_ref() << std::endl;
+    os << "  pixel to millimeter strategy: " << p.get_px_mm_strategy() << std::endl;
     return os;
   }
 

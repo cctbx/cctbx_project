@@ -17,6 +17,12 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   using namespace boost::python;
 
+  std::string pxmmstrategy_to_string(const PxMmStrategy &strategy) {
+    std::stringstream ss;
+    ss << strategy;
+    return ss.str();
+  }
+
   struct PxMmStrategyPickleSuite : boost::python::pickle_suite {
     static
     boost::python::tuple getinitargs(const PxMmStrategy& obj) {
@@ -44,17 +50,20 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("to_millimeter", &PxMmStrategy::to_millimeter, (
         arg("panel"), arg("xy")))
       .def("to_pixel", &PxMmStrategy::to_pixel, (
-        arg("panel"), arg("xy")));
+        arg("panel"), arg("xy")))
+      .def("__str__", &pxmmstrategy_to_string);
 
     class_<SimplePxMmStrategy, bases<PxMmStrategy> >("SimplePxMmStrategy")
-      .def_pickle(PxMmStrategyPickleSuite());
+      .def_pickle(PxMmStrategyPickleSuite())
+      .def("__str__", &pxmmstrategy_to_string);
 
     class_<ParallaxCorrectedPxMmStrategy, bases<SimplePxMmStrategy> >(
       "ParallaxCorrectedPxMmStrategy", no_init)
       .def(init<double, double>((arg("mu"), arg("t0"))))
       .def("mu",&ParallaxCorrectedPxMmStrategy::mu)
       .def("t0",&ParallaxCorrectedPxMmStrategy::t0)
-      .def_pickle(ParallaxCorrectedPxMmStrategyPickleSuite());
+      .def_pickle(ParallaxCorrectedPxMmStrategyPickleSuite())
+      .def("__str__", &pxmmstrategy_to_string);
 
     class_<OffsetParallaxCorrectedPxMmStrategy, bases<ParallaxCorrectedPxMmStrategy> >(
       "OffsetParallaxCorrectedPxMmStrategy", no_init)
@@ -69,7 +78,8 @@ namespace dxtbx { namespace model { namespace boost_python {
              arg("dy"))))
       .def("dx", &OffsetParallaxCorrectedPxMmStrategy::dx)
       .def("dy", &OffsetParallaxCorrectedPxMmStrategy::dy)
-      .def_pickle(OffsetParallaxCorrectedPxMmStrategyPickleSuite());
+      .def_pickle(OffsetParallaxCorrectedPxMmStrategyPickleSuite())
+      .def("__str__", &pxmmstrategy_to_string);
 
     register_ptr_to_python<shared_ptr<PxMmStrategy> >();
     register_ptr_to_python<shared_ptr<SimplePxMmStrategy> >();
