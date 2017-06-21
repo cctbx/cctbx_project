@@ -1697,6 +1697,28 @@ def tst_filter_sheets_with_long_hbonds2():
     pass
     # assert 0
 
+def tst_filter_sheets_with_long_hbonds3():
+  """ bug found in 1qmo: want to remove all sheets, but they appear not sorted."""
+  if (not libtbx.env.has_module(name="ksdssp")):
+    print "Skipped: required module ksdssp not present"
+    return
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="cctbx_project/iotbx/regression/secondary_structure/1qmo_cutted.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print 'WARNING: Skipping tst_filter_sheets_with_long_hbonds2("%s"): input file not available' % file_path
+    return
+  inp = iotbx.pdb.input(file_name=file_path)
+  original_ann = inp.extract_secondary_structure()
+  assert original_ann.get_n_helices() == 0
+  assert original_ann.get_n_sheets() == 3
+  h = inp.construct_hierarchy()
+  ann = original_ann.deep_copy()
+  ann.filter_sheets_with_long_hbonds(hierarchy=h)
+  assert ann.get_n_helices() == 0
+  assert ann.get_n_sheets() == 1, ann.get_n_sheets()
+  # print ann
+
 def tst_reset_sheet_ids():
   ann_str = """\
 SHEET    1 AA1 4 ILE A   7  PRO A  10  0
@@ -1796,6 +1818,7 @@ if (__name__ == "__main__"):
   tst_concatenate_consecutive_helices4()
   tst_filter_sheets_with_long_hbonds()
   tst_filter_sheets_with_long_hbonds2()
+  tst_filter_sheets_with_long_hbonds3()
   tst_reset_sheet_ids()
   tst_simple_elements()
   tst_multiply_to_asu_1()

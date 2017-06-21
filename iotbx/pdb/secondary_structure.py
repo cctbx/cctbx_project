@@ -787,6 +787,7 @@ class annotation(structure_base):
     self.helices=new_helices
 
   def filter_sheets_with_long_hbonds(self, hierarchy, asc=None):
+    assert hierarchy is not None, "Cannot measure bonds w/o hierarchy!"
     from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
     from mmtbx.secondary_structure import manager as ss_manager
     from mmtbx.secondary_structure import sec_str_master_phil
@@ -847,7 +848,7 @@ class annotation(structure_base):
               log=null_out())
           new_sheets += ss_m.actual_sec_str.sheets
     if len(sh_indeces_to_delete) > 0:
-      for i in reversed(sh_indeces_to_delete):
+      for i in sorted(sh_indeces_to_delete, reverse=True):
         del self.sheets[i]
     self.sheets = self.sheets + new_sheets
     if len(new_sheets) > 0:
