@@ -51,6 +51,9 @@ image_conversion
   mask = None
     .type = path
     .help = Mask for ignored pixels
+  invert_boolean_mask = False
+    .type = bool
+    .help = Set to true if applying DIALS mask to Labelit processing
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip

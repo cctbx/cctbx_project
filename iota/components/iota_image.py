@@ -326,12 +326,16 @@ class SingleImage(object):
     data['DATA'] = img_masked
     return data
 
-  def apply_mask_from_file(self, data, mask_file):
+  def apply_mask_from_file(self, data, mask_file, invert=False):
     img_raw_bytes = data['DATA']
 
-    mask = ep.load(mask_file)
-    assert len(mask) == 1
-    mask = mask[0]
+    full_mask = ep.load(mask_file)
+    assert len(full_mask) == 1
+    if invert:
+      mask = full_mask[0] == False
+    else:
+      mask = full_mask[0]
+
     img_masked = img_raw_bytes.set_selected(mask, -2)
 
     data['DATA'] = img_masked
@@ -450,6 +454,9 @@ class SingleImage(object):
                      self.params.image_conversion.beam_center.y]
       square = self.params.image_conversion.square_mode
       mask_file = self.params.image_conversion.mask
+      invert = self.params.image_conversion.invert_boolean_mask
+      if mask_file is not None:
+        img_data = self.apply_mask_from_file(img_data, mask_file, invert)
       if beam_center != [0,0]:
         pixel_size = img_data['PIXEL_SIZE']
         img_data['BEAM_CENTER_X'] = int(round(beam_center[0] * pixel_size))
@@ -460,8 +467,7 @@ class SingleImage(object):
         img_data = self.square_pickle(img_data)
       if beamstop != 0:
         img_data = self.mask_image(img_data)
-      if mask_file is not None:
-        img_data = self.apply_mask_from_file(img_data, mask_file)
+
 
       # Log converted image information
       self.log_info.append('Converted image : {}'.format(self.conv_img))
