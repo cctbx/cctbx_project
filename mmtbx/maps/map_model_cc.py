@@ -7,6 +7,7 @@ import mmtbx.maps.correlation
 from cctbx import maptbx
 import iotbx.phil
 from libtbx import adopt_init_args
+from mmtbx.maps import mtriage
 
 master_params_str = """
 map_model_cc {
@@ -71,15 +72,26 @@ class map_model_cc(object):
       compute_cc_mask   = self.params.compute_cc_mask,
       compute_cc_volume = self.params.compute_cc_volume,
       compute_cc_peaks  = self.params.compute_cc_peaks)
-    atom_radius = self.params.atom_radius
-    if(atom_radius is None):
-      atom_radius = self.five_cc_result.atom_radius
-    if self.params.compute_fsc:
-      self.fsc = mmtbx.maps.correlation.fsc_model_vs_map(
-        xray_structure = xrs,
-        map            = map_data,
-        atom_radius    = atom_radius,
-        d_min          = self.params.resolution)
+    # Atom radius
+    self.atom_radius = mtriage.get_atom_radius(
+      xray_structure   = xrs,
+      d_min            = self.params.resolution,
+      map_data         = map_data,
+      crystal_symmetry = self.crystal_symmetry,
+      radius           = self.params.atom_radius)
+    # Model-map FSC
+    if(self.params.compute_fsc):
+      mtriage_params = mtriage.master_params().extract()
+      mtriage_params.scattering_table = self.params.scattering_table
+      mtriage_params.compute_d_model=False
+      mtriage_params.compute_d99=False
+      mtriage_params.radius_smooth = self.atom_radius
+      self.fsc = mtriage.mtriage(
+        map_data         = map_data,
+        pdb_hierarchy    = self.pdb_hierarchy,
+        crystal_symmetry = self.crystal_symmetry,
+        params           = mtriage_params).run().get_results().fsc_curve_model.fsc
+    #
     cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       xray_structure = xrs,
       map_data       = map_data,
@@ -96,7 +108,7 @@ class map_model_cc(object):
     # CC per chain
     if(self.params.compute_cc_per_chain):
       for chain in self.pdb_hierarchy.chains():
-        cd = get_common_data(atoms=chain.atoms(), atom_radius=atom_radius)
+        cd = get_common_data(atoms=chain.atoms(), atom_radius=self.atom_radius)
         self.cc_per_chain.append(group_args(
           chain_id   = chain.id,
           b_iso_mean = cd.b_iso_mean,
@@ -108,7 +120,7 @@ class map_model_cc(object):
       for rg in self.pdb_hierarchy.residue_groups():
         for conformer in rg.conformers():
           for residue in conformer.residues():
-            cd = get_common_data(atoms=residue.atoms(), atom_radius=atom_radius)
+            cd = get_common_data(atoms=residue.atoms(), atom_radius=self.atom_radius)
             self.cc_per_residue.append(group_args(
               chain_id   = rg.parent().id,
               resname    = residue.resname,
@@ -128,6 +140,7 @@ class map_model_cc(object):
       cc_peaks       = self.five_cc_result.cc_peaks,
       cc_per_chain   = self.cc_per_chain,
       cc_per_residue = self.cc_per_residue,
+      atom_radius    = self.atom_radius,
       fsc            = self.fsc)
 
 if (__name__ == "__main__"):

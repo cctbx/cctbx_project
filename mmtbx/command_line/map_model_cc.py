@@ -132,7 +132,9 @@ Feedback:
   print >> log, "  CC_peaks : %s" % format_value("%6.4f", results.cc_peaks)
   if results.fsc is not None:
     broadcast(m="Model-map FSC:", log=log)
-    results.fsc.show(prefix="  ")
+    print >> log, "    1/resolution    CC"
+    for a,b in zip(results.fsc.d_inv, results.fsc.fsc):
+      print >> log, "%15.9f %15.9f"%(a,b)
   if len(results.cc_per_chain) + len(results.cc_per_residue) > 0:
     broadcast(m="Map-model CC (local):", log=log)
   # Per chain
