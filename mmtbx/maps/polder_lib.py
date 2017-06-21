@@ -5,16 +5,13 @@ import mmtbx.utils
 import mmtbx.masks
 #import iotbx.pdb
 from mmtbx import map_tools
-#from iotbx import ccp4_map
-#from iotbx import file_reader
 from iotbx import phil
 #from iotbx import reflection_file_utils
-#from iotbx import crystal_symmetry_from_any
-#from cStringIO import StringIO
 from cctbx import maptbx
 from cctbx import miller
 from cctbx.array_family import flex
 from libtbx import group_args
+from libtbx.utils import Sorry
 from libtbx.math_utils import ifloor, iceil
 
 
@@ -173,6 +170,11 @@ class compute_polder_map():
 
       gridding_first = [ifloor(f * n) for f,n in zip(frac_min, na)]
       gridding_last  = [iceil(f * n) for f,n in zip(frac_max, na)]
+
+      for j in range(3):
+        if (gridding_last[j] - gridding_first[j] >= na[j]):
+          raise Sorry("The box is too big. Decrease box_buffer or use a " +
+                      "different selection")
 
       maptbx.set_box(
         value         = 0,

@@ -2,13 +2,8 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.polder
 import time
 import os, sys
-#import mmtbx.f_model
 import mmtbx.utils
-#import mmtbx.masks
 import iotbx.pdb
-#-----
-import mmtbx.maps.polder_lib
-#-----
 #from mmtbx import map_tools
 from iotbx import ccp4_map
 from iotbx import file_reader
@@ -22,7 +17,9 @@ from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx.utils import multi_out
-#from libtbx.math_utils import ifloor, iceil
+#-----
+import mmtbx.maps.polder_lib
+#-----
 
 legend = """\
 
@@ -149,6 +146,9 @@ def validate_params(params):
     raise Sorry("No selection for mask calculation found.")
   if (params.polder.sphere_radius < 3):
     raise Sorry("Sphere radius out of range: must be larger than 3 A")
+  if (params.polder.box_buffer is not None and (params.polder.box_buffer < 0 or
+      params.polder.box_buffer > 5)):
+    raise Sorry("Box buffer out of range: must be between 0 and 5")
   if (params.model_file_name is None):
     raise Sorry("Model file should be given")
   if (params.reflection_file_name is None):
