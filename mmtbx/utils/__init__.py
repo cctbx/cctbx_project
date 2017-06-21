@@ -3241,17 +3241,13 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
 
   def get_range(self, value_list, threshold=None, ignore_ends=True,
      keep_near_ends_frac=0.02, half_height_width=2., get_half_height_width=None,
-     cutoff_ratio=4):
+     cutoff_ratio=4,ratio_max=0.5):
     # ignore ends allows ignoring the first and last points which may be off
     # if get_half_height_width, find width at half max hieght, go
     #  half_height_width times this width out in either direction, use that as
     #  baseline instead of full cell. Don't do it if the height at this point
     #  is over cutoff_ratio times threshold above original baseline.
-
     if get_half_height_width:
-      z_min,z_max=self.get_range(value_list,threshold=threshold,
-        ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
-        get_half_height_width=False)
       z_min,z_max=self.get_range(value_list,threshold=0.5,
         ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
         get_half_height_width=False)
@@ -3259,16 +3255,25 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       z_width=0.5*(z_max-z_min)
       z_low=z_mid-2*z_width
       z_high=z_mid+2*z_width
-      i_low=max(0,min(value_list.size()-1,int(0.5+z_low*value_list.size())))
-      i_high=max(0,min(value_list.size()-1,int(0.5+z_high*value_list.size())))
+      if ignore_ends:
+        i_max=value_list.size()-2
+        i_min=1
+      else:
+        i_max=value_list.size()-1
+        i_min=0
+ 
+      i_low= max(i_min,min(i_max,int(0.5+z_low* value_list.size())))
+      i_high=max(i_min,min(i_max,int(0.5+z_high*value_list.size())))
       min_value=value_list.min_max_mean().min
       max_value=value_list.min_max_mean().max
       ratio_low=(value_list[i_low]-min_value)/max(1.e-10,(max_value-min_value))
       ratio_high=(value_list[i_high]-min_value)/max(1.e-10,(max_value-min_value))
-      if ratio_low <= cutoff_ratio*threshold and \
-         ratio_high <= cutoff_ratio*threshold:
+      if ratio_low <= cutoff_ratio*threshold and ratio_low >0 and ratio_low<ratio_max\
+           and ratio_high <= cutoff_ratio*threshold and ratio_high > 0 and \
+         ratio_high < ratio_max:
+        ratio=min(ratio_low,ratio_high)
         z_min,z_max=self.get_range(
-          value_list,threshold=threshold+max(0.,min(ratio_low,ratio_high)),
+          value_list,threshold=threshold+ratio,
           ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
           get_half_height_width=False)
         return z_min,z_max
