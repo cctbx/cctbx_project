@@ -141,15 +141,15 @@ Usage examples:
 
 class model_idealization():
   def __init__(self,
-               pdb_input,
+               pdb_h,
                cif_objects=None,
                map_data = None,
                crystal_symmetry = None,
+               ss_annotation=None,
                params=None,
                log=sys.stdout,
                verbose=True):
     t_0 = time()
-    self.pdb_input = pdb_input
     self.cif_objects = cif_objects
     self.params = params
     self.log = log
@@ -176,7 +176,7 @@ class model_idealization():
     self.rotamer_manager = None
     self.rama_manager = rama_eval()
 
-    self.original_hierarchy = None # original pdb_h, without any processing
+    self.original_hierarchy = pdb_h # original pdb_h, without any processing
     self.original_boxed_hierarchy = None # original and boxed (if needed)
     self.whole_pdb_h = None # boxed with processing (AC trimming, H trimming,...)
     self.master_pdb_h = None # master copy in case of NCS
@@ -185,6 +185,8 @@ class model_idealization():
     self.using_ncs = False
     self.ncs_restr_group_list = []
     self.filtered_ncs_restr_group_list = []
+
+    self.init_ss_annotation = ss_annotation
 
     # various checks, shifts, trims
     self.cs = crystal_symmetry
@@ -198,7 +200,6 @@ class model_idealization():
         corrupted_cs = True
         self.cs = None
 
-    self.original_hierarchy = self.pdb_input.construct_hierarchy()
     # couple checks if pdb_h is ok
     o_c = self.original_hierarchy.overall_counts()
     o_c.raise_duplicate_atom_labels_if_necessary()
@@ -239,7 +240,7 @@ class model_idealization():
           file_name="%s_boxed.pdb" % self.params.output_prefix,
           pdb_hierarchy=self.original_boxed_hierarchy,
           crystal_symmetry=self.cs,
-          ss_annotation=self.pdb_input.extract_secondary_structure())
+          ss_annotation=self.init_ss_annotation)
 
     asc = self.original_boxed_hierarchy.atom_selection_cache()
     if self.params.trim_alternative_conformations:
@@ -596,7 +597,7 @@ class model_idealization():
         phil_sheets=self.params.secondary_structure.protein.sheet,
         pdb_hierarchy=self.whole_pdb_h)
     if self.ann.get_n_helices() + self.ann.get_n_sheets() == 0:
-      self.ann = self.pdb_input.extract_secondary_structure()
+      self.ann = self.init_ss_annotation
       if self.ann is not None:
         self.ann.remove_empty_annotations(self.whole_pdb_h)
     self.filtered_whole_ann = None
@@ -1123,7 +1124,7 @@ def get_map_from_hkl(hkl_file_object, params, xrs, log):
         labels=flex.std_string([""]))
   return map_data, crystal_symmetry
 
-def get_map_from_map(map_file_object, log):
+def get_map_from_map(map_file_object, params, xrs, pdb_h, log):
   print >> log, "Processing input CCP4 map file..."
   map_data = map_file_object.file_content.data.as_double()
   try:
@@ -1142,6 +1143,7 @@ def get_map_from_map(map_file_object, log):
   print >> log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
     map_data.as_1d().min_max_mean().as_tuple()
   map_file_object.file_content.show_summary(prefix="  ")
+
   return map_data, map_cs
 
 def run(args):
@@ -1183,20 +1185,22 @@ def run(args):
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
   pdb_cs = pdb_input.crystal_symmetry()
+  pdb_h = pdb_input.construct_hierarchy()
+  xrs = pdb_h.extract_xray_structure(crystal_symmetry=pdb_cs)
   map_cs = None
   crystal_symmetry = None
   map_data = None
 
   map_content = input_objects.get_file(work_params.map_file_name)
   if map_content is not None:
-    map_data, map_cs = get_map_from_map(map_content, log)
+    map_data, map_cs = get_map_from_map(map_content, work_params, pdb_h=pdb_h, xrs=xrs, log=log)
 
   hkl_content = input_objects.get_file(work_params.hkl_file_name)
   if hkl_content is not None:
     map_data, map_cs = get_map_from_hkl(
         hkl_content,
         work_params,
-        xrs=pdb_input.xray_structure_simple(), # here we don't care about atom order
+        xrs=xrs, # here we don't care about atom order
         log=log)
 
   # Crystal symmetry: validate and finalize consensus object
@@ -1213,10 +1217,11 @@ def run(args):
     else:
       raise e
   mi_object = model_idealization(
-      pdb_input=pdb_input,
+      pdb_h=pdb_h,
       cif_objects=input_objects.cif_objects,
       map_data = map_data,
       crystal_symmetry = crystal_symmetry,
+      ss_annotation = pdb_input.extract_secondary_structure(),
       params=work_params,
       log=log,
       verbose=False)
