@@ -205,7 +205,7 @@ def tst_all():
   F = testuple()
   assert F == (1,2,3,4)
   #
-  fileout = "noiseimage_001.img"
+  fileout = "noiseimage_001.cbf"
   run_sim2smv(fileout)
   import os
   assert os.path.isfile(fileout)
