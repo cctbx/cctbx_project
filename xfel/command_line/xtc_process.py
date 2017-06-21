@@ -403,15 +403,6 @@ class InMemScript(DialsProcessScript):
           raise Sorry('Shoeboxes must be saved to integration intermediates to apply an absorption correction. '\
             +'Set integration.debug.output=True and integration.debug.separate_files=False to save shoeboxes.')
 
-    #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
-    tmp_dir = os.path.join(params.output.output_dir, '.tmp')
-    if not os.path.exists(tmp_dir):
-      try:
-        os.makedirs(tmp_dir)
-      except Exception as e:
-        halraiser(e)
-    os.environ['CBF_TMP_DIR'] = tmp_dir
-
     self.params = params
     self.load_reference_geometry()
 
