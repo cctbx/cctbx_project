@@ -314,6 +314,12 @@ master_phil = iotbx.phil.parse("""
        .help = Value of map outside atoms (set to 'mean' to have mean \
                 value inside and outside mask be equal)
 
+    soft_mask = False
+      .type = bool
+      .help = Use soft mask (smooth change from inside to outside with radius\
+             based on resolution of map). In development
+      .short_caption = Soft mask
+
      k_sharpen = None
        .type = float
        .short_caption = sharpening transition
@@ -675,6 +681,7 @@ def run(args=None,params=None,
         mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius,
         value_outside_atoms=params.map_modification.value_outside_atoms,
         k_sharpen=params.map_modification.k_sharpen,
+        soft_mask=params.map_modification.soft_mask,
         search_b_min=params.map_modification.search_b_min,
         search_b_max=params.map_modification.search_b_max,
         search_b_n=params.map_modification.search_b_n,

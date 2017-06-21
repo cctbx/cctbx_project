@@ -316,6 +316,17 @@ namespace {
       ;
     }
 
+    {
+      typedef zero_boundary_box_map w_t;
+      class_<w_t>("zero_boundary_box_map", no_init)
+        .def(init<af::const_ref<double, af::flex_grid<> > const&,
+            int const& > ((
+              arg("mask"),
+              arg("boundary"))))
+        .def("result",    &w_t::result)
+      ;
+    }
+
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)
         (af::const_ref<float, af::flex_grid<> > const&,

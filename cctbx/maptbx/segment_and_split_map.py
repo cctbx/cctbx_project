@@ -383,6 +383,12 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map.
 
+    soft_mask = False
+      .type = bool
+      .help = Use soft mask (smooth change from inside to outside with radius\
+             based on resolution of map). In development
+      .short_caption = Soft mask
+
      use_weak_density = False
        .type = bool
        .short_caption = Use box with poor density
@@ -605,11 +611,6 @@ master_phil = iotbx.phil.parse("""
       .help = Radius for constructing asymmetric unit.
       .short_caption = Radius for constructing asymmetric unit
 
-    soft_mask = False
-      .type = bool
-      .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map). In development
-      .short_caption = Soft mask
 
     value_outside_mask = 0.0
       .type = float
@@ -1559,7 +1560,7 @@ class sharpening_info:
       self.mask_atoms=params.map_modification.mask_atoms
       self.mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius
       self.value_outside_atoms=params.map_modification.value_outside_atoms
-      self.soft_mask=params.segmentation.soft_mask
+      self.soft_mask=params.map_modification.soft_mask
       self.k_sharpen=params.map_modification.k_sharpen
       self.sharpening_target=params.map_modification.sharpening_target
       self.residual_target=params.map_modification.residual_target
@@ -2724,7 +2725,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "b_iso, \nb_sharpen, or resolution_dependent_b"
     params.map_modification.auto_sharpen=False
 
-  if params.segmentation.soft_mask and not params.segmentation.density_select:
+  if params.map_modification.soft_mask and not params.segmentation.density_select:
     raise Sorry("Need to specify density_select=True for soft_mask")
 
   if params.output_files.output_directory and  \
@@ -2901,7 +2902,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         origin_shift)
     # NOTE: size and cell params are now different!
 
-    if params.segmentation.soft_mask:
+    if params.map_modification.soft_mask:
       if not params.crystal_info.resolution:
         raise Sorry("Need resolution for soft_mask")
 
@@ -4972,7 +4973,7 @@ def write_region_maps(params,
       map_data=map_data,out=out)
     box_map,box_crystal_symmetry=cut_out_map(
        map_data=local_map_data, crystal_symmetry=tracking_data.crystal_symmetry,
-       min_point=lower_bounds, max_point=upper_bounds)
+       min_point=lower_bounds, max_point=upper_bounds,out=out)
 
     if remainder_ncs_group_obj:
       text=""
@@ -5192,7 +5193,7 @@ def write_output_files(params,
   box_mask_ncs_au,box_crystal_symmetry=cut_out_map(
        map_data=mask_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
-       min_point=lower_bounds, max_point=upper_bounds)
+       min_point=lower_bounds, max_point=upper_bounds,out=out)
 
   # Mask
   if params.output_files.box_mask_file:
@@ -5216,7 +5217,7 @@ def write_output_files(params,
     box_map_ncs_au,box_crystal_symmetry=cut_out_map(
        map_data=map_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
-       min_point=lower_bounds, max_point=upper_bounds)
+       min_point=lower_bounds, max_point=upper_bounds,out=out)
     write_ccp4_map(box_crystal_symmetry,
       os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
       box_map_ncs_au)
@@ -5433,12 +5434,27 @@ def get_touching_dist(centers,default=100.,min_dist=8.):
   else:
     return default
 
+def get_grid_units(map_data=None,crystal_symmetry=None,radius=None,
+     out=sys.stdout):
+    N_ = map_data.all()
+    sx,sy,sz= 1/N_[0], 1/N_[1], 1/N_[2]
+    sx_cart,sy_cart,sz_cart=crystal_symmetry.unit_cell().orthogonalize(
+       [sx,sy,sz])
+    grid_spacing=(sx_cart+sy_cart+sz_cart)/3.
+    grid_units=int(radius/grid_spacing)
+    min_cell_grid_units=min(N_[0], N_[1], N_[2])
+    grid_units=min(grid_units,int(min_cell_grid_units/3))
+    print "Grid units representing %7.1f A will be %d" %(
+       radius,grid_units)
+    return grid_units
 
 def cut_out_map(map_data=None, crystal_symmetry=None,
-    min_point=None,max_point=None):
+    soft_mask=None,soft_mask_radius=None,resolution=None,
+    shift_origin=None,
+    min_point=None,max_point=None,out=sys.stdout):
   from cctbx import uctbx
   from cctbx import maptbx
-  na = map_data.all() # tuple with dimensions!!!
+  na = map_data.all() # tuple with dimensions
   for i in range(3):
     assert min_point[i] >= 0
     assert max_point[i] <= na[i]
@@ -5447,13 +5463,40 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
   shrunk_uc = []
   for i in range(3):
     shrunk_uc.append(
-     crystal_symmetry.unit_cell().parameters()[i] * new_map_data.all()[i]/na[i] )
+     crystal_symmetry.unit_cell().parameters()[i]*new_map_data.all()[i]/na[i] )
   uc_params=crystal_symmetry.unit_cell().parameters()
   new_unit_cell_box = uctbx.unit_cell(
     parameters=(shrunk_uc[0],shrunk_uc[1],shrunk_uc[2],
         uc_params[3],uc_params[4],uc_params[5]))
   new_crystal_symmetry=crystal.symmetry(
     unit_cell=new_unit_cell_box,space_group='p1')
+
+
+  if soft_mask and soft_mask_radius is not None:
+    assert shift_origin  # need to do this
+    if shift_origin:
+      new_map_data = new_map_data.shift_origin()
+
+    # Add soft boundary to mean around outside of mask
+    # grid_units is how many grid units are about equal to soft_mask_radius 
+    grid_units=get_grid_units(map_data=map_data,
+      crystal_symmetry=new_crystal_symmetry,radius=soft_mask_radius,out=out)
+    grid_units=int(0.5+0.5*grid_units)
+    acc=map_data.accessor()
+    from cctbx import maptbx
+    zero_boundary_map=maptbx.zero_boundary_box_map(
+       new_map_data,grid_units).result()
+    # this map is zero's around the edge and 1 in the middle
+    # multiply zero_boundary_map--smoothed & new_map_data and return
+    print >>out,"Applying soft mask to boundary of cut out map"
+    write_ccp4_map(new_crystal_symmetry,'before.ccp4',new_map_data)
+    new_map_data=apply_soft_mask(map_data=new_map_data,
+          mask_data=zero_boundary_map,
+          rad_smooth=resolution,
+          crystal_symmetry=new_crystal_symmetry,
+          out=out)
+    write_ccp4_map(new_crystal_symmetry,'after.ccp4',new_map_data)
+
   return new_map_data, new_crystal_symmetry
 
 def apply_shift_to_pdb_hierarchy(
@@ -6026,12 +6069,25 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 def put_bounds_in_range(
      lower_bounds=None,upper_bounds=None,
      box_size=None,
-     n_real=None):
+     buffer=None,
+     n_real=None,out=sys.stdout):
   # put lower and upper inside (0,n_real) and try to make size at least minimum
 
   new_lb=[]
   new_ub=[]
+  print >>out,"Putting bounds in range...(%s,%s,%s) to (%s,%s,%s)" %(
+       tuple(list(lower_bounds)+list(upper_bounds)))
+  if buffer:
+     print >>out,"Buffer of %s added" %(buffer)
   for lb,ub,ms,nr in zip(lower_bounds,upper_bounds,box_size,n_real):
+    if buffer:
+       lb=lb-buffer
+       ub=ub+buffer
+
+    if lb<0:
+      shift=-lb
+      lb+=shift
+      ub+=shift
     boundary=int(ms-(ub-lb+1))//2
     if boundary>0:
        lb=lb-boundary
@@ -6040,6 +6096,8 @@ def put_bounds_in_range(
     if ub>nr: ub=nr
     new_lb.append(lb)
     new_ub.append(ub)
+  print >>out,"New bounds ...(%s,%s,%s) to (%s,%s,%s)" %(
+       tuple(list(new_lb)+list(new_ub)))
   return tuple(new_lb),tuple(new_ub)
 
 def get_iterated_solvent_fraction(map=None,
@@ -6205,10 +6263,16 @@ def select_box_map_data(si=None,
       lower_bounds,upper_bounds=box_of_biggest_region(si=si,
            map_data=map_data,
            out=out)
-
+    if si.soft_mask:
+      buffer=get_grid_units(map_data=map_data,
+        crystal_symmetry=crystal_symmetry,
+        radius=si.resolution,out=out)
+      buffer=int(0.5+buffer*1.5)
+    else:
+      buffer=0
     lower_bounds,upper_bounds=put_bounds_in_range(
      lower_bounds=lower_bounds,upper_bounds=upper_bounds,
-     box_size=box_size,
+     box_size=box_size,buffer=buffer,
      n_real=map_data.all())
 
     # select map data inside this box
@@ -6216,14 +6280,22 @@ def select_box_map_data(si=None,
     box_map,box_crystal_symmetry=cut_out_map(
        map_data=map_data.as_double(),
        crystal_symmetry=crystal_symmetry,
-       min_point=lower_bounds, max_point=upper_bounds)
+       soft_mask=si.soft_mask,
+       soft_mask_radius=si.resolution,
+       resolution=si.resolution,
+       shift_origin=True,
+       min_point=lower_bounds, max_point=upper_bounds,out=out)
     box_pdb_inp=None
 
     if first_half_map_data:
       box_first_half_map,box_first_crystal_symmetry=cut_out_map(
        map_data=first_half_map_data.as_double(),
        crystal_symmetry=crystal_symmetry,
-       min_point=lower_bounds, max_point=upper_bounds)
+       soft_mask=si.soft_mask,
+       soft_mask_radius=si.resolution,
+       resolution=si.resolution,
+       shift_origin=True,
+       min_point=lower_bounds, max_point=upper_bounds,out=out)
     else:
       box_first_half_map=None
 
@@ -6231,7 +6303,11 @@ def select_box_map_data(si=None,
       box_second_half_map,box_second_crystal_symmetry=cut_out_map(
        map_data=second_half_map_data.as_double(),
        crystal_symmetry=crystal_symmetry,
-       min_point=lower_bounds, max_point=upper_bounds)
+       soft_mask=si.soft_mask,
+       soft_mask_radius=si.resolution,
+       resolution=si.resolution,
+       shift_origin=True,
+       min_point=lower_bounds, max_point=upper_bounds,out=out)
     else:
       box_second_half_map=None
 

@@ -67,6 +67,49 @@ public:
 
 }; // class sample_all_mask_regions
 
+class zero_boundary_box_map {
+
+private:
+  af::versa<double, af::c_grid<3> > map_new;
+  af::tiny<int, 3> map_dimensions;
+
+public:
+  zero_boundary_box_map(
+    af::const_ref<double, af::flex_grid<> > const& mask,
+    int const& boundary) 
+  {
+    CCTBX_ASSERT(mask.accessor().nd() == 3);
+    CCTBX_ASSERT(mask.accessor().all().all_gt(0));
+
+    af::c_grid<3> a = mask.accessor();
+    CCTBX_ASSERT(boundary >= 0);  // if 0, all 1 in map
+    CCTBX_ASSERT(2*boundary < a[0]); 
+    CCTBX_ASSERT(2*boundary < a[1]);
+    CCTBX_ASSERT(2*boundary < a[2]);
+
+    map_dimensions = af::adapt(mask.accessor().all());
+    map_new.resize(af::c_grid<3>(map_dimensions), 0);
+
+    // set map=1  except within boundary of any side
+    int i_min=(boundary);
+    int i_max=a[0]-boundary;
+    int j_min=(boundary);
+    int j_max=a[1]-boundary;
+    int k_min=(boundary);
+    int k_max=a[2]-boundary;
+
+    for(int i = i_min; i < i_max ; i++) {
+      for(int j = j_min; j < j_max; j++) {
+        for(int k = k_min; k < k_max; k++) {
+          map_new(i,j,k) = 1;
+        } //for k
+      } // for j
+    } // for i
+  } // constructor
+  af::versa<double, af::c_grid<3> > result() {return map_new;}
+
+}; // class zero_boundary_box_map
+
 }} // namespace cctbx::maptbx
 
 #endif // CCTBX_MAPTBX_MASK_UTILS_H
