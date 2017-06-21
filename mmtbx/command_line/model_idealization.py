@@ -67,6 +67,9 @@ ligands_file_name = None
   .multiple = True
   .help = User-provided ligand restraints
   .expert_level = 0
+mask_and_he_map = False
+  .type = bool
+  .help = Mask and histogram equalization of the input map
 trim_alternative_conformations = False
   .type = bool
   .help = Leave only atoms with empty altloc
@@ -141,10 +144,11 @@ Usage examples:
 
 class model_idealization():
   def __init__(self,
-               pdb_h,
+               pdb_h, # shifted model
                cif_objects=None,
-               map_data = None,
-               crystal_symmetry = None,
+               map_data = None, # shifted map_data
+               shift_manager = None, # manager used to shift and cut map/model
+               crystal_symmetry = None, # original consensus symmetry (map, model)
                ss_annotation=None,
                params=None,
                log=sys.stdout,
@@ -154,6 +158,8 @@ class model_idealization():
     self.params = params
     self.log = log
     self.verbose = verbose
+
+    self.shift_manager = shift_manager
 
     self.rmsd_from_start = None
     self.init_model_statistics = None
@@ -189,7 +195,11 @@ class model_idealization():
     self.init_ss_annotation = ss_annotation
 
     # various checks, shifts, trims
+    self.original_cs = crystal_symmetry
     self.cs = crystal_symmetry
+    if self.shift_manager is not None:
+      self.cs = self.shift_manager.box_crystal_symmetry
+
     # check self.cs (copy-paste from secondary_sturcure_restraints)
     corrupted_cs = False
     if self.cs is not None:
@@ -971,13 +981,11 @@ class model_idealization():
           log=self.log)
 
   def shift_and_write_result(self, hierarchy, fname_suffix, grm=None):
-    cs_to_write = self.cs if self.shift_vector is None else None
+    cs_to_write = self.original_cs
     pdb_h_shifted = hierarchy.deep_copy()
+    if self.shift_manager is not None:
+      self.shift_manager.shift_back(pdb_hierarchy=pdb_h_shifted)
     pdb_h_shifted.reset_atom_i_seqs()
-    if self.shift_vector is not None:
-      atoms = pdb_h_shifted.atoms()
-      sites_cart = atoms.extract_xyz()
-      atoms.set_xyz(new_xyz=sites_cart-self.shift_vector)
     if self.params.debug:
       write_whole_pdb_file(
           file_name="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
@@ -1143,8 +1151,37 @@ def get_map_from_map(map_file_object, params, xrs, pdb_h, log):
   print >> log, "Rescaled map min,max,mean: %7.3f %7.3f %7.3f"%\
     map_data.as_1d().min_max_mean().as_tuple()
   map_file_object.file_content.show_summary(prefix="  ")
+  shift_manager = mmtbx.utils.extract_box_around_model_and_map(
+      xray_structure = xrs,
+      map_data       = map_data.deep_copy(),
+      box_cushion    = 5)
+  sys.stdout.flush()
+  xray_structure = shift_manager.xray_structure_box
+  crystal_symmetry = xray_structure.crystal_symmetry()
+  map_data = shift_manager.map_box
 
-  return map_data, map_cs
+  if params.mask_and_he_map:
+    print >> log, "Masking and histogram equalizing..."
+    import boost.python
+    cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+    xrs_p1 = xray_structure.expand_to_p1(sites_mod_positive=True)
+    radii = flex.double(xrs_p1.scatterers().size(), 5.0)
+    mask = cctbx_maptbx_ext.mask(
+      sites_frac                  = xrs_p1.sites_frac(),
+      unit_cell                   = xrs_p1.unit_cell(),
+      n_real                      = map_data.all(),
+      mask_value_inside_molecule  = 1,
+      mask_value_outside_molecule = 0,
+      radii                       = radii)
+    map_data = mask*map_data
+    from phenix.command_line.real_space_refine import write_ccp4_map
+    write_ccp4_map(o=xray_structure.crystal_symmetry(), file_name="junk_mask.map",
+     map_data=mask)
+    del mask
+    map_data = maptbx.volume_scale(map = map_data, n_bins = 10000).map_data()
+    write_ccp4_map(o=xray_structure.crystal_symmetry(), file_name="junk_map.map",
+     map_data=map_data)
+  return map_data, map_cs, shift_manager
 
 def run(args):
   # processing command-line stuff, out of the object
@@ -1190,10 +1227,21 @@ def run(args):
   map_cs = None
   crystal_symmetry = None
   map_data = None
-
+  shift_manager = None
   map_content = input_objects.get_file(work_params.map_file_name)
+
   if map_content is not None:
-    map_data, map_cs = get_map_from_map(map_content, work_params, pdb_h=pdb_h, xrs=xrs, log=log)
+    map_data, map_cs, shift_manager = get_map_from_map(
+        map_content,
+        work_params,
+        pdb_h=pdb_h,
+        xrs=xrs,
+        log=log)
+    xray_structure = shift_manager.xray_structure_box
+    shifted_crystal_symmetry = xray_structure.crystal_symmetry()
+    pdb_h.adopt_xray_structure(xray_structure)
+    pdb_h.write_pdb_file("junk_shift.pdb")
+
 
   hkl_content = input_objects.get_file(work_params.hkl_file_name)
   if hkl_content is not None:
@@ -1204,22 +1252,26 @@ def run(args):
         log=log)
 
   # Crystal symmetry: validate and finalize consensus object
-  try:
-    crystal_symmetry = crystal.select_crystal_symmetry(
-        from_command_line     = None,
-        from_parameter_file   = None,
-        from_coordinate_files = [pdb_cs],
-        from_reflection_files = [map_cs],
-        enforce_similarity    = True)
-  except AssertionError as e:
-    if len(e.args)>0 and e.args[0].startswith("No unit cell and symmetry information supplied"):
-      pass
-    else:
-      raise e
+  if shift_manager is not None:
+    crystal_symmetry = map_cs
+  else:
+    try:
+      crystal_symmetry = crystal.select_crystal_symmetry(
+          from_command_line     = None,
+          from_parameter_file   = None,
+          from_coordinate_files = [pdb_cs],
+          from_reflection_files = [map_cs],
+          enforce_similarity    = True)
+    except AssertionError as e:
+      if len(e.args)>0 and e.args[0].startswith("No unit cell and symmetry information supplied"):
+        pass
+      else:
+        raise e
   mi_object = model_idealization(
       pdb_h=pdb_h,
       cif_objects=input_objects.cif_objects,
       map_data = map_data,
+      shift_manager = shift_manager,
       crystal_symmetry = crystal_symmetry,
       ss_annotation = pdb_input.extract_secondary_structure(),
       params=work_params,
