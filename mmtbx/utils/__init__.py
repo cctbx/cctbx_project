@@ -3192,6 +3192,9 @@ class extract_box_around_model_and_map(object):
          tuple((i,all[1],all[2]))
        )
       value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
+    ii=0
+    for z in value_list:
+      ii+=1
     x_min,x_max=self.get_range(value_list,threshold=threshold,
       get_half_height_width=get_half_height_width)
 
@@ -3266,11 +3269,14 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       i_high=max(i_min,min(i_max,int(0.5+z_high*value_list.size())))
       min_value=value_list.min_max_mean().min
       max_value=value_list.min_max_mean().max
-      ratio_low=(value_list[i_low]-min_value)/max(1.e-10,(max_value-min_value))
-      ratio_high=(value_list[i_high]-min_value)/max(1.e-10,(max_value-min_value))
-      if ratio_low <= cutoff_ratio*threshold and ratio_low >0 and ratio_low<ratio_max\
-           and ratio_high <= cutoff_ratio*threshold and ratio_high > 0 and \
-         ratio_high < ratio_max:
+      ratio_low=(value_list[i_low]-min_value)/max(
+         1.e-10,(max_value-min_value))
+      ratio_high=(value_list[i_high]-min_value)/max(
+         1.e-10,(max_value-min_value))
+      if ratio_low <= cutoff_ratio*threshold and ratio_low >0 \
+           and ratio_low<ratio_max\
+           and ratio_high <= cutoff_ratio*threshold and ratio_high > 0 \
+           and ratio_high < ratio_max:
         ratio=min(ratio_low,ratio_high)
         z_min,z_max=self.get_range(
           value_list,threshold=threshold+ratio,
@@ -3287,19 +3293,19 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     max_value=value_list.min_max_mean().max
     cutoff=min_value+(max_value-min_value)*threshold
     if ignore_ends:
-      i_start=1
+      i_off=1
     else:
-      i_start=0
+      i_off=0
     i_low=None
-    for i in xrange(i_start,n_tot):
+    for i in xrange(i_off,n_tot-i_off):
       if value_list[i]>cutoff:
-        i_low=i
+        i_low=max(i_off,i-1)
         break
     i_high=None
-    for i in xrange(i_start,n_tot):
-      ii=n_tot-i
+    for i in xrange(i_off,n_tot-i_off):
+      ii=n_tot-1-i
       if value_list[ii]>cutoff:
-        i_high=ii
+        i_high=min(n_tot-1-i_off,ii+1)
         break
     if i_low is None or i_high is None:
       raise Sorry("Cannot auto-select region...please supply PDB file")
