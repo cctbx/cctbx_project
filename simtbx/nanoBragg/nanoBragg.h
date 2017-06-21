@@ -493,7 +493,7 @@ class nanoBragg {
     void add_noise();
 
     /* utility function for outputting an image to examine */
-    void to_smv_format(std::string const& fileout, double intfile_scale);
+    void to_smv_format(std::string const& fileout, double intfile_scale, int debug_x, int debug_y);
 };
 
 

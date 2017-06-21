@@ -335,6 +335,9 @@ nanoBragg::init_defaults()
     invalid_pixel = NULL;
 //    double median,mad,deviate,sign;
 //    double sum_arej,avg_arej,sumd_arej,rms_arej,rmsd_arej;
+    diffimage = NULL;
+    stolimage = NULL;
+    Fimage = NULL;
 
     pythony_indices.clear();
     pythony_amplitudes.clear();
@@ -1508,7 +1511,7 @@ nanoBragg::init_Fhkl()
             h0 = hkl[0];
             k0 = hkl[1];
             l0 = hkl[2];
-            if(verbose>9) printf("GOTHERE %d : %d %d %d = %g\n",i,h0,k0,l0,F_cell);
+            if(verbose>9) printf("DEBUG: hkl# %d : %d %d %d = %g\n",i,h0,k0,l0,F_cell);
             if(h_min > h0) h_min = h0;
             if(k_min > k0) k_min = k0;
             if(l_min > l0) l_min = l0;
@@ -1580,7 +1583,7 @@ nanoBragg::init_Fhkl()
             k0 = hkl[1];
             l0 = hkl[2];
             Fhkl[h0-h_min][k0-k_min][l0-l_min]=F_cell;
-            if(verbose>6) printf("F %d : %d %d %d = %g\n",i,h0,k0,l0,F_cell);
+            if(verbose>9) printf("F %d : %d %d %d = %g\n",i,h0,k0,l0,F_cell);
         }
         if(verbose) printf("done initializing Fhkl:\n");
     }
@@ -1954,7 +1957,7 @@ nanoBragg::update_steps()
 void
 nanoBragg::show_params()
 {
-    printf("nanoBragg nanocrystal diffraction simulator - James Holton and Ken Frankel 3-23-16\n");
+    printf("nanoBragg nanocrystal diffraction simulator - James Holton and Ken Frankel 6-21-17\n");
 
     printf("  %d initialized hkls (all others =%g)\n",hkls,default_F);
     printf("  ");
@@ -1966,6 +1969,8 @@ nanoBragg::show_params()
     printf("Unit Cell: %g %g %g %g %g %g\n", a_A[0],b_A[0],c_A[0],alpha*RTD,beta*RTD,gamma*RTD);
     printf("Recp Cell: %g %g %g %g %g %g\n", a_star[0],b_star[0],c_star[0],alpha_star*RTD,beta_star*RTD,gamma_star*RTD);
     printf("volume = %g A^3\n",V_cell);
+    printf("  amorphous part of sample is %lg m thick x %lg m high x %lg m wide, %lg g/cm^3 and %lg g/mol (%lg molecules)\n",
+            amorphous_sample_x,amorphous_sample_y,amorphous_sample_z,amorphous_density/1e6,amorphous_molecular_weight,amorphous_molecules);
 
     printf("missets: %11.8f %11.8f %11.8f\n",misset[1]*RTD,misset[2]*RTD,misset[3]*RTD);
 
@@ -1985,6 +1990,7 @@ nanoBragg::show_params()
            else { printf("  Kahn polarization factor: %f\n",polarization); }
     if(curved_detector) printf("  curved detector: all pixels same distance from origin\n");
     if(point_pixel) printf("  pixel obliquity effect disabled\n");
+    if(Fmap_pixel) printf("  Fmap mode: plotting structure factor at every pixel\n");
     printf("  incident fluence: %lg photons/m^2\n",fluence);
     printf("  distance=%lg detsize=%lgx%lg  pixel=%lg meters (%dx%d pixels)\n",distance,detsize_f,detsize_s,pixel_size,fpixels,spixels);
     printf("  Xbeam=%lg Ybeam=%lg\n",Xbeam,Ybeam);
@@ -2281,7 +2287,7 @@ nanoBragg::add_nanoBragg_spots()
                                     Fdet0 = distance*(xd/zd) + Xbeam;
                                     Sdet0 = distance*(yd/zd) + Ybeam;
 
-                                    if(verbose>8) printf("GOTHERE %g %g   %g %g\n",Fdet,Sdet,Fdet0,Sdet0);
+                                    if(verbose>8) printf("integral_form: %g %g   %g %g\n",Fdet,Sdet,Fdet0,Sdet0);
                                     test = exp(-( (Fdet-Fdet0)*(Fdet-Fdet0)+(Sdet-Sdet0)*(Sdet-Sdet0) + d_r*d_r )/1e-8);
                                 } // end of integral form
 
@@ -2580,7 +2586,7 @@ nanoBragg::add_background()
 
                             /* accumulate unscaled pixel intensity from this */
                             Ibg += sign*Fbg*Fbg*polar*omega_pixel*source_I[source]*capture_fraction;
-                            if(verbose>9 && i==1)printf("GOTHERE: Fbg= %g polar= %g omega_pixel= %g source[%d]= %g capture_fraction= %g\n",
+                            if(verbose>7 && i==1)printf("DEBUG: Fbg= %g polar= %g omega_pixel= %g source[%d]= %g capture_fraction= %g\n",
                                                            Fbg,polar,omega_pixel,source,source_I[source],capture_fraction);
                         }
                         /* end of source loop */
@@ -2595,8 +2601,8 @@ nanoBragg::add_background()
             /* save photons/pixel (if fluence specified), or F^2/omega if no fluence given */
             floatimage[i] += Ibg*r_e_sqr*fluence*amorphous_molecules/steps;
 
-            if(verbose>9 && i==1)printf(
-              "GOTHERE: Ibg= %g r_e_sqr= %g fluence= %g amorphous_molecules= %g steps= %d\n",
+            if(verbose>7 && i==1)printf(
+              "DEBUG: Ibg= %g r_e_sqr= %g fluence= %g amorphous_molecules= %g steps= %d\n",
                         Ibg,r_e_sqr,fluence,amorphous_molecules,steps);
             
             /* override: just plot interpolated structure factor at every pixel, useful for making absorption masks */
@@ -3218,7 +3224,7 @@ nanoBragg::add_noise()
 
 void
 nanoBragg::to_smv_format(
-    std::string const& fileout, double intfile_scale)
+    std::string const& fileout, double intfile_scale, int debug_x, int debug_y)
 {
     pixels = spixels * fpixels;
     floatimage = raw.begin();
@@ -3240,6 +3246,7 @@ nanoBragg::to_smv_format(
         {
             for(fpixel=0;fpixel<fpixels;++fpixel)
             {
+                if(fpixel==debug_x && spixel==debug_y) printf("DEBUG: pixel # %d at (%d,%d) has value %g\n",i,fpixel,spixel,floatimage[i]);
                 if(i==0 || max_I < floatimage[i])
                 {
                     max_I = floatimage[i];
@@ -3253,7 +3260,7 @@ nanoBragg::to_smv_format(
         intfile_scale = 1.0;
         if(max_I>0.0) intfile_scale = 55000.0/(max_I);
     }
-    if(verbose) printf("scaling data by: intfile_scale = %f\n",intfile_scale);
+    if(verbose) printf("scaling data by: intfile_scale = %g\n",intfile_scale);
 
     sum = max_I = 0.0;
     int i = 0;
@@ -3266,11 +3273,15 @@ nanoBragg::to_smv_format(
             intimage[i] = (unsigned short int) (std::min(saturation,
                            floatimage[i]*intfile_scale ));
 
+            if(verbose>90) printf("DEBUG #%d %g -> %g -> %d\n",i,floatimage[i],floatimage[i]*intfile_scale,intimage[i]);
+
             if((double) intimage[i] > max_I || i==0) {
                 max_I = (double) intimage[i];
                 max_I_x = fpixel;
                 max_I_y = spixel;
             }
+            if(fpixel==debug_x && spixel==debug_y) printf("DEBUG: pixel # %d at (%d,%d) has int value %d\n",i,fpixel,spixel,intimage[i]);
+
             sum += intimage[i];
             ++i;
         }
@@ -3280,7 +3291,7 @@ nanoBragg::to_smv_format(
             (int)sizeof(unsigned short int),sum,max_I,max_I_x,max_I_y);
     }
     outfile = fopen(fileout.c_str(),"w");
-    fprintf(outfile,"{\nHEADER_BYTES=512;\nDIM=2;\nBYTE_ORDER=%s;\nTYPE=unsigned_short;\n",byte_order);
+    fprintf(outfile,"{\nHEADER_BYTES=1024;\nDIM=2;\nBYTE_ORDER=%s;\nTYPE=unsigned_short;\n",byte_order);
     fprintf(outfile,"SIZE1=%d;\nSIZE2=%d;\nPIXEL_SIZE=%g;\nDISTANCE=%g;\n",fpixels,spixels,pixel_size*1000.0,distance*1000.0);
     fprintf(outfile,"WAVELENGTH=%g;\n",lambda0*1e10);
     fprintf(outfile,"BEAM_CENTER_X=%g;\nBEAM_CENTER_Y=%g;\n",Xbeam*1000.0,Ybeam*1000);
@@ -3297,7 +3308,7 @@ nanoBragg::to_smv_format(
     fprintf(outfile,"ADC_OFFSET=%g;\n",adc_offset);
     fprintf(outfile,"BEAMLINE=fake;\n");
     fprintf(outfile,"}\f");
-    while ( ftell(outfile) < 512 ){ fprintf(outfile," "); };
+    while ( ftell(outfile) < 1024 ){ fprintf(outfile," "); };
     fwrite(intimage,sizeof(unsigned short int),pixels,outfile);
 
     fclose(outfile);

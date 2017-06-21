@@ -589,17 +589,17 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
                     && (k>=nanoBragg.k_min) && (l<=nanoBragg.l_max) && (l>=nanoBragg.l_min)  ) {
                       /* populate all stored values */
                       miller_t hkl (h,k,l);
-                      if(nanoBragg.verbose>3) printf(" about to access indices[%d] at %p\n",i,&nanoBragg.pythony_indices[i]);
+                      if(nanoBragg.verbose>9) printf(" about to access indices[%d] at %p\n",i,&nanoBragg.pythony_indices[i]);
                       nanoBragg.pythony_indices[i] = hkl;
 //                      nanoBragg.pythony_indices.push_back(hkl);
-                      if(nanoBragg.verbose>3) printf(" about to access (%d,%d,%d) Fhkl[%d][%d][%d]\n",
+                      if(nanoBragg.verbose>9) printf(" about to access (%d,%d,%d) Fhkl[%d][%d][%d]\n",
                                            h,k,l,h-nanoBragg.h_min,k-nanoBragg.k_min,l-nanoBragg.l_min);
                       temp = nanoBragg.Fhkl[h-nanoBragg.h_min][k-nanoBragg.k_min][l-nanoBragg.l_min];
-                      if(nanoBragg.verbose>3) printf(" about to access amplitudes[%d] at %p\n",
+                      if(nanoBragg.verbose>9) printf(" about to access amplitudes[%d] at %p\n",
                                             i,&nanoBragg.pythony_amplitudes[i]);
                       nanoBragg.pythony_amplitudes[i] = temp;
 //                      nanoBragg.pythony_amplitudes.push_back(temp);
-                      if(nanoBragg.verbose>3) printf(" done\n");
+                      if(nanoBragg.verbose>9) printf(" done\n");
                       ++i;
                   }
               }
@@ -1235,7 +1235,7 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
                      "override pixel oversampling, speed is inversely proportional to square of this quantity, but critical if reciprocal crystal size is smaller than a pixel. default: set oversample so that reciprocal sub-pixel fits xtalsize")
 
      /* select a region-of-interest: xmin xmax ymin ymax */
-      .add_property("region-of-interest",
+      .add_property("region_of_interest",
                      make_function(&get_roi,rbv()),
                      make_function(&set_roi,dcp()),
                      "region of interst on detector: fast_min fast_max slow_min slow_max")
@@ -1486,7 +1486,7 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
        "apply specified Poisson, calibration, flicker and read-out noise to the pixels")
 
       .def("to_smv_format",&nanoBragg::to_smv_format,
-        (arg_("fileout"),arg_("intfile_scale")=0),
+        (arg_("fileout"),arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
         "interally produce an SMV-format image file on disk from the raw pixel array\nintfile_scale is applied before rounding off to integral pixel values")
     ;
     // end of nanoBragg class definition
