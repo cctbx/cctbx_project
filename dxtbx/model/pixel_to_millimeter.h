@@ -293,12 +293,6 @@ namespace dxtbx { namespace model {
     scitbx::af::versa< double, scitbx::af::c_grid<2> > dy_;
   };
 
-  /** Print strategy information */
-  inline
-  std::ostream& operator<<(std::ostream &os, const PxMmStrategy &s) {
-    os << s.strategy_name();
-    return os;
-  }
 }} // namespace dxtbx::model
 
 #endif /* DXTBX_MODEL_PIXEL_TO_MILLIMETER_H */
