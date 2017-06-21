@@ -7,7 +7,7 @@ from libtbx import adopt_init_args
 from cctbx.maptbx import resolution_from_map_and_model
 import mmtbx.utils
 from libtbx import group_args
-from cctbx import miller
+from cctbx import miller, adptbx
 from mmtbx.maps import correlation
 from mmtbx import masks
 from scitbx.array_family import flex
@@ -16,9 +16,6 @@ master_params_str = """
   scattering_table = wk1995  it1992  n_gaussian  neutron *electron
     .type = choice
     .help = Scattering table (X-ray, neutron or electron)
-  atom_radius = None
-    .type = float
-    .help = Atom radius for masking. If undefined then calculated automatically
   compute_fsc_curve_model = True
     .type = bool
     .help = Compute model-map CC in reciprocal space: FSC(model map, data map)
@@ -39,6 +36,29 @@ master_params_str = """
     .type = int
     .help = Number of processors to use
 """
+
+def get_atom_radius(xray_structure=None, d_min=None, map_data=None,
+                    crystal_symmetry=None, radius=None):
+  if(radius is not None): return radius
+  radii = []
+  if(d_min is not None):
+    radii.append(d_min)
+  if([xray_structure, crystal_symmetry].count(None)==0):
+    assert crystal_symmetry.is_similar_symmetry(
+      xray_structure.crystal_symmetry())
+  if([map_data, crystal_symmetry].count(None)==0):
+    d99 = maptbx.d99(
+      map              = map_data,
+      crystal_symmetry = crystal_symmetry).result.d99
+    radii.append(d99)
+  if(xray_structure is not None and d_min is not None):
+    b_iso = adptbx.u_as_b(
+      flex.mean(xray_structure.extract_u_iso_or_u_equiv()))
+    o = maptbx.atom_curves(scattering_type="C", scattering_table="electron")
+    rad_image = o.image(d_min=d_min, b_iso=b_iso,
+      radius_max=max(15.,d_min), radius_step=0.01).radius
+    radii.append(rad_image)
+  return max(3, min(10, max(radii)))
 
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
@@ -119,6 +139,7 @@ class mtriage(object):
     self.fsc_curve       = None
     self.fsc_curve_model = None
     self.mask_object     = None
+    self.radius_smooth   = self.params.radius_smooth
     # Info (results)
     self.crystal_symmetry = crystal_symmetry
     self.map_counts        = get_map_counts(map_data = self.map_data)
@@ -163,6 +184,7 @@ class mtriage(object):
     self._compute_half_map_fsc()
     # Map-model FSC and d_fsc_model
     self._compute_model_map_fsc()
+    return self
 
   def _get_xray_structure(self):
     if(self.pdb_hierarchy is not None):
@@ -173,16 +195,15 @@ class mtriage(object):
   def _compute_mask(self):
     if(not self.params.mask_maps): return
     if(self.pdb_hierarchy is None): return
-    rad_smooth = self.params.radius_smooth
-    if(rad_smooth is None):
-      d99 = maptbx.d99(
-        map              = self.map_data,
-        crystal_symmetry = self.crystal_symmetry).result.d99
-      rad_smooth = min(10., d99)
+    self.radius_smooth = get_atom_radius(
+      xray_structure   = self.xray_structure,
+      map_data         = self.map_data,
+      crystal_symmetry = self.crystal_symmetry,
+      radius           = self.radius_smooth)
     self.mask_object = masks.smooth_mask(
       xray_structure = self.xray_structure,
       n_real         = self.map_data.all(),
-      rad_smooth     = rad_smooth)
+      rad_smooth     = self.radius_smooth)
 
   def _apply_mask(self):
     if(not self.params.mask_maps): return
@@ -294,6 +315,8 @@ class mtriage(object):
       n_slots = 20,
       data_1  = self.half_map_data_1,
       data_2  = self.half_map_data_2)
+    if(self.mask_object is None): mask = None
+    else:                         mask = self.mask_object.mask_smooth
     return group_args(
       d9                = self.d9,
       d99               = self.d99,
@@ -310,7 +333,9 @@ class mtriage(object):
       map_counts        = self.map_counts,
       half_map_1_counts = self.half_map_1_counts,
       half_map_2_counts = self.half_map_2_counts,
-      map_histograms    = map_histograms)
+      map_histograms    = map_histograms,
+      mask              = mask,
+      radius_smooth     = self.radius_smooth)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

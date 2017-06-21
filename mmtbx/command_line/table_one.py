@@ -326,6 +326,7 @@ def rfactor_sanity_check (
     it can indicate that the model was further modified after the last round
     of refinement, that the wrong MTZ file was used, or that a different
     resolution limit was used for refinement.
+    If applicable, use F-obs-filtered data from MTZ file from last refinement run.
 """ % (r_work_pdb, r_free_pdb, r_work_fmodel, r_free_fmodel)
     elif ((delta_r_work > tolerance_ignore) or
           (delta_r_free > tolerance_ignore)) :
@@ -336,6 +337,7 @@ def rfactor_sanity_check (
              r_work=%.4f r_free=%.4f (from phenix.model_vs_data)
     This is probably not a big deal, but please double-check that you used the
     correct data file and have not changed the resolution limit for refinement.
+    If applicable, use F-obs-filtered data from MTZ file from last refinement run.
 """ % (r_work_pdb, r_free_pdb, r_work_fmodel, r_free_fmodel)
   else :
     print >> out, "Using re-computed R-factors for structure %s" % \

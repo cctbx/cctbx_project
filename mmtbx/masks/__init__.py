@@ -377,21 +377,20 @@ class mask_from_xray_structure(object):
 class smooth_mask(object):
   def __init__(self, xray_structure, n_real, rad_smooth, atom_radii=None,
                      solvent_radius=None, shrink_truncation_radius=None):
-    adopt_init_args(self, locals())
-    self.mask_binary = mask_from_xray_structure(
-      xray_structure           = self.xray_structure,
+    mask_binary = mask_from_xray_structure(
+      xray_structure           = xray_structure,
       p1                       = True,
       for_structure_factors    = False,
-      n_real                   = self.n_real,
+      n_real                   = n_real,
       atom_radii               = atom_radii,
       solvent_radius           = solvent_radius,
       shrink_truncation_radius = shrink_truncation_radius,
       rad_extra                = rad_smooth).mask_data
-    s = self.mask_binary>0.5
-    self.mask_binary = self.mask_binary.set_selected(s, 0)
-    self.mask_binary = self.mask_binary.set_selected(~s, 1)
-    maptbx.unpad_in_place(map=self.mask_binary)
+    s = mask_binary>0.5
+    mask_binary = mask_binary.set_selected(s, 0)
+    mask_binary = mask_binary.set_selected(~s, 1)
+    maptbx.unpad_in_place(map=mask_binary)
     self.mask_smooth = maptbx.smooth_map(
-      map              = self.mask_binary,
-      crystal_symmetry = self.xray_structure.crystal_symmetry(),
+      map              = mask_binary,
+      crystal_symmetry = xray_structure.crystal_symmetry(),
       rad_smooth       = rad_smooth)

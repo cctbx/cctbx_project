@@ -8,6 +8,8 @@ from libtbx.utils import Sorry
 import mmtbx.utils
 from cctbx import crystal
 import mmtbx.maps.mtriage
+from iotbx import ccp4_map
+from scitbx.array_family import flex
 
 master_params_GUI_str = """\
   include scope libtbx.phil.interface.tracking_params
@@ -45,6 +47,10 @@ master_params_str = """\
   fsc_model_plot_file_name_prefix = fsc_model
     .type = str
   fsc_half_maps_file_name_prefix = fsc_half_maps
+    .type = str
+  write_mask_file = True
+    .type = bool
+  mask_file_name = mask.ccp4
     .type = str
   %(master_params_GUI_str)s
 """ % vars()
@@ -220,6 +226,9 @@ Feedback:
   print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)   :", results.d_fsc
   print >> log
   #
+  print >> log, "Radius used for mask smoothing:", results.radius_smooth
+  print >> log
+  #
   file_name = "%s.mtriage.log"%inputs.params.fsc_model_plot_file_name_prefix
   task_obj.write_fsc_curve_model_plot_data(file_name = file_name)
   print >> log, "FSC(model map, map) is written to %s"%file_name
@@ -227,6 +236,15 @@ Feedback:
   file_name = "%s.mtriage.log"%inputs.params.fsc_half_maps_file_name_prefix
   task_obj.write_fsc_curve_plot_data(file_name = file_name)
   print >> log, "FSC(half map 1, half map 1) is written to %s"%file_name
+  #
+  if(inputs.params.write_mask_file and results.mask is not None):
+    print >> log, "Mask is written to %s"%inputs.params.mask_file_name
+    ccp4_map.write_ccp4_map(
+      file_name   = inputs.params.mask_file_name,
+      unit_cell   = inputs.crystal_symmetry.unit_cell(),
+      space_group = inputs.crystal_symmetry.space_group(),
+      map_data    = results.mask,
+      labels      = flex.std_string(["mask"]))
   #
   # required for GUI
   return results
