@@ -55,7 +55,20 @@ class argument_interpreter(object):
     if (self.target_paths is None):
       self.target_paths = [object_locator.path
         for object_locator in self.master_phil.all_definitions()]
-    expert_level = [object_locator.object.expert_level or 0
+
+    def recursive_expert_level(phil_obj):
+      if hasattr(phil_obj.object, 'expert_level') and phil_obj.object.expert_level is not None:
+        return phil_obj.object.expert_level
+      if not hasattr(phil_obj, 'parent') or not phil_obj.parent:
+        return 0
+      def parent_expert_level(obj):
+        if hasattr(obj, 'expert_level') and obj.expert_level is not None:
+          return obj.expert_level
+        if hasattr(obj, 'primary_parent_scope') and obj.primary_parent_scope:
+          return parent_expert_level(obj.primary_parent_scope)
+        return 0
+      return parent_expert_level(phil_obj.parent)
+    expert_level = [recursive_expert_level(object_locator)
       for object_locator in self.master_phil.all_definitions()]
 
     source_definitions = params.all_definitions()
