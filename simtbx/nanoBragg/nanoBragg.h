@@ -355,7 +355,7 @@ class nanoBragg {
     /* image file data */
     double *floatimage;
     /* version of image to pass back to Python */
-    af::versa<double, af::c_grid<2> > raw;
+    af::flex_double raw;
     unsigned short int *intimage;
     unsigned char *pgmimage;
 //    char *byte_order; // = get_byte_order();

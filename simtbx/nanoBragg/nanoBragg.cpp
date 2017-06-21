@@ -432,8 +432,7 @@ nanoBragg::init_detector()
     if(pixels!=allocated_pixels) {
         /* actually allocate memory */
         if(verbose>6) printf("(re)allocating %d %ld-byte doubles for raw array\n",pixels,sizeof(double));
-        af::versa<double, af::c_grid<2> > raw2(af::c_grid<2> (spixels,fpixels));
-        this->raw=raw2;
+        raw = af::flex_double(af::flex_grid<>(spixels,fpixels));
 
         if(invalid_pixel!=NULL) {
             if(verbose>6) printf("freeing %d %ld-byte bool invalid_pixel at %p\n",pixels,sizeof(bool),invalid_pixel);
