@@ -629,6 +629,7 @@ def as_flex_double(array, key):
 
 def check_array_sizes(array1, array2, key1, key2):
   if array1.size() != array2.size():
+    msg = "Miller arrays '%s' and '%s' are of different sizes" %(key1, key2)
     CifBuilderWarning(message=msg)
     return False
   return True
