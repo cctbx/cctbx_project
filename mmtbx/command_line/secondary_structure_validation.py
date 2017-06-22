@@ -34,6 +34,9 @@ file_name = None
   .multiple = True
   .optional = True
   .style = hidden
+filter_annotation = False
+  .type = bool
+  .help = Filter and output annotation
 """
 
 master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
@@ -343,6 +346,12 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
   print >> out, "  Total Ramachandran outliers    :", cumm_n_rama_out
   print >> out, "  Total wrong Ramachandrans      :", cumm_n_wrong_reg
   print >> out, "All done."
+
+  if work_params.filter_annotation:
+    filtered_ann = ss_annot.filter_annotation(hierarchy=pdb_h)
+    print >> out, "Filtered annotation:"
+    print >> out, filtered_ann.as_pdb_str()
+
   return group_args(
     n_total_helix_sheet_records = n_total_helix_sheet_records,
     n_bad_helix_sheet_records   = n_bad_helix_sheet_records,

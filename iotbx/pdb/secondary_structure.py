@@ -824,6 +824,7 @@ class annotation(structure_base):
                 sh_atom_selections[i] |= sh_atom_selections[j]
           # find new sheet structure for this sheet
           sh_hierarchy = hierarchy.select(sh_atom_selections[i])
+          sh_hierarchy.write_pdb_file(file_name="sheet_%d.pdb"%i)
           n_rgs = len(list(sh_hierarchy.residue_groups()))
           ss_m = ss_manager(
               pdb_hierarchy=sh_hierarchy,
