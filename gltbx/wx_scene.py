@@ -1,5 +1,4 @@
 from __future__ import division
-#!/usr/bin/env python
 
 # This file found at:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html

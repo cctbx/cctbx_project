@@ -1,5 +1,4 @@
 from __future__ import division
-#! /usr/bin/env python
 # from mmtbx.ncs.ncs_utils import convert_phil_format
 import sys, os, string
 from libtbx.utils import Sorry
