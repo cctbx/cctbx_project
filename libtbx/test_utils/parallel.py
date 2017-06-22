@@ -171,19 +171,22 @@ class run_command_list (object) :
     t_start = time.time()
     if nprocs > 1:
       # Run the tests with multiprocessing pool.
-      self.pool = pool = Pool(processes=nprocs)
+      self.pool = Pool(processes=nprocs)
       for command in self.cmd_list:
-        pool.apply_async(
+        self.pool.apply_async(
           run_command,
           [command, verbosity, out],
           callback=self.save_result)
       try:
-        pool.close()
+        self.pool.close()
       except KeyboardInterrupt:
         print >> self.out, "Caught KeyboardInterrupt, terminating"
-        pool.terminate()
+        self.pool.terminate()
       finally:
-        pool.join()
+        try:
+          self.pool.join()
+        except KeyboardInterrupt:
+          pass
     else:
       # Run tests serially.
       for command in self.cmd_list:
