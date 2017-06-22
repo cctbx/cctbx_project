@@ -2,4 +2,3 @@ IOTA v1.1.015 - fixed exit / abort procedure
 
 1. Abort works quicker than before and also works if running IOTA on LCLS queue
 2. Also, abort on Quit from main app
-
