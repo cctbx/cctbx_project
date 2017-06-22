@@ -1,9 +1,5 @@
-IOTA v1.1.014 - point picker and minor tweaks
+IOTA v1.1.015 - fixed exit / abort procedure
 
-1. Save text file w/ spotfinding results at every timer event in tracker
-2. "Restore" function in tracker (works only with previous run results)
-3. Live "point picker" in IOTA:
-    a. Click on any point on the "Resolution" or "Strong reflections" chart
-    b. Name of file will pop up, viewer can be used to see it
-    c. Can advance up and down to view files before and after the pick
-    (useful for dense point distribution)
+1. Abort works quicker than before and also works if running IOTA on LCLS queue
+2. Also, abort on Quit from main app
+

@@ -16,44 +16,53 @@ import iota.components.iota_image as img
 
 class ProcessImage():
   ''' Wrapper class to do full processing of an image '''
-  def __init__(self, init, input_entry, input_type = 'image'):
+  def __init__(self, init, input_entry, input_type = 'image', abort=False):
     self.init = init
     self.input_entry = input_entry
     self.input_type = input_type
+    self.abort = abort
 
   def run(self):
-    img_object = None
-    if self.input_type == 'image':
-      img_object = img.SingleImage(self.input_entry, self.init)
-      img_object.import_image()
-    elif self.input_type == 'object':
-      img_object = self.input_entry[2]
-      img_object.import_int_file(self.init)
-
-    if self.init.params.image_conversion.convert_only:
-      return img_object
+    if self.abort:
+      raise Exception('IOTA: Run aborted by user')
     else:
-      img_object.process()
-      return img_object
+      img_object = None
+      if self.input_type == 'image':
+        img_object = img.SingleImage(self.input_entry, self.init)
+        img_object.import_image()
+      elif self.input_type == 'object':
+        img_object = self.input_entry[2]
+        img_object.import_int_file(self.init)
+
+      if self.init.params.image_conversion.convert_only:
+        return img_object
+      else:
+        img_object.process()
+        return img_object
 
 class ProcessAll():
   def __init__(self,
                init,
                iterable,
-               input_type='image'):
+               input_type='image',
+               abort_file=None):
     self.init = ep.load(init)
     self.iterable = ep.load(iterable)
     self.type = input_type
+    self.abort_file = abort_file
 
   def run(self):
-    parallel_map(iterable=self.iterable,
-                 func = self.full_proc_wrapper,
-                 #callback = self.callback,
-                 processes=self.init.params.n_processors)
+    try:
+      parallel_map(iterable=self.iterable,
+                   func = self.full_proc_wrapper,
+                   #callback = self.callback,
+                   processes=self.init.params.n_processors)
 
-    end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
-    with open(end_filename, 'w') as ef:
-      ef.write('')
+      end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
+      with open(end_filename, 'w') as ef:
+        ef.write('')
+    except Exception, e:
+      raise e
 
   # def callback(self, result):
   #   print "*****", result, "*****"
@@ -62,9 +71,13 @@ class ProcessAll():
   #     ep.dump(result_file, result)
 
   def full_proc_wrapper(self, input_entry):
-    print 'Processing {}'.format(input_entry[2])
-    proc_image_instance = ProcessImage(self.init, input_entry, self.type)
-    proc_image_instance.run()
+    abort = os.path.isfile(self.abort_file)
+    try:
+      print 'Processing {}'.format(input_entry[2])
+      proc_image_instance = ProcessImage(self.init, input_entry, self.type, abort)
+      proc_image_instance.run()
+    except Exception, e:
+      raise e
 
 
 def parse_command_args():
@@ -77,6 +90,8 @@ def parse_command_args():
   parser.add_argument('--type', type=str, nargs='?', const=None,
                       default='image',
                       help='Specify input type')
+  parser.add_argument('--stopfile', type=str, default=None,
+                      help='Path to temporary hidden abort signal file')
   return parser
 
 # ============================================================================ #
@@ -84,5 +99,6 @@ if __name__ == "__main__":
   import argparse
   args, unk_args = parse_command_args().parse_known_args()
 
-  proc = ProcessAll(init=args.init, iterable=args.files, input_type=args.type)
+  proc = ProcessAll(init=args.init, iterable=args.files,
+                    input_type=args.type, abort_file=args.stopfile)
   proc.run()
