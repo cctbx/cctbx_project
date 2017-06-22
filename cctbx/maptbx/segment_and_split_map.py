@@ -1853,6 +1853,25 @@ class ncs_group_object:
   def set_map_files_written(self,map_files_written):
     self.map_files_written=deepcopy(map_files_written)
 
+def scale_map(map,scale_rms=1.0,out=sys.stdout):
+    sd=map.as_double().as_1d().sample_standard_deviation()
+    if (sd > 1.e-10):
+      scale=scale_rms/sd
+      if 0: print >>out,"Scaling map by %7.3f to set SD=1" %(scale)
+      map=map*scale
+    return map
+
+def scale_map_coeffs(map_coeffs,scale_max=100000.,out=sys.stdout):
+  f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
+  max_value=f_array.data().min_max_mean().max
+  scale=scale_max/max(1.e-10,max_value)
+  if 0:
+    print >>out,"Scaling map_coeffs by %9.3f to yield maximum of %7.0f" %(
+     scale,scale_max)
+  return f_array.array(data=f_array.data()*scale
+       ).phase_transfer(phase_source=phases, deg=True)
+  
+
 def get_map_object(file_name=None,out=sys.stdout):
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
   from iotbx import ccp4_map
@@ -1929,6 +1948,8 @@ def get_map_object(file_name=None,out=sys.stdout):
   print >>out, "\nCrystal symmetry used: "
   crystal_symmetry.show_summary(f=out)
   space_group=crystal_symmetry.space_group()
+
+  map=scale_map(map,out=out)
 
   return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc
 
@@ -2059,6 +2080,8 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
          return_as_miller_arrays=True,nohl=True,out=null_out())
+
+    map_coeffs=scale_map_coeffs(map_coeffs,out=out)
 
     if remove_aniso:
       print >>out,"\nRemoving aniso in data before analysis\n"
@@ -2893,6 +2916,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means
     #   total_shift_cart and origin_shift both positive
     map_data=box.map_box.as_double()
+    map_data=scale_map(map_data,out=out)
     crystal_symmetry=box.box_crystal_symmetry
     print >>out,"New unit cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f " %(
       crystal_symmetry.unit_cell().parameters())
@@ -5479,7 +5503,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
 
     # Add soft boundary to mean around outside of mask
     # grid_units is how many grid units are about equal to soft_mask_radius 
-    grid_units=get_grid_units(map_data=map_data,
+    grid_units=get_grid_units(map_data=new_map_data,
       crystal_symmetry=new_crystal_symmetry,radius=soft_mask_radius,out=out)
     grid_units=int(0.5+0.5*grid_units)
     acc=map_data.accessor()
@@ -6228,6 +6252,7 @@ def select_box_map_data(si=None,
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
     box_map=box.map_box.as_double()
+    box_map=scale_map(box_map,out=out)
     box_crystal_symmetry=box.box_crystal_symmetry
     box_pdb_inp=box.hierarchy.as_pdb_input()
     if first_half_map_data:
