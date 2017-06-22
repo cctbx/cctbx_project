@@ -129,8 +129,11 @@ class FormatCBFMiniEiger(FormatCBFMini):
     ny = int(
         self._cif_header_dictionary['X-Binary-Size-Second-Dimension'])
 
-    overload = int(
-        self._cif_header_dictionary['Count_cutoff'].split()[0])
+    if 'Count_cutoff' in self._cif_header_dictionary:
+      overload = int(self._cif_header_dictionary['Count_cutoff'].split()[0])
+    else:
+      # missing from data transformed with GPhL converter - dials#376
+      overload = 100000000
     underload = -1
 
     try:
