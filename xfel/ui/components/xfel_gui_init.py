@@ -1290,6 +1290,12 @@ class JobsTab(BaseTab):
       else:
         selected_trials = [int(self.filter.split()[-1])]
 
+      selected_jobs = [self.job_list.GetItemData(i) for i in xrange(self.job_list.GetItemCount()) if self.job_list.IsSelected(i)]
+      if self.job_list.GetFocusedItem() > 0:
+        focused_job_id = self.job_list.GetItemData(self.job_list.GetFocusedItem())
+      else:
+        focused_job_id = None
+
       self.data = {} # reset contents of the table, with unique row ids
       for selected_trial in selected_trials:
         jobs = e.jobs[selected_trial]
@@ -1328,6 +1334,14 @@ class JobsTab(BaseTab):
     # Initialize sortable column mixin
     self.job_list.initialize_sortable_columns(n_col=5, itemDataMap=self.data)
     self.job_list.RestoreSortOrder(self.job_list_col, self.job_list_sort_flag)
+
+    # Restore selected items
+    for i in xrange(self.job_list.GetItemCount()):
+      job_id = self.job_list.GetItemData(i)
+      if job_id in selected_jobs:
+        self.job_list.Select(i)
+      if job_id == focused_job_id:
+        self.job_list.Focus(i)
 
     self.job_sizer.Layout()
 
