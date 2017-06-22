@@ -1270,9 +1270,36 @@ class JobsTab(BaseTab):
     self.filter = self.trial_choice.ctr.GetString(
                   self.trial_choice.ctr.GetSelection())
 
+  def GetSelectedJobIds(self):
+    return [self.job_list.GetItemData(i) for i in xrange(self.job_list.GetItemCount()) if self.job_list.IsSelected(i)]
+
   def onStopJob(self, e):
     if self.all_jobs is None:
       return
+
+    jobs_to_stop = self.GetSelectedJobIds()
+    if len(jobs_to_stop) == 0:
+      return
+
+    if len(jobs_to_stop) == 1:
+      message='Are you sure to stop job %d?'%jobs_to_stop[0]
+    else:
+      message='Are you sure to stop %d jobs?'%len(jobs_to_stop)
+
+    msg = wx.MessageDialog(self,
+                           message=message,
+                           caption='Warning',
+                           style=wx.YES_NO | wx.ICON_EXCLAMATION)
+
+    if (msg.ShowModal() == wx.ID_NO):
+      return
+
+    from xfel.ui.components.submission_tracker import JobStopper
+    stopper = JobStopper(self.main.params.mp.method)
+    for trial in self.all_jobs:
+      for job in self.all_jobs[trial]:
+        if job.id in jobs_to_stop:
+          stopper.stop_job(job.submission_id)
 
   def onMonitorJobs(self, e):
     # Find new trials
@@ -1290,7 +1317,7 @@ class JobsTab(BaseTab):
       else:
         selected_trials = [int(self.filter.split()[-1])]
 
-      selected_jobs = [self.job_list.GetItemData(i) for i in xrange(self.job_list.GetItemCount()) if self.job_list.IsSelected(i)]
+      selected_jobs = self.GetSelectedJobIds()
       if self.job_list.GetFocusedItem() > 0:
         focused_job_id = self.job_list.GetItemData(self.job_list.GetFocusedItem())
       else:
