@@ -2,6 +2,22 @@ from __future__ import division
 
 from libtbx import easy_run
 
+class JobStopper(object):
+  def __init__(self, queueing_system):
+    self.queueing_system = queueing_system
+    if self.queueing_system in ["mpi", "lsf"]:
+      self.command = "bkill %s"
+    else:
+      raise NotImplementedError, "job stopper not implemented for %s queueing system" \
+      % self.queueing_system
+
+  def stop_job(self, submission_id):
+    result = easy_run.fully_buffered(command=self.command%submission_id)
+    status = "\n".join(result.stdout_lines)
+    error = "\n".join(result.stderr_lines)
+    print status
+    print error
+
 class QueueInterrogator(object):
   """A queue monitor that returns the status of a given queued job, or ERR if the job cannot
   be found in the queue."""
