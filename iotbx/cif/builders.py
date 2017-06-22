@@ -5,11 +5,13 @@ import iotbx.cif
 from iotbx.cif import model
 from libtbx.utils import Sorry
 from libtbx.containers import OrderedDict, OrderedSet
-
+import warnings
 
 class CifBuilderError(Sorry):
   __module__ = Exception.__module__
 
+def CifBuilderWarning(message):
+  warnings.showwarning(message, UserWarning, 'CifBuilderWarning', '')
 
 class cif_model_builder(object):
 
@@ -394,7 +396,8 @@ class miller_array_builder(crystal_symmetry_builder):
                 elif key in self._arrays and self._arrays[key].sigmas() is None:
                   sigmas = array
                   array = self._arrays[key]
-                  check_array_sizes(array, sigmas, key, sigmas_label)
+                  if(not check_array_sizes(array, sigmas, key, sigmas_label)):
+                    continue
                   sigmas = as_flex_double(sigmas, sigmas_label)
                   array.set_sigmas(sigmas.data())
                   info = array.info()
@@ -409,7 +412,8 @@ class miller_array_builder(crystal_symmetry_builder):
                 phwt_array = array
                 if fwt_label in self._arrays:
                   array = self._arrays[fwt_label]
-                  check_array_sizes(array, phwt_array, fwt_label, phwt_label)
+                  if(not check_array_sizes(array, phwt_array, fwt_label, phwt_label)):
+                    continue
                   phases = as_flex_double(phwt_array, phwt_label)
                   info = array.info()
                   array = array.phase_transfer(phases, deg=True)
@@ -470,7 +474,8 @@ class miller_array_builder(crystal_symmetry_builder):
                   if key in self._arrays:
                     array = self._arrays[key]
                     array = as_flex_double(array, key)
-                    check_array_sizes(array, phases, key, phase_key)
+                    if(not check_array_sizes(array, phases, key, phase_key)):
+                      continue
                     info = self._arrays[key].info()
                     self._arrays[key] = array.phase_transfer(phases, deg=True)
                     self._arrays[key].set_info(
@@ -479,7 +484,8 @@ class miller_array_builder(crystal_symmetry_builder):
                     array = self.flex_std_string_as_miller_array(
                       refln_loop[label], wavelength_id=w_id, crystal_id=crys_id,
                       scale_group_code=scale_group)
-                    check_array_sizes(array, phases, key, phase_key)
+                    if(not check_array_sizes(array, phases, key, phase_key)):
+                      continue
                     array.phase_transfer(phases, deg=True)
                     labels = labels+[label, phase_key]
               if base_array_info.labels is not None:
@@ -623,9 +629,9 @@ def as_flex_double(array, key):
 
 def check_array_sizes(array1, array2, key1, key2):
   if array1.size() != array2.size():
-    raise CifBuilderError(
-      "Miller arrays '%s' and '%s' are of different sizes" %(
-        key1, key2))
+    CifBuilderWarning(message=msg)
+    return False
+  return True
 
 def none_if_all_question_marks_or_period(cif_block_item):
   if (cif_block_item is None): return None
