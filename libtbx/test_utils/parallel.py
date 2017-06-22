@@ -146,6 +146,7 @@ class run_command_list (object) :
     self.verbosity = verbosity
     self.quiet = (verbosity == 0)
     self.results = []
+    self.pool = None
 
     # Filter cmd list for duplicates.
     self.cmd_list = []
@@ -170,7 +171,7 @@ class run_command_list (object) :
     t_start = time.time()
     if nprocs > 1:
       # Run the tests with multiprocessing pool.
-      pool = Pool(processes=nprocs)
+      self.pool = pool = Pool(processes=nprocs)
       for command in self.cmd_list:
         pool.apply_async(
           run_command,
@@ -187,7 +188,8 @@ class run_command_list (object) :
       # Run tests serially.
       for command in self.cmd_list:
         rc = run_command(command, verbosity=verbosity, out=out)
-        self.save_result(rc)
+        if self.save_result(rc) == False:
+          break
 
     # Print ending summary.
     t_end = time.time()
@@ -306,8 +308,9 @@ class run_command_list (object) :
 
   def save_result (self, result) :
     if (result is None ):
-      print >> self.out, "ERROR: job returned None"
-      return
+      print >> self.out, "ERROR: job returned None, assuming CTRL+C pressed"
+      if self.pool: self.pool.terminate()
+      return False
     alert = self.check_alert(result)
     # Clear stderr when python unittest framework is used and test passes
     if alert == 0 and result.stderr_lines:
