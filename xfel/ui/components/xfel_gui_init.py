@@ -1224,6 +1224,7 @@ class JobsTab(BaseTab):
 
     self.main = main
     self.all_trials = []
+    self.all_jobs = None
     self.filter = 'All jobs'
     self.data = {}
 
@@ -1245,18 +1246,18 @@ class JobsTab(BaseTab):
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
-    self.btn_kill_all = wx.Button(self, label='Kill All', size=(120, -1))
+    self.btn_stop_job = wx.Button(self, label='Stop job', size=(120, -1))
     self.chk_active = wx.CheckBox(self, label='Only display jobs from active trials/blocks')
     self.chk_active.SetValue(True)
     self.option_sizer = wx.FlexGridSizer(1, 2, 0, 20)
-    self.option_sizer.AddMany([(self.trial_choice), (self.btn_kill_all), (self.chk_active)])
+    self.option_sizer.AddMany([(self.trial_choice), (self.btn_stop_job), (self.chk_active)])
 
     self.main_sizer.Add(self.job_list, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
-    self.Bind(wx.EVT_BUTTON, self.onKillAll, self.btn_kill_all)
+    self.Bind(wx.EVT_BUTTON, self.onStopJob, self.btn_stop_job)
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_choice.ctr)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActive)
     self.Bind(EVT_JOB_MONITOR, self.onMonitorJobs)
@@ -1269,9 +1270,9 @@ class JobsTab(BaseTab):
     self.filter = self.trial_choice.ctr.GetString(
                   self.trial_choice.ctr.GetSelection())
 
-  def onKillAll(self, e):
-    # TODO: make method to kill a job, apply to all jobs here
-    pass
+  def onStopJob(self, e):
+    if self.all_jobs is None:
+      return
 
   def onMonitorJobs(self, e):
     # Find new trials
@@ -1283,14 +1284,13 @@ class JobsTab(BaseTab):
         self.all_trials = all_db_trials
 
     if e.jobs is not None:
+      self.all_jobs = e.jobs
       if str(self.filter).lower() == 'all jobs':
         selected_trials = e.jobs.keys()
       else:
         selected_trials = [int(self.filter.split()[-1])]
 
-      self.job_list.DeleteAllItems() # display
       self.data = {} # reset contents of the table, with unique row ids
-      local_job_id = 0 # reset unique row ids for sorting purposes only
       for selected_trial in selected_trials:
         jobs = e.jobs[selected_trial]
         for job in jobs:
@@ -1304,19 +1304,30 @@ class JobsTab(BaseTab):
           rg = "rg%03d" % job.rungroup.id
           sid = str(job.submission_id)
           s = short_status
-          self.data[local_job_id] = [t, r, rg, sid, s]
-          # Deposit the row in the table
-          self.job_list.InsertStringItem(local_job_id, t)
-          self.job_list.SetStringItem(local_job_id, 1, r)
-          self.job_list.SetStringItem(local_job_id, 2, rg)
-          self.job_list.SetStringItem(local_job_id, 3, sid)
-          self.job_list.SetStringItem(local_job_id, 4, s)
-          self.job_list.SetItemData(local_job_id, local_job_id)
-          local_job_id += 1
+          self.data[job.id] = [t, r, rg, sid, s]
+          found_it = False
+          # Look to see if item already in list
+          for i in xrange(self.job_list.GetItemCount()):
+            if self.job_list.GetItemData(i) == job.id:
+              self.job_list.SetStringItem(i, 3, sid)
+              self.job_list.SetStringItem(i, 4, s)
+              found_it = True
+              break
+          if found_it: continue
+
+          # Item not present, so deposit the row in the table
+          local_job_id = self.job_list.Append([t, r, rg, sid, s])
+          self.job_list.SetItemData(local_job_id, job.id)
+
+    # Remove items not sent in the event or otherwise filtered out
+    # Need to do it in reverse order to avoid list re-ordering when deleting items
+    for i in reversed(xrange(self.job_list.GetItemCount())):
+      if self.job_list.GetItemData(i) not in self.data:
+        self.job_list.DeleteItem(i)
+
     # Initialize sortable column mixin
     self.job_list.initialize_sortable_columns(n_col=5, itemDataMap=self.data)
     self.job_list.RestoreSortOrder(self.job_list_col, self.job_list_sort_flag)
-    # print "Regenerated data and reapplied sorting preferences" ## DEBUG
 
     self.job_sizer.Layout()
 
