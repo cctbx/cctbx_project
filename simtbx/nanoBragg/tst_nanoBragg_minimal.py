@@ -12,11 +12,11 @@ from cctbx import miller
 
 pdb_lines = """HEADER TEST
 CRYST1   50.000   60.000   70.000  90.00  90.00  90.00 P 1
-ATOM      1  O   HOH A   1      56.829   2.920  55.702  1.00 20.00           O  
-ATOM      2  O   HOH A   2      49.515  35.149  37.665  1.00 20.00           O  
-ATOM      3  O   HOH A   3      52.667  17.794  69.925  1.00 20.00           O  
-ATOM      4  O   HOH A   4      40.986  20.409  18.309  1.00 20.00           O  
-ATOM      5  O   HOH A   5      46.896  37.790  41.629  1.00 20.00           O  
+ATOM      1  O   HOH A   1      56.829   2.920  55.702  1.00 20.00           O
+ATOM      2  O   HOH A   2      49.515  35.149  37.665  1.00 20.00           O
+ATOM      3  O   HOH A   3      52.667  17.794  69.925  1.00 20.00           O
+ATOM      4  O   HOH A   4      40.986  20.409  18.309  1.00 20.00           O
+ATOM      5  O   HOH A   5      46.896  37.790  41.629  1.00 20.00           O
 ATOM      6 SED  MSE A   6       1.000   2.000   3.000  1.00 20.00          SE
 END
 """
@@ -63,7 +63,7 @@ def run_sim2smv(fileout):
   SIM.xtal_shape=shapetype.Tophat
   # only really useful for long runs
   SIM.progress_meter=False
-  # prints out value of one pixel only.  will not render full image! 
+  # prints out value of one pixel only.  will not render full image!
   #SIM.printout_pixel_fastslow=(500,500)
   #SIM.printout=True
   SIM.show_params()
@@ -72,6 +72,9 @@ def run_sim2smv(fileout):
   # assumes round beam
   SIM.beamsize_mm=0.1
   SIM.exposure_s=0.1
+  temp=SIM.Ncells_abc
+  print "Ncells_abc=",SIM.Ncells_abc
+  SIM.Ncells_abc=temp
   print "Ncells_abc=",SIM.Ncells_abc
   print "xtalsize_mm=",SIM.xtalsize_mm
   print "unit_cell_Adeg=",SIM.unit_cell_Adeg

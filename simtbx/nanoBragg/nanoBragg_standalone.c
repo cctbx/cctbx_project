@@ -2821,9 +2821,9 @@ int main(int argc, char** argv)
                         printf("%lu%% done\n",progress_pixel*100/progress_pixels);
                     }
                 }
-                ++j;
-                ++progress_pixel;
             }
+            ++j;
+            ++progress_pixel;
         }
     }
     printf("\n");

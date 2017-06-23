@@ -963,6 +963,7 @@ nanoBragg::init_steps()
         detector_thick = 0.0;
         detector_thickstep = 0.0;
     }
+    if(verbose) printf("GOTHERE: dispersion= %g dispstep= %g  dispsteps= %d\n",dispersion,dispstep,dispsteps);
 
 }
 // end of init_steps()
@@ -1607,7 +1608,7 @@ nanoBragg::init_background()
         amorphous_density = amorphous_molecules/amorphous_volume/Avogadro*amorphous_molecular_weight;
     }
     amorphous_molecules = amorphous_volume*amorphous_density*Avogadro/amorphous_molecular_weight;
-    if(verbose>1) printf("amorphous_molecules= %g in beam: %g m^3 * %g g/m^3 * %g /mol / %g g/mol\n",        
+    if(verbose>1) printf("amorphous_molecules= %g in beam: %g m^3 * %g g/m^3 * %g /mol / %g g/mol\n",
              amorphous_molecules,amorphous_volume,amorphous_density,Avogadro,amorphous_molecular_weight);
 
     /* now read in amorphous material structure factors */
@@ -1658,7 +1659,7 @@ nanoBragg::init_background()
         Fbg_of  = (double *) calloc(stols+10,sizeof(double));
 
         /* allocate memory for counting how many of these get used */
-        /* starting point for pixel value data for each stol-bin */ 
+        /* starting point for pixel value data for each stol-bin */
         if(verbose>6) printf("allocating %d %ld-byte double *s for bin_start\n",stols,sizeof(double *));
         bin_start = (double **) calloc(stols,sizeof(double *));
         /* storage for counting number of pixels in each bin */
@@ -1684,7 +1685,7 @@ nanoBragg::init_background()
     if(stols == 0 && amorphous_volume != 0.0)
     {
         /* do something clever here */
-        
+
     }
 
     if(stols > 0 && isnan(stol_of[stols]))
@@ -1806,6 +1807,7 @@ nanoBragg::init_sources()
             lambda = lambda0 * ( 1.0 + dispstep * disp_tic - dispersion/2.0 ) ;
             if(verbose) printf("lambda%d = %.15g\n",disp_tic,lambda);
         }
+        if(verbose) printf("GOTHERE2: dispersion= %g dispstep= %g  dispsteps= %d\n",dispersion,dispstep,dispsteps);
 
         /* free any previous allocation */
         if(source_X != NULL) free(source_X);
@@ -2033,6 +2035,9 @@ nanoBragg::add_nanoBragg_spots()
 //    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
 
     if(verbose) printf("TESTING sincg(1,1)= %f\n",sincg(1,1));
+
+    /* make sure we are normalizing with the right number of sub-steps */
+    steps = phisteps*mosaic_domains*oversample*oversample;
 
     sum = sumsqr = 0.0;
     i = sumn = 0;
@@ -2380,7 +2385,7 @@ nanoBragg::add_nanoBragg_spots()
                                 }
 
                                 /* convert amplitudes into intensity (photons per steradian) */
-                                    I += F_cell*F_cell*F_latt*F_latt*capture_fraction;
+                                    I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction;
                             }
                             /* end of mosaic loop */
                         }
@@ -2439,9 +2444,9 @@ nanoBragg::add_nanoBragg_spots()
                         printf("%lu%% done\n",progress_pixel*100/progress_pixels);
                     }
                 }
-                ++i;
                 ++progress_pixel;
             }
+            ++i;
         }
     }
     if(verbose) printf("done with pixel loop\n");
@@ -2455,20 +2460,33 @@ nanoBragg::add_nanoBragg_spots()
 
 
 
-
+/* member function to generate background from Fbg vs stol list
+   arguments allow override of features that usually just slow things down,
+   like oversampling pixels and multiple sources.  Providing these arguments
+   does NOT change the values of the member variables */
 void
-nanoBragg::add_background()
+nanoBragg::add_background( int oversample, int source )
 {
     int i;
+    int source_start = 0;
+    int sources = this->sources;
     max_I = 0.0;
     floatimage = raw.begin();
 //    double* floatimage(raw.begin());
 //    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
 
     /* might be a good idea to re-do automated oversampling decision here? */
+    if(oversample<=0) oversample = this->oversample;
+    if(source>=0) {
+        /* user-specified source in the argument */
+        source_start = source;
+        sources = source_start +1;
+    }
 
+    /* make sure we are normalizing with the right number of sub-steps */
+    steps = oversample*oversample;
 
-    /* sweep over detector */   
+    /* sweep over detector */
     sum = sumsqr = 0.0;
     sumn = 0;
     progress_pixel = 0;
@@ -2481,7 +2499,7 @@ nanoBragg::add_background()
         {
             /* allow for just one part of detector to be rendered */
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax) {
-                ++invalid_pixel[i];  
+                ++invalid_pixel[i];
                 ++i; continue;
             }
 
@@ -2542,7 +2560,7 @@ nanoBragg::add_background()
                         }
 
                         /* loop over sources now */
-                        for(source=0;source<sources;++source){
+                        for(source=source_start;source<sources;++source){
 
                             /* retrieve stuff from cache */
                             incident[1] = -source_X[source];
@@ -2604,10 +2622,10 @@ nanoBragg::add_background()
             if(verbose>7 && i==1)printf(
               "DEBUG: Ibg= %g r_e_sqr= %g fluence= %g amorphous_molecules= %g steps= %d\n",
                         Ibg,r_e_sqr,fluence,amorphous_molecules,steps);
-            
+
             /* override: just plot interpolated structure factor at every pixel, useful for making absorption masks */
             if(Fmap_pixel) floatimage[i]= Fbg;
-            
+
             /* keep track of basic statistics */
             if(floatimage[i] > max_I || i==0) {
                 max_I = floatimage[i];
@@ -2617,7 +2635,7 @@ nanoBragg::add_background()
             sum += floatimage[i];
             sumsqr += floatimage[i]*floatimage[i];
             ++sumn;
-            
+
             /* debugging infrastructure */
             if( printout )
             {
@@ -2639,7 +2657,7 @@ nanoBragg::add_background()
                 {
                     if(progress_pixel % ( progress_pixels/20 ) == 0 ||
                        ((10*progress_pixel<progress_pixels ||
-                         10*progress_pixel>9*progress_pixels) && 
+                         10*progress_pixel>9*progress_pixels) &&
                         (progress_pixel % (progress_pixels/100) == 0)))
                     {
                         printf("%lu%% done\n",progress_pixel*100/progress_pixels);
@@ -2655,7 +2673,7 @@ nanoBragg::add_background()
         /* end fpixel loop */
     }
     /* end spixel loop */
- 
+
     if(verbose) printf("\nsolid angle subtended by detector = %g steradian ( %g%% sphere)\n",omega_sum/steps,100*omega_sum/steps/4/M_PI);
     if(verbose) printf("max_I= %g @ ( %g, %g) sum= %g avg= %g\n",max_I,max_I_x,max_I_y,sum,sum/sumn);
 
@@ -2677,7 +2695,7 @@ nanoBragg::extract_background()
 //    double* floatimage(raw.begin());
 //    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
 
-    /* sweep over detector */   
+    /* sweep over detector */
     sum = sumsqr = 0.0;
     i = 0;
     progress_pixel = 0;
@@ -2700,8 +2718,8 @@ nanoBragg::extract_background()
                     invalid_pixel[i]=true;
                 }
             }
-            
-            /* still need polar, omega and stol, but cannot deconvolute sub-pixels and source size, 
+
+            /* still need polar, omega and stol, but cannot deconvolute sub-pixels and source size,
                so assume oversample=1, neutronium detector, and take the first source */
             thick_tic = 0;
             source = 0;
@@ -2799,7 +2817,7 @@ nanoBragg::extract_background()
     /* end spixel loop */
 
     /* now we need to organize Fpixel data into bins */
-    
+
     /* set up pointers with enough space after each of them (2*n for median/mad filter) */
     bin_start[0]= (double *) calloc(2*pixels+10*stols,sizeof(float));
     ++bin_start[0];
@@ -2882,8 +2900,8 @@ nanoBragg::apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius
     this->psf_fwhm = fwhm_pixels * this->pixel_size;
     this->psf_radius = user_psf_radius;
 
-    if(verbose>7) printf("apply_psf(): user_psf_radius = %d\n",user_psf_radius); 
-    if(verbose>7) printf("apply_psf(): updated psf_fwhm = %g  pixel_size= %g\n",psf_fwhm,pixel_size); 
+    if(verbose>7) printf("apply_psf(): user_psf_radius = %d\n",user_psf_radius);
+    if(verbose>7) printf("apply_psf(): updated psf_fwhm = %g  pixel_size= %g\n",psf_fwhm,pixel_size);
 
     /* convert fwhm to "g" distance : fwhm = sqrt((2**(2./3)-1))/2*g */
     g = fwhm_pixels * 0.652383013252053;
@@ -3140,30 +3158,30 @@ nanoBragg::add_noise()
                 }
             }
 
-        	/* take input image to be ideal photons/pixel */
-        	expected_photons = floatimage[i];
+                /* take input image to be ideal photons/pixel */
+                expected_photons = floatimage[i];
 
-        	/* simulate 1/f noise in source */
-        	if(flicker_noise > 0.0){
-        	    expected_photons *= ( 1.0 + flicker_noise * gaussdev( &seed ) );
+                /* simulate 1/f noise in source */
+                if(flicker_noise > 0.0){
+                    expected_photons *= ( 1.0 + flicker_noise * gaussdev( &seed ) );
             }
-        	/* calibration is same from shot to shot, so use different seed */
-        	if(calibration_noise > 0.0){
-        	    expected_photons *= ( 1.0 + calibration_noise * gaussdev( &calib_seed ) );
+                /* calibration is same from shot to shot, so use different seed */
+                if(calibration_noise > 0.0){
+                    expected_photons *= ( 1.0 + calibration_noise * gaussdev( &calib_seed ) );
             }
-        	/* simulate photon-counting error (assume calibration error is loss of photons, not electrons) */
-        	observed_photons = poidev( expected_photons, &seed );
+                /* simulate photon-counting error (assume calibration error is loss of photons, not electrons) */
+                observed_photons = poidev( expected_photons, &seed );
 
             /* now we overwrite the flex array, it is now observed, rather than expected photons */
             floatimage[i] = observed_photons;
 
-        	/* accumulate number of photons, and keep track of max */
+                /* accumulate number of photons, and keep track of max */
             if(floatimage[i] > max_I) {
                 max_I = floatimage[i];
                 max_I_x = fpixel;
                 max_I_y = spixel;
             }
-        	sum += observed_photons;
+                sum += observed_photons;
             ++sumn;
 
             ++i;
@@ -3176,17 +3194,17 @@ nanoBragg::add_noise()
     /* now that we have photon count at each point, implement any PSF */
     if(psf_type != UNKNOWN && psf_fwhm > 0.0)
     {
-    	/* report on sum before the PSF is applied */
+        /* report on sum before the PSF is applied */
         if(verbose) printf("%.0f photons on noise image before PSF\n",sum);
-    	/* start with a clean slate */
-    	if(verbose) printf("  applying PSF width = %g um\n",psf_fwhm*1e6);
-        
+        /* start with a clean slate */
+        if(verbose) printf("  applying PSF width = %g um\n",psf_fwhm*1e6);
+
         apply_psf(psf_type, psf_fwhm/pixel_size, 0);
 
-    	/* the flex array is now the blurred version of itself, ready for read-out noise */
+        /* the flex array is now the blurred version of itself, ready for read-out noise */
     }
-            
-            
+
+
     if(verbose) printf("adu = quantum_gain= %g * observed_photons + offset= %g + readout_noise= %g\n",quantum_gain,adc_offset,readout_noise);
     sum = max_I = 0.0;
     i = sumn = 0;
@@ -3194,12 +3212,27 @@ nanoBragg::add_noise()
     {
         for(fpixel=0;fpixel<fpixels;++fpixel)
         {
-        	/* convert photon signal to pixel units */
-        	adu = floatimage[i]*quantum_gain + adc_offset;
+            /* allow for just one part of detector to be rendered */
+            if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
+            {
+                ++i; continue;
+            }
+            /* allow for the use of a mask */
+            if(maskimage != NULL)
+            {
+                /* skip any flagged pixels in the mask */
+                if(maskimage[i] == 0)
+                {
+                    ++i; continue;
+                }
+            }
 
-        	/* readout noise is in pixel units (adu) */
-        	if(readout_noise > 0.0){
-        	    adu += readout_noise * gaussdev( &seed );
+                /* convert photon signal to pixel units */
+                adu = floatimage[i]*quantum_gain + adc_offset;
+
+                /* readout noise is in pixel units (adu) */
+                if(readout_noise > 0.0){
+                    adu += readout_noise * gaussdev( &seed );
             }
 
             /* once again, overwriting flex array, this time in ADU units */
@@ -4191,7 +4224,7 @@ double fmedian(unsigned int n, double arr[])
                 SWAP(arr[l+1],arr[l]);
             }
             i=l+1;        // initialize pointers for partitioning
-            j=ir;        
+            j=ir;
             a=arr[l];        // partitioning element
             for(;;)        // innermost loop
             {

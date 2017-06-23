@@ -115,6 +115,8 @@ namespace boost_python { namespace {
   static void   set_printout_pixel_fastslow(nanoBragg& nanoBragg, scitbx::vec2<int> const& value) {
       nanoBragg.printout_fpixel = value[0];
       nanoBragg.printout_spixel = value[1];
+      /* implicitly turn on printing, of course */
+      if(value[0]>0) nanoBragg.printout = 1;
   }
 
 
@@ -165,6 +167,10 @@ namespace boost_python { namespace {
       nanoBragg.Na = value[0];
       nanoBragg.Nb = value[1];
       nanoBragg.Nc = value[2];
+      /* clear things that might override it */
+      nanoBragg.xtal_size_x = -1;
+      nanoBragg.xtal_size_y = -1;
+      nanoBragg.xtal_size_z = -1;
 //      init_interpolator();
       nanoBragg.update_oversample();
       nanoBragg.update_steps();
@@ -172,14 +178,14 @@ namespace boost_python { namespace {
 
 
   /* specify overall crystal size instead of number of cells */
-  static vec3 get_xtalsize_mm(nanoBragg const& nanoBragg) {
+  static vec3 get_xtal_size_mm(nanoBragg const& nanoBragg) {
       vec3 value;
       value[0]=nanoBragg.xtal_size_x*1000.;
       value[1]=nanoBragg.xtal_size_y*1000.;
       value[2]=nanoBragg.xtal_size_z*1000.;
       return value;
   }
-  static void   set_xtalsize_mm(nanoBragg& nanoBragg, vec3 const& value) {
+  static void   set_xtal_size_mm(nanoBragg& nanoBragg, vec3 const& value) {
       nanoBragg.xtal_size_x = value[0]/1000.;
       nanoBragg.xtal_size_y = value[1]/1000.;
       nanoBragg.xtal_size_z = value[2]/1000.;
@@ -719,6 +725,8 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
   }
   static void   set_dispersion_pct(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.dispersion = value/100.0;
+      /* always force recompute of step size? */
+      if(nanoBragg.dispsteps>0) nanoBragg.dispstep = -1.0;
       /* need to re-create source table */
       nanoBragg.init_steps();
       nanoBragg.init_sources();
@@ -731,6 +739,8 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
   }
   static void   set_dispsteps(nanoBragg& nanoBragg, int const& value) {
       nanoBragg.dispsteps = value;
+      /* always force recompute of step size? */
+      nanoBragg.dispstep = -1;
 //      nanoBragg.dispersion=-1.0;
       /* need to re-create source table */
       nanoBragg.init_steps();
@@ -1051,9 +1061,9 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
                      make_function(&set_Nabc,dcp()),
                      "number of unit cells along each unit cell axis")
       /* alternatively, specify crystal size in mm instead of number of cells */
-      .add_property("xtalsize_mm",
-                     make_function(&get_xtalsize_mm,rbv()),
-                     make_function(&set_xtalsize_mm,dcp()),
+      .add_property("xtal_size_mm",
+                     make_function(&get_xtal_size_mm,rbv()),
+                     make_function(&set_xtal_size_mm,dcp()),
                      "alternative: specify crystal size (mm) instead of Ncells_abc")
 
 
@@ -1129,7 +1139,7 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
 
 
 
-      /* specify convention? MOSFLM, XDS, Denzo, ADXV, DIALS */
+      /* specify convention? Custom, MOSFLM, XDS, DENZO, ADXV, DIALS */
 
       /* unit vectors specifying coordinate system */
       .add_property("fdet_vector",
@@ -1228,11 +1238,11 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
                      make_setter(&nanoBragg::nopolar,dcp()),
                      "True turns polarization effect off, F^2 scattering in all directions")
 
-     /* override oversampling, default: reciprocal sub-pixel fits xtalsize */
+     /* override oversampling, default: reciprocal sub-pixel fits xtal_size */
       .add_property("oversample",
                      make_function(&get_oversample,rbv()),
                      make_function(&set_oversample,dcp()),
-                     "override pixel oversampling, speed is inversely proportional to square of this quantity, but critical if reciprocal crystal size is smaller than a pixel. default: set oversample so that reciprocal sub-pixel fits xtalsize")
+                     "override pixel oversampling, speed is inversely proportional to square of this quantity, but critical if reciprocal crystal size is smaller than a pixel. default: set oversample so that reciprocal sub-pixel fits xtal_size")
 
      /* select a region-of-interest: xmin xmax ymin ymax */
       .add_property("region_of_interest",
@@ -1474,6 +1484,7 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
 
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,
+        (arg_("oversample")=-1,arg_("source")=-1),
        "run the non-Bragg simulation, adding background from speficied amorphous materials")
 
       /* blur the image with specified point-spread function */
@@ -1504,5 +1515,3 @@ BOOST_PYTHON_MODULE(simtbx_nanoBragg_ext)
 {
   simtbx::nanoBragg::boost_python::init_module();
 }
-
-

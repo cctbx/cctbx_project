@@ -232,7 +232,7 @@ class nanoBragg {
     double amorphous_molecular_weight;
     double amorphous_density;
     double amorphous_molecules;
-    /* scale factor = Fbg^2*r_e_sqr*fluence*Avogadro*volume*density/molecular_weight 
+    /* scale factor = Fbg^2*r_e_sqr*fluence*Avogadro*volume*density/molecular_weight
                              m^2     ph/m^2  /mol      m^3   g/m^3    g/mol   */
     /* water Fbg = 2.57 in forward direction */
 
@@ -481,7 +481,7 @@ class nanoBragg {
     void add_nanoBragg_spots();
 
     /* member function for triggering background simulation */
-    void add_background();
+    void add_background(int oversample, int source);
 
     /* member function for extracting background from raw image */
     void extract_background();
