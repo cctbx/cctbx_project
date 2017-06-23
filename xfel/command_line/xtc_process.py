@@ -247,6 +247,9 @@ xtc_phil_str = '''
     reindexedstrong_filename = %s_reindexedstrong.pickle
       .type = str
       .help = The file name for re-indexed strong reflections
+    tmp_output_dir = .
+      .type = str
+      .help = Directory for CBFlib temporary output files
   }
   mp {
     method = *mpi sge
@@ -387,7 +390,7 @@ class InMemScript(DialsProcessScript):
 
     if params.format.file_format == "cbf":
       #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
-      tmp_dir = os.path.join(params.output.output_dir, '.tmp')
+      tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
       if not os.path.exists(tmp_dir):
         try:
           os.makedirs(tmp_dir)
