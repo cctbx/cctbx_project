@@ -413,6 +413,7 @@ class ImportWindow(BaseDialog):
     self.mask_invert = wx.CheckBox(self,
                                    label='Invert boolean mask')
     self.mask_invert.SetValue(False)
+    self.mask_invert.Disable()
     conv_box_sizer.Add(self.mask_invert, flag=wx.ALL, border=10)
 
 
@@ -488,15 +489,14 @@ class ImportWindow(BaseDialog):
     if dlg.ShowModal() == wx.ID_OK:
       filepath = dlg.GetPaths()[0]
       self.mod_mask.ctr.SetValue(filepath)
+      self.mask_invert.Enable()
 
   def onViewMask(self, e):
     import iota.components.iota_threads as thr
-    # backend = self.parent.int_box.ctr.GetString(
-    #   self.parent.int_box.ctr.GetSelection()).lower()
     filepath = self.mod_mask.ctr.GetValue()
     if os.path.isfile(filepath):
       viewer = thr.ImageViewerThread(self,
-                                     backend='cctbx',
+                                     backend=self.params.advanced.integrate_with,
                                      file_string=filepath)
       viewer.start()
 
@@ -558,8 +558,11 @@ class ImportWindow(BaseDialog):
     self.mod_square.ctr.SetSelection(idx)
     if str(self.params.image_conversion.mask).lower() == 'none':
       self.mod_mask.ctr.SetValue('')
+      self.mask_invert.Disable()
     else:
       self.mod_mask.ctr.SetValue(str(self.params.image_conversion.mask))
+      self.mask_invert.Enable()
+      self.mask_invert.SetValue(self.params.image_conversion.invert_boolean_mask)
     self.mod_beamstop.threshold.SetValue(
       str(self.params.image_conversion.beamstop))
     self.mod_detZ.detZ.SetValue(str(self.params.image_conversion.distance))
