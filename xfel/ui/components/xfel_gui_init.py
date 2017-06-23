@@ -1342,7 +1342,7 @@ class JobsTab(BaseTab):
     if len(jobs_to_restart) == 1:
       message='Are you sure to restart job %d? This will delete all processing results from from this job and re-submit it. Be sure the job has been stopped first.'%jobs_to_restart[0]
     else:
-      message='Are you sure to restart %d jobs? This will delete all processing results from from these jobs and re-submit them. Be sure the jobs have been stopped first.'%jobs_to_restart[0]
+      message='Are you sure to restart %d jobs? This will delete all processing results from these jobs and re-submit them. Be sure the jobs have been stopped first.'%len(jobs_to_restart)
 
     msg = wx.MessageDialog(self,
                            message=message,
