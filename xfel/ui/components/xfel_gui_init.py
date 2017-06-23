@@ -1248,10 +1248,11 @@ class JobsTab(BaseTab):
                                         choices=[])
     self.btn_stop_job = wx.Button(self, label='Stop job', size=(120, -1))
     self.btn_delete_job = wx.Button(self, label='Delete job', size=(120, -1))
+    self.btn_restart_job = wx.Button(self, label='Restart job', size=(120, -1))
     self.chk_active = wx.CheckBox(self, label='Only display jobs from active trials/blocks')
     self.chk_active.SetValue(True)
     self.option_sizer = wx.FlexGridSizer(1, 2, 0, 20)
-    self.option_sizer.AddMany([(self.trial_choice), (self.btn_stop_job), (self.btn_delete_job), (self.chk_active)])
+    self.option_sizer.AddMany([(self.trial_choice), (self.btn_stop_job), (self.btn_delete_job), (self.btn_restart_job), (self.chk_active)])
 
     self.main_sizer.Add(self.job_list, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
@@ -1260,6 +1261,7 @@ class JobsTab(BaseTab):
 
     self.Bind(wx.EVT_BUTTON, self.onStopJob, self.btn_stop_job)
     self.Bind(wx.EVT_BUTTON, self.onDeleteJob, self.btn_delete_job)
+    self.Bind(wx.EVT_BUTTON, self.onRestartJob, self.btn_restart_job)
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_choice.ctr)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActive)
     self.Bind(EVT_JOB_MONITOR, self.onMonitorJobs)
@@ -1328,6 +1330,36 @@ class JobsTab(BaseTab):
       for job in self.all_jobs[trial]:
         if job.id in jobs_to_delete:
           job.delete()
+
+  def onRestartJob(self, e):
+    if self.all_jobs is None:
+      return
+
+    jobs_to_restart = self.GetSelectedJobIds()
+    if len(jobs_to_restart) == 0:
+      return
+
+    if len(jobs_to_restart) == 1:
+      message='Are you sure to restart job %d? This will delete all processing results from from this job and re-submit it. Be sure the job has been stopped first.'%jobs_to_restart[0]
+    else:
+      message='Are you sure to restart %d jobs? This will delete all processing results from from these jobs and re-submit them. Be sure the jobs have been stopped first.'%jobs_to_restart[0]
+
+    msg = wx.MessageDialog(self,
+                           message=message,
+                           caption='Warning',
+                           style=wx.YES_NO | wx.ICON_EXCLAMATION)
+
+    if (msg.ShowModal() == wx.ID_NO):
+      return
+
+    for trial in self.all_jobs:
+      for job in self.all_jobs[trial]:
+        if job.id in jobs_to_restart:
+          job.delete()
+          if job.status != "DELETED":
+            print "Couldn't restart job", job.id, "job is not deleted"
+            continue
+          job.remove_from_db()
 
   def onMonitorJobs(self, e):
     # Find new trials

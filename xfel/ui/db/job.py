@@ -140,6 +140,17 @@ class Job(db_proxy):
 
     self.status = "DELETED"
 
+  def remove_from_db(self):
+    assert self.status == "DELETED"
+
+    print "Removing job %d from the db"%self.id,
+    tag = self.app.params.experiment_tag
+    query = """DELETE job FROM `%s_job` job
+               WHERE job.id = %d""" % (
+               tag, self.id)
+    cursor = self.app.execute_query(query, commit=True)
+    print "(%d)"%cursor.rowcount
+
 # Support classes and functions for job submission
 
 class _job(object):
