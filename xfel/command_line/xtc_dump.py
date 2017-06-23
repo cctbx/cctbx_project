@@ -82,7 +82,7 @@ phil_scope = parse('''
     output_dir = .
       .type = str
       .help = Directory output files will be placed
-    tmp_output_dir = .
+    tmp_output_dir = None
       .type = str
       .help = Directory for CBFlib tmp output files
   }
@@ -127,7 +127,10 @@ class Script(object):
 
     #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
     if params.format.file_format == "cbf":
-      tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
+      if params.output.tmp_output_dir is None:
+        tmp_dir = os.path.join(params.output.output_dir, '.tmp')
+      else:
+        tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
       if not os.path.exists(tmp_dir):
         try:
           os.makedirs(tmp_dir)
