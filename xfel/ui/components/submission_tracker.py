@@ -70,16 +70,17 @@ class SubmissionTracker(object):
     self.interrogator = QueueInterrogator(self.queueing_system)
     self.reader = LogReader(self.queueing_system)
   def track(self, submission_id, log_path):
+    from xfel.ui.db.job import known_job_statuses
     if submission_id is None:
       return "UNKWN"
     status = self.interrogator.query(submission_id)
-    if status in ["PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI"]:
-      return status
-    elif status == "ERR":
+    if status == "ERR":
       log_status = self.reader.read_result(log_path)
       if log_status == "Successfully completed.":
         return "DONE"
       else:
         return "ERR" # error querying the queueing system
+    elif status in known_job_statuses:
+      return status
     else:
       print "Found an unknown status", status
