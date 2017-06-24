@@ -1126,7 +1126,7 @@ _replace_sysconfig_paths(build_time_vars)
     # glib
     self.untar_and_chdir(pkg=pkg, log=pkg_log)
     self.configure_and_build(
-      config_args=[self.prefix],
+      config_args=[self.prefix, "--disable-selinux"],
       log=pkg_log)
 
   def build_expat(self):
