@@ -6871,6 +6871,9 @@ def auto_sharpen_map_or_map_coeffs(
         auto_sharpen=si.auto_sharpen
       if verbose is None:
         verbose=si.verbose
+
+    if auto_sharpen is None:
+      auto_sharpen=True
  
     if map_coeffs and not resolution:
        resolution=map_coeffs.d_min()
@@ -6997,7 +7000,6 @@ def run_auto_sharpen(
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
-
   if si.auto_sharpen and si.box_in_auto_sharpen:
     if pdb_inp:
       print >>out,"\nAuto-sharpening using model-defined box of density"
