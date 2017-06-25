@@ -59,6 +59,12 @@ master_phil = libtbx.phil.parse("""
   value_outside_atoms = None
     .type = str
     .help = Set to 'mean' to make average value same inside and outside mask.
+  soft_mask=False
+    .type=bool
+    .help = Use Gaussian mask
+  soft_mask_radius=3
+    .type=float
+    .help = Gaussian mask smoothing radius
   gui
     .help = "GUI-specific parameter required for output directory"
   {
@@ -208,6 +214,8 @@ Parameters:"""%h
     threshold        = params.density_select_threshold,
     get_half_height_width = params.get_half_height_width,
     mask_atoms       = params.mask_atoms,
+    soft_mask        = params.soft_mask,
+    soft_mask_radius = params.soft_mask_radius,
     mask_atoms_atom_radius = params.mask_atoms_atom_radius,
     value_outside_atoms = params.value_outside_atoms,
     )

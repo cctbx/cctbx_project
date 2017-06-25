@@ -3068,6 +3068,8 @@ class extract_box_around_model_and_map(object):
                density_select=None,
                threshold=None,
                get_half_height_width=None,
+               soft_mask=False,
+               soft_mask_radius=None,
                mask_atoms=False,
                mask_atoms_atom_radius=3.0,
                value_outside_atoms=None):
@@ -3158,8 +3160,18 @@ class extract_box_around_model_and_map(object):
         mask_value_inside_molecule  = 1,
         mask_value_outside_molecule = 0,
         radii                       = radii)
+
+      if (soft_mask):
+        # make the mask a soft mask
+        maptbx.unpad_in_place(map=mask)
+        mask = maptbx.smooth_map(
+          map              = mask,
+          crystal_symmetry = cs,
+          rad_smooth       = soft_mask_radius)
+
       self.map_box = self.map_box*mask
 
+      
       if value_outside_atoms=='mean':  # default is None.
         #  make mean outside==mean inside
         one_d=self.map_box.as_1d()
