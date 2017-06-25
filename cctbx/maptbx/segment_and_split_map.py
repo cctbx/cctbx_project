@@ -2655,7 +2655,7 @@ def apply_soft_mask(map_data=None,
   # apply a soft mask based on mask_data to map_data.
   # set value outside mask==mean value inside mask or mean value outside mask
 
-  write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
+  #write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
 
   s = mask_data > threshold  # s marks inside mask 
 
@@ -2671,7 +2671,7 @@ def apply_soft_mask(map_data=None,
   # Smooth the mask in place. First make it a binary mask
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
-  write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
+  #write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
   maptbx.unpad_in_place(map=mask_data)
   mask_data = maptbx.smooth_map(
     map              = mask_data,
@@ -2682,7 +2682,7 @@ def apply_soft_mask(map_data=None,
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=mask_data, out=out)
 
-  write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
+  #write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
   
   # Now replace value outside mask with mean_value, value inside with current,
   #   smoothly going from one to the other based on mask_data
@@ -2700,7 +2700,7 @@ def apply_soft_mask(map_data=None,
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=map_data, out=out)
   
-  write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
+  #write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
 
   return masked_map
 
@@ -2926,6 +2926,13 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         origin_shift)
     # NOTE: size and cell params are now different!
 
+    new_half_map_data_list=[]
+    for hm in half_map_data_list:
+      hm=hm.shift_origin() # shift if necessary
+      new_half_map_data_list.append(
+      box.cut_and_copy_map(map_data=hm).as_double())
+    half_map_data_list=new_half_map_data_list
+
     if params.map_modification.soft_mask:
       if not params.crystal_info.resolution:
         raise Sorry("Need resolution for soft_mask")
@@ -2955,14 +2962,19 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
           rad_smooth=rad_smooth,
           crystal_symmetry=crystal_symmetry,
           out=out)
+
+        new_half_map_data_list=[]
+        for half_map in half_map_data_list:
+          half_map=apply_soft_mask(map_data=half_map,
+            mask_data=mask_data.as_double(),
+            rad_smooth=rad_smooth,
+            crystal_symmetry=crystal_symmetry,
+            out=out)
+          new_half_map_data_list.append(half_map)
+        half_map_data_list=new_half_map_data_list
       else:
         print >>out,"Unable to get mask...skipping"
 
-    new_half_map_data_list=[]
-    for hm in half_map_data_list:
-      hm=hm.shift_origin() # shift if necessary
-      new_half_map_data_list.append(box.cut_and_copy_map(map_data=hm).as_double())
-    half_map_data_list=new_half_map_data_list
 
   else:  # shift if necessary...
     shift_needed = not \
@@ -5513,13 +5525,13 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
     # this map is zero's around the edge and 1 in the middle
     # multiply zero_boundary_map--smoothed & new_map_data and return
     print >>out,"Applying soft mask to boundary of cut out map"
-    write_ccp4_map(new_crystal_symmetry,'before.ccp4',new_map_data)
+    #write_ccp4_map(new_crystal_symmetry,'before.ccp4',new_map_data)
     new_map_data=apply_soft_mask(map_data=new_map_data,
           mask_data=zero_boundary_map,
           rad_smooth=resolution,
           crystal_symmetry=new_crystal_symmetry,
           out=out)
-    write_ccp4_map(new_crystal_symmetry,'after.ccp4',new_map_data)
+    #write_ccp4_map(new_crystal_symmetry,'after.ccp4',new_map_data)
 
   return new_map_data, new_crystal_symmetry
 
@@ -6245,6 +6257,7 @@ def select_box_map_data(si=None,
         args.append('value_outside_atoms=%s' %(si.value_outside_atoms))
       if si.soft_mask:
         args.append('soft_mask=%s' %(si.soft_mask))
+        args.append('soft_mask_radius=%s' %(si.resolution))
     hierarchy=pdb_inp.construct_hierarchy()
     print >>out,"Getting map as box"
     box=run_map_box(args,
