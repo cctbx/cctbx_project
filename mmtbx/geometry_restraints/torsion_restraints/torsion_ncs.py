@@ -188,7 +188,7 @@ class torsion_ncs(object):
                   # and in another - MSE. They will be excluded without
                   # raising Sorry. They could matched, but it is difficult
                   # to figure out in this code how to make it happen.
-                  not (resname1 in ["MET", "MSE"] and resname1 in ["MET", "MSE"])):
+                  not (resname1 in ["MET", "MSE"] and resname2 in ["MET", "MSE"])):
                 msg = "Error in matching procedure: matching "
                 msg += "'%s %s' and '%s %s'.\n" % (
                     resname1, rg1.id_str(), resname2, rg2.id_str())

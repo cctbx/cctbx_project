@@ -895,19 +895,19 @@ def mmtbx_res_alignment(seq_a, seq_b,
     merged_one_given_three = one_letter_given_three_letter.copy()
     merged_one_given_three.update(one_letter_given_three_letter_modified_aa)
     merged_one_given_three.update({
-        "  A": "A",
-        "  C": "C",
-        "  G": "G",
-        "  U": "U",
-        " DA": "A",
-        " DC": "C",
-        " DG": "G",
-        " DT": "T"})
+        "A": "A",
+        "C": "C",
+        "G": "G",
+        "U": "U",
+        "DA": "A",
+        "DC": "C",
+        "DG": "G",
+        "DT": "T"})
     for l in seq_a:
-      one_letter = merged_one_given_three.get(l, 'X')
+      one_letter = merged_one_given_three.get(l.strip(), 'X')
       norm_seq_a += one_letter
     for l in seq_b:
-      one_letter = merged_one_given_three.get(l, 'X')
+      one_letter = merged_one_given_three.get(l.strip(), 'X')
       norm_seq_b += one_letter
   from mmtbx.alignment import align
   obj = align(
