@@ -45,13 +45,21 @@ def discover(module, pytestargs=None):
     atexit.register(pytest_warning)
     return []
 
+  class L(list):
+    """Subclass list so that it can accept additional attributes."""
+
   print "Discovering pytest tests for %s:" % module
   test_list = []
   dist_dir = libtbx.env.dist_path(module)
   class TestDiscoveryPlugin:
     def pytest_itemcollected(self, item):
-      test_list.append([ "libtbx.python", "-m", "pytest", '--noconftest', '--basetemp=pytest',
+      testarray = L([ "libtbx.python", "-m", "pytest", '--noconftest', '--basetemp=pytest',
         '"%s"' % os.path.join(dist_dir, item.nodeid) ])
+      testclass = module + '.' + item.location[0].replace(os.path.sep, '.')
+      if testclass.endswith('.py'):
+        testclass = testclass[:-3]
+      testarray.test_class = testclass
+      testarray.test_name = item.name
+      test_list.append(testarray)
   pytest.main(['-qq', '--collect-only', '--noconftest', dist_dir] + pytestargs, plugins=[TestDiscoveryPlugin()])
   return test_list
-
