@@ -23,6 +23,7 @@ class Status(IntEnum):
   OK = 0
   WARNING = 1
   FAIL = 2
+  SKIPPED = 3
 
 QUIET = 0
 DEFAULT_VERBOSITY = 1
@@ -173,7 +174,7 @@ def write_JUnit_XML(results, output_filename="output.xml"):
                   stderr='\n'.join(plain_stderr))
     if result.return_code == 0:
       # Identify skipped tests
-      if re.search('skip', output, re.IGNORECASE):
+      if result.alert_status == Status.SKIPPED:
         # find first line including word 'skip' and use it as message
         skipline = re.search('^((.*)skip(.*))$', output, re.IGNORECASE | re.MULTILINE).group(1)
         tc.add_skipped_info(skipline)
@@ -268,9 +269,11 @@ class run_command_list (object) :
     longjobs = [result for result in self.results if result.wall_time > max_time]
     warnings = [result for result in self.results if result.alert_status == Status.WARNING]
     failures = [result for result in self.results if result.alert_status == Status.FAIL]
+    skipped  = [result for result in self.results if result.alert_status == Status.SKIPPED]
     self.finished = len(self.results)
     self.failure = len(failures)
     self.warning = len(warnings)
+    self.skipped = len(skipped)
 
     # Try writing the XML result file
     write_JUnit_XML(self.results, "output.xml")
@@ -310,6 +313,9 @@ class run_command_list (object) :
     print >> self.out, "  Failures                     :",self.failure
     print >> self.out, "  Warnings (possible failures) :",self.warning
     print >> self.out, "  Stderr output (discouraged)  :",extra_stderr
+    if self.skipped:
+      print >> self.out, "  Skipped                      :",self.skipped
+
     if (self.finished != len(self.cmd_list)) :
       print >> self.out, "*" * 80
       print >> self.out, "  WARNING: NOT ALL TESTS FINISHED!"
@@ -332,6 +338,13 @@ class run_command_list (object) :
         print >> self.out, result.return_code
         print >> self.out, "RETURN CODE -END- "*5
       alert = Status.FAIL
+    # Only check for skipping if we weren't a warning or failure
+    # - replacing warnings might eventually be appropriate depending on the
+    # cause, but safer to leave as-is for now until we can test all environments
+    if alert == Status.OK:
+      fullText = "\n".join(itertools.chain(*[result.stdout_lines, result.stderr_lines]))
+      if re.search('skip', fullText, re.IGNORECASE):
+        alert = Status.SKIPPED
     return alert
 
   def save_result (self, result) :
@@ -342,7 +355,7 @@ class run_command_list (object) :
     result.alert_status = self.determine_result_status(result)
     # If we got an 'OK' status but have stderr output, we can ignore this if
     # "OK" was the last line (e.g. python's unittest does this)
-    if result.alert_status == Status.OK and result.stderr_lines:
+    if result.alert_status in {Status.OK, Status.SKIPPED} and result.stderr_lines:
       test_ok = (result.stderr_lines[-1].strip().startswith("OK"))
       if test_ok:
         result.stderr_lines = []
@@ -361,7 +374,7 @@ class run_command_list (object) :
       kw['log_stderr'] = True
       kw['log_stdout'] = self.out
     # For any "not good" result, print out some more details
-    elif not result.alert_status == Status.OK:
+    elif not result.alert_status in {Status.OK, Status.SKIPPED}:
       kw['log_return'] = self.out
       kw['log_stderr'] = True
     self.display_result(
@@ -371,7 +384,7 @@ class run_command_list (object) :
     )
 
   def display_result (self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False) :
-    status = {Status.OK: 'OK', Status.WARNING: 'WARNING', Status.FAIL: 'FAIL'}
+    status = {Status.OK: 'OK', Status.WARNING: 'WARNING', Status.FAIL: 'FAIL', Status.SKIPPED: "SKIP"}
     if out:
       print >> out, "%s [%s]"%(result.command, status[alert])
       out.flush()
