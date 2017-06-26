@@ -165,6 +165,24 @@ namespace dxtbx { namespace boost_python {
     return result;
   }
 
+  scitbx::af::shared<double>
+  read_float32(boost_adaptbx::python::streambuf & input,
+             size_t count)
+  {
+    scitbx::af::shared<double> result;
+    boost_adaptbx::python::streambuf::istream is(input);
+    std::vector<float> data;
+    data.resize(count);
+
+    is.read((char *) &data[0], count * sizeof(float));
+
+    for (size_t j = 0; j < count; j++) {
+      result.push_back((double) data[j]);
+    }
+
+    return result;
+  }
+
   void init_module()
   {
     using namespace boost::python;
@@ -175,6 +193,7 @@ namespace dxtbx { namespace boost_python {
     def("read_uint32_bs", read_uint32_bs, (arg("file"), arg("count")));
     def("read_int16", read_int16, (arg("file"), arg("count")));
     def("read_int32", read_int32, (arg("file"), arg("count")));
+    def("read_float32", read_float32, (arg("file"), arg("count")));
     def("is_big_endian", is_big_endian);
   }
 
