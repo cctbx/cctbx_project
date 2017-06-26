@@ -175,8 +175,10 @@ def make_pick_and_run_tests(working_dir, interrupted,
 
 def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
   for tst in tst_list:
+    test_class = getattr(tst, 'test_class', None)
+    test_name = getattr(tst, 'test_name', None)
     cmd_args = ""
-    if (type(tst) == type([])):
+    if isinstance(tst, list):
       if (co is not None) and (co.verbose):
         cmd_args = " " + " ".join(["--Verbose"] + tst[1:])
       elif (co is not None) and (co.quick):
@@ -204,6 +206,15 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
           "LIBTBX_VALGRIND", "valgrind --tool=memcheck") + " "
     cmd += '"' + tst_path + '"'
     cmd += cmd_args
+
+    if test_class and test_name:
+      # If the passed object contains test class and name information
+      # then attach that information to the string object.
+      class string_with_attributes(type(cmd)):
+        """Subclass string so that it can accept additional attributes."""
+      cmd = string_with_attributes(cmd)
+      cmd.test_class = tst.test_class
+      cmd.test_name = tst.test_name
     yield cmd
 
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):

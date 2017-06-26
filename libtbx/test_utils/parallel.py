@@ -94,6 +94,9 @@ def evaluate_output (cmd_result) :
   return bad_lines
 
 def reconstruct_test_name (command) :
+  if hasattr(command, 'test_class') and hasattr(command, 'test_name'):
+    return command.test_class, command.test_name
+
   import re
   if "-m pytest" in command:
     m = re.search('-m pytest ([^:]*)::(.*)$', command)
