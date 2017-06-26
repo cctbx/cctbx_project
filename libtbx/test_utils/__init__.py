@@ -4,10 +4,11 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
 from libtbx import easy_run
 from libtbx import introspection
-import libtbx.load_env
 import difflib
+import libtbx.load_env
 from stdlib import math
-import sys, os
+import os
+import sys
 import time
 
 try:
@@ -213,8 +214,8 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       class string_with_attributes(type(cmd)):
         """Subclass string so that it can accept additional attributes."""
       cmd = string_with_attributes(cmd)
-      cmd.test_class = tst.test_class
-      cmd.test_name = tst.test_name
+      cmd.test_class = test_class
+      cmd.test_name = test_name
     yield cmd
 
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
