@@ -25,9 +25,17 @@ class FormatSEReBIC(FormatSER):
   @staticmethod
   def understand(image_file):
 
-    # At the moment there is nothing to distinguish eBIC files from anything
-    # else recognised by FormatSER
-    return FormatSER.understand(image_file)
+    # check the header looks right
+    try:
+      fmt = FormatSER(image_file)
+    except IncorrectFormatError:
+      return False
+
+    # get the first image and check it has the expected dimensions
+    im = fmt.get_raw_data(0)
+    if im.all() != (4096, 4096): return False
+
+    return True
 
   def _goniometer(self):
     '''Dummy goniometer, 'vertical' as the images are viewed. Not completely
@@ -40,9 +48,10 @@ class FormatSEReBIC(FormatSER):
 
     pixel_size = 0.014, 0.014
     image_size = 4096,4096
+    distance = 2000
     trusted_range = (-1, 65535)
     beam_centre = [(p * i) / 2 for p, i in zip(pixel_size, image_size)]
-    d = self._detector_factory.simple('PAD', 2440, beam_centre, '+x', '-y',
+    d = self._detector_factory.simple('PAD', distance, beam_centre, '+x', '-y',
                               pixel_size, image_size, trusted_range)
     # Not sure what the gain is
     #for p in d: p.set_gain(8)
@@ -71,7 +80,6 @@ class FormatSEReBIC(FormatSER):
   def get_raw_data(self, index):
 
     raw_data = super(FormatSEReBIC, self).get_raw_data(index)
-    assert raw_data.all() == (4096, 4096)
 
     return raw_data
 
