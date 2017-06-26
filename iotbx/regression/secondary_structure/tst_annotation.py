@@ -1703,21 +1703,21 @@ def tst_filter_sheets_with_long_hbonds3():
     print "Skipped: required module ksdssp not present"
     return
   file_path = libtbx.env.find_in_repositories(
-    relative_path="cctbx_project/iotbx/regression/secondary_structure/1qmo_cutted.pdb",
+    relative_path="cctbx_project/iotbx/regression/secondary_structure/1ubf_cutted.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print 'WARNING: Skipping tst_filter_sheets_with_long_hbonds2("%s"): input file not available' % file_path
+    print 'WARNING: Skipping tst_filter_sheets_with_long_hbonds3("%s"): input file not available' % file_path
     return
   inp = iotbx.pdb.input(file_name=file_path)
   original_ann = inp.extract_secondary_structure()
-  assert original_ann.get_n_helices() == 0
-  assert original_ann.get_n_sheets() == 3
+  assert original_ann.get_n_helices() == 11
+  assert original_ann.get_n_sheets() == 2
   h = inp.construct_hierarchy()
   ann = original_ann.deep_copy()
   ann.filter_sheets_with_long_hbonds(hierarchy=h)
-  assert ann.get_n_helices() == 0
-  assert ann.get_n_sheets() == 1, ann.get_n_sheets()
-  # print ann
+  print ann
+  assert ann.get_n_helices() == 11, ann.get_n_helices()
+  assert ann.get_n_sheets() == 2, ann.get_n_sheets()
 
 def tst_reset_sheet_ids():
   ann_str = """\

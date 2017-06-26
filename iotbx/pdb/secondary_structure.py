@@ -787,6 +787,9 @@ class annotation(structure_base):
     self.helices=new_helices
 
   def filter_sheets_with_long_hbonds(self, hierarchy, asc=None):
+    """ Currently using from_ca method becuase ksdssp works wrong with
+    partial model. In some cases it cannot detect chain break and extends
+    strand e.g. from 191 to 226 (in 1ubf) when the strand ends at 194th residue."""
     assert hierarchy is not None, "Cannot measure bonds w/o hierarchy!"
     from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
     from mmtbx.secondary_structure import manager as ss_manager
@@ -826,27 +829,30 @@ class annotation(structure_base):
           sh_hierarchy = hierarchy.select(sh_atom_selections[i])
           sh_hierarchy.write_pdb_file(file_name="sheet_%d.pdb"%i)
           n_rgs = len(list(sh_hierarchy.residue_groups()))
+          ss_def_pars = sec_str_master_phil.extract()
+          ss_def_pars.secondary_structure.protein.search_method="from_ca"
           ss_m = ss_manager(
               pdb_hierarchy=sh_hierarchy,
+              params=ss_def_pars.secondary_structure,
               log=null_out())
           fresh_sheets = ss_m.actual_sec_str.sheets
           # checking for bug occuring in 4a7h where one strand happens to be
           # too long
-          ksdssp_bug = False
-          for f_sh in fresh_sheets:
-            for f_strand in f_sh.strands:
-              if f_strand.get_end_resseq_as_int() - f_strand.get_start_resseq_as_int() > n_rgs:
-                sh_hierarchy.write_pdb_file(file_name="ksdssp_failure.pdb")
-                ksdssp_bug = True
-                break
-                # raise Sorry("It is 4a7h or ksdssp failed on another structure.")
-          if ksdssp_bug:
-            ss_def_pars = sec_str_master_phil.extract()
-            ss_def_pars.secondary_structure.protein.search_method="from_ca"
-            ss_m = ss_manager(
-              pdb_hierarchy=sh_hierarchy,
-              params=ss_def_pars.secondary_structure,
-              log=null_out())
+          # ksdssp_bug = False
+          # for f_sh in fresh_sheets:
+          #   for f_strand in f_sh.strands:
+          #     if f_strand.get_end_resseq_as_int() - f_strand.get_start_resseq_as_int() > n_rgs:
+          #       sh_hierarchy.write_pdb_file(file_name="ksdssp_failure.pdb")
+          #       ksdssp_bug = True
+          #       break
+          #       # raise Sorry("It is 4a7h or ksdssp failed on another structure.")
+          # if ksdssp_bug:
+          #   ss_def_pars = sec_str_master_phil.extract()
+          #   ss_def_pars.secondary_structure.protein.search_method="from_ca"
+          #   ss_m = ss_manager(
+          #       pdb_hierarchy=sh_hierarchy,
+          #       params=ss_def_pars.secondary_structure,
+          #       log=null_out())
           new_sheets += ss_m.actual_sec_str.sheets
     if len(sh_indeces_to_delete) > 0:
       for i in sorted(sh_indeces_to_delete, reverse=True):
