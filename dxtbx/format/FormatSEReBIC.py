@@ -64,7 +64,7 @@ class FormatSEReBIC(FormatSER):
     return self._beam_factory.simple(wavelength)
 
   def _scan(self):
-    '''Dummy scan for this image'''
+    '''Dummy scan for this stack'''
 
     nframes = self.get_num_images()
     image_range = (1, nframes)
