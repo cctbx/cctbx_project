@@ -18,6 +18,9 @@ except ImportError:
 else:
   import Queue
 
+class _string_with_attributes(type("")):
+  """Subclass string so that it can accept additional attributes."""
+
 diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
 def compose_tmp_suffix(suffix, frames_back=0):
@@ -211,9 +214,7 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     if test_class and test_name:
       # If the passed object contains test class and name information
       # then attach that information to the string object.
-      class string_with_attributes(type(cmd)):
-        """Subclass string so that it can accept additional attributes."""
-      cmd = string_with_attributes(cmd)
+      cmd = _string_with_attributes(cmd)
       cmd.test_class = test_class
       cmd.test_name = test_name
     yield cmd
