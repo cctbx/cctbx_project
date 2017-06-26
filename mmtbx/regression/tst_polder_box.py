@@ -200,8 +200,8 @@ def exercise_00(prefix="tst_polder_box"):
   print "Polder map : %7.3f %7.3f %7.3f"%mmm_mp
   print "Omit       : %7.3f %7.3f %7.3f"%mmm_o
   #
-  assert approx_equal(mmm_mp, [-2.397, 1.706, -0.208], eps=0.1)
-  assert approx_equal(mmm_o,  [-0.708, 0.307, -0.118], eps=0.1)
+  assert approx_equal(mmm_mp, [-2.397, 1.706, -0.208], eps=0.15)
+  assert approx_equal(mmm_o,  [-0.708, 0.307, -0.118], eps=0.15)
 
 
 if (__name__ == "__main__"):
