@@ -302,13 +302,17 @@ class FormatGatanDM4(Format, FormatMultiImage):
     '''Dummy detector. It may be possible to extract some of the required
     details from the image metadata, but not sure how consistent they are.'''
 
-    pixel_size = 0.014, 0.014
+    # Assuming Gatan OneView camera, with 15um pixels, but trusted range is
+    # (probably) wrong.
+    pixel_size = 0.015, 0.015
     image_size = self._image_size
     trusted_range = (-1, 65535)
+    distance=2000
     beam_centre = [(p * i) / 2 for p, i in zip(pixel_size, image_size)]
-    d = self._detector_factory.simple('PAD', 2440, beam_centre, '+x', '-y',
+    d = self._detector_factory.simple('PAD', distance, beam_centre, '+x', '-y',
                               pixel_size, image_size, trusted_range)
-    # Not sure what the gain is
+    # Not sure what the gain is. A Gatan OneView has a scintillator and fibre
+    # optic, so is not a direct detection camera and probably has gain != 1
     #for p in d: p.set_gain(8)
     return d
 
