@@ -1194,7 +1194,7 @@ class RunBlockDialog(BaseDialog):
                                btn_export=False,
                                btn_default=True,
                                btn_default_label='Default Config',
-                               ctr_size=(-1, 200),
+                               ctr_size=(-1, 100),
                                ctr_value=str(block.config_str))
     self.config_sizer.Add(self.config, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -1205,7 +1205,7 @@ class RunBlockDialog(BaseDialog):
                              btn_export=False,
                              btn_default=True,
                              btn_default_label='Default PHIL',
-                             ctr_size=(-1, 200),
+                             ctr_size=(-1, 100),
                              ctr_value=str(block.extra_phil_str))
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 

@@ -87,7 +87,7 @@ class PRIMEAdvancedOptions(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 500),
+                        size=(600, 300),
                         *args, **kwargs)
 
     # Create options panel (all objects should be called as self.options.object)
@@ -103,7 +103,7 @@ class PRIMEAdvancedOptions(BaseDialog):
                            btn_import=False,
                            btn_export=False,
                            btn_default=False,
-                           ctr_size=(500, 300),
+                           ctr_size=(500, 200),
                            ctr_value='')
     phil_box_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
