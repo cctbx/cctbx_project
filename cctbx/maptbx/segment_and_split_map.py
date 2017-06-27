@@ -1726,7 +1726,7 @@ class sharpening_info:
        out=out)
     return map_coeffs_ra.b_iso
 
-  def sharpen_and_score_map(self,map_data=None,out=sys.stdout):
+  def sharpen_and_score_map(self,map_data=None,set_b_iso=False,out=sys.stdout):
     if self.n_real is None: # need to get it
       self.n_real=map_data.all()
     #print >>out,"B-iso before sharpening:",
@@ -1735,7 +1735,10 @@ class sharpening_info:
       sharpening_info_obj=self,map_data=map_data,
         resolution=self.resolution,out=out)
     #print >>out,"B-iso after sharpening:",
-    self.get_effective_b_iso(map_data=self.map_data,out=out)
+    final_b_iso=self.get_effective_b_iso(map_data=self.map_data,out=out)
+    if set_b_iso:
+      self.b_iso=final_b_iso
+ 
     score_map(map_data=self.map_data,
         sharpening_info_obj=self,
         out=null_out())
@@ -6950,6 +6953,7 @@ def auto_sharpen_map_or_map_coeffs(
       second_half_map_data=second_half_map_data,
       pdb_inp=pdb_inp,
       auto_sharpen_methods=auto_sharpen_methods,
+      print_result=False,
       out=out)
     print >>out,80*"="
     print >>out,"\nDone running auto_sharpen to get sharpening parameters\n"
@@ -6962,7 +6966,7 @@ def auto_sharpen_map_or_map_coeffs(
        'b_iso','b_iso_to_d_cut','resolution_dependent'] and b_iso is None:
       local_si=deepcopy(si)
       local_si.sharpening_method='no_sharpening'
-      local_si.sharpen_and_score_map(map_data=map,out=out)
+      local_si.sharpen_and_score_map(map_data=map,out=null_out())
       print >>out,"\nScore for no sharpening: %7.2f " %(local_si.score)
     else:
       local_si=None
@@ -6970,7 +6974,7 @@ def auto_sharpen_map_or_map_coeffs(
     print >>out,80*"="
     print >>out,"\nApplying final sharpening to entire map"
     print >>out,80*"="
-    si.sharpen_and_score_map(map_data=map,out=out)
+    si.sharpen_and_score_map(map_data=map,set_b_iso=True,out=out)
 
     if discard_if_worse and local_si and local_si.score > si.score:
        print >>out,"Sharpening did not improve map "+\
@@ -6992,6 +6996,7 @@ def run_auto_sharpen(
       second_half_map_data=None,
       pdb_inp=None,
       auto_sharpen_methods=None,
+      print_result=True,
       out=sys.stdout):
   #  Identifies parameters for optimal map sharpening using analysis of density,
   #    model-correlation, or half-map correlation (first_half_map_data vs
@@ -7115,7 +7120,8 @@ def run_auto_sharpen(
           out=null_out())
     local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
         out=null_out())
-    print >>out,\
+    if print_result:
+      print >>out,\
          " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
           local_si.b_sharpen,local_si.b_iso,
            local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
@@ -7367,7 +7373,7 @@ def effective_b_iso(map_data=None,tracking_data=None,
 
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
     b_iso=map_coeffs_ra.b_iso
-    print >>out,"\nEffective B-iso = %7.2f" %(b_iso)
+    print >>out,"Effective B-iso = %7.2f" %(b_iso)
     return map_coeffs_ra,map_coeffs,f_array,phases
 
 def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
