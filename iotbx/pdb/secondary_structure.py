@@ -827,7 +827,7 @@ class annotation(structure_base):
                 sh_atom_selections[i] |= sh_atom_selections[j]
           # find new sheet structure for this sheet
           sh_hierarchy = hierarchy.select(sh_atom_selections[i])
-          sh_hierarchy.write_pdb_file(file_name="sheet_%d.pdb"%i)
+          # sh_hierarchy.write_pdb_file(file_name="sheet_%d.pdb"%i)
           n_rgs = len(list(sh_hierarchy.residue_groups()))
           ss_def_pars = sec_str_master_phil.extract()
           ss_def_pars.secondary_structure.protein.search_method="from_ca"
