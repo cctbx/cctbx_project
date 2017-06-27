@@ -11,19 +11,6 @@ import traceback
 import time
 import os
 import sys
-import itertools
-import re
-
-try:
-  from enum import IntEnum
-except ImportError:
-  IntEnum = object
-
-class Status(IntEnum):
-  OK = 0
-  WARNING = 1
-  FAIL = 2
-  SKIPPED = 3
 
 QUIET = 0
 DEFAULT_VERBOSITY = 1
@@ -78,21 +65,23 @@ def run_command(command,
     t0=time.time()
     cmd_result = easy_run.fully_buffered(
       command=command,
+      #join_stdout_stderr=join_stdout_stderr,
       )
+    if 0:
+      test_utils._check_command_output(
+        lines=cmd_result.stdout_lines,
+        show_command_if_error=1, #show_command_if_error,
+        sorry_expected=0, #sorry_expected,
+        )
     cmd_result.wall_time = time.time()-t0
-    cmd_result.error_lines = phenix_separate_output(cmd_result)
+    cmd_result.error_lines = evaluate_output(cmd_result)
     return cmd_result
   except KeyboardInterrupt :
     traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
     sys.stdout.write(traceback_str)
     return None
 
-def phenix_separate_output(cmd_result) :
-  """Separates warning and error lines from a commands output streams.
-
-  This will only give results if the phenix_regression package exists,
-  and returns an empty list otherwise.
-  """
+def evaluate_output (cmd_result) :
   have_regression = libtbx.env.has_module("phenix_regression")
   bad_lines = []
   if (have_regression) :
@@ -108,6 +97,7 @@ def reconstruct_test_name (command) :
   if hasattr(command, 'test_class') and hasattr(command, 'test_name'):
     return command.test_class, command.test_name
 
+  import re
   if "-m pytest" in command:
     m = re.search('-m pytest ([^:]*)::(.*)$', command)
     command = 'libtbx.python "%s" %s' % (m.group(1), m.group(2))
@@ -142,56 +132,6 @@ def reconstruct_test_name (command) :
       return (test_class, test_name)
     return (file, test_name)
   return (command, command)
-
-def write_JUnit_XML(results, output_filename="output.xml"):
-  """Try to write the test results to a JUnit xml file.
-  
-  Does nothing and returns None if junit_xml cannot be imported, otherwise
-  returns a list of JUnit TestCase objects.
-  """
-  try:
-    from junit_xml import TestSuite, TestCase
-  except ImportError:
-    return None
-
-  test_cases = []
-
-  def _decode_string(string):
-    try:
-      return string.encode('ascii', 'xmlcharrefreplace')
-    except Exception: # intentional
-      return unicode(string, errors='ignore').encode('ascii', 'xmlcharrefreplace')
-
-  for result in results:
-    test_name = reconstruct_test_name(result.command)
-    plain_stdout = map(_decode_string, result.stdout_lines)
-    plain_stderr = map(_decode_string, result.stderr_lines)
-    output = '\n'.join(plain_stdout + plain_stderr)
-    tc = TestCase(classname=test_name[0],
-                  name=test_name[1],
-                  elapsed_sec=result.wall_time,
-                  stdout='\n'.join(plain_stdout),
-                  stderr='\n'.join(plain_stderr))
-    if result.return_code == 0:
-      # Identify skipped tests
-      if result.alert_status == Status.SKIPPED:
-        # find first line including word 'skip' and use it as message
-        skipline = re.search('^((.*)skip(.*))$', output, re.IGNORECASE | re.MULTILINE).group(1)
-        tc.add_skipped_info(skipline)
-    else:
-      # Test failed. Extract error message and stack trace if possible
-      error_message = 'exit code %d' % result.return_code
-      error_output = '\n'.join(plain_stderr)
-      if plain_stderr:
-        error_message = plain_stderr[-1]
-        if len(plain_stderr) > 20:
-          error_output = '\n'.join(plain_stderr[-20:])
-      tc.add_failure_info(message=error_message, output=error_output)
-    test_cases.append(tc)
-  ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
-  with open(output_filename, 'wb') as f:
-    print >> f, TestSuite.to_xml_string([ts], prettyprint=True)
-  return test_cases
 
 class run_command_list (object) :
   def __init__ (self,
@@ -263,20 +203,56 @@ class run_command_list (object) :
     print >> self.out, ""
     print >> self.out, "Tests finished. Elapsed time: %.2fs" %(t_end-t_start)
     print >> self.out, ""
-
+    test_cases = []
     # Process results for errors and warnings.
     extra_stderr = len([result for result in self.results if result.stderr_lines])
     longjobs = [result for result in self.results if result.wall_time > max_time]
-    warnings = [result for result in self.results if result.alert_status == Status.WARNING]
-    failures = [result for result in self.results if result.alert_status == Status.FAIL]
-    skipped  = [result for result in self.results if result.alert_status == Status.SKIPPED]
+    warnings = [result for result in self.results if self.check_alert(result) == 1]
+    failures = [result for result in self.results if self.check_alert(result) == 2]
     self.finished = len(self.results)
     self.failure = len(failures)
     self.warning = len(warnings)
-    self.skipped = len(skipped)
 
-    # Try writing the XML result file
-    write_JUnit_XML(self.results, "output.xml")
+    # Output JUnit XML if possible
+    try:
+      from junit_xml import TestSuite, TestCase
+      import re
+      def decode_string(string):
+        try:
+          return string.encode('ascii', 'xmlcharrefreplace')
+        except Exception: # intentional
+          return unicode(string, errors='ignore').encode('ascii', 'xmlcharrefreplace')
+      for result in self.results:
+        test_name = reconstruct_test_name(result.command)
+        plain_stdout = map(decode_string, result.stdout_lines)
+        plain_stderr = map(decode_string, result.stderr_lines)
+        output = '\n'.join(plain_stdout + plain_stderr)
+        tc = TestCase(classname=test_name[0],
+                      name=test_name[1],
+                      elapsed_sec=result.wall_time,
+                      stdout='\n'.join(plain_stdout),
+                      stderr='\n'.join(plain_stderr))
+        if result.return_code == 0:
+          # Identify skipped tests
+          if re.search('skip', output, re.IGNORECASE):
+            # find first line including word 'skip' and use it as message
+            skipline = re.search('^((.*)skip(.*))$', output, re.IGNORECASE | re.MULTILINE).group(1)
+            tc.add_skipped_info(skipline)
+        else:
+          # Test failed. Extract error message and stack trace if possible
+          error_message = 'exit code %d' % result.return_code
+          error_output = '\n'.join(plain_stderr)
+          if plain_stderr:
+            error_message = plain_stderr[-1]
+            if len(plain_stderr) > 20:
+              error_output = '\n'.join(plain_stderr[-20:])
+          tc.add_failure_info(message=error_message, output=error_output)
+        test_cases.append(tc)
+      ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
+      with open('output.xml', 'wb') as f:
+        print >> f, TestSuite.to_xml_string([ts], prettyprint=True)
+    except ImportError, e:
+      pass
 
     # Run time distribution.
     if (libtbx.env.has_module("scitbx")) :
@@ -300,9 +276,9 @@ class run_command_list (object) :
       print >> self.out, "Error: the following jobs returned non-zero exit codes or suspicious stderr output:"
       print >> self.out, ""
       for result in warnings:
-        self.display_result(result, alert=Status.WARNING, out=self.out, log_return=self.out, log_stderr=self.out)
+        self.display_result(result, alert=1, out=self.out, log_return=self.out, log_stderr=self.out)
       for result in failures:
-        self.display_result(result, alert=Status.FAIL, out=self.out, log_return=self.out, log_stderr=self.out)
+        self.display_result(result, alert=2, out=self.out, log_return=self.out, log_stderr=self.out)
       print >> self.out, ""
       print >> self.out, "Please verify these tests manually."
       print >> self.out, ""
@@ -313,17 +289,13 @@ class run_command_list (object) :
     print >> self.out, "  Failures                     :",self.failure
     print >> self.out, "  Warnings (possible failures) :",self.warning
     print >> self.out, "  Stderr output (discouraged)  :",extra_stderr
-    if self.skipped:
-      print >> self.out, "  Skipped                      :",self.skipped
-
     if (self.finished != len(self.cmd_list)) :
       print >> self.out, "*" * 80
       print >> self.out, "  WARNING: NOT ALL TESTS FINISHED!"
       print >> self.out, "*" * 80
 
-  def determine_result_status(self, result):
-    alert = Status.OK
-    # Note: error_lines is populated when package phenix_regression is configured
+  def check_alert(self, result):
+    alert = 0
     if result.error_lines:
       if self.verbosity == EXTRA_VERBOSE:
         print >> self.out, "ERROR BEGIN "*10
@@ -331,20 +303,13 @@ class run_command_list (object) :
         print >> self.out, '-'*80
         print >> self.out, result.stderr_lines
         print >> self.out, "ERROR -END- "*10
-      alert = Status.WARNING
+      alert = 1
     if result.return_code != 0:
       if self.verbosity == EXTRA_VERBOSE:
         print >> self.out, "RETURN CODE BEGIN "*5
         print >> self.out, result.return_code
         print >> self.out, "RETURN CODE -END- "*5
-      alert = Status.FAIL
-    # Only check for skipping if we weren't a warning or failure
-    # - replacing warnings might eventually be appropriate depending on the
-    # cause, but safer to leave as-is for now until we can test all environments
-    if alert == Status.OK:
-      fullText = "\n".join(itertools.chain(*[result.stdout_lines, result.stderr_lines]))
-      if re.search('skip', fullText, re.IGNORECASE):
-        alert = Status.SKIPPED
+      alert = 2
     return alert
 
   def save_result (self, result) :
@@ -352,14 +317,12 @@ class run_command_list (object) :
       print >> self.out, "ERROR: job returned None, assuming CTRL+C pressed"
       if self.pool: self.pool.terminate()
       return False
-    result.alert_status = self.determine_result_status(result)
-    # If we got an 'OK' status but have stderr output, we can ignore this if
-    # "OK" was the last line (e.g. python's unittest does this)
-    if result.alert_status in {Status.OK, Status.SKIPPED} and result.stderr_lines:
-      test_ok = (result.stderr_lines[-1].strip().startswith("OK"))
+    alert = self.check_alert(result)
+    # Clear stderr when python unittest framework is used and test passes
+    if alert == 0 and result.stderr_lines:
+      test_ok = (result.stderr_lines[-1].strip() == 'OK')
       if test_ok:
         result.stderr_lines = []
-
     self.results.append(result)
     kw = {}
     kw['out'] = self.out
@@ -373,18 +336,17 @@ class run_command_list (object) :
       kw['log_return'] = self.out
       kw['log_stderr'] = True
       kw['log_stdout'] = self.out
-    # For any "not good" result, print out some more details
-    elif not result.alert_status in {Status.OK, Status.SKIPPED}:
+    elif alert:
       kw['log_return'] = self.out
       kw['log_stderr'] = True
     self.display_result(
       result,
-      alert=result.alert_status,
+      alert=alert,
       **kw
     )
 
   def display_result (self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False) :
-    status = {Status.OK: 'OK', Status.WARNING: 'WARNING', Status.FAIL: 'FAIL', Status.SKIPPED: "SKIP"}
+    status = ['OK', 'WARNING', 'FAIL']
     if out:
       print >> out, "%s [%s]"%(result.command, status[alert])
       out.flush()
