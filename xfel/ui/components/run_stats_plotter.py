@@ -35,16 +35,13 @@ def get_multirun_should_have_indexed_timestamps(stats_by_run,
       timestamps.append(flex.double())
   return (run_numbers, timestamps)
 
-def get_paths_from_timestamps(timestamps,
-                              prepend="",
-                              tag="idx"):
-  import time, os, math
-  def convert(s):
-    time_seconds = int(math.floor(s))
-    time_milliseconds = int(round((s - time_seconds)*1000))
-    time_obj = time.gmtime(time_seconds)
-    name = "%s-%04d%02d%02d%02d%02d%02d%03d.pickle" % (
-      tag,
+def get_string_from_timestamp(ts, long_form=False):
+  import time, math
+  time_seconds = int(math.floor(ts))
+  time_milliseconds = int(round((ts - time_seconds)*1000))
+  time_obj = time.gmtime(time_seconds)
+  if long_form:
+    string = "%04d-%02d-%02dT%02d:%02dZ%02d.%03d" % (
       time_obj.tm_year,
       time_obj.tm_mon,
       time_obj.tm_mday,
@@ -52,6 +49,33 @@ def get_paths_from_timestamps(timestamps,
       time_obj.tm_min,
       time_obj.tm_sec,
       time_milliseconds)
+  else:
+    string = "%04d%02d%02d%02d%02d%02d%03d" % (
+      time_obj.tm_year,
+      time_obj.tm_mon,
+      time_obj.tm_mday,
+      time_obj.tm_hour,
+      time_obj.tm_min,
+      time_obj.tm_sec,
+      time_milliseconds)
+  return string
+
+def get_strings_from_timestamps(timestamps, long_form=False):
+  import os
+  get_strings = lambda ts: get_string_from_timestamp(ts, long_form=long_form)
+  names = map(get_strings, timestamps)
+  return names
+
+def get_paths_from_timestamps(timestamps,
+                              prepend="",
+                              tag="idx",
+                              long_form=False):
+  import os
+  def convert(s):
+    timestamp_string = get_string_from_timestamp(s, long_form=long_form)
+    name = "%s-%s.pickle" % (
+      tag,
+      timestamp_string)
     return name
   names = map(convert, timestamps)
   paths = [os.path.join(prepend, name) for name in names]

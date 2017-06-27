@@ -447,7 +447,7 @@ class RunStatsSentinel(Thread):
 
   def fetch_should_have_indexed_timestamps(self):
     from xfel.ui.components.run_stats_plotter import \
-      get_multirun_should_have_indexed_timestamps, get_paths_from_timestamps
+      get_multirun_should_have_indexed_timestamps, get_paths_from_timestamps, get_strings_from_timestamps
     self.refresh_stats()
     should_have_indexed_runs, should_have_indexed_timestamps = \
       get_multirun_should_have_indexed_timestamps(self.stats,
@@ -456,12 +456,17 @@ class RunStatsSentinel(Thread):
                                                   self.parent.run_window.runstats_tab.n_strong)
 
     pickle_paths_by_run = []
+    timestamp_strings_by_run = []
     for i in xrange(len(should_have_indexed_runs)):
       run = should_have_indexed_runs[i]
       ts = should_have_indexed_timestamps[i]
       prepend = os.path.join(get_run_path(self.output, *self.trgr[run]), "all")
       pickle_paths = get_paths_from_timestamps(ts, prepend=prepend, tag="shot")
       pickle_paths_by_run.extend(pickle_paths)
+      timestamp_strings = get_strings_from_timestamps(ts, long_form=True)
+      timestamp_strings_by_run.extend(timestamp_strings)
+    self.parent.run_window.runstats_tab.should_have_indexed_timestamps = \
+      timestamp_strings_by_run
     self.parent.run_window.runstats_tab.should_have_indexed_image_paths = \
       pickle_paths_by_run
     self.parent.run_window.runstats_tab.redraw_windows = True
@@ -1799,6 +1804,7 @@ class RunStatsTab(BaseTab):
     self.n_strong = 40
     self.i_sigi = 1
     self.should_have_indexed_image_paths = None
+    self.should_have_indexed_timestamps = None
 
     self.runstats_panel = wx.Panel(self, size=(100, 100))
     self.runstats_panelsize = self.runstats_panel.GetSize()
@@ -1847,6 +1853,9 @@ class RunStatsTab(BaseTab):
                                            choices=[])
     self.should_have_indexed_list = wx.TextCtrl(self,
                                                 style=wx.TE_MULTILINE | wx.TE_READONLY)
+    self.shi_dump_images_button = wx.Button(self,
+                                            label='Dump images',
+                                            size=(200, -1))
 
     self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 10)
 
@@ -1876,14 +1885,18 @@ class RunStatsTab(BaseTab):
 
     should_have_indexed_box = wx.StaticBox(self, label='Strong Images that Didn\'t Index')
     self.should_have_indexed_box_sizer = wx.StaticBoxSizer(should_have_indexed_box, wx.VERTICAL)
-    self.should_have_indexed_results_sizer = wx.GridBagSizer(1, 1)
 
+    self.should_have_indexed_results_sizer = wx.GridBagSizer(1, 1)
     self.should_have_indexed_results_sizer.Add(self.should_have_indexed_list, pos=(0, 0),
                                                span=(12, 45),
                                                flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
                                                border=10)
-
     self.should_have_indexed_box_sizer.Add(self.should_have_indexed_results_sizer)
+
+    self.should_have_indexed_box_sizer.Add(self.shi_dump_images_button,
+                                           flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
+                                           border=10)
+
     self.bottom_sizer.Add(self.should_have_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
 
     self.main_sizer.Add(self.runstats_panel, 1,
@@ -1900,6 +1913,7 @@ class RunStatsTab(BaseTab):
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
     self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.i_sigi_cutoff.isigi)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onDumpImages, self.shi_dump_images_button)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
@@ -2062,6 +2076,9 @@ class RunStatsTab(BaseTab):
       self.i_sigi = isigi
     except ValueError:
       pass
+
+  def onDumpImages(self, e):
+    print '\n'.join(self.should_have_indexed_timestamps)
 
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
