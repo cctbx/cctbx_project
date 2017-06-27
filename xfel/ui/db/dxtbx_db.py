@@ -22,7 +22,7 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
   if experiments is not None:
     if len(experiments) > 1:
       print "Only logging first of %d experiments"%len(experiments)
-    db_experiment = app.create_experiment(experiments[0], cell=trial.cell)
+    db_experiment = app.create_experiment(experiments[0], cell=db_trial.cell)
     app.link_imageset_frame(db_experiment.imageset, db_event)
 
     d = experiments[0].crystal.get_unit_cell().d(reflections['miller_index'])

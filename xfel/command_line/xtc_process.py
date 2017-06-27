@@ -1016,7 +1016,7 @@ class InMemScript(DialsProcessScript):
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_write("db_logging_failed_%d" % len(integrated), "fail")
+      self.debug_write("db_logging_failed_%d" % len(reflections), "fail")
 
   def save_image(self, image, params, root_path):
     """ Save an image, in either cbf or pickle format.
