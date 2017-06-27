@@ -8,13 +8,13 @@ class Event(db_proxy):
     self.event_id = self.id
 
 class Experiment(db_proxy):
-  def __init__(self, app, experiment_id = None, experiment = None, **kwargs):
+  def __init__(self, app, experiment_id = None, experiment = None, cell = None, **kwargs):
     assert [experiment_id, experiment].count(None) == 1
     if experiment is not None:
       self.imageset = Imageset(app)
       self.beam = Beam(app, beam = experiment.beam)
       self.detector = Detector(app, detector = experiment.detector)
-      self.crystal = Crystal(app, crystal = experiment.crystal)
+      self.crystal = Crystal(app, crystal = experiment.crystal, cell = cell)
 
       kwargs['imageset_id'] = self.imageset.id
       kwargs['beam_id'] = self.beam.id
@@ -59,7 +59,7 @@ class Detector(db_proxy):
     self.detector_id = self.id
 
 class Crystal(db_proxy):
-  def __init__(self, app, crystal_id = None, crystal = None, **kwargs):
+  def __init__(self, app, crystal_id = None, crystal = None, cell = None, **kwargs):
     from scitbx import matrix
     assert [crystal_id, crystal].count(None) == 1
     if crystal is not None:
@@ -69,27 +69,31 @@ class Crystal(db_proxy):
       kwargs['mosaic_block_rotation'] = crystal._ML_half_mosaicity_deg
       kwargs['mosaic_block_size'] = crystal._ML_domain_size_ang
 
-      try:
-        isoform_name = crystal.identified_isoform
-      except AttributeError:
-        self.cell = Cell(app, crystal=crystal, isoform_id = None)
+      if cell is not None:
+        self.cell = cell
       else:
-        tag = app.params.experiment_tag
-        query = """SELECT cell.id from `%s_cell` cell
-                   JOIN `%s_isoform` isoform ON cell.isoform_id = isoform.id
-                   JOIN `%s_trial` trial ON isoform.trial_id = trial.id
-                   WHERE isoform.name = '%s' AND trial.trial = %d""" % (
-          tag, tag, tag, isoform_name, app.params.input.trial)
-        cursor = app.execute_query(query)
-        results = cursor.fetchall()
-        assert len(results) == 1
-        self.cell = Cell(app, cell_id = results[0][0])
+        try:
+          isoform_name = crystal.identified_isoform
+        except AttributeError:
+          self.cell = Cell(app, crystal=crystal, isoform_id = None)
+        else:
+          tag = app.params.experiment_tag
+          query = """SELECT cell.id from `%s_cell` cell
+                     JOIN `%s_isoform` isoform ON cell.isoform_id = isoform.id
+                     JOIN `%s_trial` trial ON isoform.trial_id = trial.id
+                     WHERE isoform.name = '%s' AND trial.trial = %d""" % (
+            tag, tag, tag, isoform_name, app.params.input.trial)
+          cursor = app.execute_query(query)
+          results = cursor.fetchall()
+          assert len(results) == 1
+          self.cell = Cell(app, cell_id = results[0][0])
       kwargs['cell_id'] = self.cell.id
 
     db_proxy.__init__(self, app, "%s_crystal" % app.params.experiment_tag, id=crystal_id, **kwargs)
     self.crystal_id = self.id
 
     if crystal is None:
+      assert cell is None
       self.cell = Cell(app, cell_id = self.cell_id)
 
 class Isoform(db_proxy):
@@ -115,12 +119,23 @@ class Cell(db_proxy):
     db_proxy.__init__(self, app, "%s_cell" % app.params.experiment_tag, id=cell_id, **kwargs)
     self.cell_id = self.id
 
+    assert [self.isoform_id, self.trial_id].count(None) <= 1
     if self.isoform_id is not None:
       self.isoform = Isoform(app, isoform_id = self.isoform_id)
+      self.bins = app.get_cell_bins(self.id)
+    elif self.trial_id is not None:
       self.bins = app.get_cell_bins(self.id)
     else:
       self.isoform = None
       self.bins = []
+
+  def __getattr__(self, key):
+    if key == "unit_cell":
+      from cctbx.uctbx import unit_cell
+      return unit_cell([self.cell_a, self.cell_b, self.cell_c,
+                        self.cell_alpha, self.cell_beta, self.cell_gamma])
+    else:
+      return super(Cell, self).__getattr__(key)
 
 class Bin(db_proxy):
   def __init__(self, app, bin_id = None, **kwargs):
@@ -131,4 +146,3 @@ class Cell_Bin(db_proxy):
   def __init__(self, app, cell_bin_id = None, **kwargs):
     db_proxy.__init__(self, app, "%s_cell_bin" % app.params.experiment_tag, id=cell_bin_id, **kwargs)
     self.cell_bin_id = self.id
-

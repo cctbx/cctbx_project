@@ -16,6 +16,8 @@ class Trial(db_proxy):
       return self.app.get_trial_isoforms(self.id)
     elif name == "tags":
       return self.app.get_trial_tags(self.id)
+    elif name == "cell":
+      return self.app.get_trial_cell(self.id)
     else:
       return super(Trial, self).__getattr__(name)
 

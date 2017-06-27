@@ -1645,8 +1645,10 @@ class TrialDialog(BaseDialog):
         trial_number = 0
       else:
         trial_number = max(trials) + 1
+      d_min = 1.5
     else:
       trial_number = trial.trial
+      d_min = trial.d_min
 
     self.trial_info = gctr.TwoButtonCtrl(self,
                                          label='Trial number:',
@@ -1698,7 +1700,7 @@ class TrialDialog(BaseDialog):
                                label_size=(180, -1),
                                label_style='bold',
                                ctrl_size=(80, -1),
-                               ctrl_value='1.5',
+                               ctrl_value=str(d_min),
                                ctrl_min=0.1,
                                ctrl_max=100,
                                ctrl_step=0.1,

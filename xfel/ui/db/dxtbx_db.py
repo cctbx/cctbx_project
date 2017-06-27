@@ -20,12 +20,24 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
       two_theta_low = two_theta_low, two_theta_high = two_theta_high)
 
   if experiments is not None:
-    assert len(experiments) == 1
-    db_experiment = app.create_experiment(experiments[0])
+    if len(experiments) > 1:
+      print "Only logging first of %d experiments"%len(experiments)
+    db_experiment = app.create_experiment(experiments[0], cell=trial.cell)
     app.link_imageset_frame(db_experiment.imageset, db_event)
 
     d = experiments[0].crystal.get_unit_cell().d(reflections['miller_index'])
-    for db_bin in db_experiment.crystal.cell.bins: # will be [] if there are no isoforms
+    if len(db_experiment.crystal.cell.bins) == 0: # will be [] if there are no isoforms and no target cells
+      from cctbx.crystal import symmetry
+      cs = symmetry(unit_cell = db_experiment.crystal.cell.unit_cell, space_group_symbol = db_experiment.crystal.cell.lookup_symbol)
+      mset = cs.build_miller_set(anomalous_flag=False, d_min=db_trial.d_min)
+      binner = mset.setup_binner(n_bins=10) # FIXME use n_bins as an attribute on the trial table
+      for i in binner.range_used():
+        d_max, d_min = binner.bin_d_range(i)
+        Bin(self, number = i, d_min = d_min, d_max = d_max,
+            total_hkl = binner.counts_complete()[i], cell_id = db_experiment.crystal.cell.id)
+      assert len(db_experiment.crystal.cell.bins) == 10
+
+    for db_bin in db_experiment.crystal.cell.bins:
       sel = (d <= float(db_bin.d_max)) & (d > float(db_bin.d_min))
       sel &= reflections['intensity.sum.value'] > 0
       refls = reflections.select(sel)
@@ -40,8 +52,8 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
                                       flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else None)
 
 class dxtbx_xfel_db_application(xfel_db_application):
-  def create_experiment(self, experiment):
-    return Experiment(self, experiment=experiment)
+  def create_experiment(self, experiment, cell=None):
+    return Experiment(self, experiment=experiment, cell=cell)
 
   def create_event(self, **kwargs):
     return Event(self, **kwargs)

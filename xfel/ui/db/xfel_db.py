@@ -95,6 +95,31 @@ class initialize(initialize_base):
           """%(self.params.experiment_tag, needed_column, column_format)
           cursor.execute(query)
 
+      # Maintain backwards compatibility with SQL tables v2: 06/23/17
+      query = "SHOW columns FROM %s_trial"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = zip(*columns)[0]
+      if 'd_min' not in column_names:
+        query = """
+          ALTER TABLE `%s_trial`
+          ADD COLUMN d_min FLOAT NULL
+        """%self.params.experiment_tag
+        cursor.execute(query)
+      query = "SHOW columns FROM %s_cell"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      column_names = zip(*columns)[0]
+      if 'trial_id' not in column_names:
+        query = """
+          ALTER TABLE `%s_cell`
+          ADD COLUMN trial_id INT NULL,
+          ADD CONSTRAINT fk_cell_trial1 FOREIGN KEY (trial_id) REFERENCES `%s_trial` (id) ON DELETE NO ACTION,
+          ADD INDEX fk_cell_trial1_idx (trial_id ASC)
+        """%(self.params.experiment_tag, self.params.experiment_tag)
+        cursor.execute(query)
     return tables_ok
 
   def set_up_columns_dict(self, app):
@@ -177,7 +202,7 @@ class xfel_db_application(object):
   def create_trial(self, d_min = 1.5, n_bins = 10, **kwargs):
     # d_min and n_bins only used if isoforms are in this trial
 
-    trial = Trial(self, **kwargs)
+    trial = Trial(self, d_min = d_min, **kwargs)
     if trial.target_phil_str is not None:
       from iotbx.phil import parse
       backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(self.params.dispatcher)]
@@ -198,12 +223,8 @@ class xfel_db_application(object):
                                name = isoform.name,
                                trial_id = trial.id)
           a, b, c, alpha, beta, gamma = isoform.cell.parameters()
-          cell = self.create_cell(cell_a = a,
-                                  cell_b = b,
-                                  cell_c = c,
-                                  cell_alpha = alpha,
-                                  cell_beta = beta,
-                                  cell_gamma = gamma,
+          cell = self.create_cell(cell_a = a, cell_b = b, cell_c = c,
+                                  cell_alpha = alpha, cell_beta = beta, cell_gamma = gamma,
                                   lookup_symbol = isoform.lookup_symbol,
                                   isoform_id = db_isoform.id)
           from cctbx.crystal import symmetry
@@ -213,17 +234,42 @@ class xfel_db_application(object):
           binner = mset.setup_binner(n_bins=n_bins)
           for i in binner.range_used():
             d_max, d_min = binner.bin_d_range(i)
-            Bin(self,
-                number = i,
-                d_min = d_min,
-                d_max = d_max,
-                total_hkl = binner.counts_complete()[i],
-                cell_id = cell.id)
+            Bin(self, number = i, d_min = d_min, d_max = d_max,
+                total_hkl = binner.counts_complete()[i], cell_id = cell.id)
+      elif backend == 'labelit':
+        pass # TODO: labelit target
+      elif backend == 'dials':
+        print "Creating target cell"
+        unit_cell = trial_params.indexing.known_symmetry.unit_cell
+        symbol = str(trial_params.indexing.known_symmetry.space_group)
+        a, b, c, alpha, beta, gamma = unit_cell.parameters()
+        cell = self.create_cell(cell_a = a, cell_b = b, cell_c = c,
+                                cell_alpha = alpha, cell_beta = beta, cell_gamma = gamma,
+                                lookup_symbol = symbol,
+                                trial_id = trial.id)
+        from cctbx.crystal import symmetry
+
+        cs = symmetry(unit_cell = unit_cell, space_group_symbol = symbol)
+        mset = cs.build_miller_set(anomalous_flag=False, d_min=d_min)
+        binner = mset.setup_binner(n_bins=n_bins)
+        for i in binner.range_used():
+          d_max, d_min = binner.bin_d_range(i)
+          Bin(self, number = i, d_min = d_min, d_max = d_max,
+              total_hkl = binner.counts_complete()[i], cell_id = cell.id)
     return trial
 
   def get_trial_isoforms(self, trial_id):
     where = "WHERE trial_id = %d"%trial_id
     return self.get_all_x(Isoform, "isoform", where)
+
+  def get_trial_cell(self, trial_id):
+    where = "WHERE trial_id = %d"%trial_id
+    cells = self.get_all_x(Cell, "cell", where)
+    assert len(cells) <= 1
+    if len(cells) == 0:
+      return None
+    else:
+      return cells[0]
 
   def create_cell(self, **kwargs):
     return Cell(self, **kwargs)
