@@ -16,6 +16,7 @@ import numpy as np
 from iotbx.phil import parse
 from dxtbx.datablock import DataBlockFactory
 from cctbx import sgtbx
+import copy
 
 from dials.array_family import flex
 from dials.command_line.stills_process import phil_scope, Processor
@@ -39,22 +40,32 @@ class IOTADialsProcessor(Processor):
     sgparams = sg_scope.fetch(proc_scope).extract()
     sgparams.refinement.reflections.outlier.algorithm = 'tukey'
 
+    crystal_P1 = copy.deepcopy(experiments[0].crystal)
+
     from dials.algorithms.indexing.symmetry \
       import refined_settings_factory_from_refined_triclinic
 
     # Generate Bravais settings
-    Lfat = refined_settings_factory_from_refined_triclinic(
-      sgparams, experiments, reflections,
-      lepage_max_delta=5, nproc=1, refiner_verbosity=0)
+    try:
+      Lfat = refined_settings_factory_from_refined_triclinic(
+        sgparams, experiments, reflections,
+        lepage_max_delta=5, nproc=1, refiner_verbosity=10)
+    except Exception, e:
+      # If refinement fails, reset to P1 (experiments remain modified by Lfat
+      # if there's a refinement failure, which causes issues down the line)
+      for expt in experiments:
+        expt.crystal = crystal_P1
+      return None
+
     Lfat.labelit_printout()
 
     # Filter out not-recommended (i.e. too-high rmsd and too-high max angular
-    #  difference) solutions
+    # difference) solutions
     Lfat_recommended = [s for s in Lfat if s.recommended]
 
-    # If none are recommended, return P1
+    # If none are recommended, return None (do not reindex)
     if len(Lfat_recommended) == 0:
-      return Lfat[-1]
+      return None
 
     # Find the highest symmetry group
     possible_bravais_settings = set(solution['bravais'] for solution in
@@ -78,7 +89,6 @@ class IOTADialsProcessor(Processor):
       highest_sym_solution = highest_sym_solutions[0]
 
     return highest_sym_solution
-
 
   def reindex(self, reflections, experiments, solution):
     ''' Reindex with newly-determined space group / unit cell '''
@@ -107,6 +117,7 @@ class IOTADialsProcessor(Processor):
       miller_indices.select(sel))
     reflections['miller_index'].set_selected(sel, miller_indices_reindexed)
     reflections['miller_index'].set_selected(~sel, (0, 0, 0))
+
 
     return experiments, reflections
 
@@ -247,12 +258,17 @@ class Integrator(object):
       datablock=self.datablock, reflections=self.observed)
 
   def refine_bravais_settings_and_reindex(self):
+    # Find highest-symmetry Bravais lattice
     solution = self.processor.refine_bravais_settings(
       reflections=self.indexed, experiments=self.experiments)
-    self.experiments, self.indexed = self.processor.reindex(
-      reflections=self.indexed,
-      experiments=self.experiments,
-      solution=solution)
+
+    # Only reindex if higher-symmetry solution found
+    if solution is not None:
+      self.experiments, self.indexed = self.processor.reindex(
+        reflections=self.indexed,
+        experiments=self.experiments,
+        solution=solution)
+
 
   def refine(self):
     # Run refinement
@@ -308,20 +324,22 @@ class Integrator(object):
         try:
           print "{:-^100}\n".format(" DETERMINING SPACE GROUP : ")
           self.refine_bravais_settings_and_reindex()
-          sg = self.experiments[0].crystal.get_space_group().info()
-          print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
+          lat = self.experiments[0].crystal.get_space_group().info()
+          sg = str(lat).replace(' ', '')
+          if sg != 'P1':
+            print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
+          else:
+            print "{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY ")
         except Exception, e:
           print "Bravais / Reindexing Error: ", e
-
-        sg = self.experiments[0].crystal.get_space_group().info()
-        print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
 
       if self.fail == None:
         try:
           self.refine()
           print "{:-^100}\n".format(" INTEGRATING: ")
           self.integrate()
-          print "{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS: ".format(len(self.integrated)))
+          print "{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
+                                      "".format(len(self.integrated)))
         except Exception, e:
           if hasattr(e, "classname"):
             print e.classname, "for %s:"%self.img[0],
@@ -333,7 +351,6 @@ class Integrator(object):
           self.fail = 'failed integration'
 
     with open(self.int_log, 'w') as tf:
-
       for i in output:
         if 'cxi_version' not in i:
           tf.write('\n{}'.format(i))

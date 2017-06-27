@@ -1,2 +1,8 @@
-IOTA v1.1.015 - mask inversion bug fix in GUI
+IOTA v1.1.016 - reindexing bug in IOTA-DIALS
 
+1. This bug would crop up when dials.algorithms.indexing.symmetry
+.refined_settings_factory_from_refined_triclinic would fail due to
+insufficient Bragg peaks for refinement. There would be no solutions
+returned, but the crystal information would be changed to whatever symmetry
+was current while refined. Fixed it by deep-copying out crystal info prior to
+ lattice refinement and reinstating this copy if refinement failed.

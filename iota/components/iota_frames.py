@@ -512,8 +512,8 @@ class ProcessingTab(wx.Panel):
     ax_width = self.nsref_axes.get_window_extent().width
     fig_width = self.int_figure.get_window_extent().width
     spacer = fig_width - ax_width
-    self.info_sizer.Add((spacer * 0.725, -1), pos=(0, 0))
-    self.info_sizer.Add((spacer * 0.15, -1), pos=(0, 5))
+    self.info_sizer.Add((spacer * 0.45, -1), pos=(0, 0))
+    self.info_sizer.Add((spacer * 0.1, -1), pos=(0, 5))
     self.info_txt.Show()
     self.btn_right.Show()
     self.btn_left.Show()
