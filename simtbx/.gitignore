@@ -3,6 +3,12 @@
 *~
 *.pyc
 *.swp
+*.img
+*.mccd
+*.mccd.gz
+*.cbf
+*.bin
+.adxv_beam_center
 .git-notifier*
 git-notifier.log
 .gitversion

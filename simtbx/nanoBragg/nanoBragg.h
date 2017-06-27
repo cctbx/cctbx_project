@@ -421,7 +421,11 @@ class nanoBragg {
     double sin_alpha_star,sin_beta_star,sin_gamma_star;
     double cos_alpha_star,cos_beta_star,cos_gamma_star;
 
-    /* misseting angles, applied after any provided matrix */
+    /* optional user-provided unitary rotation matrix, to be applied to provide cell or A matrix */
+    bool user_umat;
+    double umat[10];
+
+    /* misseting angles, applied after any provided A and U matrices */
     double misset[4];
 
 
@@ -455,27 +459,29 @@ class nanoBragg {
     /* member functions to run once (might allocate memory) */
     void init_defaults();               // reset all values to defaults, nulls and NANs
     void reconcile_parameters();        // call all the below functions
-    void init_detector();               // decide on pixel count and allocate
+    void init_detector();               // decide on pixel count and allocate raw array
     void init_beam();                   // reconcile fluence, flux and beam size
     void init_beamcenter();             // select beam center convention based on initialized values
     void init_steps();          // count up and sanitize steps across divergence, dispersion, mosaic spread and spindle rotation
-    void init_interpolator();
-    void init_cell();
-    void init_Fhkl();
-    void init_background();
-    void init_sources();
-    void init_mosaicity();
+    void init_interpolator();   // allocate memory for 3D spline interpolation arrays
+    void init_cell();           // create A matrix from cell, misset and/or file data
+    void init_Fhkl();           // copy Pythony hkl and F array in/out of internal data structure
+    void init_background();     // copy Pythony Fbg vs stol array in/out of internal data structure
+    void init_sources();        // generate array of sources based on divergence, dispersion and wavelength
+    void init_mosaicity();      // generate mosaic domains as specified
 
     /* member functions for reconciling inter-related parameters */
     void update_oversample();   // automatic oversampling decision based on xtal size and pixel size
-    void update_steps();        // calculate total number of steps/pixel
     void update_beamcenter();   // beam center, Xbeam, Fbeam, ORGX using selected convention
 
     /* member functions for debugging */
     void show_phisteps();       // print out everything to screen, enumerate all phi steps
-    void show_detector_thicksteps();  // print out everything to screen, enumerate all detector layers
+    void show_detector_thicksteps();  // print out all detector layers
     void show_mosaic_blocks();  // print out individual mosaic block orientations to screen
     void show_params();         // print out everything to screen, just like standalone program
+
+    /* member function for randomizing crystal orientation */
+    void randomize_orientation();
 
     /* member function for triggering spot simulation over region of interest */
     void add_nanoBragg_spots();

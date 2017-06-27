@@ -17,6 +17,8 @@ nanoBragg::nanoBragg(const dxtbx::model::Detector& detector)
     spixels = detector[0].get_image_size()[1];
     fpixels = detector[0].get_image_size()[0];
 
+    /* NOT IMPLEMENTED: read in all the other stuff!  */
+
     /* sensible initialization of all unititialized values */
     reconcile_parameters();
 }
@@ -124,8 +126,6 @@ nanoBragg::reconcile_parameters()
     /* allocate and set up mosaic domains */
     init_mosaicity();
 
-    /* tally up the total steps/pixel */
-    update_steps();
 
     if(verbose) printf("CONSTRUCT!!! %d   x-ray beam: %f %f %f\n",(int) raw.size(),this->beam_vector[1],this->beam_vector[2],this->beam_vector[3]);
 }
@@ -395,7 +395,10 @@ nanoBragg::init_defaults()
     misset[1] = 0;
     misset[2] = 0;
     misset[3] = 0;
-
+    user_umat = false;
+    umat[0]=1;umat[1]=0;umat[2]=0;
+    umat[3]=0;umat[4]=1;umat[5]=0;
+    umat[6]=0;umat[7]=0;umat[8]=1;
 
     /* special options */
 //    calculate_noise = 1;
@@ -963,7 +966,7 @@ nanoBragg::init_steps()
         detector_thick = 0.0;
         detector_thickstep = 0.0;
     }
-    if(verbose) printf("GOTHERE: dispersion= %g dispstep= %g  dispsteps= %d\n",dispersion,dispstep,dispsteps);
+    if(verbose) printf("dispersion= %g dispstep= %g  dispsteps= %d\n",dispersion,dispstep,dispsteps);
 
 }
 // end of init_steps()
@@ -1240,8 +1243,17 @@ nanoBragg::init_cell()
     }
 
     if(verbose>1) printf("MISSET %f %f %f \n",misset[1],misset[2],misset[3]);
+    /* apply any user-provided unitary rotation matrix? */
+    if(user_umat)
+    {
+        rotate_umat(a_star,a_star,umat);
+        rotate_umat(b_star,b_star,umat);
+        rotate_umat(c_star,c_star,umat);
+    }
+
+    if(verbose>1) printf("MISSET %f %f %f \n",misset[1],misset[2],misset[3]);
     /* apply any missetting angle */
-    if(misset[0] != 0.0)
+    if(misset[0] > 0.0)
     {
         rotate(a_star,a_star,misset[1],misset[2],misset[3]);
         rotate(b_star,b_star,misset[1],misset[2],misset[3]);
@@ -1428,6 +1440,7 @@ nanoBragg::update_oversample()
             printf("         recommend oversample=%d to work around this\n",recommended_oversample);
         }
     }
+    if(oversample<=0) oversample = this->oversample;
 
     /* rough estimate of sample properties */
     xtal_size_x = xtalsize_a;
@@ -1807,7 +1820,7 @@ nanoBragg::init_sources()
             lambda = lambda0 * ( 1.0 + dispstep * disp_tic - dispersion/2.0 ) ;
             if(verbose) printf("lambda%d = %.15g\n",disp_tic,lambda);
         }
-        if(verbose) printf("GOTHERE2: dispersion= %g dispstep= %g  dispsteps= %d\n",dispersion,dispstep,dispsteps);
+        if(verbose) printf("dispersion= %g dispstep= %g  dispsteps= %d\n",dispersion,dispstep,dispsteps);
 
         /* free any previous allocation */
         if(source_X != NULL) free(source_X);
@@ -1885,6 +1898,9 @@ nanoBragg::init_sources()
 void
 nanoBragg::init_mosaicity()
 {
+    /* temporary local seed */
+    long mseed;
+
     /* free any previous allocations */
     if(mosaic_umats!=NULL) free(mosaic_umats);
 
@@ -1893,15 +1909,22 @@ nanoBragg::init_mosaicity()
     if(verbose>6) printf("allocating enough space for %d mosaic domain orientation matrices\n",mosaic_domains);
     mosaic_umats = (double *) calloc(mosaic_domains+10,9*sizeof(double));
 
+    /* re-initialize the RNG for the mosaic sequence */
+    mseed = -abs(mosaic_seed);
+
     /* now actually create the orientation of each domain */
-    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
-        mosaic_rotation_umat(mosaic_spread, mosaic_umats+9*mos_tic, &mosaic_seed);
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
+    {
         if(mos_tic==0)
         {
             /* force at least one domain to be "aligned"? */
             mosaic_umats[0]=1.0;mosaic_umats[1]=0.0;mosaic_umats[2]=0.0;
             mosaic_umats[3]=0.0;mosaic_umats[4]=1.0;mosaic_umats[5]=0.0;
             mosaic_umats[6]=0.0;mosaic_umats[7]=0.0;mosaic_umats[8]=1.0;
+        }
+        else
+        {
+            mosaic_rotation_umat(mosaic_spread, mosaic_umats+9*mos_tic, &mseed);
         }
     }
 
@@ -1917,15 +1940,8 @@ void
 nanoBragg::show_mosaic_blocks()
 {
     /* assume init_mosaicity() was already run? */
-    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
-        mosaic_rotation_umat(mosaic_spread, mosaic_umats+9*mos_tic, &mosaic_seed);
-        if(mos_tic==0)
-        {
-            /* force at least one domain to be "aligned"? */
-            mosaic_umats[0]=1.0;mosaic_umats[1]=0.0;mosaic_umats[2]=0.0;
-            mosaic_umats[3]=0.0;mosaic_umats[4]=1.0;mosaic_umats[5]=0.0;
-            mosaic_umats[6]=0.0;mosaic_umats[7]=0.0;mosaic_umats[8]=1.0;
-        }
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
+    {
 //      printf("%d diagonal %f %f %f\n",mos_tic,mosaic_umats[mos_tic*9],mosaic_umats[mos_tic*9+4],mosaic_umats[mos_tic*9+8]);
         printf("%d by: %f deg\n",mos_tic,acos((mosaic_umats[mos_tic*9]+mosaic_umats[mos_tic*9+4]+mosaic_umats[mos_tic*9+8]-1)/2)*RTD);
         umat2misset(mosaic_umats+9*mos_tic,mosaic_missets);
@@ -1936,22 +1952,11 @@ nanoBragg::show_mosaic_blocks()
     }
 
     printf("  total of %d mosaic domains\n",mosaic_domains);
-    }
+}
 // end of show_mosaic_blocks()
 
 
 
-
-/* calculate total number of steps/pixel */
-void
-nanoBragg::update_steps()
-{
-    /* final decisions about sampling */
-    if(oversample <= 0) oversample = 1;
-    steps = sources*mosaic_domains*oversample*oversample;
-    subpixel_size = pixel_size/oversample;
-}
-// end of update_steps()
 
 
 
@@ -2023,6 +2028,28 @@ nanoBragg::show_params()
 
 
 
+/* add spots from nanocrystal simulation */
+void
+nanoBragg::randomize_orientation()
+{
+    if(verbose>1) printf("MISSET seed %ld\n",seed);
+    /* re-initialize the RNG */
+    seed = -abs(seed);
+    /* use spherical cap as sphere to generate random orientation in umat */
+    mosaic_rotation_umat(90.0, umat, &seed);
+    /* get the missetting angles, in case we want to use them again on -misset option */
+    umat2misset(umat,misset);
+    if(verbose) printf("random orientation misset angles: %f %f %f deg\n",misset[1]*RTD,misset[2]*RTD,misset[3]*RTD);
+    /* apply this orientation shift */
+    //rotate_umat(a_star,a_star,umat);
+    //rotate_umat(b_star,b_star,umat);
+    //rotate_umat(c_star,c_star,umat);
+    /* apply below */
+    misset[0] = 1.0;
+    init_cell();
+    return;
+}
+
 
 /* add spots from nanocrystal simulation */
 void
@@ -2038,6 +2065,7 @@ nanoBragg::add_nanoBragg_spots()
 
     /* make sure we are normalizing with the right number of sub-steps */
     steps = phisteps*mosaic_domains*oversample*oversample;
+    subpixel_size = pixel_size/oversample;
 
     sum = sumsqr = 0.0;
     i = sumn = 0;
@@ -2083,32 +2111,32 @@ nanoBragg::add_nanoBragg_spots()
                         /* assume "distance" is to the front of the detector sensor layer */
                         Odet = thick_tic*detector_thickstep;
 
-                    /* construct detector subpixel position in 3D space */
-//                  pixel_X = distance;
-//                  pixel_Y = Sdet-Ybeam;
-//                  pixel_Z = Fdet-Xbeam;
+                        /* construct detector subpixel position in 3D space */
+//                      pixel_X = distance;
+//                      pixel_Y = Sdet-Ybeam;
+//                      pixel_Z = Fdet-Xbeam;
                         pixel_pos[1] = Fdet*fdet_vector[1]+Sdet*sdet_vector[1]+Odet*odet_vector[1]+pix0_vector[1];
                         pixel_pos[2] = Fdet*fdet_vector[2]+Sdet*sdet_vector[2]+Odet*odet_vector[2]+pix0_vector[2];
                         pixel_pos[3] = Fdet*fdet_vector[3]+Sdet*sdet_vector[3]+Odet*odet_vector[3]+pix0_vector[3];
-                    pixel_pos[0] = 0.0;
-                    if(curved_detector) {
-                        /* construct detector pixel that is always "distance" from the sample */
-                            vector[1] = distance*beam_vector[1];
-                            vector[2]=distance*beam_vector[2] ;
-                            vector[3]=distance*beam_vector[3];
-                        /* treat detector pixel coordinates as radians */
-                        rotate_axis(vector,newvector,sdet_vector,pixel_pos[2]/distance);
-                        rotate_axis(newvector,pixel_pos,fdet_vector,pixel_pos[3]/distance);
-//                      rotate(vector,pixel_pos,0,pixel_pos[3]/distance,pixel_pos[2]/distance);
-                    }
-                    /* construct the diffracted-beam unit vector to this sub-pixel */
-                    airpath = unitize(pixel_pos,diffracted);
+                        pixel_pos[0] = 0.0;
+                        if(curved_detector) {
+                            /* construct detector pixel that is always "distance" from the sample */
+                                vector[1] = distance*beam_vector[1];
+                                vector[2]=distance*beam_vector[2] ;
+                                vector[3]=distance*beam_vector[3];
+                            /* treat detector pixel coordinates as radians */
+                            rotate_axis(vector,newvector,sdet_vector,pixel_pos[2]/distance);
+                            rotate_axis(newvector,pixel_pos,fdet_vector,pixel_pos[3]/distance);
+    //                      rotate(vector,pixel_pos,0,pixel_pos[3]/distance,pixel_pos[2]/distance);
+                        }
+                        /* construct the diffracted-beam unit vector to this sub-pixel */
+                        airpath = unitize(pixel_pos,diffracted);
 
-                    /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
-                    omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
-                    /* option to turn off obliquity effect, inverse-square-law only */
-                    if(point_pixel) omega_pixel = 1.0/airpath/airpath;
-                    omega_sum += omega_pixel;
+                        /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
+                        omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
+                        /* option to turn off obliquity effect, inverse-square-law only */
+                        if(point_pixel) omega_pixel = 1.0/airpath/airpath;
+                        omega_sum += omega_pixel;
 
                         /* now calculate detector thickness effects */
                         if(detector_thick > 0.0)
@@ -2475,8 +2503,9 @@ nanoBragg::add_background( int oversample, int source )
 //    double* floatimage(raw.begin());
 //    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
 
-    /* might be a good idea to re-do automated oversampling decision here? */
+    /* allow user to override automated oversampling decision at call time with arguments */
     if(oversample<=0) oversample = this->oversample;
+    if(oversample<=0) oversample = 1;
     if(source>=0) {
         /* user-specified source in the argument */
         source_start = source;
@@ -2485,6 +2514,7 @@ nanoBragg::add_background( int oversample, int source )
 
     /* make sure we are normalizing with the right number of sub-steps */
     steps = oversample*oversample;
+    subpixel_size = pixel_size/oversample;
 
     /* sweep over detector */
     sum = sumsqr = 0.0;
@@ -3130,10 +3160,19 @@ void
 nanoBragg::add_noise()
 {
     int i = 0;
+    long cseed;
+
     double expected_photons,observed_photons,adu;
+    /* refer to raw pixel data */
     floatimage = raw.begin();
-//    double* floatimage(raw.begin());
-//    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
+
+    /* don't bother with this loop if calibration is perfect
+     NOTE: applying calibration before Poisson noise simulates loss of photons before the detector
+     NOTE: applying calibration after Poisson noise simulates systematics in read-out electronics
+     here we do the latter */
+
+    /* re-start the RNG */
+    seed = -abs(seed);
 
     if(verbose) printf("applying calibration at %g%%, flicker noise at %g%%\n",calibration_noise*100.,flicker_noise*100.);
     sum = max_I = 0.0;
@@ -3158,36 +3197,78 @@ nanoBragg::add_noise()
                 }
             }
 
-                /* take input image to be ideal photons/pixel */
-                expected_photons = floatimage[i];
+            /* take input image to be ideal photons/pixel */
+            expected_photons = floatimage[i];
 
-                /* simulate 1/f noise in source */
-                if(flicker_noise > 0.0){
-                    expected_photons *= ( 1.0 + flicker_noise * gaussdev( &seed ) );
+            /* simulate 1/f noise in source */
+            if(flicker_noise > 0.0){
+                expected_photons *= ( 1.0 + flicker_noise * gaussdev( &seed ) );
             }
-                /* calibration is same from shot to shot, so use different seed */
-                if(calibration_noise > 0.0){
-                    expected_photons *= ( 1.0 + calibration_noise * gaussdev( &calib_seed ) );
-            }
-                /* simulate photon-counting error (assume calibration error is loss of photons, not electrons) */
-                observed_photons = poidev( expected_photons, &seed );
+            /* simulate photon-counting error */
+            observed_photons = poidev( expected_photons, &seed );
 
             /* now we overwrite the flex array, it is now observed, rather than expected photons */
             floatimage[i] = observed_photons;
 
-                /* accumulate number of photons, and keep track of max */
+            /* accumulate number of photons, and keep track of max */
             if(floatimage[i] > max_I) {
                 max_I = floatimage[i];
                 max_I_x = fpixel;
                 max_I_y = spixel;
             }
-                sum += observed_photons;
+            sum += observed_photons;
             ++sumn;
 
             ++i;
         }
     }
     if(verbose) printf("%.0f photons generated on noise image, max= %f at ( %.0f, %.0f )\n",sum,max_I,max_I_x,max_I_y);
+
+
+
+    if(calibration_noise > 0.0)
+    {
+        /* calibration is same from shot to shot, so use well-known seed */
+        cseed = -abs(calib_seed);
+        sum = max_I = 0.0;
+        i = sumn = 0;
+        for(spixel=0;spixel<spixels;++spixel)
+        {
+            for(fpixel=0;fpixel<fpixels;++fpixel)
+            {
+                /* allow for just one part of detector to be rendered */
+                if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
+                {
+                    ++i; continue;
+                }
+                /* allow for the use of a mask */
+                if(maskimage != NULL)
+                {
+                    /* skip any flagged pixels in the mask */
+                    if(maskimage[i] == 0)
+                    {
+                        ++i; continue;
+                    }
+                }
+
+                /* calibration is same from shot to shot, but varies from pixel to pixel */
+                floatimage[i] *= ( 1.0 + calibration_noise * gaussdev( &cseed ) );
+
+                /* accumulate number of photons, and keep track of max */
+                if(floatimage[i] > max_I) {
+                    max_I = floatimage[i];
+                    max_I_x = fpixel;
+                    max_I_y = spixel;
+                }
+                sum += floatimage[i];
+                ++sumn;
+
+                ++i;
+            }
+        }
+    }
+    if(verbose) printf("%.0f photons after calibration error, max= %f at ( %.0f, %.0f )\n",sum,max_I,max_I_x,max_I_y);
+
 
     /* now would be a good time to implement PSF?  before we add read-out noise */
 

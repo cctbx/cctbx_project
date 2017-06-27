@@ -29,6 +29,14 @@ with open(stolfile, "rb") as fp:
     except:pass
 # now Fbg_vs_stol is a list of stol,Fbg tuples
 
+# open the existing diffraction image: we need it for the background profile
+import dxtbx
+img = dxtbx.load("./F4_0_00008.mccd.gz")
+panel = img.get_detector().to_dict()['panels'][0]
+pixel_size_mm = panel['pixel_size'][0]
+distance_mm = -panel['origin'][2]
+beam_center_mm =
+
 # create the simulation
 SIM = nanoBragg(detpixels_slowfast=(4096,4096),pixel_size_mm=0.079346,verbose=9)
 SIM.Fhkl = Fhkl

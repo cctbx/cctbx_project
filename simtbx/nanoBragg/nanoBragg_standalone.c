@@ -1,4 +1,4 @@
-/* perfect-lattice nanocrystal diffraction simulator            -James Holton and Ken Frankel           6-12-17
+/* perfect-lattice nanocrystal diffraction simulator            -James Holton and Ken Frankel           6-24-17
 
 example:
 
@@ -194,6 +194,7 @@ int main(int argc, char** argv)
     int round_div = 1;
     double lambda,*lambda_of;
     double mosaic_spread=-1.0,*mosaic_umats,mosaic_missets[4];
+    double umat[9];
     double dispersion=0.0,dispstep=-1,lambda0 = 1.0e-10;
     double hdiv,hdivstep=-1.0,hdivrange= -1.0;
     double vdiv,vdivstep=-1.0,vdivrange= -1.0;
@@ -306,7 +307,7 @@ int main(int argc, char** argv)
     double F,F_bg,*stol_of,*F_of;
     double ***Fhkl;
     double default_F=0.0;
-    int    hkls;
+    int    hkls=0;
     double F_latt,F_cell;
     double F_highangle,F_lowangle;
     int stols,nearest=0;
@@ -539,6 +540,12 @@ int main(int argc, char** argv)
                 if(argc <= (i+6)) continue;
                 if(argv[i+6][0] == '-') continue;
                 gamma = atof(argv[i+6])/RTD;
+            }
+            if(strstr(argv[i], "-misset") && (argc > (i+1)))
+            {
+                if(strstr(argv[i+1],"rand"))
+                misset[0] = -1;
+                continue;
             }
             if(strstr(argv[i], "-misset") && (argc > (i+3)))
             {
@@ -1822,8 +1829,24 @@ int main(int argc, char** argv)
         }
     }
 
-    /* apply any missetting angle */
-    if(misset[0] != 0.0)
+    /* check for flag to generate random missetting angle */
+    if(misset[0] == -1.0)
+    {
+        /* use spherical cap as sphere to generate random orientation in umat */
+        mosaic_rotation_umat(90.0, umat, &seed);
+        /* get the missetting angles, in case we want to use them again on -misset option */
+        umat2misset(umat,misset);
+        printf("random orientation misset angles: %f %f %f deg\n",misset[1]*RTD,misset[2]*RTD,misset[3]*RTD);
+        /* apply this orientation shift */
+        //rotate_umat(a_star,a_star,umat);
+        //rotate_umat(b_star,b_star,umat);
+        //rotate_umat(c_star,c_star,umat);
+        /* do not apply again */
+        misset[0] = 1.0;
+    }
+
+    /* apply any missetting angle, if not already done */
+    if(misset[0] > 0.0)
     {
         rotate(a_star,a_star,misset[1],misset[2],misset[3]);
         rotate(b_star,b_star,misset[1],misset[2],misset[3]);
@@ -2152,6 +2175,9 @@ int main(int argc, char** argv)
             fclose(outfile);
         }
     }
+
+    /* no point in interpolating if nothing to interpolate */
+    if(hkls == 0) interpolate = 0;
 
     if(interpolate){
         /* allocate interpolation array */
@@ -2693,9 +2719,12 @@ int main(int argc, char** argv)
                                                 printf("WARNING: further warnings will not be printed! ");
                                             }
                                             F_cell = default_F;
-                                            continue;
+                                            interpolate=0;
                                         }
+                                    }
 
+                                    /* only interpolate if it is safe */
+                                    if(interpolate){
                                         /* integer versions of nearest HKL indicies */
                                         h_interp[0]=h0_flr-1;
                                         h_interp[1]=h0_flr;
@@ -2737,7 +2766,8 @@ int main(int argc, char** argv)
                                         /* run the tricubic polynomial interpolation */
                                         polin3(h_interp_d,k_interp_d,l_interp_d,sub_Fhkl,h,k,l,&F_cell);
                                     }
-                                    else
+
+                                    if(! interpolate)
                                     {
                                         if ( (h0<=h_max) && (h0>=h_min) && (k0<=k_max) && (k0>=k_min) && (l0<=l_max) && (l0>=l_min)  ) {
                                             /* just take nearest-neighbor */
@@ -2801,6 +2831,7 @@ int main(int argc, char** argv)
                     printf("I/steps %15.10g\n", I/steps);
                     printf("polar   %15.10g\n", polar);
                     printf("omega   %15.10g\n", omega_pixel);
+                    printf("capfrac %15.10g\n", capture_fraction);
                     printf("pixel   %15.10g\n", floatimage[j]);
                     printf("real-space cell vectors (Angstrom):\n");
                     printf("     %-10s  %-10s  %-10s\n","a","b","c");

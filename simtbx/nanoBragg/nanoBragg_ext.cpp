@@ -78,7 +78,6 @@ namespace boost_python { namespace {
       /* don't keep re-setting this! */
       nanoBragg.user_oversample=true;
       nanoBragg.update_oversample();
-      nanoBragg.update_steps();
 }
 
 
@@ -173,7 +172,6 @@ namespace boost_python { namespace {
       nanoBragg.xtal_size_z = -1;
 //      init_interpolator();
       nanoBragg.update_oversample();
-      nanoBragg.update_steps();
   }
 
 
@@ -192,7 +190,6 @@ namespace boost_python { namespace {
       /* need to update oversampling */
       nanoBragg.update_oversample();
       nanoBragg.init_interpolator();
-      nanoBragg.update_steps();
   }
 
   /* amorphous material size in 3D */
@@ -229,7 +226,6 @@ namespace boost_python { namespace {
   static double get_amorphous_density_gcm3(nanoBragg const& nanoBragg) {return nanoBragg.amorphous_density/1e6;}
   static void   set_amorphous_density_gcm3(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.amorphous_density = value*1e6;
-printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* need to update amorphous molecules */
       nanoBragg.init_background();
   }
@@ -620,7 +616,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
 //      nanoBragg.pythony_amplitudes = boost::python::tuple::get<1>(value);
 //      boost::python::extract( nanoBragg.pythony_indices , nanoBragg.pythony_amplitudes ) = value;
       if(nanoBragg.verbose>3) printf(" about to initialize indices\n");
-//printf("GOTHERE extract<indices>(value[0]).size()=%d\n",extract<indices >(value[0]).size());
       nanoBragg.pythony_indices = extract<indices >(value[0]);
       if(nanoBragg.verbose>3) printf(" about to initialize amplitudes\n");
       nanoBragg.pythony_amplitudes = extract<af::shared<double> >(value[1]);
@@ -667,7 +662,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* make sure this gets applied! */
       nanoBragg.init_background();
   }
-
 
 
   /* X-ray wavelength */
@@ -730,7 +724,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* need to re-create source table */
       nanoBragg.init_steps();
       nanoBragg.init_sources();
-      nanoBragg.update_steps();
   }
 
   /* number of discrete wavelengths in X-ray source, default: 1 or 2 ; you will want more */
@@ -745,7 +738,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* need to re-create source table */
       nanoBragg.init_steps();
       nanoBragg.init_sources();
-      nanoBragg.update_steps();
   }
 
 
@@ -766,7 +758,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* need to re-create source table */
       nanoBragg.init_steps();
       nanoBragg.init_sources();
-      nanoBragg.update_steps();
   }
 
   /* number of discrete incidence angles in X-ray source, default: 1 or 2 ; you will want more */
@@ -783,7 +774,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       nanoBragg.vdivstep = nanoBragg.hdivstep = -1.0;
       nanoBragg.init_steps();
       nanoBragg.init_sources();
-      nanoBragg.update_steps();
   }
 
   /* alternative to steps: x-ray beam divergence step size, horizontal,vertical in mrad */
@@ -800,7 +790,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       nanoBragg.vdivsteps = nanoBragg.hdivsteps = -1;
       nanoBragg.init_steps();
       nanoBragg.init_sources();
-      nanoBragg.update_steps();
   }
 
 
@@ -814,10 +803,9 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
   static void   set_mosaic_spread_deg(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.mosaic_spread = value/RTD;
       /* need to re-create mosaic domain table */
-      nanoBragg.init_mosaicity();
-      nanoBragg.init_steps();
-      nanoBragg.update_steps();
-      nanoBragg.show_mosaic_blocks();
+      //nanoBragg.init_mosaicity();
+      //nanoBragg.init_steps();
+      //nanoBragg.show_mosaic_blocks();
   }
   /* number of discrete mosaic domains, default: 1 or 2 ; you will want more */
   static int get_mosaic_domains(nanoBragg const& nanoBragg) {
@@ -826,10 +814,9 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
   static void   set_mosaic_domains(nanoBragg& nanoBragg, int const& value) {
       nanoBragg.mosaic_domains = value;
       /* need to re-create mosaic domain table */
-      nanoBragg.init_mosaicity();
-      nanoBragg.init_steps();
-      nanoBragg.update_steps();
-      nanoBragg.show_mosaic_blocks();
+      //nanoBragg.init_mosaicity();
+      //nanoBragg.init_steps();
+      //nanoBragg.show_mosaic_blocks();
   }
 
 
@@ -843,7 +830,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       nanoBragg.phi0 = value/RTD;
       /* need to re-create phi step table */
       nanoBragg.init_steps();
-      nanoBragg.update_steps();
       nanoBragg.show_phisteps();
   }
 
@@ -856,7 +842,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* need to re-create phi step table */
       nanoBragg.phistep=-1.0;
       nanoBragg.init_steps();
-      nanoBragg.update_steps();
       nanoBragg.show_phisteps();
   }
 
@@ -869,7 +854,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* need to re-create phi step table */
       nanoBragg.phistep=-1.0;
       nanoBragg.init_steps();
-      nanoBragg.update_steps();
       nanoBragg.show_phisteps();
   }
 
@@ -881,7 +865,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       nanoBragg.phistep = value/RTD;
       /* need to re-create phi step table */
       nanoBragg.init_steps();
-      nanoBragg.update_steps();
       nanoBragg.show_phisteps();
   }
 
@@ -895,7 +878,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* need to re-create thick step table */
       nanoBragg.detector_thickstep=-1.0;
       nanoBragg.init_steps();
-      nanoBragg.update_steps();
       nanoBragg.show_detector_thicksteps();
   }
 
@@ -908,7 +890,6 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* need to re-create detector layer table */
       nanoBragg.detector_thickstep=-1.0;
       nanoBragg.init_steps();
-      nanoBragg.update_steps();
       nanoBragg.show_detector_thicksteps();
   }
 
@@ -920,14 +901,14 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       nanoBragg.detector_thickstep = value/1000.;
       /* need to re-create detector layer table */
       nanoBragg.init_steps();
-      nanoBragg.update_steps();
       nanoBragg.show_detector_thicksteps();
   }
 
 
   /* noise creation parameters */
 
-  /* seed values need no scaling */
+  /* seed values need to be negated to re-initialize the generator */
+  /* at the moment, trying to do this on-the-fly */
 
   /* quantum_gain need not be scaled */
   /* adc_ofset need not be scaled */
@@ -1477,6 +1458,10 @@ printf("GOTHERE: density= %g\n", nanoBragg.amorphous_density);
       /* print to screen a summary of all initialized parameters */
       .def("show_params",&nanoBragg::show_params,
        "print out all simulation parameters, just like the standalone program")
+
+      /* print to screen a summary of all initialized parameters */
+      .def("randomize_orientation",&nanoBragg::randomize_orientation,
+       "rotate crystal to a random orientation, updates Amatrix and missets normally seeded with time, set nanoBragg.seed to get the same random orientation each time")
 
       /* actual run of the spot simulation */
       .def("add_nanoBragg_spots",&nanoBragg::add_nanoBragg_spots,

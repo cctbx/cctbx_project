@@ -44,9 +44,17 @@ def fcalc_from_pdb(resolution,algorithm=None,wavelength=0.9):
 
 def run_sim2smv(fileout):
   SIM = nanoBragg(detpixels_slowfast=(1000,1000),pixel_size_mm=0.1,Ncells_abc=(5,5,5),verbose=9)
+  import sys
+  if len(sys.argv)>2:
+    SIM.seed = int(sys.argv[2])
+    print "GOTHERE seed=",SIM.seed
+  if len(sys.argv)>1:
+    if sys.argv[1]=="random" : SIM.randomize_orientation()
   SIM.distance_mm=100
   #SIM = nanoBragg(detpixels_slowfast=(2527,2463),pixel_size_mm=0.172,Ncells_abc=(5,5,5),verbose=9)
   #SIM.distance_mm=200
+  # get same noise each time this test is run
+  SIM.seed = 1
   SIM.oversample=1
   SIM.wavelength_A=1
   SIM.polarization=1
@@ -55,8 +63,12 @@ def run_sim2smv(fileout):
   print "unit_cell_tuple=",SIM.unit_cell_tuple
   # this will become F000, marking the beam center
   SIM.default_F=100
-  SIM.missets_deg = (10,20,30)
-  sfall = fcalc_from_pdb(resolution=1.7,algorithm="direct",wavelength=SIM.wavelength_A)
+  #SIM.missets_deg= (10,20,30)
+  print "mosaic_seed=",SIM.mosaic_seed
+  print "seed=",SIM.seed
+  print "calib_seed=",SIM.calib_seed
+  print "missets_deg =", SIM.missets_deg
+  sfall = fcalc_from_pdb(resolution=1.6,algorithm="direct",wavelength=SIM.wavelength_A)
   # use crystal structure to initialize Fhkl array
   SIM.Fhkl=sfall
   # fastest option, least realistic
@@ -140,7 +152,6 @@ def run_sim2smv(fileout):
   # amplify spot signal to simulate physical crystal of 4000x larger: 100 um (64e9 x the volume)
   SIM.raw *= 64e9;
   SIM.to_smv_format(fileout="intimage_001.img")
-  SIM.verbose=9
   # rough approximation to water: interpolation points for sin(theta/lambda) vs structure factor
   bg = flex.vec2_double([(0,2.57),(0.0365,2.58),(0.07,2.8),(0.12,5),(0.162,8),(0.2,6.75),(0.18,7.32),(0.216,6.75),(0.236,6.5),(0.28,4.5),(0.3,4.3),(0.345,4.36),(0.436,3.77),(0.5,3.17)])
   SIM.Fbg_vs_stol = bg
@@ -171,11 +182,6 @@ def run_sim2smv(fileout):
   print SIM.raw[500000]
   SIM.to_smv_format(fileout="intimage_003.img")
   #SIM.detector_psf_fwhm_mm=0
-  # get same noise each time this test is run
-  SIM.seed = 1
-  print "mosaic_seed=",SIM.mosaic_seed
-  print "seed=",SIM.seed
-  print "calib_seed=",SIM.calib_seed
   print "quantum_gain=",SIM.quantum_gain
   print "adc_offset_adu=",SIM.adc_offset_adu
   print "detector_calibration_noise_pct=",SIM.detector_calibration_noise_pct
@@ -197,7 +203,7 @@ def run_sim2smv(fileout):
   print img
   FormatCBFMiniPilatus.as_file(
     detector=img.get_detector(),beam=img.get_beam(),gonio=img.get_goniometer(),scan=img.get_scan(),
-    data=img.get_raw_data(),path="./noiseimage_001.cbf")
+    data=img.get_raw_data(),path=fileout)
 
 
 
