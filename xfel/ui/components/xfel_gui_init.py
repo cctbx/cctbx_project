@@ -713,7 +713,7 @@ class ClusteringWorker(Thread):
 class MainWindow(wx.Frame):
 
   def __init__(self, parent, id, title):
-    wx.Frame.__init__(self, parent, id, title, size=(800, 500))
+    wx.Frame.__init__(self, parent, id, title, size=(200, 200))
 
     self.run_sentinel = None
     self.job_sentinel = None
@@ -1048,7 +1048,7 @@ class BaseTab(wx.Panel):
   ''' Base class for runtime tab '''
 
   def __init__(self, parent):
-    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=(300, 400))
+    wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY, size=(200, 200))
 
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.main_sizer)
@@ -1156,7 +1156,7 @@ class TrialsTab(BaseTab):
     self.main = main
     self.show_active_only = False
 
-    self.trial_panel = ScrolledPanel(self, size=(300, 350))
+    self.trial_panel = ScrolledPanel(self, size=(200, 200))
     self.trial_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.trial_panel.SetSizer(self.trial_sizer)
 
@@ -1170,7 +1170,6 @@ class TrialsTab(BaseTab):
     self.btn_sizer.Add(self.btn_add_trial)
 
     self.main_sizer.Add(self.trial_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.btn_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Bindings
@@ -1242,7 +1241,7 @@ class JobsTab(BaseTab):
 
     self.trial_choice = gctr.ChoiceCtrl(self,
                                         label='Filter by:',
-                                        label_size=(80, -1),
+                                        label_size=(60, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
@@ -1251,11 +1250,10 @@ class JobsTab(BaseTab):
     self.btn_restart_job = wx.Button(self, label='Restart job', size=(120, -1))
     self.chk_active = wx.CheckBox(self, label='Only display jobs from active trials/blocks')
     self.chk_active.SetValue(True)
-    self.option_sizer = wx.FlexGridSizer(1, 2, 0, 20)
-    self.option_sizer.AddMany([(self.trial_choice), (self.btn_stop_job), (self.btn_delete_job), (self.btn_restart_job), (self.chk_active)])
+    self.option_sizer = wx.FlexGridSizer(1, 5, 0, 20)
+    self.option_sizer.AddMany([(self.trial_choice), (self.chk_active), (self.btn_stop_job), (self.btn_delete_job), (self.btn_restart_job)])
 
     self.main_sizer.Add(self.job_list, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.option_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
 
@@ -1470,7 +1468,7 @@ class StatusTab(BaseTab):
     self.isigi_cutoff = 2
     self.info = {}
 
-    self.status_panel = ScrolledPanel(self, size=(900, 120))
+    self.status_panel = ScrolledPanel(self, size=(100, 100))
     self.status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
     self.status_sizer = wx.StaticBoxSizer(self.status_box, wx.VERTICAL)
     self.status_panel.SetSizer(self.status_sizer)
@@ -1482,7 +1480,7 @@ class StatusTab(BaseTab):
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
-                                        label_size=(120, -1),
+                                        label_size=(100, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
@@ -1493,13 +1491,13 @@ class StatusTab(BaseTab):
 
     self.opt_multi = gctr.OptionCtrl(self,
                                      label='Goal multiplicity:',
-                                     label_size=(120, -1),
+                                     label_size=(100, -1),
                                      ctrl_size=(100, -1),
                                      items=[('goal', 10)])
 
     self.opt_isigi = gctr.OptionCtrl(self,
                                      label='I/sigI cutoff:',
-                                     label_size=(120, -1),
+                                     label_size=(100, -1),
                                      ctrl_size=(100, -1),
                                      items=[('isigi', '2')])
 
@@ -1536,8 +1534,8 @@ class StatusTab(BaseTab):
     self.cluster_btn_sizer.Add(self.btn_cluster, flag=wx.EXPAND)
     self.cluster_btn_sizer.Add(self.btn_histogram, flag=wx.EXPAND)
 
-    cluster_box = wx.StaticBox(self, label='Unit Cell Clustering')
-    self.cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
+    self.cluster_box = wx.StaticBox(self, label='Unit Cell Clustering')
+    self.cluster_box_sizer = wx.StaticBoxSizer(self.cluster_box, wx.VERTICAL)
     self.cluster_box_sizer.Add(self.opt_cluster, flag=wx.ALL, border=10)
     self.cluster_box_sizer.Add(self.cluster_btn_sizer,
                                flag=wx.ALL | wx.EXPAND, border=10)
@@ -1802,7 +1800,7 @@ class RunStatsTab(BaseTab):
     self.i_sigi = 1
     self.should_have_indexed_image_paths = None
 
-    self.runstats_panel = wx.Panel(self, size=(900, 120))
+    self.runstats_panel = wx.Panel(self, size=(100, 100))
     self.runstats_panelsize = self.runstats_panel.GetSize()
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
     self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.ALL | wx.EXPAND)
@@ -1881,7 +1879,7 @@ class RunStatsTab(BaseTab):
     self.should_have_indexed_results_sizer = wx.GridBagSizer(1, 1)
 
     self.should_have_indexed_results_sizer.Add(self.should_have_indexed_list, pos=(0, 0),
-                                               span=(12, 60),
+                                               span=(12, 45),
                                                flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
                                                border=10)
 
@@ -2103,7 +2101,7 @@ class UnitCellTab(BaseTab):
                                             label='Tags:',
                                             label_size=(200, -1),
                                             label_style='normal',
-                                            ctrl_size=(150, 180),
+                                            ctrl_size=(150, 100),
                                             direction='vertical',
                                             choices=[])
 
@@ -2123,7 +2121,7 @@ class UnitCellTab(BaseTab):
                                                 label='Tag sets:',
                                                 label_size=(200, -1),
                                                 label_style='normal',
-                                                ctrl_size=(150, 200),
+                                                ctrl_size=(150, 100),
                                                 direction='vertical',
                                                 choices=[])
 
@@ -2137,18 +2135,18 @@ class UnitCellTab(BaseTab):
 
     self.add_sele_sizer = wx.GridBagSizer(4, 1)
     self.add_sele_sizer.Add(self.trial_number, pos=(0, 0),
-                            flag=wx.ALL, border=10)
+                            flag=wx.ALL, border=0)
     self.add_sele_sizer.Add(self.tag_checklist, pos=(1, 0),
-                            flag=wx.ALL | wx.EXPAND, border=10)
+                            flag=wx.ALL | wx.EXPAND, border=0)
     self.add_sele_sizer.Add(self.selection_type_radio, pos=(2, 0),
-                            flag=wx.ALL | wx.ALIGN_CENTER, border=10)
+                            flag=wx.ALL | wx.ALIGN_CENTER, border=0)
     self.add_sele_sizer.Add(self.add_sele_button, pos=(3, 0),
                             flag=wx.ALL)
     self.selection_columns_sizer.Add(self.add_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.remove_sele_sizer = wx.GridBagSizer(3, 1)
     self.remove_sele_sizer.Add(self.tag_set_checklist, pos=(0, 0),
-                               flag=wx.ALL | wx.EXPAND, border=10)
+                               flag=wx.ALL | wx.EXPAND, border=0)
     self.remove_sele_sizer.Add(self.remove_sele_button, pos=(1, 0),
                                flag=wx.ALL)
     self.remove_sele_sizer.Add(self.reset_sele_button, pos=(2, 0),
@@ -2169,7 +2167,7 @@ class UnitCellTab(BaseTab):
     self.tab_sizer.Add(self.selection_columns_panel, 0,
                        flag=wx.ALIGN_LEFT | wx.EXPAND, border=10)
     self.tab_sizer.Add(self.unit_cell_panel, 1,
-                       flag=wx.EXPAND | wx.ALL)
+                       flag=wx.EXPAND | wx.ALL, border=0)
     self.main_sizer.Add(self.tab_sizer, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -2662,7 +2660,7 @@ class TrialPanel(wx.Panel):
   ''' A scrolled panel that contains run blocks and trial controls '''
 
   def __init__(self, parent, db, trial, box_label=None):
-    wx.Panel.__init__(self, parent=parent, size=(250, 300))
+    wx.Panel.__init__(self, parent=parent, size=(200, 200))
 
     self.db = db
     self.trial = trial

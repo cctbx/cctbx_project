@@ -738,7 +738,7 @@ class StatusChange(wx.PyCommandEvent):
 class SentinelStatus(CtrlBase):
   def __init__(self, parent,
                label='',
-               label_size=(150, -1),
+               label_size=(120, -1),
                label_style='normal',
                content_style='normal'):
 
