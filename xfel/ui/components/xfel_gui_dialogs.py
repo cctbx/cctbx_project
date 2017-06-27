@@ -1526,9 +1526,6 @@ class RunBlockDialog(BaseDialog):
       self.comment.ctr.SetValue(str(last.comment))
 
   def onImageFormat(self, e):
-    self.configure_controls()
-
-  def configure_controls(self):
     sel= self.img_format.ctr.GetString(self.img_format.ctr.GetSelection())
     if 'cbf' in sel:
       #self.beam_xyz.X.Disable()
@@ -1551,6 +1548,9 @@ class RunBlockDialog(BaseDialog):
       #self.gain_map_path.Show()
       self.runblock_panel.Layout()
       self.runblock_panel.SetupScrolling()
+
+  def configure_controls(self):
+    self.onImageFormat(None)
     if self.last_run is None:
       self.runblocks_end.Disable()
       self.end_type.auto.SetValue(1)
