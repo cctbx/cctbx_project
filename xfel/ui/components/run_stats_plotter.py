@@ -281,7 +281,7 @@ def plot_run_stats(stats,
     f.savefig("runstats_tmp.png", bbox_inches='tight', dpi=100)
     plt.close(f)
     t2 = time.time()
-    print "plot_run_stats took %s" % duration(t1, t2)
+    # print "plot_run_stats took %s" % duration(t1, t2)
     return "runstats_tmp.png"
 
 def plot_multirun_stats(runs,

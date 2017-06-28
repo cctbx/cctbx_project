@@ -435,7 +435,7 @@ class RunStatsSentinel(Thread):
             self.run_statuses.append(job.status)
     self.reorder()
     t2 = time.time()
-    print "refresh_stats (RunStats sentinel thread) took %s" % duration(t1, t2)
+    # print "refresh_stats (RunStats sentinel thread) took %s" % duration(t1, t2)
 
   def reorder(self):
     run_numbers_ordered = sorted(self.run_numbers)
@@ -2021,7 +2021,7 @@ class RunStatsTab(BaseTab):
       self.runstats_panel.Layout()
       # self.figure_panel.SetupScrolling(scrollToTop=False)
     t2 = time.time()
-    print "plot_static_runstats (GUI main thread) took %s" % duration(t1, t2)
+    # print "plot_static_runstats (GUI main thread) took %s" % duration(t1, t2)
 
   def print_should_have_indexed_paths(self):
     try:
