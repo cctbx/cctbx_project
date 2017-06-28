@@ -159,10 +159,10 @@ class PopUpCharts(object):
     plot_ratio = max(min(xsize, ysize)/2.5, 3)
     if high_vis:
       text_ratio = plot_ratio*6
-      seperator = "\n"
+      separator = "\n"
     else:
       text_ratio = plot_ratio*3
-      seperator = "\n"
+      separator = "\n"
 
     # Initialize figure
     fig = plt.figure(figsize=(xsize, ysize))
@@ -218,78 +218,55 @@ class PopUpCharts(object):
       gamma = gamma.select(accepted)
 
       total += len(a)
-
       nbins = int(np.sqrt(len(a))) * 2
-
       n_str = "N: %d "%len(a)
-      varstr = "%.1f +/- %.1f"%(flex.mean(a),
-                                flex.mean_and_variance(a).unweighted_sample_standard_deviation())
-      if len(legend) > 0:
-        a_legend = n_str + legend + seperator + varstr
-      else:
-        a_legend = n_str + varstr
-      a_hist = sub_a.hist(a, nbins, normed=False,
-                 alpha=0.75, histtype='stepfilled', label = a_legend, range = alim)
-      sub_a.set_xlabel("a-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
-      sub_a.set_ylabel('Number of images').set_fontsize(text_ratio)
 
-      varstr = "%.1f +/- %.1f"%(flex.mean(b),
-                                flex.mean_and_variance(b).unweighted_sample_standard_deviation())
-      if len(legend) > 0:
-        b_legend = legend + seperator + varstr
-      else:
-        b_legend = varstr
-      b_hist = sub_b.hist(b, nbins, normed=False,
-               alpha=0.75, histtype='stepfilled', label = b_legend, range = blim)
-      sub_b.set_xlabel("b-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
-      self.plt.setp(sub_b.get_yticklabels(), visible=False)
+      from matplotlib.ticker import FormatStrFormatter
+      hists = []
+      for name, dimension, sub, lim in \
+        [('a', a, sub_a, alim), ('b', b, sub_b, blim), ('c', c, sub_c, clim)]:
+        stats = flex.mean_and_variance(dimension)
+        mean = stats.mean()
+        try:
+          stddev = stats.unweighted_sample_standard_deviation()
+        except RuntimeError:
+          raise Exception("Not enough data to produce a histogram")
+        varstr = "%.1f +/- %.1f"%(mean, stddev)
+        if len(legend) > 0:
+          dim_legend = legend + separator + varstr
+        else:
+          dim_legend = varstr
+        if name == "a":
+          dim_legend = n_str + dim_legend
+        hist = sub.hist(dimension, nbins, normed=False,
+                 alpha=0.75, histtype='stepfilled', label = dim_legend, range = lim)
+        sub.set_xlabel("%s-edge (%s $\AA$)"%(name, varstr)).set_fontsize(text_ratio)
+        xloc = plt.MaxNLocator(5)
+        sub.xaxis.set_major_locator(xloc)
+        sub.xaxis.set_major_formatter(FormatStrFormatter("%3d"))
+        if name == 'a':
+          sub.set_ylabel('Number of images').set_fontsize(text_ratio)
+        else:
+          self.plt.setp(sub.get_yticklabels(), visible=False)
+        hists.append(hist)
 
-      varstr = "%.1f +/- %.1f"%(flex.mean(c),
-                                flex.mean_and_variance(c).unweighted_sample_standard_deviation())
-      if len(legend) > 0:
-        c_legend = legend + seperator + varstr
-      else:
-        c_legend = varstr
-      c_hist = sub_c.hist(c, nbins, normed=False,
-               alpha=0.75, histtype='stepfilled', label = c_legend, range = clim)
-      sub_c.set_xlabel("c-edge (%s $\AA$)"%varstr).set_fontsize(text_ratio)
-      self.plt.setp(sub_c.get_yticklabels(), visible=False)
-
-      abc_hist_ylim = max(1.2*max([max(h[0]) for h in (a_hist, b_hist, c_hist)]), abc_hist_ylim)
+      abc_hist_ylim = max(1.2*max([max(h[0]) for h in hists]), abc_hist_ylim)
       sub_a.set_ylim([0, abc_hist_ylim])
 
-      if len(info_list) == 1:
-        sub_ba.hist2d(a, b, bins=100, range=[alim,blim] if ranges is not None else None)
-      else:
-        sub_ba.plot(a.as_numpy_array(), b.as_numpy_array(), '.')
-        if ranges is not None:
-          sub_ba.set_xlim(alim)
-          sub_ba.set_ylim(blim)
-      sub_ba.set_xlabel("a axis").set_fontsize(text_ratio)
-      sub_ba.set_ylabel("b axis").set_fontsize(text_ratio)
-      # plt.setp(sub_ba.get_yticklabels(), visible=False)
-
-      if len(info_list) == 1:
-        sub_cb.hist2d(b, c, bins=100, range=[blim,clim] if ranges is not None else None)
-      else:
-        sub_cb.plot(b.as_numpy_array(), c.as_numpy_array(), '.')
-        if ranges is not None:
-          sub_cb.set_xlim(blim)
-          sub_cb.set_ylim(clim)
-      sub_cb.set_xlabel("b axis").set_fontsize(text_ratio)
-      sub_cb.set_ylabel("c axis").set_fontsize(text_ratio)
-      # plt.setp(sub_cb.get_yticklabels(), visible=False)
-
-      if len(info_list) == 1:
-        sub_ac.hist2d(c, a, bins=100, range=[clim,alim] if ranges is not None else None)
-      else:
-        sub_ac.plot(c.as_numpy_array(), a.as_numpy_array(), '.')
-        if ranges is not None:
-          sub_ac.set_xlim(clim)
-          sub_ac.set_ylim(alim)
-      sub_ac.set_xlabel("c axis").set_fontsize(text_ratio)
-      sub_ac.set_ylabel("a axis").set_fontsize(text_ratio)
-      # plt.setp(sub_ac.get_yticklabels(), visible=False)
+      for (n1, n2, d1, d2, lim1, lim2, sub) in \
+        [('a', 'b', a, b, alim, blim, sub_ba),
+         ('b', 'c', b, c, blim, clim, sub_cb),
+         ('c', 'a', c, a, clim, alim, sub_ac)]:
+        if len(info_list) == 1:
+          sub.hist2d(d1, d2, bins=100, range=[lim1, lim2] if ranges is not None else None)
+        else:
+          sub.plot(d1.as_numpy_array(), d2.as_numpy_array(), '.')
+          if ranges is not None:
+            sub.set_xlim(lim1)
+            sub.set_ylim(lim2)
+        sub.set_xlabel("%s axis"%n1).set_fontsize(text_ratio)
+        sub.set_ylabel("%s axis"%n2).set_fontsize(text_ratio)
+        # plt.setp(sub.get_yticklabels(), visible=False)
 
       for ax in (sub_a, sub_b, sub_c, sub_alpha, sub_beta, sub_gamma):
         ax.tick_params(axis='both', which='both', left='off', right='off')
@@ -299,28 +276,23 @@ class PopUpCharts(object):
         ax.set_xticklabels([])
         ax.set_yticklabels([])
 
-      sub_alpha.hist(alpha, nbins, normed=False,
-                     alpha=0.75,  histtype='stepfilled')
-      sub_alpha.set_xlabel(
-        r'$\alpha (%.2f +/- %.2f\circ)$' % (flex.mean(alpha),
-                                             flex.mean_and_variance(alpha).unweighted_sample_standard_deviation())
-        ).set_fontsize(text_ratio)
-      sub_alpha.set_ylabel('Number of images').set_fontsize(text_ratio)
-
-      sub_beta.hist(beta, nbins, normed=False,
-                    alpha=0.75, histtype='stepfilled')
-      sub_beta.set_xlabel(
-        r'$\beta (%.2f +/- %.2f\circ)$' % (flex.mean(beta),
-                                           flex.mean_and_variance(beta).unweighted_sample_standard_deviation())
-        ).set_fontsize(text_ratio)
-      self.plt.setp(sub_beta.get_yticklabels(), visible=False)
-      sub_gamma.hist(gamma, nbins, normed=False,
-                     alpha=0.75, histtype='stepfilled')
-      sub_gamma.set_xlabel(
-        r'$\gamma (%.2f +/- %.2f\circ)$' % (flex.mean(gamma),
-                                            flex.mean_and_variance(gamma).unweighted_sample_standard_deviation())
-        ).set_fontsize(text_ratio)
-      self.plt.setp(sub_gamma.get_yticklabels(), visible=False)
+      for (name, angle, sub) in \
+        [(r'$\alpha$', alpha, sub_alpha),
+         (r'$\beta$', beta, sub_beta),
+         (r'$\gamma$', gamma, sub_gamma)]:
+        sub.hist(angle, nbins, normed=False,
+                 alpha=0.75, histtype='stepfilled')
+        stats = flex.mean_and_variance(angle)
+        mean = stats.mean()
+        stddev = stats.unweighted_sample_standard_deviation()
+        sub.set_xlabel(r'%s (%.2f +/- %.2f$\circ$)' % (name, mean, stddev)).set_fontsize(text_ratio)
+        xloc = plt.MaxNLocator(5)
+        sub.xaxis.set_major_locator(xloc)
+        sub.xaxis.set_major_formatter(FormatStrFormatter("%3d"))
+        if name == '\alpha':
+          sub.set_ylabel('Number of images').set_fontsize(text_ratio)
+        else:
+          self.plt.setp(sub.get_yticklabels(), visible=False)
 
     sub_b.xaxis.get_major_ticks()[0].label1.set_visible(False)
     sub_b.xaxis.get_major_ticks()[-1].label1.set_visible(False)
