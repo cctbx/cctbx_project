@@ -22,7 +22,7 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
   if experiments is not None:
     if len(experiments) > 1:
       print "Only logging first of %d experiments"%len(experiments)
-    db_experiment = app.create_experiment(experiments[0], cell=db_trial.cell)
+    db_experiment = app.create_experiment(experiments[0])
     app.link_imageset_frame(db_experiment.imageset, db_event)
 
     d = experiments[0].crystal.get_unit_cell().d(reflections['miller_index'])
@@ -54,8 +54,8 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
                                       flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else None)
 
 class dxtbx_xfel_db_application(xfel_db_application):
-  def create_experiment(self, experiment, cell=None):
-    return Experiment(self, experiment=experiment, cell=cell)
+  def create_experiment(self, experiment):
+    return Experiment(self, experiment=experiment)
 
   def create_event(self, **kwargs):
     return Event(self, **kwargs)

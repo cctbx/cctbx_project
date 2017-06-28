@@ -67,7 +67,23 @@ class Job(db_proxy):
       print "(%d)"%len(item_ids)
       ids[item] = ",".join(item_ids)
 
-    if len(self.trial.isoforms) == 0 or self.trial.cell is None:
+    if len(self.trial.isoforms) == 0 and self.trial.cell is None:
+      print "Listing bin entries",
+      query = """SELECT bin.id FROM `%s_bin` bin
+                 JOIN `%s_cell` cell ON bin.cell_id = cell.id
+                 JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
+                 JOIN `%s_experiment` expr ON expr.crystal_id = crystal.id
+                 JOIN `%s_imageset` imgset ON imgset.id = expr.imageset_id
+                 JOIN `%s_imageset_event` ie_e ON ie_e.imageset_id = imgset.id
+                 JOIN `%s_event` evt ON evt.id = ie_e.event_id
+                 WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d""" % (
+                 tag, tag, tag, tag, tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
+      cursor = self.app.execute_query(query)
+      item_ids = ["%d"%i[0] for i in cursor.fetchall()]
+      print "(%d)"%len(item_ids)
+      bin_ids = ",".join(item_ids)
+
+    if len(self.trial.isoforms) == 0:
       print "Listing cell entries",
       query = """SELECT cell.id FROM `%s_cell` cell
                  JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
@@ -75,7 +91,8 @@ class Job(db_proxy):
                  JOIN `%s_imageset` imgset ON imgset.id = expr.imageset_id
                  JOIN `%s_imageset_event` ie_e ON ie_e.imageset_id = imgset.id
                  JOIN `%s_event` evt ON evt.id = ie_e.event_id
-                 WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d""" % (
+                 WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d
+                 AND cell.trial_id IS NULL""" % (
                  tag, tag, tag, tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
       cursor = self.app.execute_query(query)
       item_ids = ["%d"%i[0] for i in cursor.fetchall()]
@@ -99,7 +116,14 @@ class Job(db_proxy):
                    item, tag, item, item, item, ids[item])
         delete_and_commit(query)
 
-    if (len(self.trial.isoforms) == 0 or self.trial.cell is None) and len(cell_ids) > 0:
+    if (len(self.trial.isoforms) == 0 and self.trial.cell is None) and len(cell_ids) > 0:
+      print "Deleting bin entries",
+      query = """DELETE bin FROM `%s_bin` bin
+                 WHERE bin.id IN (%s)""" % (
+                 tag, bin_ids)
+      delete_and_commit(query)
+
+    if len(self.trial.isoforms) == 0 and len(cell_ids) > 0:
       print "Deleting cell entries",
       query = """DELETE cell FROM `%s_cell` cell
                  WHERE cell.id IN (%s)""" % (
