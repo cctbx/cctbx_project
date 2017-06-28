@@ -1,14 +1,10 @@
 from __future__ import division
-from scitbx.array_family import flex
-from scitbx.matrix import sqr
-from simtbx.nanoBragg import testuple
-from simtbx.nanoBragg import pivot
+from scitbx.array_family import flex # import dependency
 from simtbx.nanoBragg import shapetype
 from simtbx.nanoBragg import convention
 from simtbx.nanoBragg import nanoBragg
 import libtbx.load_env # possibly implicit
 from cctbx import crystal
-from cctbx import miller
 
 
 # get the structure factor of spots
@@ -26,7 +22,7 @@ with open(stolfile, "rb") as fp:
     tmp = i.split(" ")
     try:
       Fbg_vs_stol.append((float(tmp[0]), float(tmp[1])))
-    except:pass
+    except Exception:pass
 # now Fbg_vs_stol is a list of stol,Fbg tuples
 
 # open the existing diffraction image: we need it for the background profile
@@ -35,7 +31,6 @@ img = dxtbx.load("./F4_0_00008.mccd.gz")
 panel = img.get_detector().to_dict()['panels'][0]
 pixel_size_mm = panel['pixel_size'][0]
 distance_mm = -panel['origin'][2]
-beam_center_mm =
 
 # create the simulation
 SIM = nanoBragg(detpixels_slowfast=(4096,4096),pixel_size_mm=0.079346,verbose=9)
