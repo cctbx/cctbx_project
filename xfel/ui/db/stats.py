@@ -112,7 +112,7 @@ class HitrateStats(object):
     rungroup_ids = [rg.id for rg in self.trial.rungroups]
     assert self.rungroup.id in rungroup_ids
     if len(self.trial.isoforms) > 0:
-      cells = [isoform.cell for isoform in isoforms]
+      cells = [isoform.cell for isoform in self.trial.isoforms]
     elif self.trial.cell is not None:
       cells = [self.trial.cell]
     else:
