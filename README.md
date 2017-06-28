@@ -22,6 +22,8 @@ Use of the Python interfaces is highly recommended, but optional. The cctbx can 
 The easiest way to set up a development environment from scratch is to:
 
 1. Download https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py in the directory where the cctbx and its dependencies shall be installed
-2. Execute it: `python bootstrap.py` (you may want to run it with the `--help` option first to discover the available options)
+2. 
+  - On Linux or Mac OS execute it: `python bootstrap.py` (you may want to run it with the `--help` option first to discover the available options).
+  - On Windows follow the instructions detailed on https://github.com/cctbx/cctbx_project/wiki/How-to-build-CCTBX-on-Windows.
 
 The installation will take a long while but the script will verbosely describe what it does.
