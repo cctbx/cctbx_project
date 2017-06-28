@@ -1,6 +1,6 @@
 from __future__ import division
 from xfel.ui.db.xfel_db import xfel_db_application
-from xfel.ui.db.experiment import Experiment, Event, Cell_Bin
+from xfel.ui.db.experiment import Experiment, Event, Bin, Cell_Bin
 from scitbx.array_family import flex
 
 def log_frame(experiments, reflections, params, run, n_strong, timestamp = None, two_theta_low = None, two_theta_high = None):
@@ -30,12 +30,14 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
       from cctbx.crystal import symmetry
       cs = symmetry(unit_cell = db_experiment.crystal.cell.unit_cell, space_group_symbol = db_experiment.crystal.cell.lookup_symbol)
       mset = cs.build_miller_set(anomalous_flag=False, d_min=db_trial.d_min)
-      binner = mset.setup_binner(n_bins=10) # FIXME use n_bins as an attribute on the trial table
+      n_bins = 10 # FIXME use n_bins as an attribute on the trial table
+      binner = mset.setup_binner(n_bins=n_bins)
       for i in binner.range_used():
         d_max, d_min = binner.bin_d_range(i)
-        Bin(self, number = i, d_min = d_min, d_max = d_max,
+        Bin(app, number = i, d_min = d_min, d_max = d_max,
             total_hkl = binner.counts_complete()[i], cell_id = db_experiment.crystal.cell.id)
-      assert len(db_experiment.crystal.cell.bins) == 10
+      db_experiment.crystal.cell.bins = app.get_cell_bins(db_experiment.crystal.cell.id)
+      assert len(db_experiment.crystal.cell.bins) == n_bins
 
     for db_bin in db_experiment.crystal.cell.bins:
       sel = (d <= float(db_bin.d_max)) & (d > float(db_bin.d_min))

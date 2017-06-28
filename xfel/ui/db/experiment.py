@@ -119,7 +119,7 @@ class Cell(db_proxy):
     db_proxy.__init__(self, app, "%s_cell" % app.params.experiment_tag, id=cell_id, **kwargs)
     self.cell_id = self.id
 
-    assert [self.isoform_id, self.trial_id].count(None) <= 1
+    assert [self.isoform_id, self.trial_id].count(None) in [1, 2]
     if self.isoform_id is not None:
       self.isoform = Isoform(app, isoform_id = self.isoform_id)
       self.bins = app.get_cell_bins(self.id)

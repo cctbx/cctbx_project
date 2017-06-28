@@ -111,12 +111,17 @@ class HitrateStats(object):
     assert self.run.run in run_numbers
     rungroup_ids = [rg.id for rg in self.trial.rungroups]
     assert self.rungroup.id in rungroup_ids
-    isoforms = self.trial.isoforms
-    assert len(isoforms) > 0
+    if len(self.trial.isoforms) > 0:
+      cells = [isoform.cell for isoform in isoforms]
+    elif self.trial.cell is not None:
+      cells = [self.trial.cell]
+    else:
+      assert False, "Not implemented"
+      #cells = all the cells in the trial
     low_res_bin_ids = []
     high_res_bin_ids = []
-    for isoform in isoforms:
-      bins = isoform.cell.bins
+    for cell in cells:
+      bins = cell.bins
       d_mins = [float(b.d_min) for b in bins]
       low_res_bin_ids.append(str(bins[d_mins.index(max(d_mins))].id))
       if self.d_min is None:

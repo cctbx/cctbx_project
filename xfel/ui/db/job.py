@@ -41,17 +41,16 @@ class Job(db_proxy):
       cursor = self.app.execute_query(query, commit=True)
       print "(%d)"%cursor.rowcount
 
-    if len(self.trial.isoforms) > 0:
-      print "Deleting cell_bin entries",
-      query = """DELETE cell_bin FROM `%s_cell_bin` cell_bin
-                 JOIN `%s_crystal` crystal ON crystal.id = cell_bin.crystal_id
-                 JOIN `%s_experiment` expr ON expr.crystal_id = crystal.id
-                 JOIN `%s_imageset` imgset ON imgset.id = expr.imageset_id
-                 JOIN `%s_imageset_event` ie_e ON ie_e.imageset_id = imgset.id
-                 JOIN `%s_event` evt ON evt.id = ie_e.event_id
-                 WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d""" % (
-                 tag, tag, tag, tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
-      delete_and_commit(query)
+    print "Deleting cell_bin entries",
+    query = """DELETE cell_bin FROM `%s_cell_bin` cell_bin
+               JOIN `%s_crystal` crystal ON crystal.id = cell_bin.crystal_id
+               JOIN `%s_experiment` expr ON expr.crystal_id = crystal.id
+               JOIN `%s_imageset` imgset ON imgset.id = expr.imageset_id
+               JOIN `%s_imageset_event` ie_e ON ie_e.imageset_id = imgset.id
+               JOIN `%s_event` evt ON evt.id = ie_e.event_id
+               WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d""" % (
+               tag, tag, tag, tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
+    delete_and_commit(query)
 
     ids = {}
     for item in "crystal", "beam", "detector":
@@ -68,7 +67,7 @@ class Job(db_proxy):
       print "(%d)"%len(item_ids)
       ids[item] = ",".join(item_ids)
 
-    if len(self.trial.isoforms) == 0:
+    if len(self.trial.isoforms) == 0 or self.trial.cell is None:
       print "Listing cell entries",
       query = """SELECT cell.id FROM `%s_cell` cell
                  JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
@@ -100,7 +99,7 @@ class Job(db_proxy):
                    item, tag, item, item, item, ids[item])
         delete_and_commit(query)
 
-    if len(self.trial.isoforms) == 0 and len(cell_ids) > 0:
+    if (len(self.trial.isoforms) == 0 or self.trial.cell is None) and len(cell_ids) > 0:
       print "Deleting cell entries",
       query = """DELETE cell FROM `%s_cell` cell
                  WHERE cell.id IN (%s)""" % (

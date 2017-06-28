@@ -239,23 +239,25 @@ class xfel_db_application(object):
       elif backend == 'labelit':
         pass # TODO: labelit target
       elif backend == 'dials':
-        print "Creating target cell"
-        unit_cell = trial_params.indexing.known_symmetry.unit_cell
-        symbol = str(trial_params.indexing.known_symmetry.space_group)
-        a, b, c, alpha, beta, gamma = unit_cell.parameters()
-        cell = self.create_cell(cell_a = a, cell_b = b, cell_c = c,
-                                cell_alpha = alpha, cell_beta = beta, cell_gamma = gamma,
-                                lookup_symbol = symbol,
-                                trial_id = trial.id)
-        from cctbx.crystal import symmetry
+        if trial_params.indexing.known_symmetry.unit_cell is not None and \
+            trial_params.indexing.known_symmetry.space_group is not None:
+          print "Creating target cell"
+          unit_cell = trial_params.indexing.known_symmetry.unit_cell
+          symbol = str(trial_params.indexing.known_symmetry.space_group)
+          a, b, c, alpha, beta, gamma = unit_cell.parameters()
+          cell = self.create_cell(cell_a = a, cell_b = b, cell_c = c,
+                                  cell_alpha = alpha, cell_beta = beta, cell_gamma = gamma,
+                                  lookup_symbol = symbol,
+                                  trial_id = trial.id)
+          from cctbx.crystal import symmetry
 
-        cs = symmetry(unit_cell = unit_cell, space_group_symbol = symbol)
-        mset = cs.build_miller_set(anomalous_flag=False, d_min=d_min)
-        binner = mset.setup_binner(n_bins=n_bins)
-        for i in binner.range_used():
-          d_max, d_min = binner.bin_d_range(i)
-          Bin(self, number = i, d_min = d_min, d_max = d_max,
-              total_hkl = binner.counts_complete()[i], cell_id = cell.id)
+          cs = symmetry(unit_cell = unit_cell, space_group_symbol = symbol)
+          mset = cs.build_miller_set(anomalous_flag=False, d_min=d_min)
+          binner = mset.setup_binner(n_bins=n_bins)
+          for i in binner.range_used():
+            d_max, d_min = binner.bin_d_range(i)
+            Bin(self, number = i, d_min = d_min, d_max = d_max,
+                total_hkl = binner.counts_complete()[i], cell_id = cell.id)
     return trial
 
   def get_trial_isoforms(self, trial_id):
