@@ -309,14 +309,17 @@ class mtriage(object):
         print >>of, "%15.9f %15.9f"%(a,b)
       of.close()
 
-  def get_results(self):
-    map_histograms = get_map_histograms(
-      data    = self.map_data,
-      n_slots = 20,
-      data_1  = self.half_map_data_1,
-      data_2  = self.half_map_data_2)
-    if(self.mask_object is None): mask = None
-    else:                         mask = self.mask_object.mask_smooth
+  def get_results(self, slim=False):
+    mask = None
+    map_histograms = None
+    if(not slim):
+      map_histograms = get_map_histograms(
+        data    = self.map_data,
+        n_slots = 20,
+        data_1  = self.half_map_data_1,
+        data_2  = self.half_map_data_2)
+      if(self.mask_object is not None):
+        mask = self.mask_object.mask_smooth
     return group_args(
       d9                = self.d9,
       d99               = self.d99,
