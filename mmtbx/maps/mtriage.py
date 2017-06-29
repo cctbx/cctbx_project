@@ -170,6 +170,8 @@ class mtriage(object):
   def run(self):
     # Extract xrs from pdb_hierarchy
     self._get_xray_structure()
+    # Shift origin if needed
+    self._shift_origin()
     # Compute mask
     self._compute_mask()
     # Apply mask to map data
@@ -191,6 +193,30 @@ class mtriage(object):
       self.pdb_hierarchy.atoms().reset_i_seq()
       self.xray_structure = self.pdb_hierarchy.extract_xray_structure(
         crystal_symmetry = self.crystal_symmetry)
+
+  def _shift_origin(self):
+    sites_cart = None
+    if(self.xray_structure is not None):
+      sites_cart = self.xray_structure.sites_cart()
+    soin = maptbx.shift_origin_if_needed(
+      map_data         = self.map_data,
+      sites_cart       = sites_cart,
+      crystal_symmetry = self.crystal_symmetry)
+    self.map_data = soin.map_data
+    if(self.xray_structure is not None):
+      self.xray_structure.set_sites_cart(soin.sites_cart)
+      self.pdb_hierarchy.atoms().set_xyz(soin.sites_cart)
+    if(self.half_map_data_1 is not None):
+      soin = maptbx.shift_origin_if_needed(
+        map_data         = self.half_map_data_1,
+        sites_cart       = None,
+        crystal_symmetry = self.crystal_symmetry)
+      self.half_map_data_1 = soin.map_data
+      soin = maptbx.shift_origin_if_needed(
+        map_data         = self.half_map_data_2,
+        sites_cart       = None,
+        crystal_symmetry = self.crystal_symmetry)
+      self.half_map_data_2 = soin.map_data
 
   def _compute_mask(self):
     if(not self.params.mask_maps): return
@@ -336,7 +362,7 @@ class mtriage(object):
       map_counts        = self.map_counts,
       half_map_1_counts = self.half_map_1_counts,
       half_map_2_counts = self.half_map_2_counts,
-      map_histograms    = map_histograms,
+      map_histograms    = map_histograms, # FIXME histogram computed on modified map
       mask              = mask,
       radius_smooth     = self.radius_smooth)
 
