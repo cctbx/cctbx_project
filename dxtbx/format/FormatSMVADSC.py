@@ -162,6 +162,10 @@ class FormatSMVADSC(FormatSMV):
     image_size = panel.get_image_size()
     raw_data.reshape(flex.grid(image_size[1], image_size[0]))
 
+    # if we subtract PEDESTAL is this still raw?
+    if 'IMAGE_PEDESTAL' in self._header_dictionary:
+      raw_data -= int(self._header_dictionary['IMAGE_PEDESTAL'])
+    
     return raw_data
 
 if __name__ == '__main__':
