@@ -165,7 +165,7 @@ class FormatSMVADSC(FormatSMV):
     # if we subtract PEDESTAL is this still raw?
     if 'IMAGE_PEDESTAL' in self._header_dictionary:
       raw_data -= int(self._header_dictionary['IMAGE_PEDESTAL'])
-    
+
     return raw_data
 
 if __name__ == '__main__':
