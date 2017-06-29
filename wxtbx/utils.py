@@ -106,7 +106,6 @@ class SettingsPanel (wx.Panel, SettingsToolBase) :
     self.panel_sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.panel_sizer)
     self.add_controls()
-    self.panel_sizer.Layout()
 
 def bold_text (parent, label) :
   txt = wx.StaticText(parent, label=label)
