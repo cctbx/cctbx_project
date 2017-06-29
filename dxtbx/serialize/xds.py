@@ -251,7 +251,11 @@ class to_xds(object):
     return self._sweep.get_scan()
 
   def get_template(self):
-    return self._sweep.get_template()
+    try:
+      return self._sweep.get_template()
+    except AttributeError, e:
+      return 'FIXME####.h5'
+      
 
   def XDS_INP(self, out=None,
               space_group_number=None,
