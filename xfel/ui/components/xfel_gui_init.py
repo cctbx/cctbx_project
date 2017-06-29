@@ -288,8 +288,6 @@ class ProgressSentinel(Thread):
         for cell in cells:
           # Check for cell isoform
           if cell.isoform is None:
-            if trial_has_isoforms: # Sometimes LABELIT backend will not assign an isoform to an image, even if the trial is using isoforms
-              continue
             self.info[cells.index(cell)] = {'a':cell.cell_a,
                                             'b':cell.cell_b,
                                             'c':cell.cell_c,
@@ -404,9 +402,6 @@ class RunStatsSentinel(Thread):
     if self.parent.run_window.runstats_tab.trial_no is not None:
       trial = self.db.get_trial(
         trial_number=self.parent.run_window.runstats_tab.trial_no)
-      if trial is not None and len(trial.isoforms) == 0:
-        print "Please select a trial using isoforms."
-        return
       selected_runs = copy.deepcopy(self.parent.run_window.runstats_tab.selected_runs)
       self.run_numbers = []
       trial_ids = []
@@ -549,7 +544,10 @@ class UnitCellSentinel(Thread):
       legend_list = []
       for tag_set in tag_sets:
         legend_list.append(str(tag_set))
-        cells = self.db.get_stats(trial=trial, tags=tag_set.tags, isigi_cutoff = 1.0, tag_selection_mode = tag_set.mode)()
+        cells = self.db.get_stats(trial=trial,
+                                  tags=tag_set.tags,
+                                  isigi_cutoff=1.0,
+                                  tag_selection_mode=tag_set.mode)()
         info = []
         for cell in cells:
           info.append({'a':cell.cell_a,
@@ -1707,22 +1705,25 @@ class StatusTab(BaseTab):
   def refresh_rows(self):
     ''' Refresh status data '''
     # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
-    no_isoforms = all(isinstance(key, int) for key in dict.keys(self.info))
+    isoforms = not all(isinstance(key, int) for key in dict.keys(self.info))
+    # import pdb; pdb.set_trace()
+
+    # Select data with 'multiplicity_all' keys
+    self.info = {k:v for k, v in self.info.iteritems() if 'multiplicity_all' in v.keys()}
 
     if self.info != {}:
       if self.redraw_windows:
         self.status_sizer.Clear(deleteWindows=True)
         self.rows = {}
         row = None
+      max_multiplicity = max([self.info[i]['multiplicity_all'] for i in
+                              self.info])
+      if max_multiplicity > self.multiplicity_goal:
+        xmax = max_multiplicity
+      else:
+        xmax = self.multiplicity_goal
 
-      if not no_isoforms:
-        max_multiplicity = max([self.info[i]['multiplicity_all'] for i in
-                                self.info])
-        if max_multiplicity > self.multiplicity_goal:
-          xmax = max_multiplicity
-        else:
-          xmax = self.multiplicity_goal
-
+      if isoforms:
         for iso, values in self.info.iteritems():
           if not self.redraw_windows:
             row = self.rows[values['isoform']]['row']
@@ -1734,19 +1735,16 @@ class StatusTab(BaseTab):
                           bins=values['bins'],
                           xmax=xmax,
                           n_img=values['n_img'])
-      else:
-        if self.redraw_windows:
-          self.status_sizer.Clear(deleteWindows=True)
-          self.rows = {}
-          row = None
-        else:
-          row = self.rows['None']['row']
-        self.update_noniso_row(row=row,
-                               num_images=self.info[0]['n_img'])
-      self.redraw_windows = False
-
     else:
-      self.status_sizer.Clear(deleteWindows=True)
+      if self.redraw_windows:
+        self.status_sizer.Clear(deleteWindows=True)
+        self.rows = {}
+        row = None
+      else:
+        row = self.rows['None']['row']
+      self.update_noniso_row(row=row,
+                             num_images=self.info[0]['n_img'])
+    self.redraw_windows = False
 
   def update_noniso_row(self, row, num_images=0):
     if row is None:
