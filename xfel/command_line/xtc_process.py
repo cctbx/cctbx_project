@@ -219,7 +219,7 @@ xtc_phil_str = '''
       .multiple = True {
       apply = False
         .type = bool
-      algorithm = fuller_kapton
+      algorithm = *fuller_kapton
         .type = choice
       fuller_kapton {
         xtal_height_above_kapton_mm {
