@@ -881,7 +881,7 @@ class InMemScript(DialsProcessScript):
       if correction.apply:
         if correction.algorithm == "fuller_kapton":
           from dials.algorithms.integration.kapton_correction import all_pixel_image_data_kapton_correction
-          data = all_pixel_image_data_kapton_correction(image_data=data, params=correction.fuller_kapton)()
+          data = all_pixel_image_data_kapton_correction(image_data=dxtbx_img, params=correction.fuller_kapton)()
           build_dxtbx_image() # repeat as necessary to update the image pixel data and rebuild the image
 
     self.tag = s # used when writing integration pickle
