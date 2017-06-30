@@ -215,6 +215,35 @@ xtc_phil_str = '''
           .help = If set, override the beam Y position
       }
     }
+    per_pixel_absorption_correction
+      .multiple = True {
+      apply = False
+        .type = bool
+      algorithm = fuller_kapton
+        .type = choice
+      fuller_kapton {
+        xtal_height_above_kapton_mm {
+          value = 0.02
+            .type = float
+            .help = height of the beam (or the irradiated crystal) above the kapton tape
+        }
+        rotation_angle_deg {
+          value = 1.15
+            .type = float
+            .help = angle of the tape from vertical
+        }
+        kapton_half_width_mm {
+          value = 1.5875
+            .type = float
+            .help = forward distance from irradiated crystal to edge of tape nearest detector
+        }
+        kapton_thickness_mm {
+          value = 0.05
+            .type = float
+            .help = tape thickness
+        }
+      }
+    }
   }
   output {
     output_dir = .
@@ -828,23 +857,32 @@ class InMemScript(DialsProcessScript):
     s = t[0:4] + t[5:7] + t[8:10] + t[11:13] + t[14:16] + t[17:19] + t[20:23]
     print "Processing shot", s
 
-    if self.params.format.file_format == 'cbf':
-      # stitch together the header, data and metadata into the final dxtbx format object
-      if self.params.format.cbf.mode == "cspad":
-        dxtbx_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
-      elif self.params.format.cbf.mode == "rayonix":
-        dxtbx_img = rayonix_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
-
-      if self.params.input.reference_geometry is not None:
-        from dxtbx.model import Detector
-        # copy.deep_copy(self.reference_detctor) seems unsafe based on tests. Use from_dict(to_dict()) instead.
-        dxtbx_img._detector_instance = Detector.from_dict(self.reference_detector.to_dict())
+    def build_dxtbx_image():
+      if self.params.format.file_format == 'cbf':
+        # stitch together the header, data and metadata into the final dxtbx format object
         if self.params.format.cbf.mode == "cspad":
-          dxtbx_img.sync_detector_to_cbf() #FIXME need a rayonix version of this??
+          dxtbx_img = cspad_cbf_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
+        elif self.params.format.cbf.mode == "rayonix":
+          dxtbx_img = rayonix_tbx.format_object_from_data(self.base_dxtbx, data, distance, wavelength, timestamp, self.params.input.address)
 
-    elif self.params.format.file_format == 'pickle':
-      from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
-      dxtbx_img = FormatPYunspecifiedStillInMemory(image_dict)
+        if self.params.input.reference_geometry is not None:
+          from dxtbx.model import Detector
+          # copy.deep_copy(self.reference_detctor) seems unsafe based on tests. Use from_dict(to_dict()) instead.
+          dxtbx_img._detector_instance = Detector.from_dict(self.reference_detector.to_dict())
+          if self.params.format.cbf.mode == "cspad":
+            dxtbx_img.sync_detector_to_cbf() #FIXME need a rayonix version of this??
+
+      elif self.params.format.file_format == 'pickle':
+        from dxtbx.format.FormatPYunspecifiedStill import FormatPYunspecifiedStillInMemory
+        dxtbx_img = FormatPYunspecifiedStillInMemory(image_dict)
+
+    build_dxtbx_image()
+    for correction in self.params.format.per_pixel_absorption_correction:
+      if correction.apply:
+        if correction.algorithm == "fuller_kapton":
+          from dials.algorithms.integration.kapton_correction import all_pixel_image_data_kapton_correction
+          data = all_pixel_image_data_kapton_correction(image_data=data, params=correction.fuller_kapton)()
+          build_dxtbx_image() # repeat as necessary to update the image pixel data and rebuild the image
 
     self.tag = s # used when writing integration pickle
 
