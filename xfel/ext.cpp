@@ -656,6 +656,7 @@ double distance_between_points(scitbx::vec2<int> const& a, scitbx::vec2<int> con
 }
 
 void radial_average(scitbx::af::versa<double, scitbx::af::flex_grid<> > & data,
+scitbx::af::versa<bool, scitbx::af::flex_grid<> > & mask,
 scitbx::vec2<int> const& beam_center,
 scitbx::af::shared<double> sums,
 scitbx::af::shared<double> sums_sq,
@@ -670,7 +671,7 @@ scitbx::vec2<int> const& lower_right) {
   for(std::size_t y = upper_left[1]; y < lower_right[1]; y++) {
     for(std::size_t x = upper_left[0]; x < lower_right[0]; x++) {
       double val = data(x,y);
-      if(val > 0) {
+      if(val > 0 && mask(x,y)) {
         scitbx::vec2<int> point((int)x,(int)y);
         double d_in_mm = distance_between_points(point,beam_center) * pixel_size;
         double twotheta = std::atan(d_in_mm/distance)*180/scitbx::constants::pi;
