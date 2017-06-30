@@ -1706,7 +1706,6 @@ class StatusTab(BaseTab):
     ''' Refresh status data '''
     # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
     isoforms = not all(isinstance(key, int) for key in dict.keys(self.info))
-    # import pdb; pdb.set_trace()
 
     # Select data with 'multiplicity_all' keys
     self.info = {k:v for k, v in self.info.iteritems() if 'multiplicity_all' in v.keys()}
