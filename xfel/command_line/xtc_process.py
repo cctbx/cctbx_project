@@ -295,6 +295,7 @@ extra_dials_phil_str = '''
 
   radial_average {
     enable = False
+      .type = bool
     include scope dxtbx.command_line.radial_average.master_phil
   }
 '''
