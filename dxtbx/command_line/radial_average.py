@@ -145,6 +145,7 @@ def run (args, image = None):
       logger.flush()
       if params.verbose:
         logger.write("Average intensity tile %d: %9.3f\n"%(tile, flex.mean(data)))
+        logger.write("N bins: %d\n"%params.n_bins)
         logger.flush()
 
       x1,y1,x2,y2 = 0,0,panel.get_image_size()[1],panel.get_image_size()[0]
