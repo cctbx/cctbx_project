@@ -42,29 +42,35 @@ master_phil = libtbx.phil.parse("""
 
 def distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
 
-def run (args):
+def run (args, image = None):
   from xfel import radial_average
   from scitbx.array_family import flex
   import os, sys
   import dxtbx
 
   # Parse input
-  user_phil = []
-  for arg in args :
-    if (not "=" in arg) :
-      try :
-        user_phil.append(libtbx.phil.parse("""file_path=%s""" % arg))
-      except ValueError, e :
-        raise Sorry("Unrecognized argument '%s'" % arg)
-    else :
-      try :
-        user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
-        raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
-  params = master_phil.fetch(sources=user_phil).extract()
-  if params.file_path is None or len(params.file_path) == 0 or not all([os.path.isfile(f) for f in params.file_path]):
-    master_phil.show()
-    raise Usage("file_path must be defined (either file_path=XXX, or the path alone).")
+  try:
+    n = len(args)
+  except Exception:
+    params = args
+  else:
+    user_phil = []
+    for arg in args :
+      if (not "=" in arg) :
+        try :
+          user_phil.append(libtbx.phil.parse("""file_path=%s""" % arg))
+        except ValueError, e :
+          raise Sorry("Unrecognized argument '%s'" % arg)
+      else :
+        try :
+          user_phil.append(libtbx.phil.parse(arg))
+        except RuntimeError, e :
+          raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
+    params = master_phil.fetch(sources=user_phil).extract()
+  if image is None:
+    if params.file_path is None or len(params.file_path) == 0 or not all([os.path.isfile(f) for f in params.file_path]):
+      master_phil.show()
+      raise Usage("file_path must be defined (either file_path=XXX, or the path alone).")
   assert params.n_bins is not None
   assert params.verbose is not None
   assert params.output_bins is not None
@@ -85,11 +91,18 @@ def run (args):
   if params.mask is not None:
     params.mask = easy_pickle.load(params.mask)
 
+  if image is None:
+    iterable = params.file_path
+    load_func = lambda x: dxtbx.load(x)
+  else:
+    iterable = [image]
+    load_func = lambda x: x
+
   # Iterate over each file provided
-  for file_path in params.file_path:
-    img = dxtbx.load(file_path)
-    detector = img.get_detector()
+  for item in iterable:
+    img = load_func(item)
     beam = img.get_beam()
+    detector = img.get_detector()
 
     # Search the detector for the panel farthest from the beam. The number of bins in the radial average will be
     # equal to the farthest point from the beam on the detector, in pixels, unless overridden at the command line
@@ -167,7 +180,7 @@ def run (args):
           max_twotheta = twotheta
           max_result = results[i]
 
-    logger.write("Maximum 2theta for %s: %f, value: %f\n"%(file_path, max_twotheta, max_result))
+    #logger.write("Maximum 2theta for %s: %f, value: %f\n"%(file_path, max_twotheta, max_result))
 
     if params.verbose:
       if params.plot_x_max is not None:
@@ -183,7 +196,7 @@ def run (args):
         plt.ylim(0, params.plot_y_max)
 
   if params.show_plots:
-    plt.legend([os.path.basename(os.path.splitext(f)[0]) for f in params.file_path], ncol=2)
+    #plt.legend([os.path.basename(os.path.splitext(f)[0]) for f in params.file_path], ncol=2)
     plt.show()
 
 if (__name__ == "__main__") :

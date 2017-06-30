@@ -292,6 +292,11 @@ extra_dials_phil_str = '''
     include scope dials.algorithms.refinement.refiner.phil_scope
     include scope dials.algorithms.integration.integrator.phil_scope
   }
+
+  radial_average {
+    enable = False
+    include scope dxtbx.command_line.radial_average.master_phil
+  }
 '''
 
 from xfel.ui import db_phil_str
@@ -852,6 +857,10 @@ class InMemScript(DialsProcessScript):
       from dials.command_line.estimate_gain import estimate_gain
       estimate_gain(imgset)
       return
+
+    if self.params.radial_average.enable:
+      from dxtbx.command_line.radial_average import run
+      run(self.params.radial_average, image = dxtbx_img)
 
     if not self.params.dispatch.find_spots:
       self.debug_write("data_loaded", "done")
