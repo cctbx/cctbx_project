@@ -273,6 +273,25 @@ class xfel_db_application(object):
     else:
       return cells[0]
 
+  def get_trial_cells(self, trial_id):
+    tag = self.params.experiment_tag
+    query = """SELECT cell.id FROM `%s_cell` cell
+               JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
+               JOIN `%s_experiment` expt ON expt.crystal_id = crystal.id
+               JOIN `%s_imageset` imgset ON imgset.id = expt.imageset_id
+               JOIN `%s_imageset_event` is_e ON is_e.imageset_id = imgset.id
+               JOIN `%s_event` evt ON evt.id = is_e.event_id
+               JOIN `%s_trial` trial ON evt.trial_id = trial.id
+               JOIN `%s_rungroup` rg ON evt.rungroup_id = rg.id
+               WHERE trial.id = %d AND rg.active = True""" % (
+               tag, tag, tag, tag, tag, tag, tag, tag, trial_id)
+    cursor = self.execute_query(query)
+    ids = [str(i[0]) for i in cursor.fetchall()]
+    if len(ids) == 0:
+      return []
+    where = "WHERE id IN (%s)" % ", ".join(ids)
+    return self.get_all_x(Cell, 'cell', where)
+
   def create_cell(self, **kwargs):
     return Cell(self, **kwargs)
 

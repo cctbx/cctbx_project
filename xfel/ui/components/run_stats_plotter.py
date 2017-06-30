@@ -107,7 +107,7 @@ def get_run_stats(timestamps,
   # indexing and droplet hit rate in a sliding window
   half_idx_rate_window = min(50, int(len(isigi_low)//20))
   half_hq_rate_window = 500
-  low_sel = isigi_low > i_sigi_cutoff
+  low_sel = isigi_low > 0
   high_sel = isigi_high > i_sigi_cutoff
   idx_rate = flex.double()
   hq_rate = flex.double()
