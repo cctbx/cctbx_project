@@ -5,6 +5,7 @@ from __future__ import absolute_import, division
 
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
+from libtbx import easy_pickle
 import sys
 import os
 import math
@@ -33,6 +34,10 @@ master_phil = libtbx.phil.parse("""
     .type = float
   normalize = False
     .type = bool
+  show_plots = True
+    .type = bool
+  mask = None
+    .type = str
 """)
 
 def distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
@@ -77,6 +82,9 @@ def run (args):
     colormap = plt.cm.gist_ncar
     plt.gca().set_color_cycle([colormap(i) for i in np.linspace(0, 0.9, len(params.file_path))])
 
+  if params.mask is not None:
+    params.mask = easy_pickle.load(params.mask)
+
   # Iterate over each file provided
   for file_path in params.file_path:
     img = dxtbx.load(file_path)
@@ -113,6 +121,11 @@ def run (args):
       all_data = (all_data,)
 
     for tile, (panel, data) in enumerate(zip(detector, all_data)):
+      if params.mask is None:
+        mask = flex.bool(flex.grid(data.focus()), True)
+      else:
+        mask = params.mask[tile]
+
       if hasattr(data,"as_double"):
         data = data.as_double()
 
@@ -126,7 +139,7 @@ def run (args):
       bc = int(round(bc[1])), int(round(bc[0]))
 
       # compute the average
-      radial_average(data,bc,sums,sums_sq,counts,panel.get_pixel_size()[0],panel.get_distance(),
+      radial_average(data,mask,bc,sums,sums_sq,counts,panel.get_pixel_size()[0],panel.get_distance(),
                      (x1,y1),(x2,y2))
 
     # average the results, avoiding division by zero
@@ -169,7 +182,7 @@ def run (args):
       if params.plot_y_max is not None:
         plt.ylim(0, params.plot_y_max)
 
-  if params.verbose:
+  if params.show_plots:
     plt.legend([os.path.basename(os.path.splitext(f)[0]) for f in params.file_path], ncol=2)
     plt.show()
 
