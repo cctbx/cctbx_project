@@ -444,7 +444,7 @@ class RunStatsSentinel(Thread):
     params = {}
     params['experiment'] = str(self.parent.db.params.experiment)
     params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
-      "r%04d"%(run.run), "%03d_rg%03d"%(trial.trial_id, rg.rungroup_id), "all")
+      "r%04d"%(run.run), "%03d_rg%03d"%(trial.trial, rg.rungroup_id), "all")
     params['run'] = run.run
     params['address'] = rg.detector_address
     params['format'] = rg.format
