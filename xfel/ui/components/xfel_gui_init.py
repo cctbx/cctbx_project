@@ -440,6 +440,22 @@ class RunStatsSentinel(Thread):
     self.run_tags = [self.run_tags[i] for i in order]
     self.run_statuses = [self.run_statuses[i] for i in order]
 
+  def get_xtc_process_params_for_run(self, trial, rg, run):
+    params = {}
+    params['experiment'] = str(self.parent.db.params.experiment)
+    params['output_dir'] = os.path.join(str(self.parent.db.params.output_folder),
+      "r%04d"%(run.run), "%03d_rg%03d"%(trial.trial_id, rg.rungroup_id), "all")
+    params['run'] = run.run
+    params['address'] = rg.detector_address
+    params['format'] = rg.format
+    params['config'] = rg.config_str if hasattr(rg, 'config_str') else None
+    params['beamx'] = rg.beamx if hasattr(rg, 'beamx') else None
+    params['beamy'] = rg.beamy if hasattr(rg, 'beamy') else None
+    params['distance'] = rg.detz_parameter if hasattr(rg, 'detz_parameter') else None
+    params['bin_size'] = rg.binning if hasattr(rg, 'binning') else None
+    params['energy'] = rg.energy if hasattr(rg, 'energy') else None
+    return params
+
   def fetch_should_have_indexed_timestamps(self):
     from xfel.ui.components.run_stats_plotter import \
       get_multirun_should_have_indexed_timestamps, get_paths_from_timestamps, get_strings_from_timestamps
@@ -451,7 +467,7 @@ class RunStatsSentinel(Thread):
                                                   self.parent.run_window.runstats_tab.n_strong)
 
     pickle_paths_by_run = []
-    timestamp_strings_by_run = []
+    timestamps_and_params_by_run = []
     for i in xrange(len(should_have_indexed_runs)):
       run = should_have_indexed_runs[i]
       ts = should_have_indexed_timestamps[i]
@@ -459,9 +475,9 @@ class RunStatsSentinel(Thread):
       pickle_paths = get_paths_from_timestamps(ts, prepend=prepend, tag="shot")
       pickle_paths_by_run.extend(pickle_paths)
       timestamp_strings = get_strings_from_timestamps(ts, long_form=True)
-      timestamp_strings_by_run.extend(timestamp_strings)
+      timestamps_and_params_by_run.append((self.get_xtc_process_params_for_run(*self.trgr[run]), timestamp_strings))
     self.parent.run_window.runstats_tab.should_have_indexed_timestamps = \
-      timestamp_strings_by_run
+      timestamps_and_params_by_run
     self.parent.run_window.runstats_tab.should_have_indexed_image_paths = \
       pickle_paths_by_run
     self.parent.run_window.runstats_tab.redraw_windows = True
@@ -2075,7 +2091,35 @@ class RunStatsTab(BaseTab):
       pass
 
   def onDumpImages(self, e):
-    print '\n'.join(self.should_have_indexed_timestamps)
+    for params, ts_list in self.should_have_indexed_timestamps:
+      if not os.path.isdir(params['output_dir']):
+        os.makedirs(params['output_dir'])
+      command = ('cctbx.xfel.xtc_dump input.experiment=%s '%params['experiment'])+\
+      ('input.run_num=%d input.address=%s '%(params['run'], params['address']))+\
+      ('format.file_format=%s '%params['format'])+\
+      ('output.output_dir=%s '%params['output_dir'])
+      if params['format'] == 'cbf':
+        command += 'format.cbf.detz_offset=%f '%params['distance']
+        if params['energy'] is not None:
+          command += 'format.cbf.override_energy=%f '%params['energy']
+        if 'Rayonix' in params['address']:
+          command += 'format.cbf.mode=rayonix '
+          if params['beamx'] is not None:
+            command += 'format.cbf.rayonix.override_beam_x=%d '%params['beamx']
+          if params['beamy'] is not None:
+            command += 'format.cbf.rayonix.override_beam_y=%d '%params['beamy']
+          if params['bin_size'] is not None:
+            command += 'format.cbf.rayonix.bin_size=%d '%params['bin_size']
+      elif params['format'] == 'pickle':
+        if params['config'] is not None:
+          command += 'input.cfg=%s '%params['config']
+      command += 'dispatch.selected_events=True '
+      for timestamp_string in ts_list:
+        command += 'input.timestamp=%s '%timestamp_string
+      command += '&& dials.image_viewer %s'%\
+        os.path.join(params['output_dir'], 'shot-*.%s ' % (params['format']))
+      print command
+      easy_run.fully_buffered(command=command)
 
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
