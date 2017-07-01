@@ -1648,7 +1648,7 @@ class TrialDialog(BaseDialog):
       d_min = 1.5
     else:
       trial_number = trial.trial
-      d_min = trial.d_min
+      d_min = trial.d_min if trial.d_min is not None else 1.5
 
     self.trial_info = gctr.TwoButtonCtrl(self,
                                          label='Trial number:',

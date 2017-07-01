@@ -118,7 +118,7 @@ class Cell(db_proxy):
     assert [self.isoform_id, self.trial_id].count(None) in [1, 2]
     if self.isoform_id is not None:
       self.isoform = Isoform(app, isoform_id = self.isoform_id)
-    elif self.trial_id is not None:
+    else:
       self.isoform = None
     self.bins = app.get_cell_bins(self.id)
 
