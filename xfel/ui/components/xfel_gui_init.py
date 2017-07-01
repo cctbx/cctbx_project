@@ -516,6 +516,19 @@ class RunStatsSentinel(Thread):
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
       high_vis=self.parent.high_vis)
 
+# ---------------------------- Image Dumping Thread ---------------------------- #
+
+class ImageDumpThread(Thread):
+  def __init__(self,
+               command):
+    Thread.__init__(self)
+    self.active = True
+    self.command = command
+
+  def run(self):
+    print self.command
+    easy_run.fully_buffered(command=self.command)
+
 # ----------------------------- Unit Cell Sentinel ----------------------------- #
 
 # Set up events for monitoring unit cell statistics
@@ -2118,8 +2131,8 @@ class RunStatsTab(BaseTab):
         command += 'input.timestamp=%s '%timestamp_string
       command += '&& dials.image_viewer %s'%\
         os.path.join(params['output_dir'], 'shot-*.%s ' % (params['format']))
-      print command
-      easy_run.fully_buffered(command=command)
+      thread = ImageDumpThread(command)
+      thread.start()
 
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
