@@ -1142,7 +1142,7 @@ class RunBlockDialog(BaseDialog):
           elif item == "detz_parameter":
             return 580
           elif item == "format":
-            return "pickle"
+            return "cbf"
           elif item == "two_theta_low":
             return 12.5 # Defaults are from kapton tape experiments (this is kapton ring)
           elif item == "two_theta_high":
