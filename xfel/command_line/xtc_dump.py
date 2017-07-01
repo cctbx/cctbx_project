@@ -18,6 +18,9 @@ phil_scope = parse('''
     max_events = None
       .type = int
       .help = If not specified, process all events. Otherwise, only process this many
+    selected_events = False
+      .type = bool
+      .help = If True, only dump events specified in input.event scopes
   }
   input {
     cfg = None
@@ -39,6 +42,11 @@ phil_scope = parse('''
     xtc_dir = None
       .type = str
       .help = Non-standard xtc directory location
+    timestamp = None
+      .type = str
+      .multiple = True
+      .help = Event timestamp(s) of event(s) in human-readable format of images to
+      .help = dump (must also specify dispatch.selected_events=True.)
   }
   format {
     file_format = *cbf pickle
@@ -184,6 +192,8 @@ class Script(object):
 
       # list of all events
       times = run.times()
+      if params.dispatch.selected_events:
+        times = [t for t in times if cspad_tbx.evt_timestamp(cspad_tbx.evt_time(run.event(t))) in params.input.timestamp]
       nevents = min(len(times),max_events)
       # chop the list into pieces, depending on rank.  This assigns each process
       # events such that the get every Nth event where N is the number of processes
