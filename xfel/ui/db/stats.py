@@ -130,64 +130,63 @@ class HitrateStats(object):
         assert len(qualified_bin_indices) == 1
         min_bin_index = qualified_bin_indices[0]
       high_res_bin_ids.append(str(bins[min_bin_index].id))
-    assert len(low_res_bin_ids) > 0
-    assert len(high_res_bin_ids) > 0
     assert len(low_res_bin_ids) == len(high_res_bin_ids)
 
-    tag = self.app.params.experiment_tag
-
-    # Get the high and low res avg_i_sigi in one query. Means there will be 2x timestamps retrieved, where each is found twice
-    query = """SELECT bin.id, event.timestamp, event.n_strong, cb.avg_i_sigi, event.two_theta_low, event.two_theta_high
-               FROM `%s_event` event
-               JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
-               JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
-               JOIN `%s_experiment` exp ON exp.imageset_id = imgset.id
-               JOIN `%s_crystal` crystal ON crystal.id = exp.crystal_id
-               JOIN `%s_cell` cell ON cell.id = crystal.cell_id
-               JOIN `%s_bin` bin ON bin.cell_id = cell.id
-               JOIN `%s_cell_bin` cb ON cb.bin_id = bin.id AND cb.crystal_id = crystal.id
-               WHERE event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d AND
-                     cb.bin_id IN (%s)
-            """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id,
-                  ", ".join(low_res_bin_ids + high_res_bin_ids))
-    cursor = self.app.execute_query(query)
-    timestamps = flex.double()
-    n_strong = flex.int()
     average_i_sigi_low = flex.double()
     average_i_sigi_high = flex.double()
     two_theta_low = flex.double()
     two_theta_high = flex.double()
-    sample = -1
-    for row in cursor.fetchall():
-      b_id, ts, n_s, avg_i_sigi, tt_low, tt_high = row
-      rts = reverse_timestamp(ts)
-      rts = rts[0] + (rts[1]/1000)
-      if rts not in timestamps:
-        # First time through, figure out which bin is reported (high or low), add avg_i_sigi to that set of results
-        sample += 1
-        if sample % self.sampling != 0:
-          continue
-        timestamps.append(rts)
-        n_strong.append(n_s)
-        two_theta_low.append(tt_low or -1)
-        two_theta_high.append(tt_high or -1)
-        if str(b_id) in low_res_bin_ids:
-          average_i_sigi_low.append(avg_i_sigi or 1e-6)
-          average_i_sigi_high.append(0)
-        elif str(b_id) in high_res_bin_ids:
-          average_i_sigi_low.append(0)
-          average_i_sigi_high.append(avg_i_sigi or 0)
+    tag = self.app.params.experiment_tag
+    timestamps = flex.double()
+    n_strong = flex.int()
+    if len(low_res_bin_ids) > 0:
+
+      # Get the high and low res avg_i_sigi in one query. Means there will be 2x timestamps retrieved, where each is found twice
+      query = """SELECT bin.id, event.timestamp, event.n_strong, cb.avg_i_sigi, event.two_theta_low, event.two_theta_high
+                 FROM `%s_event` event
+                 JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
+                 JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
+                 JOIN `%s_experiment` exp ON exp.imageset_id = imgset.id
+                 JOIN `%s_crystal` crystal ON crystal.id = exp.crystal_id
+                 JOIN `%s_cell` cell ON cell.id = crystal.cell_id
+                 JOIN `%s_bin` bin ON bin.cell_id = cell.id
+                 JOIN `%s_cell_bin` cb ON cb.bin_id = bin.id AND cb.crystal_id = crystal.id
+                 WHERE event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d AND
+                       cb.bin_id IN (%s)
+              """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id,
+                    ", ".join(low_res_bin_ids + high_res_bin_ids))
+      cursor = self.app.execute_query(query)
+      sample = -1
+      for row in cursor.fetchall():
+        b_id, ts, n_s, avg_i_sigi, tt_low, tt_high = row
+        rts = reverse_timestamp(ts)
+        rts = rts[0] + (rts[1]/1000)
+        if rts not in timestamps:
+          # First time through, figure out which bin is reported (high or low), add avg_i_sigi to that set of results
+          sample += 1
+          if sample % self.sampling != 0:
+            continue
+          timestamps.append(rts)
+          n_strong.append(n_s)
+          two_theta_low.append(tt_low or -1)
+          two_theta_high.append(tt_high or -1)
+          if str(b_id) in low_res_bin_ids:
+            average_i_sigi_low.append(avg_i_sigi or 1e-6)
+            average_i_sigi_high.append(0)
+          elif str(b_id) in high_res_bin_ids:
+            average_i_sigi_low.append(0)
+            average_i_sigi_high.append(avg_i_sigi or 0)
+          else:
+            assert False
         else:
-          assert False
-      else:
-        # Second time through, already have added to timestamps and n_strong, so fill in missing avg_i_sigi
-        index = flex.first_index(timestamps, rts)
-        if str(b_id) in low_res_bin_ids:
-          average_i_sigi_low[index] = avg_i_sigi
-        elif str(b_id) in high_res_bin_ids:
-            average_i_sigi_high[index] = avg_i_sigi or 0
-        else:
-          assert False
+          # Second time through, already have added to timestamps and n_strong, so fill in missing avg_i_sigi
+          index = flex.first_index(timestamps, rts)
+          if str(b_id) in low_res_bin_ids:
+            average_i_sigi_low[index] = avg_i_sigi
+          elif str(b_id) in high_res_bin_ids:
+              average_i_sigi_high[index] = avg_i_sigi or 0
+          else:
+            assert False
 
     # This left join query finds the events with no imageset, meaning they failed to index
     query = """SELECT event.timestamp, event.n_strong, event.two_theta_low, event.two_theta_high
