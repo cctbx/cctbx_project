@@ -96,6 +96,12 @@ class RunSentinel(Thread):
       if len(unknown_runs) > 0:
         for run_number in unknown_runs:
           db.create_run(run = run_number)
+        new_runs = [r for r in db.get_all_runs() if int(r.run) in unknown_runs]
+        if len(self.parent.run_window.runs_tab.persistent_tags) > 0:
+          tags = [t for t in db.get_all_tags() if t.name in self.parent.run_window.runs_tab.persistent_tags]
+          for r in new_runs:
+            for t in tags:
+              r.add_tag(t)
         print "%d new runs" % len(unknown_runs)
         self.post_refresh()
       else:
@@ -1094,6 +1100,7 @@ class RunTab(BaseTab):
     self.all_runs = []
     self.all_tags = []
     self.all_tag_buttons = []
+    self.persistent_tags = []
 
     self.run_panel = ScrolledPanel(self)
     self.run_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1108,12 +1115,16 @@ class RunTab(BaseTab):
     self.main_sizer.Add(self.colname_sizer, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.btn_multirun_tags = wx.Button(self, label='Change Tags on Multiple Runs', size=(240, -1))
+    self.btn_persistent_tags = wx.Button(self, label='Manage Persistent Tags', size=(240, -1))
     self.btn_manage_tags = wx.Button(self, label='Manage Tags', size=(120, -1))
     self.main_sizer.Add(self.run_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(wx.StaticLine(self), flag=wx.EXPAND | wx.ALL, border=10)
 
     self.button_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.button_sizer.Add(self.btn_multirun_tags,
+                          flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
+                          border=10)
+    self.button_sizer.Add(self.btn_persistent_tags,
                           flag=wx.RIGHT | wx.LEFT | wx.BOTTOM | wx.ALIGN_RIGHT,
                           border=10)
     self.button_sizer.Add(self.btn_manage_tags,
@@ -1124,6 +1135,7 @@ class RunTab(BaseTab):
     # Bindings
     self.Bind(EVT_RUN_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_BUTTON, self.onMultiRunTags, self.btn_multirun_tags)
+    self.Bind(wx.EVT_BUTTON, self.onManagePersistentTags, self.btn_persistent_tags)
     self.Bind(wx.EVT_BUTTON, self.onManageTags, self.btn_manage_tags)
 
   def onRefresh(self, e):
@@ -1147,6 +1159,25 @@ class RunTab(BaseTab):
     for btn in self.all_tag_buttons:
       btn.tags = btn.run.tags
       btn.update_label()
+
+  def onManagePersistentTags(self, e):
+    '''Update which tags are applied automatically to new runs'''
+    tags = self.main.db.get_all_tags()
+    tag_names = [i.name for i in tags]
+    mptag_dlg = wx.MultiChoiceDialog(self,
+                                     message='Available tags',
+                                     caption='Persistent Tags',
+                                     choices=tag_names)
+    # Get indices of selected items (if any) and set them to checked
+    persistent_tags = self.persistent_tags
+    indices = [tag_names.index(i) for i in tag_names if i in persistent_tags]
+    mptag_dlg.SetSelections(indices)
+    mptag_dlg.Fit()
+    if (mptag_dlg.ShowModal() == wx.ID_OK):
+      indices = mptag_dlg.GetSelections()
+      tag_names = [t.name for t in tags if tag_names.index(t.name) in indices]
+      self.persistent_tags = tag_names
+    mptag_dlg.Destroy()
 
   def refresh_rows(self, all=False):
 
