@@ -1,4 +1,6 @@
 from __future__ import division
+from libtbx.utils import Sorry
+
 try:
   import MySQLdb
 except ImportError, e:
@@ -15,7 +17,7 @@ def get_db_connection(params, block=True):
     password = params.db.password
 
   retry_count = 0
-  retry_max = 10
+  retry_max = 20
   sleep_time = 0.1
   while retry_count < retry_max:
     try:
