@@ -15,6 +15,7 @@
 #include <scitbx/constants.h>
 #include <dxtbx/model/beam.h>
 #include <dxtbx/model/boost_python/to_from_dict.h>
+#include <scitbx/array_family/boost_python/flex_wrapper.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
@@ -266,6 +267,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def_pickle(BeamPickleSuite());
+
+    scitbx::af::boost_python::flex_wrapper<Beam>::plain("flex_Beam");
   }
 
 }}} // namespace = dxtbx::model::boost_python
