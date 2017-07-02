@@ -30,7 +30,7 @@ striping {
   trial = None
     .type = int
     .help = "Trial identifier for an XFEL GUI formatted processing trial."
-  stripe = False
+  stripe = True
     .type = bool
     .help = "Enable to select results evenly spaced across each rungroup"
             "(stripes) as opposed to contiguous chunks."
@@ -42,10 +42,12 @@ striping {
 
 combining_str = '''
 combine_experiments {
-  interactive = False
-    .type = bool
-    .help = "Overrides any multiprocessing parameters to allow interactive"
-    .help = "run. Clustering dendrograms can only be displayed in this mode."
+  clustering {
+    dendrogram = False
+      .type = bool
+      .help = "Overrides any multiprocessing parameters to allow interactive"
+      .help = "run. Clustering dendrograms can only be displayed in this mode."
+    }
   keep_integrated = False
     .type = bool
     .help = "Combine refined_experiments.json and integrated.pickle files."
@@ -60,10 +62,13 @@ combine_experiments {
   output {
     experiments_filename = %s_combined_experiments.json
     reflections_filename = %s_combined_reflections.pickle
-    delete_shoeboxes = True
+    delete_shoeboxes = False
   }
   reference_from_experiment {
     detector = 0
+  }
+  clustering {
+    use = True
   }
 }
 '''
@@ -122,7 +127,41 @@ refinement {
 }
 '''
 
-# future feature: reintegrate after joint refinement
+# reintegration after dials refinement
+reintegration_str = '''
+reintegration {
+  enable = True
+  include scope dials.command_line.integrate.phil_scope
+  input {
+    experiments = None
+    reflections = None
+  }
+}
+'''
+
+reintegration_override_str = '''
+reintegration{
+  output {
+    experiments = %s_reintegrated_experiments_CLUSTER.json
+    reflections = %s_reintegrated_reflections_CLUSTER.pickle
+    log = %s_reintegrate_CLUSTER.log
+    debug_log = %s_reintegrate_CLUSTER.debug.log
+  }
+  integration {
+    debug {
+      output = False
+      separate_files = True
+    }
+    integrator = auto 3d flat3d 2d single2d *stills volume
+  }
+  input {
+    experiments = %s_refined_experiments_CLUSTER.json
+    reflections = %s_refined_reflections_CLUSTER.pickle
+  }
+}
+'''
+
+# split results and coerce to integration pickle for merging
 postprocessing_str = '''
 postprocessing {
   enable = False
@@ -130,14 +169,22 @@ postprocessing {
 '''
 
 master_defaults_str = multiprocessing_str + striping_str + combining_str + filtering_str + \
-                        refinement_str + postprocessing_str
+                        refinement_str + reintegration_str + postprocessing_str
 
 # initialize a master scope from the multiprocessing phil string
 master_defaults_scope = parse(master_defaults_str, process_includes=True)
 # update master scope with customized and local phil scopes
-master_scope = master_defaults_scope.fetch(parse(refinement_override_str, process_includes=True))
+master_scope = master_defaults_scope.fetch(parse(reintegration_override_str, process_includes=True))
+master_scope = master_scope.fetch(parse(refinement_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(combining_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(multiprocessing_override_str, process_includes=True))
+
+helpstring = """cctbx.xfel.stripe_experiment: parallel processing of an XFEL UI-generated trial.
+
+usage: cctbx.xfel.stripe_experiment striping.results_dir=/path/to/results striping.trial=000
+
+for interactive unit cell clustering, use combine_experiments.clustering.dendrogram=True
+"""
 
 def allocate_chunks_per_rungroup(results_dir, trial_no, stripe=False, max_size=1000, integrated=False):
   refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
@@ -273,6 +320,12 @@ class Script(object):
     self.run_scope = parse_retaining_scope(sys.argv[1:])
     self.params = self.run_scope.extract()
 
+    # Validation
+    if self.params.reintegration.enable:
+      if self.params.combine_experiments.output.delete_shoeboxes:
+        raise Sorry, ("Keep shoeboxes during combine_experiments and joint refinement when reintegrating."+\
+          "Set combine_experiments.output.delete_shoeboxes = False when using reintegration.") 
+
   def run(self):
     '''Execute the script.'''
 
@@ -349,13 +402,43 @@ class Script(object):
             phil_outfile.write(refine_diff_str + "\n")
           refine_command = "dials.refine %s" % refine_phil_filename
 
+        # set up reintegration
+        if self.params.reintegration.enable:
+          integration_diff_str = diff_scope.get("reintegration").as_str() % \
+            (filename, filename, filename, filename, filename, filename)
+          integration_diff_parts = integration_diff_str.split("\n")[:-2]
+          integration_diff_parts.pop(0)
+          integration_diff_str = "\n".join(integration_diff_parts)
+          if self.params.combine_experiments.clustering.use:
+            integration_phil_filename = filename + "_reintegrate_CLUSTER.phil"
+            integration_phil_path = os.path.join(cwd, dirname, integration_phil_filename)
+            if os.path.isfile(integration_phil_path):
+              os.remove(integration_phil_path)
+            with open(integration_phil_path, "wb") as phil_outfile:
+              phil_outfile.write(integration_diff_str + "\n")
+            script = script_to_expand_over_clusters(
+              self.params.refinement.input.experiments[0] % filename,
+              integration_phil_filename,
+              "dials.integrate",
+              dirname)
+            reintegrate_command = ". %s" % os.path.join(cwd, dirname, script)
+          else:
+            integration_phil_filename = filename + "_reintegrate.phil"
+            integration_phil_path = os.path.join(cwd, dirname, integration_phil_filename)
+            if os.path.isfile(integration_phil_path):
+              os.remove(integration_phil_path)
+            with open(integration_phil_path, "wb") as phil_outfile:
+              phil_outfile.write(integration_diff_str + "\n")
+            reintegrate_command = "dials.integrate %s" % integration_phil_filename
+        else:
+          reintegrate_command = ":" # unix equivalent of "pass"
+
         # submit queued job from appropriate directory
         os.chdir(dirname)
         submit_path = os.path.join(cwd, dirname, "combine_%s.sh" % filename)
-        command = "dials.combine_experiments %s && %s" % \
-          (combine_phil_filename, refine_command)
-        # import pdb; pdb.set_trace()
-        if self.params.combine_experiments.interactive:
+        command = "dials.combine_experiments %s && %s && %s" % \
+          (combine_phil_filename, refine_command, reintegrate_command)
+        if self.params.combine_experiments.clustering.dendrogram:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:
           submit_command = get_submit_command_chooser(command, submit_path, dirname, self.params.mp,
@@ -372,6 +455,9 @@ class Script(object):
 if __name__ == "__main__":
   from dials.util import halraiser
   import sys
+  if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
+    print helpstring
+    exit()
   if "-c" in sys.argv[1:]:
     if "-e" in sys.argv[1:]:
       expert_level = int(sys.argv[sys.argv.index("-e") + 1])
