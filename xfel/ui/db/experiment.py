@@ -106,7 +106,7 @@ class Isoform(db_proxy):
       return super(Isoform, self).__getattr__(key)
 
 class Cell(db_proxy):
-  def __init__(self, app, cell_id = None, crystal = None, **kwargs):
+  def __init__(self, app, cell_id = None, crystal = None, init_bins = False, **kwargs):
     assert [cell_id, crystal].count(None) in [1,2]
     if crystal is not None:
       for key, p in zip(['a', 'b', 'c', 'alpha', 'beta', 'gamma'], crystal.get_unit_cell().parameters()):
@@ -120,15 +120,28 @@ class Cell(db_proxy):
       self.isoform = Isoform(app, isoform_id = self.isoform_id)
     else:
       self.isoform = None
-    self.bins = app.get_cell_bins(self.id)
+    if init_bins:
+      self._bins = app.get_cell_bins(self.id)
+    else:
+      self._bins = []
 
   def __getattr__(self, key):
     if key == "unit_cell":
       from cctbx.uctbx import unit_cell
       return unit_cell([self.cell_a, self.cell_b, self.cell_c,
                         self.cell_alpha, self.cell_beta, self.cell_gamma])
+    if key == "bins":
+      if len(self._bins) == 0:
+        self._bins = app.get_cell_bins(self.id)
+      return self._bins
     else:
       return super(Cell, self).__getattr__(key)
+
+  def __setattr__(self, key, value):
+    if key == "bins":
+      self._bins = value
+    else:
+      return super(Cell, self).__setattr__(key, value)
 
 class Bin(db_proxy):
   def __init__(self, app, bin_id = None, **kwargs):

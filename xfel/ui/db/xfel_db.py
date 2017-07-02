@@ -274,6 +274,7 @@ class xfel_db_application(object):
       return cells[0]
 
   def get_trial_cells(self, trial_id):
+    # Use big queries to assist listing lots of cells. Start with list of cells for this trial
     tag = self.params.experiment_tag
     query = """SELECT cell.id FROM `%s_cell` cell
                JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
@@ -289,8 +290,27 @@ class xfel_db_application(object):
     ids = [str(i[0]) for i in cursor.fetchall()]
     if len(ids) == 0:
       return []
-    where = "WHERE id IN (%s)" % ", ".join(ids)
-    return self.get_all_x(Cell, 'cell', where)
+    # Build cell objects
+    cell_ids = ", ".join(ids)
+    where = "WHERE id IN (%s)" % cell_ids
+    cells = self.get_all_x(Cell, 'cell', where)
+    cells_d = {cell.id:cell for cell in cells}
+
+    # Get all the bin ids for bins associated with these cells and assemble the bin objects
+    query = """SELECT bin.id FROM `%s_bin` bin
+               WHERE bin.cell_id IN (%s)""" % (
+               tag, cell_ids)
+    cursor = self.execute_query(query)
+    ids = [str(i[0]) for i in cursor.fetchall()]
+    bin_ids = ", ".join(ids)
+    where = "WHERE id IN (%s)" % bin_ids
+    bins = self.get_all_x(Bin, 'bin', where)
+
+    # Link in all the bins
+    for bin in bins:
+      cells_d[bin.cell_id]._bins.append(bin)
+
+    return cells
 
   def create_cell(self, **kwargs):
     return Cell(self, **kwargs)
