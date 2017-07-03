@@ -2214,13 +2214,12 @@ class RunStatsTab(BaseTab):
       thread.start()
 
   def onOpenImages(self, e):
-    for params, ts_list in self.strong_indexed_image_timestamps:
-      ext = '.' + params['format']
-      indexed_paths = [path.split(ext)[0]+'_indexed.pickle' for path in self.strong_indexed_image_paths]
-      command = str('dials.image_viewer ' + ' '.join(self.strong_indexed_image_paths) + \
-        ' ' + ' '.join(indexed_paths))
-      thread = ImageDumpThread(command)
-      thread.start()
+    ext = '.' + self.strong_indexed_image_timestamps[0][0]['format']
+    indexed_paths = [path.split(ext)[0]+'_indexed.pickle' for path in self.strong_indexed_image_paths]
+    command = str('dials.image_viewer ' + ' '.join(self.strong_indexed_image_paths) + \
+      ' ' + ' '.join(indexed_paths))
+    thread = ImageDumpThread(command)
+    thread.start()
 
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
