@@ -132,7 +132,7 @@ class Cell(db_proxy):
                         self.cell_alpha, self.cell_beta, self.cell_gamma])
     if key == "bins":
       if len(self._bins) == 0:
-        self._bins = app.get_cell_bins(self.id)
+        self._bins = self.app.get_cell_bins(self.id)
       return self._bins
     else:
       return super(Cell, self).__getattr__(key)
