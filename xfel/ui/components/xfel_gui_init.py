@@ -394,7 +394,8 @@ class RunStatsSentinel(Thread):
     while self.active:
       self.parent.run_window.runstats_light.change_status('idle')
       self.plot_stats_static()
-      self.fetch_should_have_indexed_timestamps()
+      self.fetch_timestamps(indexed=True)
+      self.fetch_timestamps(indexed=False)
       self.post_refresh()
       self.info = {}
       self.parent.run_window.runstats_light.change_status('on')
@@ -462,31 +463,40 @@ class RunStatsSentinel(Thread):
     params['energy'] = rg.energy if hasattr(rg, 'energy') else None
     return params
 
-  def fetch_should_have_indexed_timestamps(self):
+  def fetch_timestamps(self, indexed=False):
     from xfel.ui.components.run_stats_plotter import \
       get_multirun_should_have_indexed_timestamps, get_paths_from_timestamps, get_strings_from_timestamps
     self.refresh_stats()
-    should_have_indexed_runs, should_have_indexed_timestamps = \
+    runs, timestamps = \
       get_multirun_should_have_indexed_timestamps(self.stats,
                                                   self.run_numbers,
                                                   self.parent.run_window.runstats_tab.d_min,
-                                                  self.parent.run_window.runstats_tab.n_strong)
+                                                  self.parent.run_window.runstats_tab.n_strong,
+                                                  indexed=indexed)
 
-    pickle_paths_by_run = []
+    image_paths_by_run = []
     timestamps_and_params_by_run = []
-    for i in xrange(len(should_have_indexed_runs)):
-      run = should_have_indexed_runs[i]
-      ts = should_have_indexed_timestamps[i]
-      prepend = os.path.join(get_run_path(self.output, *self.trgr[run]), "all")
-      pickle_paths = get_paths_from_timestamps(ts, prepend=prepend, tag="shot")
-      pickle_paths_by_run.extend(pickle_paths)
+    for i in xrange(len(runs)):
+      run = runs[i]
+      ts = timestamps[i]
+      outdir = "out" if indexed else "all"
+      prepend = os.path.join(get_run_path(self.output, *self.trgr[run]), outdir)
+      tag = "idx" if indexed else "shot"
+      image_paths = get_paths_from_timestamps(ts, prepend=prepend, tag=tag, ext=self.trgr[run][1].format)
+      image_paths_by_run.extend(image_paths)
       timestamp_strings = get_strings_from_timestamps(ts, long_form=True)
       timestamps_and_params_by_run.append((self.get_xtc_process_params_for_run(*self.trgr[run]), timestamp_strings))
-    self.parent.run_window.runstats_tab.should_have_indexed_timestamps = \
-      timestamps_and_params_by_run
-    self.parent.run_window.runstats_tab.should_have_indexed_image_paths = \
-      pickle_paths_by_run
-    self.parent.run_window.runstats_tab.redraw_windows = True
+    if indexed:
+      self.parent.run_window.runstats_tab.strong_indexed_image_timestamps = \
+        timestamps_and_params_by_run
+      self.parent.run_window.runstats_tab.strong_indexed_image_paths = \
+        image_paths_by_run
+    else:
+      self.parent.run_window.runstats_tab.should_have_indexed_timestamps = \
+        timestamps_and_params_by_run
+      self.parent.run_window.runstats_tab.should_have_indexed_image_paths = \
+        image_paths_by_run
+      self.parent.run_window.runstats_tab.redraw_windows = True
 
   def plot_stats_static(self):
     from xfel.ui.components.run_stats_plotter import plot_multirun_stats
@@ -533,7 +543,7 @@ class ImageDumpThread(Thread):
 
   def run(self):
     print self.command
-    easy_run.fully_buffered(command=self.command)
+    easy_run.fully_buffered(command=self.command).show_stderr()
 
 # ----------------------------- Unit Cell Sentinel ----------------------------- #
 
@@ -1862,6 +1872,8 @@ class RunStatsTab(BaseTab):
     self.i_sigi = 1
     self.should_have_indexed_image_paths = None
     self.should_have_indexed_timestamps = None
+    self.strong_indexed_image_paths = None
+    self.strong_indexed_image_timestamps = None
 
     self.runstats_panel = wx.Panel(self, size=(100, 100))
     self.runstats_panelsize = self.runstats_panel.GetSize()
@@ -1908,6 +1920,11 @@ class RunStatsTab(BaseTab):
                                            ctrl_size=(150, 200),
                                            direction='vertical',
                                            choices=[])
+    self.strong_indexed_list = wx.TextCtrl(self,
+                                           style=wx.TE_MULTILINE | wx.TE_READONLY)
+    self.idx_show_images_button = wx.Button(self,
+                                            label='Open images',
+                                            size=(200, -1))
     self.should_have_indexed_list = wx.TextCtrl(self,
                                                 style=wx.TE_MULTILINE | wx.TE_READONLY)
     self.shi_dump_images_button = wx.Button(self,
@@ -1940,6 +1957,22 @@ class RunStatsTab(BaseTab):
     self.options_box_sizer.Add(self.options_opt_sizer)
     self.bottom_sizer.Add(self.options_box_sizer)
 
+    self.dump_images_sizer = wx.GridBagSizer(1, 2)
+
+    strong_indexed_box = wx.StaticBox(self, label='Strongest Indexed Images')
+    self.strong_indexed_box_sizer = wx.StaticBoxSizer(strong_indexed_box, wx.VERTICAL)
+
+    self.strong_indexed_results_sizer = wx.GridBagSizer(1, 1)
+    self.strong_indexed_results_sizer.Add(self.strong_indexed_list, pos=(0, 0),
+                                          span=(12, 45),
+                                          flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
+                                          border=10)
+    self.strong_indexed_box_sizer.Add(self.strong_indexed_results_sizer)
+
+    self.strong_indexed_box_sizer.Add(self.idx_show_images_button,
+                                      flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
+                                      border=10)
+
     should_have_indexed_box = wx.StaticBox(self, label='Strong Images that Didn\'t Index')
     self.should_have_indexed_box_sizer = wx.StaticBoxSizer(should_have_indexed_box, wx.VERTICAL)
 
@@ -1954,7 +1987,12 @@ class RunStatsTab(BaseTab):
                                            flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
                                            border=10)
 
-    self.bottom_sizer.Add(self.should_have_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
+    self.dump_images_sizer.Add(self.strong_indexed_box_sizer, pos=(0, 0))
+    self.dump_images_sizer.Add(self.should_have_indexed_box_sizer, pos=(0, 1))
+
+    # self.bottom_sizer.Add(self.should_have_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
+    # self.bottom_sizer.Add(self.strong_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
+    self.bottom_sizer.Add(self.dump_images_sizer, flag=wx.EXPAND | wx.ALL)
 
     self.main_sizer.Add(self.runstats_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
@@ -1970,6 +2008,7 @@ class RunStatsTab(BaseTab):
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
     self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.i_sigi_cutoff.isigi)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
+    self.Bind(wx.EVT_BUTTON, self.onOpenImages, self.idx_show_images_button)
     self.Bind(wx.EVT_BUTTON, self.onDumpImages, self.shi_dump_images_button)
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
@@ -2037,6 +2076,7 @@ class RunStatsTab(BaseTab):
       self.select_all()
     if self.redraw_windows:
       self.plot_static_runstats()
+      self.print_strong_indexed_paths()
       self.print_should_have_indexed_paths()
       self.redraw_windows = False
     if self.trial is not None:
@@ -2080,12 +2120,20 @@ class RunStatsTab(BaseTab):
     t2 = time.time()
     # print "plot_static_runstats (GUI main thread) took %s" % duration(t1, t2)
 
+  def print_strong_indexed_paths(self):
+    try:
+      image_paths = '\n'.join(self.strong_indexed_image_paths)
+      self.strong_indexed_list.SetValue(image_paths)
+    except TypeError:
+      print "Error getting list of best indexed images"
+      pass
+
   def print_should_have_indexed_paths(self):
     try:
       image_paths = '\n'.join(self.should_have_indexed_image_paths)
       self.should_have_indexed_list.SetValue(image_paths)
     except TypeError:
-      print "Error getting list of pickles that should have indexed"
+      print "Error getting list of images that should have indexed"
       pass
 
   def select_last_n_runs(self, n):
@@ -2162,6 +2210,15 @@ class RunStatsTab(BaseTab):
         command += 'input.timestamp=%s '%timestamp_string
       command += '&& dials.image_viewer %s'%\
         os.path.join(params['output_dir'], 'shot-*.%s ' % (params['format']))
+      thread = ImageDumpThread(command)
+      thread.start()
+
+  def onOpenImages(self, e):
+    for params, ts_list in self.strong_indexed_image_timestamps:
+      ext = '.' + params['format']
+      indexed_paths = [path.split(ext)[0]+'_indexed.pickle' for path in self.strong_indexed_image_paths]
+      command = str('dials.image_viewer ' + ' '.join(self.strong_indexed_image_paths) + \
+        ' ' + ' '.join(indexed_paths))
       thread = ImageDumpThread(command)
       thread.start()
 
