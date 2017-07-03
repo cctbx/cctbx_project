@@ -66,31 +66,44 @@ class Stats(object):
       from experiment import Cell
       cells = self.app.get_all_x(Cell, 'cell', where = "WHERE id IN (%s)"%", ".join(cell_ids))
 
-    for cell in cells:
-      bin_ids = [str(bin.id) for bin in cell.bins]
-      if len(bin_ids) == 0:
-        continue
+    self.app.link_cell_bins(cells)
 
-      # Big expensive query to avoid many small queries
-      query = """SELECT bin.id, cell_bin.count FROM `%s_cell_bin` cell_bin
-                 JOIN `%s_bin` bin ON bin.id = cell_bin.bin_id
-                 JOIN `%s_crystal` crystal ON crystal.id = cell_bin.crystal_id
-                 JOIN `%s_experiment` exp ON exp.crystal_id = crystal.id
-                 JOIN `%s_imageset` imgset ON imgset.id = exp.imageset_id
-                 JOIN `%s_imageset_event` ie ON ie.imageset_id = imgset.id
-                 JOIN `%s_event` evt ON evt.id = ie.event_id
-                 JOIN `%s_run` run ON run.id = evt.run_id
-                 WHERE run.id in %s AND bin.id IN (%s)
-                       AND cell_bin.avg_intensity > 0
-                       """ % (
-        exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, ", ".join(bin_ids))
-      if self.isigi_cutoff is not None and self.isigi_cutoff >= 0:
-        query += " AND cell_bin.avg_i_sigi >= %f"%self.isigi_cutoff
-      results = self.app.execute_query(query).fetchall()
-      ids = flex.int([r[0] for r in results])
-      counts = flex.int([r[1] for r in results])
+    cell_ids = []
+    cells_d = {}
+    bin_ids = []
+    for cell in cells:
+      cell_ids.append(str(cell.id))
+      cells_d[cell.id] = cell
+      bin_ids.extend([str(bin.id) for bin in cell.bins])
+
+    if len(cell_ids) == 0 or len(bin_ids) == 0: return cells
+
+    # Big expensive query to avoid many small queries
+    query = """SELECT cell.id, bin.id, cell_bin.count FROM `%s_cell_bin` cell_bin
+               JOIN `%s_bin` bin ON bin.id = cell_bin.bin_id
+               JOIN `%s_cell` cell ON cell.id = bin.cell_id
+               JOIN `%s_crystal` crystal ON crystal.id = cell_bin.crystal_id
+               JOIN `%s_experiment` exp ON exp.crystal_id = crystal.id
+               JOIN `%s_imageset` imgset ON imgset.id = exp.imageset_id
+               JOIN `%s_imageset_event` ie ON ie.imageset_id = imgset.id
+               JOIN `%s_event` evt ON evt.id = ie.event_id
+               JOIN `%s_run` run ON run.id = evt.run_id
+               WHERE run.id in %s AND bin.id IN (%s)
+                     AND cell_bin.avg_intensity > 0
+                     AND cell.id IN (%s)
+                     """ % (
+      exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, ", ".join(bin_ids), ", ".join(cell_ids))
+    if self.isigi_cutoff is not None and self.isigi_cutoff >= 0:
+      query += " AND cell_bin.avg_i_sigi >= %f"%self.isigi_cutoff
+    results = self.app.execute_query(query).fetchall()
+    cell_ids = flex.int([r[0] for r in results])
+    bin_ids = flex.int([r[1] for r in results])
+    counts = flex.int([r[2] for r in results])
+    for cell_id in cell_ids:
+      cell = cells_d[cell_id]
       for bin in cell.bins:
-        bin.count = flex.sum(counts.select(ids == bin.id))
+        bin.count = flex.sum(counts.select(bin_ids == bin.id))
+
     return cells
 
 class HitrateStats(object):

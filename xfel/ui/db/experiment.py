@@ -122,8 +122,10 @@ class Cell(db_proxy):
       self.isoform = None
     if init_bins:
       self._bins = app.get_cell_bins(self.id)
+      self._bins_set = True
     else:
       self._bins = []
+      self._bins_set = False
 
   def __getattr__(self, key):
     if key == "unit_cell":
@@ -131,8 +133,9 @@ class Cell(db_proxy):
       return unit_cell([self.cell_a, self.cell_b, self.cell_c,
                         self.cell_alpha, self.cell_beta, self.cell_gamma])
     if key == "bins":
-      if len(self._bins) == 0:
+      if len(self._bins) == 0 and not self._bins_set:
         self._bins = self.app.get_cell_bins(self.id)
+        self._bins_set = True
       return self._bins
     else:
       return super(Cell, self).__getattr__(key)

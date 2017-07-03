@@ -294,7 +294,12 @@ class xfel_db_application(object):
     cell_ids = ", ".join(ids)
     where = "WHERE id IN (%s)" % cell_ids
     cells = self.get_all_x(Cell, 'cell', where)
+    return self.link_cell_bins(cells)
+
+  def link_cell_bins(self, cells):
+    tag = self.params.experiment_tag
     cells_d = {cell.id:cell for cell in cells}
+    cell_ids = ", ".join([str(key) for key in cells_d.keys()])
 
     # Get all the bin ids for bins associated with these cells and assemble the bin objects
     query = """SELECT bin.id FROM `%s_bin` bin
@@ -310,6 +315,9 @@ class xfel_db_application(object):
       # Link in all the bins
       for bin in bins:
         cells_d[bin.cell_id]._bins.append(bin)
+
+    for cell in cells:
+      cell._bins_set = True
 
     return cells
 
