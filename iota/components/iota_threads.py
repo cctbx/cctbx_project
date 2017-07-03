@@ -266,13 +266,15 @@ class SpotFinderThread(Thread):
     self.parent = parent
     self.data_list = data_list
     self.term_file = term_file
-    self.spotfinder = SpotFinderOneThread(self, processor, term_file)
+    self.processor = processor
+    #self.spotfinder = SpotFinderOneThread(self, processor, term_file)
 
   def run(self):
     try:
       parallel_map(iterable=self.data_list,
                    func=self.spf_wrapper,
                    callback=self.callback,
+                   preserve_exception_message=True,
                    processes=None)
     except Exception, e:
       print e
@@ -289,12 +291,20 @@ class SpotFinderThread(Thread):
       pass
 
   def spf_wrapper(self, img):
-    try:
+    if os.path.isfile(self.term_file):
+      print 'TERMINATING {}, image {} of {}' \
+            ''.format(img, self.data_list.index(img), len(self.data_list))
+      raise Exception('IOTA_TRACKER: Termination signal received!')
+    else:
       datablock = DataBlockFactory.from_filenames([img])[0]
-      info = self.spotfinder.run(self.data_list.index(img), datablock, img)
-      return info
-    except Exception, e:
-      raise e
+      #info = self.spotfinder.run(self.data_list.index(img), datablock, img)
+      #return info
+      observed = self.processor.find_spots(datablock=datablock)
+      return [self.data_list.index(img), len(observed), img]
+    # except Exception, e:
+    #   print '{}, image {} of {}'.format(img, self.data_list.index(img),
+    #                                     len(self.data_list))
+    #   raise e
 
   def callback(self, info):
     try:

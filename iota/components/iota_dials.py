@@ -12,7 +12,6 @@ Description : Runs DIALS spotfinding, indexing, refinement and integration
 import os
 import sys
 
-import numpy as np
 from iotbx.phil import parse
 from dxtbx.datablock import DataBlockFactory
 from cctbx import sgtbx
@@ -191,6 +190,7 @@ class Integrator(object):
                final,
                logfile,
                gain = 0.32,
+               center_intensity = 0,
                params=None):
     '''Initialise the script.'''
 
@@ -203,9 +203,9 @@ class Integrator(object):
         settings_file_contents = settings_file.read()
       settings = parse(settings_file_contents)
       current_phil = phil_scope.fetch(source=settings)
-      self.phil = current_phil.extract()
     else:
-      self.phil = phil_scope.extract()
+      current_phil = phil_scope
+    self.phil = current_phil.extract()
 
    # Set general file-handling settings
     file_basename = os.path.basename(source_image).split('.')[0]
@@ -232,6 +232,8 @@ class Integrator(object):
       self.phil.spotfinder.lookup.mask = self.params.image_conversion.mask
       self.phil.integration.lookup.mask = self.params.image_conversion.mask
 
+    #current_phil.format(python_object=self.phil).show()
+
     self.img = [source_image]
     self.obj_base = object_folder
     self.fail = None
@@ -242,11 +244,14 @@ class Integrator(object):
     self.obj_filename = "int_{}".format(os.path.basename(self.img[0]))
 
     if self.params.dials.auto_threshold:
-      rad_avg = RadAverageCalculator(datablock=self.datablock)
-      means, res = rad_avg.make_radial_average(num_bins=20, lowres=90)
-      threshold = int(np.min(means) * 5)
-      print 'IMG: {}, THRESHOLD: {}'.format(self.img, threshold)
+      # This is still experimental and I'm not sure if it does anything...
+
+      # rad_avg = RadAverageCalculator(datablock=self.datablock)
+      # means, res = rad_avg.make_radial_average(num_bins=20, lowres=90)
+      # threshold = int(np.min(means) * 5)
+      threshold = int(center_intensity)
       self.phil.spotfinder.threshold.xds.global_threshold = threshold
+
 
   def find_spots(self):
     # Perform spotfinding

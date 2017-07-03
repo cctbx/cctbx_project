@@ -163,6 +163,10 @@ class TrackChart(wx.Panel):
     self.bragg_line = self.track_axes.axhline(0, c='#4575b4', ls=':', alpha=0)
     self.track_axes.set_autoscaley_on(True)
 
+  def refresh(self):
+    self.clear_all()
+    self.track_canvas.flush_events()
+
   def draw_plot(self, min_bragg=0, new_x=None, new_y=None):
     self.track_axes.patch.set_visible(False)
 
@@ -176,6 +180,8 @@ class TrackChart(wx.Panel):
     nref_y = np.append(self.acc_plot.get_ydata(),
                        np.array(new_y).astype(np.double))
     nref_xy = zip(nref_x, nref_y)
+    all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
+    all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
 
     if min_bragg > 0:
      self.bragg_line.set_alpha(1)
@@ -194,14 +200,19 @@ class TrackChart(wx.Panel):
         else:
           x_min = -0.5
           x_max = int(window_size) + 0.5
+
       else:
         x_min = -0.5
         x_max = np.max(nref_x) + 0.5
       self.track_axes.set_xlim(x_min, x_max)
       self.track_axes.set_ylim(0, np.max(nref_y) + int(0.1 * np.max(nref_y)))
+    else:
+      x_min = -0.5
+      x_max = 0.5
 
-    acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
-    rej = [i[0] for i in nref_xy if i[1] < min_bragg]
+    acc = [i for i in all_acc if i >= x_min and i < x_max]
+    rej = [i for i in all_rej if i >= x_min and i < x_max]
+    print 'DEBUG: ', len(acc), len(rej)
 
     try:
       self.acc_plot.set_xdata(nref_x)
@@ -212,12 +223,11 @@ class TrackChart(wx.Panel):
       self.acc_plot.set_markevery(acc)
       self.rej_plot.set_markevery(rej)
     except ValueError, e:
-      print e
-      exit()
+      raise e
 
     self.Layout()
 
-    count = '{}'.format(len(acc))
+    count = '{}'.format(len([i for i in nref_xy if i[1] >= min_bragg]))
     self.main_window.tracker_panel.count_txt.SetLabel(count)
     self.main_window.tracker_panel.status_sizer.Layout()
     self.track_axes.draw_artist(self.acc_plot)
@@ -378,6 +388,7 @@ class TrackerWindow(wx.Frame):
     self.new_frames = []
     self.new_counts = []
     self.spotfinding_info = []
+    self.refresh_chart = False
 
     # Setup main sizer
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -400,8 +411,6 @@ class TrackerWindow(wx.Frame):
                                                 bitmap=rec_bmp,
                                                 shortHelp='Restore',
                                                 longHelp='Restore aborted run')
-
-
 
     # run_calc = bitmaps.fetch_icon_bitmap('apps', 'calc')
     # self.tb_btn_calc = self.toolbar.AddLabelTool(wx.ID_ANY, label='Average',
@@ -520,6 +529,13 @@ class TrackerWindow(wx.Frame):
       timer_txt = '[ ------ ]'
       self.msg = 'Ready to track images in {}'.format(self.data_folder)
       self.tracker_panel.status_txt.SetLabel('{} {}'.format(timer_txt, self.msg))
+
+      self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
+      try:
+        os.remove(self.folder_file)
+        os.remove(self.info_file)
+      except Exception, e:
+        pass
     else:
       open_dlg.Destroy()
       return
@@ -543,6 +559,9 @@ class TrackerWindow(wx.Frame):
     for item in contents:
       items = item.replace('\n', '').split(',')
       self.spotfinding_info.append(items)
+
+    os.remove(self.info_file)
+    os.remove(self.folder_file)
 
     self.new_counts = [int(i[1]) for i in self.spotfinding_info]
     self.new_frames = [int(i[0]) for i in self.spotfinding_info]

@@ -11,6 +11,8 @@ import os
 import wx
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
+from wx.lib.scrolledpanel import ScrolledPanel
+
 
 import math
 import numpy as np
@@ -1078,8 +1080,37 @@ class SummaryTab(wx.Panel):
     dat_box_sizer.Add(dat_btn_sizer, flag=wx.ALL, border=10)
     summary_sizer.Add(dat_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
+    # Clustering info (if performed)
+    if self.gparams.analysis.run_clustering:
+      cluster_box = wx.StaticBox(self, label='Unit Cell Clustering')
+      cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
+      self.cluster_panel = ScrolledPanel(self, size=(-1, 100))
+      self.cluster_panel.SetFont(bfont)
+      self.cluster_box_grid = wx.GridBagSizer(5, 10)
+      self.cluster_panel.SetSizer(self.cluster_box_grid)
 
-    # # Summary
+      self.cluster_box_grid.Add(wx.StaticText(self.cluster_panel,
+                                              label='No. Images'),
+                                pos=(0, 0))
+      self.cluster_box_grid.Add(wx.StaticText(self.cluster_panel,
+                                              label='Bravais Lattice'),
+                                pos=(0, 1))
+      self.cluster_box_grid.Add(wx.StaticText(self.cluster_panel,
+                                              label='Unit Cell'),
+                                pos=(0, 2))
+      self.cluster_box_grid.Add(wx.StaticText(self.cluster_panel,
+                                              label='Filename'),
+                                pos=(0, 3))
+      self.cluster_box_grid.AddGrowableCol(2)
+      self.cluster_panel.SetFont(sfont)
+
+      # Insert into sizers
+      cluster_box_sizer.Add(self.cluster_panel, flag=wx.EXPAND |wx.ALL,
+                            border=10)
+      summary_sizer.Add(cluster_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
+
+
+    # Summary
     smr_box = wx.StaticBox(self, label='Run Summary')
     smr_box.SetFont(sfont)
     smr_box_sizer = wx.StaticBoxSizer(smr_box, wx.HORIZONTAL)
@@ -1496,7 +1527,24 @@ class ProcWindow(wx.Frame):
 
       # Dataset information
       analysis.print_results()
-      pg, uc = analysis.unit_cell_analysis()
+      pg, uc, clusters = analysis.unit_cell_analysis()
+
+      if clusters != []:
+        for cluster in clusters:
+          row = clusters.index(cluster) + 1
+          n_ucs = wx.StaticText(self.summary_tab.cluster_panel,
+                                label=str(cluster['number']))
+          pg_info = wx.StaticText(self.summary_tab.cluster_panel,
+                                  label=str(cluster['pg']))
+          uc_info = wx.StaticText(self.summary_tab.cluster_panel,
+                                  label=str(cluster['uc']))
+          fname = wx.StaticText(self.summary_tab.cluster_panel,
+                                label=str(cluster['filename']))
+          self.summary_tab.cluster_box_grid.Add(n_ucs, pos=(row, 0))
+          self.summary_tab.cluster_box_grid.Add(pg_info, pos=(row, 1))
+          self.summary_tab.cluster_box_grid.Add(uc_info, pos=(row, 2))
+          self.summary_tab.cluster_box_grid.Add(fname, pos=(row, 3))
+        self.summary_tab.cluster_panel.SetupScrolling()
 
       self.summary_tab.pg_txt.SetLabel(str(pg))
       unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])

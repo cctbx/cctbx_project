@@ -359,6 +359,8 @@ class Analyzer(object):
     final_table = []
     final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
 
+    self.clusters = []
+
     # In case no images were integrated
     if self.final_objects is None:
       final_table.append('NO IMAGES INTEGRATED!')
@@ -453,14 +455,18 @@ class Analyzer(object):
                         "".format(' UNIT CELL ANALYSIS '))
 
         # extract clustering info and add to summary output list
+        if len(self.pickles) / 10 >= 10:
+          cluster_limit = 10
+        else:
+          cluster_limit = len(self.pickles) / 10
+
         for cluster in clusters:
           sorted_pg_comp = sorted(cluster.pg_composition.items(),
                                     key=lambda x: -1 * x[1])
           pg_nums = [pg[1] for pg in sorted_pg_comp]
           cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
 
-          # write out lists of output pickles that comprise clusters with > 1 members
-          if len(cluster.members) > 1:
+          if len(cluster.members) > cluster_limit:
             counter += 1
 
             # Sort clustered images by mosaicity, lowest to highest
@@ -480,6 +486,19 @@ class Analyzer(object):
             else:
               mark_output = '*'
               output_file = None
+
+            # Populate clustering info for GUI display
+            uc_no_stdev = "{:<6.2f} {:<6.2f} {:<6.2f} " \
+                          "{:<6.2f} {:<6.2f} {:<6.2f} " \
+                          "".format(cluster.medians[0], cluster.medians[1],
+                                    cluster.medians[2], cluster.medians[3],
+                                    cluster.medians[4], cluster.medians[5])
+            cluster_info = {'number':len(cluster.members),
+                            'pg': cons_pg[0],
+                            'uc':uc_no_stdev,
+                            'filename':mark_output}
+            self.clusters.append(cluster_info)
+
           else:
             mark_output = ''
             output_file = None
@@ -502,6 +521,7 @@ class Analyzer(object):
           uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
                      output_file, uc_line, lattices]
           uc_summary.append(uc_info)
+
       else:
 
         # generate average unit cell
@@ -553,7 +573,7 @@ class Analyzer(object):
         misc.main_log(self.logfile, item, (not self.gui_mode))
 
       if self.gui_mode:
-        return self.cons_pg, self.cons_uc
+        return self.cons_pg, self.cons_uc, self.clusters
 
 
   def print_summary(self, write_files=True):
