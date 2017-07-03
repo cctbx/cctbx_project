@@ -295,7 +295,7 @@ class mtriage(object):
       f_calc = f_obs.structure_factors_from_scatterers(
         xray_structure = self.box.xray_structure).f_calc()
       self.fsc_curve_model = f_calc.d_min_from_fsc(
-        other=f_obs, bin_width=100, fsc_cutoff=0.0)
+        other=f_obs, bin_width=100, fsc_cutoff=0.5)
       self.d_fsc_model = self.fsc_curve_model.d_min
 
   def write_fsc_curve_model_plot_data(self, file_name):
