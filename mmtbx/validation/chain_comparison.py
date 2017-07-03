@@ -224,11 +224,9 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,out=sys.stdout):
   if target_ph:
     target_centroid_list=flex.vec3_double()
     for model in target_ph.models()[:1]:
-      for chain in model.chains():
-        target_centroid_list.append(chain.atoms().extract_xyz().mean())
+      target_centroid_list.append(model.atoms().extract_xyz().mean())
   else:
     target_centroid_list=None
-
   unique_sequences=[]
   best_chain_dict={}
   best_chain_dist_dict={}
@@ -250,6 +248,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,out=sys.stdout):
       if best_dist is None or dist<best_dist:
         best_chain_dist_dict[seq]=dist
         best_chain_dict[seq]=chain
+ 
 
   for seq in best_chain_dist_dict.keys():
     chain=best_chain_dict[seq]
