@@ -27,6 +27,14 @@ striping {
   results_dir = None
     .type = path
     .help = "LCLS results directory containint runs starting with r."
+  rungroup = None
+    .type = int
+    .multiple = True
+    .help = "Selected rungroups to stripe. If None, all rungroups are accepted."
+  run = None
+    .type = int
+    .multiple = True
+    .help = "Selected runs to stripe. If None, all runs are accepted."
   trial = None
     .type = int
     .help = "Trial identifier for an XFEL GUI formatted processing trial."
@@ -148,11 +156,28 @@ reintegration{
     debug_log = %s_reintegrate_CLUSTER.debug.log
   }
   integration {
-    debug {
-      output = False
-      separate_files = True
-    }
     integrator = auto 3d flat3d 2d single2d *stills volume
+    profile {
+      fitting = False
+    }
+    background {
+      algorithm = simple
+      simple {
+        outlier {
+          algorithm = plane
+        }
+        model {
+          algorithm = linear2d
+        }
+      }
+    }
+  }
+  profile {
+    gaussian_rs {
+      min_spots {
+        overall = 0
+      }
+    }
   }
   input {
     experiments = %s_refined_experiments_CLUSTER.json
@@ -165,8 +190,22 @@ reintegration{
 postprocessing_str = '''
 postprocessing {
   enable = False
+  include scope xfel.command_line.frame_extractor.phil_scope
 }
 '''
+
+postprocessing_override_str = """
+postprocessing {
+  input {
+    experiments = %s_refined_experiments_CLUSTER.json
+    reflections = %s_refined_reflections_CLUSTER.pickle
+  }
+  output {
+    filename = %s_CLUSTER_ITER_extracted.pickle
+    dirname = %s
+  }
+}
+"""
 
 master_defaults_str = multiprocessing_str + striping_str + combining_str + filtering_str + \
                         refinement_str + reintegration_str + postprocessing_str
@@ -174,7 +213,8 @@ master_defaults_str = multiprocessing_str + striping_str + combining_str + filte
 # initialize a master scope from the multiprocessing phil string
 master_defaults_scope = parse(master_defaults_str, process_includes=True)
 # update master scope with customized and local phil scopes
-master_scope = master_defaults_scope.fetch(parse(reintegration_override_str, process_includes=True))
+master_scope = master_defaults_scope.fetch(parse(postprocessing_override_str, process_includes=True))
+master_scope = master_scope.fetch(parse(reintegration_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(refinement_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(combining_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(multiprocessing_override_str, process_includes=True))
@@ -186,21 +226,35 @@ usage: cctbx.xfel.stripe_experiment striping.results_dir=/path/to/results stripi
 for interactive unit cell clustering, use combine_experiments.clustering.dendrogram=True
 """
 
-def allocate_chunks_per_rungroup(results_dir, trial_no, stripe=False, max_size=1000, integrated=False):
+def allocate_chunks_per_rungroup(results_dir,
+                                 trial_no,
+                                 rgs_selected=None,
+                                 runs_selected=None,
+                                 stripe=False,
+                                 max_size=1000,
+                                 integrated=False):
   refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
   expt_ending = "_refined_experiments.json"
   trial = "%03d" % trial_no
   print "processing trial %s" % trial
+  if rgs_selected:
+    rg_condition = lambda rg: rg in rgs_selected
+  else:
+    rg_condition = lambda rg: True
   rgs = {} # rungroups and associated runs
   for run in os.listdir(results_dir):
     if not (run.startswith("r") and run.split("r")[1].isdigit()):
       continue
+    if runs_selected and run not in runs_selected:
+      continue
     trgs = [trg for trg in os.listdir(os.path.join(results_dir, run))
-            if trg[:6] == trial + "_rg"]
+            if (trg[:6] == trial + "_rg") and rg_condition(trg[-5:])]
+    if not trgs:
+      continue
     rungroups = set(map(lambda n: n.split("_")[1], trgs))
     for rg in rungroups:
       if rg not in rgs.keys():
-        rgs[rg] = []
+        rgs[rg] = [run]
       else:
         rgs[rg].append(run)
   rg_ch_nums_sizes = {}
@@ -213,7 +267,7 @@ def allocate_chunks_per_rungroup(results_dir, trial_no, stripe=False, max_size=1
       try:
         contents = os.listdir(os.path.join(results_dir, run, trg, "out"))
       except OSError:
-        # print "skipping run %s missing out directory" % run
+        print "skipping run %s missing out directory" % run
         continue
       abs_contents = [os.path.join(results_dir, run, trg, "out", c)
                       for c in contents]
@@ -221,7 +275,7 @@ def allocate_chunks_per_rungroup(results_dir, trial_no, stripe=False, max_size=1
       expts = [c for c in contents if c.endswith(expt_ending)]
       n_img += len(expts)
     if n_img == 0:
-      # print "no images found for %s" % rg
+      print "no images found for %s" % rg
       del rg_contents[rg]
       continue
     n_chunks = int(math.ceil(n_img/max_size))
@@ -287,8 +341,8 @@ def script_to_expand_over_clusters(clustered_json_name,
   each instance of CLUSTER.
   """
   clj_part_first, clj_part_last = clustered_json_name.split("CLUSTER")
+  clustered_template_name = clj_part_first + "*" + clj_part_last
   ph_part_first, ph_part_last = phil_template_name.split("CLUSTER")
-  clustered_template_name = "*".join([clj_part_first, clj_part_last])
 
   bash_str = '''
 #! /bin/sh
@@ -324,19 +378,27 @@ class Script(object):
     if self.params.reintegration.enable:
       if self.params.combine_experiments.output.delete_shoeboxes:
         raise Sorry, ("Keep shoeboxes during combine_experiments and joint refinement when reintegrating."+\
-          "Set combine_experiments.output.delete_shoeboxes = False when using reintegration.") 
+          "Set combine_experiments.output.delete_shoeboxes = False when using reintegration.")
 
   def run(self):
     '''Execute the script.'''
-
+    if self.params.striping.run:
+      print "processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run])
+    if self.params.striping.rungroup:
+      print "processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup])
     rg_chunks = allocate_chunks_per_rungroup(self.params.striping.results_dir,
                                              self.params.striping.trial,
+                                             rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
+                                             runs_selected=["r%04d" % r for r in self.params.striping.run],
                                              stripe=self.params.striping.stripe,
                                              max_size=self.params.striping.chunk_size,
                                              integrated=self.params.combine_experiments.keep_integrated)
     dirname = "combine_experiments_t%03d" % self.params.striping.trial
-    if not os.path.isdir(dirname):
-      os.mkdir(dirname)
+    intermediates = os.path.join(dirname, "intermediates")
+    extracted = os.path.join(dirname, "final_extracted")
+    for d in dirname, intermediates, extracted:
+      if not os.path.isdir(d):
+        os.mkdir(d)
     cwd = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
     for rg, ch_list in rg_chunks.iteritems():
@@ -348,7 +410,7 @@ class Script(object):
 
         # set up the file containing input expts and refls
         filename = "t%03d_%s_%s%03d" % (self.params.striping.trial, rg, tag, idx)
-        chunk_path = os.path.join(cwd, dirname, filename)
+        chunk_path = os.path.join(cwd, intermediates, filename)
         if os.path.isfile(chunk_path):
           os.remove(chunk_path)
         with open(chunk_path, "wb") as outfile:
@@ -357,8 +419,7 @@ class Script(object):
 
         # set up the params for dials.combine_experiments
         combine_diff_str = diff_scope.get("combine_experiments").as_str() % (filename, filename)
-        combine_diff_lines = combine_diff_str.split("\n")[:-2]
-        combine_diff_lines.pop(0)
+        combine_diff_lines = combine_diff_str.split("\n")[1:-2]
         combine_diff_lines.append("  input {")
         for expt_path in chunk[0]:
           combine_diff_lines.append("    experiments = %s" % expt_path)
@@ -367,7 +428,7 @@ class Script(object):
         combine_diff_lines.append("  }")
         combine_diff_str = "\n".join(combine_diff_lines)
         combine_phil_filename = filename + "_combine.phil"
-        combine_phil_path = os.path.join(cwd, dirname, combine_phil_filename)
+        combine_phil_path = os.path.join(cwd, intermediates, combine_phil_filename)
         if os.path.isfile(combine_phil_path):
           os.remove(combine_phil_path)
         with open(combine_phil_path, "wb") as phil_outfile:
@@ -376,12 +437,11 @@ class Script(object):
         # set up the params for dials.refine (to be customized per cluster at execution time)
         refine_diff_str = diff_scope.get("refinement").as_str() % \
           (filename, filename, filename, filename, filename, filename)
-        refine_diff_parts = refine_diff_str.split("\n")[:-2]
-        refine_diff_parts.pop(0)
+        refine_diff_parts = refine_diff_str.split("\n")[1:-2]
         refine_diff_str = "\n".join(refine_diff_parts)
         if self.params.combine_experiments.clustering.use:
           refine_phil_filename = filename + "_refine_CLUSTER.phil"
-          refine_phil_path = os.path.join(cwd, dirname, refine_phil_filename)
+          refine_phil_path = os.path.join(cwd, intermediates, refine_phil_filename)
           if os.path.isfile(refine_phil_path):
             os.remove(refine_phil_path)
           with open(refine_phil_path, "wb") as phil_outfile:
@@ -390,12 +450,12 @@ class Script(object):
             self.params.refinement.input.experiments[0] % filename,
             refine_phil_filename,
             "dials.refine",
-            dirname)
-          refine_command = ". %s" % os.path.join(cwd, dirname, script)
+            intermediates)
+          refine_command = ". %s" % os.path.join(cwd, intermediates, script)
         else:
           refine_diff_str = refine_diff_str.replace('_CLUSTER', '')
           refine_phil_filename = filename + "_refine.phil"
-          refine_phil_path = os.path.join(cwd, dirname, refine_phil_filename)
+          refine_phil_path = os.path.join(cwd, intermediates, refine_phil_filename)
           if os.path.isfile(refine_phil_path):
             os.remove(refine_phil_path)
           with open(refine_phil_path, "wb") as phil_outfile:
@@ -406,12 +466,12 @@ class Script(object):
         if self.params.reintegration.enable:
           integration_diff_str = diff_scope.get("reintegration").as_str() % \
             (filename, filename, filename, filename, filename, filename)
-          integration_diff_parts = integration_diff_str.split("\n")[:-2]
-          integration_diff_parts.pop(0)
+          integration_diff_parts = integration_diff_str.split("\n")[1:-2]
+          integration_diff_parts.append("  integration.mp.nproc = %d" % self.params.mp.nproc)
           integration_diff_str = "\n".join(integration_diff_parts)
           if self.params.combine_experiments.clustering.use:
             integration_phil_filename = filename + "_reintegrate_CLUSTER.phil"
-            integration_phil_path = os.path.join(cwd, dirname, integration_phil_filename)
+            integration_phil_path = os.path.join(cwd, intermediates, integration_phil_filename)
             if os.path.isfile(integration_phil_path):
               os.remove(integration_phil_path)
             with open(integration_phil_path, "wb") as phil_outfile:
@@ -420,11 +480,11 @@ class Script(object):
               self.params.refinement.input.experiments[0] % filename,
               integration_phil_filename,
               "dials.integrate",
-              dirname)
-            reintegrate_command = ". %s" % os.path.join(cwd, dirname, script)
+              intermediates)
+            reintegrate_command = ". %s" % os.path.join(cwd, intermediates, script)
           else:
             integration_phil_filename = filename + "_reintegrate.phil"
-            integration_phil_path = os.path.join(cwd, dirname, integration_phil_filename)
+            integration_phil_path = os.path.join(cwd, intermediates, integration_phil_filename)
             if os.path.isfile(integration_phil_path):
               os.remove(integration_phil_path)
             with open(integration_phil_path, "wb") as phil_outfile:
@@ -433,15 +493,47 @@ class Script(object):
         else:
           reintegrate_command = ":" # unix equivalent of "pass"
 
+        # extract results to integration pickles for merging
+        if self.params.postprocessing.enable:
+          postprocessing_diff_str = diff_scope.get("postprocessing").as_str() % \
+            (filename, filename, filename, os.path.join("..", "final_extracted"))
+          postprocessing_diff_parts = postprocessing_diff_str.split("\n")[1:-2]
+          postprocessing_diff_str = "\n".join(postprocessing_diff_parts)
+          postprocessing_diff_str = postprocessing_diff_str.replace("ITER", "%04d")
+          if self.params.combine_experiments.clustering.use:
+            postprocessing_phil_filename = filename + "_postprocessing_CLUSTER.phil"
+            postprocessing_phil_path = os.path.join(cwd, intermediates, postprocessing_phil_filename)
+            if os.path.isfile(postprocessing_phil_path):
+              os.remove(postprocessing_phil_path)
+            with open(postprocessing_phil_path, "wb") as phil_outfile:
+              phil_outfile.write(postprocessing_diff_str + "\n")
+            script = script_to_expand_over_clusters(
+              self.params.refinement.input.experiments[0] % filename,
+              postprocessing_phil_filename,
+              "cctbx.xfel.frame_extractor",
+              intermediates)
+            postprocessing_command = ". %s" % os.path.join(cwd, intermediates, script)
+          else:
+            postprocessing_diff_str = postprocessing_diff_str.replace("_CLUSTER", "")
+            postprocessing_phil_filename = filename + "_postprocessing.phil"
+            postprocessing_phil_path = os.path.join(cwd, intermediates, postprocessing_phil_filename)
+            if os.path.isfile(postprocessing_phil_path):
+              os.remove(postprocessing_phil_path)
+            with open(postprocessing_phil_path, "wb") as phil_outfile:
+              phil_outfile.write(postprocessing_diff_str + "\n")
+            postprocessing_command = "cctbx.xfel.frame_extractor %s" % postprocessing_phil_filename
+        else:
+          postprocessing_command = ":" # unix equivalent of "pass"
+
         # submit queued job from appropriate directory
-        os.chdir(dirname)
-        submit_path = os.path.join(cwd, dirname, "combine_%s.sh" % filename)
-        command = "dials.combine_experiments %s && %s && %s" % \
-          (combine_phil_filename, refine_command, reintegrate_command)
+        os.chdir(intermediates)
+        submit_path = os.path.join(cwd, intermediates, "combine_%s.sh" % filename)
+        command = "dials.combine_experiments %s && %s && %s && %s" % \
+          (combine_phil_filename, refine_command, reintegrate_command, postprocessing_command)
         if self.params.combine_experiments.clustering.dendrogram:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:
-          submit_command = get_submit_command_chooser(command, submit_path, dirname, self.params.mp,
+          submit_command = get_submit_command_chooser(command, submit_path, intermediates, self.params.mp,
             log_name=(submit_path.split(".sh")[0] + ".out"))
           print "executing command: %s" % submit_command
           try:
