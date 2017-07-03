@@ -121,15 +121,16 @@ class HitrateStats(object):
     for cell in cells:
       bins = cell.bins
       d_mins = [float(b.d_min) for b in bins]
-      low_res_bin_ids.append(str(bins[d_mins.index(max(d_mins))].id))
+      if len(d_mins) == 0: continue
       if self.d_min is None:
         min_bin_index = d_mins.index(min(d_mins))
       else:
         d_maxes = [float(b.d_max) for b in bins]
         qualified_bin_indices = [i for i in xrange(len(bins)) if d_maxes[i] >= self.d_min and d_mins[i] <= self.d_min]
-        assert len(qualified_bin_indices) == 1
+        if len(qualified_bin_indices) == 0: continue
         min_bin_index = qualified_bin_indices[0]
       high_res_bin_ids.append(str(bins[min_bin_index].id))
+      low_res_bin_ids.append(str(bins[d_mins.index(max(d_mins))].id))
     assert len(low_res_bin_ids) == len(high_res_bin_ids)
 
     average_i_sigi_low = flex.double()

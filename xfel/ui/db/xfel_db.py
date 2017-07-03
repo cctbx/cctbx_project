@@ -302,13 +302,14 @@ class xfel_db_application(object):
                tag, cell_ids)
     cursor = self.execute_query(query)
     ids = [str(i[0]) for i in cursor.fetchall()]
-    bin_ids = ", ".join(ids)
-    where = "WHERE id IN (%s)" % bin_ids
-    bins = self.get_all_x(Bin, 'bin', where)
+    if len(ids) > 0:
+      bin_ids = ", ".join(ids)
+      where = "WHERE id IN (%s)" % bin_ids
+      bins = self.get_all_x(Bin, 'bin', where)
 
-    # Link in all the bins
-    for bin in bins:
-      cells_d[bin.cell_id]._bins.append(bin)
+      # Link in all the bins
+      for bin in bins:
+        cells_d[bin.cell_id]._bins.append(bin)
 
     return cells
 
