@@ -210,12 +210,12 @@ class mtriage(object):
       soin = maptbx.shift_origin_if_needed(
         map_data         = self.half_map_data_1,
         sites_cart       = None,
-        crystal_symmetry = self.crystal_symmetry)
+        crystal_symmetry = None)
       self.half_map_data_1 = soin.map_data
       soin = maptbx.shift_origin_if_needed(
         map_data         = self.half_map_data_2,
         sites_cart       = None,
-        crystal_symmetry = self.crystal_symmetry)
+        crystal_symmetry = None)
       self.half_map_data_2 = soin.map_data
 
   def _compute_mask(self):
