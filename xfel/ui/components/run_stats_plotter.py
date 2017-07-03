@@ -16,21 +16,26 @@ import time
 def get_should_have_indexed_timestamps(timestamps,
                                        n_strong,
                                        isigi_low,
-                                       n_strong_cutoff):
-  should_have_indexed_sel = (isigi_low == 0) & (n_strong >= n_strong_cutoff) # isigi = 0 if not indexed?
+                                       n_strong_cutoff,
+                                       indexed=False):
+  if indexed:
+    should_have_indexed_sel = (isigi_low > 0) & (n_strong >= n_strong_cutoff)
+  else:
+    should_have_indexed_sel = (isigi_low == 0) & (n_strong >= n_strong_cutoff) # isigi = 0 if not indexed
   should_have_indexed = timestamps.select(should_have_indexed_sel)
   return should_have_indexed
 
 def get_multirun_should_have_indexed_timestamps(stats_by_run,
                                                 run_numbers,
                                                 d_min,
-                                                n_strong_cutoff=40):
+                                                n_strong_cutoff=40,
+                                                indexed=False):
   timestamps = []
   for idx in xrange(len(stats_by_run)):
     r = stats_by_run[idx]
     if len(r[0]) > 0:
       timestamps.append(
-        get_should_have_indexed_timestamps(r[0], r[3], r[4], n_strong_cutoff))
+        get_should_have_indexed_timestamps(r[0], r[3], r[4], n_strong_cutoff, indexed=indexed))
     else:
       timestamps.append(flex.double())
   return (run_numbers, timestamps)
@@ -69,13 +74,15 @@ def get_strings_from_timestamps(timestamps, long_form=False):
 def get_paths_from_timestamps(timestamps,
                               prepend="",
                               tag="idx",
+                              ext="cbf",
                               long_form=False):
   import os
   def convert(s):
     timestamp_string = get_string_from_timestamp(s, long_form=long_form)
-    name = "%s-%s.pickle" % (
+    name = "%s-%s.%s" % (
       tag,
-      timestamp_string)
+      timestamp_string,
+      ext)
     return name
   names = map(convert, timestamps)
   paths = [os.path.join(prepend, name) for name in names]
@@ -158,6 +165,7 @@ def plot_run_stats(stats,
                    ysize=10,
                    high_vis=False,
                    title=None,
+                   ext='cbf',
                    ):
   t1 = time.time()
   plot_ratio = max(min(xsize, ysize)/2.5, 3)
@@ -272,7 +280,7 @@ def plot_run_stats(stats,
       ts = event.xdata
       diffs = flex.abs(t - ts)
       ts = t[flex.first_index(diffs, flex.min(diffs))]
-      print get_paths_from_timestamps([ts], tag="shot")[0]
+      print get_paths_from_timestamps([ts], tag="shot", ext=ext)[0]
 
     f.canvas.mpl_connect('button_press_event', onclick)
     plt.show()
