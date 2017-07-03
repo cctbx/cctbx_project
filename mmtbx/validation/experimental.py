@@ -219,6 +219,7 @@ class real_space (validation) :
         rsc = rsc_object.get_results()
         self.overall_rsc = (rsc.cc_mask, rsc.cc_volume, rsc.cc_peaks)
         self.fsc = rsc.fsc
+        self.fsc.atom_radius = rsc.atom_radius
         rsc = rsc.cc_per_residue
       # mmtbx/real_space_correlation.py for X-ray/neutron data and map
       # coefficients
