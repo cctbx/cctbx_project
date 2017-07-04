@@ -80,6 +80,8 @@ def get_image_examples():
      "./image_examples/SPring8_ADSC_SN916/Xtal17-2phi_3_015.cbf"           : "cbf",
      "./image_examples/DLS_I19/I19_P300k_00001.cbf"                        : "cbf",
      "./image_examples/ED_From_TIFF/170112330001.cbf"                      : "cbf",
+
+    "./image_examples/putative_imgCIF_HDF5_mapping/minicbf.h5"             : "hdf5",
   }
 
   return dict((join(dials_regression, k), v) for k, v in images.iteritems())
@@ -358,18 +360,54 @@ def tst_cbf(filename):
 
   print 'OK'
 
+def tst_hdf5(filename):
+  from dxtbx.format.image import HDF5Reader
+  from dxtbx.format.nexus import dataset_as_flex_int
+  from scitbx.array_family import flex
+  import h5py
+
+  handle = h5py.File(filename, "r")
+  
+  reader = HDF5Reader(
+    handle.id.id, 
+    flex.std_string(["/entry/data/data"]))
+
+  image = reader.image(0)
+
+  data1 = image.tile(0).as_int()
+
+  dataset = handle['/entry/data/data']
+  N, height, width = dataset.shape
+  data2 = dataset_as_flex_int(
+    dataset.id.id,
+      (slice(0, 1, 1),
+       slice(0, height, 1),
+       slice(0, width, 1)))
+  data2.reshape(flex.grid(data2.all()[1:]))
+ 
+  assert N == len(reader)
+  assert data1.all()[0] == data2.all()[0]
+  assert data1.all()[1] == data2.all()[1]
+  diff = flex.abs(data1 - data2)
+  assert flex.max(diff) < 1e-7
+
+  print 'OK'
+  
+
 
 def tst_all():
   for k, v in IMAGE_EXAMPLES.iteritems():
-    if v == 'smv':
-      tst_smv(k)
-    elif v == 'tiff':
-      tst_tiff(k)
-    elif v == 'cbf':
-      tst_cbf_fast(k)
-      tst_cbf(k)
-    elif v == 'cbf_multitile':
-      tst_cbf(k)
+    #if v == 'smv':
+    #  tst_smv(k)
+    #elif v == 'tiff':
+    #  tst_tiff(k)
+    #elif v == 'cbf':
+    #  tst_cbf_fast(k)
+    #  tst_cbf(k)
+    #elif v == 'cbf_multitile':
+    #  tst_cbf(k)
+    if v == "hdf5":
+      tst_hdf5(k)
 
 if __name__ == '__main__':
 

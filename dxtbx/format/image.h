@@ -238,12 +238,20 @@ namespace dxtbx { namespace format {
     std::vector<std::string> names_;
   };
 
+
+  class MultiImageReader {
+  public:
+
+    virtual Image image(std::size_t index) const = 0;
+    virtual std::size_t size() const = 0;
+
+  };
   
   /**
    * Class to read from a list of images
    */
   template <typename ImageReaderType>
-  class ImageListReader {
+  class ImageListReader : public MultiImageReader {
   public:
     
     typedef ImageReaderType image_reader_type;

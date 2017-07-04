@@ -18,6 +18,7 @@
 #include <dxtbx/format/smv.h>
 #include <dxtbx/format/tiff.h>
 #include <dxtbx/format/cbf.h>
+#include <dxtbx/format/hdf5_reader.h>
 #include <vector>
 #include <hdf5.h>
 
@@ -87,6 +88,28 @@ namespace dxtbx { namespace format { namespace boost_python {
     class_<CBFReader, bases<ImageReader> >("CBFReader", no_init)
       .def(init<const char*>((
               arg("filename"))))
+      ;
+
+    class_<HDF5Reader>("HDF5Reader", no_init)
+      .def(init<hid_t,
+                const scitbx::af::const_ref<std::string>&>((
+                    arg("handle"),
+                    arg("datasets"))))
+      .def(init<hid_t,
+                const scitbx::af::const_ref<std::string>&,
+                std::size_t,
+                std::size_t>((
+                    arg("handle"),
+                    arg("datasets"),
+                    arg("first"),
+                    arg("last"))))
+      .def("filename", &HDF5Reader::filename)
+      .def("handle", &HDF5Reader::handle)
+      .def("datasets", &HDF5Reader::datasets)
+      .def("first", &HDF5Reader::first)
+      .def("last", &HDF5Reader::last)
+      .def("image", &HDF5Reader::image)
+      .def("__len__", &HDF5Reader::size)
       ;
 
     image_list_reader_suite<SMVReader>("SMVImageListReader");
