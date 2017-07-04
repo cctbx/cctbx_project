@@ -49,34 +49,7 @@ class Stats(object):
       return []
 
     runs_str = "(%s)"%(", ".join([str(r.id) for r in runs]))
-    exp_tag = self.app.params.experiment_tag
-    query = """SELECT DISTINCT(crystal.cell_id) FROM `%s_crystal` crystal
-               JOIN `%s_experiment` exp ON exp.crystal_id = crystal.id
-               JOIN `%s_imageset` imgset ON imgset.id = exp.imageset_id
-               JOIN `%s_imageset_event` ie ON ie.imageset_id = imgset.id
-               JOIN `%s_event` evt ON evt.id = ie.event_id
-               JOIN `%s_trial` trial ON trial.id = evt.trial_id
-               JOIN `%s_run` run ON run.id = evt.run_id
-               WHERE run.id in %s AND trial.id = %d""" % (
-      exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, self.trial.id)
-    cell_ids = [str(i[0]) for i in self.app.execute_query(query).fetchall()]
-    if len(cell_ids) == 0:
-      cells = []
-    else:
-      from experiment import Cell
-      cells = self.app.get_all_x(Cell, 'cell', where = "WHERE id IN (%s)"%", ".join(cell_ids))
-
-    self.app.link_cell_bins(cells)
-
-    cell_ids = []
-    cells_d = {}
-    bin_ids = []
-    for cell in cells:
-      cell_ids.append(str(cell.id))
-      cells_d[cell.id] = cell
-      bin_ids.extend([str(bin.id) for bin in cell.bins])
-
-    if len(cell_ids) == 0 or len(bin_ids) == 0: return cells
+    tag = self.app.params.experiment_tag
 
     # Big expensive query to avoid many small queries
     query = """SELECT cell.id, bin.id, cell_bin.count FROM `%s_cell_bin` cell_bin
@@ -88,14 +61,29 @@ class Stats(object):
                JOIN `%s_imageset_event` ie ON ie.imageset_id = imgset.id
                JOIN `%s_event` evt ON evt.id = ie.event_id
                JOIN `%s_run` run ON run.id = evt.run_id
-               WHERE run.id in %s AND bin.id IN (%s)
+               JOIN `%s_rungroup` rg ON rg.id = evt.rungroup_id
+               JOIN `%s_trial` trial ON trial.id = evt.trial_id
+               WHERE run.id IN %s
                      AND cell_bin.avg_intensity > 0
-                     AND cell.id IN (%s)
+                     AND trial.id = %d
+                     AND rg.active = True
                      """ % (
-      exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, exp_tag, runs_str, ", ".join(bin_ids), ", ".join(cell_ids))
+      tag, tag, tag, tag, tag, tag, tag, tag, tag, tag, tag, runs_str, self.trial.id)
+
     if self.isigi_cutoff is not None and self.isigi_cutoff >= 0:
       query += " AND cell_bin.avg_i_sigi >= %f"%self.isigi_cutoff
     results = self.app.execute_query(query).fetchall()
+    if len(results) == 0:
+      return []
+    cell_ids = set([str(r[0]) for r in results])
+    from experiment import Cell
+    cells = self.app.get_all_x(Cell, 'cell', where = "WHERE id IN (%s)"%", ".join(cell_ids))
+    self.app.link_cell_bins(cells)
+
+    cells_d = {}
+    for cell in cells:
+      cells_d[cell.id] = cell
+
     cell_ids = flex.int([r[0] for r in results])
     bin_ids = flex.int([r[1] for r in results])
     counts = flex.int([r[2] for r in results])
