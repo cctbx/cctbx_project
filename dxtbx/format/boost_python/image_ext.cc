@@ -26,6 +26,25 @@ namespace dxtbx { namespace format { namespace boost_python {
   using namespace boost::python;
 
 
+  template <typename ImageReaderType>
+  void image_list_reader_suite(const char *name) {
+
+    typedef ImageListReader<ImageReaderType> image_list_reader;
+
+    class_<image_list_reader>(name, no_init)
+      .def(
+          init<const scitbx::af::const_ref<std::string>&>((
+            arg("filenames"))))
+      .def("filenames", 
+          &image_list_reader::filenames)
+      .def("image", 
+          &image_list_reader::image, (
+            arg("index")))
+      .def("__len__", 
+          &image_list_reader::size)
+      ;
+  }
+
 
   BOOST_PYTHON_MODULE(dxtbx_format_image_ext)
   {
@@ -69,6 +88,11 @@ namespace dxtbx { namespace format { namespace boost_python {
       .def(init<const char*>((
               arg("filename"))))
       ;
+
+    image_list_reader_suite<SMVReader>("SMVImageListReader");
+    image_list_reader_suite<TIFFReader>("TIFFImageListReader");
+    image_list_reader_suite<CBFFastReader>("CBFFastImageListReader");
+    image_list_reader_suite<CBFReader>("CBFImageListReader");
 
   }
 
