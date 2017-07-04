@@ -388,6 +388,34 @@ class merging_stats (object) :
               format_value("%5.3f", self.r_work),
               format_value("%5.3f", self.r_free) ]
 
+  def as_dict(self):
+    d = {
+      'd_star_sq_min': 1/self.d_min**2,
+      'd_star_sq_max': 1/self.d_max**2,
+      'n_obs': self.n_obs,
+      'n_uniq': self.n_uniq,
+      'multiplicity': self.mean_redundancy,
+      'completeness': self.completeness*100,
+      'i_mean': self.i_mean,
+      'i_over_sigma_mean': self.i_over_sigma_mean,
+      'r_merge': self.r_merge,
+      'r_meas': self.r_meas,
+      'r_pim': self.r_pim,
+      'cc_one_half': self.cc_one_half,
+      'cc_one_half_significance': self.cc_one_half_significance,
+      'cc_one_half_critical_value': self.cc_one_half_critical_value,
+      'cc_anom': self.cc_anom
+    }
+    if (self.cc_work is not None):
+      d.update({
+        'cc_star': self.cc_star,
+        'cc_work': self.cc_work,
+        'cc_free': self.cc_free,
+        'r_work': self.r_work,
+        'r_free': self.r_free
+      })
+    return d
+
   def table_data (self) :
     table = [(1/self.d_min**2), self.n_obs, self.n_uniq, self.mean_redundancy,
             self.completeness*100, self.i_mean, self.i_over_sigma_mean,
@@ -644,6 +672,23 @@ class dataset_statistics (object) :
     for k, bin in enumerate(self.bins) :
       print >> out, bin.format_for_model_cc()
     print >> out, self.overall.format_for_model_cc()
+
+  def as_dict(self):
+    d = {}
+    for bin_stats in self.bins:
+      for k, v in bin_stats.as_dict().iteritems():
+        d.setdefault(k, [])
+        d[k].append(v)
+    d['overall'] = self.overall.as_dict()
+    return d
+
+  def as_json(self, file_name=None, indent=None):
+    import json
+    json_str = json.dumps(self.as_dict(), indent=indent)
+    if file_name is not None:
+      with open(file_name, 'wb') as f:
+        print >> f, json_str
+    return json_str
 
   def extract_outer_shell_stats (self) :
     """

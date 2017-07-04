@@ -36,6 +36,12 @@ loggraph = False
 estimate_cutoffs = False
   .type = bool
 include scope libtbx.phil.interface.tracking_params
+json {
+  file_name = None
+    .type = path
+  indent = None
+    .type = int(value_min=0)
+}
 """ % iotbx.merging_statistics.merging_params_str
 
 # Hack for handling SHELX files
@@ -128,6 +134,8 @@ already be on a common scale, but with individual observations unmerged.
     result.show_loggraph(out=out)
   if (params.estimate_cutoffs) :
     result.show_estimated_cutoffs(out=out)
+  if params.json.file_name is not None:
+    result.as_json(file_name=params.json.file_name, indent=params.json.indent)
   print >> out, ""
   print >> out, "References:"
   print >> out, citations_str

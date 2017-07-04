@@ -62,6 +62,35 @@ def exercise (debug=False) :
     print out.getvalue()
   assert ("Resolution: 100.00 - 1.50" in out.getvalue())
   assert ("  1.55   1.50      0      0    0.00   0.00       0.0     0.0     None     None     None   0.000   0.000""" in out.getvalue())
+  args2 = args + ["json.file_name=merging_stats.json", "json.indent=2"]
+  out = StringIO()
+  result = merging_statistics.run(args2, out=out)
+  assert os.path.exists("merging_stats.json")
+  with open("merging_stats.json", "rb") as f:
+    import json
+    d = json.load(f)
+    d.keys()
+    expected_keys = [
+      'n_obs', 'd_star_sq_max', 'i_over_sigma_mean', 'completeness',
+      'cc_one_half', 'r_meas', 'd_star_sq_min', 'cc_anom', 'r_pim',
+      'i_mean', 'cc_one_half_critical_value', 'r_merge', 'multiplicity',
+      'cc_one_half_significance', 'n_uniq']
+    for k in expected_keys:
+      assert k in d
+    assert approx_equal(
+      d['i_over_sigma_mean'],
+      [20.66560600258035, 20.345307828448572, 18.349521604862186,
+       16.032340432560876, 15.111031030727927, 12.289599369298855,
+       10.059003053756124, 8.042714696129208, 6.297114205813105,
+       5.153613598686054]
+    )
+    assert approx_equal(
+      d['n_obs'],
+      [15737, 15728, 15668, 15371, 14996, 14771, 13899, 13549, 13206, 12528]
+    )
+    assert 'overall' in d
+    assert approx_equal(d['overall']['i_mean'], 18672.03367141032)
+    assert approx_equal(d['overall']['multiplicity'], 6.747367444449599)
   # these should crash
   args2 = list(args[:-1]) + ["high_resolution=15", "low_resolution=2.5"]
   try :
