@@ -226,6 +226,79 @@ class Format(object):
 
     return _detectorbase_proxy(self)
 
+  @classmethod
+  def get_instance(Class, filename):
+    if not hasattr(Class, "_current_instance_") or Class._current_filename_ != filename:
+      Class._current_instance_ = Class(filename)
+      Class._current_filename_ = filename
+    return Class._current_instance_ 
+
+  @classmethod
+  def get_detectorbase_factory(Class):
+    '''
+    Return a factory object to create detector base instances
+
+    '''
+    
+    class DetectorBaseFactory(object):
+
+      def __init__(self, filenames):
+        self._filenames = filenames
+
+      def get(self, index):
+        format_instance = Class.get_instance(self._filenames[index])
+        return format_instance.get_detectorbase()
+        
+    return DetectorBaseFactory
+
+  @classmethod
+  def get_reader(Class):
+    '''
+    Return a reader class
+
+    '''
+
+    class Reader(object):
+
+      def __init__(self, filenames):
+        self._filenames = filenames
+
+      def read(self, index):
+        format_instance = Class.get_instance(self._filenames[index])
+        return format_instance.get_raw_data()
+
+      def paths(self):
+        return self._filenames
+
+      def __len__(self):
+        return len(self._filenames)
+      
+    return Reader
+
+  @classmethod
+  def get_masker(Class):
+    '''
+    Return a masker class
+
+    '''
+    class Masker(object):
+
+      def __init__(self, filenames):
+        self._filenames = filenames
+
+      def get(self, index):
+        format_instance = Class.get_instance(self._filenames[index])
+        return format_instance.get_mask()
+
+      def paths(self):
+        return self._filenames
+
+      def __len__(self):
+        return len(self._filenames)
+      
+    return Masker
+
+
   def get_image_file(self):
     '''Get the image file provided to the constructor.'''
 
@@ -278,20 +351,6 @@ class Format(object):
     '''Overload this method to allow generation of dynamic goniometer shadow
     masks to be used during spotfinding or integration.'''
 
-    return None
-
-  def get_gain(self):
-    '''
-    Overload this method to provide a gain map
-
-    '''
-    return None
-
-  def get_pedestal(self):
-    '''
-    Overload this method to provide a pedestal map
-
-    '''
     return None
 
   ####################################################################

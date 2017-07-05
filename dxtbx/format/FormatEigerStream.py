@@ -8,7 +8,7 @@ from dxtbx.model import Goniometer # import dependency
 from dxtbx.model import Scan # import dependency
 
 
-class FormatEigerStream(Format, FormatMultiImage):
+class FormatEigerStream(FormatMultiImage, Format):
   '''
   A format class to understand an EIGER stream
 

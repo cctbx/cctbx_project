@@ -6,7 +6,7 @@ from dxtbx.model import Detector # import dependency
 from dxtbx.model import Goniometer # import dependency
 from dxtbx.model import Scan # import dependency
 
-class FormatHDF5(Format, FormatMultiImage):
+class FormatHDF5(FormatMultiImage, Format):
 
   def __init__(self, image_file, **kwargs):
     from dxtbx import IncorrectFormatError
