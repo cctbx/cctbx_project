@@ -259,7 +259,11 @@ def exercise_file_utils () :
   f.close()
   file_names = utils.find_files(dir_name, pattern=".txt$")
   sorted_files_2 = utils.sort_files_by_mtime(file_names)
-  assert (sorted_files_2 == sorted_files)
+  assert (sorted_files_2 == sorted_files), '''
+  Files not in correct order:
+    %s
+    %s
+  ''' % (sorted_files_2, sorted_files)
 
 def exercise_dir_utils () :
   dirs = ["tst_utils_1", "tst_utils_2", "tst_utils_45"]
