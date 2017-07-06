@@ -110,6 +110,10 @@ if (__name__ == "__main__") :
           x = x.reshape(x.shape[2:6])
           y = y.reshape(y.shape[2:6])
           z = z.reshape(z.shape[2:6])
+        elif len(x.shape) == 5:
+          x = x.reshape(x.shape[1:5])
+          y = y.reshape(y.shape[1:5])
+          z = z.reshape(z.shape[1:5])
         else:
           assert len(x.shape) == 4
         sensor_slow = x.shape[2]
@@ -135,7 +139,8 @@ if (__name__ == "__main__") :
             quad_basis = root_basis * basis_from_geo(quad)
             arrow_end = quad_basis * matrix.col((0,0,0))
             dx, dy, _ = arrow_end - ori
-            ax.arrow(ori[0], ori[1], dx, dy, head_width=0.5, head_length=1.0, fc='k', ec='k', length_includes_head=True)
+            if dx != 0 or dy != 0:
+              ax.arrow(ori[0], ori[1], dx, dy, head_width=0.5, head_length=1.0, fc='k', ec='k', length_includes_head=True)
             arrow_start = arrow_end
             for sensor_id, sensor in enumerate(quad.get_list_of_children()):
               sensor_x, sensor_y, sensor_z = sensor.get_pixel_coords()
