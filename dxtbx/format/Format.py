@@ -231,7 +231,7 @@ class Format(object):
     if not hasattr(Class, "_current_instance_") or Class._current_filename_ != filename:
       Class._current_instance_ = Class(filename)
       Class._current_filename_ = filename
-    return Class._current_instance_ 
+    return Class._current_instance_
 
   @classmethod
   def get_detectorbase_factory(Class):
@@ -239,7 +239,7 @@ class Format(object):
     Return a factory object to create detector base instances
 
     '''
-    
+
     class DetectorBaseFactory(object):
 
       def __init__(self, filenames):
@@ -248,13 +248,13 @@ class Format(object):
       def get(self, index):
         format_instance = Class.get_instance(self._filenames[index])
         return format_instance.get_detectorbase()
-      
+
       def __len__(self):
         return len(self._filenames)
 
       def copy(self, filenames):
         return DetectorBaseFactory(filenames)
-        
+
     return DetectorBaseFactory
 
   @classmethod
@@ -278,10 +278,10 @@ class Format(object):
 
       def __len__(self):
         return len(self._filenames)
-      
+
       def copy(self, filenames):
         return Reader(filenames)
-      
+
     return Reader
 
   @classmethod
@@ -304,26 +304,28 @@ class Format(object):
 
       def __len__(self):
         return len(self._filenames)
-      
+
       def copy(self, filenames):
         return Masker(filenames)
-      
+
       def identifiers(self):
         return self.paths()
 
     return Masker
 
   @classmethod
-  def get_imageset(Class, 
-                   filenames, 
+  def get_imageset(Class,
+                   filenames,
                    beam=None,
                    detector=None,
                    goniometer=None,
-                   scan=None):
+                   scan=None,
+                   sweep_as_imageset=False):
     '''
     Factory method to create an imageset
 
     '''
+    from dxtbx.format.FormatMultiImage import FormatMultiImage
     from dxtbx.imageset import ImageSet
     from dxtbx.imageset import ImageSweep
 
@@ -331,13 +333,18 @@ class Format(object):
     reader = Class.get_reader()(filenames)
     masker = Class.get_masker()(filenames)
     dbfact = Class.get_detectorbase_factory()(filenames)
-      
+
     # Get the format instance
     format_instance = Class(filenames[0])
+    if isinstance(format_instance, FormatMultiImage):
+      assert len(filenames) == 1
+      is_multi_image_format = True
+    else:
+      is_multi_image_format = False
 
     # Read the vendor type
     vendor = format_instance.get_vendortype()
-   
+
     # Check if we have a sweep
     scan = format_instance.get_scan()
     if scan is not None and scan.get_oscillation()[1] != 0:
@@ -346,7 +353,7 @@ class Format(object):
       is_sweep = False
 
     # Create an imageset or sweep
-    if not is_sweep:
+    if not is_sweep or sweep_as_imageset == True:
 
       # Create the imageset
       iset = ImageSet(
@@ -356,15 +363,36 @@ class Format(object):
           "vendor" : vendor
         },
         detectorbase_factory = dbfact)
-      
+
       # If any are None then read from format
       if [beam, detector, goniometer, scan].count(None) != 0:
-        for i in range(len(filenames)):
-          format_instance = Class(filenames[i])
-          iset.set_beam(i, format_instance.get_beam())
-          iset.set_detector(i, format_instance.get_detector())
-          iset.set_goniometer(i, format_instance.get_goniometer())
-          iset.set_scan(i, format_instance.get_scan())
+
+        # Get list of models
+        beam = []
+        detector = []
+        goniometer = []
+        scan = []
+        if is_multi_image_format:
+          for i in range(format_instance.get_num_images()):
+            beam.append(format_instance.get_beam(i))
+            detector.append(format_instance.get_detector(i))
+            goniometer.append(format_instance.get_goniometer(i))
+            scan.append(format_instance.get_scan(i))
+        else:
+          for f in filenames:
+            format_instance = Class(f)
+            beam.append(format_instance.get_beam())
+            detector.append(format_instance.get_detector())
+            goniometer.append(format_instance.get_goniometer())
+            scan.append(format_instance.get_scan())
+
+      # Set the list of models
+      for i in range(len(filenames)):
+        format_instance = Class(filenames[i])
+        iset.set_beam(beam[i], i)
+        iset.set_detector(detector[i], i)
+        iset.set_goniometer(goniometer[i], i)
+        iset.set_scan(scan[i], i)
 
     else:
 
@@ -374,6 +402,15 @@ class Format(object):
         detector   = format_instance.get_detector()
         goniometer = format_instance.get_goniometer()
         scan       = format_instance.get_scan()
+
+        # Get the scan model
+        if is_multi_image_format:
+          for i in range(format_instance.get_num_images()):
+            scan += format_instance.get_scan(i)
+        else:
+          for f in filenames[1:]:
+            format_instance = Class(f)
+            scan += format_instance.get_scan()
 
       # Create the sweep
       iset = ImageSweep(
