@@ -55,6 +55,19 @@ master_phil = iotbx.phil.parse("""
       .type = float
       .short_caption = Maximum close distance
       .caption = Maximum distance between atoms to be considered close
+
+    distance_per_site = None
+      .type = float
+      .short_caption = Maximum distance spanned by a pair of residues
+      .help =Maximum distance spanned by a pair of residues.  Set by \
+            default as 3.8 A for protein and 8 A for RNA
+
+    target_length_from_matching_chains = True
+      .type = bool
+      .short_caption = Use matching chains to get length
+      .caption = Use length of chains in target that are matched to \
+                define full target length (as opposed to all unique \
+                chains in target).
   }
   control {
       verbose = False
@@ -77,16 +90,22 @@ class rmsd_values:
     self.rmsd_list=[]
     self.n_list=[]
     self.match_percent_list=[]
+    self.target_length_list=[]
 
   def add_match_percent(self,id=None,match_percent=None):
     ipoint=self.id_list.index(id)
     self.match_percent_list[ipoint]=match_percent
+
+  def add_target_length(self,id=None,target_length=None):
+    ipoint=self.id_list.index(id)
+    self.target_length_list[ipoint]=target_length
 
   def add_rmsd(self,id=None,rmsd=None,n=None):
     self.id_list.append(id)
     self.rmsd_list.append(rmsd)
     self.n_list.append(n)
     self.match_percent_list.append(0)
+    self.target_length_list.append(0)
 
   def get_match_percent(self,id=None):
     for local_id,local_match_percent in zip(
@@ -94,6 +113,22 @@ class rmsd_values:
       if id==local_id:
         return local_match_percent
     return 0
+
+  def get_target_length(self,id=None):
+    for local_id,local_target_length in zip(
+       self.id_list,self.target_length_list):
+      if id==local_id:
+        return local_target_length
+    return 0
+
+  def get_close_to_target_percent(self,id=None):
+    target_length=self.get_target_length(id=id)
+    rmsd,n=self.get_values(id=id)
+    if target_length is not None and n is not None:
+      return 100.*n/max(1.,target_length)
+
+    else:
+      return 0.
 
   def get_values(self,id=None):
     for local_id,local_rmsd,local_n in zip(
@@ -198,6 +233,15 @@ def get_pdb_inp(text=None,file_name=None,source_info="string"):
   return iotbx.pdb.input(source_info=source_info,
        lines=flex.split_lines(text))
 
+def get_chains_from_lines(lines):
+  chains=[]
+  for line in lines:
+    h=get_pdb_inp(line).construct_hierarchy()
+    id=h.models()[0].chains()[0].id 
+    if not id in chains:
+      chains.append(id)
+  return chains
+
 def get_seq_from_lines(lines):
   seq=[]
   for line in lines:
@@ -288,34 +332,50 @@ def run_all(params=None,out=sys.stdout):
     rv_list.append(rv)
     file_list.append(file_name)
 
-  print >>out,"\nCLOSE is within 3 A. FAR is greater than 3 A."
-  print >>out,"\nCA SCORE is number of close CA / rmsd of these CA."
-  print >>out,"\nSEQ SCORE is number of close CA matching target sequence.\n"
+  print >>out,"\nCLOSE is within %4.1f A. FAR is greater than this." %(
+    params.comparison.max_dist)
+  print >>out,"\nCA SCORE is fraction in close CA / rmsd of these CA."
+  print >>out,"\nSEQ SCORE is fraction (close and matching target sequence).\n"
 
   print >>out,"\n"
-  print >>out,"               ----ALL RESIDUES----     CLOSE RESIDUES ONLY"
+  print >>out,"               ----ALL RESIDUES----     CLOSE RESIDUES ONLY    %"
   print >>out,\
               "     MODEL     --CLOSE-    ---FAR--    FORWARD REVERSE MIXED"+\
-              "  CA                   SEQ"
+              " FOUND   CA                   SEQ"
   print >>out,"               RMSD   N    RMSD   N       N       N      N  "+\
-              " SCORE  SEQ MATCH(%)  SCORE"+"\n"
+              "        SCORE  SEQ MATCH(%)  SCORE"+"\n"
 
   results_dict={}
   score_list=[]
   for rv,full_f in zip(rv_list,file_list):
     results_dict[full_f]=rv
     (rmsd,n)=rv.get_values('close')
-    score=n/max(0.1,rmsd)
+    target_length=rv.get_target_length('close')
+    score=n/(target_length*max(0.1,rmsd))
     score_list.append([score,full_f])
   score_list.sort()
   score_list.reverse()
   for score,full_f in score_list:
     rv=results_dict[full_f]
-    seq_score=0.01*rv.get_match_percent('close')*rv.get_values('close')[1]
-    print >>out,"%14s %4.2f %4d   %4.1f %4d   %4d    %4d    %4d %6.1f   %5.1f      %6.0f" %(
-       (os.path.split(full_f)[-1],)+rv.get_values('close')+rv.get_values('far_away')+
-       (rv.get_values('forward')[1],)+(rv.get_values('reverse')[1],)+(rv.get_values('unaligned')[1],)+(score,)+(rv.get_match_percent('close'),)+(seq_score,))
+    percent_close=rv.get_close_to_target_percent('close')
+    seq_score=rv.get_match_percent('close')*percent_close/10000
+    file_name=os.path.split(full_f)[-1]
+    close_rmsd,close_n=rv.get_values('close')
+    far_away_rmsd,far_away_n=rv.get_values('far_away')
+    forward_rmsd,forward_n=rv.get_values('forward')
+    reverse_rmsd,reverse_n=rv.get_values('reverse')
+    unaligned_rmsd,unaligned_n=rv.get_values('unaligned')
+    match_percent=rv.get_match_percent('close')
+    print >>out,"%14s %4.2f %4d   %4.1f %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f" %(file_name,close_rmsd,close_n,far_away_rmsd,far_away_n,forward_n,
+         reverse_n,unaligned_n,percent_close,score,match_percent,seq_score)
 
+def get_target_length(target_chain_ids=None,hierarchy=None):
+  total_length=0  # just counts residues
+  for model in hierarchy.models()[:1]:
+    for chain in model.chains():
+      if chain.id in target_chain_ids:
+        total_length+=len(chain.residues())
+  return total_length
 
 def run(args=None,
    target_hierarchy=None,
@@ -329,6 +389,8 @@ def run(args=None,
    use_crystal_symmetry=None,
    chain_type=None,
    params=None,
+   target_length_from_matching_chains=None,
+   distance_per_site=None,
    out=sys.stdout):
   if not args: args=[]
   if not params:
@@ -359,6 +421,11 @@ def run(args=None,
   params.crystal_info.use_crystal_symmetry=use_crystal_symmetry
   if max_dist is None:
     max_dist=params.comparison.max_dist
+  if distance_per_site is None:
+    distance_per_site=params.comparison.distance_per_site
+  if target_length_from_matching_chains is None:
+    target_length_from_matching_chains=\
+       params.comparison.target_length_from_matching_chains
 
   if verbose:
     local_out=out
@@ -427,10 +494,12 @@ def run(args=None,
   # get the CA residues
   if chain_type in ["RNA","DNA"]:
     atom_selection="name P"
-    distance_per_site=8.
+    if not distance_per_site:
+      distance_per_site=8.
   else:
     atom_selection="name ca and (not element Ca)"
-    distance_per_site=3.8
+    if not distance_per_site:
+      distance_per_site=3.8
   chain_ca=apply_atom_selection(atom_selection,chain_hierarchy)
   chain_ca_lines=select_atom_lines(chain_ca)
   target_ca=apply_atom_selection(atom_selection,target_hierarchy)
@@ -623,15 +692,23 @@ def run(args=None,
         lines_target_xyz.append(target_xyz_lines[j])
       seq_chain_ca=get_seq_from_lines(lines_chain_ca)
       seq_target_xyz=get_seq_from_lines(lines_target_xyz)
+      target_chain_ids=get_chains_from_lines(lines_target_xyz)
+      target_length=get_target_length(target_chain_ids=target_chain_ids,
+        hierarchy=target_ca)
+      rv.add_target_length(id='close',target_length=target_length)
+          
       if verbose:
          print "SEQ1:",seq_chain_ca,len(lines_chain_ca)
          print "SEQ2:",seq_target_xyz,len(lines_target_xyz)
 
       match_n,match_percent=get_match_percent(seq_chain_ca,seq_target_xyz)
       rv.add_match_percent(id='close',match_percent=match_percent)
+
+      percent_close=rv.get_close_to_target_percent('close')
       print >>out,\
-        "\nAll residues near target:                 "+\
-         "%4d  RMSD: %6.2f Seq match (%%):%5.1f" %(n,rmsd,match_percent)
+        "\nAll residues near target: "+\
+         "%4d  RMSD: %6.2f Seq match (%%):%5.1f  %% Found: %5.1f" %(
+         n,rmsd,match_percent,percent_close)
       if verbose:
         for i,j in close_match_list:
           print >>out,"ID:%d:%d  RESIDUES:  \n%s\n%s" %(i,j, chain_ca_lines[i],
@@ -640,7 +717,7 @@ def run(args=None,
     rmsd,n=rv.get_values(id='far_away')
     if n:
       print >>out,\
-        "Residues far from target:                 %4d  RMSD: %6.2f" %(
+        "Residues far from target: %4d  RMSD: %6.2f" %(
          n,rmsd)
       if verbose:
         for i in far_away_match_list:
