@@ -609,6 +609,7 @@ SEQ SCORE is fraction (close and matching target sequence).
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
     raise AssertionError, "FAILED"
+  print "OK"
 
 
 if __name__=="__main__":
