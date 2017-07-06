@@ -68,8 +68,8 @@ combine_experiments {
 combining_override_str = '''
 combine_experiments {
   output {
-    experiments_filename = %s_combined_experiments.json
-    reflections_filename = %s_combined_reflections.pickle
+    experiments_filename = FILENAME_combined_experiments.json
+    reflections_filename = FILENAME_combined_reflections.pickle
     delete_shoeboxes = False
   }
   reference_from_experiment {
@@ -101,11 +101,11 @@ refinement {
 refinement_override_str = '''
 refinement {
   output {
-    experiments = %s_refined_experiments_CLUSTER.json
-    reflections = %s_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_experiments_CLUSTER.json
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
     include_unused_reflections = False
-    log = %s_refine_CLUSTER.log
-    debug_log = %s_refine_CLUSTER.debug.log
+    log = FILENAME_refine_CLUSTER.log
+    debug_log = FILENAME_refine_CLUSTER.debug.log
   }
   refinement {
     parameterisation {
@@ -129,8 +129,8 @@ refinement {
     }
   }
   input {
-    experiments = %s_combined_experiments_CLUSTER.json
-    reflections = %s_combined_reflections_CLUSTER.pickle
+    experiments = FILENAME_combined_experiments_CLUSTER.json
+    reflections = FILENAME_combined_reflections_CLUSTER.pickle
   }
 }
 '''
@@ -150,10 +150,10 @@ reintegration {
 reintegration_override_str = '''
 reintegration{
   output {
-    experiments = %s_reintegrated_experiments_CLUSTER.json
-    reflections = %s_reintegrated_reflections_CLUSTER.pickle
-    log = %s_reintegrate_CLUSTER.log
-    debug_log = %s_reintegrate_CLUSTER.debug.log
+    experiments = FILENAME_reintegrated_experiments_CLUSTER.json
+    reflections = FILENAME_reintegrated_reflections_CLUSTER.pickle
+    log = FILENAME_reintegrate_CLUSTER.log
+    debug_log = FILENAME_reintegrate_CLUSTER.debug.log
   }
   integration {
     integrator = auto 3d flat3d 2d single2d *stills volume
@@ -180,8 +180,8 @@ reintegration{
     }
   }
   input {
-    experiments = %s_refined_experiments_CLUSTER.json
-    reflections = %s_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_experiments_CLUSTER.json
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
   }
 }
 '''
@@ -189,7 +189,7 @@ reintegration{
 # split results and coerce to integration pickle for merging
 postprocessing_str = '''
 postprocessing {
-  enable = False
+  enable = True
   include scope xfel.command_line.frame_extractor.phil_scope
 }
 '''
@@ -197,11 +197,11 @@ postprocessing {
 postprocessing_override_str = """
 postprocessing {
   input {
-    experiments = %s_refined_experiments_CLUSTER.json
-    reflections = %s_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_refined_experiments_CLUSTER.json
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
   }
   output {
-    filename = %s_CLUSTER_ITER_extracted.pickle
+    filename = FILENAME_CLUSTER_ITER_extracted.pickle
     dirname = %s
   }
 }
@@ -372,6 +372,7 @@ class Script(object):
     # The script usage
     self.master_defaults_scope = master_defaults_scope
     self.run_scope = parse_retaining_scope(sys.argv[1:])
+    self.diff_scope = self.master_defaults_scope.fetch_diff(self.run_scope)
     self.params = self.run_scope.extract()
 
     # Validation
@@ -379,6 +380,37 @@ class Script(object):
       if self.params.combine_experiments.output.delete_shoeboxes:
         raise Sorry, ("Keep shoeboxes during combine_experiments and joint refinement when reintegrating."+\
           "Set combine_experiments.output.delete_shoeboxes = False when using reintegration.")
+
+    # Setup
+    self.clustering = self.params.combine_experiments.clustering.use
+
+  def set_up_section(self, section_tag, dispatcher_name,
+    clustering=False, custom_parts=None, lambda_diff_str=None):
+    diff_str = self.diff_scope.get(section_tag).as_str().replace("FILENAME", self.filename)
+    if lambda_diff_str is not None:
+      diff_str = lambda_diff_str(diff_str)
+    diff_parts = diff_str.split("\n")[1:-2]
+    if custom_parts is not None:
+      for part in custom_parts:
+        diff_parts.append(part)
+    diff_str = "\n".join(diff_parts)
+    phil_filename = "%s_%s_CLUSTER.phil" % (self.filename, section_tag) if clustering else \
+      "%s_%s.phil" % (self.filename, section_tag)
+    phil_path = os.path.join(self.cwd, self.intermediates, phil_filename)
+    if os.path.isfile(phil_path):
+      os.remove(phil_path)
+    with open(phil_path, "wb") as phil_outfile:
+      phil_outfile.write(diff_str + "\n")
+    if clustering:
+      script = script_to_expand_over_clusters(
+        self.params.refinement.input.experiments[0].replace("FILENAME", self.filename),
+        phil_filename,
+        dispatcher_name,
+        self.intermediates)
+      command = ". %s" % os.path.join(self.cwd, self.intermediates, script)
+    else:
+      command = "%s %s" % (dispatcher_name, phil_filename)
+    self.command_sequence.append(command)
 
   def run(self):
     '''Execute the script.'''
@@ -393,24 +425,24 @@ class Script(object):
                                              stripe=self.params.striping.stripe,
                                              max_size=self.params.striping.chunk_size,
                                              integrated=self.params.combine_experiments.keep_integrated)
-    dirname = "combine_experiments_t%03d" % self.params.striping.trial
-    intermediates = os.path.join(dirname, "intermediates")
-    extracted = os.path.join(dirname, "final_extracted")
-    for d in dirname, intermediates, extracted:
+    self.dirname = "combine_experiments_t%03d" % self.params.striping.trial
+    self.intermediates = os.path.join(self.dirname, "intermediates")
+    self.extracted = os.path.join(self.dirname, "final_extracted")
+    for d in self.dirname, self.intermediates, self.extracted:
       if not os.path.isdir(d):
         os.mkdir(d)
-    cwd = os.getcwd()
+    self.cwd = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
     for rg, ch_list in rg_chunks.iteritems():
       for idx in xrange(len(ch_list)):
         chunk = ch_list[idx]
 
-        # get the diff scope
-        diff_scope = self.master_defaults_scope.fetch_diff(self.run_scope)
+        # reset for this chunk/stripe
+        self.filename = "t%03d_%s_%s%03d" % (self.params.striping.trial, rg, tag, idx)
+        self.command_sequence = []
 
-        # set up the file containing input expts and refls
-        filename = "t%03d_%s_%s%03d" % (self.params.striping.trial, rg, tag, idx)
-        chunk_path = os.path.join(cwd, intermediates, filename)
+        # set up the file containing input expts and refls (logging)
+        chunk_path = os.path.join(self.cwd, self.intermediates, self.filename)
         if os.path.isfile(chunk_path):
           os.remove(chunk_path)
         with open(chunk_path, "wb") as outfile:
@@ -418,122 +450,40 @@ class Script(object):
             outfile.write("\n".join(chunk[i]) + "\n")
 
         # set up the params for dials.combine_experiments
-        combine_diff_str = diff_scope.get("combine_experiments").as_str() % (filename, filename)
-        combine_diff_lines = combine_diff_str.split("\n")[1:-2]
-        combine_diff_lines.append("  input {")
+        custom_parts = ["  input {"]
         for expt_path in chunk[0]:
-          combine_diff_lines.append("    experiments = %s" % expt_path)
+          custom_parts.append("    experiments = %s" % expt_path)
         for refl_path in chunk[1]:
-          combine_diff_lines.append("    reflections = %s" % refl_path)
-        combine_diff_lines.append("  }")
-        combine_diff_str = "\n".join(combine_diff_lines)
-        combine_phil_filename = filename + "_combine.phil"
-        combine_phil_path = os.path.join(cwd, intermediates, combine_phil_filename)
-        if os.path.isfile(combine_phil_path):
-          os.remove(combine_phil_path)
-        with open(combine_phil_path, "wb") as phil_outfile:
-          phil_outfile.write(combine_diff_str + "\n")
+          custom_parts.append("    reflections = %s" % refl_path)
+        custom_parts.append("  }")
+        self.set_up_section("combine_experiments", "dials.combine_experiments",
+          clustering=False, custom_parts=custom_parts)
 
-        # set up the params for dials.refine (to be customized per cluster at execution time)
-        refine_diff_str = diff_scope.get("refinement").as_str() % \
-          (filename, filename, filename, filename, filename, filename)
-        refine_diff_parts = refine_diff_str.split("\n")[1:-2]
-        refine_diff_str = "\n".join(refine_diff_parts)
-        if self.params.combine_experiments.clustering.use:
-          refine_phil_filename = filename + "_refine_CLUSTER.phil"
-          refine_phil_path = os.path.join(cwd, intermediates, refine_phil_filename)
-          if os.path.isfile(refine_phil_path):
-            os.remove(refine_phil_path)
-          with open(refine_phil_path, "wb") as phil_outfile:
-            phil_outfile.write(refine_diff_str + "\n")
-          script = script_to_expand_over_clusters(
-            self.params.refinement.input.experiments[0] % filename,
-            refine_phil_filename,
-            "dials.refine",
-            intermediates)
-          refine_command = ". %s" % os.path.join(cwd, intermediates, script)
-        else:
-          refine_diff_str = refine_diff_str.replace('_CLUSTER', '')
-          refine_phil_filename = filename + "_refine.phil"
-          refine_phil_path = os.path.join(cwd, intermediates, refine_phil_filename)
-          if os.path.isfile(refine_phil_path):
-            os.remove(refine_phil_path)
-          with open(refine_phil_path, "wb") as phil_outfile:
-            phil_outfile.write(refine_diff_str + "\n")
-          refine_command = "dials.refine %s" % refine_phil_filename
+        # refinement of the grouped experiments
+        self.set_up_section("refinement", "dials.refine",
+          clustering=self.clustering)
 
-        # set up reintegration
+        # reintegration
         if self.params.reintegration.enable:
-          integration_diff_str = diff_scope.get("reintegration").as_str() % \
-            (filename, filename, filename, filename, filename, filename)
-          integration_diff_parts = integration_diff_str.split("\n")[1:-2]
-          integration_diff_parts.append("  integration.mp.nproc = %d" % self.params.mp.nproc)
-          integration_diff_str = "\n".join(integration_diff_parts)
-          if self.params.combine_experiments.clustering.use:
-            integration_phil_filename = filename + "_reintegrate_CLUSTER.phil"
-            integration_phil_path = os.path.join(cwd, intermediates, integration_phil_filename)
-            if os.path.isfile(integration_phil_path):
-              os.remove(integration_phil_path)
-            with open(integration_phil_path, "wb") as phil_outfile:
-              phil_outfile.write(integration_diff_str + "\n")
-            script = script_to_expand_over_clusters(
-              self.params.refinement.input.experiments[0] % filename,
-              integration_phil_filename,
-              "dials.integrate",
-              intermediates)
-            reintegrate_command = ". %s" % os.path.join(cwd, intermediates, script)
-          else:
-            integration_phil_filename = filename + "_reintegrate.phil"
-            integration_phil_path = os.path.join(cwd, intermediates, integration_phil_filename)
-            if os.path.isfile(integration_phil_path):
-              os.remove(integration_phil_path)
-            with open(integration_phil_path, "wb") as phil_outfile:
-              phil_outfile.write(integration_diff_str + "\n")
-            reintegrate_command = "dials.integrate %s" % integration_phil_filename
-        else:
-          reintegrate_command = ":" # unix equivalent of "pass"
+          custom_parts = ["  integration.mp.nproc = %d" % self.params.mp.nproc]
+          self.set_up_section("reintegration", "dials.integrate",
+            custom_parts=custom_parts, clustering=self.clustering)
 
         # extract results to integration pickles for merging
         if self.params.postprocessing.enable:
-          postprocessing_diff_str = diff_scope.get("postprocessing").as_str() % \
-            (filename, filename, filename, os.path.join("..", "final_extracted"))
-          postprocessing_diff_parts = postprocessing_diff_str.split("\n")[1:-2]
-          postprocessing_diff_str = "\n".join(postprocessing_diff_parts)
-          postprocessing_diff_str = postprocessing_diff_str.replace("ITER", "%04d")
-          if self.params.combine_experiments.clustering.use:
-            postprocessing_phil_filename = filename + "_postprocessing_CLUSTER.phil"
-            postprocessing_phil_path = os.path.join(cwd, intermediates, postprocessing_phil_filename)
-            if os.path.isfile(postprocessing_phil_path):
-              os.remove(postprocessing_phil_path)
-            with open(postprocessing_phil_path, "wb") as phil_outfile:
-              phil_outfile.write(postprocessing_diff_str + "\n")
-            script = script_to_expand_over_clusters(
-              self.params.refinement.input.experiments[0] % filename,
-              postprocessing_phil_filename,
-              "cctbx.xfel.frame_extractor",
-              intermediates)
-            postprocessing_command = ". %s" % os.path.join(cwd, intermediates, script)
-          else:
-            postprocessing_diff_str = postprocessing_diff_str.replace("_CLUSTER", "")
-            postprocessing_phil_filename = filename + "_postprocessing.phil"
-            postprocessing_phil_path = os.path.join(cwd, intermediates, postprocessing_phil_filename)
-            if os.path.isfile(postprocessing_phil_path):
-              os.remove(postprocessing_phil_path)
-            with open(postprocessing_phil_path, "wb") as phil_outfile:
-              phil_outfile.write(postprocessing_diff_str + "\n")
-            postprocessing_command = "cctbx.xfel.frame_extractor %s" % postprocessing_phil_filename
-        else:
-          postprocessing_command = ":" # unix equivalent of "pass"
+          lambda_diff_str = lambda diff_str: (diff_str % \
+            (os.path.join("..", "final_extracted"))).replace("ITER", "%04d")
+          self.set_up_section("postprocessing", "cctbx.xfel.frame_extractor",
+            lambda_diff_str=lambda_diff_str, clustering=self.clustering)
 
         # submit queued job from appropriate directory
-        os.chdir(intermediates)
-        submit_path = os.path.join(cwd, intermediates, "combine_%s.sh" % filename)
-        command = "dials.combine_experiments %s && %s && %s && %s" % \
-          (combine_phil_filename, refine_command, reintegrate_command, postprocessing_command)
+        os.chdir(self.intermediates)
+        command = " && ".join(self.command_sequence)
         if self.params.combine_experiments.clustering.dendrogram:
           easy_run.fully_buffered(command).raise_if_errors().show_stdout()
         else:
-          submit_command = get_submit_command_chooser(command, submit_path, intermediates, self.params.mp,
+          submit_path = os.path.join(self.cwd, self.intermediates, "combine_%s.sh" % self.filename)
+          submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
             log_name=(submit_path.split(".sh")[0] + ".out"))
           print "executing command: %s" % submit_command
           try:
@@ -541,8 +491,7 @@ class Script(object):
           except Exception as e:
             if not "Warning: job being submitted without an AFS token." in str(e):
               raise e
-        os.chdir(cwd)
-        # go back to working directory
+        os.chdir(self.cwd)
 
 if __name__ == "__main__":
   from dials.util import halraiser
@@ -551,12 +500,9 @@ if __name__ == "__main__":
     print helpstring
     exit()
   if "-c" in sys.argv[1:]:
-    if "-e" in sys.argv[1:]:
-      expert_level = int(sys.argv[sys.argv.index("-e") + 1])
-    else:
-      expert_level = 0
-    master_defaults_scope.fetch_diff(master_scope).show(attributes_level=expert_level)
-    # master_scope.show(attributes_level=expert_level)
+    expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0
+    attr_level = int(sys.argv[sys.argv.index("-a") + 1]) if "-a" in sys.argv[1:] else 0
+    master_scope.show(expert_level=expert_level, attributes_level=attr_level)
     with open("striping_defaults.phil", "wb") as defaults:
       defaults.write(master_scope.as_str())
     exit()
