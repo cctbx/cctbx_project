@@ -298,6 +298,93 @@ class Format(object):
       
     return Masker
 
+  @classmethod
+  def get_imageset(Class, 
+                   filenames, 
+                   beam=None,
+                   detector=None,
+                   goniometer=None,
+                   scan=None):
+    '''
+    Factory method to create an imageset
+
+    '''
+    from dxtbx.imageset import ImageSet
+    from dxtbx.imageset import ImageSweep
+
+    # Get some information from the format class
+    reader = Class.get_reader()(filenames)
+    masker = Class.get_masker()(filenames)
+    dbfact = Class.get_detectorbase_factory()(filenames)
+      
+    # Get the format instance
+    format_instance = Class(filenames[0])
+
+    # Read the vendor type
+    vendor = format_instance.get_vendortype()
+   
+    # Check if we have a sweep
+    scan = format_instance.get_scan()
+    if scan is not None and scan.get_oscillation()[1] != 0:
+      is_sweep = True
+    else:
+      is_sweep = False
+
+    # Create an imageset or sweep
+    if not is_sweep:
+
+      # Create the imageset
+      iset = ImageSet(
+        reader = reader,
+        masker = masker,
+        properties = {
+          "vendor" : vendor
+        },
+        detectorbase_factory = dbfact)
+      
+      # If any are None then read from format
+      if [beam, detector, goniometer, scan].count(None) != 0:
+        format_instance = Class(filenames[i])
+        beam = []
+        detector = []
+        goniometer = []
+        scan = []
+        for i in range(len(filenames)):
+          beam.append(format_instance.get_beam())
+          detector.append(format_instance.get_detector())
+          goniometer.append(format_instance.get_goniometer())
+          scan.append(format_instance.get_scan())
+
+      # Set the models
+      iset.set_beam_list(beam)
+      iset.set_detector_list(detector)
+      iset.set_goniometer_list(goniometer)
+      iset.set_scan_list(scan)
+
+    else:
+      
+      # If any are None then read from format
+      if [beam, detector, goniometer, scan].count(None) != 0:
+        beam       = format_instance.get_beam()
+        detector   = format_instance.get_detector()
+        goniometer = format_instance.get_goniometer()
+        scan       = format_instance.get_scan()
+
+      # Create the sweep
+      iset = ImageSweep(
+        reader     = reader,
+        masker     = masker,
+        beam       = beam,
+        detector   = detector,
+        goniometer = goniometer,
+        scan       = scan,
+        properties = {
+          "vendor" : vendor
+        },
+        detectorbase_factory = dbfact)
+
+    # Return the imageset
+    return iset
 
   def get_image_file(self):
     '''Get the image file provided to the constructor.'''
