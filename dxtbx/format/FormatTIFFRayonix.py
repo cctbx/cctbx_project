@@ -47,6 +47,10 @@ class FormatTIFFRayonix(FormatTIFF):
     if width != _width or height != _height or depth != _depth:
       return False
 
+    # pretty sure all MARCCD / Rayonix detectors are square...
+    if width != height:
+      return False
+
     nimages = struct.unpack(_I, bytes[1024 + 112:1024 + 116])[0]
     origin = struct.unpack(_I, bytes[1024 + 116:1024 + 120])[0]
     orientation = struct.unpack(_I, bytes[1024 + 120:1024 + 124])[0]
