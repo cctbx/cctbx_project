@@ -30,6 +30,9 @@ class FormatTIFFBruker(FormatTIFF):
     width, height, depth, order, bytes = FormatTIFF.get_tiff_header(
         image_file)
 
+    if width == height:
+      return False
+    
     assert(len(bytes) == 4096)
 
     if order == FormatTIFF.LITTLE_ENDIAN:
