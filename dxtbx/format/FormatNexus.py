@@ -125,7 +125,10 @@ class FormatNexus(FormatHDF5):
   def get_scan(self, index=None):
     if index is None:
       return self._scan()
-    return self._scan()[index]
+    scan = self._scan()
+    if scan is not None:
+      return scan[index]
+    return scan
 
   def get_raw_data(self, index):
     return self._raw_data[index]

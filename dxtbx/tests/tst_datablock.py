@@ -182,14 +182,17 @@ class Test(object):
     print 'OK'
 
   def tst_from_null_sweep(self):
-    from dxtbx.imageset import NullReader, ImageSweep, SweepFileList
+    from dxtbx.format.Format import Format
+    from dxtbx.imageset import ImageSweep
     from dxtbx.model import Beam, Detector, Goniometer, Scan
 
-    sweep = ImageSweep(NullReader(SweepFileList("template_%2d.cbf", (0, 10))))
-    sweep.set_beam(Beam((0, 0, 1)))
-    sweep.set_detector(Detector())
-    sweep.set_goniometer(Goniometer((1, 0, 0)))
-    sweep.set_scan(Scan((1, 10), (0, 0.1)))
+    filenames = ["template_%2d.cbf" % (i+1) for i in range(0, 10)]
+    sweep = Format.get_imageset(
+      filenames,
+      beam = Beam((0, 0, 1)),
+      detector = Detector(),
+      goniometer = Goniometer((1, 0, 0)),
+      scan = Scan((1, 10), (0, 0.1)))
 
     # Create the datablock
     datablock = DataBlockFactory.from_imageset(sweep)

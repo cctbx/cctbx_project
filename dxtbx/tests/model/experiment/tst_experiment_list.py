@@ -512,11 +512,12 @@ class TestExperimentListFactory(object):
     print 'OK'
 
   def tst_from_imageset(self):
-    from dxtbx.imageset import ImageSet, NullReader
+    from dxtbx.imageset import ImageSet
     from dxtbx.model import Beam, Detector, Goniometer, Scan
     from dxtbx.model import Crystal
+    from dxtbx.format.Format import Format
 
-    imageset = ImageSet(NullReader(["filename.cbf"]))
+    imageset = Format.get_imageset(["filename.cbf"], as_imageset=True)
     imageset.set_beam(Beam(), 0)
     imageset.set_detector(Detector(), 0)
 
@@ -536,15 +537,20 @@ class TestExperimentListFactory(object):
     print 'OK'
 
   def tst_from_sweep(self):
-    from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
+    from dxtbx.imageset import ImageSweep
     from dxtbx.model import Beam, Detector, Goniometer, Scan
     from dxtbx.model import Crystal
+    from dxtbx.format.Format import Format
 
-    imageset = ImageSweep(NullReader(SweepFileList("filename%01d.cbf", (0, 2))))
-    imageset.set_beam(Beam())
-    imageset.set_detector(Detector())
-    imageset.set_goniometer(Goniometer())
-    imageset.set_scan(Scan((1,2),(0,1)))
+    filenames = ["filename_%01d.cbf" % (i+1) for i in range(0, 2)]
+
+    imageset = Format.get_imageset(
+      filenames,
+      beam = Beam(),
+      detector = Detector(),
+      goniometer = Goniometer(),
+      scan = Scan((1,2), (0,1)),
+      as_sweep=True)
 
     crystal = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
@@ -562,16 +568,22 @@ class TestExperimentListFactory(object):
     print 'OK'
 
   def tst_from_datablock(self):
-    from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
+    from dxtbx.imageset import ImageSweep
     from dxtbx.model import Beam, Detector, Goniometer, Scan
     from dxtbx.datablock import DataBlockFactory
     from dxtbx.model import Crystal
+    from dxtbx.format.Format import Format
 
-    imageset = ImageSweep(NullReader(SweepFileList("filename%01d.cbf", (0, 2))))
-    imageset.set_beam(Beam())
-    imageset.set_detector(Detector())
-    imageset.set_goniometer(Goniometer())
-    imageset.set_scan(Scan((1, 2), (0, 1)))
+    filenames = ["filename_%01d.cbf" % (i+1) for i in range(0, 2)]
+
+    imageset = Format.get_imageset(
+      filenames,
+      beam = Beam(),
+      detector = Detector(),
+      goniometer = Goniometer(),
+      scan = Scan((1,2), (0,1)),
+      as_sweep=True)
+
 
     crystal = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
@@ -652,16 +664,21 @@ class TestExperimentListDumper(object):
     self.check(elist1, elist2)
 
   def tst_dump_empty_sweep(self):
-    from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
+    from dxtbx.imageset import ImageSweep
     from dxtbx.model import Beam, Detector, Goniometer, Scan
     from dxtbx.model import Crystal
     from uuid import uuid4
+    from dxtbx.format.Format import Format
 
-    imageset = ImageSweep(NullReader(SweepFileList("filename%01d.cbf", (0, 3))))
-    imageset.set_beam(Beam((1, 0, 0)))
-    imageset.set_detector(Detector())
-    imageset.set_goniometer(Goniometer())
-    imageset.set_scan(Scan((1, 3), (0.0, 1.0)))
+    filenames = ["filename_%01d.cbf" % (i+1) for i in range(0, 2)]
+
+    imageset = Format.get_imageset(
+      filenames,
+      beam = Beam((1, 0, 0)),
+      detector = Detector(),
+      goniometer = Goniometer(),
+      scan = Scan((1,2), (0.0, 1.0)),
+      as_sweep=True)
 
     crystal = Crystal((1, 0, 0), (0, 1, 0), (0, 0, 1), space_group_symbol="P1")
 
@@ -678,7 +695,7 @@ class TestExperimentListDumper(object):
     print 'OK'
 
   def tst_dump_with_lookup(self):
-    from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
+    from dxtbx.imageset import ImageSweep
     from dxtbx.model import Beam, Detector, Goniometer, Scan
     from dxtbx.model import Crystal
     from uuid import uuid4
@@ -730,7 +747,7 @@ class TestExperimentListDumper(object):
     assert imageset.external_lookup.pedestal.data.all_eq(0)
 
   def tst_dump_with_bad_lookup(self):
-    from dxtbx.imageset import ImageSweep, NullReader, SweepFileList
+    from dxtbx.imageset import ImageSweep
     from dxtbx.model import Beam, Detector, Goniometer, Scan
     from dxtbx.model import Crystal
     from uuid import uuid4

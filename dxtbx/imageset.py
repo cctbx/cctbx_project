@@ -11,54 +11,6 @@
 from __future__ import absolute_import, division
 
 
-# class ReaderBase(object):
-#   '''The imageset reader base class.'''
-
-#   def __init__(self):
-#     pass
-
-#   def __eq__(self, other):
-#     pass
-
-#   def get_image_paths(self, indices=None):
-#     pass
-
-#   def get_image_size(self, panel=0):
-#     pass
-
-#   def get_format(self, index=None):
-#     pass
-
-#   def get_format_class(self, index=None):
-#     pass
-
-#   def get_path(self, index=None):
-#     pass
-
-#   def is_valid(self, indices=None):
-#     pass
-
-#   def read(self, index=None):
-#     pass
-
-#   def get_detectorbase(self, index=None):
-#     pass
-
-#   def get_vendortype(self, index=None):
-#     pass
-
-#   def get_detector(self, index=None):
-#     pass
-
-#   def get_goniometer(self, index=None):
-#     pass
-
-#   def get_beam(self, index=None):
-#     pass
-
-#   def get_scan(self, index=None):
-#     pass
-
 
 # class NullReader(ReaderBase):
 #   ''' A placeholder reader. '''
@@ -119,293 +71,6 @@ from __future__ import absolute_import, division
 #     '''Get the scan instance.'''
 #     raise RuntimeError('NullReader doesn\'t have scan data')
 
-
-# class SingleFileReader(ReaderBase):
-#   '''The single file reader class.'''
-
-#   def __init__(self, format_instance = None):
-#     '''Initialise the reader class.'''
-#     ReaderBase.__init__(self)
-
-#     # Set the format instance
-#     self._format = format_instance
-#     self._recover = self.__getstate__()
-
-#   def __eq__(self, other):
-#     '''Compare the reader to another reader.'''
-#     return self.get_format() == other.get_format()
-
-#   def __getstate__(self):
-#     return self.get_format().__class__, self.get_format().get_image_file()
-
-#   def __setstate__(self, state):
-#     self._format = state[0](state[1])
-
-#   def nullify_format_instance(self):
-#     self._recover = self.__getstate__()
-#     self._format = None
-
-#   def get_image_paths(self, indices=None):
-#     '''Get the image paths within the file.'''
-
-#     # Get paths for each file
-#     filenames = [self.get_format().get_image_file(i)
-#                  for i in range(self.get_format().get_num_images())]
-
-#     # Return within the given range
-#     if indices == None:
-#       return filenames
-#     else:
-#       return [filenames[i] for i in indices]
-
-#   def get_format(self, index=None):
-#     '''Get the format instance'''
-#     if self._format is None and self._recover is not None:
-#       self.__setstate__(self._recover)
-#     return self._format
-
-#   def get_format_class(self, index=None):
-#     '''Get the format class'''
-#     return self.get_format().__class__
-
-#   def get_path(self, index=None):
-#     '''Get the image file for the given index.'''
-#     return self.get_format().get_image_file(index)
-
-#   def is_valid(self, indices=None):
-#     '''Ensure the reader is valid.'''
-#     return True
-
-#   def read(self, index=None):
-#     '''Get the image data.'''
-#     return self.get_format().get_raw_data(index)
-
-#   def get_detectorbase(self, index=None):
-#     '''Get the detector base instance.'''
-#     return self.get_format().get_detectorbase(index)
-
-#   def get_vendortype(self, index=None):
-#     return self.get_format().get_vendortype()
-
-#   def get_detector(self, index=None):
-#     '''Get the detector instance.'''
-#     return self.get_format().get_detector(index)
-
-#   def get_beam(self, index=None):
-#     '''Get the beam instance.'''
-#     return self.get_format().get_beam(index)
-
-#   def get_goniometer(self, index=None):
-#     '''Get the goniometer instance.'''
-#     return self.get_format().get_goniometer(index)
-
-#   def get_scan(self, index=None):
-#     '''Get the scan instance.'''
-#     return self.get_format().get_scan(index)
-
-#   def is_single_file_reader(self):
-#     ''' Return if single file reader '''
-#     return True
-
-#   def __deepcopy__(self, memo):
-#     '''
-#     Override deep copy behaviour to use same format instance
-
-#     '''
-#     return SingleFileReader(self.get_format())
-
-
-# class MultiFileState(object):
-#   '''A class to keep track of multi file reader state.'''
-
-#   def __init__(self, format_class, format_kwargs=None):
-#     '''Initialise with format class.'''
-#     self._format_class = format_class
-#     self._current_format_instance = None
-
-#     if format_kwargs is None:
-#       self._format_kwargs = {}
-#     else:
-#       self._format_kwargs = format_kwargs
-
-#   def format_class(self):
-#     '''Get the format class.'''
-#     return self._format_class
-
-#   def load_file(self, filename):
-#     '''Load the file with the given filename.'''
-
-#     # Check the current format is the one we need
-#     if (self.get_format() == None or
-#         filename != self.get_format().get_image_file()):
-
-#       # Read the format instance
-#       format_instance = self._format_class(filename, **self._format_kwargs)
-
-#       # Check the format instance is valid
-#       if not self._is_format_valid(format_instance):
-#         RuntimeError("Format is invalid.")
-
-#       # Set the current format instance
-#       self._current_format_instance = format_instance
-
-#   def get_format(self):
-#     '''Get the current format instance.'''
-#     return self._current_format_instance
-
-#   def _is_format_valid(self, format_instance):
-#     '''Check if the format object is valid.'''
-#     return format_instance.understand(format_instance.get_image_file())
-
-#   def __getstate__(self):
-#     ''' Save the current image and format class for pickling. '''
-#     if self._current_format_instance is not None:
-#       current_filename = self._current_format_instance.get_image_file()
-#     else:
-#       current_filename = None
-#     return { 'format_class' : self._format_class,
-#              'current_filename' : current_filename,
-#              'format_kwargs' : self._format_kwargs }
-
-#   def __setstate__(self, state):
-#     ''' Set the format class and load the image. '''
-#     self._format_class = state['format_class']
-#     self._format_kwargs = state['format_kwargs']
-#     self._current_format_instance = None
-#     if state['current_filename'] is not None:
-#       self.load_file(state['current_filename'])
-
-
-# class NullFormatChecker(object):
-#   def __call__(self, fmt):
-#     return True
-
-
-# class MultiFileReader(ReaderBase):
-#   '''A multi file reader class implementing the ReaderBase interface.'''
-
-#   def __init__(self, format_class, filenames, formatchecker=None,
-#                format_kwargs=None):
-#     '''Initialise the reader with the format and list of filenames.'''
-#     ReaderBase.__init__(self)
-
-#     import os
-
-#     # Ensure we have enough images and format has been specified
-#     assert(format_class != None)
-#     assert(len(filenames) > 0)
-
-#     # Save the image indices
-#     self._filenames = filenames
-
-#     # Handle the state of the MultiFileReader class
-#     self._state = MultiFileState(format_class, format_kwargs=format_kwargs)
-
-#     # A function object to check formats are valid
-#     if formatchecker != None:
-#       self._is_format_valid = formatchecker
-#     else:
-#       self._is_format_valid = NullFormatChecker()
-
-#   def __eq__(self, other):
-#     '''Compare the reader by format class and filename list.'''
-#     return (self.get_format_class() == other.get_format_class() and
-#             self.get_image_paths() == other.get_image_paths())
-
-#   def get_image_paths(self, indices=None):
-#     '''Get the list of image paths.'''
-#     if indices == None:
-#       return list(self._filenames)
-#     else:
-#       return [self._filenames[i] for i in indices]
-
-#   def get_format_class(self):
-#     '''Get the format class.'''
-#     return self._state.format_class()
-
-#   def get_image_size(self, panel=0):
-#     '''Get the image size.'''
-#     return self.get_format().get_detector()[panel].get_image_size()
-
-#   def get_path(self, index=None):
-#     '''Get the path the given index.'''
-#     if index == None:
-#       return self.get_format().get_image_file()
-#     else:
-#       return self._filenames[index]
-
-#   def get_detectorbase(self, index=None):
-#     '''Get the detector base instance at given index.'''
-#     return self.get_format(index).get_detectorbase()
-
-#   def get_vendortype(self, index=None):
-#     return self.get_format(index).get_vendortype()
-
-#   def get_detector(self, index=None):
-#     '''Get the detector instance at given index.'''
-#     return self.get_format(index).get_detector()
-
-#   def get_beam(self, index=None):
-#     '''Get the beam instance at given index.'''
-#     return self.get_format(index).get_beam()
-
-#   def get_goniometer(self, index=None):
-#     '''Get the goniometer instance at given index.'''
-#     return self.get_format(index).get_goniometer()
-
-#   def get_scan(self, index=None):
-#     '''Get the scan instance at given index.'''
-#     return self.get_format(index).get_scan()
-
-#   def read(self, index=None):
-#     '''Read the image frame at the given index.'''
-
-#     # Get the format instance
-#     format_instance = self.get_format(index)
-
-#     return format_instance.get_raw_data()
-
-#   def get_format(self, index=None):
-#     '''Get the format at the given index.'''
-#     return self._update_state(index).get_format()
-
-#   def _update_state(self, index=None):
-#     '''Update the state and load file at given index.'''
-#     if index is not None:
-#       self._state.load_file(self.get_path(index))
-#     elif self._state.get_format() == None:
-#       self._state.load_file(self.get_path(0))
-
-#     return self._state
-
-#   def is_valid(self, indices=None):
-#     '''Ensure imageset is valid.'''
-#     import os
-
-#     # If no indices, get indices of all filenames
-#     if indices == None:
-#       indices = range(len(self._filenames))
-
-#     # Loop through all the images
-#     for index in indices:
-
-#       # Read and try to cache the format, if this fails, the
-#       # format is invalid, so return false.
-#       try:
-#         format_instance = self.get_format(index)
-#       except IndexError, RuntimeError:
-#         return False
-
-#       # Check the format experimental models
-#       if not self._is_format_valid(format_instance):
-#         return False
-
-#     # All images valid
-#     return True
-
-#   def is_single_file_reader(self):
-#     ''' Return if single file reader '''
-#     return False
 
 # class MemReader(ReaderBase):
 #   '''A reader for data already loaded in memory'''
@@ -478,41 +143,83 @@ class ExternalLookup(object):
     self.pedestal = ExternalLookupItem()
 
 
-class ImageSet(object):
-  ''' A class exposing the external image set interface. '''
 
-  def __init__(self, 
+class ImageSetData(object):
+
+  def __init__(self,
                reader,
                masker=None,
-               properties={},
-               detectorbase_factory=None):
-    ''' Initialise the ImageSet object.
-
-    Params:
-        reader The reader object
-
-    '''
-
+               beam = None,
+               detector = None,
+               goniometer = None,
+               scan = None,
+               properties={}):
 
     # If no reader is set then throw an exception
-    if not reader:
+    if reader is None:
       raise ValueError("ImageSet needs a reader!")
 
     # Check input
-    if masker:
+    if masker is not None:
       assert len(masker) == len(reader)
-    if detectorbase_factory:
-      assert len(detectorbase_factory) == len(reader)
 
-    # Set the reader
-    self._reader = reader
-    self._masker = masker
-    self._beam_list = dict()
-    self._detector_list = dict()
-    self._goniometer_list = dict()
-    self._scan_list = dict()
-    self._properties = properties
-    self._detectorbase_factory = detectorbase_factory
+    # Set the data
+    self.reader = reader
+    self.masker = masker
+    if beam is None:
+      self.beam = dict()
+    else:
+      self.beam = beam
+    if detector is None:
+      self.detector = dict()
+    else:
+      self.detector = detector
+    if goniometer is None:
+      self.goniometer = dict()
+    else:
+      self.goniometer = goniometer
+    if scan is None:
+      self.scan = dict()
+    else:
+      self.scan = scan
+    self.properties = properties
+
+  def data(self, index):
+    return self.reader.read(index)
+
+  def mask(self, index, goniometer=None):
+    return self.masker.get(index, goniometer=goniometer)
+
+  def path(self, index):
+    print self.paths(), index
+    return self.paths()[index]
+
+  def identifier(self, index):
+    return self.reader.identifier()[index]
+
+  def paths(self):
+    return self.reader.paths()
+
+  def identifiers(self):
+    return self.reader.identifiers()
+
+
+class ImageSet(object):
+
+  def __init__(self,
+               data,
+               indices = None):
+
+    # Set the imageset data
+    self._data = data
+
+    # Check if the indices have been set
+    if indices:
+      assert min(indices) >= 0
+      assert max(indices) < len(data.reader)
+      self._indices = indices
+    else:
+      self._indices = list(range(len(data.reader)))
 
     # Image cache
     self.image_cache = None
@@ -535,42 +242,8 @@ class ImageSet(object):
 
     '''
     if isinstance(item, slice):
-
-      # Get the filenames
-      filenames = self.paths()[item]
-      
-      # Get reader
-      reader = self._reader.copy(filenames) 
-
-      # Get masker
-      if self._masker:
-        masker = self._masker.copy(filenames)
-      else:
-        masker = None
-
-      # Get detector base factory
-      if self._detectorbase_factory:
-        dbfact = self._detectorbase_factory.copy(filenames)
-      else:
-        dbfact = None
-
-      # Create new imageset
-      subset = ImageSet(
-        reader,
-        masker = masker,
-        properties = self._properties,
-        detectorbase_factory = dbfact)
-
-      # Set the models
-      for i in range(len(self))[item]:
-        subset.set_beam(index, self.get_beam(index))
-        subset.set_detector(index, self.get_detector(index))
-        subset.set_goniometer(index, self.get_goniometer(index))
-        subset.set_scan(index, self.get_scan(index))
-      
-      # Set external lookup maps
+      subset = ImageSet(self._data, self._indices[item])
       subset.external_lookup = self.external_lookup
-      
       return subset
     else:
       return self.get_corrected_data(item)
@@ -583,7 +256,7 @@ class ImageSet(object):
     if self.image_cache is not None and self.image_cache[0] == index:
       image = self.image_cache[1]
     else:
-      image = self.reader().read(index)
+      image = self._data.data(self._indices[index])
       if not isinstance(image, tuple):
         image = (image,)
       self.image_cache = (index, image)
@@ -617,7 +290,7 @@ class ImageSet(object):
 
     '''
     from scitbx.array_family import flex
-    gain = [p.get_gain() for p in self.get_detector(0)]
+    gain = [p.get_gain() for p in self.get_detector(index)]
     if all([g > 0 for g in gain]):
       return gain
     return self.external_lookup.gain.data
@@ -650,7 +323,7 @@ class ImageSet(object):
     # Check for a dynamic mask
     if goniometer is None:
       goniometer = self.get_goniometer(index)
-    dyn_mask = self._masker.get(index, goniometer=gonioneter)
+    dyn_mask = self._data.mask(self._indices[index], goniometer=goniometer)
     if dyn_mask is not None:
       mask = tuple([m1 & m2 for m1, m2 in zip(dyn_mask, mask)])
 
@@ -662,9 +335,16 @@ class ImageSet(object):
       mask = tuple([m1 & m2 for m1, m2 in zip(mask, ext_mask)])
     return mask
 
+  def data(self):
+    return self._data
+
+  def indices(self):
+    ''' Return the indices '''
+    return self._indices
+
   def __len__(self):
     ''' Return the number of images in this image set. '''
-    return len(self._reader)
+    return len(self._indices)
 
   def __str__(self):
     ''' Return the array indices of the image set as a string. '''
@@ -672,8 +352,8 @@ class ImageSet(object):
 
   def __iter__(self):
     ''' Iterate over the array indices and read each image in turn. '''
-    for i in len(self):
-      yield self._reader.read(i)
+    for i in range(len(self)):
+      yield self.get_raw_data(i)
 
   def __eq__(self, other):
     ''' Compare this image set to another. '''
@@ -683,53 +363,95 @@ class ImageSet(object):
       return True
     return self.paths() == other.paths()
 
-  def paths(self):
-    ''' Return a list of filenames referenced by this set. '''
-    return self._reader.paths()
-
-  def get_detector(self, index=None):
+  def get_detector(self, index=0):
     ''' Get the detector. '''
-    return self._detector_list[index]
+    return self._data.detector[self._indices[index]]
 
-  def set_detector(self, detector, index=None):
+  def set_detector(self, detector, index=0):
     ''' Set the detector model.'''
-    self._detector_list[index] = detector
+    self._data.detector[self._indices[index]] = detector
 
-  def get_beam(self, index=None):
+  def get_beam(self, index=0):
     ''' Get the beam. '''
-    return self._beam_list[index]
+    return self._data.beam[self._indices[index]]
 
-  def set_beam(self, beam, index=None):
+  def set_beam(self, beam, index=0):
     ''' Set the beam model.'''
-    self._beam_list[index] = beam
+    self._data.beam[self._indices[index]] = beam
 
-  def get_goniometer(self, index=None):
+  def get_goniometer(self, index=0):
     ''' Get the goniometer model. '''
-    return self._goniometer_list[index]
+    return self._data.goniometer[self._indices[index]]
 
-  def set_goniometer(self, goniometer, index=None):
+  def set_goniometer(self, goniometer, index=0):
     ''' Set the goniometer model. '''
-    self._goniometer_list[index] = goniometer
+    self._data.goniometer[self._indices[index]] = goniometer
 
-  def get_scan(self, index=None):
+  def get_scan(self, index=0):
     ''' Get the scan model. '''
-    return self._scan[index]
+    return self._data.scan[self._indices[index]]
 
-  def set_scan(self, scan, index=None):
+  def set_scan(self, scan, index=0):
     ''' Set the scan model. '''
-    self._scan_list[index] = scan
-
-  def get_detectorbase(self, index):
-    ''' Get the detector base instance for the given index. '''
-    return self._detectorbase_factory(index)
+    self._data.scan[self._indices[index]] = scan
 
   def get_vendortype(self, index):
     ''' Get the vendor information. '''
-    return self._properties['vendor']
+    return self._data.properties['vendor']
+
+  def paths(self):
+    ''' Return a list of filenames referenced by this set. '''
+    paths = self._data.paths()
+    if self._data.reader.is_single_file_reader():
+      assert len(paths) == 1
+      return [paths[0] for i in self._indices]
+    return [paths[i] for i in self._indices]
+
+  def get_path(self, index):
+    return self.paths()[index]
 
   def get_image_identifier(self, index):
     ''' Get the path for the index '''
-    return self._reader.identifiers()[index]
+    return self._data.identifiers(self._indices[index])
+
+  def get_format_class(self):
+    ''' Get format class name '''
+    return self._data.properties['format']
+
+  def reader(self):
+    return self._data.reader
+
+  def masker(self):
+    return self._data.masker
+
+  def params(self):
+    return self._data.properties['params']
+
+  def complete_set(self):
+    '''
+    Return an imageset with all images
+
+    '''
+    return ImageSet(self._data)
+
+
+
+def get_detectorbase(self, index):
+  '''
+  A function to be injected into the imageset to get the detectorbase instance
+
+  '''
+  kwargs = self.params()
+  if self.reader().is_single_file_reader():
+    format_instance = self.get_format_class().get_instance(self.reader().master_path(), **kwargs)
+    return format_instance.get_detectorbase(self.indices()[index])
+  else:
+    format_instance = self.get_format_class().get_instance(self.paths()[index], **kwargs)
+    return format_instance.get_detectorbase()
+
+# Inject the function
+ImageSet.get_detectorbase = get_detectorbase
+
 
 
 class ImageGrid(ImageSet):
@@ -737,11 +459,11 @@ class ImageGrid(ImageSet):
   A class implementing an interface useful for processing grid scans
 
   '''
-  def __init__(self, 
-               reader, 
+  def __init__(self,
+               reader,
                masker=None,
                properties={},
-               detectorbase_factory=None,
+               detectorbase_reader=None,
                grid_size=None):
     ''' Initialise the ImageSet object.
 
@@ -751,10 +473,10 @@ class ImageGrid(ImageSet):
 
     '''
     super(ImageGrid, self).__init__(
-      reader, 
+      reader,
       masker,
       properties=properties,
-      detectorbase_factory=detectorbase_factory)
+      detectorbase_reader=detectorbase_reader)
 
     # Set the grid size
     num = grid_size[0] * grid_size[1]
@@ -778,7 +500,7 @@ class ImageGrid(ImageSet):
       imageset._reader,
       imageset._masker,
       imageset._properties,
-      imageset._detectorbase_factory,
+      imageset._detectorbase_reader,
       grid_size)
 
 
@@ -972,74 +694,16 @@ class ImageGrid(ImageSet):
 #     ''' Return the set of all images (i.e. not just the subset). '''
 #     return MemImageSet(self._images)
 
-class SweepFileList(object):
-  '''Class implementing a file list interface for sweep templates.'''
-
-  def __init__(self, template, array_range):
-    '''Initialise the class with the template and array range.'''
-
-    #assert(array_range[0] >= 0)
-    assert(array_range[0] <= array_range[1])
-    self._template = template
-    self._array_range = array_range
-
-  def __getitem__(self, index):
-    '''Get the filename at that array index.'''
-    return self.get_filename(self._array_range[0] + index)
-
-  def __iter__(self):
-    '''Iterate through the filenames.'''
-    for i in xrange(len(self)):
-      yield self.__getitem__(i)
-
-  def __str__(self):
-    '''Get the string representation of the file list.'''
-    return str([filename for filename in self])
-
-  def __len__(self):
-    '''Get the length of the file list.'''
-    return self._array_range[1] - self._array_range[0]
-
-  def __eq__(self, other):
-    '''Compare filelist by template and array range.'''
-    return (self.template() == other.template() and
-            self.array_range() == other.array_range())
-
-  def template(self):
-    '''Get the template.'''
-    return self._template
-
-  def array_range(self):
-    '''Get the array range.'''
-    return self._array_range
-
-  def indices(self):
-    '''Get the image indices.'''
-    return range(*self._array_range)
-
-  def get_filename(self, index):
-    '''Get the filename at the given index.'''
-    if not self.is_index_in_range(index):
-      raise IndexError('Image file index out of range')
-
-    return self._template % (index + 1)
-
-  def is_index_in_range(self, index):
-    '''Ensure that the index is within the array range.'''
-    return self._array_range[0] <= index < self._array_range[1]
-
 
 class ImageSweep(ImageSet):
   ''' A class exposing the external sweep interface. '''
 
-  def __init__(self, 
-               reader, 
-               masker = None,
-               properties = {},
-               detectorbase_factory=None,
-               beam=None, 
+  def __init__(self,
+               data,
+               indices=None,
+               beam=None,
                goniometer=None,
-               detector=None, 
+               detector=None,
                scan=None):
     ''' Create the sweep.
 
@@ -1058,11 +722,13 @@ class ImageSweep(ImageSet):
         scan The scan model
 
     '''
-    ImageSet.__init__(self, 
-                      reader, 
-                      masker,
-                      properties,
-                      detectorbase_factory)
+
+    if indices:
+      assert min(indices) >= 0
+      assert max(indices) < len(data.reader)
+      assert all(i1+1 == i2 for i1, i2 in zip(indices[:-1], indices[1:]))
+
+    ImageSet.__init__(self, data, indices)
     self._beam = beam
     self._goniometer = goniometer
     self._detector = detector
@@ -1086,24 +752,6 @@ class ImageSweep(ImageSet):
       if item.step != None:
         raise IndexError('Sweeps must be sequential')
 
-      # Get the filenames
-      filenames = self.paths()[item]
-      
-      # Get reader
-      reader = self._reader.copy(filenames) 
-
-      # Get masker
-      if self._masker:
-        masker = self._masker.copy(filenames)
-      else:
-        masker = None
-
-      # Get detector base factory
-      if self._detectorbase_factory:
-        dbfact = self._detectorbase_factory.copy(filenames)
-      else:
-        dbfact = None
-      
       if self._scan is None:
         scan = None
       else:
@@ -1111,10 +759,8 @@ class ImageSweep(ImageSet):
 
       # Create new imageset
       subset = ImageSweep(
-        reader,
-        masker = masker,
-        properties = self._properties,
-        detectorbase_factory = dbfact,
+        self._data,
+        self._indices[item],
         beam = self._beam,
         detector = self._detector,
         goniometer = self._goniometer,
@@ -1122,7 +768,7 @@ class ImageSweep(ImageSet):
 
       # Set external lookup maps
       subset.external_lookup = self.external_lookup
-      
+
       return subset
     else:
       return self.get_corrected_data(item)
@@ -1162,6 +808,10 @@ class ImageSweep(ImageSet):
   def set_scan(self, scan):
     ''' Set the scan model. '''
     self._scan = scan
+
+  def get_template(self):
+    ''' Return the template '''
+    return self._data.properties['template']
 
 
 class FilenameAnalyser(object):
@@ -1229,11 +879,15 @@ class FilenameAnalyser(object):
     return True
 
 
+
+# FIXME Lots of duplication in this class, need to tidy up
 class ImageSetFactory(object):
   ''' Factory to create imagesets and sweeps. '''
 
   @staticmethod
-  def new(filenames, check_headers=False, ignore_unknown=False):
+  def new(filenames,
+          check_headers=False,
+          ignore_unknown=False):
     ''' Create an imageset or sweep
 
     Params:
@@ -1263,17 +917,22 @@ class ImageSetFactory(object):
     imagesetlist = []
     for filelist in filelist_per_imageset:
       try:
-        imagesetlist.append(ImageSetFactory._create_imageset_or_sweep(
-            filelist, check_headers))
+        if filelist[2] == True:
+          iset = ImageSetFactory._create_sweep(filelist, check_headers)
+        else:
+          iset = ImageSetFactory._create_imageset(filelist, check_headers)
+        imagesetlist.append(iset)
       except Exception, e:
         if not ignore_unknown:
-          raise e
+          raise
 
     # Return the imageset list
     return imagesetlist
 
   @staticmethod
-  def from_template(template, image_range=None, check_headers=False,
+  def from_template(template,
+                    image_range=None,
+                    check_headers=False,
                     check_format=True):
     '''Create a new sweep from a template.
 
@@ -1289,6 +948,7 @@ class ImageSetFactory(object):
     import os
     from dxtbx.format.Registry import Registry
     from dxtbx.sweep_filenames import template_image_range
+    from dxtbx.format.Format import Format
 
     if not check_format: assert not check_headers
 
@@ -1309,38 +969,23 @@ class ImageSetFactory(object):
     array_range = (image_range[0] - 1, image_range[1])
 
     # Create the sweep file list
-    filenames = SweepFileList(template_format, array_range)
+    filenames = [template_format % (i+1) for i in range(*array_range)]
 
     # Get the format class
     if check_format:
       format_class = Registry.find(filenames[0])
-      from dxtbx.format.FormatMultiImage import FormatMultiImage
-      if issubclass(format_class, FormatMultiImage):
-        assert len(filenames) == 1
-        format_instance = format_class(filenames[0])
-        reader = SingleFileReader(format_instance)
-      else:
-        reader = MultiFileReader(format_class, filenames)
     else:
-      reader = NullReader(filenames)
+      format_class = Format
 
     # Create the sweep object
-    sweep = ImageSweep(reader)
-
-    # Check the sweep is valid
-    if check_headers and not sweep.is_valid():
-      raise RuntimeError('Invalid sweep of images')
+    sweep = format_class.get_imageset(
+      filenames,
+      template=template,
+      as_sweep=True,
+      check_format=check_format)
 
     # Return the sweep
     return [sweep]
-
-  @staticmethod
-  def _create_imageset_or_sweep(filelist, check_headers):
-    '''Create either an imageset of sweep.'''
-    if filelist[2] == True:
-      return ImageSetFactory._create_sweep(filelist, check_headers)
-    else:
-      return ImageSetFactory._create_imageset(filelist, check_headers)
 
   @staticmethod
   def _create_imageset(filelist, check_headers):
@@ -1366,21 +1011,11 @@ class ImageSetFactory(object):
     # Get the format object
     format_class = Registry.find(filenames[0])
 
-    # Create the image set object
-    from dxtbx.format.FormatMultiImage import FormatMultiImage
-    if issubclass(format_class, FormatMultiImage):
-      assert len(filenames) == 1
-      format_instance = format_class(filenames[0])
-      image_set = ImageSet(SingleFileReader(format_instance))
-    else:
-      image_set = ImageSet(MultiFileReader(format_class, filenames))
-
-    # Check the image set is valid
-    if check_headers and not image_set.is_valid():
-      raise RuntimeError('Invalid ImageSet')
+    # Create the imageset
+    imageset = format_class.get_imageset(filenames, as_imageset=True)
 
     # Return the image set
-    return image_set
+    return imageset
 
   @staticmethod
   def _create_sweep(filelist, check_headers):
@@ -1423,54 +1058,60 @@ class ImageSetFactory(object):
     array_range = (min(indices) - 1, max(indices))
 
     # Create the sweep file list
-    filenames = SweepFileList(template_format, array_range)
+    filenames = [template_format % (i+1) for i in range(*array_range)]
 
-    # Create the sweep object
-    sweep = ImageSweep(MultiFileReader(format_class, filenames))
-
-    # Check the sweep is valid
-    if check_headers and not sweep.is_valid():
-      raise RuntimeError('Invalid sweep of images')
+    sweep = format_class.get_imageset(filenames, template=template,
+                                      as_sweep=True)
 
     # Return the sweep
     return sweep
 
 
   @staticmethod
-  def make_imageset(filenames, format_class=None, check_format=True,
-                    single_file_indices=None, format_kwargs=None):
+  def make_imageset(filenames,
+                    format_class=None,
+                    check_format=True,
+                    single_file_indices=None,
+                    format_kwargs=None):
     '''Create an image set'''
     from dxtbx.format.Registry import Registry
     from dxtbx.format.FormatMultiImage import FormatMultiImage
+    from dxtbx.format.Format import Format
 
     # Get the format object
-    if format_class == None and check_format:
-      format_class = Registry.find(filenames[0])
-    if format_class is None:
-      reader = NullReader(filenames, single_file_indices is not None)
-    else:
-      if issubclass(format_class, FormatMultiImage):
-        assert len(set(filenames)) == 1
-        if format_kwargs is None:
-          format_kwargs = {}
-        format_instance = format_class(filenames[0], **format_kwargs)
-        reader = SingleFileReader(format_instance)
+    if format_class == None:
+      if check_format:
+        format_class = Registry.find(filenames[0])
       else:
-        reader = MultiFileReader(format_class, filenames,
-                                 format_kwargs=format_kwargs)
+        format_class = Format
+    else:
+      format_class = format_class
+
+    imageset = format_class.get_imageset(
+      filenames,
+      single_file_indices = single_file_indices,
+      as_imageset   = True,
+      format_kwargs = format_kwargs,
+      check_format  = check_format)
 
     # Return the imageset
-    return ImageSet(reader, indices=single_file_indices,
-                    format_kwargs=format_kwargs)
+    return imageset
 
   @staticmethod
-  def make_sweep(template, indices, format_class=None, beam=None,
-                 detector=None, goniometer=None, scan=None,
-                 check_format=True, format_kwargs=None):
+  def make_sweep(template,
+                 indices,
+                 format_class=None,
+                 beam=None,
+                 detector=None,
+                 goniometer=None,
+                 scan=None,
+                 check_format=True,
+                 format_kwargs=None):
     '''Create a sweep'''
     import os
     from dxtbx.format.Registry import Registry
     from dxtbx.format.FormatMultiImage import FormatMultiImage
+    from dxtbx.format.Format import Format
 
     indices = sorted(indices)
 
@@ -1501,38 +1142,33 @@ class ImageSetFactory(object):
       assert(array_range == scan.get_array_range())
 
     # Get the format object and reader
-    if format_class is None and check_format:
-      format_class = Registry.find(filenames[0])
-
-    # Create the reader
-    indices = None
-    if format_class is None:
-      if template_format is not None:
-        filenames = SweepFileList(template_format, array_range)
-      reader = NullReader(filenames)
-    else:
-      if issubclass(format_class, FormatMultiImage):
-        if format_kwargs is None:
-          format_kwargs = {}
-        assert len(filenames) == 1
-        format_instance = format_class(filenames[0], **format_kwargs)
-        reader = SingleFileReader(format_instance)
-        indices = list(range(*array_range))
+    if format_class == None:
+      if check_format:
+        format_class = Registry.find(filenames[0])
       else:
-        assert(template_format is not None)
-        filenames = SweepFileList(template_format, array_range)
-        reader = MultiFileReader(format_class, filenames,
-                                 format_kwargs=format_kwargs)
+        format_class = Format
+    else:
+      format_class = format_class
 
-    # Create the sweep object
-    sweep = ImageSweep(
-      reader,
-      indices=indices,
-      beam=beam,
-      detector=detector,
-      goniometer=goniometer,
-      scan=scan,
-      format_kwargs=format_kwargs)
+    # Done require template to be vaid if not checking format
+    try:
+      filenames = [template_format % (i+1) for i in range(*array_range)]
+    except Exception:
+      if check_format:
+        raise
+      else:
+        filenames = []
+
+    sweep = format_class.get_imageset(
+      filenames,
+      beam          = beam,
+      detector      = detector,
+      goniometer    = goniometer,
+      scan          = scan,
+      format_kwargs = format_kwargs,
+      template      = template,
+      as_sweep      = True,
+      check_format  = check_format)
 
     # Return the sweep
     return sweep

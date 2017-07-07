@@ -29,11 +29,11 @@ class DataBlock(object):
     ''' Add an imageset to the block. '''
     if self._format_class is None:
       try:
-        self._format_class = imageset.reader().get_format_class()
+        self._format_class = imageset.get_format_class()
       except Exception:
         pass
     else:
-      assert(self._format_class == imageset.reader().get_format_class())
+      assert(self._format_class == imageset.get_format_class())
     self._imagesets.append(imageset)
 
   def extend(self, datablock):
@@ -191,7 +191,7 @@ class DataBlock(object):
     for iset in self._imagesets:
       if isinstance(iset, ImageSweep):
         if iset.reader().is_single_file_reader():
-          template = abspath(iset.reader().get_path())
+          template = abspath(iset.reader().master_path())
           result['imageset'].append(OrderedDict([
               ('__id__', 'ImageSweep'),
               ('master',   abspath(iset.reader().get_path())),
@@ -203,7 +203,7 @@ class DataBlock(object):
               ('goniometer', g.index(iset.get_goniometer())),
               ('scan',       s.index(iset.get_scan())),
               ('images',     iset.indices()),
-              ('params',   iset.format_kwargs())
+              ('params',   iset.params())
             ]))
         else:
           result['imageset'].append(OrderedDict([
@@ -216,7 +216,7 @@ class DataBlock(object):
               ('detector',   d[iset.get_detector()]),
               ('goniometer', g.index(iset.get_goniometer())),
               ('scan',       s.index(iset.get_scan())),
-              ('params',   iset.format_kwargs())
+              ('params',   iset.params())
             ]))
       else:
         imageset = OrderedDict()
@@ -253,7 +253,7 @@ class DataBlock(object):
           image_list.append(image_dict)
         imageset["mask"] = abspath_or_none(iset.external_lookup.mask.filename)
         imageset['images'] = image_list
-        imageset['params'] = iset.format_kwargs()
+        imageset['params'] = iset.params()
         result['imageset'].append(imageset)
 
     # Add the models to the dictionary
@@ -635,21 +635,13 @@ class DataBlockFilenameImporter(object):
   def _create_single_file_imageset(self, format_class, filename,
                                    format_kwargs=None):
     ''' Create an imageset from a multi image file. '''
-    from dxtbx.imageset import SingleFileReader, ImageSet, ImageSweep
+    from dxtbx.imageset import ImageSet, ImageSweep
     from os.path import abspath
     if format_kwargs is None:
       format_kwargs = {}
-    format_instance = format_class(abspath(filename), **format_kwargs)
-    try:
-      scan = format_instance.get_scan()
-      if abs(scan.get_oscillation()[1]) > 0.0:
-        return ImageSweep(SingleFileReader(format_instance),
-                          format_kwargs=format_kwargs)
-    except Exception:
-      pass
-    return ImageSet(SingleFileReader(format_instance),
-                    format_kwargs=format_kwargs)
-
+    return format_class.get_imageset(
+      abspath(filename),
+      format_kwargs=format_kwargs)
 
 class DataBlockDictImporter(object):
   ''' A class to import a datablock from dictionary. '''

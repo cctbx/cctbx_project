@@ -73,6 +73,7 @@ JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
   dump.imageset(sweep, f)
   f.close()
   cmd = " ".join(["dxtbx.to_xds", f.name])
+  print cmd
   result = easy_run.fully_buffered(cmd)
 
   # allow extra lines to have been added (these may be comments)

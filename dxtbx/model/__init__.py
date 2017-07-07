@@ -322,7 +322,7 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
   def to_dict(self):
     ''' Serialize the experiment list to dictionary. '''
     from libtbx.containers import OrderedDict
-    from dxtbx.imageset import ImageSet, ImageSweep, MemImageSet, ImageGrid
+    from dxtbx.imageset import ImageSet, ImageSweep, ImageGrid
     from dxtbx.format.FormatMultiImage import FormatMultiImage
 
     # Check the experiment list is consistent
@@ -375,18 +375,8 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
       result['experiment'].append(obj)
 
     def get_template(imset):
-      if imset.reader().get_format_class() is None:
-        try:
-          return imset.get_template()
-        except Exception:
-          pass
-        try:
-          return imset.reader().get_path()
-        except Exception:
-          pass
-        return 'none'
-      elif issubclass(imset.reader().get_format_class(), FormatMultiImage):
-        return imset.reader().get_path()
+      if imset.reader().is_single_file_reader():
+        return imset.reader().master_path()
       else:
         return imset.get_template()
 
@@ -420,7 +410,7 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
       r['mask'] = imset.external_lookup.mask.filename
       r['gain'] = imset.external_lookup.gain.filename
       r['pedestal'] = imset.external_lookup.pedestal.filename
-      r['params'] = imset.format_kwargs()
+      r['params'] = imset.params()
       result['imageset'].append(r)
 
     # Extract all the model dictionaries

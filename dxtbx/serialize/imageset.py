@@ -42,8 +42,8 @@ def basic_imageset_to_dict(imageset):
       ("mask", filename_or_none(imageset.external_lookup.mask.filename)),
       ("gain", filename_or_none(imageset.external_lookup.gain.filename)),
       ("pedestal", filename_or_none(imageset.external_lookup.pedestal.filename)),
-      ("beam", imageset.get_beam().to_dict()),
-      ("detector", imageset.get_detector().to_dict())])
+      ("beam", imageset.get_beam(0).to_dict()),
+      ("detector", imageset.get_detector(0).to_dict())])
 
 def imagesweep_to_dict(sweep):
   ''' Convert a sweep to a dictionary
@@ -114,8 +114,8 @@ def basic_imageset_from_dict(d):
       imageset.external_lookup.pedestal.data = pickle.load(infile)
 
   # Get the existing models as dictionaries
-  beam_dict = imageset.get_beam().to_dict()
-  detector_dict = imageset.get_detector().to_dict()
+  beam_dict = imageset.get_beam(0).to_dict()
+  detector_dict = imageset.get_detector(0).to_dict()
 
   # Set models
   imageset.set_beam(BeamFactory.from_dict(d.get('beam'), beam_dict))
