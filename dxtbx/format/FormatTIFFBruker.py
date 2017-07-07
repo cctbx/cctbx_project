@@ -32,7 +32,7 @@ class FormatTIFFBruker(FormatTIFF):
 
     if width == height:
       return False
-    
+
     assert(len(bytes) == 4096)
 
     if order == FormatTIFF.LITTLE_ENDIAN:
