@@ -63,7 +63,7 @@ def run_group(symbol):
   for (m1,m2) in zip(fftmap.real_map(),p1_map):
     dif = abs(m1-m2)
     av = 0.5*(abs(m1)+abs(m2))
-    assert dif <= rel_tol * av
+    assert dif <= rel_tol * av, "%f not <= %f * %f" % (dif, rel_tol, av)
     if av != 0:
       mean_rel_dif = mean_rel_dif + dif/av
       n = n + 1
