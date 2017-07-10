@@ -158,7 +158,7 @@ class PopUpCharts(object):
 
     plot_ratio = max(min(xsize, ysize)/2.5, 3)
     if high_vis:
-      text_ratio = plot_ratio*6
+      text_ratio = plot_ratio*4
       separator = "\n"
     else:
       text_ratio = plot_ratio*3
@@ -244,7 +244,7 @@ class PopUpCharts(object):
         xloc = plt.MaxNLocator(5)
         if not high_vis:
           sub.xaxis.set_major_locator(xloc)
-          sub.xaxis.set_major_formatter(FormatStrFormatter("%3d"))
+          sub.xaxis.set_major_formatter(FormatStrFormatter("%5.1f"))
         if name == 'a':
           sub.set_ylabel('Number of images').set_fontsize(text_ratio)
         else:
@@ -290,7 +290,7 @@ class PopUpCharts(object):
         xloc = plt.MaxNLocator(5)
         if not high_vis:
           sub.xaxis.set_major_locator(xloc)
-          sub.xaxis.set_major_formatter(FormatStrFormatter("%3d"))
+          sub.xaxis.set_major_formatter(FormatStrFormatter("%5.1f"))
         if name == '\alpha':
           sub.set_ylabel('Number of images').set_fontsize(text_ratio)
         else:
