@@ -216,7 +216,9 @@ class ConstructFrameFromFiles(ConstructFrame):
     reflections_l = flatten_reflections(importer.reflections)
     experiments_l = flatten_experiments(importer.experiments)
     assert len(experiments_l) == 1, "cannot construct a single frame from multiple experiments"
-    self.frame = ConstructFrame.__init__(self, reflections_l[0], experiments_l[0]).make_frame()
+    frame = ConstructFrame.__init__(self, reflections_l[0], experiments_l[0])
+    if frame is not None:
+      self.frame.make_frame()
 
 def construct_frames_from_files(refl_name, json_name, outname=None, outdir=None):
   importer = Importer([refl_name, json_name], read_experiments=True, read_reflections=True, check_format=False)
