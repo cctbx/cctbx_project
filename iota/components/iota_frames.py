@@ -249,8 +249,8 @@ class FileListCtrl(ct.CustomListCtrl):
       if input_type in type_choices:
         preferred_selection = type_choices.index(input_type)
     elif os.path.isfile(path):
-      if input_type in ('image pickle', 'raw image'):
-        type_choices.extend(['raw image', 'image pickle'])
+      if input_type in ('image pickle file', 'raw image file'):
+        type_choices.extend(['raw image file', 'image pickle file'])
         if input_type in type_choices:
           preferred_selection = type_choices.index(input_type)
       elif input_type in ('raw image list', 'image pickle list'):
@@ -283,8 +283,8 @@ class FileListCtrl(ct.CustomListCtrl):
     item.type.type.SetSelection(inp_sel)
     if item.type.type.GetString(inp_sel) in ['raw image folder',
                                              'image pickle folder',
-                                             'image pickle',
-                                             'raw image',
+                                             'image pickle file',
+                                             'raw image file',
                                              'raw image list',
                                              'image pickle list']:
       self.main_window.toolbar.EnableTool(self.main_window.tb_btn_run.GetId(), True)
@@ -350,7 +350,7 @@ class FileListCtrl(ct.CustomListCtrl):
     type = item_obj.type.type.GetString(item_obj.type_selection)
 
     if os.path.isfile(path):
-      if type in ('raw image', 'image pickle'):
+      if type in ('raw image file', 'image pickle file'):
         self.view_images([path])
       elif type in ('raw image list', 'image pickle list'):
         with open(path, 'r') as f:
