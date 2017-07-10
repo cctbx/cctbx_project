@@ -72,56 +72,31 @@ from __future__ import absolute_import, division
 #     raise RuntimeError('NullReader doesn\'t have scan data')
 
 
-# class MemReader(ReaderBase):
-#   '''A reader for data already loaded in memory'''
+class MemReader(object):
+  '''A reader for data already loaded in memory'''
 
-#   def __init__(self, images):
-#     self._images = images
+  def __init__(self, images):
+    self._images = images
 
-#   def __eq__(self, other):
-#     return self.get_format_class() == other.get_format_class()
+  def paths(self):
+    raise NotImplementedError("MemReader has no image paths")
 
-#   def get_image_paths(self, indices=None):
-#     raise NotImplementedError("MemReader has no image paths")
+  def identifiers(self):
+    raise NotImplementedError("MemReader has no image paths")
 
-#   def get_image_size(self, panel=0):
-#     return self.get_format().get_detector()[panel].get_image_size()
+  def __len__(self):
+    return len(self._images)
 
-#   def get_format(self, index=None):
-#     return self._images[index]
+  def read(self, index):
+    format_instance = self._images[index]
+    return format_instance.get_raw_data()
 
-#   def get_format_class(self, index=None):
-#     return self._images[index].__class__
+  def is_single_file_reader(self):
+    return False
 
-#   def get_path(self, index=None):
-#     raise NotImplementedError("MemReader has no image paths")
+  def master_path(self):
+    return ''
 
-#   def is_valid(self, indices=None):
-#     return True
-
-#   def read(self, index=None):
-#     # Get the format instance
-#     format_instance = self.get_format(index)
-
-#     return format_instance.get_raw_data()
-
-#   def get_detectorbase(self, index=None):
-#     return self._images[index].get_detectorbase()
-
-#   def get_vendortype(self, index=None):
-#     return self._images[index].get_vendortype()
-
-#   def get_detector(self, index=None):
-#     return self._images[index].get_detector()
-
-#   def get_goniometer(self, index=None):
-#     return self._images[index].get_goniometer()
-
-#   def get_beam(self, index=None):
-#     return self._images[index].get_beam()
-
-#   def get_scan(self, index=None):
-#     return self._images[index].get_scan()
 
 class ExternalLookupItem(object):
   '''

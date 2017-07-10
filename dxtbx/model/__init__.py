@@ -389,9 +389,9 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
         r = OrderedDict([
           ('__id__', 'ImageSweep'),
           ('template', template)])
-      elif isinstance(imset, MemImageSet):
-        r = OrderedDict([
-          ('__id__', 'MemImageSet')])
+      # elif isinstance(imset, MemImageSet):
+      #   r = OrderedDict([
+      #     ('__id__', 'MemImageSet')])
       elif isinstance(imset, ImageSet):
         r = OrderedDict([
           ('__id__', 'ImageSet'),

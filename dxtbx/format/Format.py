@@ -88,6 +88,9 @@ class Reader(object):
   def paths(self):
     return self._filenames
 
+  def identifiers(self):
+    return self._filenames
+
   def __len__(self):
     return len(self._filenames)
 
