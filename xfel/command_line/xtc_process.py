@@ -672,12 +672,11 @@ class InMemScript(DialsProcessScript):
         # events such that the get every Nth event where N is the number of processes
         print "Striping events"
 
-        last = 0
-        first = 0
         would_process = -1
+        mem = first = last = 0
         for nevent, evt in enumerate(ds.events()):
           if nevent%size != rank: continue
-          if nevent >= max_events: continue
+          if nevent >= max_events: break
           would_process += 1
           if process_fractions:
             if would_process % process_fractions.denominator >= process_fractions.numerator: continue

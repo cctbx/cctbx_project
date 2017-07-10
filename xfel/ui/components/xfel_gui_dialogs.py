@@ -110,7 +110,7 @@ class SettingsDialog(BaseDialog):
                                        big_button=True,
                                        big_button_label='DB Credentials...',
                                        big_button_size=(130, -1),
-                                       value=self.params.experiment_tag)
+                                       value=self.params.experiment_tag if self.params.experiment_tag is not None else "")
     self.main_sizer.Add(self.db_cred,
                         flag=wx.EXPAND | wx.ALL,
                         border=10)

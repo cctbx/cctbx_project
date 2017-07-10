@@ -461,6 +461,7 @@ class RunStatsSentinel(Thread):
     params['distance'] = rg.detz_parameter if hasattr(rg, 'detz_parameter') else None
     params['bin_size'] = rg.binning if hasattr(rg, 'binning') else None
     params['energy'] = rg.energy if hasattr(rg, 'energy') else None
+    params['gain_mask_level'] = rg.gain_mask_level if hasattr(rg, 'gain_mask_level') else None
     return params
 
   def fetch_timestamps(self, indexed=False):
@@ -2202,6 +2203,9 @@ class RunStatsTab(BaseTab):
             command += 'format.cbf.rayonix.override_beam_y=%d '%params['beamy']
           if params['bin_size'] is not None:
             command += 'format.cbf.rayonix.bin_size=%d '%params['bin_size']
+        elif 'cspad' in params['address'].lower():
+          if params['gain_mask_level'] is not None:
+            command += 'format.cbf.cspad.gain_mask_value=%f '% params['gain_mask_level']
       elif params['format'] == 'pickle':
         if params['config'] is not None:
           command += 'input.cfg=%s '%params['config']
