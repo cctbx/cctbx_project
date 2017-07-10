@@ -194,7 +194,7 @@ def plot_run_stats(stats,
     axset = (ax1, ax2, ax3, ax4)
   for a in axset:
     a.tick_params(axis='x', which='both', bottom='off', top='off')
-  ax1.scatter(t.select(~low_sel), n_strong.select(~low_sel), edgecolors="none", color ='grey', s=spot_ratio)
+  ax1.scatter(t.select(~low_sel), n_strong.select(~low_sel), edgecolors="none", color ='#d9d9d9', s=spot_ratio)
   ax1.scatter(t.select(low_sel), n_strong.select(low_sel), edgecolors="none", color='blue', s=spot_ratio)
   ax1.set_ylim(ymin=0)
   ax1.axis('tight')
