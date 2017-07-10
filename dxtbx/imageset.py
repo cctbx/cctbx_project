@@ -766,6 +766,8 @@ class ImageSweep(ImageSet):
 
   def get_scan(self, index=None):
     ''' Get the scan.'''
+    if index is not None:
+      return self._scan[index]
     return self._scan
 
   def set_beam(self, beam):
