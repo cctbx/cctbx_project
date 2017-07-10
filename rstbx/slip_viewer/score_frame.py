@@ -6,8 +6,8 @@ from __future__ import division
 
 import wx
 
-
-_scores = {}
+from collections import OrderedDict
+_scores = OrderedDict()
 
 
 class ScoreSettingsFrame(wx.MiniFrame):
@@ -87,6 +87,8 @@ class ScoreSettingsPanel(wx.Panel):
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdatePrevious, id=self._id_previous)
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateText, id=self._id_text)
 
+    for i in xrange(self._root_frame.image_chooser.GetCount()):
+      _scores[self._root_frame.get_key(self._root_frame.image_chooser.GetClientData(i))] = None
 
   def OnNext(self, event):
     self._root_frame.OnNext(event)
@@ -98,7 +100,7 @@ class ScoreSettingsPanel(wx.Panel):
 
   def OnScore(self, event):
     score = self._id_buttons.index(event.EventObject.GetId())
-    key = self._root_frame.GetTitle()
+    key = self._root_frame.get_key(self._root_frame.image_chooser.GetClientData(self._root_frame.image_chooser.GetSelection()))
     _scores[key] = score
     self.OnNext(event)
 
@@ -115,7 +117,10 @@ class ScoreSettingsPanel(wx.Panel):
       if (path != '') :
         stream = open(path, "w")
         for (key, score) in _scores.iteritems():
-          print >> stream, "%s %d" % (key, score)
+	  if score is None:
+            print >> stream, "%s None" % (key)
+	  else:
+            print >> stream, "%s %d" % (key, score)
         stream.close()
         print "Dumped scores to", path
 
