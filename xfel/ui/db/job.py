@@ -2,7 +2,7 @@ from __future__ import division
 from xfel.ui.db import db_proxy
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED"]
-finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN"]
+finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR"]
 
 class Job(db_proxy):
   def __init__(self, app, job_id = None, **kwargs):
