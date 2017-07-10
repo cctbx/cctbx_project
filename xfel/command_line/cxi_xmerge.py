@@ -40,7 +40,7 @@ class xscaling_manager (scaling_manager) :
     if self.params.model is None:
       self.n_accepted = len(self.frames["cc"])
       self.n_low_corr = 0
-      self.those_accepted = flex.bool(self.n_accepted)
+      self.those_accepted = flex.bool(self.n_accepted, True)
     else:
       self.n_accepted = (self.frames["cc"]>self.params.min_corr).count(True)
       self.n_low_corr = (self.frames["cc"]>self.params.min_corr).count(False)
