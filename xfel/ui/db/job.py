@@ -2,7 +2,7 @@ from __future__ import division
 from xfel.ui.db import db_proxy
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED"]
-finished_job_statuses = ["DONE", "EXIT", "DELETED"]
+finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN"]
 
 class Job(db_proxy):
   def __init__(self, app, job_id = None, **kwargs):
@@ -67,7 +67,7 @@ class Job(db_proxy):
       print "(%d)"%len(item_ids)
       ids[item] = ",".join(item_ids)
 
-    if len(self.trial.isoforms) == 0 and self.trial.cell is None:
+    if len(self.trial.isoforms) == 0:
       print "Listing bin entries",
       query = """SELECT bin.id FROM `%s_bin` bin
                  JOIN `%s_cell` cell ON bin.cell_id = cell.id
@@ -76,14 +76,14 @@ class Job(db_proxy):
                  JOIN `%s_imageset` imgset ON imgset.id = expr.imageset_id
                  JOIN `%s_imageset_event` ie_e ON ie_e.imageset_id = imgset.id
                  JOIN `%s_event` evt ON evt.id = ie_e.event_id
-                 WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d""" % (
+                 WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d
+                 AND cell.trial_id is NULL""" % (
                  tag, tag, tag, tag, tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
       cursor = self.app.execute_query(query)
       item_ids = ["%d"%i[0] for i in cursor.fetchall()]
       print "(%d)"%len(item_ids)
       bin_ids = ",".join(item_ids)
 
-    if len(self.trial.isoforms) == 0:
       print "Listing cell entries",
       query = """SELECT cell.id FROM `%s_cell` cell
                  JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
@@ -116,7 +116,7 @@ class Job(db_proxy):
                    item, tag, item, item, item, ids[item])
         delete_and_commit(query)
 
-    if (len(self.trial.isoforms) == 0 and self.trial.cell is None) and len(cell_ids) > 0:
+    if len(self.trial.isoforms) == 0 and len(bin_ids) > 0:
       print "Deleting bin entries",
       query = """DELETE bin FROM `%s_bin` bin
                  WHERE bin.id IN (%s)""" % (

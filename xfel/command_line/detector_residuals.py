@@ -296,7 +296,9 @@ class Script(DCScript):
     return sm, color_vals
 
   def plot_obs_colored_by_deltapsi_pxlambda(self, reflections, panel = None, ax = None, bounds = None):
-    if 'delpsical.rad' not in reflections:
+    if 'delpsical.rad' not in reflections \
+      or 'delpsical.rad.pxlambda' not in reflections \
+      or 'xyzcal.mm.pxlambda' not in reflections:
       return
     assert panel is not None and ax is not None and bounds is not None
     data = reflections['delpsical.rad.pxlambda'] * (180/math.pi)
