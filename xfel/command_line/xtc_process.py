@@ -673,7 +673,7 @@ class InMemScript(DialsProcessScript):
         print "Striping events"
 
         would_process = -1
-        mem = first = last = 0
+        nevent = mem = first = last = 0
         for nevent, evt in enumerate(ds.events()):
           if nevent%size != rank: continue
           if nevent >= max_events: break
