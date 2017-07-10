@@ -61,7 +61,7 @@ PYTEST_PKG = "pytest-2.9.1.tar.gz"
 PYTEST_DEP_PY = "py-1.4.31.tar.gz"
 PYTEST_DEP_COLORAMA = "colorama-0.3.7.tar.gz"
 CYTHON_PKG = "cython-0.22.tar.gz"
-JINJA2_PKG = "Jinja2-2.8.tar.gz"
+JINJA2_PKG = "Jinja2-2.9.6.tar.gz"
 
 # HDF5
 BASE_HDF5_PKG_URL = "http://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/"
