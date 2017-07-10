@@ -48,6 +48,7 @@ class determine_connectivity(object):
       self.geometry_restraints.get_all_bond_proxies(sites_cart=self.sites_cart)
     self.angle_proxies = self.geometry_restraints.get_all_angle_proxies()
     self.dihedral_proxies = self.geometry_restraints.dihedral_proxies # this should be function in GRM, like previous
+    self.planarity_proxies = self.geometry_restraints.planarity_proxies
     self.fsc0 = \
       self.geometry_restraints.shell_sym_tables[0].full_simple_connectivity()
     self.n_atoms = self.pdb_hierarchy.atoms_size()
@@ -63,6 +64,9 @@ class determine_connectivity(object):
     self.count_H()
     # 2. find preliminary list of second neighbors
     self.find_second_neighbors_raw()
+
+    # Get plane proxies --> useful for NH2 groups without dihedrals
+    self.process_plane_proxies()
 
     # 3. process preliminary list to eliminate atoms in double conformation
     self.process_second_neighbors()
@@ -113,7 +117,7 @@ class determine_connectivity(object):
 
   def find_second_neighbors_raw(self):
     """Get a an array listing all second neighbors for every H atom.
-    :returns: an array containing lists: [[iseq1, iseq2, ...], ...]
+    :returns: a list of lists: [[iseq1, iseq2, ...], ...]
     :rtype: [[],[].[]]
     """
     self.second_neighbors_raw = [[] for i in range(self.n_atoms)]
@@ -131,6 +135,8 @@ class determine_connectivity(object):
         assert(self.h_connectivity[ih].a0['iseq'] == i_parent)
         self.second_neighbors_raw[ih].append(i_second)
         self.angle_dict[(ih, i_parent, i_second)] = ap.angle_ideal
+
+
 
   def process_second_neighbors(self):
     """Once canditades for second neighbors are determined, they are further
@@ -165,38 +171,36 @@ class determine_connectivity(object):
         self.a1_atoms.add(i_a1)
         self.a0a1_dict[i_parent] = i_a1
 
-  def print_stuff(self):
-    """Print information of connectivity for each H atom."""
-    for neighbors in self.h_connectivity:
-      if neighbors is None: continue
-      ih = neighbors.ih
-      if (ih != 1620): continue
-      labels = self.atoms[ih].fetch_labels()
-      i_a0 = neighbors.a0['iseq']
-      i_a1 = neighbors.a1['iseq']
-      string = self.names[i_a1]+'('+str(i_a1)+')'
-      if 'iseq' in neighbors.a2:
-        i_a2 = neighbors.a2['iseq']
-        string = string + self.names[i_a2]
-      if 'iseq' in neighbors.a3:
-        string = string + self.names[neighbors.a3['iseq']]
-      output = (self.names[ih], ih, labels.resseq.strip(), self.names[i_a0], i_a0, string)
-      stringh = ''
-      if 'iseq' in neighbors.h1:
-        stringh = stringh + self.names[neighbors.h1['iseq']]
-      if 'iseq' in neighbors.h2:
-        stringh = stringh + self.names[neighbors.h2['iseq']]
-      if 'iseq' in neighbors.b1:
-        stringb1 = self.names[neighbors.b1['iseq']]
-      else:
-        stringb1 = 'n/a'
-      output = output + (stringh,) + (stringb1,)#+ (self.third_neighbors_raw[i_a0],)
-      print '%s %s (%s) , %s (%s) , %s , %s,%s' % output
-      print 'angle_a1a0a2', neighbors.a0['angle_a1a0a2']
-      print 'angle_ideal a1', neighbors.a1['angle_ideal']
-      print 'angle_ideal a2', neighbors.a2['angle_ideal']
-      STOP()
-
+#  def print_stuff(self):
+#    """Print information of connectivity for each H atom."""
+#    for neighbors in self.h_connectivity:
+#      if neighbors is None: continue
+#      ih = neighbors.ih
+#      if (ih != 1620): continue
+#      labels = self.atoms[ih].fetch_labels()
+#      i_a0 = neighbors.a0['iseq']
+#      i_a1 = neighbors.a1['iseq']
+#      string = self.names[i_a1]+'('+str(i_a1)+')'
+#      if 'iseq' in neighbors.a2:
+#        i_a2 = neighbors.a2['iseq']
+#        string = string + self.names[i_a2]
+#      if 'iseq' in neighbors.a3:
+#        string = string + self.names[neighbors.a3['iseq']]
+#      output = (self.names[ih], ih, labels.resseq.strip(), self.names[i_a0], i_a0, string)
+#      stringh = ''
+#      if 'iseq' in neighbors.h1:
+#        stringh = stringh + self.names[neighbors.h1['iseq']]
+#      if 'iseq' in neighbors.h2:
+#        stringh = stringh + self.names[neighbors.h2['iseq']]
+#      if 'iseq' in neighbors.b1:
+#        stringb1 = self.names[neighbors.b1['iseq']]
+#      else:
+#        stringb1 = 'n/a'
+#      output = output + (stringh,) + (stringb1,)#+ (self.third_neighbors_raw[i_a0],)
+#      print '%s %s (%s) , %s (%s) , %s , %s,%s' % output
+#      print 'angle_a1a0a2', neighbors.a0['angle_a1a0a2']
+#      print 'angle_ideal a1', neighbors.a1['angle_ideal']
+#      print 'angle_ideal a2', neighbors.a2['angle_ideal']
 
 
   def determine_a0_angles_and_third_neighbors_without_dihedral(self):
@@ -254,7 +258,32 @@ class determine_connectivity(object):
       # If there is no dihedral ideal angle, use randomly first atom
       # in list of third neighbors
       self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
+      self.check_for_plane_proxy(ih)
 
+  def process_plane_proxies(self):
+    self.plane_h = {}
+    for pp in self.planarity_proxies:
+      hlist = []
+      for i_test in pp.i_seqs:
+        if self.hd_sel[i_test]:
+          hlist.append(i_test)
+      if hlist:
+        self.plane_h[hlist[0]]=hlist[1:]
+
+  def check_for_plane_proxy(self, ih):
+    neighbors = self.h_connectivity[ih]
+    a0 = neighbors.a0['iseq']
+    a1 = neighbors.a1['iseq']
+    b1 = neighbors.b1['iseq']
+    if (neighbors.h1 and not neighbors.h2): # if there is only 1 H atom as second neighbor
+      ih2 = neighbors.h1['iseq']
+      if ('dihedral_ideal' not in neighbors.b1 or
+          'dihedral_ideal' not in self.h_connectivity[ih2].b1):
+        if ih in self.plane_h:
+          dihedral = dihedral_angle(
+                sites = [self.sites_cart[ih], self.sites_cart[a0],
+                self.sites_cart[a1],self.sites_cart[b1]])
+          neighbors.b1['dihedral_ideal'] = math.degrees(dihedral)
 
   def assign_a0_angles(self, ih):
     """ Having a list of dictionaries for the angles involving atom a0,

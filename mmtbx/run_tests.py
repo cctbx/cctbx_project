@@ -106,9 +106,20 @@ tst_list = (
   "$D/regression/tst_altloc_chain_break.py",
   "$D/hydrogens/build_hydrogens.py",
   "$D/hydrogens/tst.py",
-  #"$D/hydrogens/tst_h_connectivity.py", # temporarily disable
-  #"$D/hydrogens/tst_h_parameterization_1.py", # temporarily disable
-  #"$D/hydrogens/tst_h_parameterization_2.py", # temporarily disable
+  "$D/hydrogens/tst_connectivity.py",
+  "$D/hydrogens/tst_parameterization_1.py",
+  "$D/hydrogens/tst_parameterization_2.py",
+  "$D/hydrogens/tst_parameterization_3.py",
+  "$D/hydrogens/tst_parameterization_4.py",
+  "$D/hydrogens/tst_parameterization_5.py",
+  "$D/hydrogens/tst_parameterization_6.py",
+  "$D/hydrogens/tst_parameterization_7.py",
+  "$D/hydrogens/tst_riding_fd_1.py",
+  "$D/hydrogens/tst_riding_fd_2.py",
+  "$D/hydrogens/tst_riding_fd_3.py",
+  "$D/hydrogens/tst_riding_fd_4.py",
+  "$D/hydrogens/tst_riding_fd_5.py",
+  "$D/hydrogens/tst_riding_minimize.py",
   "$D/max_lik/tst_maxlik.py",
   "$D/masks/tst_masks.py",
   "$D/masks/tst_asu_mask.py",
