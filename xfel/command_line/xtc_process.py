@@ -14,7 +14,6 @@ import libtbx.load_env
 from libtbx.utils import Sorry, Usage
 from dials.util.options import OptionParser
 from libtbx.phil import parse
-from dxtbx.imageset import MemImageSet
 from dxtbx.datablock import DataBlockFactory
 from scitbx.array_family import flex
 import numpy as np
@@ -905,7 +904,8 @@ class InMemScript(DialsProcessScript):
 
     self.cache_ranges(dxtbx_img, self.params)
 
-    imgset = MemImageSet([dxtbx_img])
+    from dxtbx.imageset import ImageSet, ImageSetData, MemReader
+    imgset = ImageSet(ImageSetData(MemReader([dxtbx_img])))
     if self.params.dispatch.estimate_gain_only:
       from dials.command_line.estimate_gain import estimate_gain
       estimate_gain(imgset)
