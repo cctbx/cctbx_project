@@ -231,7 +231,8 @@ class table_data (object) :
           column_is_ints = False
           break
       if column_is_ints:
-        self.data[i] = [ x if x is None else int(x) for x in column ]
+        self.data[i] = [ int(x) if x and x == x else None
+                         for x in column ]
 
   def add_row (self, row) :
     '''Unclear if this is used from outside the class'''
