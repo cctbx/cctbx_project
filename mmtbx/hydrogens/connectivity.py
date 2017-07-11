@@ -83,6 +83,9 @@ class determine_connectivity(object):
     # third neighbors
     self.process_a0_angles_and_third_neighbors_without_dihedral()
 
+    # Finally, add slipped H atoms again (not in bond proxies)
+    self.add_slipped()
+
     #self.print_stuff()
 
 
@@ -458,6 +461,13 @@ class determine_connectivity(object):
     #  print 'atom: %s residue: %s chain %s' % (self.atoms[hatom].name,
     #    labels.resseq.strip(), labels.chain_id), list(self.fsc0[hatom])
     self.connectivity_slipped = slipped
+
+
+  def add_slipped(self):
+    for ih in self.connectivity_slipped:
+      self.h_connectivity[ih] = neighbors(
+        ih = ih,
+        number_non_h_neighbors = 0)
 
   def hd_selection(self):
     """Get a selector array for all hydrogen and deuterium scatterers of the structure.
