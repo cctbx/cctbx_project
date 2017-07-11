@@ -695,7 +695,8 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     matthews_results = matthews.matthews_rupp(
       crystal_symmetry = miller_obs,
       n_residues = params.scaling.input.asu_contents.n_residues,
-      n_bases = params.scaling.input.asu_contents.n_bases)
+      n_bases=params.scaling.input.asu_contents.n_bases,
+      out=text_out)
     self.matthews = matthews_results
     self.matthews.show(out=text_out)
     params.scaling.input.asu_contents.n_residues = matthews_results.n_residues

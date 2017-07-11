@@ -171,7 +171,8 @@ class matthews_rupp (scaling.xtriage_analysis) :
   def __init__ (self,
       crystal_symmetry,
       n_residues=None,
-      n_bases=None) :
+      n_bases=None,
+      out=None):
     from iotbx import data_plots
     self.n_residues_in = n_residues
     self.n_bases_in = n_bases
@@ -180,7 +181,7 @@ class matthews_rupp (scaling.xtriage_analysis) :
       n_residues = 1
       n_bases = 0
       best_guess_is_n_residues = True
-    vm_estimator = p_vm_calculator(crystal_symmetry, n_residues, n_bases)
+    vm_estimator = p_vm_calculator(crystal_symmetry, n_residues, n_bases, out=out)
     if (best_guess_is_n_residues) :
       self.n_copies = 1
       self.n_residues = int(vm_estimator.best_guess)
