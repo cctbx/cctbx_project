@@ -189,6 +189,9 @@ xtc_phil_str = '''
         gain_mask_value = None
           .type = float
           .help = If not None, use the gain mask for the run to multiply the low-gain pixels by this number
+        per_pixel_gain = False
+          .type = bool
+          .help = If True, use a per pixel gain from the run's calib folder, if available
         common_mode {
           algorithm = default custom
             .type = choice
@@ -819,7 +822,7 @@ class InMemScript(DialsProcessScript):
                                                       common_mode=self.common_mode,
                                                       apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
                                                       gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
-                                                      per_pixel_gain=False)
+                                                      per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain)
       elif self.params.format.cbf.mode == "rayonix":
         data = rayonix_tbx.get_data_from_psana_event(evt, self.params.input.address)
       if data is None:
