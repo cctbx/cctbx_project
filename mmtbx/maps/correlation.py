@@ -42,7 +42,7 @@ class five_cc(object):
       space_group_info      = xray_structure.space_group_info(),
       pre_determined_n_real = map.accessor().all(),
       symmetry_flags        = maptbx.use_space_group_symmetry)
-    self.atom_radius = self._atom_radius()
+    self.atom_radius = None
     bs_mask = masks.mask_from_xray_structure(
       xray_structure        = self.xray_structure,
       p1                    = True,
@@ -62,6 +62,7 @@ class five_cc(object):
     if(compute_cc_box):
       self.cc_box = from_map_map(map_1=self.map, map_2=map_calc)
     if(compute_cc_image):
+      self.atom_radius = self._atom_radius()
       self.cc_image = self._cc_image(map_calc = map_calc)
     if(compute_cc_volume):
       self.cc_volume = self._cc_volume(map_calc=map_calc)

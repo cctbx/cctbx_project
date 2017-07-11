@@ -17,6 +17,81 @@ from cctbx import eltbx
 from libtbx.test_utils import approx_equal
 from mmtbx.maps.correlation import five_cc
 
+class rsr_model(object):
+  def __init__(self,
+               pdb_hierarchy,
+               xray_structure,
+               target_map_object=None,
+               geometry_restraints_manager=None):
+    adopt_init_args(self, locals())
+    self.unit_cell = self.xray_structure.unit_cell()
+    self.xray_structure = xray_structure.deep_copy_scatterers()
+    self.xray_structure_start = xray_structure.deep_copy_scatterers()
+    self.states_collector = mmtbx.utils.states(
+      pdb_hierarchy  = self.pdb_hierarchy,
+      xray_structure = self.xray_structure,
+      counter        = 1)
+    self.states_collector.add(sites_cart = self.xray_structure.sites_cart())
+    self.rotamer_manager = RotamerEval()
+    self.assert_pdb_hierarchy_xray_structure_sync()
+    #
+    self.five_cc = None
+    self.rmsd_b = None
+    self.rmsd_a = None
+    self.dist_from_start = 0
+    self.dist_from_previous = 0
+    self.stats_evaluations = []
+    #
+    self.initialize()
+
+  def assert_pdb_hierarchy_xray_structure_sync(self):
+    # XXX nonsense
+    sc1 = self.xray_structure.sites_cart()
+    sc2 = self.pdb_hierarchy.atoms().extract_xyz()
+    assert approx_equal(sc1, sc2, 1.e-3)
+
+  def initialize(self):
+    self.assert_pdb_hierarchy_xray_structure_sync()
+    self.cc_mask = five_cc(
+      map               = self.target_map_object.map_data,
+      xray_structure    = self.xray_structure,
+      d_min             = self.target_map_object.d_min,
+      compute_cc_box    = False,
+      compute_cc_image  = False,
+      compute_cc_mask   = True,
+      compute_cc_volume = False,
+      compute_cc_peaks  = False).cc_mask
+    if(self.geometry_restraints_manager is not None):
+      es = self.geometry_restraints_manager.energies_sites(
+        sites_cart = self.xray_structure.sites_cart())
+      self.rmsd_a = es.angle_deviations()[2]
+      self.rmsd_b = es.bond_deviations()[2]
+    self.dist_from_start = flex.mean(self.xray_structure_start.distances(
+      other = self.xray_structure))
+    self.assert_pdb_hierarchy_xray_structure_sync()
+
+  def show(self, prefix="", log=None):
+    self.assert_pdb_hierarchy_xray_structure_sync()
+    if(log is None): log = sys.stdout
+    print >> log, "%smodel-to-map fit, CC_mask: %-6.4f"%(prefix, self.cc_mask)
+    mso = model_statistics.geometry(
+      pdb_hierarchy      = self.pdb_hierarchy,
+      molprobity_scores  = libtbx.env.has_module("probe"),
+      restraints_manager = self.geometry_restraints_manager)
+    mso.show(prefix=prefix, out=log, lowercase=True)
+    self.stats_evaluations.append(group_args(
+      cc       = self.cc_mask,
+      geometry = mso))
+
+  def update(self, xray_structure):
+    self.dist_from_previous = flex.mean(self.xray_structure.distances(
+      other = xray_structure))
+    self.xray_structure = xray_structure
+    self.pdb_hierarchy.adopt_xray_structure(xray_structure)
+    self.initialize()
+    self.states_collector.add(sites_cart = xray_structure.sites_cart())
+    self.assert_pdb_hierarchy_xray_structure_sync()
+
 def flatten(l):
   if l is None: return None
   return sum(([x] if not (isinstance(x, list) or isinstance(x, flex.size_t)) else flatten(x) for x in l), [])

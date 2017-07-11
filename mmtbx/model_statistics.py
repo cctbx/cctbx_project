@@ -92,7 +92,7 @@ class geometry_no_grm(object):
         print "  %s" % str(e)
         pass
 
-  def format_molprobity_scores(self, prefix=""):
+  def format_molprobity_scores(self, prefix="", lowercase=False):
     clashscore_explanation = '"Clashscore and/or Probe failed to process model"'
     result="%s" % prefix
     if(self.ramachandran_outliers is not None):
@@ -124,10 +124,14 @@ class geometry_no_grm(object):
         prefix, str(self.n_cis_general),
         prefix, str(self.n_twisted_proline),
         prefix, str(self.n_twisted_general))
-    if not prefix:
-      result = result.capitalize()
+    if(lowercase):
+      result = result.swapcase()
     return result
 
+  def show(self, prefix="", lowercase=False, out=None):
+    if(out is None): out = sys.stdout
+    result = self.format_molprobity_scores(prefix=prefix, lowercase=lowercase)
+    print >> out, result
 
 class geometry(geometry_no_grm):
   def __init__(
@@ -143,117 +147,118 @@ class geometry(geometry_no_grm):
     super(geometry, self).__init__(
         pdb_hierarchy=pdb_hierarchy,
         molprobity_scores=molprobity_scores)
-    self.cdl_restraints=cdl_restraints
-    sites_cart = pdb_hierarchy.atoms().extract_xyz()
-    energies_sites = \
-      restraints_manager.energies_sites(
-        sites_cart        = sites_cart,
-        compute_gradients = False)
-    if(hasattr(energies_sites, "geometry")):
-      esg = energies_sites.geometry
-    else: esg = energies_sites
-    self.a = None
-    self.b = None
-    self.angle_deltas = None
-    self.bond_deltas = None
-    if not hasattr(esg, "angle_deviations"): return
-    if automatically_use_amber and hasattr(esg, "amber"):
-      self.used_amber=True
-      amber_parm = restraints_manager.amber_structs.parm
-      self.a, angle_deltas, angle_extremes = esg.angle_deviations(
-        sites_cart, amber_parm,
-        ignore_hd=ignore_hydrogens,
-        get_deltas=True,
-        get_extremes=True,
-        )
-      self.angle_extremes = angle_extremes
-      self.b, bond_deltas, bond_extremes = esg.bond_deviations(
-        sites_cart, amber_parm,
-        ignore_hd=ignore_hydrogens,
-        get_deltas=True,
-        get_extremes=True,
-        )
-      self.bond_extremes = bond_extremes
-      self.a_number = esg.n_angle_proxies(amber_parm,
-                                          ignore_hd=ignore_hydrogens)
-      self.b_number = esg.n_bond_proxies(amber_parm,
-                                         ignore_hd=ignore_hydrogens)
-      self.c, self.p, self.ll, self.d, self.n = None, None, None, None, None
-      self.c_number=0
-      self.p_number=0
-      self.d_number=0
+    if(restraints_manager is not None):
+      self.cdl_restraints=cdl_restraints
+      sites_cart = pdb_hierarchy.atoms().extract_xyz()
+      energies_sites = \
+        restraints_manager.energies_sites(
+          sites_cart        = sites_cart,
+          compute_gradients = False)
+      if(hasattr(energies_sites, "geometry")):
+        esg = energies_sites.geometry
+      else: esg = energies_sites
+      self.a = None
+      self.b = None
+      self.angle_deltas = None
+      self.bond_deltas = None
+      if not hasattr(esg, "angle_deviations"): return
+      if automatically_use_amber and hasattr(esg, "amber"):
+        self.used_amber=True
+        amber_parm = restraints_manager.amber_structs.parm
+        self.a, angle_deltas, angle_extremes = esg.angle_deviations(
+          sites_cart, amber_parm,
+          ignore_hd=ignore_hydrogens,
+          get_deltas=True,
+          get_extremes=True,
+          )
+        self.angle_extremes = angle_extremes
+        self.b, bond_deltas, bond_extremes = esg.bond_deviations(
+          sites_cart, amber_parm,
+          ignore_hd=ignore_hydrogens,
+          get_deltas=True,
+          get_extremes=True,
+          )
+        self.bond_extremes = bond_extremes
+        self.a_number = esg.n_angle_proxies(amber_parm,
+                                            ignore_hd=ignore_hydrogens)
+        self.b_number = esg.n_bond_proxies(amber_parm,
+                                           ignore_hd=ignore_hydrogens)
+        self.c, self.p, self.ll, self.d, self.n = None, None, None, None, None
+        self.c_number=0
+        self.p_number=0
+        self.d_number=0
+        self.bond_deltas_histogram = \
+          flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
+        self.angle_deltas_histogram = \
+          flex.histogram(data = flex.abs(angle_deltas), n_slots = n_histogram_slots)
+        # nonbonded_distances = esg.nonbonded_distances()
+        # self.nonbonded_distances_histogram = flex.histogram(
+        #   data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
+        for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
+          for value_type in [("mean",2), ("max",1), ("min",0)] :
+            name = "%s_%s" % (restraint_type, value_type[0])
+            if getattr(self, restraint_type) is None:
+              setattr(self, name, None)
+              continue
+            setattr(self, name, getattr(self, restraint_type)[value_type[1]])
+        return
+      self.a = esg.angle_deviations()
+      self.b = esg.bond_deviations()
+      self.b_z = esg.bond_deviations_z()
+      self.a_z = esg.angle_deviations_z()
+      self.b_w = esg.bond_deviations_weighted()
+      self.a_w = esg.angle_deviations_weighted()
+      self.a_number = esg.get_filtered_n_angle_proxies()
+      self.b_number = esg.get_filtered_n_bond_proxies()
+      self.c = esg.chirality_deviations()
+      self.d = esg.dihedral_deviations()
+      self.p = esg.planarity_deviations()
+      self.ll = esg.parallelity_deviations()
+      self.n = esg.nonbonded_deviations()
+      self.c_number = esg.n_chirality_proxies
+      self.d_number = esg.n_dihedral_proxies
+      self.p_number = esg.n_planarity_proxies
+      self.n_number = esg.n_nonbonded_proxies
+      #
+      for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
+        for value_type in [("mean",2), ("max",1), ("min",0)] :
+          name = "%s_%s" % (restraint_type, value_type[0])
+          if getattr(self, restraint_type) is None: continue
+          setattr(self, name, getattr(self, restraint_type)[value_type[1]])
+      #
+      if(hasattr(restraints_manager, "geometry")):
+        rmg = restraints_manager.geometry
+      else: rmg = restraints_manager
+      bond_deltas = geometry_restraints.bond_deltas(
+        sites_cart         = sites_cart,
+        sorted_asu_proxies = rmg.pair_proxies().bond_proxies)
+      angle_deltas = geometry_restraints.angle_deltas(
+        sites_cart = sites_cart,
+        proxies    = rmg.angle_proxies)
+      nonbonded_distances = esg.nonbonded_distances()
+      self.number_of_worst_clashes = (nonbonded_distances<0.5).count(True)
       self.bond_deltas_histogram = \
         flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
       self.angle_deltas_histogram = \
         flex.histogram(data = flex.abs(angle_deltas), n_slots = n_histogram_slots)
-      # nonbonded_distances = esg.nonbonded_distances()
-      # self.nonbonded_distances_histogram = flex.histogram(
-      #   data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
-      for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
-        for value_type in [("mean",2), ("max",1), ("min",0)] :
-          name = "%s_%s" % (restraint_type, value_type[0])
-          if getattr(self, restraint_type) is None:
-            setattr(self, name, None)
-            continue
-          setattr(self, name, getattr(self, restraint_type)[value_type[1]])
-      return
-    self.a = esg.angle_deviations()
-    self.b = esg.bond_deviations()
-    self.b_z = esg.bond_deviations_z()
-    self.a_z = esg.angle_deviations_z()
-    self.b_w = esg.bond_deviations_weighted()
-    self.a_w = esg.angle_deviations_weighted()
-    self.a_number = esg.get_filtered_n_angle_proxies()
-    self.b_number = esg.get_filtered_n_bond_proxies()
-    self.c = esg.chirality_deviations()
-    self.d = esg.dihedral_deviations()
-    self.p = esg.planarity_deviations()
-    self.ll = esg.parallelity_deviations()
-    self.n = esg.nonbonded_deviations()
-    self.c_number = esg.n_chirality_proxies
-    self.d_number = esg.n_dihedral_proxies
-    self.p_number = esg.n_planarity_proxies
-    self.n_number = esg.n_nonbonded_proxies
-    #
-    for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
-      for value_type in [("mean",2), ("max",1), ("min",0)] :
-        name = "%s_%s" % (restraint_type, value_type[0])
-        if getattr(self, restraint_type) is None: continue
-        setattr(self, name, getattr(self, restraint_type)[value_type[1]])
-    #
-    if(hasattr(restraints_manager, "geometry")):
-      rmg = restraints_manager.geometry
-    else: rmg = restraints_manager
-    bond_deltas = geometry_restraints.bond_deltas(
-      sites_cart         = sites_cart,
-      sorted_asu_proxies = rmg.pair_proxies().bond_proxies)
-    angle_deltas = geometry_restraints.angle_deltas(
-      sites_cart = sites_cart,
-      proxies    = rmg.angle_proxies)
-    nonbonded_distances = esg.nonbonded_distances()
-    self.number_of_worst_clashes = (nonbonded_distances<0.5).count(True)
-    self.bond_deltas_histogram = \
-      flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
-    self.angle_deltas_histogram = \
-      flex.histogram(data = flex.abs(angle_deltas), n_slots = n_histogram_slots)
-    self.nonbonded_distances_histogram = flex.histogram(
-      data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
-    #
-    assert approx_equal(
-      esg.target,
-      esg.angle_residual_sum+
-      esg.bond_residual_sum+
-      esg.chirality_residual_sum+
-      esg.dihedral_residual_sum+
-      esg.nonbonded_residual_sum+
-      esg.planarity_residual_sum+
-      esg.parallelity_residual_sum+
-      esg.reference_coordinate_residual_sum+
-      esg.reference_dihedral_residual_sum+
-      esg.ncs_dihedral_residual_sum+
-      esg.den_residual_sum+
-      esg.ramachandran_residual_sum)
-    del energies_sites, esg # we accumulate this object, so make it clean asap
+      self.nonbonded_distances_histogram = flex.histogram(
+        data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
+      #
+      assert approx_equal(
+        esg.target,
+        esg.angle_residual_sum+
+        esg.bond_residual_sum+
+        esg.chirality_residual_sum+
+        esg.dihedral_residual_sum+
+        esg.nonbonded_residual_sum+
+        esg.planarity_residual_sum+
+        esg.parallelity_residual_sum+
+        esg.reference_coordinate_residual_sum+
+        esg.reference_dihedral_residual_sum+
+        esg.ncs_dihedral_residual_sum+
+        esg.den_residual_sum+
+        esg.ramachandran_residual_sum)
+      del energies_sites, esg # we accumulate this object, so make it clean asap
 
   def __setattr1__(self, attr, value):
     print '__setattr__',attr,value
@@ -261,22 +266,22 @@ class geometry(geometry_no_grm):
       assert 0
     self.__dict__[attr] = value
 
-  def show(self, out=None, prefix="", pdb_deposition=False, message = ""):
+  def show(self, out=None, prefix="", pdb_deposition=False, message = "",
+                 lowercase=False):
     if(out is None): out = sys.stdout
     if(pdb_deposition):
       prefix = "REMARK   3  "
     else:
       if hasattr(self, 'bond_extremes'): print >> out, self.bond_extremes
       if hasattr(self, 'angle_extremes'): print >> out, self.angle_extremes
-    print >> out, self.format_basic_geometry_statistics(prefix=prefix)
-    print >> out, self.format_molprobity_scores(prefix=prefix)
+    print >> out, self.format_basic_geometry_statistics(prefix=prefix,
+      lowercase=lowercase, show_library_name=pdb_deposition)
+    print >> out, self.format_molprobity_scores(prefix=prefix,
+      lowercase=lowercase)
     out.flush()
 
-  def format_basic_geometry_statistics(self,
-                                       prefix="",
-                                       include_rmsz=False,
-                                       include_w_rmsd=False,
-                                      ):
+  def format_basic_geometry_statistics(self, prefix="", lowercase=False,
+        show_library_name=False):
     def fmt(f1,f2,d1):
       fmt_str= "%6.3f %7.3f %6d"
       if f1 is None  : return '   -       -       -  '
@@ -285,39 +290,28 @@ class geometry(geometry_no_grm):
       if f1 is None: return '  -   '
       return "%-6.3f"%(f1[0])
     result = "%s" % prefix
-    if getattr(self, 'used_amber', False):
-      result = """%(prefix)sAMBER FORCE FIELD
-%(prefix)s""" % locals()
-    else:
-      rl = "GEOSTD + MON.LIB."
-      if self.cdl_restraints:
-        rl += " + CDL v1.2"
-      result = """%sRESTRAINTS LIBRARY
-%s  %s
-%s""" % (prefix, prefix, rl, prefix)
+    if(show_library_name):
+      if getattr(self, 'used_amber', False):
+        result = """%(prefix)sAMBER FORCE FIELD
+  %(prefix)s""" % locals()
+      else:
+        rl = "GEOSTD + MON.LIB."
+        if self.cdl_restraints:
+          rl += " + CDL v1.2"
+        result = """%sRESTRAINTS LIBRARY
+  %s  %s
+  %s""" % (prefix, prefix, rl, prefix)
 
     if getattr(self, "b_mean", None):
       result += """
 %(prefix)sDEVIATIONS FROM IDEAL VALUES.
 %(prefix)s               RMSD     MAX  COUNT""" % locals()
-      if include_rmsz:
-        result += "    RMSZ"
-      if include_w_rmsd:
-        result += "  W-RMSD"
       result += "\n%s BOND      : %s" % (
         prefix,
         fmt(self.b_mean, self.b_max, self.b_number))
-      if include_rmsz:
-        result += "  %6.3f" % self.b_z[2]
-      if include_w_rmsd:
-        result += "  %6.3f" % self.b_w[2]
       result += "\n%s ANGLE     : %s" % (
         prefix,
         fmt(self.a_mean, self.a_max, self.a_number))
-      if include_rmsz:
-        result += "  %6.3f" % self.a_z[2]
-      if include_w_rmsd:
-        result += "  %6.3f" % self.a_w[2]
       result += """
 %s CHIRALITY : %s
 %s PLANARITY : %s
@@ -330,8 +324,8 @@ class geometry(geometry_no_grm):
        prefix, fmt2(self.n),
        prefix,
        )
-    if not prefix:
-      result = result.capitalize()
+    if(lowercase):
+      result = result.swapcase()
     return result
 
   def as_cif_block(self, cif_block=None):

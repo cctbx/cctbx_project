@@ -961,7 +961,7 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
       restraints_manager = rm,
       cdl_restraints     = params.pdb_interpretation.restraints_library.cdl)
     print >> log
-    mso.show(out = log, prefix="")
+    mso.show(out = log, prefix="", lowercase=True)
     utils.print_header("ADP statistics", out = log)
     model = mmtbx.model.manager(
       xray_structure     = xray_structure,
