@@ -90,7 +90,7 @@ class Stats(object):
     import time
     for cell_id in cell_ids:
       cell = cells_d[cell_id]
-      time.sleep(0.0005)
+      time.sleep(0.000005)
       for bin in cell.bins:
         bin.count = flex.sum(counts.select(bin_ids == bin.id))
 
