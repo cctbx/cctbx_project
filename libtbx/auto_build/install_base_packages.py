@@ -600,7 +600,7 @@ Installation of Python packages may fail.
       'pip',
       'pytest',
       'pythonextra',
-      'jinja',
+      'jinja', 'jinja2',
       'junitxml',
       'hdf5',
       'biopython',
@@ -632,6 +632,8 @@ Installation of Python packages may fail.
     ]
     self.options.skip_base = self.options.skip_base.split(",")
     packages_order = []
+    for i in packages:
+      assert i in order, "Installation order unknown for %s" % i
     for i in order:
       if i in packages:
         if i in self.options.skip_base: continue
