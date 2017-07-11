@@ -8,10 +8,12 @@ via the web (yet).
 from __future__ import division
 from bootstrap import Toolbox
 from installer_utils import *
+import json
 import os.path as op
 import os
 import platform
 import sys
+import urllib2
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 BASE_PIPY_PKG_URL = "https://pypi.python.org/packages/source"
@@ -23,6 +25,25 @@ def pypi_pkg_url(package):
   else:
     pkgname = package
   return "%s/%s/%s" % (BASE_PIPY_PKG_URL, package[0], pkgname)
+
+def get_pypi_package_information(package, version=None):
+  '''Retrieve information about a PyPi package.'''
+  metadata = 'https://pypi.python.org/pypi/{package}/json'.format(package=package)
+  pypidata = urllib2.urlopen(metadata).read()
+  pkginfo = json.loads(pypidata)
+  if not version:
+    version = pkginfo['info']['version']
+  if version not in pkginfo['releases']:
+    raise RuntimeError("Could not find release '{version}' for {package} on pypi.".format(package=package, version=version))
+# print "{name} {version}\n{summary}".format(**pkginfo['info'])
+  candidates = filter(lambda c: c.get('python_version') == 'source' and c.get('packagetype') == 'sdist', pkginfo['releases'][version])
+  if not candidates:
+    raise RuntimeError("Could not find a source release file for {package} {version} on pypi.".format(package=package, version=version))
+  package = candidates[0]
+# print "Downloading {filename} ({size} bytes) with hash {md5_digest}\nfrom {url}".format(**package)
+  for field in ('name', 'version', 'summary'):
+    package[field] = pkginfo['info'][field]
+  return package
 
 # OpenSSL - needed for Mac OS X 10.11 and later
 BASE_OPENSSL_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/master/"
@@ -62,6 +83,7 @@ PYTEST_DEP_PY = "py-1.4.31.tar.gz"
 PYTEST_DEP_COLORAMA = "colorama-0.3.7.tar.gz"
 CYTHON_PKG = "cython-0.22.tar.gz"
 JINJA2_PKG = "Jinja2-2.9.6.tar.gz"
+JINJA2_VERSION = "2.9.6"
 
 # HDF5
 BASE_HDF5_PKG_URL = "http://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/"
@@ -178,6 +200,7 @@ class fetch_packages (object) :
                 pkg_url=None,
                 output_file=None,
                 return_file_and_status=False,
+                download_url=None, # If given this is the URL used for downloading, otherwise construct using pgk_url and pkg_name
                 ) :
     if (pkg_url is None) :
       pkg_url = BASE_CCI_PKG_URL
@@ -208,7 +231,7 @@ class fetch_packages (object) :
       else :
         raise RuntimeError(("Package '%s' not found on local filesystems.  ") %
           pkg_name)
-    full_url = "%s/%s" % (pkg_url, pkg_name)
+    full_url = download_url or "%s/%s" % (pkg_url, pkg_name)
     self.log.write("    downloading from %s : " % pkg_url)
 
     size = self.toolbox.download_to_file(full_url, output_file, log=self.log)

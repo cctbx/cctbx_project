@@ -322,10 +322,12 @@ class installer (object) :
     print >> self.log, char*80
     print >> self.log, ""
 
-  def start_building_package (self, pkg_name) :
+  def start_building_package(self, pkg_name, pkg_info=None):
     os.chdir(self.tmp_dir)
     install_log = op.join(self.tmp_dir, pkg_name + "_install_log")
     print >> self.log, "Installing %s..." % pkg_name
+    if pkg_info:
+      print >> self.log, pkg_info
     print >> self.log, "  log file is %s" % install_log
     return open(install_log, "w")
 
@@ -566,6 +568,34 @@ Installation of Python packages may fail.
     os.chdir(self.tmp_dir)
     if (confirm_import_module is not None) :
       self.verify_python_module(pkg_name_label, confirm_import_module)
+
+  def build_python_module_pypi(self, package_name, package_version=None,
+      callback_before_build=None, callback_after_build=None, confirm_import_module=None):
+    '''Download a specific or the lastest version of a package from pypi and build it.'''
+    pypi_info = get_pypi_package_information(package_name, version=package_version)
+    readable_name = "{name} {version}".format(**pypi_info)
+    log = self.start_building_package(package_name, pkg_info=pypi_info['summary'])
+    download_file, size = self.fetch_package(
+        pkg_name=pypi_info['filename'],
+        download_url=pypi_info['url'],
+        return_file_and_status=True)
+    if size != -2: # cached download
+      assert size == pypi_info['size'], 'Download of {name} {version} failed, file size of {filename} ({fsize}) does not match expected size ({size})'.format(fsize=size, **pypi_info)
+    if self.check_download_only(readable_name): return
+
+    self.untar_and_chdir(pkg=download_file, log=log)
+    if callback_before_build:
+      assert callback_before_build(log), package_name
+    debug_flag = ""
+    if (self.options.debug):
+      debug_flag = "--debug"
+    self.call("%s setup.py build %s" % (self.python_exe, debug_flag), log=log)
+    self.call("%s setup.py install" % self.python_exe, log=log)
+    if callback_after_build:
+      assert callback_after_build(log), package_name
+    os.chdir(self.tmp_dir)
+    if confirm_import_module:
+      self.verify_python_module(readable_name, confirm_import_module)
 
   def check_dependencies(self, packages=None):
     packages = packages or []
@@ -997,11 +1027,9 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="Cython")
 
   def build_jinja2(self):
-    self.build_python_module_simple(
-      pkg_url=pypi_pkg_url('Jinja2'),
-      pkg_name=JINJA2_PKG,
-      pkg_name_label="cython",
-      confirm_import_module="jinja2")
+    self.build_python_module_pypi(
+      'Jinja2', package_version=JINJA2_VERSION,
+      confirm_import_module='jinja2')
 
   def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")
