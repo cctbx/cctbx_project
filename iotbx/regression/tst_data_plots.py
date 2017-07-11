@@ -15,7 +15,7 @@ $$
 $$
 0.02       2004       0.25       0.89
 0.04       2084       0.23       0.88
-0.06       2037       0.27       0.83
+0.06       *          0.27       nan
 0.08       1949       0.28       0.75
 0.1        1783       0.38       *
 $$
@@ -30,7 +30,7 @@ R-free     FOM       $$ $$
 0.25       0.89
 0.04       2084       0.23
        0.88
-0.06       2037       0.27       0.83
+0.06       nan        0.27       nan
 0.08       1949       0.28       0.75 0.1        1783       0.38       * $$
 """
   t = data_plots.table_data(None)
@@ -43,7 +43,7 @@ R-free     FOM       $$ $$
   assert (t.data[3][4] is None)
   assert (t.format_loggraph() == loggraph1), t.format_loggraph()
   assert (t.export_rows()[-1] == ['0.1', '1783', '0.38', '*'])
-  assert (t.export_json_table() == """{"rows": [["1/resol^2", "Nrefl", "R-free", "FOM"], ["0.02", "2004", "0.25", "0.89"], ["0.04", "2084", "0.23", "0.88"], ["0.06", "2037", "0.27", "0.83"], ["0.08", "1949", "0.28", "0.75"], ["0.1", "1783", "0.38", "*"]], "title": "Resolution shell statistics"}""")
+  assert (t.export_json_table() == """{"rows": [["1/resol^2", "Nrefl", "R-free", "FOM"], ["0.02", "2004", "0.25", "0.89"], ["0.04", "2084", "0.23", "0.88"], ["0.06", "*", "0.27", "nan"], ["0.08", "1949", "0.28", "0.75"], ["0.1", "1783", "0.38", "*"]], "title": "Resolution shell statistics"}"""), t.export_json_table()
   f = open("_tst_data_plots.log", "w")
   f.write("\nRandom non-loggraph text\n\n")
   f.write(loggraph1)
@@ -60,9 +60,9 @@ R-free     FOM       $$ $$
     graph_names = ["R-free vs. resolution", "FOM vs. resolution"],
     graph_columns = [[0,2], [0,3]],
     data = [[0.02, 0.04, 0.06, 0.08, 0.10],
-            [2004, 2084, 2037, 1949, 1783],
+            [2004, 2084, None, 1949, 1783],
             [0.25, 0.23, 0.27, 0.28, 0.38],
-            [0.89, 0.88, 0.83, 0.75, None]]
+            [0.89, 0.88, float('NaN'), 0.75, None]]
   )
   #print loggraph1
   #print "---"
@@ -86,7 +86,7 @@ R-free     FOM       $$ $$
   |-----------------------------------------------|
   | 0.02      | 2004      | 0.25      | 0.89      |
   | 0.04      | 2084      | 0.23      | 0.88      |
-  | 0.06      | 2037      | 0.27      | 0.83      |
+  | 0.06      | *         | 0.27      | nan       |
   | 0.08      | 1949      | 0.28      | 0.75      |
   | 0.1       | 1783      | 0.38      | *         |
   -------------------------------------------------
@@ -98,7 +98,7 @@ R-free     FOM       $$ $$
   1/resol^2 Nrefl     R-free    FOM
   0.02      2004      0.25      0.89
   0.04      2084      0.23      0.88
-  0.06      2037      0.27      0.83
+  0.06      *         0.27      nan
   0.08      1949      0.28      0.75
   0.1       1783      0.38      *
 """
@@ -108,7 +108,7 @@ Resolution shell statistics
 1/resol^2 Nrefl     R-free    FOM
 0.02      2004      0.25      0.89
 0.04      2084      0.23      0.88
-0.06      2037      0.27      0.83
+0.06      *         0.27      nan
 0.08      1949      0.28      0.75
 0.1       1783      0.38      *
 """
@@ -116,7 +116,7 @@ Resolution shell statistics
   assert (formatted == simple_table), formatted
   assert str(t2) == simpler_table
   json_str = t2.export_json()
-  assert (json_str == '{"graph_types": ["A", "A"], "graph_columns": [[0, 2], [0, 3]], "title": "Resolution shell statistics", "column_labels": ["1/resol^2", "Nrefl", "R-free", "FOM"], "data": [[0.02, 0.04, 0.06, 0.08, 0.1], [2004, 2084, 2037, 1949, 1783], [0.25, 0.23, 0.27, 0.28, 0.38], [0.89, 0.88, 0.83, 0.75, null]], "graph_names": ["R-free vs. resolution", "FOM vs. resolution"], "x_is_inverse_d_min": false}')
+  assert (json_str == '{"graph_types": ["A", "A"], "graph_columns": [[0, 2], [0, 3]], "title": "Resolution shell statistics", "column_labels": ["1/resol^2", "Nrefl", "R-free", "FOM"], "data": [[0.02, 0.04, 0.06, 0.08, 0.1], [2004, 2084, null, 1949, 1783], [0.25, 0.23, 0.27, 0.28, 0.38], [0.89, 0.88, NaN, 0.75, null]], "graph_names": ["R-free vs. resolution", "FOM vs. resolution"], "x_is_inverse_d_min": false}'), json_str
 
 def exercise_logfile () :
   log_file = libtbx.env.find_in_repositories(
