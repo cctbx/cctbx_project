@@ -107,7 +107,7 @@ Feedback:
   inputs.ccp4_map_object.show_summary(prefix="  ")
   # Run task in 4 separate steps
   task_obj = mmtbx.maps.map_model_cc.map_model_cc(
-    map_data         = inputs.ccp4_map_object.map_data(),
+    map_data         = inputs.ccp4_map_object.data.as_double(),
     pdb_hierarchy    = inputs.pdb_hierarchy,
     crystal_symmetry = inputs.crystal_symmetry,
     params           = inputs.params.map_model_cc)

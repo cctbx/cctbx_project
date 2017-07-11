@@ -71,8 +71,8 @@ master_phil = iotbx.phil.parse("""
                not part of another ncs au will be added.
 
      input_weight_map_pickle_file = None
-       .type = path 
-       .short_caption = Input weight map pickle file 
+       .type = path
+       .short_caption = Input weight map pickle file
        .help = Weight map pickle file
   }
 
@@ -177,8 +177,8 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Restored PDB file
 
     output_weight_map_pickle_file = weight_map_pickle_file.pkl
-       .type = path 
-       .short_caption = Output weight map pickle file 
+       .type = path
+       .short_caption = Output weight map pickle file
        .help = Output weight map pickle file
   }
 
@@ -242,13 +242,13 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .help = Wang radius for solvent identification. \
            Default is 1.5* resolution
-       .short_caption = Wang radius 
+       .short_caption = Wang radius
 
      buffer_radius = None
        .type = float
        .help = Buffer radius for mask smoothing. \
            Default is resolution
-       .short_caption = Buffer radius 
+       .short_caption = Buffer radius
 
   }
 
@@ -414,7 +414,7 @@ master_phil = iotbx.phil.parse("""
 
      local_aniso_in_local_sharpening = None
        .type = bool
-       .short_caption = Local anisotropy 
+       .short_caption = Local anisotropy
        .help = Use local anisotropy in local sharpening.  \
                Default is True unless NCS is present.
 
@@ -424,18 +424,18 @@ master_phil = iotbx.phil.parse("""
        .help = Select a single sharpened map to use
 
      read_sharpened_maps = None
-       .type = bool 
+       .type = bool
        .short_caption = Read sharpened maps
        .help = Read in previously-calculated sharpened maps
 
      write_sharpened_maps = None
-       .type = bool 
+       .type = bool
        .short_caption = Write sharpened maps
        .help = Write out local sharpened maps
 
      smoothing_radius = None
-       .type = float 
-       .short_caption = Smoothing radius 
+       .type = float
+       .short_caption = Smoothing radius
        .help = Sharpen locally using smoothing_radius. Default is 2/3 of \
                  mean distance between centers for sharpening
 
@@ -447,11 +447,11 @@ master_phil = iotbx.phil.parse("""
      box_size = 40 40 40
        .type = ints
        .short_caption = Size of box
-       .help = You can specify the size of the box (grid units) 
+       .help = You can specify the size of the box (grid units)
 
      remove_aniso = True
        .type = bool
-       .short_caption = Remove aniso 
+       .short_caption = Remove aniso
        .help = You can remove anisotropy (overall and locally) during sharpening
 
      max_box_fraction = 0.5
@@ -462,7 +462,7 @@ master_phil = iotbx.phil.parse("""
 
      mask_atoms = True
        .type = bool
-       .short_caption = Mask atoms 
+       .short_caption = Mask atoms
        .help = Mask atoms when using model sharpening
 
      mask_atoms_atom_radius = 3
@@ -568,7 +568,7 @@ master_phil = iotbx.phil.parse("""
         .type = float
         .help = k_sol value for model map calculation
         .short_caption = k_sol
-  
+
       b_sol = 50
         .type = float
         .help = b_sol value for model map calculation
@@ -593,7 +593,7 @@ master_phil = iotbx.phil.parse("""
     get_half_height_width = None
       .type = bool
       .help = Use 4 times half-width at half-height as estimate of max size
-      .short_caption = Half-height width estimation 
+      .short_caption = Half-height width estimation
 
     mask_threshold = None
       .type = float
@@ -748,7 +748,7 @@ master_phil = iotbx.phil.parse("""
       .type = bool
       .help = Add neighboring regions around the NCS au. Turns off \
            exclude_points_in_ncs_copies also.
-      .short_caption = Add neighbors 
+      .short_caption = Add neighbors
 
     add_neighbors_dist = 1.
       .type = float
@@ -1481,7 +1481,7 @@ class sharpening_info:
         self.sharpening_method='model_sharpening'
         self.box_in_auto_sharpen=True
         self.sharpening_target='model'
-   
+
   def set_resolution_dependent_b(self,
     resolution_dependent_b=None,
     sharpening_method='resolution_dependent'):
@@ -1616,7 +1616,7 @@ class sharpening_info:
 
       elif params.map_modification.b_iso is not None or \
           params.map_modification.b_sharpen is not None:
-        if self.sharpening_method is None: 
+        if self.sharpening_method is None:
           raise Sorry("b_iso is not set")
         # if sharpening values are specified, set them
         if params.map_modification.b_iso is not None:
@@ -1738,7 +1738,7 @@ class sharpening_info:
     final_b_iso=self.get_effective_b_iso(map_data=self.map_data,out=out)
     if set_b_iso:
       self.b_iso=final_b_iso
- 
+
     score_map(map_data=self.map_data,
         sharpening_info_obj=self,
         out=null_out())
@@ -1873,7 +1873,7 @@ def scale_map_coeffs(map_coeffs,scale_max=100000.,out=sys.stdout):
      scale,scale_max)
   return f_array.array(data=f_array.data()*scale
        ).phase_transfer(phase_source=phases, deg=True)
-  
+
 
 def get_map_object(file_name=None,out=sys.stdout):
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
@@ -2124,7 +2124,7 @@ def apply_sharpening(map_coeffs=None,
       if not map_coeffs:
         map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
 
-      f_array,phases=map_coeffs_as_fp_phi(map_coeffs) 
+      f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
       f_array_b_iso=get_b_iso(f_array,d_min=d_min)
       if not f_array.binner():
         (local_d_max,local_d_min)=f_array.d_max_min()
@@ -2660,7 +2660,7 @@ def apply_soft_mask(map_data=None,
 
   #write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
 
-  s = mask_data > threshold  # s marks inside mask 
+  s = mask_data > threshold  # s marks inside mask
 
   # get mean inside or outside mask
   print >>out,"\nStarting map values inside and outside mask:"
@@ -2680,13 +2680,13 @@ def apply_soft_mask(map_data=None,
     map              = mask_data,
     crystal_symmetry = crystal_symmetry,
     rad_smooth       = rad_smooth)
-  
+
   print >>out,"\nSmoothed mask inside and outside values"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=mask_data, out=out)
 
   #write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
-  
+
   # Now replace value outside mask with mean_value, value inside with current,
   #   smoothly going from one to the other based on mask_data
 
@@ -2702,7 +2702,7 @@ def apply_soft_mask(map_data=None,
   print >>out,"\nFinal mean value inside and outside mask:"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=map_data, out=out)
-  
+
   #write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
 
   return masked_map
@@ -2808,12 +2808,12 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     file_name=params.input_files.map_file)
     crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
       ccp4_map.space_group_number)
-    map_data=ccp4_map.map_data()
+    map_data=ccp4_map.data.as_double()
   else:
     raise Sorry("Need ccp4 map")
 
   if params.input_files.half_map_file:
-    if len(params.input_files.half_map_file) != 2: 
+    if len(params.input_files.half_map_file) != 2:
       raise Sorry("Please supply none or two half_map_file values")
 
     from iotbx import ccp4_map
@@ -2941,7 +2941,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         raise Sorry("Need resolution for soft_mask")
 
       rad_smooth=params.crystal_info.resolution
-     
+
       print >>out,"\nApplying soft mask with smoothing radius of %s\n" %(
         rad_smooth)
       if params.crystal_info.wang_radius:
@@ -4418,7 +4418,7 @@ def add_neighbors(params,
       equiv_dict_ncs_copy=None,
       ncs_group_obj=None,out=sys.stdout):
 
-  #   Add neighboring regions on to selected_regions. 
+  #   Add neighboring regions on to selected_regions.
   #   Same rules as select_from_seed
 
   selected_regions=single_list(deepcopy(selected_regions))
@@ -4448,7 +4448,7 @@ def add_neighbors(params,
         region_scattered_points_dict=ncs_group_obj.region_scattered_points_dict)
 
       for ncs_set in ncs_group: # pick the best ncs_set from this group
-        if has_intersection(ncs_group_obj.bad_region_list,ncs_set): 
+        if has_intersection(ncs_group_obj.bad_region_list,ncs_set):
           continue
 
         dist=get_effective_radius(ncs_group_obj=ncs_group_obj,
@@ -4470,7 +4470,7 @@ def add_neighbors(params,
   ncs_group=ncs_group_obj.ncs_obj.ncs_groups()[0]
   identity_op=ncs_group.identity_op_id()
   ncs_ops_used=[identity_op]
-  
+
   did_not_find_list=[]
   for id in selected_regions:
     related_regions=get_ncs_related_regions(
@@ -4478,7 +4478,7 @@ def add_neighbors(params,
       selected_regions=[id],
       include_self=False)
     for id1 in selected_regions:
-      if not id1 in related_regions: continue 
+      if not id1 in related_regions: continue
       ncs_copy1=equiv_dict_ncs_copy.get(id,{}).get(id1,None)
       ncs_copy2=equiv_dict_ncs_copy.get(id1,{}).get(id,None)
       for a in [ncs_copy1,ncs_copy2]:
@@ -4486,7 +4486,7 @@ def add_neighbors(params,
           x=[id,id1]
           x.sort()
           x="%s_%s" %(tuple(x))
-          if not x in did_not_find_list: 
+          if not x in did_not_find_list:
             did_not_find_list.append(x)
         else:
           if not a in ncs_ops_used:
@@ -5517,7 +5517,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
       new_map_data = new_map_data.shift_origin()
 
     # Add soft boundary to mean around outside of mask
-    # grid_units is how many grid units are about equal to soft_mask_radius 
+    # grid_units is how many grid units are about equal to soft_mask_radius
     grid_units=get_grid_units(map_data=new_map_data,
       crystal_symmetry=new_crystal_symmetry,radius=soft_mask_radius,out=out)
     grid_units=int(0.5+0.5*grid_units)
@@ -6061,9 +6061,9 @@ def sharpen_map_with_si(sharpening_info_obj=None,
        out=out)
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
-  if si.remove_aniso: 
+  if si.remove_aniso:
     if si.use_local_aniso and \
-      (si.local_aniso_in_local_sharpening or 
+      (si.local_aniso_in_local_sharpening or
        (si.local_aniso_in_local_sharpening is None and si.ncs_copies==1)) and \
          si.original_aniso_obj: # use original
       aniso_obj=si.original_aniso_obj
@@ -6077,7 +6077,7 @@ def sharpen_map_with_si(sharpening_info_obj=None,
         aniso_obj=aniso_obj,
         remove_aniso=si.remove_aniso,
         f_array=f_array,resolution=si.resolution,out=out)
-     
+
   if si.is_model_sharpening() or si.is_half_map_sharpening():
     from cctbx.maptbx.refine_sharpening import scale_amplitudes
     return scale_amplitudes(
@@ -6359,7 +6359,7 @@ def select_box_map_data(si=None,
         second_half_map_data,crystal_symmetry,None # no point
 
   else:
-    # figure out solvent fraction in this box... 
+    # figure out solvent fraction in this box...
 
     if get_solvent_fraction:
       box_solvent_fraction=get_iterated_solvent_fraction(
@@ -6525,7 +6525,7 @@ def get_ncs_copies(site_cart,ncs_object=None,
 
     sites_cart_ncs.append(r * col(site_cart)  + t)
 
-  if only_inside_box: 
+  if only_inside_box:
     assert unit_cell is not None
     sites_frac_ncs=unit_cell.fractionalize(sites_cart_ncs)
     new_sites_frac=flex.vec3_double()
@@ -6551,14 +6551,14 @@ def fit_bounds_inside_box(lower,upper,box_size=None,all=None):
     u=min(a-1,u+delta)
     new_lower.append(l)
     new_upper.append(u)
-  return new_lower,new_upper 
+  return new_lower,new_upper
 
 def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
 
   print >>out,80*"-"
   print >>out,"Getting segmented map to ID locations for sharpening"
   print >>out,80*"-"
-   
+
   if si.input_weight_map_pickle_file:
     from libtbx import easy_pickle
     file_name=si.input_weight_map_pickle_file
@@ -6586,13 +6586,13 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
     file_name=os.path.join(si.output_directory,si.output_weight_map_pickle_file)
     print >>out,"Dumping segmentation data to %s" %(file_name)
     easy_pickle.dump(file_name,tracking_data)
- 
+
   if not ncs_obj or ncs_obj.max_operators()==0:
     from mmtbx.ncs.ncs import ncs
     ncs_obj=ncs()
     ncs_obj.set_unit_ncs()
 
-  print >>out,"Regions in this map:" 
+  print >>out,"Regions in this map:"
   centers_frac=flex.vec3_double()
   upper_bounds_list=[]
   lower_bounds_list=[]
@@ -6627,7 +6627,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
       si.output_directory,"ncs_sharpening_centers.pdb")
   write_atoms(file_name=ncs_sharpening_centers_file,
     crystal_symmetry=si.crystal_symmetry,sites=all_cart)
-   
+
   print >>out,\
     "\nSharpening centers (matching shifted_map_file).\n\n "+\
       "Written to: \n%s \n%s\n"%(
@@ -6722,7 +6722,7 @@ def run_local_sharpening(si=None,
       local_si.box_center=center_cart
       local_si.box_in_auto_sharpen=True
       local_si.use_local_aniso=True
-      print >>out,80*"+" 
+      print >>out,80*"+"
       print >>out,"Getting local sharpening for box %s" %(i)
       print >>out,80*"+"
       local_si=auto_sharpen_map_or_map_coeffs(si=local_si,
@@ -6743,9 +6743,9 @@ def run_local_sharpening(si=None,
 
     # Calculate weight map, max near location of centers_ncs_cart
     # U=rmsd**2
-    # (b_eff=8*3.14159**2*U) 
+    # (b_eff=8*3.14159**2*U)
     #  rmsd is at least distance between centers, not too much bigger than
-    #  unit cell size, typically 10-20 A, 
+    #  unit cell size, typically 10-20 A,
     print >>out,"\nFall-off of local weight is 1/%6.1f A\n" %(
       si.smoothing_radius)
     u=si.smoothing_radius**2
@@ -6783,10 +6783,10 @@ def run_local_sharpening(si=None,
     sum_weight_map+=weight_map
     sum_weight_value_map+=weight_map*local_map_data
 
-    print >>out,80*"+" 
+    print >>out,80*"+"
     print >>out,"End of getting local sharpening for box %s" %(i)
     print >>out,80*"+"
- 
+
   print >>out,"\nOverall map created from total of %s local maps" %(i)
 
   si.map_data=sum_weight_value_map/sum_weight_map
@@ -6798,11 +6798,11 @@ def run_local_sharpening(si=None,
       d_min_ratio=si.d_min_ratio,
       crystal_symmetry=si.crystal_symmetry,
       out=out)
- 
-  print >>out,80*"+" 
+
+  print >>out,80*"+"
   print >>out,"End of getting local sharpening "
   print >>out,80*"+"
-  
+
   return si
 
 def auto_sharpen_map_or_map_coeffs(
@@ -6841,7 +6841,7 @@ def auto_sharpen_map_or_map_coeffs(
         auto_sharpen=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
         use_weak_density=None,
-        discard_if_worse=None, 
+        discard_if_worse=None,
         n_residues=None,
         ncs_copies=None,
         box_center=None,
@@ -6867,7 +6867,7 @@ def auto_sharpen_map_or_map_coeffs(
         verbose=None,
         out=sys.stdout):
 
-    if si:  # 
+    if si:  #
       resolution=si.resolution
       crystal_symmetry=si.crystal_symmetry
       if not auto_sharpen:
@@ -6877,7 +6877,7 @@ def auto_sharpen_map_or_map_coeffs(
 
     if auto_sharpen is None:
       auto_sharpen=True
- 
+
     if map_coeffs and not resolution:
        resolution=map_coeffs.d_min()
     if map_coeffs and not crystal_symmetry:
@@ -6982,7 +6982,7 @@ def auto_sharpen_map_or_map_coeffs(
         si.score,local_si.score)
        print >>out,"\nUse discard_if_worse=False to keep the sharpening"
        local_si.sharpen_and_score_map(map_data=map,out=out)
-       si=local_si 
+       si=local_si
     if not si.is_model_sharpening() and not si.is_half_map_sharpening():
       si.show_score(out=out)
       si.show_summary(out=out)
@@ -7132,7 +7132,7 @@ def run_auto_sharpen(
          1.e-10,local_si.normalized_regions)
       print >>out,"\nRegion weight adjusted to %5.1f" %(region_weight)
       si.region_weight=region_weight
-      
+
 
   null_si=None
   best_si=deepcopy(si).update_with_box_sharpening_info(
@@ -7246,7 +7246,7 @@ def run_auto_sharpen(
           # local_si contains target_scale_factors now
           local_f_array=f_array
           local_phases=phases
-          
+
         else:
           local_f_array=f_array
           local_phases=phases
@@ -7567,7 +7567,7 @@ def run(args,
       del target_hierarchy
 
     # We can use params.input_files.target_ncs_au_file here to define ncs au
-    if target_xyz and not target_scattered_points: 
+    if target_xyz and not target_scattered_points:
        target_scattered_points=target_xyz
 
     # get the chain types and therefore (using ncs_copies) volume fraction
@@ -7743,7 +7743,7 @@ def run(args,
     print >>out,"Final NCS ops used: ",ncs_ops_used
 
   # Save the used NCS ops
-  ncs_used_obj=ncs_group_obj.ncs_obj.deep_copy(ops_to_keep=ncs_ops_used) 
+  ncs_used_obj=ncs_group_obj.ncs_obj.deep_copy(ops_to_keep=ncs_ops_used)
   shifted_used_ncs_file=os.path.join(
     tracking_data.params.output_files.output_directory,
     params.output_files.shifted_used_ncs_file)
