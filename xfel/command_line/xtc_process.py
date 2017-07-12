@@ -328,6 +328,17 @@ extra_dials_phil_str = '''
   radial_average {
     enable = False
       .type = bool
+      .help = If True, perform a radial average on each image
+    two_theta_low = None
+      .type = float
+      .help = If not None and database logging is enabled, for each image \
+              compute the radial average at this two theta position and log \
+              it in the database
+    two_theta_high = None
+      .type = float
+      .help = If not None and database logging is enabled, for each image \
+              compute the radial average at this two theta position and log \
+              it in the database
     include scope dxtbx.command_line.radial_average.master_phil
   }
 '''
@@ -900,9 +911,28 @@ class InMemScript(DialsProcessScript):
       estimate_gain(imgset)
       return
 
+    # Two values from a radial average can be stored by mod_radial_average. If present, retrieve them here
+    key_low = 'cctbx.xfel.radial_average.two_theta_low'
+    key_high = 'cctbx.xfel.radial_average.two_theta_high'
+    tt_low = evt.get(key_low)
+    tt_high = evt.get(key_high)
+
     if self.params.radial_average.enable:
-      from dxtbx.command_line.radial_average import run
-      run(self.params.radial_average, image = dxtbx_img)
+      if tt_low is not None or tt_high is not None:
+        print "Warning, mod_radial_average is being used while also using xtc_process radial averaging. mod_radial_averaging results will not be logged to the database."
+
+      from dxtbx.command_line.radial_average import run as radial_run
+      two_thetas, radial_average_values = radial_run(self.params.radial_average, image = dxtbx_img)
+
+      def get_closest_idx(data, val):
+        deltas = flex.abs(data - val)
+        return flex.first_index(deltas, flex.min(deltas))
+
+      if self.params.radial_average.two_theta_low is not None:
+        tt_low = radial_average_values[get_closest_idx(two_thetas, self.params.radial_average.two_theta_low)]
+
+      if self.params.radial_average.two_theta_high is not None:
+        tt_high = radial_average_values[get_closest_idx(two_thetas, self.params.radial_average.two_theta_high)]
 
     if not self.params.dispatch.find_spots:
       self.debug_write("data_loaded", "done")
@@ -945,12 +975,6 @@ class InMemScript(DialsProcessScript):
       self.params.integration.lookup.mask = mask
     else:
       self.params.integration.lookup.mask = tuple([a&b for a, b in zip(mask,self.integration_mask)])
-
-    # Two values from a radial average can be stored by mod_radial_average. If present, retrieve them here
-    key_low = 'cctbx.xfel.radial_average.two_theta_low'
-    key_high = 'cctbx.xfel.radial_average.two_theta_high'
-    tt_low = evt.get(key_low)
-    tt_high = evt.get(key_high)
 
     self.debug_write("spotfind_start")
     try:
