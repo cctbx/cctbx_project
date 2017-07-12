@@ -200,5 +200,7 @@ def run (args, image = None):
     #plt.legend([os.path.basename(os.path.splitext(f)[0]) for f in params.file_path], ncol=2)
     plt.show()
 
+  return xvals, results
+
 if (__name__ == "__main__") :
   run(sys.argv[1:])
