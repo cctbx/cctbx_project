@@ -2027,10 +2027,12 @@ class RunStatsTab(BaseTab):
       self.all_runs = []
       self.selected_runs = []
     else:
-      self.trial_no = int(self.trial_number.ctr.GetClientData(trial_idx))
-      self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
-      self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
-      self.find_runs()
+      trial_no = self.trial_number.ctr.GetClientData(trial_idx)
+      if trial_no is not None:
+        self.trial_no = int(trial_no)
+        self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
+        self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
+        self.find_runs()
 
   def onRunChoice(self, e):
     self.tag_last_five = False
