@@ -1,4 +1,4 @@
-IOTA v1.1.017 - display cluster results in GUI
+IOTA v1.1.018 - file loading
 
-1. Unit cell clustering results now displayed on analysis tab in GUI
-2. Various minor bugfixes, etc.
+1. Bugfixes in loading lists of images
+2. Enabled selecting multiple files from AddFile dialog
