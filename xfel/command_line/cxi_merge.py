@@ -689,6 +689,10 @@ class scaling_manager (intensity_data) :
                + sum([val for val in self.failure_modes.itervalues()])
     assert checksum == len(file_names)
 
+    high_res_count = (self.d_min_values <= self.params.d_min).count(True)
+    print >> self.log, "Of %d accepted images, %d accepted to %5.2f Angstrom resolution" % \
+      (self.n_accepted, high_res_count, self.params.d_min)
+
     if self.params.raw_data.sdfac_refine:
       self.scale_errors()
 
