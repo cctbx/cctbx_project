@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division
 import boost.python
-import math
 from cctbx import sgtbx # import dependency
 from cctbx.crystal_orientation import crystal_orientation # import dependency
 from dxtbx_model_ext import *
@@ -58,18 +57,11 @@ class CrystalAux(boost.python.injector, Crystal):
                                          one_row_per_line=True).splitlines()
 
     msg =  ["Crystal:"]
+    from libtbx.utils import format_float_with_standard_uncertainty
     if len(uc_sd) != 0:
-      cell_with_err = []
-      for (v, e) in zip(uc, uc_sd):
-        if e > 1.e-5:
-          digits = -int(math.floor(math.log10(e)))
-        else:
-          digits = 6
-        if digits <= 5:
-          cell_with_err.append("{0:.{2}f}({1:.0f})".format(v, e*10**digits, digits))
-        else:
-          cell_with_err.append("{0:.3f}".format(v))
-      msg.append("    Unit cell: (" + ", ".join(cell_with_err) + ")")
+      cell_str = [format_float_with_standard_uncertainty(
+          v, e, minimum=1.e-5) for (v, e) in zip(uc, uc_sd)]
+      msg.append("    Unit cell: (" + ", ".join(cell_str) + ")")
     else:
       msg.append("    Unit cell: " + "(%5.3f, %5.3f, %5.3f, %5.3f, %5.3f, %5.3f)" % uc)
     msg.append("    Space group: " + sg)

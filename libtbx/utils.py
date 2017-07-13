@@ -1739,7 +1739,8 @@ class progress_bar(progress_displayed_as_fraction):
     sys.stdout.flush()
     self.i += 1
 
-def format_float_with_standard_uncertainty(value, standard_uncertainty):
+def format_float_with_standard_uncertainty(value, standard_uncertainty,
+                                           minimum=1e-15):
   """
   Formats a float, including the uncertainty in its value.
 
@@ -1747,6 +1748,7 @@ def format_float_with_standard_uncertainty(value, standard_uncertainty):
   ----------
   value : float
   standard_uncertainty : float
+  minimum : float
 
   Returns
   -------
@@ -1759,7 +1761,7 @@ def format_float_with_standard_uncertainty(value, standard_uncertainty):
   >>> libtbx.utils.format_float_with_standard_uncertainty(5e-3, 1e-6)
   '0.0050000(10)'
   """
-  if standard_uncertainty < 1e-16: return str(value)
+  if standard_uncertainty <= minimum: return str(value)
   precision = -int(round(math.log10(standard_uncertainty)))
   if precision > -1:
     su = standard_uncertainty * math.pow(10, precision)
