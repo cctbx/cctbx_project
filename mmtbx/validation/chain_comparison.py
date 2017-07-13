@@ -351,7 +351,7 @@ def run_all(params=None,out=sys.stdout):
     results_dict[full_f]=rv
     (rmsd,n)=rv.get_values('close')
     target_length=rv.get_target_length('close')
-    score=n/(target_length*max(0.1,rmsd))
+    score=n/(max(1,target_length)*max(0.1,rmsd))
     score_list.append([score,full_f])
   score_list.sort()
   score_list.reverse()
