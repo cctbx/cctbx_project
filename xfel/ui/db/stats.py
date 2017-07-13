@@ -52,7 +52,7 @@ class Stats(object):
     tag = self.app.params.experiment_tag
 
     # Big expensive query to avoid many small queries
-    query = """SELECT cell.id, bin.id, cell_bin.count FROM `%s_cell_bin` cell_bin
+    query = """SELECT cell.id, bin.id, SUM(cell_bin.count) FROM `%s_cell_bin` cell_bin
                JOIN `%s_bin` bin ON bin.id = cell_bin.bin_id
                JOIN `%s_cell` cell ON cell.id = bin.cell_id
                JOIN `%s_crystal` crystal ON crystal.id = cell_bin.crystal_id
@@ -72,6 +72,8 @@ class Stats(object):
 
     if self.isigi_cutoff is not None and self.isigi_cutoff >= 0:
       query += " AND cell_bin.avg_i_sigi >= %f"%self.isigi_cutoff
+    query += " GROUP BY bin.id"
+
     results = self.app.execute_query(query).fetchall()
     if len(results) == 0:
       return []
@@ -80,19 +82,14 @@ class Stats(object):
     cells = self.app.get_all_x(Cell, 'cell', where = "WHERE id IN (%s)"%", ".join(cell_ids))
     self.app.link_cell_bins(cells)
 
-    cells_d = {}
+    cell_bins_d = {}
     for cell in cells:
-      cells_d[cell.id] = cell
-
-    cell_ids = flex.int([r[0] for r in results])
-    bin_ids = flex.int([r[1] for r in results])
-    counts = flex.int([r[2] for r in results])
-    import time
-    for cell_id in cell_ids:
-      cell = cells_d[cell_id]
-      time.sleep(0.000005)
+      cell_bins_d[cell.id] = {}
       for bin in cell.bins:
-        bin.count = flex.sum(counts.select(bin_ids == bin.id))
+        cell_bins_d[cell.id][bin.id] = bin
+
+    for cell_id, bin_id, count in results:
+      cell_bins_d[cell_id][bin_id].count = count
 
     return cells
 
