@@ -1063,7 +1063,9 @@ void diffimage::screen_spots()
         percentiles<int>(spotarea,prctX,areaprcts);
         percentiles<double>(peakint,prctX,peakintprcts);
 
-        int areaupper = static_cast<int>(areaprcts[1] + spotareamaxfactor * (areaprcts[2] - areaprcts[0]));
+        //int areaupper = static_cast<int>(areaprcts[1] + spotareamaxfactor * (areaprcts[2] - areaprcts[0]));
+        //longstanding areaupper formula (complicated) did not implement documented formula (changed 7/12/2017)
+        int areaupper = static_cast<int>(spotarealowcut * spotareamaxfactor);
         double peakintupper = peakintprcts[1] +
                 spotpeakintmaxfactor * (peakintprcts[2] - peakintprcts[0]);
 
