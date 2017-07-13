@@ -63,7 +63,7 @@ class DoubleBarPlot(gctr.CtrlBase):
 
     self.SetSizer(self.sizer)
 
-  def redraw_axes(self, valuea, valueb, goal, xmax):
+  def redraw_axes(self, valuea, valueb, goal, xmax, minimalist=False):
     ''' Re-draw axes with latest values '''
 
     self.ax.clear()

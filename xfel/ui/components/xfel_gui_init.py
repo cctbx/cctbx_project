@@ -245,6 +245,7 @@ class ProgressSentinel(Thread):
     self.output = self.parent.params.output_folder
     self.number_of_pickles = 0
     self.info = {}
+    self.noiso_cells = []
 
     # on initialization (and restart), make sure stats drawn from scratch
     self.parent.run_window.status_tab.redraw_windows = True
@@ -294,13 +295,13 @@ class ProgressSentinel(Thread):
         for cell in cells:
           # Check for cell isoform
           if cell.isoform is None:
-            self.info[cells.index(cell)] = {'a':cell.cell_a,
-                                            'b':cell.cell_b,
-                                            'c':cell.cell_c,
-                                            'alpha':cell.cell_alpha,
-                                            'beta':cell.cell_beta,
-                                            'gamma':cell.cell_gamma,
-                                            'n_img':n_img}
+            self.noiso_cells.append({'a':cell.cell_a,
+                                     'b':cell.cell_b,
+                                     'c':cell.cell_c,
+                                     'alpha':cell.cell_alpha,
+                                     'beta':cell.cell_beta,
+                                     'gamma':cell.cell_gamma,
+                                     'n_img':n_img})
           else:
             current_rows = self.parent.run_window.status_tab.rows
             if current_rows != {}:
@@ -342,6 +343,27 @@ class ProgressSentinel(Thread):
                                             'beta':cell.cell_beta,
                                             'gamma':cell.cell_gamma,
                                             'n_img':n_img}
+        #if len(self.noiso_cells) > 0:
+        if len(self.info) == 0:
+          sum_n_img = sum([cell['n_img'] for cell in self.noiso_cells])
+          mean_a = sum([cell['n_img']*cell['a'] for cell in self.noiso_cells])/sum_n_img
+          mean_b = sum([cell['n_img']*cell['b'] for cell in self.noiso_cells])/sum_n_img
+          mean_c = sum([cell['n_img']*cell['c'] for cell in self.noiso_cells])/sum_n_img
+          mean_alpha = sum([cell['n_img']*cell['alpha'] for cell in self.noiso_cells])/sum_n_img
+          mean_beta  = sum([cell['n_img']*cell['beta']  for cell in self.noiso_cells])/sum_n_img
+          mean_gamma = sum([cell['n_img']*cell['gamma'] for cell in self.noiso_cells])/sum_n_img
+          noiso_entry = {'multiplicity_all':0,
+                         'multiplicity_highest':0,
+                         'bins':None,
+                         'isoform':None,
+                         'a':mean_a,
+                         'b':mean_b,
+                         'c':mean_c,
+                         'alpha':mean_alpha,
+                         'beta':mean_beta,
+                         'gamma':mean_gamma,
+                         'n_img':sum_n_img}
+          self.info['noiso'] = noiso_entry
       self.post_refresh()
       self.info = {}
       self.parent.run_window.prg_light.change_status('on')
@@ -402,7 +424,7 @@ class RunStatsSentinel(Thread):
       time.sleep(5)
 
   def refresh_stats(self):
-    from xfel.ui.components.timeit import duration
+    #from xfel.ui.components.timeit import duration
     from xfel.ui.db.stats import HitrateStats
     import copy, time
     t1 = time.time()
@@ -437,7 +459,6 @@ class RunStatsSentinel(Thread):
             self.run_statuses.append(job.status)
     self.reorder()
     t2 = time.time()
-    # print "refresh_stats (RunStats sentinel thread) took %s" % duration(t1, t2)
 
   def reorder(self):
     run_numbers_ordered = sorted(self.run_numbers)
@@ -1776,10 +1797,12 @@ class StatusTab(BaseTab):
   def refresh_rows(self):
     ''' Refresh status data '''
     # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
-    isoforms = not all(isinstance(key, int) for key in dict.keys(self.info))
-
-    # Select data with 'multiplicity_all' keys
-    self.info = {k:v for k, v in self.info.iteritems() if 'multiplicity_all' in v.keys()}
+    #isoforms = not all(isinstance(key, int) for key in dict.keys(self.info))
+    #isoforms = all([key[:3] == "iso" for key in self.info.keys()])
+    isokeys = self.info.keys()
+    if "noiso" in isokeys:
+      isokeys.remove("noiso")
+    isoforms = len(isokeys) > 0
 
     if self.info != {}:
       if self.redraw_windows:
@@ -1805,15 +1828,21 @@ class StatusTab(BaseTab):
                           bins=values['bins'],
                           xmax=xmax,
                           n_img=values['n_img'])
+      else:
+        for cell, values in self.info.iteritems():
+          if not self.redraw_windows:
+            #row = self.rows[
+            pass
     else:
       if self.redraw_windows:
         self.status_sizer.Clear(deleteWindows=True)
         self.rows = {}
         row = None
-      else:
+      elif hasattr(self.rows, 'None'):
         row = self.rows['None']['row']
-      self.update_noniso_row(row=row,
-                             num_images=self.info[0]['n_img'])
+      if len(self.info) > 0:
+        self.update_noniso_row(row=row,
+                               num_images=self.info[0]['n_img'])
     self.redraw_windows = False
 
   def update_noniso_row(self, row, num_images=0):
@@ -2108,7 +2137,7 @@ class RunStatsTab(BaseTab):
 
   def plot_static_runstats(self):
     import time
-    from xfel.ui.components.timeit import duration
+    #from xfel.ui.components.timeit import duration
     t1 = time.time()
     if self.png is not None:
       if self.static_bitmap is not None:
@@ -2121,7 +2150,6 @@ class RunStatsTab(BaseTab):
       self.runstats_panel.Layout()
       # self.figure_panel.SetupScrolling(scrollToTop=False)
     t2 = time.time()
-    # print "plot_static_runstats (GUI main thread) took %s" % duration(t1, t2)
 
   def print_strong_indexed_paths(self):
     try:
