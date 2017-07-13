@@ -48,6 +48,9 @@ predictions_to_edge {
     .type = path
     .help = Path to the detector version phil file used to generate the selected data.
 }
+short_circuit = False
+  .type = bool
+  .help = Assess per-image resolution limits and exit early.
 a_list = None
   .type = path
   .multiple = False # for now XXX possibly make it multiple later
@@ -792,7 +795,8 @@ class scaling_manager (intensity_data) :
       self.n_low_corr += 1
     self.uc_values.add_cell(data.indexed_cell,
       rejected=(not data.accept))
-    self.observations.append(data.n_obs)
+    if not self.params.short_circuit:
+      self.observations.append(data.n_obs)
     if (data.n_obs > 0) :
       frac_rejected = data.n_rejected / data.n_obs
       self.rejected_fractions.append(frac_rejected)
@@ -832,7 +836,8 @@ class scaling_manager (intensity_data) :
 
     self.corr_values.extend(data.corr_values)
     self.d_min_values.extend(data.d_min_values)
-    self.observations.extend(data.observations)
+    if not self.params.short_circuit:
+      self.observations.extend(data.observations)
     self.rejected_fractions.extend(data.rejected_fractions)
     self.wavelength.extend(data.wavelength)
 
