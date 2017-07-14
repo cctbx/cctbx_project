@@ -41,6 +41,8 @@ class rsr_model(object):
     self.dist_from_start = 0
     self.dist_from_previous = 0
     self.stats_evaluations = []
+    self.cc_mask=None
+    self.cc_box=None
     #
     self.initialize()
 
@@ -52,15 +54,17 @@ class rsr_model(object):
 
   def initialize(self):
     self.assert_pdb_hierarchy_xray_structure_sync()
-    self.cc_mask = five_cc(
+    five_cc_o = five_cc(
       map               = self.target_map_object.map_data,
       xray_structure    = self.xray_structure,
       d_min             = self.target_map_object.d_min,
-      compute_cc_box    = False,
+      compute_cc_box    = True,
       compute_cc_image  = False,
       compute_cc_mask   = True,
       compute_cc_volume = False,
-      compute_cc_peaks  = False).cc_mask
+      compute_cc_peaks  = False)
+    self.cc_mask = five_cc_o.cc_mask
+    self.cc_box = five_cc_o.cc_box
     if(self.geometry_restraints_manager is not None):
       es = self.geometry_restraints_manager.energies_sites(
         sites_cart = self.xray_structure.sites_cart())
