@@ -1357,6 +1357,57 @@ private:
   bool updated_;
 };
 
+// copy of below
+template <typename FloatType=double>
+class f_kb_scaled
+{
+public:
+  f_kb_scaled() {}
+
+  f_kb_scaled(
+    af::const_ref<FloatType> const& f1,
+    af::const_ref<FloatType> const& f2,
+    af::const_ref<FloatType> const& b_range,
+    af::const_ref<FloatType> const& ss)
+  {
+    // Compute exp(-B*s**2/4) * F2
+    MMTBX_ASSERT(f1.size() == f2.size());
+    MMTBX_ASSERT(f1.size() == ss.size());
+    b_best = 0.0;
+    FloatType r_best = 1.e+10;
+    k_best = 1.0;
+    result.resize(ss.size(), 0.);
+    af::shared<FloatType> f2_scaled(ss.size());
+    for(std::size_t j=0; j < b_range.size(); j++) {
+      FloatType mbs = -b_range[j];
+      for(std::size_t k=0; k < ss.size(); k++) {
+        FloatType kbs = std::exp(mbs * ss[k]);
+        f2_scaled[k] = kbs*f2[k];
+      }
+      FloatType sc = scale(f1, f2_scaled.const_ref());
+      FloatType r = r_factor(f1, f2_scaled.const_ref(), sc);
+      if(r < r_best) {
+        r_best = r;
+        b_best = b_range[j];
+        k_best = sc;
+      }
+    }
+    for(std::size_t k=0; k < ss.size(); k++) {
+        FloatType all_scale = k_best*std::exp(-1.*b_best*ss[k]);
+        result[k] = all_scale*f2[k];
+    }
+  }
+
+  af::shared<FloatType> scaled() { return result; }
+  FloatType b() { return b_best; }
+  FloatType k() { return k_best; }
+
+private:
+  af::shared<FloatType> result;
+  FloatType b_best;
+  FloatType k_best;
+};
+
 template <typename FloatType=double, typename ComplexType=std::complex<double> >
 class complex_f_kb_scaled
 {
