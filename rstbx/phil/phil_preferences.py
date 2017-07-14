@@ -72,10 +72,11 @@ integration {
     .type = int
     .help = pixels set to this value will be ignored during integration
   mosaic {
-    refinement_target = *LSQ ML
+    refinement_target = LSQ *ML
       .type = choice
-      .help = Modeling of still shots, refinement of crystal physical parameters by one of two targets
-      .help = least squares (LSQ) or maximum likelihood (ML).
+      .help = Modeling of still shots, refinement of crystal physical parameters by one of two targets given in the paper
+      .help = [Sauter et al. Acta D (2014) 70:3299-3309]: least squares (LSQ) or maximum likelihood (ML).
+      .help = As the paper describes, ML gives superior results and is set to be the default as of 7/2017.
     kludge1 = 1
       .type = float
       .help = bugfix 1 of 2 for protocol 6, equation 2.  When matching obs and model reflections,
