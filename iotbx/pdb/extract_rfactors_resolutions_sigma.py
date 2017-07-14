@@ -6,8 +6,10 @@ from libtbx import smart_open
 class get_r_rfree_sigma(object):
   def __init__(self, remark_2_and_3_records, file_name):
     self.file_name = file_name
-    self.r_work,self.r_free,self.sigma,self.high,self.low,self.resolution \
-      = [],[],[],[],[],[]
+    self.r_work,self.r_free,self.sigma,self.high,self.low = \
+      None,None,None,None,None
+    self.r_works,self.r_frees,self.sigmas,self.highs,self.lows,\
+      self.resolution = [],[],[],[],[],[]
     start_DataUsedInRefinement = False
     start_FitToDataUsedInRefinement = False
     for line in remark_2_and_3_records:
@@ -21,34 +23,40 @@ class get_r_rfree_sigma(object):
         try: return float(flds[i])
         except ValueError: return None
       if(start_DataUsedInRefinement and self.is_ResolutionRangeHigh(line)):
-        self.high.append(get_value_at(i=7))
+        try:
+          self.highs.append(float(get_value_at(i=7)))
+        except: pass
       if(start_DataUsedInRefinement and self.is_ResolutionRangeLow(line)):
-        self.low.append(get_value_at(i=7))
+        try:
+          self.lows.append(float(get_value_at(i=7)))
+        except: pass
       if(start_DataUsedInRefinement and self.is_DataCutoffSigma(line)):
-        self.sigma.append(get_value_at(i=6))
+        try:
+          self.sigmas.append(float(get_value_at(i=6)))
+        except: pass
+        try:
+          self.sigmas.append(float(get_value_at(i=4)))
+        except: pass
       if(not start_FitToDataUsedInRefinement):
         start_FitToDataUsedInRefinement = \
           self.is_FitToDataUsedInRefinement(line)
       if(start_FitToDataUsedInRefinement and self.is_RValueWorkingSet(line)):
-        self.r_work.append(self.get_value(flds=flds))
+        try: self.r_works.append(float(self.get_value(flds=flds)))
+        except: pass
       if(start_FitToDataUsedInRefinement and self.is_FreeRValue(line)):
-        self.r_free.append(self.get_value(flds=flds))
+        try: self.r_frees.append(float(self.get_value(flds=flds)))
+        except: pass
       if(self.is_Resolution(line)):
         tmp = get_value_at(i=3)
         if (self.resolution is None):
           try: tmp = float(line[22:28])
           except ValueError: pass
         self.resolution.append(tmp)
-    if(len(self.r_work)>1 or len(self.r_work)==0): self.r_work = None
-    else: self.r_work = self.r_work[0]
-    if(len(self.r_free)>1 or len(self.r_free)==0): self.r_free = None
-    else: self.r_free = self.r_free[0]
-    if(len(self.sigma)>1 or len(self.sigma)==0): self.sigma = None
-    else: self.sigma = self.sigma[0]
-    if(len(self.high)>1 or len(self.high)==0): self.high = None
-    else: self.high = self.high[0]
-    if(len(self.low)>1 or len(self.low)==0): self.low = None
-    else: self.low = self.low[0]
+    if(len(self.r_works)==1): self.r_work = self.r_works[0]
+    if(len(self.r_frees)==1): self.r_free = self.r_frees[0]
+    if(len(self.sigmas)==1):  self.sigma  = self.sigmas[0]
+    if(len(self.highs)==1):   self.high   = self.highs[0]
+    if(len(self.lows)==1):    self.low    = self.lows[0]
     if(len(self.resolution)>1 or len(self.resolution)==0): self.resolution = None
     else: self.resolution = self.resolution[0]
 
@@ -80,7 +88,8 @@ class get_r_rfree_sigma(object):
 
   def is_DataCutoffSigma(self, line):
     r1 = line.startswith("REMARK   3   DATA CUTOFF            (SIGMA(F)) :")
-    return r1
+    r2 = line.startswith("REMARK   3   MIN(FOBS/SIGMA_FOBS)")
+    return r1 or r2
 
   def is_RValueWorkingSet(self, line):
     r1 = line.startswith("REMARK   3   R VALUE            (WORKING SET) ")

@@ -127,19 +127,21 @@ class mtriage(object):
     #
     assert [half_map_data_1, half_map_data_2].count(None) in [0,2]
     # Results
-    self.d9              = None
-    self.d99             = None
-    self.d999            = None
-    self.d99_1           = None
-    self.d99_2           = None
-    self.d_model         = None
-    self.b_iso_overall   = None
-    self.d_fsc           = None
-    self.d_fsc_model     = None
-    self.fsc_curve       = None
-    self.fsc_curve_model = None
-    self.mask_object     = None
-    self.radius_smooth   = self.params.radius_smooth
+    self.d9               = None
+    self.d99              = None
+    self.d999             = None
+    self.d99_1            = None
+    self.d99_2            = None
+    self.d_model          = None
+    self.b_iso_overall    = None
+    self.d_fsc            = None
+    self.d_fsc_model      = None
+    self.d_fsc_model_0    = None
+    self.d_fsc_model_0143 = None
+    self.fsc_curve        = None
+    self.fsc_curve_model  = None
+    self.mask_object      = None
+    self.radius_smooth    = self.params.radius_smooth
     # Info (results)
     self.crystal_symmetry = crystal_symmetry
     self.map_counts        = get_map_counts(map_data = self.map_data)
@@ -297,6 +299,10 @@ class mtriage(object):
       self.fsc_curve_model = f_calc.d_min_from_fsc(
         other=f_obs, bin_width=100, fsc_cutoff=0.5)
       self.d_fsc_model = self.fsc_curve_model.d_min
+      self.d_fsc_model_0 = f_calc.d_min_from_fsc(
+        other=f_obs, bin_width=100, fsc_cutoff=0.).d_min
+      self.d_fsc_model_0143 = f_calc.d_min_from_fsc(
+        other=f_obs, bin_width=100, fsc_cutoff=0.143).d_min
 
   def write_fsc_curve_model_plot_data(self, file_name):
     if(self.fsc_curve_model is not None):
@@ -356,6 +362,8 @@ class mtriage(object):
       b_iso_overall     = self.b_iso_overall,
       d_fsc             = self.d_fsc,
       d_fsc_model       = self.d_fsc_model,
+      d_fsc_model_0     = self.d_fsc_model_0,
+      d_fsc_model_0143  = self.d_fsc_model_0143,
       fsc_curve         = self.fsc_curve,
       fsc_curve_model   = self.fsc_curve_model,
       crystal_symmetry  = self.crystal_symmetry,
