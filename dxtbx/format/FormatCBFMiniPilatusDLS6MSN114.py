@@ -66,7 +66,7 @@ class FormatCBFMiniPilatusDLS6MSN114(FormatCBFMiniPilatus):
     for record in header.split('\n'):
       if '# Detector' in record and \
              'PILATUS' in record and 'S/N 60-0114' in header:
-        if year >= 2015:
+        if year >= 2017:
           return True
         else:
           return False
