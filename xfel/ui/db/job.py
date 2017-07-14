@@ -1,8 +1,8 @@
 from __future__ import division
 from xfel.ui.db import db_proxy
 
-known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED"]
-finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR"]
+known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED"]
+finished_job_statuses = ["DONE", "EXIT", "DELETED", "UNKWN", "ERR", "SUBMIT_FAIL"]
 
 class Job(db_proxy):
   def __init__(self, app, job_id = None, **kwargs):
@@ -32,7 +32,6 @@ class Job(db_proxy):
       shutil.rmtree(job_folder)
     else:
       print "Cannot find job folder (%s)"%job_folder
-      return
 
     # Have to be careful to delete from the tables in the right order
     tag = self.app.params.experiment_tag
