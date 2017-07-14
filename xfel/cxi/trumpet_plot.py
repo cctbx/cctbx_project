@@ -144,7 +144,7 @@ def trumpet_wrapper(result, postx, file_name, params, out):
       from scitbx import matrix
       from dxtbx.model import BeamFactory
       beam = BeamFactory.make_beam(s0=(0,0,-1./result["wavelength"]))
-      from dxtbx.model import Experiment, ExperimentList
+      from dxtbx.model import Experiment
       from dxtbx.model import crystal
 
       obs_to_plot = postx.observations_original_index_pair1_selected # XXX uses a private interface

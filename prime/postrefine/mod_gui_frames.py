@@ -19,8 +19,6 @@ from libtbx.utils import to_str
 import iotbx.phil as ip
 import numpy as np
 
-import time
-
 import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas

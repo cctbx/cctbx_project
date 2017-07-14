@@ -19,7 +19,6 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from iotbx import phil as ip
-from libtbx import easy_run
 
 from iota import iota_version
 from iota.components.iota_utils import InputFinder
@@ -625,7 +624,7 @@ class TrackerWindow(wx.Frame):
     self.spf_thread.start()
 
   def onSpfOneDone(self, e):
-    ''' Occurs on every wx.PostEvent instance; updates lists of images with 
+    ''' Occurs on every wx.PostEvent instance; updates lists of images with
     spotfinding results '''
     if e.GetValue() is not None:
       info = e.GetValue()
@@ -676,7 +675,7 @@ class TrackerWindow(wx.Frame):
       self.run_spotfinding()
 
   def onTimer(self, e):
-    ''' Every second, update spotfinding chart (for some odd reason, chart is 
+    ''' Every second, update spotfinding chart (for some odd reason, chart is
     not updated when the wx.PostEvent happens'''
     if self.spin_update == 5:
       self.spin_update = 0

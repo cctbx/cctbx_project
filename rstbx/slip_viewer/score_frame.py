@@ -117,9 +117,9 @@ class ScoreSettingsPanel(wx.Panel):
       if (path != '') :
         stream = open(path, "w")
         for (key, score) in _scores.iteritems():
-	  if score is None:
+          if score is None:
             print >> stream, "%s None" % (key)
-	  else:
+          else:
             print >> stream, "%s %d" % (key, score)
         stream.close()
         print "Dumped scores to", path

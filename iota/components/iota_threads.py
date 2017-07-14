@@ -9,7 +9,7 @@ Description : IOTA GUI Threads and PostEvents
 
 import os
 import wx
-from threading import Thread, Event
+from threading import Thread
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
@@ -255,7 +255,7 @@ class SpotFinderOneThread():
 
 
 class SpotFinderThread(Thread):
-  ''' Basic spotfinder (with defaults) that could be used to rapidly analyze 
+  ''' Basic spotfinder (with defaults) that could be used to rapidly analyze
   images as they are collected '''
   def __init__(self,
                parent,
