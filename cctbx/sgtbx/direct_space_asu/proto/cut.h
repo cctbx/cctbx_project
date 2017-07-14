@@ -107,7 +107,12 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Evaluates plane equation
     rational_t evaluate(const rvector3_t &p) const
     {
-      return  n[0]*p[0] + n[1]*p[1] + n[2]*p[2] + c;
+      typedef rvector3_t::value_type::int_type rational_type;
+
+      return static_cast<rational_type>(n[0]) * p[0]
+          +  static_cast<rational_type>(n[1]) * p[1]
+          +  static_cast<rational_type>(n[2]) * p[2]
+          +  static_cast<rational_type>(c);
     }
 
     long evaluate_int(const scitbx::af::int3 &num,
