@@ -762,6 +762,11 @@ master_phil = iotbx.phil.parse("""
         .help = '''Verbose output'''
         .short_caption = Verbose output
 
+     shift_only = None
+        .type = bool
+        .short_caption = Shift only
+        .help = Shift map and half_maps and stop
+
      sharpen_only = None
         .type = bool
         .short_caption = Sharpen only
@@ -2819,9 +2824,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     from iotbx import ccp4_map
     half_map_data_list=[]
     half_map_data_list.append(iotbx.ccp4_map.map_reader(
-       file_name=params.input_files.half_map_file[0]).map_data())
+       file_name=params.input_files.half_map_file[0]).data.as_double())
     half_map_data_list.append(iotbx.ccp4_map.map_reader(
-       file_name=params.input_files.half_map_file[0]).map_data())
+       file_name=params.input_files.half_map_file[1]).data.as_double())
 
 
   if params.map_modification.magnification and \
@@ -2930,10 +2935,18 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     # NOTE: size and cell params are now different!
 
     new_half_map_data_list=[]
+    ii=0
     for hm in half_map_data_list:
+      ii+=1
       hm=hm.shift_origin() # shift if necessary
-      new_half_map_data_list.append(
-      box.cut_and_copy_map(map_data=hm).as_double())
+      hm=box.cut_and_copy_map(map_data=hm).as_double()
+      hm.reshape(flex.grid(hm.all()))
+      new_half_map_data_list.append(hm)
+      cutout_half_map_file=os.path.join(params.output_files.output_directory,
+       "cutout_half_map_%s.ccp4" %(ii))
+      print >>out,"Writing cutout half_map data to %s" %(cutout_half_map_file)
+      write_ccp4_map(crystal_symmetry,cutout_half_map_file,new_half_map_data_list[-1])
+      
     half_map_data_list=new_half_map_data_list
 
     if params.map_modification.soft_mask:
@@ -7522,6 +7535,9 @@ def run(args,
     # get the parameters and map_data (magnified, shifted...)
     params,map_data,half_map_data_list,pdb_hierarchy,tracking_data=get_params(
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,out=out)
+
+    if params.control.shift_only:
+      return None,None,tracking_data
 
     if params.input_files.pdb_to_restore:
       restore_pdb(params,tracking_data=tracking_data,out=out)
