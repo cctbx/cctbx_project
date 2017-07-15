@@ -426,6 +426,7 @@ class RunStatsSentinel(Thread):
   def refresh_stats(self):
     #from xfel.ui.components.timeit import duration
     from xfel.ui.db.stats import HitrateStats
+    from libtbx import easy_mp
     import copy, time
     t1 = time.time()
     if self.parent.run_window.runstats_tab.trial_no is not None:
@@ -439,6 +440,7 @@ class RunStatsSentinel(Thread):
       self.trgr = {}
       self.run_tags = []
       self.run_statuses = []
+      iterable = []
       for rg in trial.rungroups:
         for run in rg.runs:
           if run.run not in self.run_numbers and run.run in selected_runs:
@@ -446,9 +448,16 @@ class RunStatsSentinel(Thread):
             trial_ids.append(trial.id)
             rungroup_ids.append(rg.id)
             self.trgr[run.run] = (trial, rg, run)
-            self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
-              d_min=self.parent.run_window.runstats_tab.d_min)())
+            iterable.append((trial, rg, run))
             self.run_tags.append([tag.name for tag in run.tags])
+      def do_work(item):
+        trial, rg, run = item
+        return HitrateStats(self.db, run.run, trial.trial, rg.id,
+          d_min=self.parent.run_window.runstats_tab.d_min)()
+      self.stats = easy_mp.parallel_map(func=do_work,
+                                        iterable=iterable,
+                                        processes=10)
+
       jobs = self.db.get_all_jobs()
       for idx in xrange(len(self.run_numbers)):
         run_no = self.run_numbers[idx]
@@ -627,11 +636,13 @@ class UnitCellSentinel(Thread):
         info_list.append(info)
       import xfel.ui.components.xfel_gui_plotter as pltr
       plotter = pltr.PopUpCharts(interactive=False)
+      iqr_ratio = 1.5 if self.parent.run_window.unitcell_tab.reject_outliers else None
       self.parent.run_window.unitcell_tab.png = plotter.plot_uc_histogram(
         info_list=info_list,
         legend_list=legend_list,
         xsize=(sizex-115)/82, ysize=(sizey-115)/82,
-        high_vis=self.parent.high_vis)
+        high_vis=self.parent.high_vis,
+        iqr_ratio=iqr_ratio)
       self.post_refresh()
       self.parent.run_window.unitcell_light.change_status('on')
       time.sleep(5)
@@ -2268,6 +2279,7 @@ class UnitCellTab(BaseTab):
     self.png = None
     self.static_bitmap = None
     self.redraw_windows = True
+    self.reject_outliers = True
 
     # self.tab_panel = wx.Panel(self, size=(300, 300))
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -2325,6 +2337,9 @@ class UnitCellTab(BaseTab):
                                        label='Reset selections',
                                        size=(200, -1))
 
+    self.chk_reject_outliers = wx.CheckBox(self.selection_columns_panel, label='Reject outliers')
+    self.chk_reject_outliers.SetValue(True)
+
     self.add_sele_sizer = wx.GridBagSizer(4, 1)
     self.add_sele_sizer.Add(self.trial_number, pos=(0, 0),
                             flag=wx.ALL, border=0)
@@ -2344,6 +2359,8 @@ class UnitCellTab(BaseTab):
     self.remove_sele_sizer.Add(self.reset_sele_button, pos=(2, 0),
                                flag=wx.ALL)
     self.selection_columns_sizer.Add(self.remove_sele_sizer, flag=wx.ALL | wx.EXPAND, border=10)
+
+    self.selection_columns_sizer.Add(self.chk_reject_outliers, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
     self.unit_cell_panelsize = self.unit_cell_panel.GetSize()
@@ -2367,6 +2384,7 @@ class UnitCellTab(BaseTab):
     self.Bind(wx.EVT_BUTTON, self.onAddTagSet, self.add_sele_button)
     self.Bind(wx.EVT_BUTTON, self.onRemoveTagSet, self.remove_sele_button)
     self.Bind(wx.EVT_BUTTON, self.onResetTagSets, self.reset_sele_button)
+    self.Bind(wx.EVT_CHECKBOX, self.onChkRejectOutliers, self.chk_reject_outliers)
     self.Bind(EVT_UNITCELL_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
@@ -2444,6 +2462,9 @@ class UnitCellTab(BaseTab):
     self.tag_set_checklist.ctr.Clear()
     self.tag_sets = []
     self.selected_tag_sets = []
+
+  def onChkRejectOutliers(self, e):
+    self.reject_outliers = self.chk_reject_outliers.GetValue()
 
   def onRefresh(self, e):
     self.find_trials()
