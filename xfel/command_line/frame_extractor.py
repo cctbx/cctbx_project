@@ -39,6 +39,7 @@ class ConstructFrame(object):
                        'current_orientation':0,
                        'distance':0,
                        'effective_tiling':0,
+                       'identified_isoform':None,
                        'mapped_predictions':[[]],
                        'max_signal':0,
                        'ML_domain_size_ang':[0],
@@ -87,6 +88,11 @@ class ConstructFrame(object):
   def populate_beam_dir(self):
     assert self.beam_obj.get_s0() is not None, "no beam direction"
     self.frame['xbeam'], self.frame['ybeam'] = self.det[0].get_beam_centre(self.beam_obj.get_s0())
+
+  # get isoform
+  def populate_isoform(self):
+    if hasattr(self.xtal, "identified_isoform"):
+      self.frame['identified_isoform'] = self.xtal.identified_isoform
 
   # get max signal
   def populate_max_signal(self):
@@ -188,6 +194,7 @@ class ConstructFrame(object):
     self.populate_wavelength()
     self.populate_distance()
     self.populate_beam_dir()
+    self.populate_isoform()
     self.populate_max_signal()
     self.populate_effective_tiling()
     self.populate_sa_params()
