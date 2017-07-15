@@ -111,6 +111,9 @@ class FormatTIFFBruker(FormatTIFF):
       if j != offset:
         assert(starts_j == ends[j])
 
+    # these angles are != 0 and probably define the full goniometer i.e,
+    # two-theta, omega, kappa, phi; work on interpreting...
+
     return self._goniometer_factory.single_axis()
 
   def _detector(self):
@@ -120,7 +123,10 @@ class FormatTIFFBruker(FormatTIFF):
     starts, ends, offset, width = self._get_bruker_scan_angles()
     rotations = self._get_bruker_detector_rotations()
 
-    # NKS removed the assertion that two-theta offset is 0.0; support the general case
+    # in here either (i) use rotations or (ii) assert that they are all small
+
+    # NKS removed the assertion that two-theta offset is 0.0;
+    # support the general case
     assert(starts[0] == ends[0])
     two_theta = starts[0]
 
