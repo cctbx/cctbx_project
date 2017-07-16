@@ -162,8 +162,6 @@ class xfel_db_application(object):
       try:
         dbobj = get_db_connection(self.params)
         cursor = dbobj.cursor()
-        #if self.params.db.verbose:
-        #  print "About to execute query", query
         cursor.execute(query)
         if commit:
           dbobj.commit()
@@ -171,7 +169,7 @@ class xfel_db_application(object):
         if self.params.db.verbose:
           et = time() - st
           if et > 1:
-            print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), "\n", query#[:min(len(query),145)]
+            print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)]
         return cursor
       except OperationalError, e:
         if "Can't connect to MySQL server" not in str(e):
@@ -305,7 +303,8 @@ class xfel_db_application(object):
 
     # Link in all the bins
     for bin in bins:
-      cells_d[bin.cell_id]._bins.append(bin)
+      if bin.cell_id in cells_d: # might not be there if new data has arrived
+        cells_d[bin.cell_id]._bins.append(bin)
 
     for cell in cells:
       cell._bins_set = True
