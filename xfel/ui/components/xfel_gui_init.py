@@ -426,7 +426,6 @@ class RunStatsSentinel(Thread):
   def refresh_stats(self):
     #from xfel.ui.components.timeit import duration
     from xfel.ui.db.stats import HitrateStats
-    from libtbx import easy_mp
     import copy, time
     t1 = time.time()
     if self.parent.run_window.runstats_tab.trial_no is not None:
@@ -440,7 +439,6 @@ class RunStatsSentinel(Thread):
       self.trgr = {}
       self.run_tags = []
       self.run_statuses = []
-      iterable = []
       for rg in trial.rungroups:
         for run in rg.runs:
           if run.run not in self.run_numbers and run.run in selected_runs:
@@ -448,15 +446,9 @@ class RunStatsSentinel(Thread):
             trial_ids.append(trial.id)
             rungroup_ids.append(rg.id)
             self.trgr[run.run] = (trial, rg, run)
-            iterable.append((trial, rg, run))
+            self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
+                                           d_min=self.parent.run_window.runstats_tab.d_min)())
             self.run_tags.append([tag.name for tag in run.tags])
-      def do_work(item):
-        trial, rg, run = item
-        return HitrateStats(self.db, run.run, trial.trial, rg.id,
-          d_min=self.parent.run_window.runstats_tab.d_min)()
-      self.stats = easy_mp.parallel_map(func=do_work,
-                                        iterable=iterable,
-                                        processes=10)
 
       jobs = self.db.get_all_jobs()
       for idx in xrange(len(self.run_numbers)):
@@ -497,7 +489,6 @@ class RunStatsSentinel(Thread):
   def fetch_timestamps(self, indexed=False):
     from xfel.ui.components.run_stats_plotter import \
       get_multirun_should_have_indexed_timestamps, get_paths_from_timestamps, get_strings_from_timestamps
-    self.refresh_stats()
     runs, timestamps = \
       get_multirun_should_have_indexed_timestamps(self.stats,
                                                   self.run_numbers,
