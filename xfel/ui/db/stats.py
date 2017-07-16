@@ -114,7 +114,7 @@ class HitrateStats(object):
     if len(self.trial.isoforms) > 0:
       cells = [isoform.cell for isoform in self.trial.isoforms]
     else:
-      cells = self.app.get_trial_cells(self.trial.id)
+      cells = self.app.get_trial_cells(self.trial.id, self.rungroup.id, self.run.id)
 
     low_res_bin_ids = []
     high_res_bin_ids = []
@@ -217,5 +217,5 @@ class HitrateStats(object):
     two_theta_high = two_theta_high.select(order)
 
     t2 = time.time()
-    # print "HitrateStats took %s" % duration(t1, t2)
+    print "HitrateStats took %s" % duration(t1, t2)
     return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high

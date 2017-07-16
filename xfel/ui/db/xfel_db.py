@@ -275,9 +275,15 @@ class xfel_db_application(object):
     else:
       return cells[0]
 
-  def get_trial_cells(self, trial_id):
+  def get_trial_cells(self, trial_id, rungroup_id = None, run_id = None):
     # Use big queries to assist listing lots of cells. Start with list of cells for this trial
     tag = self.params.experiment_tag
+    if rungroup_id is not None or run_id is not None:
+      assert rungroup_id is not None and run_id is not None
+      extra_where = "AND evt.run_id = %d AND evt.rungroup_id = %d"%(run_id, rungroup_id)
+    else:
+      extra_where = ""
+
     where  = """JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
                JOIN `%s_experiment` expt ON expt.crystal_id = crystal.id
                JOIN `%s_imageset` imgset ON imgset.id = expt.imageset_id
@@ -285,8 +291,8 @@ class xfel_db_application(object):
                JOIN `%s_event` evt ON evt.id = is_e.event_id
                JOIN `%s_trial` trial ON evt.trial_id = trial.id
                JOIN `%s_rungroup` rg ON evt.rungroup_id = rg.id
-               WHERE trial.id = %d AND rg.active = True""" % (
-               tag, tag, tag, tag, tag, tag, tag, trial_id)
+               WHERE trial.id = %d AND rg.active = True %s""" % (
+               tag, tag, tag, tag, tag, tag, tag, trial_id, extra_where)
     cells = self.get_all_x(Cell, 'cell', where)
     where = " JOIN `%s_cell` cell ON bin.cell_id = cell.id "%(tag) + where
     return self.link_cell_bins(cells, where = where)
