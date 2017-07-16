@@ -162,12 +162,16 @@ class xfel_db_application(object):
       try:
         dbobj = get_db_connection(self.params)
         cursor = dbobj.cursor()
+        #if self.params.db.verbose:
+        #  print "About to execute query", query
         cursor.execute(query)
         if commit:
           dbobj.commit()
 
         if self.params.db.verbose:
-          print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, time() - st), query[:min(len(query),145)]
+          et = time() - st
+          if et > 1:
+            print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), "\n", query#[:min(len(query),145)]
         return cursor
       except OperationalError, e:
         if "Can't connect to MySQL server" not in str(e):
@@ -276,8 +280,7 @@ class xfel_db_application(object):
   def get_trial_cells(self, trial_id):
     # Use big queries to assist listing lots of cells. Start with list of cells for this trial
     tag = self.params.experiment_tag
-    query = """SELECT cell.id FROM `%s_cell` cell
-               JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
+    where  = """JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
                JOIN `%s_experiment` expt ON expt.crystal_id = crystal.id
                JOIN `%s_imageset` imgset ON imgset.id = expt.imageset_id
                JOIN `%s_imageset_event` is_e ON is_e.imageset_id = imgset.id
@@ -285,36 +288,24 @@ class xfel_db_application(object):
                JOIN `%s_trial` trial ON evt.trial_id = trial.id
                JOIN `%s_rungroup` rg ON evt.rungroup_id = rg.id
                WHERE trial.id = %d AND rg.active = True""" % (
-               tag, tag, tag, tag, tag, tag, tag, tag, trial_id)
-    cursor = self.execute_query(query)
-    ids = [str(i[0]) for i in cursor.fetchall()]
-    if len(ids) == 0:
-      return []
-    # Build cell objects
-    cell_ids = ", ".join(ids)
-    where = "WHERE id IN (%s)" % cell_ids
+               tag, tag, tag, tag, tag, tag, tag, trial_id)
     cells = self.get_all_x(Cell, 'cell', where)
-    return self.link_cell_bins(cells)
+    where = " JOIN `%s_cell` cell ON bin.cell_id = cell.id "%(tag) + where
+    return self.link_cell_bins(cells, where = where)
 
-  def link_cell_bins(self, cells):
+  def link_cell_bins(self, cells, where = None):
     tag = self.params.experiment_tag
     cells_d = {cell.id:cell for cell in cells}
-    cell_ids = ", ".join([str(key) for key in cells_d.keys()])
 
     # Get all the bin ids for bins associated with these cells and assemble the bin objects
-    query = """SELECT bin.id FROM `%s_bin` bin
-               WHERE bin.cell_id IN (%s)""" % (
-               tag, cell_ids)
-    cursor = self.execute_query(query)
-    ids = [str(i[0]) for i in cursor.fetchall()]
-    if len(ids) > 0:
-      bin_ids = ", ".join(ids)
-      where = "WHERE id IN (%s)" % bin_ids
-      bins = self.get_all_x(Bin, 'bin', where)
+    if where is None:
+      cell_ids = ", ".join([str(key) for key in cells_d.keys()])
+      where = """ WHERE bin.cell_id IN (%s)""" % (cell_ids)
+    bins = self.get_all_x(Bin, 'bin', where=where)
 
-      # Link in all the bins
-      for bin in bins:
-        cells_d[bin.cell_id]._bins.append(bin)
+    # Link in all the bins
+    for bin in bins:
+      cells_d[bin.cell_id]._bins.append(bin)
 
     for cell in cells:
       cell._bins_set = True
