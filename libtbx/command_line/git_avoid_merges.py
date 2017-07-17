@@ -1,8 +1,8 @@
 from __future__ import division
+from libtbx.auto_build.bootstrap import Toolbox
 import libtbx.easy_run
 import libtbx.load_env
 import os
-import re
 import sys
 
 what_is_this = '''
@@ -42,33 +42,10 @@ def find_all_git_modules():
           yield (modulepath, configfile)
 
 def set_all_git_module_branches_to_rebase():
+  t = Toolbox()
   for module, config in find_all_git_modules():
     print "Git repository found:", module
-    with open(config, 'r') as fh:
-      cfg = fh.readlines()
-
-    branch, remote, rebase = False, False, False
-    insertions = []
-    for n, line in enumerate(cfg):
-      if line.startswith('['):
-        if branch and remote and not rebase:
-          insertions.insert(0, (n, branch))
-        if line.startswith('[branch'):
-          branch = line.split('"')[1]
-        else:
-          branch = False
-        remote, rebase = False, False
-      if re.match('remote\s*=\s*', line.strip()):
-        remote = True
-      if re.match('rebase\s*=\s*', line.strip()):
-        rebase = True
-    if branch and remote and not rebase:
-      insertions.insert(0, (n + 1, branch))
-    for n, branch in insertions:
-      print "  setting branch %s to rebase" % branch
-      cfg.insert(n, '\trebase = true\n')
-    with open(config, 'w') as fh:
-      fh.write("".join(cfg))
+    t.set_git_repository_config_to_rebase(config)
 
 def set_git_defaults_to_rebase():
   result = libtbx.easy_run.fully_buffered("git config --global --list")

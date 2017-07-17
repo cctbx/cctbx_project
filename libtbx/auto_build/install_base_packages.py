@@ -569,7 +569,7 @@ Installation of Python packages may fail.
     if (confirm_import_module is not None) :
       self.verify_python_module(pkg_name_label, confirm_import_module)
 
-  def build_python_module_pypi(self, package_name, package_version=None, download_only=False
+  def build_python_module_pypi(self, package_name, package_version=None, download_only=False,
       callback_before_build=None, callback_after_build=None, confirm_import_module=None):
     '''Download a specific or the lastest version of a package from pypi and build it.'''
     pypi_info = get_pypi_package_information(package_name, version=package_version)

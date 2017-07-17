@@ -2,12 +2,13 @@
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 from __future__ import division
 import os, os.path, posixpath, ntpath
-import sys
-import stat
-import subprocess
 import optparse
+import re
 import shutil
 import socket as pysocket
+import stat
+import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -430,6 +431,34 @@ class Toolbox(object):
     z.close()
 
   @staticmethod
+  def set_git_repository_config_to_rebase(config):
+    with open(config, 'r') as fh:
+      cfg = fh.readlines()
+
+    branch, remote, rebase = False, False, False
+    insertions = []
+    for n, line in enumerate(cfg):
+      if line.startswith('['):
+        if branch and remote and not rebase:
+          insertions.insert(0, (n, branch))
+        if line.startswith('[branch'):
+          branch = line.split('"')[1]
+        else:
+          branch = False
+        remote, rebase = False, False
+      if re.match('remote\s*=\s*', line.strip()):
+        remote = True
+      if re.match('rebase\s*=\s*', line.strip()):
+        rebase = True
+    if branch and remote and not rebase:
+      insertions.insert(0, (n + 1, branch))
+    for n, branch in insertions:
+      print "  setting branch %s to rebase" % branch
+      cfg.insert(n, '\trebase = true\n')
+    with open(config, 'w') as fh:
+      fh.write("".join(cfg))
+
+  @staticmethod
   def git(module, parameters, destination=None, use_ssh=False, verbose=False, reference=None):
     '''Retrieve a git repository, either by running git directly
        or by downloading and unpacking an archive.'''
@@ -461,7 +490,7 @@ class Toolbox(object):
 
       print "Existing non-git directory -- don't know what to do. skipping: %s" % module
       if ('cctbx_project.git' in parameters[0]):
-        print '\n' + '=' * 80 + '\nCCTBX is transitioning to git.\nPlease continue committing changes using svn until November 22, 2016.\nAfter that, commits will only be done through git.\n\nTo update cctbx_project, please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n'
+        print '\n' + '=' * 80 + '\nCCTBX moved to git on November 22, 2016.\n\nTo update cctbx_project to the last available subversion revision please run "svn update" while in the cctbx_project directory.\n' + '*'*80 + '\n'
       return
 
     if isinstance(parameters, basestring):
@@ -498,6 +527,7 @@ class Toolbox(object):
             os.remove(os.path.join(destination, '.git', 'objects', 'info', 'alternates'))
           except OSError:
             returncode = 1
+        Toolbox.set_git_repository_config_to_rebase(os.path.join(destination, '.git', 'config'))
         return returncode
       filename = "%s-%s" % (module,
                             urlparse.urlparse(source_candidate)[2].split('/')[-1])
