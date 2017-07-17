@@ -569,7 +569,7 @@ Installation of Python packages may fail.
     if (confirm_import_module is not None) :
       self.verify_python_module(pkg_name_label, confirm_import_module)
 
-  def build_python_module_pypi(self, package_name, package_version=None,
+  def build_python_module_pypi(self, package_name, package_version=None, download_only=False
       callback_before_build=None, callback_after_build=None, confirm_import_module=None):
     '''Download a specific or the lastest version of a package from pypi and build it.'''
     pypi_info = get_pypi_package_information(package_name, version=package_version)
@@ -581,6 +581,7 @@ Installation of Python packages may fail.
         return_file_and_status=True)
     if size != -2: # cached download
       assert size == pypi_info['size'], 'Download of {name} {version} failed, file size of {filename} ({fsize}) does not match expected size ({size})'.format(fsize=size, **pypi_info)
+    if download_only: return
     if self.check_download_only(readable_name): return
 
     self.untar_and_chdir(pkg=download_file, log=log)
@@ -854,10 +855,8 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="docutils")
 
   def build_junitxml(self):
-    self.build_python_module_simple(
-      pkg_url=pypi_pkg_url(JUNIT_XML_PKG),
-      pkg_name=JUNIT_XML_PKG,
-      pkg_name_label="junit_xml")
+    self.build_python_module_pypi(
+      'junit-xml', package_version=JUNIT_XML_VERSION)
 
   def build_pytest(self):
     for package, name in [

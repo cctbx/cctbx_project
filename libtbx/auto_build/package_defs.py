@@ -47,7 +47,7 @@ def get_pypi_package_information(package, version=None):
 
 # OpenSSL - needed for Mac OS X 10.11 and later
 BASE_OPENSSL_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/master/"
-OPENSSL_PKG = "openssl-1.0.2k.tar.gz"
+OPENSSL_PKG = "openssl-1.0.2l.tar.gz"
 
 # root certificates for macOS 10.11 and later
 CERTIFI_PKG = "certifi-2017.4.17.tar.gz"
@@ -71,7 +71,7 @@ VIRTUALENV_PKG = "virtualenv-14.0.6.tar.gz" # virtualenv
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-JUNIT_XML_PKG = "junit-xml-1.6.tar.gz"
+JUNIT_XML_VERSION="1.7"
 MOCK_PKG = "mock-2.0.0.tar.gz"
 MOCK_DEP_FUNC_DICT = "ordereddict-1.1.tar.gz"
 MOCK_DEP_FUNC = "funcsigs-1.0.0.tar.gz"
