@@ -447,7 +447,7 @@ class Analyzer(object):
         from xfel.clustering.cluster import Cluster
 
         counter = 0
-        ucs = Cluster.from_files(self.pickles, use_b=True)
+        ucs = Cluster.from_files(pickle_list=self.pickles, use_b=True)
         clusters, _ = ucs.ab_cluster(self.params.analysis.cluster_threshold,
                                      log=False, write_file_lists=False,
                                      schnell=False, doplot=False)

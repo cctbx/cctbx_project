@@ -1,4 +1,7 @@
-IOTA v1.1.018 - file loading
+IOTA v1.1.019 - clustering bugfix
 
-1. Bugfixes in loading lists of images
-2. Enabled selecting multiple files from AddFile dialog
+1. Fixed bug where clustering results from previous runs were retained if new
+runs were launched without quitting IOTA. Now, this does not happen.
+2. Also adjusted a couple of defaults for integration.mosaic
+    a. refinement_target=LSQ *ML
+    b. enable_rotational_target_highsym=True
