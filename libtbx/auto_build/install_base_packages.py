@@ -254,7 +254,7 @@ class installer (object) :
       packages += ['python', 'openssl', 'certifi']
 
     # Always build hdf5 and numpy.
-    packages += ['cython', 'hdf5', 'numpy', 'setuptools', 'pip', 'pythonextra', 'docutils']
+    packages += ['cython', 'hdf5', 'numpy', 'pythonextra', 'docutils']
     packages += ['libsvm', 'lz4_plugin', 'jinja2']
     # Development and testing packages.
     packages += ['pytest', 'junitxml']
@@ -625,9 +625,7 @@ Installation of Python packages may fail.
       'numpy',
       'cython',
       'png',
-      'setuptools',
       'libsvm',
-      'pip',
       'pytest',
       'pythonextra',
       'jinja', 'jinja2',
@@ -751,7 +749,9 @@ Installation of Python packages may fail.
         self.patch_src(src_file='Modules/Setup.dist',
                        target=target, replace_with=replacement)
 
-      self.call([os.path.join(python_dir, 'configure')] + configure_args,
+      self.call([os.path.join(python_dir, 'configure'),
+          "--with-ensurepip=install",
+        ] + configure_args,
         log=log,
         cwd=python_dir,
         shell=False)
@@ -833,23 +833,11 @@ _replace_sysconfig_paths(build_time_vars)
       return True
     return False
 
-  def build_setuptools(self):
-    self.build_python_module_simple(
-      pkg_url=pypi_pkg_url(SETUPTOOLS_PKG),
-      pkg_name=SETUPTOOLS_PKG,
-      pkg_name_label="setuptools")
-
   def build_libsvm(self):
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=LIBSVM_PKG,
       pkg_name_label="libsvm")
-
-  def build_pip(self):
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=PIP_PKG,
-      pkg_name_label="pip")
 
   def build_numpy(self):
     self.build_python_module_simple(

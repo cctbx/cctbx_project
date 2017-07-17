@@ -67,12 +67,10 @@ SPHINX_PKG = "Sphinx-1.4.4.tar.gz"       # for documentation ()
 NUMPYDOC_PKG = "numpydoc-0.5.tar.gz"     # for documentation
 IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
 DOCUTILS_PKG = "docutils-0.12.tar.gz"    # docutils
-PIP_PKG = "pip-8.0.2.tar.gz"             # PIP
 VIRTUALENV_PKG = "virtualenv-14.0.6.tar.gz" # virtualenv
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-SETUPTOOLS_PKG = "setuptools-17.1.1.tar.gz"
 JUNIT_XML_PKG = "junit-xml-1.6.tar.gz"
 MOCK_PKG = "mock-2.0.0.tar.gz"
 MOCK_DEP_FUNC_DICT = "ordereddict-1.1.tar.gz"
