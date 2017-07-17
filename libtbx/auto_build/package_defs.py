@@ -230,7 +230,8 @@ class fetch_packages (object) :
         raise RuntimeError(("Package '%s' not found on local filesystems.  ") %
           pkg_name)
     full_url = download_url or "%s/%s" % (pkg_url, pkg_name)
-    self.log.write("    downloading from %s : " % pkg_url)
+    if not download_url:
+      self.log.write("    downloading from %s : " % pkg_url)
 
     size = self.toolbox.download_to_file(full_url, output_file, log=self.log)
     if (size == -2):
