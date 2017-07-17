@@ -496,7 +496,7 @@ def set_sharpen_params(params,out=sys.stdout):
   if params.map_modification.auto_sharpen_methods in [
      ['b_iso_to_d_cut'],['b_iso']]:
     if params.map_modification.box_in_auto_sharpen and (
-      not getattr(params.map_modification,'allow_box_if_b_iso_set')):
+      not getattr(params.map_modification,'allow_box_if_b_iso_set',None)):
       params.map_modification.box_in_auto_sharpen=False
       print >>out,"Set box_in_auto_sharpen=False as sharpening method is %s" %(
         params.map_modification.auto_sharpen_methods[0])
