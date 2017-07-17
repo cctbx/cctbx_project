@@ -712,6 +712,7 @@ Installation of Python packages may fail.
         'CPPFLAGS="-I%s/include"' %self.base_dir,
         'LDFLAGS="-L%s/lib"' %self.base_dir,
         "--enable-framework=\"%s\"" % self.base_dir,
+        "--with-ensurepip=install",
         #"--enable-unicode=ucs4",
         ]
       self.call("./configure %s" % " ".join(configure_args), log=log)
