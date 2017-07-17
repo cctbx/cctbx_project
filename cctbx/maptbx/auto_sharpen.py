@@ -226,6 +226,13 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map. Default is True.
 
+     allow_box_if_b_iso_set = False
+       .type = bool
+       .short_caption = Allow box if b_iso set 
+       .help = Allow box_in_auto_sharpen (if set to True) even if \
+               b_iso is set. Default is to set box_n_auto_sharpen=False \
+               if b_iso is set.
+
      use_weak_density = False
        .type = bool
        .short_caption = Use box with poor density
@@ -488,7 +495,8 @@ def set_sharpen_params(params,out=sys.stdout):
    
   if params.map_modification.auto_sharpen_methods in [
      ['b_iso_to_d_cut'],['b_iso']]:
-    if params.map_modification.box_in_auto_sharpen:
+    if params.map_modification.box_in_auto_sharpen and (
+      not params.map_modification.allow_box_if_b_iso_set):
       params.map_modification.box_in_auto_sharpen=False
       print >>out,"Set box_in_auto_sharpen=False as sharpening method is %s" %(
         params.map_modification.auto_sharpen_methods[0])
