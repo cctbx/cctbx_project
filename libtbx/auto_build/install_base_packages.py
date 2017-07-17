@@ -761,6 +761,10 @@ Installation of Python packages may fail.
       self.call('make install', log=log, cwd=python_dir)
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
 
+    # make sure pip and setuptools are installed on macOS
+    if (self.flag_is_mac):
+      self.call([python_exe, '-m ensurepip --upgrade'])
+
     # Make python relocatable
     python_sysconfig = check_output([ python_exe, '-c',
       'import sys; import os; print os.path.join(sys.exec_prefix, "lib", "python2.7", "_sysconfigdata.py")'
