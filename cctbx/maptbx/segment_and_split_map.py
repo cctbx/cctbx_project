@@ -5988,6 +5988,7 @@ def score_map(map_data=None,
         sa_percent=None,
         region_weight=None,
         max_regions_to_test=None,
+        scale_region_weight=True,
         out=sys.stdout):
   if sharpening_info_obj:
     solvent_fraction=sharpening_info_obj.solvent_fraction
@@ -6041,7 +6042,16 @@ def score_map(map_data=None,
     regions=len(sorted_by_volume[1:])
     normalized_regions=regions/max(1,target_in_all_regions)
     skew=get_skew(map_data.as_1d())
-    sharpening_info_obj.adjusted_sa=sa_ratio - region_weight*normalized_regions
+
+    if scale_region_weight: 
+      solvent_fraction_std=0.85 # typical value, ends up as scale on weight
+      region_weight_scale=(1.-solvent_fraction)/(1.-solvent_fraction_std)
+      region_weight_use=region_weight*region_weight_scale
+    else:
+      region_weight_use=region_weight
+
+    sharpening_info_obj.adjusted_sa=\
+       sa_ratio - region_weight_use*normalized_regions
     sharpening_info_obj.sa_ratio=sa_ratio
     sharpening_info_obj.normalized_regions=normalized_regions
 
