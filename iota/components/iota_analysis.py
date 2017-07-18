@@ -106,10 +106,7 @@ class Plotter(object):
     for i in [j.final['final'] for j in self.final_objects]:
       try:
         beam = ep.load(i)
-        if self.params.advanced.integrate_with == 'cctbx':
-          pixel_size = beam['PIXEL_SIZE']
-        elif self.params.advanced.integrate_with == 'dials':
-          pixel_size = beam['pixel_size']
+        pixel_size = beam['pixel_size']
         info.append([i, beam['xbeam'], beam['ybeam'],
                     beam['wavelength'], beam['distance'],
                     beam['observations'][0].unit_cell().parameters()])
