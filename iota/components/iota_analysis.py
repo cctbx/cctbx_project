@@ -21,6 +21,7 @@ from collections import Counter
 import math
 
 import cPickle as pickle
+from libtbx import easy_pickle as ep
 from cctbx.uctbx import unit_cell
 
 import matplotlib.pyplot as plt
@@ -99,14 +100,16 @@ class Plotter(object):
 
   def calculate_beam_xy(self):
     ''' calculates beam xy and other parameters '''
-    from libtbx import easy_pickle as ep
-
     info = []
 
     # Import relevant info
     for i in [j.final['final'] for j in self.final_objects]:
       try:
         beam = ep.load(i)
+        if self.params.advanced.integrate_with == 'cctbx':
+          pixel_size = beam['PIXEL_SIZE']
+        elif self.params.advanced.integrate_with == 'dials':
+          pixel_size = beam['pixel_size']
         info.append([i, beam['xbeam'], beam['ybeam'],
                     beam['wavelength'], beam['distance'],
                     beam['observations'][0].unit_cell().parameters()])
@@ -148,7 +151,7 @@ class Plotter(object):
     cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
 
     return beamX, beamY, cbeamX, cbeamY, obeamX, obeamY, beam_dist, \
-           [i[4] for i in info], aD, bD, cD
+           [i[4] for i in info], aD, bD, cD, pixel_size
 
   def plot_beam_xy(self, write_files=False, return_values=False, threeD=False):
     ''' Plot beam center coordinates and a histogram of distances from the median

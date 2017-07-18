@@ -1561,8 +1561,14 @@ class ProcWindow(wx.Frame):
         # To catch any 'mean of empty slice' runtime warnings
         warnings.simplefilter("ignore", category=RuntimeWarning)
         beamX, beamY = plot.calculate_beam_xy()[:2]
-        beamXY = "X = {:4.1f} mm, Y = {:4.1f} mm" \
-                 "".format(np.median(beamX), np.median(beamY))
+        pixel_size = plot.calculate_beam_xy()[-1]
+        beamX_mm = np.median(beamX)
+        beamY_mm = np.median(beamY)
+        beamX_px = np.median(beamX) / pixel_size
+        beamY_px = np.median(beamY) / pixel_size
+        beamXY = "X = {:4.1f} mm / {:4.0f} px\n" \
+                 "Y = {:4.1f} mm / {:4.0f} px" \
+                 "".format(beamX_mm, beamX_px, beamY_mm, beamY_px)
 
       self.summary_tab.xy_txt.SetLabel(beamXY)
 

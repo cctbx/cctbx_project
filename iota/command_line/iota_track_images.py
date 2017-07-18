@@ -136,6 +136,8 @@ class TrackChart(wx.Panel):
     self.track_figure.patch.set_visible(False)
     self.track_axes.patch.set_visible(False)
 
+    self.xdata = []
+    self.ydata = []
     self.acc_plot = self.track_axes.plot([], [], 'o', color='#4575b4')[0]
     self.rej_plot = self.track_axes.plot([], [], 'o', color='#d73027')[0]
     self.bragg_line = self.track_axes.axhline(0, c='#4575b4', ls=':', alpha=0)
@@ -174,10 +176,10 @@ class TrackChart(wx.Panel):
     if new_y is None:
       new_y = []
 
-    nref_x = np.append(self.acc_plot.get_xdata(),
-                       np.array(new_x).astype(np.double))
-    nref_y = np.append(self.acc_plot.get_ydata(),
-                       np.array(new_y).astype(np.double))
+    nref_x = np.append(self.xdata, np.array(new_x).astype(np.double))
+    nref_y = np.append(self.ydata, np.array(new_y).astype(np.double))
+    self.xdata = nref_x
+    self.ydata = nref_y
     nref_xy = zip(nref_x, nref_y)
     all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
     all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
@@ -191,48 +193,55 @@ class TrackChart(wx.Panel):
       if self.main_window.tracker_panel.options.chart_window.toggle:
         window_size = self.main_window.tracker_panel.options.chart_window.window.GetValue()
         if window_size == '':
-          x_min = -0.5
-          x_max = np.max(nref_x) + 0.5
+          x_min = -1
+          x_max = np.max(nref_x) + 1
         elif np.max(nref_x) > int(window_size):
-          x_min = np.max(nref_x) - int(window_size) - 0.5
+          x_min = np.max(nref_x) - int(window_size) - 1
           x_max = np.max(nref_x)
         else:
-          x_min = -0.5
-          x_max = int(window_size) + 0.5
+          x_min = -1
+          x_max = int(window_size) + 1
 
       else:
-        x_min = -0.5
-        x_max = np.max(nref_x) + 0.5
+        x_min = -1
+        x_max = np.max(nref_x) + 1
+
+      if min_bragg > np.max(nref_y):
+        y_max = min_bragg + int(0.1 * min_bragg)
+      else:
+        y_max = np.max(nref_y) + int(0.1 * np.max(nref_y))
+
       self.track_axes.set_xlim(x_min, x_max)
-      self.track_axes.set_ylim(0, np.max(nref_y) + int(0.1 * np.max(nref_y)))
+      self.track_axes.set_ylim(0, y_max)
+
     else:
-      x_min = -0.5
-      x_max = 0.5
+      x_min = -1
+      x_max = 1
 
-    acc = [i for i in all_acc if i >= x_min and i < x_max]
-    rej = [i for i in all_rej if i >= x_min and i < x_max]
-    print 'DEBUG: ', len(acc), len(rej)
+    acc = [i for i in all_acc if i > x_min and i < x_max]
+    rej = [i for i in all_rej if i > x_min and i < x_max]
 
-    try:
-      self.acc_plot.set_xdata(nref_x)
-      self.rej_plot.set_xdata(nref_x)
-      self.acc_plot.set_ydata(nref_y)
-      self.rej_plot.set_ydata(nref_y)
-      self.bragg_line.set_ydata(min_bragg)
-      self.acc_plot.set_markevery(acc)
-      self.rej_plot.set_markevery(rej)
-    except ValueError, e:
-      raise e
+
+    self.acc_plot.set_xdata(nref_x)
+    self.rej_plot.set_xdata(nref_x)
+    self.acc_plot.set_ydata(nref_y)
+    self.rej_plot.set_ydata(nref_y)
+    self.bragg_line.set_ydata(min_bragg)
+    self.acc_plot.set_markevery(acc)
+    self.rej_plot.set_markevery(rej)
 
     self.Layout()
 
     count = '{}'.format(len([i for i in nref_xy if i[1] >= min_bragg]))
     self.main_window.tracker_panel.count_txt.SetLabel(count)
     self.main_window.tracker_panel.status_sizer.Layout()
-    self.track_axes.draw_artist(self.acc_plot)
-    self.track_axes.draw_artist(self.rej_plot)
 
-    # self.track_canvas.flush_events()
+    try:
+      self.track_axes.draw_artist(self.acc_plot)
+      self.track_axes.draw_artist(self.rej_plot)
+    except ValueError, e:
+      print 'DEBUG: VALUE ERROR!!'
+      self.refresh()
 
 
 class SpotfinderSettings(wx.Panel):
@@ -388,6 +397,7 @@ class TrackerWindow(wx.Frame):
     self.new_counts = []
     self.spotfinding_info = []
     self.refresh_chart = False
+    self.waiting = False
 
     # Setup main sizer
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -615,6 +625,20 @@ class TrackerWindow(wx.Frame):
     self.spin_update = 0
     self.find_new_images()
 
+  def stop_run(self):
+    timer_txt = '[ xxxxxx ]'
+    self.msg = 'STOPPED SPOTFINDING!'
+    self.tracker_panel.status_txt.SetLabel('{} {}'
+                                           ''.format(timer_txt, self.msg))
+    self.timer.Stop()
+    self.new_frames = []
+    self.new_counts = []
+    self.spotfinding_info = []
+    self.data_list = []
+    self.done_list = []
+    self.tracker_panel.chart.clear_all()
+    self.tracker_panel.options.options.Enable()
+
   def run_spotfinding(self):
     ''' Generate the spot-finder thread and run it '''
     self.spf_thread = thr.SpotFinderThread(self,
@@ -638,18 +662,7 @@ class TrackerWindow(wx.Frame):
 
   def onSpfAllDone(self, e):
     if e.GetValue() == []:
-      timer_txt = '[ xxxxxx ]'
-      self.msg = 'STOPPED SPOTFINDING!'
-      self.tracker_panel.status_txt.SetLabel('{} {}'
-                                             ''.format(timer_txt, self.msg))
-      self.timer.Stop()
-      self.new_frames = []
-      self.new_counts = []
-      self.spotfinding_info = []
-      self.data_list = []
-      self.done_list = []
-      self.tracker_panel.chart.clear_all()
-      self.tracker_panel.options.options.Enable()
+      self.stop_run()
     else:
       self.done_list.extend(e.GetValue())
       self.find_new_images()
@@ -662,9 +675,12 @@ class TrackerWindow(wx.Frame):
     found_files = ginp.make_input_list([self.data_folder], last=last_file)
 
     self.data_list = [i for i in found_files if i not in self.done_list]
+    self.data_list = [i for i in self.data_list if not 'tmp' in i]
     if len(self.data_list) == 0:
       self.msg = 'Waiting for new images in {} ...'.format(self.data_folder)
+      self.waiting = True
     else:
+      self.waiting = False
       self.msg = 'Tracking new images in {} ...'.format(self.data_folder)
       if self.obs_counts == [] and self.frame_count == []:
         self.obs_counts = [-1] * len(self.data_list)
@@ -689,6 +705,9 @@ class TrackerWindow(wx.Frame):
       self.plot_results()
       if len(self.data_list) == 0:
         self.find_new_images()
+    else:
+      if self.waiting:
+        self.stop_run()
 
 
   def plot_results(self):

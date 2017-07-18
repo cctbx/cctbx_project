@@ -1,7 +1,5 @@
-IOTA v1.1.019 - clustering bugfix
+IOTA v1.1.020 - tracker bugfix
 
-1. Fixed bug where clustering results from previous runs were retained if new
-runs were launched without quitting IOTA. Now, this does not happen.
-2. Also adjusted a couple of defaults for integration.mosaic
-    a. refinement_target=LSQ *ML
-    b. enable_rotational_target_highsym=True
+1. Fixed "ValueError" exception in tracker plotting (barfed on nonexistent
+temp image files)
+2. Changed beamXY reporting to pixels AND mm
