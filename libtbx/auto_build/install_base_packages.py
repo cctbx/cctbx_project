@@ -706,37 +706,27 @@ Installation of Python packages may fail.
     if self.check_download_only(PYTHON_PKG): return
     python_dir = untar(python_tarball)
     self.chdir(python_dir, log=log)
+
+    # configure macOS and linux separately
+    configure_args = ['--with-ensurepip=install'] # common flags
+    #configure_args.append("--enable-unicode=ucs4")
     if self.flag_is_mac:
-      configure_args = [
+      configure_args += [
         self.prefix,
         'CPPFLAGS="-I%s/include"' %self.base_dir,
         'LDFLAGS="-L%s/lib"' %self.base_dir,
         "--enable-framework=\"%s\"" % self.base_dir,
-        "--with-ensurepip=install",
-        #"--enable-unicode=ucs4",
         ]
       self.call("./configure %s" % " ".join(configure_args), log=log)
-      # Do not build Python 2.7 in parallel. Race conditions observed on Mac and Linux.
-      self.call("make", log=log)
-      targets = "bininstall libinstall libainstall inclinstall sharedinstall"
-      self.call("make %s"% (targets), log=log)
-      self.chdir("Mac", log=log)
-      self.call("make install_Python install_pythonw install_versionedtools",
-        log=log)
-      self.chdir(python_dir, log=log)
-      self.call("make frameworkinstallstructure frameworkinstallmaclib \
-        frameworkinstallunixtools FRAMEWORKUNIXTOOLSPREFIX=\"%s\"" %
-        self.base_dir, log=log)
     else:
       # Linux
       # Ian: Setup build to use rpath $ORIGIN to find libpython.so.
       # Also note that I'm using shell=False and passing args as list
       #   ... to minimize opportunities for mucking up the "\$$"
-      configure_args = ["--prefix", self.base_dir]
+      configure_args += ["--prefix", self.base_dir]
       if (self.options.python_shared):
         configure_args.append("--enable-shared")
         configure_args.append("LDFLAGS=-Wl,-rpath=\$$ORIGIN/../lib")
-        #configure_args.append("--enable-unicode=ucs4")
 
       # patch Modules/Setup.dist to find custom OpenSSL
       targets = ['#SSL=/usr/local/ssl',
@@ -750,20 +740,13 @@ Installation of Python packages may fail.
       for target,replacement in zip(targets,replacements):
         self.patch_src(src_file='Modules/Setup.dist',
                        target=target, replace_with=replacement)
+      self.call([os.path.join(python_dir, 'configure')] + configure_args,
+                log=log, cwd=python_dir, shell=False)
 
-      self.call([os.path.join(python_dir, 'configure'),
-          "--with-ensurepip=install",
-        ] + configure_args,
-        log=log,
-        cwd=python_dir,
-        shell=False)
-      # Parallel build of python 2.7 needs to be limited to cope with race conditions
-      self.call('make install', log=log, cwd=python_dir)
+    # build
+    self.call('make -j %d' % self.nproc, log=log, cwd=python_dir)
+    self.call('make install', log=log, cwd=python_dir)
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
-
-    # make sure pip and setuptools are installed on macOS
-    if (self.flag_is_mac):
-      self.call([python_exe, '-m ensurepip --upgrade'])
 
     # Make python relocatable
     python_sysconfig = check_output([ python_exe, '-c',
