@@ -328,14 +328,6 @@ def run():
   err = StringIO.StringIO()
   ero.show_stdout(out=err)
 
-  for line in err.getvalue().split("\n"):
-    if line.find("Number of hydrogens corrected")>-1:
-      print line
-      break
-  else:
-    assert 0
-  print "OK"
-
   cmd = "phenix.fmodel high_res=4.5 format=mtz label=FOBS type=real r_free=0.1 l1r.pdb generate_fake_p1_symmetry=1"
   easy_run.call(cmd)
   cmd = 'phenix.refine'
@@ -346,13 +338,6 @@ def run():
   ero = easy_run.fully_buffered(command=cmd)
   err = StringIO.StringIO()
   ero.show_stdout(out=err)
-
-  for line in err.getvalue().split("\n"):
-    if line.find("Number of corrected H:")>-1:
-      print line
-      break
-  else:
-    assert 0
   print "OK"
 
 

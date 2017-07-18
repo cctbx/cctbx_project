@@ -46,14 +46,14 @@ namespace {
     def("compute_h_position",
          (vec3<double>(*)
                (riding_coefficients,
-                af::shared<vec3<double> > const&)) compute_h_position,
+                af::const_ref<vec3<double> > const&)) compute_h_position,
                   (arg("riding_coefficients"),
                    arg("sites_cart")))
     ;
 
     def("apply_new_H_positions",
-         (af::shared<vec3<double> >(*)
-               (af::shared<vec3<double> > const&,
+         (void(*)
+               (af::ref<vec3<double> >,
                 boost::python::list const&)) apply_new_H_positions,
                   (arg("sites_cart"),
                    arg("parameterization")))

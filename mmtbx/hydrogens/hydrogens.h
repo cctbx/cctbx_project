@@ -51,7 +51,7 @@ class riding_coefficients
 
 vec3<double> compute_h_position(
                    riding_coefficients const& rc,
-                   af::shared<vec3<double> > const& sites_cart)
+                   af::const_ref<vec3<double> > const& sites_cart)
   {
     vec3<double> r0 = sites_cart[rc.a0];
     vec3<double> rh = sites_cart[rc.ih];
@@ -123,9 +123,8 @@ vec3<double> compute_h_position(
 //------------------------
 // APPLY_NEW_H_POSITIONS
 //------------------------
-// returns new sites_cart
-af::shared<vec3<double> > apply_new_H_positions(
-    af::shared<vec3<double> > const& sites_cart,
+void apply_new_H_positions(
+    af::ref<vec3<double> > sites_cart,
     boost::python::list const& parameterization_)
   {
 // make local list parameterization
@@ -134,20 +133,14 @@ af::shared<vec3<double> > apply_new_H_positions(
       parameterization.push_back(
           boost::python::extract<riding_coefficients>(parameterization_[i])());
     }
-// create new sites_cart and initialize
-    af::shared<vec3<double> > sites_cart_new(sites_cart.size());
-    for(std::size_t i=0; i < sites_cart.size(); i++) {
-      sites_cart_new[i] = sites_cart[i];
-    }
 // calculate positions of H atoms according to parameterization
     for(int i=0; i < parameterization.size(); i++) {
       riding_coefficients rc = parameterization[i];
       int ih = rc.ih;
       vec3<double> rh_calc;
       rh_calc = compute_h_position(rc, sites_cart);
-      sites_cart_new[ih] = rh_calc;
+      sites_cart[ih] = rh_calc;
     }
-  return sites_cart_new;
 }
 
 vec3<double> G_unitvector(

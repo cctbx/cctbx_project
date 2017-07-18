@@ -10,6 +10,7 @@ class lbfgs(object):
   def __init__(self,
       sites_cart,
       geometry_restraints_manager,
+      riding_h_manager=None,
       correct_special_position_tolerance=1.0,
       geometry_restraints_flags=None,
       lbfgs_termination_params=None,
@@ -22,6 +23,7 @@ class lbfgs(object):
     if (lbfgs_termination_params is None):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations=1000)
+    self.riding_h_manager = riding_h_manager
     self.correct_special_position_tolerance=correct_special_position_tolerance
     self.site_labels = site_labels
     self.states_collector = states_collector
@@ -33,7 +35,10 @@ class lbfgs(object):
       self.x = flex.double(self.tmp.reduced_sites_cart.size()*3, 0)
     else:
       self.sites_cart_selection = None
-      self.x = flex.double(sites_cart.size()*3, 0)
+      if(self.riding_h_manager is not None):
+        self.x = self.riding_h_manager.refinable_parameters_init()
+      else:
+        self.x = flex.double(sites_cart.size()*3, 0)
     self.tmp.geometry_restraints_manager = geometry_restraints_manager
     self.tmp.geometry_restraints_flags = geometry_restraints_flags
     self.tmp.disable_asu_cache = disable_asu_cache
@@ -61,7 +66,14 @@ class lbfgs(object):
       self.tmp.sites_shifted = self.tmp.sites_cart.deep_copy()
       self.tmp.sites_shifted.set_selected(self.sites_cart_selection, shifted)
     else:
-      self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
+      if(self.riding_h_manager is None):
+        self.tmp.sites_shifted = self.tmp.sites_cart + flex.vec3_double(self.x)
+      else:
+        new_sites = self.tmp.sites_cart.select(
+          self.riding_h_manager.not_hd_selection) + flex.vec3_double(self.x)
+        self.tmp.sites_shifted.set_selected(
+          self.riding_h_manager.not_hd_selection, new_sites)
+        self.riding_h_manager.idealize(sites_cart = self.tmp.sites_shifted)
     if(self.states_collector is not None):
       self.states_collector.add(sites_cart = self.tmp.sites_shifted)
     if (self.tmp.geometry_restraints_manager.crystal_symmetry is not None):
@@ -98,5 +110,11 @@ class lbfgs(object):
       ptr = self.tmp.target_result.gradients
       self.g = ptr.select(self.sites_cart_selection).as_double()
     else:
-      self.g = self.tmp.target_result.gradients.as_double()
+      if(self.riding_h_manager is None):
+        self.g = self.tmp.target_result.gradients.as_double()
+      else:
+        self.g = self.riding_h_manager.gradients_reduced_cpp(
+          gradients    = self.tmp.target_result.gradients,
+          sites_cart   = self.tmp.sites_shifted,
+          hd_selection = self.riding_h_manager.hd_selection)
     return self.f, self.g

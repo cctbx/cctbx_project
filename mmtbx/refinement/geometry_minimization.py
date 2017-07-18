@@ -33,6 +33,7 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
         geometry_restraints_flags,
         lbfgs_termination_params,
         correct_special_position_tolerance,
+        riding_h_manager=None,
         sites_cart_selection=None,
         lbfgs_exception_handling_params=None,
         rmsd_bonds_termination_cutoff=0,
@@ -44,6 +45,7 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
     self.states_collector = states_collector
     geometry_restraints.lbfgs.lbfgs.__init__(self,
       sites_cart=sites_cart,
+      riding_h_manager = riding_h_manager,
       correct_special_position_tolerance=correct_special_position_tolerance,
       geometry_restraints_manager=geometry_restraints_manager,
       geometry_restraints_flags=geometry_restraints_flags,
@@ -191,6 +193,7 @@ class run2(object):
                restraints_manager,
                pdb_hierarchy,
                correct_special_position_tolerance,
+               riding_h_manager               = None,
                ncs_restraints_group_list      = [],
                max_number_of_iterations       = 500,
                number_of_macro_cycles         = 5,
@@ -262,7 +265,6 @@ class run2(object):
         sites_cart=self.pdb_hierarchy.atoms().extract_xyz())
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
-      self.correct_hydrogen_geometries(self.log)
       self.update_cdl_restraints(macro_cycle=i_macro_cycle)
       if(fix_rotamer_outliers):
         self.pdb_hierarchy, self.restraints_manager = add_rotamer_restraints(
@@ -277,11 +279,6 @@ class run2(object):
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
       if rdl:
         self.updaterdl(prefix="Update RDL restraints")
-      # self.pdb_hierarchy.write_pdb_file("after_fix_%d.pdb" % i_macro_cycle)
-      # self.restraints_manager.write_geo_file(
-      #     sites_cart=self.pdb_hierarchy.atoms().extract_xyz(),
-      #     site_labels= [atom.id_str() for atom in self.pdb_hierarchy.atoms()],
-      #     file_name="after_fix_%d.geo" % i_macro_cycle)
       if (ncs_restraints_group_list is not None
           and len(ncs_restraints_group_list)) > 0:
         # do ncs minimization
@@ -310,6 +307,7 @@ class run2(object):
       else:
         self.minimized = lbfgs(
           sites_cart                      = sites_cart,
+          riding_h_manager                = riding_h_manager,
           correct_special_position_tolerance=correct_special_position_tolerance,
           geometry_restraints_manager     = restraints_manager.geometry,
           geometry_restraints_flags       = geometry_restraints_flags,
@@ -362,23 +360,6 @@ class run2(object):
       )
     print >> self.log, "="*79
     return rc
-
-  def correct_hydrogen_geometries(self, log):
-    if self.correct_hydrogens:
-      from mmtbx.monomer_library.correct_hydrogen_geometries import \
-        correct_hydrogen_geometries
-      bad_hydrogen_count, corrected_hydrogen_count = \
-        correct_hydrogen_geometries(
-          self.pdb_hierarchy,
-          restraints_manager = self.restraints_manager,
-          sites_cart         = self.pdb_hierarchy.atoms().extract_xyz())
-      if len(corrected_hydrogen_count):
-        print >> log, "    Number of hydrogens corrected : %d" % len(corrected_hydrogen_count)
-        for atom in corrected_hydrogen_count:
-          print >> log, "      %s" % atom
-      if bad_hydrogen_count:
-        print >> log, "    Number of uncorrected         : %d" % (
-          bad_hydrogen_count-len(corrected_hydrogen_count))
 
   def show(self):
     es = self.restraints_manager.geometry.energies_sites(

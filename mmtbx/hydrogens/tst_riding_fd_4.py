@@ -31,9 +31,7 @@ def exercise(pdb_str, eps, idealize):
     pdb_hierarchy       = pdb_hierarchy,
     geometry_restraints = geometry)
 
-  riding_h_manager.idealize_hydrogens_inplace_cpp(
-    pdb_hierarchy=pdb_hierarchy,
-    xray_structure=xray_structure)
+  riding_h_manager.idealize(xray_structure=xray_structure)
   sites_cart = xray_structure.sites_cart()
 
   g_analytical = geometry.energies_sites(
@@ -60,7 +58,7 @@ def exercise(pdb_str, eps, idealize):
           sites_cart_[i_site][j]+e[j]*sign for j in xrange(3)]
         xray_structure_.set_sites_cart(sites_cart_)
         # after shift, recalculate H position
-        riding_h_manager.idealize_hydrogens_inplace_cpp(
+        riding_h_manager.idealize(
           xray_structure=xray_structure_)
         sites_cart_ = xray_structure_.sites_cart()
         ts.append(geometry.energies_sites(

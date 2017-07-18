@@ -14,6 +14,7 @@ from cStringIO import StringIO
 from mmtbx.monomer_library import pdb_interpretation, server
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
+from mmtbx.hydrogens import riding
 
 base_params_str = """\
 silent = False
@@ -93,6 +94,9 @@ minimization
     .help = stop after reaching specified cutoff value
   correct_special_position_tolerance = 1.0
     .type = float
+  riding_h = False
+    .type = bool
+    .help = Use riding model for H
   move
     .help = Define what to include into refinement target
     .short_caption = Geometry terms
@@ -281,6 +285,7 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
 def run_minimization(
       selection,
       restraints_manager,
+      riding_h_manager,
       pdb_hierarchy,
       params,
       cdl,
@@ -294,6 +299,7 @@ def run_minimization(
       mon_lib_srv = None):
   o = mmtbx.refinement.geometry_minimization.run2(
     restraints_manager             = restraints_manager,
+    riding_h_manager               = riding_h_manager,
     pdb_hierarchy                  = pdb_hierarchy,
     ncs_restraints_group_list      = ncs_restraints_group_list,
     max_number_of_iterations       = params.max_iterations,
@@ -373,6 +379,7 @@ class run(object):
     self.sites_cart_start     = None
     self.states_collector     = None
     self.mon_lib_srv          = None
+    self.riding_h_manager     = None
     self.__execute()
 
   def __execute(self):
@@ -381,6 +388,7 @@ class run(object):
     self.caller(self.process_inputs,       "Processing inputs")
     self.caller(self.atom_selection,       "Atom selection")
     self.caller(self.get_restraints,       "Geometry Restraints")
+    self.caller(self.setup_riding_h,       "Setup riding H")
     self.caller(self.minimization,         "Minimization")
     self.caller(self.write_pdb_file,       "Write PDB file")
     self.caller(self.write_geo_file,       "Write GEO file")
@@ -427,17 +435,6 @@ class run(object):
     self.inputs.params.show(prefix="  ", out=self.log)
     if(len(self.args)==0): sys.exit(0)
     self.mon_lib_srv = server.server()
-    ##########################
-    # adjust some parameters #
-    ##########################
-    #if hasattr(self.params, "amber"):
-    #  if self.params.amber.use_amber:
-    #    self.params.pdb_interpretation.sort_atoms=False
-    #    print >> self.log, "%s\n  %s\n%s" % (
-    #      '-'*40,
-    #      'Automatic sorting of atoms turned off.',
-    #      '-'*40,
-    #    )
 
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -474,6 +471,15 @@ class run(object):
       params             = self.params,
       log                = self.log)
 
+  def setup_riding_h(self, prefix):
+    if(not (self.params.minimization.riding_h and
+            self.xray_structure.hd_selection().count(True)>0)): return
+    broadcast(m=prefix, log = self.log)
+    self.riding_h_manager = riding.manager(
+      pdb_hierarchy       = self.pdb_hierarchy,
+      geometry_restraints = self.grm.geometry)
+    self.riding_h_manager.idealize(pdb_hierarchy = self.pdb_hierarchy)
+
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
     use_amber = False
@@ -501,19 +507,20 @@ class run(object):
       if self.ncs_obj is not None:
         ncs_restraints_group_list = self.ncs_obj.get_ncs_restraints_group_list()
       run_minimization(
-        selection            = self.selection,
-        restraints_manager   = self.grm,
-        params               = self.params.minimization,
-        pdb_hierarchy        = self.pdb_hierarchy,
-        cdl                  = self.params.pdb_interpretation.restraints_library.cdl,
-        rdl                  = self.params.pdb_interpretation.restraints_library.rdl,
-        correct_hydrogens    = self.params.pdb_interpretation.correct_hydrogens,
-        fix_rotamer_outliers = self.params.fix_rotamer_outliers,
+        selection              = self.selection,
+        restraints_manager     = self.grm,
+        riding_h_manager       = self.riding_h_manager,
+        params                 = self.params.minimization,
+        pdb_hierarchy          = self.pdb_hierarchy,
+        cdl                    = self.params.pdb_interpretation.restraints_library.cdl,
+        rdl                    = self.params.pdb_interpretation.restraints_library.rdl,
+        correct_hydrogens      = self.params.pdb_interpretation.correct_hydrogens,
+        fix_rotamer_outliers   = self.params.fix_rotamer_outliers,
         allow_allowed_rotamers = self.params.allow_allowed_rotamers,
-        states_collector= self.states_collector,
-        log                  = self.log,
+        states_collector       = self.states_collector,
+        log                    = self.log,
         ncs_restraints_group_list = ncs_restraints_group_list,
-        mon_lib_srv          = self.mon_lib_srv)
+        mon_lib_srv            = self.mon_lib_srv)
     self.xray_structure.set_sites_cart(
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 
@@ -540,12 +547,11 @@ class run(object):
     if self.output_crystal_symmetry:
       cs = self.xray_structure.crystal_symmetry()
     write_whole_pdb_file(
-        file_name=ofn,
-        processed_pdb_file=self.processed_pdb_file,
-        pdb_hierarchy=self.pdb_hierarchy,
-        crystal_symmetry=cs,
-        link_records=link_records,
-      )
+      file_name=ofn,
+      processed_pdb_file=self.processed_pdb_file,
+      pdb_hierarchy=self.pdb_hierarchy,
+      crystal_symmetry=cs,
+      link_records=link_records)
     if(self.states_collector):
       self.states_collector.write(
         file_name=ofn[:].replace(".pdb","_all_states.pdb"))
