@@ -102,11 +102,17 @@ class Plotter(object):
     ''' calculates beam xy and other parameters '''
     info = []
 
+    if self.params.advanced.integrate_with == 'cctbx':
+      img_pickle = self.final_objects[0].final['img']
+      pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
+    elif self.params.advanced.integrate_with == 'dials':
+      proc_pickle = self.final_objects[0].final['final']
+      pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
+
     # Import relevant info
     for i in [j.final['final'] for j in self.final_objects]:
       try:
         beam = ep.load(i)
-        pixel_size = beam['pixel_size']
         info.append([i, beam['xbeam'], beam['ybeam'],
                     beam['wavelength'], beam['distance'],
                     beam['observations'][0].unit_cell().parameters()])
