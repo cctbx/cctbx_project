@@ -206,8 +206,9 @@ def plot_run_stats(stats,
   ax2.axis('tight')
   ax2.set_ylabel("blue:% indexed", fontsize=text_ratio)
   ax2_twin.set_ylabel("green: % solvent", fontsize=text_ratio)
-  ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=spot_ratio)
-  ax3.scatter(t, isigi_high, edgecolors="none", color='orange', s=spot_ratio)
+  #ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=spot_ratio)
+  gtz = isigi_high > 0
+  ax3.scatter(t.select(gtz), isigi_high.select(gtz), edgecolors="none", color='orange', s=spot_ratio)
   ax3.set_ylim(ymin=0)
   ax3_twin = ax3.twinx()
   ax3_twin.plot(t, hq_rate*100, color='orange')
