@@ -329,7 +329,10 @@ class FormatGatanDM4(Format, FormatMultiImage):
     image_range = (1, nframes)
     exposure_times = 0.0
     oscillation = (0, 0.5)
+    epochs = [0] * nframes
 
+    return self._scan_factory.make_scan(image_range, exposure_times,
+      oscillation, epochs, deg=True)
 
   def get_raw_data(self, index):
 
