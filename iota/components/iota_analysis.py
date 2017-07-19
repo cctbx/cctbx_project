@@ -164,7 +164,7 @@ class Plotter(object):
 
     # Get values
     beamX, beamY, cbeamX, cbeamY, obeamX, obeamY, \
-    beam_dist, distances, aD, bD, cD = self.calculate_beam_xy()
+    beam_dist, distances, aD, bD, cD, pixel_size = self.calculate_beam_xy()
 
     # Plot figure
     if threeD:
