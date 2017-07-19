@@ -400,7 +400,7 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
       aniso_obj=analyze_aniso_object()
       aniso_obj.set_up_aniso_correction(f_array=f_array,d_min=resolution)
 
-    if remove_aniso:
+    if remove_aniso and aniso_obj and aniso_obj.b_cart:
       f_array=aniso_obj.apply_aniso_correction(f_array=f_array)
       print >>out,"Removing anisotropy with b_cart=(%7.2f,%7.2f,%7.2f)\n" %(
         aniso_obj.b_cart[:3])

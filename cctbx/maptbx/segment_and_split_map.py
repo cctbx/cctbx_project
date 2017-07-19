@@ -2001,10 +2001,11 @@ def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb",out=sys.stdout):
   f.close()
   print >>out,"Atoms written to %s" %file_name
 
-def get_b_iso(miller_array,d_min=None,return_aniso_scale_and_b=False):
+def get_b_iso(miller_array,d_min=None,return_aniso_scale_and_b=False,
+    d_max=100000.):
 
   if d_min:
-    res_cut_array=miller_array.resolution_filter(d_max=None,
+    res_cut_array=miller_array.resolution_filter(d_max=d_max,
        d_min=d_min)
   else:
     res_cut_array=miller_array
@@ -2050,44 +2051,27 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
   return model_f_array
 
 def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
+      d_max=100000.,
       d_min_ratio=None,return_as_map_coeffs=False,remove_aniso=None,
         out=sys.stdout):
-    from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
-    if d_min and d_min_ratio is not None:
-      d_min_ratio_use=d_min_ratio
-      map_coeffs=None
-      n_try=0
-      max_try=5
-      while d_min_ratio_use <= 1 and n_try<=max_try:
-        n_try+=1
-        args=['d_min=%s' %(d_min*d_min_ratio_use)]
-        try:
-          map_coeffs=map_to_sf(args=args,
-            space_group_number=crystal_symmetry.space_group().type().number(),
-            ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
-            return_as_miller_arrays=True,nohl=True,out=null_out())
-        except Exception, e:
-          if str(e).find("Too high resolution")> -1:
-            d_min_ratio_use=d_min_ratio_use**0.5 # move towards 1
-            continue
-          else:
-            raise Sorry("Failed to run map_to_structure_factors.\n "+
-              "Msg: %s" %(str(e)))
-        break  # it was ok
 
-      if not map_coeffs:
-            raise Sorry("Failed to run map_to_structure_factors (no map coeffs)...")
-
-    elif d_min:
-       args=['d_min=%s' %(d_min)]
-       print >>out,"Using all grid points for inversion"
+    if d_min is not None:
+      d_min_use=d_min
+      if d_min_ratio is not None: 
+        d_min_use=d_min*d_min_ratio
     else:
-       args=['d_min=None','box=True']
-       print >>out,"Using all grid points for inversion"
+      d_min_use=None
+    from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
+    if crystal_symmetry.space_group().type().number() in [0,1]:
+      args=['d_min=None','box=True']
+    else: # cannot use box for other space groups
+      args=['d_min=%s'%(d_min_use),'box=False'] 
     map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
          return_as_miller_arrays=True,nohl=True,out=null_out())
+    if d_min_use:
+      map_coeffs=map_coeffs.resolution_filter(d_min=d_min_use,d_max=d_max)
 
     map_coeffs=scale_map_coeffs(map_coeffs,out=out)
 
@@ -5888,6 +5872,7 @@ def get_overall_mask(
     crystal_symmetry=None,
     radius=None,
     resolution=None,
+    d_max=100000.,
     out=sys.stdout):
 
   # Make a local SD map from our map-data
@@ -5911,21 +5896,14 @@ def get_overall_mask(
 
   from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
   args=['d_min=None','box=True']
-  for d_min in [resolution,resolution+0.5,resolution+1.0,resolution+2.]:
-    args=['d_min=%s' %(d_min)]
-    from libtbx.utils import null_out
-    try:
-      map_coeffs=map_to_sf(args=args,
+  from libtbx.utils import null_out
+  map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
          return_as_miller_arrays=True,nohl=True,out=null_out())
-    except Exception,e:
-      map_coeffs=None
-      msg=str(e)
-      continue
-    break # was fine
   if not map_coeffs:
-    raise Sorry(msg)
+    raise Sorry("No map coeffs obtained")
+  map_coeffs=map_coeffs.resolution_filter(d_min=resolution,d_max=d_max)
 
   complete_set = map_coeffs.complete_set()
   stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
@@ -6337,7 +6315,7 @@ def select_box_map_data(si=None,
     lower_bounds,upper_bounds=put_bounds_in_range(
      lower_bounds=lower_bounds,upper_bounds=upper_bounds,
      box_size=box_size,buffer=buffer,
-     n_real=map_data.all())
+     n_real=map_data.all(),out=out)
 
     # select map data inside this box
     print >>out,"\nSelecting map data inside box"
@@ -7396,7 +7374,10 @@ def effective_b_iso(map_data=None,tracking_data=None,
 
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
     b_iso=map_coeffs_ra.b_iso
-    print >>out,"Effective B-iso = %7.2f" %(b_iso)
+    if b_iso is not None:
+      print >>out,"Effective B-iso = %7.2f" %(b_iso)
+    else:
+      print >>out,"Effective B-iso not determined"
     return map_coeffs_ra,map_coeffs,f_array,phases
 
 def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
