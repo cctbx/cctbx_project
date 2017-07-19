@@ -718,6 +718,17 @@ Installation of Python packages may fail.
         "--enable-framework=\"%s\"" % self.base_dir,
         ]
       self.call("./configure %s" % " ".join(configure_args), log=log)
+
+      # patch Mac/Makefile to avoid cruft in /Applications
+      targets = ['PYTHONAPPSDIR=/Applications/$(PYTHONFRAMEWORK) $(VERSION)',
+                 'installapps: install_Python install_pythonw install_BuildApplet install_PythonLauncher \\',
+                 'install_IDLE checkapplepython install_versionedtools']
+      replacements = ['PYTHONAPPSDIR=',
+                      'installapps: install_Python install_pythonw \\',
+                      'checkapplepython install_versionedtools']
+      for target,replacement in zip(targets,replacements):
+        self.patch_src(src_file='Mac/Makefile',
+                       target=target, replace_with=replacement)
     else:
       # Linux
       # Ian: Setup build to use rpath $ORIGIN to find libpython.so.
