@@ -1,5 +1,7 @@
-IOTA v1.1.020 - tracker bugfix
+IOTA v1.1.020 - tracker image viewing
 
-1. Fixed "ValueError" exception in tracker plotting (barfed on nonexistent
-temp image files)
-2. Changed beamXY reporting to pixels AND mm
+1. Added an image list control to image tracker that displays hits (i.e. images
+with more than minimum specified Bragg peaks)
+2. The list auto-updates whenever the minimum number of Bragg peaks is
+changed.
+3. Can launch viewer for each individual image.
