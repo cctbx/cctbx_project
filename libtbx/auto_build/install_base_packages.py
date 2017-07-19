@@ -754,8 +754,8 @@ Installation of Python packages may fail.
       self.call([os.path.join(python_dir, 'configure')] + configure_args,
                 log=log, cwd=python_dir, shell=False)
 
-    # build
-    self.call('make -j %d' % self.nproc, log=log, cwd=python_dir)
+    # build (serial because of potential for race conditions)
+    self.call('make', log=log, cwd=python_dir)
     self.call('make install', log=log, cwd=python_dir)
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
 
