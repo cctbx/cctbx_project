@@ -321,10 +321,6 @@ class ImageSet(object):
     ''' Return the number of images in this image set. '''
     return len(self._indices)
 
-  def __str__(self):
-    ''' Return the array indices of the image set as a string. '''
-    return str(self.paths())
-
   def __iter__(self):
     ''' Iterate over the array indices and read each image in turn. '''
     for i in range(len(self)):

@@ -906,6 +906,9 @@ class InMemScript(DialsProcessScript):
 
     from dxtbx.imageset import ImageSet, ImageSetData, MemReader
     imgset = ImageSet(ImageSetData(MemReader([dxtbx_img])))
+    imgset.set_beam(dxtbx_img.get_beam())
+    imgset.set_detector(dxtbx_img.get_detector())
+
     if self.params.dispatch.estimate_gain_only:
       from dials.command_line.estimate_gain import estimate_gain
       estimate_gain(imgset)
