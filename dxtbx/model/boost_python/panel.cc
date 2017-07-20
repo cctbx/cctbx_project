@@ -392,7 +392,8 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("fast_axis_tolerance")=1e-6,
             arg("slow_axis_tolerance")=1e-6,
             arg("origin_tolerance")=1e-6,
-            arg("static_only")=false))
+            arg("static_only")=false,
+            arg("ignore_trusted_range")=false))
       ;
 
     class_<Panel, bases<PanelData> >("Panel")

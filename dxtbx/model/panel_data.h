@@ -158,7 +158,7 @@ namespace dxtbx { namespace model {
 
     /** @returns True/False this is the same as the other */
     bool operator==(const PanelData &rhs) const {
-      return VirtualPanel::operator==(rhs) && is_similar_to(rhs, 1e-5, 1e-5, 1e-5, false);
+      return VirtualPanel::operator==(rhs) && is_similar_to(rhs, 1e-5, 1e-5, 1e-5, false, false);
     }
 
     /** @returns True/False this is not the same as the other */
@@ -170,7 +170,8 @@ namespace dxtbx { namespace model {
                         double fast_axis_tolerance,
                         double slow_axis_tolerance,
                         double origin_tolerance,
-                        bool static_only) const {
+                        bool static_only,
+                        bool ignore_trusted_range=false) const {
       bool result =
              image_size_.const_ref().all_eq(
               rhs.image_size_.const_ref())
@@ -178,14 +179,17 @@ namespace dxtbx { namespace model {
               rhs.pixel_size_.const_ref(), 1e-7);
       if (!static_only) {
         result = result
-          && trusted_range_.const_ref().all_approx_equal(
-              rhs.trusted_range_.const_ref(), 1e-7)
           && get_fast_axis().const_ref().all_approx_equal(
               rhs.get_fast_axis().const_ref(), fast_axis_tolerance)
           && get_slow_axis().const_ref().all_approx_equal(
               rhs.get_slow_axis().const_ref(), slow_axis_tolerance)
           && get_origin().const_ref().all_approx_equal(
               rhs.get_origin().const_ref(), origin_tolerance);
+        if (!ignore_trusted_range) {
+          result = result
+            && trusted_range_.const_ref().all_approx_equal(
+                rhs.trusted_range_.const_ref(), 1e-7);
+        }
       }
       return result;
     }

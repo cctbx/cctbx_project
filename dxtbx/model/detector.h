@@ -453,13 +453,15 @@ namespace dxtbx { namespace model {
           double fast_axis_tolerance,
           double slow_axis_tolerance,
           double origin_tolerance,
-          bool static_only) const {
+          bool static_only,
+          bool ignore_trusted_range=false) const {
         if (Panel::is_similar_to(
               rhs,
               fast_axis_tolerance,
               slow_axis_tolerance,
               origin_tolerance,
-              static_only)) {
+              static_only,
+              ignore_trusted_range)) {
           if (size() == rhs.size()) {
             bool all_eq = true;
             for (std::size_t i = 0; i < size(); ++i) {
@@ -468,7 +470,8 @@ namespace dxtbx { namespace model {
                     fast_axis_tolerance,
                     slow_axis_tolerance,
                     origin_tolerance,
-                    static_only)) {
+                    static_only,
+                    ignore_trusted_range)) {
                 all_eq = false;
                 break;
               }
@@ -662,14 +665,16 @@ namespace dxtbx { namespace model {
                         double fast_axis_tolerance,
                         double slow_axis_tolerance,
                         double origin_tolerance,
-                        bool static_only) const {
+                        bool static_only,
+                        bool ignore_trusted_range=false) const {
       bool similar = false;
       if (data_->root.is_similar_to(
             rhs.data_->root,
             fast_axis_tolerance,
             slow_axis_tolerance,
             origin_tolerance,
-            static_only) && size() == rhs.size()) {
+            static_only,
+            ignore_trusted_range) && size() == rhs.size()) {
         similar = true;
         for (std::size_t i = 0; i < size(); ++i) {
           similar = similar && (data_->panels[i]->is_similar_to(
@@ -677,7 +682,8 @@ namespace dxtbx { namespace model {
             fast_axis_tolerance,
             slow_axis_tolerance,
             origin_tolerance,
-            static_only));
+            static_only,
+            ignore_trusted_range));
         }
       }
       return similar;

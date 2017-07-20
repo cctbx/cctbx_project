@@ -404,7 +404,8 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("fast_axis_tolerance")=1e-6,
             arg("slow_axis_tolerance")=1e-6,
             arg("origin_tolerance")=1e-6,
-            arg("static_only")=false))
+            arg("static_only")=false,
+            arg("ignore_trusted_range")=false))
       .def("__iter__",
         iterator<Detector::Node, return_internal_reference<> >())
       .def("children",
@@ -445,7 +446,8 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("fast_axis_tolerance")=1e-6,
             arg("slow_axis_tolerance")=1e-6,
             arg("origin_tolerance")=1e-6,
-            arg("static_only")=false))
+            arg("static_only")=false,
+            arg("ignore_trusted_range")=false))
       .def("get_max_resolution",
         &Detector::get_max_resolution, (arg("s0")))
       .def("get_max_inscribed_resolution",
