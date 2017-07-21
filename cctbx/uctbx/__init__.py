@@ -113,7 +113,10 @@ Conversion of Cartesian coordinates to fractional coordinates.
 class _(boost.python.injector, ext.unit_cell):
 
   def __str__(self):
-    return "(%.6g, %.6g, %.6g, %.6g, %.6g, %.6g)" % self.parameters()
+    return format(self, "({:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g})")
+
+  def __format__(self, format_spec="({:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g}, {:.6g})"):
+    return format_spec.format(*self.parameters())
 
   def show_parameters(self, f=None, prefix="Unit cell: "):
     if (f is None): f = sys.stdout

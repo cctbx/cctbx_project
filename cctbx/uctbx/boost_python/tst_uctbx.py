@@ -755,7 +755,17 @@ def exercise_downstream_methods():
     else:
       assert ms.indices().size() == 26
 
+def exercise_unit_cell_format():
+  from cctbx import sgtbx
+  sgi = sgtbx.space_group_info('P1')
+  uc = sgi.any_compatible_unit_cell(volume=1000)
+  s = str(uc)
+  assert s == '(8.52593, 11.0837, 14.4941, 83, 109, 129)', s
+  s = format(uc, '{:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}')
+  assert s == '8.53 11.08 14.49 83.00 109.00 129.00', s
+
 def run():
+  exercise_unit_cell_format()
   exercise_d_metrical_matrix_d_params()
   exercise_tensor_rank_2_orth_and_frac_linear_maps()
   exercise_non_crystallographic_unit_cell_with_the_sites_in_its_center()
