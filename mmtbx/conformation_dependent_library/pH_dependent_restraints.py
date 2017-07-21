@@ -8,6 +8,14 @@ import time
 from mmtbx.monomer_library import server
 from cctbx import geometry_restraints
 
+def _get_atom_neutron(ag, name, bondlength=None):
+  atom = ag.get_atom(name)
+  if atom: return atom, atom.name, False
+  if bondlength<1:
+    atom = ag.get_atom(name.replace('H', 'D'))
+    if atom: return atom, name, True
+  return atom, None, False
+
 def adjust_geometry_proxies_registeries(hierarchy,
                                         #bond_params_table,
                                         #bond_asu_table,
@@ -42,36 +50,62 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                       rg.parent().id,
                                       rg.resseq,
                                       ))
+    neutrons = []
     for bond in monomer_restraints.bond_list:
-      atom1 = ag.get_atom(bond.atom_id_1)
+      atom1, name1, neutron1 = _get_atom_neutron(ag,
+                                                 bond.atom_id_1,
+                                                 bondlength=bond.value_dist)
       if atom1 is None: continue
-      atom2 = ag.get_atom(bond.atom_id_2)
+      atom2, name2, neutron2 = _get_atom_neutron(ag,
+                                                 bond.atom_id_2,
+                                                 bondlength=bond.value_dist)
       if atom2 is None: continue
       i_seqs = [atom1.i_seq, atom2.i_seq]
-      i_seqs.sort()
-      bond_table_entry = gpr.bond_simple.table[i_seqs[0]]
-      if i_seqs[1] in bond_table_entry:
-        bond_simple = gpr.bond_simple.proxies[i_seqs[0]]
+      if neutron1: neutrons.append(atom1.name)
+      if neutron2: neutrons.append(atom2.name)
+      k=0
+      l=1
+      bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
+      if ( not bond_table_entry or 
+           i_seqs[l] not in gpr.bond_simple.table[i_seqs[k]]):
+        k=1
+        l=0
+        bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
+      if i_seqs[l] in bond_table_entry:
+        bond_simple = gpr.bond_simple.proxies[i_seqs[k]]
         bond_simple.distance_ideal = bond.value_dist
         bond_simple.weight=1/bond.value_dist_esd**2
-        bond_counters[0]+=1
+        bond_counters[0]+=1 # changed
       else:
-        proxy = geometry_restraints.bond_simple_proxy(
-          i_seqs=i_seqs,
-          distance_ideal=bond.value_dist,
-          weight=1/(bond.value_dist_esd**2),
+        if neutron1 or neutron2:
+          proxy = geometry_restraints.bond_simple_proxy(
+            i_seqs=i_seqs,
+            distance_ideal=bond.value_dist_neutron,
+            weight=1/(bond.value_dist_esd**2),
+          )
+        else:
+          proxy = geometry_restraints.bond_simple_proxy(
+            i_seqs=i_seqs,
+            distance_ideal=bond.value_dist,
+            weight=1/(bond.value_dist_esd**2),
           )
         gpr.bond_simple.proxies.append(proxy)
-        atoms_added[atom1.i_seq] = atom_dict.get(atom1.name.strip(), None)
-        atoms_added[atom2.i_seq] = atom_dict.get(atom2.name.strip(), None)
+        atoms_added[atom1.i_seq] = atom_dict.get(name1.strip(), None)
+        atoms_added[atom2.i_seq] = atom_dict.get(name2.strip(), None)
         bond_counters[1]+=1
     lookup={}
     for angle in monomer_restraints.angle_list:
-      atom1 = ag.get_atom(angle.atom_id_1)
+      atom1, name1, neutron1 = _get_atom_neutron(ag,
+                                                 angle.atom_id_1,
+      )
       if atom1 is None: continue
-      atom2 = ag.get_atom(angle.atom_id_2)
+      atom2, name2, neutron2 = _get_atom_neutron(ag,
+                                                 angle.atom_id_2,
+      )
       if atom2 is None: continue
-      atom3 = ag.get_atom(angle.atom_id_3)
+      atom3, name3, neutron3 = _get_atom_neutron(ag,
+                                                 angle.atom_id_3,
+      )
       if atom3 is None: continue
       i_seqs = (atom1.i_seq, atom2.i_seq, atom3.i_seq)
       lookup[i_seqs]=angle
@@ -92,6 +126,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
       done = []
       for i_seqs in lookup:
         if i_seqs in done: continue
+        angle = lookup[i_seqs]
         proxy =  geometry_restraints.angle_proxy(
           i_seqs=i_seqs,
           angle_ideal=angle.value_angle,
@@ -128,6 +163,7 @@ def adjust_geometry_restraints_manager(hierarchy,
                                        log=None,
                                        ):
   # obsolete
+  assert 0
   t0=time.time()
   mon_lib_srv = server.server()
   pdb_atoms = hierarchy.atoms()
