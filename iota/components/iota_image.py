@@ -201,7 +201,7 @@ class SingleImage(object):
           datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
           imageset = datablock.extract_imagesets()[0]
           self.gain = estimate_gain(imageset)
-        except IndexError, e:
+        except Exception, e:
           self.gain = 1.0
     else:
       self.gain = 1.0
