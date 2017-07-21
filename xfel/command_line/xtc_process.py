@@ -381,6 +381,8 @@ class InMemScript(DialsProcessScript):
     self.all_indexed_reflections = None
     self.all_integrated_experiments = None
     self.all_integrated_reflections = None
+    self.all_int_pickle_filenames = []
+    self.all_int_pickles = []
 
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
