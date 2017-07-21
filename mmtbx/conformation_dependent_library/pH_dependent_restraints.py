@@ -50,7 +50,6 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                       rg.parent().id,
                                       rg.resseq,
                                       ))
-    neutrons = []
     for bond in monomer_restraints.bond_list:
       atom1, name1, neutron1 = _get_atom_neutron(ag,
                                                  bond.atom_id_1,
@@ -61,8 +60,6 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                                  bondlength=bond.value_dist)
       if atom2 is None: continue
       i_seqs = [atom1.i_seq, atom2.i_seq]
-      if neutron1: neutrons.append(atom1.name)
-      if neutron2: neutrons.append(atom2.name)
       k=0
       l=1
       bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
