@@ -251,6 +251,12 @@ xtc_phil_str = '''
     output_dir = .
       .type = str
       .help = Directory output files will be placed
+    composite_output = True
+      .type = bool
+      .help = If True, save one set of json/pickle files per process, where each is a \
+              concatenated list of all the successful events examined by that process. \
+              If False, output a separate json/pickle file per image (generates a \
+              lot of files).
     logging_dir = None
       .type = str
       .help = Directory output log files will be placed
@@ -267,6 +273,9 @@ xtc_phil_str = '''
       .type = str
       .help = The filename for saving refined experimental models
     integrated_filename = %s_integrated.pickle
+      .type = str
+      .help = The filename for final experimental modls
+    integrated_experiments_filename = %s_integrated_experiments.json
       .type = str
       .help = The filename for final integrated reflections.
     profile_filename = None
@@ -367,6 +376,12 @@ class InMemScript(DialsProcessScript):
 
     self.reference_detector = None
 
+    self.composite_tag = None
+    self.all_indexed_experiments = None
+    self.all_indexed_reflections = None
+    self.all_integrated_experiments = None
+    self.all_integrated_reflections = None
+
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
     self.debug_str += ",%s,%s,%s\n"
@@ -460,13 +475,23 @@ class InMemScript(DialsProcessScript):
     self.params = params
     self.load_reference_geometry()
 
-    # The convention is to put %s in the phil parameter to add a time stamp to
-    # each output datafile. Save the initial templates here.
-    self.strong_filename_template              = params.output.strong_filename
-    self.indexed_filename_template             = params.output.indexed_filename
-    self.refined_experiments_filename_template = params.output.refined_experiments_filename
-    self.integrated_filename_template          = params.output.integrated_filename
-    self.reindexedstrong_filename_template     = params.output.reindexedstrong_filename
+    if params.output.composite_output:
+      from dxtbx.model.experiment_list import ExperimentList
+      from dials.array_family import flex
+      #self.all_strong_reflections = flex.reflection_table() # no composite strong pickles yet
+      self.all_indexed_experiments = ExperimentList()
+      self.all_indexed_reflections = flex.reflection_table()
+      self.all_integrated_experiments = ExperimentList()
+      self.all_integrated_reflections = flex.reflection_table()
+    else:
+      # The convention is to put %s in the phil parameter to add a time stamp to
+      # each output datafile. Save the initial templates here.
+      self.strong_filename_template                 = params.output.strong_filename
+      self.indexed_filename_template                = params.output.indexed_filename
+      self.refined_experiments_filename_template    = params.output.refined_experiments_filename
+      self.integrated_filename_template             = params.output.integrated_filename
+      self.integrated_experiments_filename_template = params.output.integrated_filename
+      self.reindexedstrong_filename_template        = params.output.reindexedstrong_filename
 
     # Don't allow the strong reflections to be written unless there are enough to
     # process
@@ -496,6 +521,7 @@ class InMemScript(DialsProcessScript):
     else:
       rank = 0
       size = 1
+    self.composite_tag = "%04d"%rank
 
     # Configure the logging
     if params.output.logging_dir is None:
@@ -706,7 +732,11 @@ class InMemScript(DialsProcessScript):
           last = mem
         print 'Total memory leaked in %d cycles: %dkB' % (nevent+1-50, mem - first)
 
+    self.finalize()
+
     if params.joint_reintegration.enable:
+      if params.output.composite_output:
+        raise NotImplementedError("Joint reintegration not implemented for composite output yet")
       assert self.params.dispatch.dump_indexed, "Cannot do joint reintegration unless indexed files were dumped"
       if rank == 0:
         reint_dir = os.path.join(params.output.output_dir, "reint")
@@ -944,14 +974,17 @@ class InMemScript(DialsProcessScript):
     datablock = DataBlockFactory.from_imageset(imgset)[0]
 
     # before calling DIALS for processing, set output paths according to the templates
-    if self.indexed_filename_template is not None and "%s" in self.indexed_filename_template:
-      self.params.output.indexed_filename = os.path.join(self.params.output.output_dir, self.indexed_filename_template%("idx-" + s))
-    if "%s" in self.refined_experiments_filename_template:
-      self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, self.refined_experiments_filename_template%("idx-" + s))
-    if "%s" in self.integrated_filename_template:
-      self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
-    if "%s" in self.reindexedstrong_filename_template:
-      self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
+    if not self.params.output.composite_output:
+      if self.indexed_filename_template is not None and "%s" in self.indexed_filename_template:
+        self.params.output.indexed_filename = os.path.join(self.params.output.output_dir, self.indexed_filename_template%("idx-" + s))
+      if "%s" in self.refined_experiments_filename_template:
+        self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, self.refined_experiments_filename_template%("idx-" + s))
+      if "%s" in self.integrated_filename_template:
+        self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
+      if "%s" in self.integrated_experiments_filename_template:
+        self.params.output.integrated_experiments_filename = os.path.join(self.params.output.output_dir, self.integrated_experiments_filename_template%("idx-" + s))
+      if "%s" in self.reindexedstrong_filename_template:
+        self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
 
     if self.params.input.known_orientations_folder is not None:
       expected_orientation_path = os.path.join(self.params.input.known_orientations_folder, os.path.basename(self.params.output.refined_experiments_filename))
@@ -1159,6 +1192,18 @@ class InMemScript(DialsProcessScript):
 
     print "Indexed %d strong reflections out of %d"%(len(indexed_reflections), len(strong))
     self.save_reflections(indexed_reflections, self.params.output.reindexedstrong_filename)
+
+  def finalize(self):
+    if self.params.output.composite_output:
+      # Each process will write its own set of output files
+      s = self.composite_tag
+      self.params.output.indexed_filename                = os.path.join(self.params.output.output_dir, self.params.output.indexed_filename%("idx-" + s))
+      self.params.output.refined_experiments_filename    = os.path.join(self.params.output.output_dir, self.params.output.refined_experiments_filename%("idx-" + s))
+      self.params.output.integrated_filename             = os.path.join(self.params.output.output_dir, self.params.output.integrated_filename%("idx-" + s))
+      self.params.output.integrated_experiments_filename = os.path.join(self.params.output.output_dir, self.params.output.integrated_experiments_filename%("idx-" + s))
+      self.params.output.reindexedstrong_filename        = os.path.join(self.params.output.output_dir, self.params.output.reindexedstrong_filename%("idx-" + s))
+
+    super(InMemScript, self).finalize()
 
 if __name__ == "__main__":
   from dials.util import halraiser
