@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 05/19/2017
+Last Changed: 07/21/2017
 Description : IOTA GUI Dialogs
 '''
 
@@ -1556,4 +1556,165 @@ class RecoveryDialog(BaseDialog):
 
         self.selected = [self.pathlist.GetItemText(i, col=1),
                          self.pathlist.GetItemText(i, col=2)]
+    e.Skip()
+
+class DIALSSpfDialog(BaseDialog):
+  def __init__(self, parent,
+               phil,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        *args, **kwargs)
+
+    self.params = phil.extract()
+    self.spf_phil = None
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.main_sizer)
+
+    common_size = (200, -1)
+
+    # Spotfinding settings
+    self.options = wx.Panel(self, size=(500, -1))
+    self.options_box = wx.StaticBox(self.options, label='Spotfinding Options')
+    self.options_sizer = wx.StaticBoxSizer(self.options_box, wx.VERTICAL)
+    self.options.SetSizer(self.options_sizer)
+    self.sigma_background = ct.OptionCtrl(self.options,
+                                          items=[('s_bkg', 6)],
+                                          label='Sigma background',
+                                          label_size=common_size,
+                                          ctrl_size=(100, -1))
+    self.options_sizer.Add(self.sigma_background, flag=wx.ALL, border=5)
+
+    self.sigma_strong = ct.OptionCtrl(self.options,
+                                      items=[('s_strong', 3)],
+                                      label='Sigma strong',
+                                      label_size=common_size,
+                                      ctrl_size=(100, -1))
+    self.options_sizer.Add(self.sigma_strong, flag=wx.ALL, border=5)
+
+    self.global_threshold = ct.OptionCtrl(self.options,
+                                          items=[('threshold', 0)],
+                                          label='Global threshold',
+                                          label_size=common_size,
+                                          ctrl_size=(100, -1))
+    self.options_sizer.Add(self.global_threshold, flag=wx.ALL, border=5)
+
+    self.min_local = ct.OptionCtrl(self.options,
+                                   items=[('min_local', 2)],
+                                   label='Min. local',
+                                   label_size=common_size,
+                                   ctrl_size=(100, -1))
+    self.options_sizer.Add(self.min_local, flag=wx.ALL, border=5)
+
+    self.gain = ct.OptionCtrl(self.options,
+                              items=[('gain', 1.0)],
+                              label='Detector gain',
+                              label_size=common_size,
+                              ctrl_size=(100, -1))
+    self.options_sizer.Add(self.gain, flag=wx.ALL, border=5)
+
+    self.kernel_size = ct.OptionCtrl(self.options,
+                                     items=[('kernel', '3 3')],
+                                     label='Kernel size',
+                                     label_size=common_size,
+                                     ctrl_size=(100, -1))
+    self.options_sizer.Add(self.kernel_size, flag=wx.ALL, border=5)
+
+    self.mod_mask = ct.InputCtrl(self.options,
+                                 label='Mask',
+                                 label_size=wx.DefaultSize,
+                                 buttons=True)
+    self.options_sizer.Add(self.mod_mask, flag=wx.EXPAND | wx.ALL, border=5)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+
+    self.main_sizer.Add(self.options, 1, wx.EXPAND)
+    self.main_sizer.Add(dialog_box,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    # Bindings:
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    self.Bind(wx.EVT_BUTTON, self.onMaskBrowse,
+              self.mod_mask.btn_browse)
+    self.Bind(wx.EVT_BUTTON, self.onViewMask,
+              self.mod_mask.btn_mag)
+
+    self.Fit()
+    self.read_param_phil()
+
+  def onMaskBrowse(self, e):
+    dlg = wx.FileDialog(self,
+                        message="Select mask file",
+                        defaultDir=os.curdir,
+                        defaultFile="*.pickle",
+                        wildcard="*.pickle",
+                        style=wx.OPEN | wx.CHANGE_DIR)
+    if dlg.ShowModal() == wx.ID_OK:
+      filepath = dlg.GetPaths()[0]
+      self.mod_mask.ctr.SetValue(filepath)
+
+  def onViewMask(self, e):
+    import iota.components.iota_threads as thr
+    filepath = self.mod_mask.ctr.GetValue()
+    if os.path.isfile(filepath):
+      viewer = thr.ImageViewerThread(self,
+                                     backend='dials',
+                                     file_string=filepath)
+      viewer.start()
+
+  def read_param_phil(self):
+
+    # DIALS Spotfinder options
+    self.sigma_background.s_bkg.SetValue(
+      str(self.params.spotfinder.threshold.xds.sigma_background))
+    self.sigma_strong.s_strong.SetValue(
+      str(self.params.spotfinder.threshold.xds.sigma_strong))
+    self.global_threshold.threshold.SetValue(
+      str(self.params.spotfinder.threshold.xds.global_threshold))
+    self.min_local.min_local.SetValue(
+      str(self.params.spotfinder.threshold.xds.min_local))
+    self.gain.gain.SetValue(str(self.params.spotfinder.threshold.xds.gain))
+    self.kernel_size.kernel.SetValue('{} {}'.format(
+      self.params.spotfinder.threshold.xds.kernel_size[0],
+      self.params.spotfinder.threshold.xds.kernel_size[1]))
+    if str(self.params.spotfinder.lookup.mask).lower() != 'none':
+      self.mod_mask.ctr.SetValue(str(self.params.spotfinder.lookup.mask))
+    else:
+      self.mod_mask.ctr.SetValue('')
+
+  def onOK(self, e):
+    ''' Populate param PHIL file for DIALS options '''
+
+    s_bkg = self.sigma_background.s_bkg.GetValue()
+    s_str = self.sigma_strong.s_strong.GetValue()
+    thresh = self.global_threshold.threshold.GetValue()
+    min_local = self.min_local.min_local.GetValue()
+    gain = self.gain.gain.GetValue()
+    kernel = self.kernel_size.kernel.GetValue()
+    mask = self.mod_mask.ctr.GetValue()
+    if mask == '':
+      mask = None
+
+    phil_string = '\n'.join(['spotfinder {',
+                             '  lookup.mask = {}'.format(mask),
+                             '  threshold {',
+                             '    xds {',
+                             '      gain = {}'.format(gain),
+                             '      kernel_size = {}'.format(kernel),
+                             '      sigma_background = {}'.format(s_bkg),
+                             '      sigma_strong = {}'.format(s_str),
+                             '      min_local = {}'.format(min_local),
+                             '      global_threshold = {}'.format(thresh),
+                             '    }',
+                             '  }',
+                             '}'
+                             ])
+    self.spf_phil = ip.parse(phil_string)
     e.Skip()

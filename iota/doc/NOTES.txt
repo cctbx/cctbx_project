@@ -1,7 +1,6 @@
-IOTA v1.1.020 - tracker image viewing
+IOTA v1.1.021 - tracker streamlined interface
 
-1. Added an image list control to image tracker that displays hits (i.e. images
-with more than minimum specified Bragg peaks)
-2. The list auto-updates whenever the minimum number of Bragg peaks is
-changed.
-3. Can launch viewer for each individual image.
+1. Reorganized image tracker to have just the chart and the image list
+visible (spotfinding params in separate dialog)
+2. Created new iota_tracker.py module to house all the tracking GUI elements;
+ iota_track_images.py merely launches the GUI, etc.

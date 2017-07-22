@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 03/20/2017
+Last Changed: 07/21/2017
 Description : IOTA GUI controls
 '''
 
@@ -377,6 +377,9 @@ class SpinCtrl(CtrlBase):
                label='',
                label_size=(200, -1),
                label_style='normal',
+               checkbox=False,
+               checkbox_state=False,
+               checkbox_label='',
                ctrl_size=(60, -1),
                ctrl_value='3',
                ctrl_max=999999,
@@ -387,18 +390,48 @@ class SpinCtrl(CtrlBase):
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
     self.value = ctrl_value
+    self.checkbox_state = checkbox_state
+    self.toggle = None
+    cols = 3
 
-    ctr_box = wx.FlexGridSizer(1, 3, 0, 10)
+    if checkbox:
+      assert checkbox_label != ''
+      label = ''
+      cols += 1
+      self.toggle = wx.CheckBox(self, label=checkbox_label, size=label_size)
+      self.toggle.SetValue(self.checkbox_state)
+
+    ctr_box = wx.FlexGridSizer(1, cols, 0, 10)
+
     self.txt = wx.StaticText(self, label=label.decode('utf-8'),
                              size=label_size)
     self.txt.SetFont(self.font)
     self.ctr = fs.FloatSpin(self, value=ctrl_value, max_val=(ctrl_max),
                             min_val=(ctrl_min), increment=ctrl_step,
                             digits=ctrl_digits, size=ctrl_size)
+
+    if checkbox:
+      ctr_box.Add(self.toggle, flag=wx.ALIGN_CENTER_VERTICAL)
+      self.toggle_boxes(flag_on=self.checkbox_state)
+      self.Bind(wx.EVT_CHECKBOX, self.onToggle, self.toggle)
+
     ctr_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
     ctr_box.Add(self.ctr, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_RIGHT | wx.EXPAND)
 
+
     self.SetSizer(ctr_box)
+
+  def onToggle(self, e):
+    self.toggle_boxes(flag_on=self.toggle.GetValue())
+    e.Skip()
+
+  def toggle_boxes(self, flag_on):
+    if flag_on:
+      self.ctr.Enable()
+      self.ctr.SetValue(int(self.value))
+    else:
+      self.value = self.ctr.GetValue()
+      self.ctr.Disable()
 
   def reset_default(self):
     self.ctr.SetValue(int(self.value))
