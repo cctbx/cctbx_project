@@ -492,7 +492,7 @@ class InMemScript(DialsProcessScript):
       self.indexed_filename_template                = params.output.indexed_filename
       self.refined_experiments_filename_template    = params.output.refined_experiments_filename
       self.integrated_filename_template             = params.output.integrated_filename
-      self.integrated_experiments_filename_template = params.output.integrated_filename
+      self.integrated_experiments_filename_template = params.output.integrated_experiments_filename
       self.reindexedstrong_filename_template        = params.output.reindexedstrong_filename
 
     # Don't allow the strong reflections to be written unless there are enough to
