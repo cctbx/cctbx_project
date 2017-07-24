@@ -904,8 +904,8 @@ class InMemScript(DialsProcessScript):
 
     self.cache_ranges(dxtbx_img, self.params)
 
-    from dxtbx.imageset import ImageSet, ImageSetData, MemReader
-    imgset = ImageSet(ImageSetData(MemReader([dxtbx_img])))
+    from dxtbx.imageset import ImageSet, ImageSetData, MemReader, MemMasker
+    imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
     imgset.set_beam(dxtbx_img.get_beam())
     imgset.set_detector(dxtbx_img.get_detector())
 
