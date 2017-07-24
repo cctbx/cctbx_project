@@ -367,9 +367,9 @@ def tst_hdf5(filename):
   import h5py
 
   handle = h5py.File(filename, "r")
-  
+
   reader = HDF5Reader(
-    handle.id.id, 
+    handle.id.id,
     flex.std_string(["/entry/data/data"]))
 
   image = reader.image(0)
@@ -384,7 +384,7 @@ def tst_hdf5(filename):
        slice(0, height, 1),
        slice(0, width, 1)))
   data2.reshape(flex.grid(data2.all()[1:]))
- 
+
   assert N == len(reader)
   assert data1.all()[0] == data2.all()[0]
   assert data1.all()[1] == data2.all()[1]
@@ -392,7 +392,7 @@ def tst_hdf5(filename):
   assert flex.max(diff) < 1e-7
 
   print 'OK'
-  
+
 
 
 def tst_all():

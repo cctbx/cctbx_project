@@ -24,11 +24,11 @@
 namespace dxtbx { namespace format {
 
   /**
-   * A class to read a HDF5 Image 
+   * A class to read a HDF5 Image
    */
   class HDF5Reader : public MultiImageReader {
   public:
-    
+
     /**
      * Construct the class with the filename
      */

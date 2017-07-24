@@ -246,14 +246,14 @@ namespace dxtbx { namespace format {
     virtual std::size_t size() const = 0;
 
   };
-  
+
   /**
    * Class to read from a list of images
    */
   template <typename ImageReaderType>
   class ImageListReader : public MultiImageReader {
   public:
-    
+
     typedef ImageReaderType image_reader_type;
     typedef typename ImageReaderType::int16_type int16_type;
     typedef typename ImageReaderType::int32_type int32_type;
@@ -288,7 +288,7 @@ namespace dxtbx { namespace format {
      */
     Image image(std::size_t index) const {
       DXTBX_ASSERT(index < filenames_.size());
-      ImageReaderType reader(filenames_[index].c_str()); 
+      ImageReaderType reader(filenames_[index].c_str());
       return reader.image();
     }
 

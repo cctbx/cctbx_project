@@ -36,12 +36,12 @@ namespace dxtbx { namespace format { namespace boost_python {
       .def(
           init<const scitbx::af::const_ref<std::string>&>((
             arg("filenames"))))
-      .def("filenames", 
+      .def("filenames",
           &image_list_reader::filenames)
-      .def("image", 
+      .def("image",
           &image_list_reader::image, (
             arg("index")))
-      .def("__len__", 
+      .def("__len__",
           &image_list_reader::size)
       ;
   }
