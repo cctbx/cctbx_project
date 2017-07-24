@@ -93,9 +93,14 @@ def run(argv=None):
   elif (len(paths) > 0):
     frame.CHOOSER_SIZE = 1500
 
-    from dxtbx.imageset import ImageSetFactory
+    # from dxtbx.imageset import ImageSetFactory
+    # sets = ImageSetFactory.new(paths)
+    from dxtbx.datablock import DataBlockFactory
     from rstbx.slip_viewer.frame import chooser_wrapper
-    sets = ImageSetFactory.new(paths)
+    db = DataBlockFactory.from_filenames(paths)
+    sets = []
+    for d in db:
+      sets.extend(d.extract_imagesets())
 
     for imgset in sets:
       for idx in imgset.indices():
