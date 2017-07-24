@@ -64,6 +64,8 @@ class FormatTIFFRayonixSPring8(FormatTIFFRayonix):
                                           720, 576]:
       return True
 
+    return False
+
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment.'''
@@ -122,4 +124,5 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFRayonixSPring8BL26B2.understand(arg)
+    print FormatTIFFRayonixSPring8.understand(arg)
+    #print FormatTIFFRayonixSPring8BL26B2.understand(arg)
