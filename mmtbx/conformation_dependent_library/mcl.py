@@ -59,7 +59,7 @@ def update(grm,
   link_records.setdefault('LINK', [])
   bproxies, aproxies = mcl_sf4_coordination.get_all_proxies(rc)
   if len(bproxies):
-    print >> log, "  SF4 coordination"
+    print >> log, "  SF4/F3S coordination"
     atoms = pdb_hierarchy.atoms()
     sf4_coordination = {}
     for bp in bproxies:
