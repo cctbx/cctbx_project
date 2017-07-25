@@ -489,6 +489,16 @@ def write_whole_cif_file(
   # here we are outputting a huge number of restraints
   if (processed_pdb_file is not None and
       processed_pdb_file.all_chain_proxies.cif is not None):
+    # should writing ALL restraints be optional?
+    from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+    skip_residues = one_letter_given_three_letter.keys() + ['HOH']
+    restraints = processed_pdb_file.all_chain_proxies.cif
+    keys = restraints.keys()
+    for key in keys:
+      # need more control
+      assert key.find('UNK')==-1
+      if key.replace('comp_', '') in skip_residues:
+        del restraints[key]
     cif.update(processed_pdb_file.all_chain_proxies.cif)
   cif.show(out=out,align_columns=align_columns)
   if file_name is not None:
