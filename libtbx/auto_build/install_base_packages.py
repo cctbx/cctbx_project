@@ -263,6 +263,7 @@ class installer (object) :
       packages += [
         'png',
         'tiff',
+        'pillow',
         'freetype',
         'matplotlib',
         'pyopengl',
@@ -322,10 +323,10 @@ class installer (object) :
     print >> self.log, char*80
     print >> self.log, ""
 
-  def start_building_package(self, pkg_name, pkg_info=None):
+  def start_building_package(self, pkg_name, pkg_info=None, pkg_qualifier=''):
     os.chdir(self.tmp_dir)
     install_log = op.join(self.tmp_dir, pkg_name + "_install_log")
-    print >> self.log, "Installing %s..." % pkg_name
+    print >> self.log, "Installing %s%s..." % (pkg_name, pkg_qualifier)
     if pkg_info:
       print >> self.log, pkg_info
     print >> self.log, "  log file is %s" % install_log
@@ -569,6 +570,55 @@ Installation of Python packages may fail.
     if (confirm_import_module is not None) :
       self.verify_python_module(pkg_name_label, confirm_import_module)
 
+  def build_python_module_pip(self, package_name, package_version=None, download_only=None,
+      callback_before_build=None, callback_after_build=None, confirm_import_module=None):
+    '''Download and install a package using pip.'''
+    if download_only is None:
+      download_only = self.options.download_only
+
+    pkg_info = get_pypi_package_information(package_name, information_only=True)
+    pkg_info['package'] = package_name
+    pkg_info['python'] = self.python_exe
+    pkg_info['cachedir'] = self.fetch_package.dest_dir
+    pkg_info['debug'] = ''
+    if self.options.debug:
+      pkg_info['debug'] = '-v'
+    if package_version:
+      if '=' in package_version or '>' in package_version or '<' in package_version:
+        pkg_info['version'] = package_version
+      else:
+        pkg_info['version'] = '==' + package_version
+    else:
+      pkg_info['version'] = ''
+    if download_only:
+      try:
+        import pip
+      except ImportError:
+        print "Skipping download of python package {name} {version}".format(**pkg_info)
+        print "Your current python environment does not include 'pip',"
+        print "which is required to download prerequisites."
+        print "Please see https://pip.pypa.io/en/stable/installing/ for more information."
+        print "*" * 75
+        return
+    log = self.start_building_package(package_name, pkg_info=pkg_info['summary'],
+                                      pkg_qualifier=' ' + (package_version or ''))
+    if download_only:
+      pip_cmd = filter(None, ['download', "{package}{version}".format(**pkg_info), '-d', pkg_info['cachedir'], pkg_info['debug']])
+      print "  Running with pip:", pip_cmd
+      assert pip.main(pip_cmd) == 0, 'pip download failed'
+      return
+    self.call('{python} -m pip download {debug} "{package}{version}" -d "{cachedir}"'.format(**pkg_info),
+              log=log)
+    if callback_before_build:
+      assert callback_before_build(log), package_name
+    self.call('{python} -m pip install {debug} "{package}{version}" --no-index -f "{cachedir}"'.format(**pkg_info),
+              log=log)
+    if callback_after_build:
+      assert callback_after_build(log), package_name
+    if confirm_import_module:
+      os.chdir(self.tmp_dir)
+      self.verify_python_module(readable_name, confirm_import_module)
+
   def build_python_module_pypi(self, package_name, package_version=None, download_only=False,
       callback_before_build=None, callback_after_build=None, confirm_import_module=None):
     '''Download a specific or the lastest version of a package from pypi and build it.'''
@@ -657,6 +707,7 @@ Installation of Python packages may fail.
       'cairo',
       'gtk',
       'fonts',
+      'pillow',
       'wxpython',
     ]
     self.options.skip_base = self.options.skip_base.split(",")
@@ -978,8 +1029,13 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="reportlab",
       confirm_import_module="reportlab")
 
-  def build_sphinx(self):
+  def build_pillow(self):
+    self.build_python_module_pip(
+      package_name='Pillow',
+      package_version=PILLOW_VERSION,
+    )
 
+  def build_sphinx(self):
     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=SPHINX_PKG,

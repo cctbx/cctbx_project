@@ -26,11 +26,13 @@ def pypi_pkg_url(package):
     pkgname = package
   return "%s/%s/%s" % (BASE_PIPY_PKG_URL, package[0], pkgname)
 
-def get_pypi_package_information(package, version=None):
+def get_pypi_package_information(package, version=None, information_only=False):
   '''Retrieve information about a PyPi package.'''
   metadata = 'https://pypi.python.org/pypi/{package}/json'.format(package=package)
   pypidata = urllib2.urlopen(metadata).read()
   pkginfo = json.loads(pypidata)
+  if information_only:
+    return { field: pkginfo['info'][field] for field in ('name', 'version', 'summary') }
   if not version:
     version = pkginfo['info']['version']
   if version not in pkginfo['releases']:
@@ -80,8 +82,8 @@ PYTEST_PKG = "pytest-2.9.1.tar.gz"
 PYTEST_DEP_PY = "py-1.4.31.tar.gz"
 PYTEST_DEP_COLORAMA = "colorama-0.3.7.tar.gz"
 CYTHON_PKG = "cython-0.22.tar.gz"
-JINJA2_PKG = "Jinja2-2.9.6.tar.gz"
 JINJA2_VERSION = "2.9.6"
+PILLOW_VERSION = "4.2.1"
 
 # HDF5
 BASE_HDF5_PKG_URL = "http://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/"
