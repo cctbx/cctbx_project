@@ -229,6 +229,7 @@ class installer (object) :
     if options.molprobity:
       options.build_gui = False
       options.build_all = False
+      packages += ['tiff']
     if options.cctbx:
       options.build_gui = True
       options.build_all = True
