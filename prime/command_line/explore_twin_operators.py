@@ -25,7 +25,7 @@ def main(data, only_merohedral):
         flag_all = True
       ops = indambh.generate_twin_operators(value, flag_all=flag_all)
       if ops:
-        print os.path.basename(key), '%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f'%value.unit_cell().parameters(), ','.join([op.operator.r().as_hkl() for op in ops])
+        print os.path.basename(key), '%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f'%value.unit_cell().parameters(), ' '.join([op.operator.r().as_hkl() for op in ops])
       else:
         print os.path.basename(key), '%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f'%value.unit_cell().parameters(), 'Twining operators not found'
 
