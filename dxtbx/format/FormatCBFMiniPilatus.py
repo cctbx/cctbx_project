@@ -31,9 +31,11 @@ class FormatCBFMiniPilatus(FormatCBFMini):
     header = FormatCBFMini.get_cbf_header(image_file)
 
     for record in header.split('\n'):
-      if '# Detector' in record and \
-             'EIGER' in record.upper():
-        return False
+      if '# Detector' in record:
+        if 'EIGER' in record.upper():
+          return False
+        if 'TIMEPIX' in record.upper():
+          return False
 
     for record in header.split('\n'):
       if '_array_data.header_convention' in record and \
