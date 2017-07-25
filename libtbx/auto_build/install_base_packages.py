@@ -594,7 +594,7 @@ Installation of Python packages may fail.
       try:
         import pip
       except ImportError:
-        print "Skipping download of python package {name} {version}".format(**pkg_info)
+        print "Skipping download of python package %s %s" % (pkg_info['name'], pkg_info['version'])
         print "Your current python environment does not include 'pip',"
         print "which is required to download prerequisites."
         print "Please see https://pip.pypa.io/en/stable/installing/ for more information."
@@ -603,15 +603,15 @@ Installation of Python packages may fail.
     log = self.start_building_package(package_name, pkg_info=pkg_info['summary'],
                                       pkg_qualifier=' ' + (package_version or ''))
     if download_only:
-      pip_cmd = filter(None, ['download', "{package}{version}".format(**pkg_info), '-d', pkg_info['cachedir'], pkg_info['debug']])
+      pip_cmd = filter(None, ['download', pkg_info['package'] + pkg_info['version'], '-d', pkg_info['cachedir'], pkg_info['debug']])
       print "  Running with pip:", pip_cmd
       assert pip.main(pip_cmd) == 0, 'pip download failed'
       return
-    self.call('{python} -m pip download {debug} "{package}{version}" -d "{cachedir}"'.format(**pkg_info),
+    self.call(pkg_info['python'] + ' -m pip download ' + pkg_info['debug'] + ' "' + pkg_info['package'] + pkg_info['version'] + '" -d "' + pkg_info['cachedir'] + '"',
               log=log)
     if callback_before_build:
       assert callback_before_build(log), package_name
-    self.call('{python} -m pip install {debug} "{package}{version}" --no-index -f "{cachedir}"'.format(**pkg_info),
+    self.call(pkg_info['python'] + ' -m pip install ' + pkg_info['debug'] + ' "' + pkg_info['package'] + pkg_info['version'] + '" --no-index -f "' + pkg_info['cachedir'] + '"',
               log=log)
     if callback_after_build:
       assert callback_after_build(log), package_name
@@ -623,14 +623,14 @@ Installation of Python packages may fail.
       callback_before_build=None, callback_after_build=None, confirm_import_module=None):
     '''Download a specific or the lastest version of a package from pypi and build it.'''
     pypi_info = get_pypi_package_information(package_name, version=package_version)
-    readable_name = "{name} {version}".format(**pypi_info)
+    readable_name = pypi_info['name'] + ' ' + pypi_info['version']
     log = self.start_building_package(package_name, pkg_info=pypi_info['summary'])
     download_file, size = self.fetch_package(
         pkg_name=pypi_info['filename'],
         download_url=pypi_info['url'],
         return_file_and_status=True)
     if size != -2: # cached download
-      assert size == pypi_info['size'], 'Download of {name} {version} failed, file size of {filename} ({fsize}) does not match expected size ({size})'.format(fsize=size, **pypi_info)
+      assert size == pypi_info['size'], 'Download of ' + pypi_info['name'] + ' ' + pypi_info['version'] + ' failed, file size of ' + pypi_info['filename'] + ' (' + str(size) + ') does not match expected size (' + str(pypi_info['size']) + ')'
     if download_only: return
     if self.check_download_only(readable_name): return
 
