@@ -140,7 +140,12 @@ namespace {
     if (a1.accessor() != a2.accessor()) {
       raise_incompatible_arrays();
     }
-    for(std::size_t i=0;i<a1.size();i++) if(!a2[i]) a1[i] = false;
+    bool* lhs = a1.begin();
+    bool* lhs_end = a1.end();
+    const bool* rhs = a2.begin();
+    while (lhs != lhs_end) {
+      *lhs++ &= *rhs++;
+    }
     return a1;
   }
 
@@ -150,7 +155,12 @@ namespace {
     if (a1.accessor() != a2.accessor()) {
       raise_incompatible_arrays();
     }
-    for(std::size_t i=0;i<a1.size();i++) if(a2[i]) a1[i] = true;
+    bool* lhs = a1.begin();
+    bool* lhs_end = a1.end();
+    const bool* rhs = a2.begin();
+    while (lhs != lhs_end) {
+      *lhs++ |= *rhs++;
+    }
     return a1;
   }
 
