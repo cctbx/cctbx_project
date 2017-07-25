@@ -8,7 +8,6 @@ via the web (yet).
 from __future__ import division
 from bootstrap import Toolbox
 from installer_utils import *
-import json
 import os.path as op
 import os
 import platform
@@ -29,6 +28,12 @@ def pypi_pkg_url(package):
 def get_pypi_package_information(package, version=None, information_only=False):
   '''Retrieve information about a PyPi package.'''
   metadata = 'https://pypi.python.org/pypi/' + package + '/json'
+  try:
+    import json
+  except ImportError: # Python <=2.5
+    if information_only:
+      return {'name': '', 'version': '', 'summary': ''}
+    raise
   pypidata = urllib2.urlopen(metadata).read()
   pkginfo = json.loads(pypidata)
   if information_only:
@@ -37,12 +42,10 @@ def get_pypi_package_information(package, version=None, information_only=False):
     version = pkginfo['info']['version']
   if version not in pkginfo['releases']:
     raise RuntimeError("Could not find release '%s' for %s on pypi." % (version, package))
-# print "{name} {version}\n{summary}".format(**pkginfo['info'])
   candidates = filter(lambda c: c.get('python_version') == 'source' and c.get('packagetype') == 'sdist', pkginfo['releases'][version])
   if not candidates:
     raise RuntimeError("Could not find a source release file for %s %s on pypi." % (package, version))
   package = candidates[0]
-# print "Downloading {filename} ({size} bytes) with hash {md5_digest}\nfrom {url}".format(**package)
   for field in ('name', 'version', 'summary'):
     package[field] = pkginfo['info'][field]
   return package
