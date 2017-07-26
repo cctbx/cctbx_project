@@ -695,7 +695,7 @@ Installation of Python packages may fail.
       # ...
       'freetype',
       'matplotlib',
-      'imaging',
+      'pillow',
       'reportlab',
       # START GUI PACKAGES
       'gettext',
@@ -708,7 +708,6 @@ Installation of Python packages may fail.
       'cairo',
       'gtk',
       'fonts',
-      'pillow',
       'wxpython',
     ]
     self.options.skip_base = self.options.skip_base.split(",")
@@ -931,45 +930,6 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="biopython",
       confirm_import_module="Bio")
 
-  # def build_imaging (self): # for Pillow
-    # # turn off jpeg to avoid adding libjpeg dependency
-    # pkg_name = IMAGING_PKG
-    # pkg_name_label = 'imaging'
-    # pkg_log = self.start_building_package(pkg_name_label)
-    # pkg_local_file = self.fetch_package(pkg_name=pkg_name,
-    #                                     pkg_url=BASE_CCI_PKG_URL)
-    # if (self.check_download_only(pkg_name)):
-    #   return
-    # self.untar_and_chdir(pkg=pkg_local_file, log=pkg_log)
-    # self.call("%s setup.py build_ext --disable-jpeg install" % self.python_exe,
-    #           log=pkg_log)
-    # self.verify_python_module(pkg_name_label, 'PIL')
-
-  def build_imaging (self, patch_src=True) :
-    def patch_imaging_src (out) :
-      print >> out, "  patching libImaging/ZipEncode.c"
-      self.patch_src(src_file="libImaging/ZipEncode.c",
-                     target="Z_DEFAULT_COMPRESSION",
-                     replace_with="Z_BEST_SPEED")
-      # point to freetype installation
-      site_file = open("setup_site.py", "w")
-      site_file.write('FREETYPE_ROOT = "%s", "%s"\n' %
-        (op.join(self.base_dir, "lib"), op.join(self.base_dir, "include")))
-
-      # point to zlib installation for Ubuntu (12.04, 14.04, 16.04)
-      if ('Ubuntu' in platform.platform()):
-        site_file.write('ZLIB_ROOT = "/usr/lib/x86_64-linux-gnu", "usr/include"\n')
-      return True
-    callback = None
-    if (patch_src) :
-      callback = patch_imaging_src
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=IMAGING_PKG,
-      pkg_name_label="imaging",
-      callback_before_build=patch_imaging_src,
-      confirm_import_module="Image")
-
   def build_lz4_plugin (self, patch_src=True):
     log = self.start_building_package("lz4_plugin")
     repos = ["hdf5_lz4", "bitshuffle"]
@@ -1034,6 +994,7 @@ _replace_sysconfig_paths(build_time_vars)
     self.build_python_module_pip(
       package_name='Pillow',
       package_version=PILLOW_VERSION,
+      confirm_import_module="PIL",
     )
 
   def build_sphinx(self):
