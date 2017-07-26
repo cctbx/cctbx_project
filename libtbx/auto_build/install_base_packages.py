@@ -595,30 +595,39 @@ Installation of Python packages may fail.
       try:
         import pip
       except ImportError:
-        print "Skipping download of python package %s %s" % (pkg_info['name'], pkg_info['version'])
+        print "Skipping download of python package %s %s" % \
+              (pkg_info['name'], pkg_info['version'])
         print "Your current python environment does not include 'pip',"
         print "which is required to download prerequisites."
-        print "Please see https://pip.pypa.io/en/stable/installing/ for more information."
+        print "Please see https://pip.pypa.io/en/stable/installing/ for " \
+              "more information."
         print "*" * 75
         return
-    log = self.start_building_package(package_name, pkg_info=pkg_info['summary'],
-                                      pkg_qualifier=' ' + (package_version or ''))
+    log = self.start_building_package(package_name,
+             pkg_info=pkg_info['summary'],
+             pkg_qualifier=' ' + (package_version or ''))
     if download_only:
-      pip_cmd = filter(None, ['download', pkg_info['package'] + pkg_info['version'], '-d', pkg_info['cachedir'], pkg_info['debug']])
+      pip_cmd = filter(None, ['download',
+                              pkg_info['package'] + pkg_info['version'],
+                              '-d', pkg_info['cachedir'], pkg_info['debug']])
       print "  Running with pip:", pip_cmd
       assert pip.main(pip_cmd) == 0, 'pip download failed'
       return
-    self.call(pkg_info['python'] + ' -m pip download ' + pkg_info['debug'] + ' "' + pkg_info['package'] + pkg_info['version'] + '" -d "' + pkg_info['cachedir'] + '"',
+    self.call(pkg_info['python'] + ' -m pip download ' + pkg_info['debug'] + \
+              ' "' + pkg_info['package'] + pkg_info['version'] + '" -d "' + \
+              pkg_info['cachedir'] + '"',
               log=log)
     if callback_before_build:
       assert callback_before_build(log), package_name
-    self.call(pkg_info['python'] + ' -m pip install ' + pkg_info['debug'] + ' "' + pkg_info['package'] + pkg_info['version'] + '" --no-index -f "' + pkg_info['cachedir'] + '"',
+    self.call(pkg_info['python'] + ' -m pip install ' + pkg_info['debug'] + \
+              ' "' + pkg_info['package'] + pkg_info['version'] + \
+              '" --no-index -f "' + pkg_info['cachedir'] + '"',
               log=log)
     if callback_after_build:
       assert callback_after_build(log), package_name
     if confirm_import_module:
       os.chdir(self.tmp_dir)
-      self.verify_python_module(readable_name, confirm_import_module)
+      self.verify_python_module(pkg_info['name'], confirm_import_module)
 
   def build_python_module_pypi(self, package_name, package_version=None, download_only=False,
       callback_before_build=None, callback_after_build=None, confirm_import_module=None):
