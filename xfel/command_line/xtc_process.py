@@ -116,14 +116,21 @@ xtc_phil_str = '''
       .expert_level = 2
       .help = Stream number to read from. Usually not necessary as psana will read the data \
               from all streams by default
-    override_trusted_max = None
+    override_spotfinding_trusted_max = None
       .type = int
       .help = During spot finding, override the saturation value for this data. \
               Overloads will not be integrated, but they can assist with indexing.
-    override_trusted_min = None
+    override_spotfinding_trusted_min = None
       .type = int
-      .help = During spot finding and indexing, override the minimum pixel value \
+      .help = During spot finding, override the minimum pixel value \
               for this data. This does not affect integration.
+    override_integration_trusted_max = None
+      .type = int
+      .help = During integration, override the saturation value for this data.
+    override_integration_trusted_min = None
+      .type = int
+      .help = During integration, override the minimum pixel value \
+              for this data.
     use_ffb = False
       .type = bool
       .help = Run on the ffb if possible. Only for active users!
@@ -383,6 +390,8 @@ class InMemScript(DialsProcessScript):
     self.all_integrated_reflections = None
     self.all_int_pickle_filenames = []
     self.all_int_pickles = []
+
+    self.cached_ranges = None
 
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
@@ -934,7 +943,7 @@ class InMemScript(DialsProcessScript):
     if self.params.dispatch.dump_all:
       self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "shot-" + s))
 
-    self.cache_ranges(dxtbx_img, self.params)
+    self.cache_ranges(dxtbx_img, self.params.input.override_spotfinding_trusted_min, self.params.input.override_spotfinding_trusted_max)
 
     from dxtbx.imageset import ImageSet, ImageSetData, MemReader, MemMasker
     imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
@@ -1009,10 +1018,6 @@ class InMemScript(DialsProcessScript):
       self.params.spotfinder.lookup.mask = mask
     else:
       self.params.spotfinder.lookup.mask = tuple([a&b for a, b in zip(mask,self.spotfinder_mask)])
-    if self.integration_mask is None:
-      self.params.integration.lookup.mask = mask
-    else:
-      self.params.integration.lookup.mask = tuple([a&b for a, b in zip(mask,self.integration_mask)])
 
     self.debug_write("spotfind_start")
     try:
@@ -1031,7 +1036,7 @@ class InMemScript(DialsProcessScript):
       self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
-    self.restore_ranges(dxtbx_img, self.params)
+    self.restore_ranges(dxtbx_img)
 
     # save cbf file
     if self.params.dispatch.dump_strong:
@@ -1108,6 +1113,21 @@ class InMemScript(DialsProcessScript):
 
     # integrate
     self.debug_write("integrate_start")
+    self.cache_ranges(dxtbx_img, self.params.input.override_integration_trusted_min, self.params.input.override_integration_trusted_max)
+
+    if self.cached_ranges is not None:
+      # Load a dials mask from the trusted range and psana mask
+      imgset = MemImageSet([dxtbx_img])
+      from dials.util.masking import MaskGenerator
+      generator = MaskGenerator(self.params.border_mask)
+      mask = generator.generate(imgset)
+      if self.params.format.file_format == "cbf" and self.dials_mask is not None:
+        mask = tuple([a&b for a, b in zip(mask,self.dials_mask)])
+    if self.integration_mask is None:
+      self.params.integration.lookup.mask = mask
+    else:
+      self.params.integration.lookup.mask = tuple([a&b for a, b in zip(mask,self.integration_mask)])
+
     try:
       integrated = self.integrate(experiments, indexed)
     except Exception, e:
@@ -1116,6 +1136,7 @@ class InMemScript(DialsProcessScript):
       self.debug_write("integrate_failed_%d"%len(indexed), "fail")
       self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
+    self.restore_ranges(dxtbx_img)
 
     self.log_frame(experiments, integrated, run.run(), len(observed), timestamp, tt_low, tt_high)
     self.debug_write("integrate_ok_%d"%len(integrated), "done")
@@ -1154,12 +1175,11 @@ class InMemScript(DialsProcessScript):
 
     return dest_path
 
-  def cache_ranges(self, dxtbx_img, params):
+  def cache_ranges(self, dxtbx_img, min_val, max_val):
     """ Save the current trusted ranges, and replace them with the given overrides, if present.
     @param cspad_image dxtbx format object
-    @param params phil scope
     """
-    if params.input.override_trusted_max is None and params.input.override_trusted_min is None:
+    if min_val is None and max_val is None:
       return
 
     detector = dxtbx_img.get_detector()
@@ -1167,24 +1187,25 @@ class InMemScript(DialsProcessScript):
     for panel in detector:
       new_range = cached_range = panel.get_trusted_range()
       self.cached_ranges.append(cached_range)
-      if params.input.override_trusted_max is not None:
-        new_range = new_range[0], params.input.override_trusted_max
-      if params.input.override_trusted_min is not None:
-        new_range = params.input.override_trusted_min, new_range[1]
+      if max_val is not None:
+        new_range = new_range[0], max_val
+      if min_val is not None:
+        new_range = min_val, new_range[1]
 
       panel.set_trusted_range(new_range)
 
-  def restore_ranges(self, dxtbx_img, params):
+  def restore_ranges(self, dxtbx_img):
     """ Restore the previously cached trusted ranges, if present.
     @param cspad_image dxtbx format object
-    @param params phil scope
     """
-    if params.input.override_trusted_max is None and params.input.override_trusted_min is None:
+    if self.cached_ranges is None:
       return
 
     detector = dxtbx_img.get_detector()
     for cached_range, panel in zip(self.cached_ranges, detector):
       panel.set_trusted_range(cached_range)
+
+    self.cached_ranges = None
 
   def reindex_strong(self, experiments, strong):
     print "Reindexing strong reflections using refined experimental models and no outlier rejection..."
