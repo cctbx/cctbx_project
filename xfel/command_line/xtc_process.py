@@ -299,7 +299,7 @@ xtc_phil_str = '''
   }
 '''
 
-from dials.command_line.stills_process import dials_phil_str
+from dials.command_line.stills_process import dials_phil_str, program_defaults_phil_str
 
 extra_dials_phil_str = '''
   verbosity = 1
@@ -344,7 +344,7 @@ extra_dials_phil_str = '''
 
 from xfel.ui import db_phil_str
 
-phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_phil_str, process_includes=True)
+phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_phil_str, process_includes=True).fetch(parse(program_defaults_phil_str))
 
 from xfel.command_line.xfel_process import Script as DialsProcessScript
 class InMemScript(DialsProcessScript):
