@@ -233,18 +233,18 @@ class installer (object) :
     if options.cctbx:
       options.build_gui = True
       options.build_all = True
-      packages += ['imaging']
+      packages += ['pillow']
     if options.phenix:
       options.build_gui = True
       options.build_all = True
     if options.dials:
       options.build_gui = True
       options.build_all = True
-      packages += ['imaging']
+      packages += ['pillow']
     if options.labelit:
       options.build_gui = True
       options.build_all = True
-      packages += ['imaging', 'reportlab']
+      packages += ['pillow', 'reportlab']
 
     # Use a specific Python interpreter if provided.
     if self.python_exe:
@@ -299,7 +299,7 @@ class installer (object) :
       packages += ['ipython']
 
     # Package dependencies.
-    if 'imaging' in packages:
+    if 'pillow' in packages:
       packages += ['freetype']
 
     return set(packages)
