@@ -238,7 +238,10 @@ def output_matlab_form(flex_matrix, filename):
   f.close()
 
 def output_image(flex_img, filename, invert=False, scale=False):
-  import Image
+  try:
+    import PIL.Image as Image
+  except ImportError:
+    import Image
   flex_img = flex_img.deep_copy()
   flex_img -= flex.min(flex_img)
   if scale:
@@ -252,7 +255,10 @@ def output_image(flex_img, filename, invert=False, scale=False):
   dim = flex_img.all()
   #easy_pickle.dump("%s/avg_img.pickle" %output_dirname, flex_img)
   byte_str = flex_img.slice_to_byte_str(0,flex_img.size())
-  im = Image.fromstring(mode="I", size=(dim[1],dim[0]), data=byte_str)
+  try:
+    im = Image.fromstring(mode="I", size=(dim[1],dim[0]), data=byte_str)
+  except NotImplementedError:
+    im = Image.frombytes(mode="I", size=(dim[1],dim[0]), data=byte_str)
   im = im.crop((0,185,391,370))
   #im.save("avg.tiff", "TIFF") # XXX This does not work (phenix.python -Qnew option)
   im.save(filename, "PNG")

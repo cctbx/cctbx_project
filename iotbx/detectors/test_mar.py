@@ -11,13 +11,13 @@ class ImageWorker(object):
     self.fi.adjust()
 
   def output(self,outputfile):
-    import Image # dependency on Python Image Library
-    im = Image.new("RGB",(self.fi.ex_size1(), self.fi.ex_size2())) # 'L' is grayscale
+    import PIL.Image # dependency on Python Image Library
+    im = PIL.Image.new("RGB",(self.fi.ex_size1(), self.fi.ex_size2())) # 'L' is grayscale
     r,g,b = im.split()
     r.putdata(self.fi.channel(0))
     g.putdata(self.fi.channel(1))
     b.putdata(self.fi.channel(2))
-    imageout = Image.merge("RGB",(r,g,b))
+    imageout = PIL.Image.merge("RGB",(r,g,b))
     imageout.save(outputfile,"PNG")
 
 if __name__=='__main__':

@@ -74,7 +74,10 @@ class PDF:
       ray_sim.structure.limiting_resolution))
     data_array = 255-ray_sim.image
     import numpy
-    import Image
+    try:
+      import PIL.Image as Image
+    except ImportError:
+      import Image
     imageout = Image.frombuffer("L",data_array.focus(),
       data_array.as_numpy_array().astype(numpy.uint8).tostring(),
       "raw","L",0,1
@@ -91,7 +94,10 @@ if __name__=="__main__":
    for x in xrange(7):
      data_array[(3,x)] = 0.
      data_array[(x,3)] = 0.
-   import Image
+   try:
+     import PIL.Image as Image
+   except ImportError:
+     import Image
    import numpy
    args = ("L",0,1)
    imageout = Image.frombuffer("L",data_array.focus(),

@@ -19,7 +19,7 @@ def read_pixels_to_str(x, y, width, height):
 
 def read_pixels_to_pil_image(x, y, width, height):
   try:
-    import Image
+    import PIL.Image
   except ImportError:
     return None
   mode = "RGB"
@@ -29,7 +29,7 @@ def read_pixels_to_pil_image(x, y, width, height):
   raw_mode = "RGB"
   stride = 0
   orientation = -1
-  return Image.fromstring(
+  return PIL.Image.frombytes(
     mode, size, data, decoder_name, raw_mode, stride, orientation)
 
 class fps_monitor (object) :

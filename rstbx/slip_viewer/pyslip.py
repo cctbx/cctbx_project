@@ -55,10 +55,6 @@ try:
     import cPickle as pickle
 except ImportError:
     import pickle
-try:
-  from PIL import Image
-except ImportError:
-  import Image
 import wx
 from scitbx.matrix import col
 import math

@@ -98,12 +98,21 @@ dxtbx.export_bitmaps image_files [options]
 
       # now export as a bitmap
       flex_image.prep_string()
-      import Image
+      try:
+        import PIL.Image as Image
+      except ImportError:
+        import Image
       # XXX is size//binning safe here?
-      pil_img = Image.fromstring(
-        'RGB', (flex_image.size2()//binning,
-                flex_image.size1()//binning),
-        flex_image.export_string)
+      try:
+        pil_img = Image.fromstring(
+          'RGB', (flex_image.size2()//binning,
+                  flex_image.size1()//binning),
+          flex_image.export_string)
+      except NotImplementedError:
+        pil_img = Image.frombytes(
+          'RGB', (flex_image.size2()//binning,
+                  flex_image.size1()//binning),
+          flex_image.export_string)
 
       basename = os.path.basename(os.path.splitext(imageset.paths()[i_image])[0])
       path = os.path.join(

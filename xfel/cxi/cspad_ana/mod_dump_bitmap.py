@@ -94,12 +94,21 @@ class mod_dump_bitmap(common_mode.common_mode_correction):
     flex_img.setWindow(0, 0, 1)
     flex_img.adjust(color_scheme=self._color_scheme)
     flex_img.prep_string()
-    import Image
+    try:
+      import PIL.Image as Image
+    except ImportError:
+      import Image
     # XXX is size//self._binning safe here?
-    pil_img = Image.fromstring(
-      'RGB', (flex_img.size2()//self._binning,
-              flex_img.size1()//self._binning),
-      flex_img.export_string)
+    try:
+      pil_img = Image.fromstring(
+        'RGB', (flex_img.size2()//self._binning,
+                flex_img.size1()//self._binning),
+        flex_img.export_string)
+    except NotImplementedError:
+      pil_img = Image.frombytes(
+        'RGB', (flex_img.size2()//self._binning,
+                flex_img.size1()//self._binning),
+        flex_img.export_string)
 
     # The output path should not contain any funny characters which may
     # not work in all environments.  This constructs a sequence number a

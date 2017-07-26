@@ -43,8 +43,8 @@ Full parameters:
 %s""" % params_out.getvalue())
   import iotbx.phil
   from iotbx import file_reader
-  import ImageDraw
-  import Image
+  import PIL.ImageDraw as ImageDraw
+  import PIL.Image as Image
   phil_mods = libtbx.phil.parse("""
 expand_to_p1 = True
 expand_anomalous = True
