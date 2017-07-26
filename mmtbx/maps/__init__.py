@@ -535,12 +535,12 @@ class compute_map_coefficients(object):
     return False
 
 def b_factor_sharpening_by_map_kurtosis_maximization(map_coeffs, show=True,
-      b_sharp_best=None, b_only=False):
+      b_sharp_best=None, b_only=False, b_min=-100, b_max=100, b_step=5):
   ss = 1./flex.pow2(map_coeffs.d_spacings().data()) / 4.
   if(b_sharp_best is None):
     b_sharp_best = None
     kurt = -999
-    for b_sharp in range(-100,100,5):
+    for b_sharp in range(b_min,b_max,b_step):
       k_sharp = 1./flex.exp(-ss * b_sharp)
       map_coeffs_ = map_coeffs.deep_copy().customized_copy(
         data = map_coeffs.data()*k_sharp)

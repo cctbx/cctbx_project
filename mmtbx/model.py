@@ -271,6 +271,21 @@ class manager(object):
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
 
+  def normalize_adjacent_adp(self):
+    bond_proxies_simple, asu = \
+      self.restraints_manager.geometry.get_all_bond_proxies(
+        sites_cart = self.xray_structure.sites_cart())
+    scatterers = self.xray_structure.scatterers()
+    for proxy in bond_proxies_simple:
+      i_seq, j_seq = proxy.i_seqs
+      bi = adptbx.u_as_b(scatterers[i_seq].u_iso)
+      bj = adptbx.u_as_b(scatterers[j_seq].u_iso)
+      if(abs(bi-bj)>20):
+        if(bi>bj): bi=bj+20
+        else:      bj=bi+20
+        scatterers[i_seq].u_iso = adptbx.b_as_u(bi)
+        scatterers[j_seq].u_iso = adptbx.b_as_u(bj)
+
   def xh_connectivity_table(self):
     result = None
     if(self.restraints_manager is not None):

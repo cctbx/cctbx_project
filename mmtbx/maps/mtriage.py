@@ -11,6 +11,7 @@ from cctbx import miller, adptbx
 from mmtbx.maps import correlation
 from mmtbx import masks
 from scitbx.array_family import flex
+import time
 
 master_params_str = """
   scattering_table = wk1995  it1992  n_gaussian  neutron *electron
@@ -169,25 +170,32 @@ class mtriage(object):
     if(self.crystal_symmetry.space_group().type().number()!=1):
       raise Sorry("Symmetry must be P1")
 
+  def call(self, func, prefix, show_time=False):
+    t0 = time.time()
+    func()
+    if(show_time):
+      print prefix, ":", time.time()-t0
+      sys.stdout.flush()
+
   def run(self):
     # Extract xrs from pdb_hierarchy
-    self._get_xray_structure()
+    self.call(func=self._get_xray_structure, prefix="xrs from pdb_hierarchy")
     # Shift origin if needed
-    self._shift_origin()
+    self.call(func=self._shift_origin, prefix="Shift origin if needed")
     # Compute mask
-    self._compute_mask()
+    self.call(func=self._compute_mask, prefix="Compute mask")
     # Apply mask to map data
-    self._apply_mask()
+    self.call(func=self._apply_mask, prefix="Apply mask to map data")
     # Extract box around model with map
-    self._get_box()
+    self.call(func=self._get_box, prefix="Extract box around model with map")
     # Compute d99
-    self._compute_d99()
+    self.call(func=self._compute_d99, prefix="Compute d99")
     # Compute d_model
-    self._compute_d_model()
+    self.call(func=self._compute_d_model, prefix="Compute d_model")
     # Compute half-map FSC
-    self._compute_half_map_fsc()
+    self.call(func=self._compute_half_map_fsc, prefix="Compute half-map FSC")
     # Map-model FSC and d_fsc_model
-    self._compute_model_map_fsc()
+    self.call(func=self._compute_model_map_fsc, prefix="Map-model FSC and d_fsc_model")
     return self
 
   def _get_xray_structure(self):
@@ -322,13 +330,15 @@ class mtriage(object):
   def show_summary(self, log=None, fsc_file_prefix="fsc_curve"):
     if(log is None): log = sys.stdout
     r = self.get_results()
-    print >> log, "d99          : ", r.d99
-    print >> log, "d99_1        : ", r.d99_1
-    print >> log, "d99_2        : ", r.d99_2
-    print >> log, "d_model      : ", r.d_model
-    print >> log, "b_iso_overall: ", r.b_iso_overall
-    print >> log, "d_fsc        : ", r.d_fsc
-    print >> log, "d_fsc_model  : ", r.d_fsc_model
+    print >> log, "d99                    : ", r.d99
+    print >> log, "d99_1                  : ", r.d99_1
+    print >> log, "d99_2                  : ", r.d99_2
+    print >> log, "d_model                : ", r.d_model
+    print >> log, "b_iso_overall          : ", r.b_iso_overall
+    print >> log, "d_fsc                  : ", r.d_fsc
+    print >> log, "d_fsc_model (FSC=0.5)  : ", r.d_fsc_model
+    print >> log, "d_fsc_model (FSC=0.143): ", r.d_fsc_model_0143
+    print >> log, "d_fsc_model (FSC=0)    : ", r.d_fsc_model_0
     #
     of = open("%s_model"%fsc_file_prefix,"w")
     for a,b in zip(r.fsc_curve_model.fsc.d_inv, r.fsc_curve_model.fsc.fsc):

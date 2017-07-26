@@ -1,7 +1,7 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtriage
 
-import sys
+import sys, time
 import iotbx.pdb
 from libtbx import group_args
 from libtbx.utils import Sorry
@@ -217,13 +217,16 @@ Feedback:
   show_histogram(map_histograms = results.map_histograms, log = log)
   # show results
   print >> log, "Map resolution estimates:"
-  print >> log, "  using map alone (d99)               :", results.d99
-  print >> log, "  comparing with model (d_model)      :", results.d_model
-  print >> log, "    b_iso_overall                     :", results.b_iso_overall
-  print >> log, "  FSC(map,model map)=0.5 (d_fsc_model):", results.d_fsc_model
-  print >> log, "  d99 (half map 1)                    :", results.d99_1
-  print >> log, "  d99 (half map 2)                    :", results.d99_2
-  print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)     :", results.d_fsc
+  print >> log, "  using map alone (d99)           :", results.d99
+  print >> log, "  comparing with model (d_model)  :", results.d_model
+  print >> log, "    b_iso_overall                 :", results.b_iso_overall
+  print >> log, "  d_fsc_model:"
+  print >> log, "    FSC(map,model map)=0          :", results.d_fsc_model_0
+  print >> log, "    FSC(map,model map)=0.143      :", results.d_fsc_model_0143
+  print >> log, "    FSC(map,model map)=0.5        :", results.d_fsc_model
+  print >> log, "  d99 (half map 1)                :", results.d99_1
+  print >> log, "  d99 (half map 2)                :", results.d99_2
+  print >> log, "  FSC(half map 1,2)=0.143 (d_fsc) :", results.d_fsc
   print >> log
   #
   print >> log, "Radius used for mask smoothing:", results.radius_smooth

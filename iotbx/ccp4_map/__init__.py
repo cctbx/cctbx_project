@@ -34,6 +34,9 @@ class _(boost.python.injector, ext.map_reader) :
     from cctbx import maptbx
     return maptbx.statistics(self.data)
 
+  def map_data(self):
+    return self.data.as_double()
+
   def grid_unit_cell (self) :
     """
     If we want to use maptbx.non_crystallographic_eight_point_interpolation,
