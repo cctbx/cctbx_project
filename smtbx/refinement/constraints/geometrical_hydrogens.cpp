@@ -476,4 +476,8 @@ namespace smtbx { namespace refinement { namespace constraints {
     }
   }
 
+  // Explicitly instantiate template classes used in other libraries
+  template class geometrical_hydrogen_sites<1>;
+  template class geometrical_hydrogen_sites<2>;
+  template class geometrical_hydrogen_sites<3>;
 }}}
