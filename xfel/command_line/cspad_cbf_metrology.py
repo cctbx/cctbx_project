@@ -162,8 +162,6 @@ def run(args):
       base_n_subset = params.n_subset
 
       params.n_subset = base_n_subset // 2
-      odd_exp, odd_ref = generate_exp_list(params, odd_exp, odd_ref)
-      even_exp, even_ref = generate_exp_list(params, even_exp, even_ref)
 
       params.tag = base_tag + "_1"
       odd_combine_phil = write_combine_phil(params, odd_exp, odd_ref)
@@ -185,7 +183,6 @@ def run(args):
       print "Refining even numbered data using tag", params.tag
       refine(params, merged_scope, even_combine_phil)
     else:
-      all_exp, all_ref = generate_exp_list(params, all_exp, all_ref)
       combine_phil = write_combine_phil(params, all_exp, all_ref)
       refine(params, merged_scope, combine_phil)
   else:
@@ -249,44 +246,6 @@ def find_files(path, reflections):
       all_ref.append(os.path.join(path, filename))
   return all_exp, all_ref
 
-def generate_exp_list(params, all_exp, all_ref):
-  if params.n_subset is not None:
-    subset_all_exp = []
-    subset_all_ref = []
-    n_picked = 0
-    if params.n_subset_method=="random":
-      while n_picked < params.n_subset:
-        idx = random.randint(0, len(all_exp)-1)
-        subset_all_exp.append(all_exp.pop(idx))
-        subset_all_ref.append(all_ref.pop(idx))
-        n_picked += 1
-    elif params.n_subset_method=="n_refl":
-      from dials.array_family import flex
-      import cPickle as pickle
-      if params.n_refl_panel_list is None:
-        len_all_ref = flex.size_t(
-          [ len(pickle.load(open(A,"rb"))) for A in all_ref ]
-        )
-      else:
-        len_all_ref = flex.size_t()
-        for refl_file in all_ref:
-          refls = pickle.load(open(refl_file,"rb"))
-          sel = flex.bool(len(refls), False)
-          for p in params.n_refl_panel_list:
-            sel |= refls['panel'] == p
-          len_all_ref.append(len(refls.select(sel)))
-
-      sort_order = flex.sort_permutation(len_all_ref,reverse=True)
-      for idx in sort_order[:params.n_subset]:
-        subset_all_exp.append(all_exp[idx])
-        subset_all_ref.append(all_ref[idx])
-      print "Selecting a subset of %d images with highest n_refl out of %d total."%(
-        params.n_subset, len(len_all_ref))
-
-    all_exp = subset_all_exp
-    all_ref = subset_all_ref
-  return all_exp, all_ref
-
 def write_combine_phil(params, all_exp, all_ref):
   combine_phil = "%s_combine.phil"%params.tag
   f = open(combine_phil, 'w')
@@ -302,6 +261,11 @@ def write_combine_phil(params, all_exp, all_ref):
 def refine(params, merged_scope, combine_phil):
   print "Combining experiments..."
   command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.pickle %s"%(params.tag, params.tag, combine_phil)
+  if params.n_subset is not None:
+    command += " n_subset=%d n_subset_method=%s"%(params.n_subset, params.n_subset_method)
+    if params.n_refl_panel_list is not None:
+      command += " n_refl_panel_list=%s"%(",".join(["%d"%p for p in params.n_refl_panel_list]))
+
   if params.refine_energy:
     command += " reference_from_experiment.beam=0"
   print command
