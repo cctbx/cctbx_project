@@ -134,6 +134,7 @@ class basis_handler(object):
 
     #calculate the conversion matrix (from fractional to cartesian coordinates
     frac2cart_matrix = my_unit_cell.orthogonalization_matrix()
+    from scitbx.matrix import sqr
     frac2cart_matrix = sqr(frac2cart_matrix)
 
     #calculate direct_space matrix
