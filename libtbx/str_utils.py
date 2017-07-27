@@ -220,8 +220,8 @@ def show_sorted_by_counts(
       if (a[1] > b[1]): return -1
       if (a[1] < b[1]): return  1
     else:
-      if (a[1] > b[1]): return -1
-      if (a[1] < b[1]): return  1
+      if (a[1] < b[1]): return -1
+      if (a[1] > b[1]): return  1
     return cmp(a[0], b[0])
   if (annotations is None):
     annotations = [None]*len(label_count_pairs)

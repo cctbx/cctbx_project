@@ -73,9 +73,9 @@ world""", suffix=" ", rstrip=False) == """\
     label_count_pairs=[("b", -3), ("a", -3), ("c", 2)], reverse=False,
      out=out, prefix="%", annotations=[None, "", "x"])
   assert not show_diff(out.getvalue(), """\
-%"c"  2 x
 %"a" -3
 %"b" -3
+%"c"  2 x
 """)
   #
   from libtbx.str_utils import line_breaker
