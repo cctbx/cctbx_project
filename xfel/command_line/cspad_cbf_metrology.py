@@ -380,6 +380,7 @@ def refine_expanding(params, merged_scope, combine_phil):
   for i in xrange(7):
     levels[i+1] = (2,) # level 2
 
+  previous_step_and_level = None
   for j in xrange(8):
     from libtbx import easy_pickle
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]]))
@@ -408,15 +409,13 @@ def refine_expanding(params, merged_scope, combine_phil):
       else:
         diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
 
-      if j == 0 and i == params.start_at_hierarchy_level:
+      if previous_step_and_level is None:
         command = "dials.refine %s %s_combined_experiments.json %s_reflections_step%d.pickle"%( \
           refine_phil_file, params.tag, params.tag, j)
-      elif i == params.start_at_hierarchy_level:
-        command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_reflections_step%d.pickle"%( \
-          refine_phil_file, params.tag, j-1, levels[j-1]-1, params.tag, j)
       else:
+        p_step, p_level = previous_step_and_level
         command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.pickle"%( \
-          refine_phil_file, params.tag, j, i-1, params.tag, j, i-1)
+          refine_phil_file, params.tag, p_step, p_level, params.tag, p_step, p_level)
 
       diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
@@ -431,6 +430,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       print command
       result = easy_run.fully_buffered(command=command).raise_if_errors()
       result.show_stdout()
+      previous_step_and_level = j,i
 
   output_geometry(params)
 
