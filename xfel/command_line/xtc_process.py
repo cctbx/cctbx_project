@@ -294,7 +294,7 @@ xtc_phil_str = '''
     reindexedstrong_filename = %s_reindexedstrong.pickle
       .type = str
       .help = The file name for re-indexed strong reflections
-    tmp_output_dir = None
+    tmp_output_dir = "(NONE)"
       .type = str
       .help = Directory for CBFlib temporary output files
   }
@@ -463,18 +463,21 @@ class InMemScript(DialsProcessScript):
       raise Sorry("Output path not found:" + params.output.output_dir)
 
     if params.format.file_format == "cbf":
-      #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
-      if params.output.tmp_output_dir is None:
-        tmp_dir = os.path.join(params.output.output_dir, '.tmp')
+      if params.output.tmp_output_dir == "(NONE)":
+        tmp_dir = params.output.tmp_output_dir
       else:
-        tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
-      if not os.path.exists(tmp_dir):
-        try:
-          os.makedirs(tmp_dir)
-        except Exception as e:
-          # Can fail if running multiprocessed, which is ok if the tmp folder was created
-          if not os.path.exists(tmp_dir):
-            halraiser(e)
+        #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
+        if params.output.tmp_output_dir is None:
+          tmp_dir = os.path.join(params.output.output_dir, '.tmp')
+        else:
+          tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
+        if not os.path.exists(tmp_dir):
+          try:
+            os.makedirs(tmp_dir)
+          except Exception as e:
+            # Can fail if running multiprocessed, which is ok if the tmp folder was created
+            if not os.path.exists(tmp_dir):
+              halraiser(e)
       os.environ['CBF_TMP_DIR'] = tmp_dir
 
     for abs_params in params.integration.absorption_correction:
@@ -744,6 +747,13 @@ class InMemScript(DialsProcessScript):
         print 'Total memory leaked in %d cycles: %dkB' % (nevent+1-50, mem - first)
 
     self.finalize()
+
+    if params.format.file_format == "cbf" and params.output.tmp_output_dir == "(NONE)":
+      try:
+        os.rmdir(tmp_dir)
+      except Exception, e:
+        pass
+      assert not os.path.exists(tmp_dir)
 
     if params.joint_reintegration.enable:
       if params.output.composite_output:
