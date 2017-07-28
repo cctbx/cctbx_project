@@ -1384,3 +1384,81 @@ Fourier image of specified resolution, etc.
       first_inflection_point = first_inflection_point,
       radius                 = first_inflection_point*2,
       second_derivatives     = second_derivatives)
+
+def sharpen(map, xray_structure, resolution, file_name_prefix):
+  from cctbx import miller
+  fo = miller.structure_factor_box_from_map(
+    crystal_symmetry = xray_structure.crystal_symmetry(), map = map)
+  #
+  fc = fo.structure_factors_from_scatterers(
+    xray_structure = xray_structure).f_calc()
+  d_fsc_model = fc.d_min_from_fsc(
+        other=fo, bin_width=100, fsc_cutoff=0.143).d_min
+  print "d_fsc_model:", d_fsc_model
+  resolution = min(resolution, d_fsc_model)
+  #
+  xray_structure = xray_structure.set_b_iso(value=0)
+  fc = fo.structure_factors_from_scatterers(
+    xray_structure = xray_structure).f_calc()
+  d_spacings = fo.d_spacings().data()
+  #
+  cc = -999
+  d_best = None
+  data = fc.data().deep_copy()
+  for d in [i/10. for i in range(10,100)]:
+    sel = d_spacings<d
+    data_ = data.set_selected(sel, 0)
+    fc_ = fc.customized_copy(data = data_)
+    cc_ = fo.map_correlation(other=fc_)
+    if(cc_>cc):
+      cc = cc_
+      d_best = d
+    #print "%8.1f %10.6f"%(d, cc_)
+  print "Best d:", d_best
+  #
+  fc1 = xray_structure.structure_factors(d_min=resolution).f_calc()
+  fc2 = fc1.resolution_filter(d_min=d_best)
+  cg = crystal_gridding(
+    unit_cell        = xray_structure.crystal_symmetry().unit_cell(),
+    space_group_info = xray_structure.crystal_symmetry().space_group_info(),
+    d_min            = resolution)
+  map2 = fc2.fft_map(crystal_gridding=cg).real_map_unpadded()
+  cc = -999
+  b=None
+  ss = 1./flex.pow2(fc1.d_spacings().data()) / 4.
+  data = fc1.data()
+  for b_ in range(1,500,5):
+    xray_structure = xray_structure.set_b_iso(value=b_)
+    sc = flex.exp(-b_*ss)
+    fc1 = fc1.customized_copy(data = data*sc)
+    map1 = fc1.fft_map(crystal_gridding=cg).real_map_unpadded()
+    cc_ = flex.linear_correlation(x=map1.as_1d(), y=map2.as_1d()).coefficient()
+    if(cc_>cc):
+      cc = cc_
+      b = b_
+    #print "%8.0f %10.6f"%(b_, cc_)
+  print "Best B:", b
+  #
+  fo_sharp = fo.resolution_filter(d_min = resolution)
+  ss = 1./flex.pow2(fo_sharp.d_spacings().data()) / 4.
+  #B_sharp = -35.
+  B_sharp = -1*b
+  sc = flex.exp(-B_sharp*ss)
+  fo_sharp = fo_sharp.customized_copy(data = fo_sharp.data()*sc)
+  # output
+  mtz_dataset = fo_sharp.as_mtz_dataset(column_root_label="F")
+  mtz_object = mtz_dataset.mtz_object()
+  mtz_object.write(file_name = "%s.mtz"%file_name_prefix)
+  fft_map = fo_sharp.fft_map(crystal_gridding = cg)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+  from iotbx import ccp4_map
+  ccp4_map.write_ccp4_map(
+    file_name="%s.ccp4"%file_name_prefix,
+    unit_cell=cg.unit_cell(),
+    space_group=cg.space_group(),
+    #gridding_first=(0,0,0),# This causes a bug (map gets shifted)
+    #gridding_last=n_real,  # This causes a bug (map gets shifted)
+    map_data=map_data,
+    labels=flex.std_string([""]))
+  return fo_sharp, map_data
