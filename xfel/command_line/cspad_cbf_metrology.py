@@ -376,9 +376,9 @@ def refine_expanding(params, merged_scope, combine_phil):
       rest.append(p+48)
     panels.extend(rest)
 
-  levels = {0: 2} # levels 0 and 1
+  levels = {0: (0,1)} # levels 0 and 1
   for i in xrange(7):
-    levels[i+1] = 3 # levels 0, 1 and 2
+    levels[i+1] = (2,) # level 2
 
   for j in xrange(8):
     from libtbx import easy_pickle
@@ -395,7 +395,7 @@ def refine_expanding(params, merged_scope, combine_phil):
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
     easy_pickle.dump(output_path, data.select(sel))
 
-    for i in xrange(levels[j]):
+    for i in levels[j]:
       print "Step", j , "refining at hierarchy level", i
       refine_phil_file = "%s_refine_step%d_level%d.phil"%(params.tag, j, i)
       if i == 0:
