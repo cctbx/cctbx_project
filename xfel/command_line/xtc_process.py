@@ -753,7 +753,6 @@ class InMemScript(DialsProcessScript):
         os.rmdir(tmp_dir)
       except Exception, e:
         pass
-      assert not os.path.exists(tmp_dir)
 
     if params.joint_reintegration.enable:
       if params.output.composite_output:
