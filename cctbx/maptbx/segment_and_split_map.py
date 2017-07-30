@@ -7229,9 +7229,9 @@ def run_auto_sharpen(
     #  sa[2] >= sa[1] and sa[2] >= sa[0]
     # sa_ratio_list[2]-region_weight*normalized_regions[2] >= 
     #    sa_ratio_list[1]-region_weight*normalized_regions[1]
-    max_region_weight = (sa_ratio_list[2]- sa_ratio_list[1])/(
+    max_region_weight = (sa_ratio_list[2]- sa_ratio_list[1])/max(0.001,
          normalized_regions_list[2]-normalized_regions_list[1]) 
-    min_region_weight = (sa_ratio_list[2]- sa_ratio_list[0])/(
+    min_region_weight = (sa_ratio_list[2]- sa_ratio_list[0])/max(0.001,
        normalized_regions_list[2]-normalized_regions_list[0]) 
 
     min_region_weight=max(1.e-10,min_region_weight) # positive
