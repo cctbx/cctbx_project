@@ -2097,6 +2097,8 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
      k_sol=None, b_sol=None, out=sys.stdout):
   xray_structure=pdb_inp.construct_hierarchy().extract_xray_structure(
      crystal_symmetry=f_array.crystal_symmetry())
+  print >>out,"Getting map coeffs from model with %s atoms.." %(
+    xray_structure.sites_frac().size())
 
   model_f_array=f_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
@@ -5930,9 +5932,10 @@ def get_overall_mask(
 
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
+  from cctbx import sgtbx
   cg=crystal_gridding(
         unit_cell=crystal_symmetry.unit_cell(),
-        space_group_info=crystal_symmetry.space_group_info(),
+        space_group_info=sgtbx.space_group_info(number=1), # Always
         pre_determined_n_real=map_data.all())
 
   if not resolution:
@@ -5951,7 +5954,7 @@ def get_overall_mask(
   args=['d_min=None','box=True']
   from libtbx.utils import null_out
   map_coeffs=map_to_sf(args=args,
-         space_group_number=crystal_symmetry.space_group().type().number(),
+         space_group_number=1, # always p1 cell for this
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
          return_as_miller_arrays=True,nohl=True,out=null_out())
   if not map_coeffs:
@@ -6294,12 +6297,40 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       )
     return si
 
+def bounds_to_frac(b,map_data):
+  a=map_data.all()
+  return b[0]/a[0],b[1]/a[1], b[2]/a[2]
+
+def bounds_to_cart(b,map_data,crystal_symmetry=None):
+  bb=bounds_to_frac(b,map_data)
+  a,b,c=crystal_symmetry.unit_cell().parameters()[:3]
+  
+  return a*bb[0],b*bb[1], c*bb[2]
+
+def select_inside_box(lower_bounds=None,upper_bounds=None,xrs=None,
+     hierarchy=None):
+  selection = flex.bool(xrs.scatterers().size())
+  for atom_group in hierarchy.atom_groups():
+    for atom in atom_group.atoms():
+      if atom.xyz[0]>=lower_bounds[0] and \
+         atom.xyz[0]<=upper_bounds[0] and \
+         atom.xyz[1]>=lower_bounds[1] and \
+         atom.xyz[1]<=upper_bounds[1] and \
+         atom.xyz[2]>=lower_bounds[2] and \
+         atom.xyz[2]<=upper_bounds[2]:
+        selection[atom.i_seq]=True 
+
+  asc1=hierarchy.atom_selection_cache()
+  return hierarchy.select(selection)
+      
+
 def select_box_map_data(si=None,
            map_data=None,
            first_half_map_data=None,
            second_half_map_data=None,
            pdb_inp=None,
            get_solvent_fraction=True,# XXX test not doing this...
+           n_min=30, # at least 30 atoms to run model sharpening
            out=sys.stdout):
 
   solvent_fraction=si.solvent_fraction
@@ -6307,6 +6338,42 @@ def select_box_map_data(si=None,
   max_box_fraction=si.max_box_fraction
   box_size=si.box_size
   if pdb_inp:  # use model to identify region to cut out
+    hierarchy=pdb_inp.construct_hierarchy()
+    if si.box_center:  # center at box_center. Trim hierarchy
+      lower_bounds,upper_bounds=box_from_center(si=si,
+        map_data=map_data,out=out)
+      if si.soft_mask:
+        buffer=get_grid_units(map_data=map_data,
+          crystal_symmetry=crystal_symmetry,
+          radius=si.resolution,out=out)
+        buffer=int(0.5+buffer*1.5)
+      else:
+        buffer=0
+      lower_bounds,upper_bounds=put_bounds_in_range(
+       lower_bounds=lower_bounds,upper_bounds=upper_bounds,
+       box_size=box_size,buffer=buffer,
+       n_real=map_data.all(),out=out)
+      lower_frac=bounds_to_frac(lower_bounds,map_data)
+      upper_frac=bounds_to_frac(upper_bounds,map_data)
+      lower_cart=bounds_to_cart(
+         lower_bounds,map_data,crystal_symmetry=crystal_symmetry)
+      upper_cart=bounds_to_cart(
+        upper_bounds,map_data,crystal_symmetry=crystal_symmetry)
+
+      xrs=hierarchy.extract_xray_structure(
+        crystal_symmetry=si.crystal_symmetry)
+ 
+      # find everything in box
+      sel_hierarchy=select_inside_box(lower_bounds=lower_cart,
+         upper_bounds=upper_cart, xrs=xrs,hierarchy=hierarchy) 
+      n=sel_hierarchy.overall_counts().n_atoms
+      print "Selected atoms inside box: %d" %(n)
+      if n<n_min:
+        print "Skipping...using entire structure"
+      else:
+        hierarchy=sel_hierarchy
+
+
     from mmtbx.command_line.map_box import run as run_map_box
     args=[]
     if si.mask_atoms:
@@ -6318,10 +6385,9 @@ def select_box_map_data(si=None,
       if si.soft_mask:
         args.append('soft_mask=%s' %(si.soft_mask))
         args.append('soft_mask_radius=%s' %(si.resolution))
-    hierarchy=pdb_inp.construct_hierarchy()
     print >>out,"Getting map as box"
     box=run_map_box(args,
-        map_data=map_data,pdb_hierarchy=hierarchy,
+        map_data=map_data,pdb_hierarchy=hierarchy.deep_copy(),
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
     box_map=box.map_box.as_double()
@@ -6331,7 +6397,7 @@ def select_box_map_data(si=None,
     if first_half_map_data:
       print >>out,"Getting first map as box"
       box_first=run_map_box(args,
-        map_data=first_half_map_data,pdb_hierarchy=hierarchy,
+        map_data=first_half_map_data,pdb_hierarchy=hierarchy.deep_copy(),
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
       box_first_half_map=box_first.map_box.as_double()
@@ -6341,7 +6407,7 @@ def select_box_map_data(si=None,
     if second_half_map_data:
       print >>out,"Getting second map as box"
       box_second=run_map_box(args,
-        map_data=second_half_map_data,pdb_hierarchy=hierarchy,
+        map_data=second_half_map_data,pdb_hierarchy=hierarchy.deep_copy(),
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
       box_second_half_map=box_second.map_box.as_double()
@@ -6436,14 +6502,42 @@ def select_box_map_data(si=None,
     return box_pdb_inp,box_map,box_first_half_map,box_second_half_map,\
         box_crystal_symmetry,box_sharpening_info_obj
 
+def inside_zero_one(xyz):
+  from scitbx.array_family import flex
+  from scitbx.matrix import col
+  offset=xyz-col((0.5,0.5,0.5))
+  lower_int=offset.iround().as_vec3_double()
+  return xyz-lower_int
+  
+def move_xyz_inside_cell(xyz_cart=None,crystal_symmetry=None):
+  xyz_local=flex.vec3_double()
+  if type(xyz_cart)==type(xyz_local):
+    xyz_local=xyz_cart
+    is_single=False
+  else:
+    is_single=True
+    xyz_local.append(xyz_cart)
+
+  xyz_frac=crystal_symmetry.unit_cell().fractionalize(xyz_local)
+  new_xyz_frac=inside_zero_one(xyz_frac)
+  new_xyz_cart=crystal_symmetry.unit_cell().orthogonalize(new_xyz_frac)
+  if is_single:
+    return new_xyz_cart[0]
+  else:
+    return new_xyz_cart
+    
 def box_from_center( si=None,
            map_data=None,
            out=sys.stdout):
     cx,cy,cz=si.crystal_symmetry.unit_cell().fractionalize(si.box_center)
+    if cx<0 or cx>1 or cy<0 or cy>1 or cz<0 or cz>1:
+       print >>out, "Moving box center inside (0,1)"
+       si.box_center=move_xyz_inside_cell(
+           xyz_cart=si.box_center,crystal_symmetry=si.crystal_symmetry)
+    cx,cy,cz=si.crystal_symmetry.unit_cell().fractionalize(si.box_center)
     print >>out, "\nBox centered at (%7.2f,%7.2f,%7.2f) A" %(
       tuple(si.box_center))
-    if cx<0 or cx>1 or cy<0 or cy>1 or cz<0 or cz>1:
-       raise Sorry("Box center must be inside (0,1)")
+
     ax,ay,az=map_data.all()
     cgx,cgy,cgz=int(0.5+ax*cx),int(0.5+ay*cy),int(0.5+az*cz),
     print >>out,"Box grid centered at (%d,%d,%d)\n" %(cgx,cgy,cgz)
@@ -7073,13 +7167,14 @@ def run_auto_sharpen(
       print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
     #write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
-    box_pdb_inp,box_map_data,box_first_half_map_data,box_second_half_map_data,\
+    box_pdb_inp,box_map_data,box_first_half_map_data,\
+         box_second_half_map_data,\
          box_crystal_symmetry,box_sharpening_info_obj=\
        select_box_map_data(si=si,
            map_data=map_data,
            first_half_map_data=first_half_map_data,
            second_half_map_data=second_half_map_data,
-           pdb_inp=pdb_inp,  # ZZZ allow smaller box and trim pdb_inp ; or supply pdb_inp that is just part of the model...
+           pdb_inp=pdb_inp,
            out=out)
     #write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
 
