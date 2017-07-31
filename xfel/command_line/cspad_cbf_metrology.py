@@ -414,8 +414,13 @@ def refine_expanding(params, merged_scope, combine_phil):
           refine_phil_file, params.tag, params.tag, j)
       else:
         p_step, p_level = previous_step_and_level
-        command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.pickle"%( \
-          refine_phil_file, params.tag, p_step, p_level, params.tag, p_step, p_level)
+        if p_step == j:
+          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.pickle"%( \
+            refine_phil_file, params.tag, p_step, p_level, params.tag, p_step, p_level)
+        else:
+          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_reflections_step%d.pickle"%( \
+            refine_phil_file, params.tag, p_step, p_level, params.tag, j)
+
 
       diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
