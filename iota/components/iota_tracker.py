@@ -10,6 +10,8 @@ Description : IOTA image-tracking GUI module
 import os
 import wx
 from wxtbx import bitmaps
+import wx.lib.agw.ultimatelistctrl as ulc
+import wx.lib.mixins.listctrl as listmix
 import numpy as np
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
@@ -22,6 +24,9 @@ from iota.components.iota_utils import InputFinder
 from iota.components.iota_dials import phil_scope, IOTADialsProcessor
 import iota.components.iota_threads as thr
 import iota.components.iota_controls as ct
+
+from time import time
+
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -248,87 +253,134 @@ class ImageList(wx.Panel):
     self.main_sizer = wx.StaticBoxSizer(self.main_box, wx.VERTICAL)
     self.SetSizer(self.main_sizer)
 
-    self.image_list = FileListCtrl(self)
+    #self.image_list = FileListCtrl(self)
+    self.image_list = VirtualListCtrl(self)
     self.main_sizer.Add(self.image_list, 1, flag=wx.EXPAND)
 
-class FileListItem(object):
-  ''' Class that will contain all the elements of a file list entry '''
-  def __init__(self, path, buttons, n_obs=0):
-    self.id = None
-    self.n_obs = n_obs
-    self.path = path
-    self.buttons = buttons
 
-class FileListCtrl(ct.CustomListCtrl):
+# class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
+#   def __init__(self, parent):
+#     ct.CustomImageListCtrl.__init__(self, parent=parent)
+
+class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
   def __init__(self, parent):
-    ct.CustomListCtrl.__init__(self, parent=parent)
-
+    ct.CustomImageListCtrl.__init__(self, parent=parent)
     self.parent = parent
-    self.main_window = parent.GetParent()
+    self.tracker_panel = parent.GetParent()
+    self.main_window = parent.GetParent().GetParent().GetParent()
+
 
     # Generate columns
-    self.ctr.InsertColumn(0, "File")
-    self.ctr.InsertColumn(1, "")
-    self.ctr.setResizeColumn(0)
+    self.ctr.InsertColumn(0, "#")
+    self.ctr.InsertColumn(1, "File")
+    self.ctr.InsertColumn(2, "No. Spots")
+    self.ctr.setResizeColumn(1)
+    self.ctr.setResizeColumn(2)
 
-  def add_item(self, img, n_obs):
-    item = FileListItem(path=img,
-                        n_obs=n_obs,
-                        buttons=ct.MiniButtonBoxInput(self.ctr))
-    item.buttons.btn_mag.Bind(wx.EVT_BUTTON, self.onMagButton)
-    item.buttons.btn_delete.Bind(wx.EVT_BUTTON, self.onDelButton)
-    item.buttons.btn_info.Bind(wx.EVT_BUTTON, self.onInfoButton)
+    # Bindings
+    self.Bind(ulc.EVT_LIST_ITEM_SELECTED, self.OnItemSelected)
+    self.Bind(ulc.EVT_LIST_ITEM_DESELECTED, self.OnItemDeselected)
 
-    view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer16')
-    item.buttons.btn_mag.SetBitmapLabel(view_bmp)
+
+  def OnItemSelected(self, e):
+    self.main_window.toolbar.EnableTool(
+      self.main_window.tb_btn_view.GetId(), True)
+
+  def OnItemDeselected(self, e):
+    ctr = e.GetEventObject()
+    if ctr.GetSelectedItemCount() <= 0:
+      self.main_window.toolbar.EnableTool(
+        self.main_window.tb_btn_view.GetId(), False)
+
+  def GetListCtrl(self):
+    return self.ctr
+
+  def OnColClick(self, e):
+    print "column clicked"
+    e.Skip()
+
+  def instantiate_sorting(self, data):
+    self.itemDataMap = data
+    listmix.ColumnSorterMixin.__init__(self, 3)
+    self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick, self.ctr)
+
+  def add_item(self, img_idx, img, n_obs):
+    item = ct.FileListItem(path=img,
+                           items={
+                             'n_obs':n_obs,
+                             'img_idx':img_idx
+                           })
 
     # Insert list item
     idx = self.ctr.InsertStringItem(self.ctr.GetItemCount() + 1,
-                                    os.path.basename(item.path))
-    self.ctr.SetItemWindow(idx, 1, item.buttons, expand=True)
+                                    str(item.img_idx))
+    self.ctr.SetStringItem(idx, 1, os.path.basename(item.path))
+    self.ctr.SetStringItem(idx, 2, str(item.n_obs))
 
-    # Record index in all relevant places
+    # Record index in item data
     item.id = idx
-    item.buttons.index = idx
-
-    # Resize columns to fit content
-    self.ctr.SetColumnWidth(1, width=-1)
-    self.ctr.SetColumnWidth(0, width=-3)
 
     # Attach data object to item
-    self.ctr.SetItemData(item.id, item)
+    self.ctr.SetItemData(idx, item)
 
-    self.main_window.Layout()
+    # Resize columns to fit content
+    self.ctr.SetColumnWidth(0, width=50)
+    self.ctr.SetColumnWidth(2, width=150)
+    self.ctr.SetColumnWidth(1, width=-3)
+
+    self.tracker_panel.Layout()
 
   def delete_item(self, index):
+    item = self.ctr.GetItemData(index)
     self.ctr.DeleteItem(index)
 
     # Refresh widget and list item indices
     for i in range(self.ctr.GetItemCount()):
       item_data = self.ctr.GetItemData(i)
       item_data.id = i
-      item_data.buttons.index = i
       self.ctr.SetItemData(i, item_data)
+
+  def delete_selected(self, idxs):
+    counter = 0
+    for idx in idxs:
+      self.delete_item(idx - counter)
+      counter += 1
 
   def delete_all(self):
     for idx in range(self.ctr.GetItemCount()):
       self.delete_item(index=0)
 
-  def onMagButton(self, e):
-    idx = e.GetEventObject().GetParent().index
-    item_obj = self.ctr.GetItemData(idx)
-    path = item_obj.path
-    viewer = thr.ImageViewerThread(self,
-                                   backend='dials',
-                                   file_string=path)
-    viewer.start()
+class VirtualListCtrl(ct.VirtualImageListCtrl):
+  def __init__(self, parent, columns=3):
+    ct.VirtualImageListCtrl.__init__(self, parent=parent)
+    self.parent = parent
+    self.tracker_panel = parent.GetParent()
+    self.main_window = parent.GetParent().GetParent().GetParent()
 
-  def onDelButton(self):
-    pass
+    # Generate columns
+    self.ctr.InsertColumn(0, "#")
+    self.ctr.InsertColumn(1, "File")
+    self.ctr.InsertColumn(2, "No. Spots")
+    self.ctr.setResizeColumn(1)
+    self.ctr.setResizeColumn(2)
 
-  def onInfoButton(self):
-    pass
+    # Bindings
+    self.Bind(ulc.EVT_LIST_ITEM_SELECTED, self.OnItemSelected, self.ctr)
+    self.Bind(ulc.EVT_LIST_ITEM_DESELECTED, self.OnItemDeselected, self.ctr)
+    self.Bind(wx.EVT_LIST_COL_CLICK, self.ctr.OnColClick, self.ctr)
 
+  def initialize_data_map(self, data):
+    self.ctr.InitializeDataMap(data)
+
+  def OnItemSelected(self, e):
+    self.main_window.toolbar.EnableTool(
+      self.main_window.tb_btn_view.GetId(), True)
+
+  def OnItemDeselected(self, e):
+    ctr = e.GetEventObject()
+    if ctr.GetSelectedItemCount() <= 0:
+      self.main_window.toolbar.EnableTool(
+        self.main_window.tb_btn_view.GetId(), False)
 
 class TrackerPanel(wx.Panel):
   def __init__(self, parent):
@@ -424,7 +476,6 @@ class TrackerWindow(wx.Frame):
     self.new_counts = []
     self.spotfinding_info = []
     self.all_info = []
-    self.hits = []
     self.refresh_chart = False
     self.current_min_bragg = 0
     self.waiting = False
@@ -460,9 +511,16 @@ class TrackerWindow(wx.Frame):
                                                 bitmap=stop_bmp,
                                                 shortHelp='Stop',
                                                 longHelp='Stop Spotfinding')
+    self.toolbar.AddSeparator()
+    view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer32')
+    self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
+                                                bitmap=view_bmp,
+                                                shortHelp='View images',
+                                                longHelp='View selected images')
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
-    # self.toolbar.EnableTool(self.tb_btn_calc.GetId(), False)
+    self.toolbar.EnableTool(self.tb_btn_view.GetId(), False)
+
     if os.path.isfile(self.folder_file) and os.path.isfile(self.info_file):
       self.toolbar.EnableTool(self.tb_btn_restore.GetId(), True)
     else:
@@ -474,6 +532,9 @@ class TrackerWindow(wx.Frame):
     self.timer = wx.Timer(self)
 
     self.tracker_panel = TrackerPanel(self)
+    self.data_dict = self.tracker_panel.image_list.image_list.ctr.data.copy()
+    self.img_list_initialized = False
+
     self.main_sizer.Add(self.tracker_panel, 1, wx.EXPAND)
 
     # Generate default PHIL file and instantiate DIALS stills processor
@@ -489,6 +550,7 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onRunSpotfinding, self.tb_btn_run)
     self.Bind(wx.EVT_TOOL, self.onRestoreRun, self.tb_btn_restore)
     self.Bind(wx.EVT_TOOL, self.onStop, self.tb_btn_stop)
+    self.Bind(wx.EVT_TOOL, self.onView, self.tb_btn_view)
 
     # Spotfinder / timer bindings
     self.Bind(thr.EVT_SPFDONE, self.onSpfOneDone)
@@ -499,6 +561,23 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_BUTTON, self.onSpfOptions, self.tracker_panel.spf_options)
     self.Bind(wx.EVT_SPINCTRL, self.onMinBragg,
               self.tracker_panel.min_bragg.ctr)
+
+  def onView(self, e):
+    selection = []
+    listctrl = self.tracker_panel.image_list.image_list.ctr
+    index = listctrl.GetFirstSelected()
+    selection.append(index)
+    while len(selection) != listctrl.GetSelectedItemCount():
+      index = listctrl.GetNextSelected(index)
+      selection.append(index)
+
+    file_list = [self.data_dict[idx][1] for idx in selection]
+    file_string = ' '.join(file_list)
+
+    viewer = thr.ImageViewerThread(self,
+                                   backend='dials',
+                                   file_string=file_string)
+    viewer.start()
 
   def onStop(self, e):
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
@@ -586,10 +665,6 @@ class TrackerWindow(wx.Frame):
 
     self.tracker_panel.spf_options.Disable()
 
-    #self.data_list = ginp.make_input_list([self.data_folder])
-    #self.obs_counts = [-1] * len(self.data_list)
-    #self.frame_count = range(len(self.data_list))
-
     with open(self.folder_file, 'w') as f:
       f.write(self.data_folder)
 
@@ -675,6 +750,10 @@ class TrackerWindow(wx.Frame):
     timer_txt = '[ {0} ]'.format(tick[self.spin_update])
     self.tracker_panel.status_txt.SetLabel('{} {}'.format(timer_txt, self.msg))
 
+    if not self.img_list_initialized and len(self.data_dict) > 0:
+      self.tracker_panel.image_list.image_list.initialize_data_map(self.data_dict)
+      self.img_list_initialized = True
+
     if not os.path.isfile(self.term_file):
       self.update_image_list()
       self.plot_results()
@@ -687,22 +766,27 @@ class TrackerWindow(wx.Frame):
   def update_image_list(self):
     min_bragg = self.tracker_panel.min_bragg.ctr.GetValue()
 
-    if self.current_min_bragg != min_bragg:
-      self.current_min_bragg = min_bragg
-      self.tracker_panel.image_list.image_list.delete_all()
-      updated_hits = [i for i in self.all_info if i[1] >= min_bragg]
-      if len(updated_hits) > 0:
-       for hit in updated_hits:
-         self.tracker_panel.image_list.image_list.add_item(img=hit[2],
-                                                           n_obs=hit[1])
+    # Update list if min_bragg has been changed
+    if self.current_min_bragg < min_bragg:
+      self.data_dict = {idx:item for (idx, item) in
+                        self.data_dict.iteritems() if
+                        item[2] > min_bragg}
+    elif self.current_min_bragg > min_bragg:
+      putback_hits = [i for i in self.all_info if
+                      (i[1] >= min_bragg and i[1] < self.current_min_bragg)]
 
+      for hit in putback_hits:
+        self.data_dict[hit[0]] = (hit[0], hit[2], hit[1])
+    self.current_min_bragg = min_bragg
+
+    # Find and input new hits
     new_hits = [i for i in self.spotfinding_info if i[1] >= min_bragg]
     if len(new_hits) > 0:
       for hit in new_hits:
-        if hit[1] >= min_bragg:
-          self.tracker_panel.image_list.image_list.add_item(img=hit[2],
-                                                          n_obs=hit[1])
-    self.hits.extend(new_hits)
+        self.data_dict[hit[0]] = (hit[0], hit[2], hit[1])
+
+    # Update list data
+    self.tracker_panel.image_list.image_list.ctr.InitializeDataMap(self.data_dict)
 
 
   def plot_results(self):

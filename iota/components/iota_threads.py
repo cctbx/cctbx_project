@@ -301,10 +301,10 @@ class SpotFinderThread(Thread):
         #info = self.spotfinder.run(self.data_list.index(img), datablock, img)
         #return info
         observed = self.processor.find_spots(datablock=datablock)
-        return [self.data_list.index(img), len(observed), img]
+        return [int(self.data_list.index(img)), int(len(observed)), img]
       else:
         print 'DEBUG: FILE {} DOES NOT EXIST'.format(img)
-        return [self.data_list.index(img), 0, img]
+        return [int(self.data_list.index(img)), 0, img]
 
   def callback(self, info):
     try:
