@@ -1126,7 +1126,9 @@ class InMemScript(DialsProcessScript):
 
     if self.cached_ranges is not None:
       # Load a dials mask from the trusted range and psana mask
-      imgset = MemImageSet([dxtbx_img])
+      imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
+      imgset.set_beam(dxtbx_img.get_beam())
+      imgset.set_detector(dxtbx_img.get_detector())
       from dials.util.masking import MaskGenerator
       generator = MaskGenerator(self.params.border_mask)
       mask = generator.generate(imgset)
