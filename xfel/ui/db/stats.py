@@ -217,5 +217,5 @@ class HitrateStats(object):
     two_theta_high = two_theta_high.select(order)
 
     t2 = time.time()
-    print "HitrateStats took %s" % duration(t1, t2)
+    # print "HitrateStats took %s" % duration(t1, t2)
     return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high
