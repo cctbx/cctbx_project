@@ -1492,6 +1492,9 @@ class DataList(object):
     #     data = data.astype(np.uint32)
     # data_as_flex = flex.int(data)
     N, height, width = self.datasets[d].shape
+    print i, width, height
+    print self.datasets[0].shape
+    print self.datasets[d][i,:,:]
     data_as_flex = dataset_as_flex_int(
       self.datasets[d].id.id,
       (slice(i, i+1, 1),

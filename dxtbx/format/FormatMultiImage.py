@@ -133,7 +133,9 @@ class FormatMultiImage(object):
                    as_sweep=False,
                    as_imageset=False,
                    single_file_indices=None,
-                   format_kwargs=None):
+                   format_kwargs=None,
+                   template=None,
+                   check_format=True):
     '''
     Factory method to create an imageset
 
@@ -159,10 +161,18 @@ class FormatMultiImage(object):
 
     # Get the format instance
     assert len(filenames) == 1
-    format_instance = Class(filenames[0], **format_kwargs)
-
+    if check_format is True:
+      format_instance = Class(filenames[0], **format_kwargs)
+    else:
+      format_instance = None
+      
     # Read the vendor type
-    vendor = format_instance.get_vendortype()
+    if check_format is True:
+      vendor = format_instance.get_vendortype()
+    else:
+      vendor = ""
+
+    # Get the format kwargs
     params = format_kwargs
 
     # Check if we have a sweep

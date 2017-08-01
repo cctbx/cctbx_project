@@ -1145,14 +1145,13 @@ class ImageSetFactory(object):
       format_class = format_class
 
     # Done require template to be vaid if not checking format
-    try:
-      filenames = [template_format % (i+1) for i in range(*array_range)]
-    except Exception:
-      if check_format:
-        raise
-      else:
-        filenames = []
-
+    # try:
+    #   filenames = [template_format % (i+1) for i in range(*array_range)]
+    # except Exception:
+    #   if check_format:
+    #     raise
+    #   else:
+    #     filenames = []
     sweep = format_class.get_imageset(
       filenames,
       beam          = beam,
