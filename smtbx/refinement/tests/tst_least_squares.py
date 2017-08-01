@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from libtbx import object_oriented_patterns as oop
 from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
@@ -14,7 +14,7 @@ from smtbx.refinement.restraints import origin_fixing_restraints
 import smtbx.utils
 from libtbx.test_utils import approx_equal
 import libtbx.utils
-from stdlib import math
+import math
 import sys
 import random
 

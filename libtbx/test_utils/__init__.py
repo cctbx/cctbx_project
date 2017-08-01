@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
@@ -6,7 +6,7 @@ from libtbx import easy_run
 from libtbx import introspection
 import difflib
 import libtbx.load_env
-from stdlib import math
+import math
 import os
 import sys
 import time

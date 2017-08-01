@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 import cctbx.crystal.direct_space_asu # import dependency
 from cctbx.array_family import flex
 import scitbx.array_family.shared # import dependency
@@ -12,7 +12,7 @@ ext = boost.python.import_ext("cctbx_geometry_restraints_ext")
 from cctbx_geometry_restraints_ext import *
 
 import scitbx.stl.map
-from stdlib import math
+import math
 import sys
 
 nonbonded_radius_table = scitbx.stl.map.stl_string_double

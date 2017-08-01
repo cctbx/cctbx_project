@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 
 import mmtbx.f_model.f_model_info
 import libtbx.load_env
@@ -15,7 +15,7 @@ from mmtbx.scaling.sigmaa_estimation import sigmaa_estimator
 from cctbx import miller
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
-from stdlib import math
+import math
 from cctbx import xray
 from cctbx import adptbx
 import boost.python

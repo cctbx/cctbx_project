@@ -9,7 +9,7 @@ used only if compactness is not affected. The scitbx/math module
 provides faster C++ alternatives to some algorithms included here.
 """
 
-from __future__ import division
+from __future__ import division, absolute_import
 
 _flex_imported = False
 def flex_proxy():
@@ -28,14 +28,8 @@ def numpy_proxy():
     else: _numpy_imported = numpy
   return _numpy_imported
 
-try:
-  from stdlib import math
-except ImportError:
-  import math
-try:
-  from stdlib import random
-except ImportError:
-  import random
+import math
+import random
 
 class rec(object):
   """

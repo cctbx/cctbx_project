@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *
@@ -14,7 +14,7 @@ from scitbx.array_family import flex
 from smtbx.structure_factors import direct
 from smtbx.refinement.restraints import origin_fixing_restraints
 
-from stdlib import math
+import math
 
 class crystallographic_ls(
   normal_eqns.non_linear_ls_with_separable_scale_factor):

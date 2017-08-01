@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import division, absolute_import
 import clipper
 from iotbx import reflection_file_converter
 from cctbx.array_family import flex
 import scitbx.math
-from stdlib import math
+import math
 import sys
 
 def exercise_Compute_phifom_from_abcd_interface(args):

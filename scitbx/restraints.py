@@ -3,8 +3,8 @@
 Handling for normalized target and gradients.
 """
 
-from __future__ import division
-from stdlib import math
+from __future__ import division, absolute_import
+import math
 from libtbx.utils import Sorry
 
 class energies(object):

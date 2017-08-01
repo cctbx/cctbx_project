@@ -1,10 +1,10 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from libtbx import adopt_init_args
-from stdlib import math
+import math
 import sys
 from libtbx.utils import user_plus_sys_time
 from cctbx import adptbx

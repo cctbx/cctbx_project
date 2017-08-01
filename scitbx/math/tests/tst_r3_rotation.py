@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 import scitbx.math
 from scitbx.math import r3_rotation_vector_to_vector as vector_to_vector
 from scitbx.math import r3_rotation_vector_to_001 as vector_to_001
@@ -8,7 +8,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal
-from stdlib import math
+import math
 import time
 import sys
 

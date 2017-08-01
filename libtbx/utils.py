@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from libtbx.queuing_system_utils import sge_utils, pbs_utils
 from libtbx.str_utils import show_string
 try: import gzip
@@ -11,7 +11,7 @@ try:
 except ImportError:
   import md5
   hashlib_md5 = md5.new
-from stdlib import math
+import math
 import warnings
 import shutil
 import glob

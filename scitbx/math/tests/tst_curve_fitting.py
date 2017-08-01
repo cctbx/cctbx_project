@@ -1,5 +1,5 @@
-from __future__ import division
-from stdlib import random
+from __future__ import division, absolute_import
+import random
 
 import libtbx.load_env
 from libtbx.test_utils import approx_equal

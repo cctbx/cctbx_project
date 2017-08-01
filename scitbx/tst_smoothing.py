@@ -1,6 +1,6 @@
-from __future__ import division
-from stdlib import math
-from stdlib import random
+from __future__ import division, absolute_import
+import math
+import random
 
 from libtbx.utils import frange
 from libtbx.test_utils import approx_equal, is_below_limit
