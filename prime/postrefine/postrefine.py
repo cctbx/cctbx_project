@@ -413,6 +413,11 @@ class postref_handler(object):
         i_binner = (binner_indices == i)
         if len(observations_original.data().select(i_binner)) > 0:
           print binner.bin_d_range(i)[1], flex.mean(partiality_init.select(i_binner)), flex.mean(rs_init.select(i_binner)), flex.mean(rh_init.select(i_binner)), len(partiality_init.select(i_binner))
+    #monte-carlo merge
+    if iparams.flag_monte_carlo:
+      G = 1
+      B = 0
+      partiality_init=flex.double([1]*len(partiality_init))
     #save results
     refined_params = flex.double([G,B,rotx,roty,ry,rz,r0,re,voigt_nu,uc_params[0],uc_params[1],uc_params[2],uc_params[3],uc_params[4],uc_params[5]])
     pres = postref_results()

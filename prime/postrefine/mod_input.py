@@ -271,6 +271,9 @@ frame_accept_min_cc = 0.25
 flag_apply_b_by_frame = True
   .type = bool
   .help = Set to False to dismiss B-factor checking.
+flag_monte_carlo = False
+  .type = bool
+  .help = Set to True to turn on Monte-Carlo merge w/o partiality correction. Use n_postref_cycle=0 to output the merged mtz file without post-refinement and partiality correction.
 b_refine_d_min = 99
   .type = float
   .help = Minimum resolution.
