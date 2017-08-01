@@ -368,14 +368,15 @@ master_phil = iotbx.phil.parse("""
 
      auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
                             *resolution_dependent model_sharpening \
-                             half_map_sharpening None
+                             half_map_sharpening target_b_iso_to_d_cut None
        .type = choice(multi=True)
        .short_caption = Sharpening methods
        .help = Methods to use in sharpening. b_iso searches for b_iso to \
           maximize sharpening target (kurtosis or adjusted_sa). \
           b_iso_to_d_cut applies b_iso only up to resolution specified, with \
           fall-over of k_sharpen.  Resolution dependent adjusts 3 parameters \
-          to sharpen variably over resolution range.
+          to sharpen variably over resolution range. target_b_iso_to_d_cut \
+           sets b_iso based on resolution using target_b_iso_ratio.
 
      box_in_auto_sharpen = True
        .type = bool
@@ -488,11 +489,39 @@ master_phil = iotbx.phil.parse("""
            transition is applied and all data is sharpened or blurred. \
            Note 3: only used if b_iso is set.
 
-     maximum_low_b_adjusted_sa = 0.
+     adjust_region_weight = True
+       .type = bool 
+       .short_caption = Adjust region weight 
+       .help = Adjust region_weight to make overall change in surface area \
+               equal to overall change in normalized regions over the range \
+               of search_b_min to search_b_max using b_iso_to_d_cut.
+
+     region_weight_method = *initial_ratio delta_ratio b_iso
+       .type = choice
+       .short_caption = Region weight method
+       .help = Method for choosing region_weights. Initial_ratio uses \
+               ratio of surface area to regions at low B value.  Delta \
+               ratio uses change in this ratio from low to high B. B_iso \
+               uses resolution-dependent b_iso (not weights) with the \
+               formula b_iso=5.9*d_min**2
+
+     region_weight_factor = 1.0
        .type = float
-       .short_caption = Max low-B adjusted_sa
-       .help = Require adjusted surface area to be this value or less \
-               when map is highly sharpened (at value of search_b_min).
+       .short_caption = Region weight factor
+       .help = Multiplies region_weight after calculation with \
+               region_weight_method above
+ 
+     region_weight_buffer = 0.1
+       .type = float
+       .short_caption = Region weight factor buffer
+       .help = Region_weight adjusted to be region_weight_buffer \
+               away from minimum or maximum values
+ 
+     target_b_iso_ratio = 5.9
+       .type = float
+       .short_caption = Target b_iso ratio 
+       .help = Target b_iso ratio : b_iso is estimated as \
+               target_b_iso_ratio * resolution**2
 
      search_b_min = -100
        .type = float
@@ -1447,7 +1476,11 @@ class sharpening_info:
       search_b_min=None,
       search_b_max=None,
       search_b_n=None,
-      maximum_low_b_adjusted_sa=None,
+      adjust_region_weight=None,
+      region_weight_method=None,
+      region_weight_factor=None,
+      region_weight_buffer=None,
+      target_b_iso_ratio=None,
       box_sharpening_info_obj=None,
       chain_type=None,
       target_scale_factors=None,
@@ -1455,6 +1488,7 @@ class sharpening_info:
       d_min_list=None,
       verbose=None,
       pdb_inp=None,  # XXX probably do not need this
+      local_solvent_fraction=None,
         ):
 
     from libtbx import adopt_init_args
@@ -1487,6 +1521,13 @@ class sharpening_info:
         self.box_in_auto_sharpen=True
         self.sharpening_target='model'
 
+  def get_target_b_iso(self):
+    if self.target_b_iso_ratio is None:
+      return None
+    if self.resolution is None:
+      return None
+    return self.target_b_iso_ratio*self.resolution**2
+
   def set_resolution_dependent_b(self,
     resolution_dependent_b=None,
     sharpening_method='resolution_dependent'):
@@ -1500,6 +1541,9 @@ class sharpening_info:
       return False
 
     if self.target_scale_factors:
+      return True
+
+    if self.sharpening_method=='target_b_iso_to_d_cut':
       return True
 
     if self.b_iso is not None or \
@@ -1600,8 +1644,11 @@ class sharpening_info:
       self.search_b_min=params.map_modification.search_b_min
       self.search_b_max=params.map_modification.search_b_max
       self.search_b_n=params.map_modification.search_b_n
-      self.maximum_low_b_adjusted_sa=\
-         params.map_modification.maximum_low_b_adjusted_sa
+      self.adjust_region_weight=params.map_modification.adjust_region_weight
+      self.region_weight_method=params.map_modification.region_weight_method
+      self.region_weight_factor=params.map_modification.region_weight_factor
+      self.region_weight_buffer=params.map_modification.region_weight_buffer
+      self.target_b_iso_ratio=params.map_modification.target_b_iso_ratio
 
       if sharpening_method is not None:
         self.sharpening_method=sharpening_method
@@ -1753,6 +1800,12 @@ class sharpening_info:
     print >>out,\
        "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
        self.adjusted_sa,self.kurtosis,self.score)
+
+  def is_target_b_iso_to_d_cut(self):
+    if self.sharpening_method=='target_b_iso_to_d_cut':
+       return True
+    else:
+       return False
 
   def is_resolution_dependent_sharpening(self):
     if self.sharpening_method=='resolution_dependent':
@@ -2044,6 +2097,8 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
      k_sol=None, b_sol=None, out=sys.stdout):
   xray_structure=pdb_inp.construct_hierarchy().extract_xray_structure(
      crystal_symmetry=f_array.crystal_symmetry())
+  print >>out,"Getting map coeffs from model with %s atoms.." %(
+    xray_structure.sites_frac().size())
 
   model_f_array=f_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
@@ -5877,9 +5932,10 @@ def get_overall_mask(
 
   # Make a local SD map from our map-data
   from cctbx.maptbx import crystal_gridding
+  from cctbx import sgtbx
   cg=crystal_gridding(
         unit_cell=crystal_symmetry.unit_cell(),
-        space_group_info=crystal_symmetry.space_group_info(),
+        space_group_info=sgtbx.space_group_info(number=1), # Always
         pre_determined_n_real=map_data.all())
 
   if not resolution:
@@ -5898,7 +5954,7 @@ def get_overall_mask(
   args=['d_min=None','box=True']
   from libtbx.utils import null_out
   map_coeffs=map_to_sf(args=args,
-         space_group_number=crystal_symmetry.space_group().type().number(),
+         space_group_number=1, # always p1 cell for this
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
          return_as_miller_arrays=True,nohl=True,out=null_out())
   if not map_coeffs:
@@ -5966,7 +6022,7 @@ def score_map(map_data=None,
         sa_percent=None,
         region_weight=None,
         max_regions_to_test=None,
-        scale_region_weight=True,
+        scale_region_weight=False,
         out=sys.stdout):
   if sharpening_info_obj:
     solvent_fraction=sharpening_info_obj.solvent_fraction
@@ -6027,7 +6083,6 @@ def score_map(map_data=None,
       region_weight_use=region_weight*region_weight_scale
     else:
       region_weight_use=region_weight
-
     sharpening_info_obj.adjusted_sa=\
        sa_ratio - region_weight_use*normalized_regions
     sharpening_info_obj.sa_ratio=sa_ratio
@@ -6193,7 +6248,11 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
        'max_box_fraction','k_sharpen',
         'residual_target','sharpening_target',
-       'search_b_min','search_b_max','search_b_n','maximum_low_b_adjusted_sa',
+       'search_b_min','search_b_max','search_b_n','adjust_region_weight',
+       'region_weight_method',
+        'region_weight_factor',
+        'region_weight_buffer',
+        'target_b_iso_ratio',
        'b_iso','b_sharpen',
        'resolution_dependent_b',
        'region_weight',
@@ -6238,12 +6297,40 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       )
     return si
 
+def bounds_to_frac(b,map_data):
+  a=map_data.all()
+  return b[0]/a[0],b[1]/a[1], b[2]/a[2]
+
+def bounds_to_cart(b,map_data,crystal_symmetry=None):
+  bb=bounds_to_frac(b,map_data)
+  a,b,c=crystal_symmetry.unit_cell().parameters()[:3]
+  
+  return a*bb[0],b*bb[1], c*bb[2]
+
+def select_inside_box(lower_bounds=None,upper_bounds=None,xrs=None,
+     hierarchy=None):
+  selection = flex.bool(xrs.scatterers().size())
+  for atom_group in hierarchy.atom_groups():
+    for atom in atom_group.atoms():
+      if atom.xyz[0]>=lower_bounds[0] and \
+         atom.xyz[0]<=upper_bounds[0] and \
+         atom.xyz[1]>=lower_bounds[1] and \
+         atom.xyz[1]<=upper_bounds[1] and \
+         atom.xyz[2]>=lower_bounds[2] and \
+         atom.xyz[2]<=upper_bounds[2]:
+        selection[atom.i_seq]=True 
+
+  asc1=hierarchy.atom_selection_cache()
+  return hierarchy.select(selection)
+      
+
 def select_box_map_data(si=None,
            map_data=None,
            first_half_map_data=None,
            second_half_map_data=None,
            pdb_inp=None,
            get_solvent_fraction=True,# XXX test not doing this...
+           n_min=30, # at least 30 atoms to run model sharpening
            out=sys.stdout):
 
   solvent_fraction=si.solvent_fraction
@@ -6251,6 +6338,42 @@ def select_box_map_data(si=None,
   max_box_fraction=si.max_box_fraction
   box_size=si.box_size
   if pdb_inp:  # use model to identify region to cut out
+    hierarchy=pdb_inp.construct_hierarchy()
+    if si.box_center:  # center at box_center. Trim hierarchy
+      lower_bounds,upper_bounds=box_from_center(si=si,
+        map_data=map_data,out=out)
+      if si.soft_mask:
+        buffer=get_grid_units(map_data=map_data,
+          crystal_symmetry=crystal_symmetry,
+          radius=si.resolution,out=out)
+        buffer=int(0.5+buffer*1.5)
+      else:
+        buffer=0
+      lower_bounds,upper_bounds=put_bounds_in_range(
+       lower_bounds=lower_bounds,upper_bounds=upper_bounds,
+       box_size=box_size,buffer=buffer,
+       n_real=map_data.all(),out=out)
+      lower_frac=bounds_to_frac(lower_bounds,map_data)
+      upper_frac=bounds_to_frac(upper_bounds,map_data)
+      lower_cart=bounds_to_cart(
+         lower_bounds,map_data,crystal_symmetry=crystal_symmetry)
+      upper_cart=bounds_to_cart(
+        upper_bounds,map_data,crystal_symmetry=crystal_symmetry)
+
+      xrs=hierarchy.extract_xray_structure(
+        crystal_symmetry=si.crystal_symmetry)
+ 
+      # find everything in box
+      sel_hierarchy=select_inside_box(lower_bounds=lower_cart,
+         upper_bounds=upper_cart, xrs=xrs,hierarchy=hierarchy) 
+      n=sel_hierarchy.overall_counts().n_atoms
+      print "Selected atoms inside box: %d" %(n)
+      if n<n_min:
+        print "Skipping...using entire structure"
+      else:
+        hierarchy=sel_hierarchy
+
+
     from mmtbx.command_line.map_box import run as run_map_box
     args=[]
     if si.mask_atoms:
@@ -6262,10 +6385,9 @@ def select_box_map_data(si=None,
       if si.soft_mask:
         args.append('soft_mask=%s' %(si.soft_mask))
         args.append('soft_mask_radius=%s' %(si.resolution))
-    hierarchy=pdb_inp.construct_hierarchy()
     print >>out,"Getting map as box"
     box=run_map_box(args,
-        map_data=map_data,pdb_hierarchy=hierarchy,
+        map_data=map_data,pdb_hierarchy=hierarchy.deep_copy(),
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
     box_map=box.map_box.as_double()
@@ -6275,7 +6397,7 @@ def select_box_map_data(si=None,
     if first_half_map_data:
       print >>out,"Getting first map as box"
       box_first=run_map_box(args,
-        map_data=first_half_map_data,pdb_hierarchy=hierarchy,
+        map_data=first_half_map_data,pdb_hierarchy=hierarchy.deep_copy(),
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
       box_first_half_map=box_first.map_box.as_double()
@@ -6285,7 +6407,7 @@ def select_box_map_data(si=None,
     if second_half_map_data:
       print >>out,"Getting second map as box"
       box_second=run_map_box(args,
-        map_data=second_half_map_data,pdb_hierarchy=hierarchy,
+        map_data=second_half_map_data,pdb_hierarchy=hierarchy.deep_copy(),
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
       box_second_half_map=box_second.map_box.as_double()
@@ -6380,14 +6502,42 @@ def select_box_map_data(si=None,
     return box_pdb_inp,box_map,box_first_half_map,box_second_half_map,\
         box_crystal_symmetry,box_sharpening_info_obj
 
+def inside_zero_one(xyz):
+  from scitbx.array_family import flex
+  from scitbx.matrix import col
+  offset=xyz-col((0.5,0.5,0.5))
+  lower_int=offset.iround().as_vec3_double()
+  return xyz-lower_int
+  
+def move_xyz_inside_cell(xyz_cart=None,crystal_symmetry=None):
+  xyz_local=flex.vec3_double()
+  if type(xyz_cart)==type(xyz_local):
+    xyz_local=xyz_cart
+    is_single=False
+  else:
+    is_single=True
+    xyz_local.append(xyz_cart)
+
+  xyz_frac=crystal_symmetry.unit_cell().fractionalize(xyz_local)
+  new_xyz_frac=inside_zero_one(xyz_frac)
+  new_xyz_cart=crystal_symmetry.unit_cell().orthogonalize(new_xyz_frac)
+  if is_single:
+    return new_xyz_cart[0]
+  else:
+    return new_xyz_cart
+    
 def box_from_center( si=None,
            map_data=None,
            out=sys.stdout):
     cx,cy,cz=si.crystal_symmetry.unit_cell().fractionalize(si.box_center)
+    if cx<0 or cx>1 or cy<0 or cy>1 or cz<0 or cz>1:
+       print >>out, "Moving box center inside (0,1)"
+       si.box_center=move_xyz_inside_cell(
+           xyz_cart=si.box_center,crystal_symmetry=si.crystal_symmetry)
+    cx,cy,cz=si.crystal_symmetry.unit_cell().fractionalize(si.box_center)
     print >>out, "\nBox centered at (%7.2f,%7.2f,%7.2f) A" %(
       tuple(si.box_center))
-    if cx<0 or cx>1 or cy<0 or cy>1 or cz<0 or cz>1:
-       raise Sorry("Box center must be inside (0,1)")
+
     ax,ay,az=map_data.all()
     cgx,cgy,cgz=int(0.5+ax*cx),int(0.5+ay*cy),int(0.5+az*cz),
     print >>out,"Box grid centered at (%d,%d,%d)\n" %(cgx,cgy,cgz)
@@ -6861,13 +7011,16 @@ def auto_sharpen_map_or_map_coeffs(
         search_b_min=None,
         search_b_max=None,
         search_b_n=None,
-        maximum_low_b_adjusted_sa=None,
+        adjust_region_weight=None,
+        region_weight_method=None,
+        region_weight_factor=None,
+        region_weight_buffer=None,
+        target_b_iso_ratio=None,
         b_iso=None, # if set, use it
         b_sharpen=None, # if set, use it
         resolution_dependent_b=None, # if set, use it
         verbose=None,
         out=sys.stdout):
-
     if si:  #
       resolution=si.resolution
       crystal_symmetry=si.crystal_symmetry
@@ -6915,6 +7068,7 @@ def auto_sharpen_map_or_map_coeffs(
         pdb_inp=pdb_inp,
         ncs_copies=ncs_copies,
         n_residues=n_residues,out=out)
+
     # Figure out solvent fraction
     if si.solvent_fraction is None:
       si.solvent_fraction=get_iterated_solvent_fraction(
@@ -7013,13 +7167,14 @@ def run_auto_sharpen(
       print >>out,"\nAuto-sharpening using representative box of density"
     original_box_sharpening_info_obj=deepcopy(si)
     #write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
-    box_pdb_inp,box_map_data,box_first_half_map_data,box_second_half_map_data,\
+    box_pdb_inp,box_map_data,box_first_half_map_data,\
+         box_second_half_map_data,\
          box_crystal_symmetry,box_sharpening_info_obj=\
        select_box_map_data(si=si,
            map_data=map_data,
            first_half_map_data=first_half_map_data,
            second_half_map_data=second_half_map_data,
-           pdb_inp=pdb_inp,  # ZZZ allow smaller box and trim pdb_inp ; or supply pdb_inp that is just part of the model...
+           pdb_inp=pdb_inp,
            out=out)
     #write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
 
@@ -7100,39 +7255,154 @@ def run_auto_sharpen(
 
   # Try various methods for sharpening. # XXX fix this up
 
-  if si.maximum_low_b_adjusted_sa is not None and \
+  if si.adjust_region_weight and \
       (not si.sharpening_is_defined()) and (not si.is_model_sharpening()) \
-     and (not si.is_half_map_sharpening()):
-    # Make sure at highest sharpening the region_weight is high enough to
-    #  give adjusted_sa of zero or less
+     and (not si.is_half_map_sharpening()) and (
+      not si.is_target_b_iso_to_d_cut()):
 
     local_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
-    b_iso=min(original_b_iso,si.search_b_min)
-    local_si.b_sharpen=original_b_iso-b_iso
-    local_si.b_iso=b_iso
-    local_si.sharpening_target='b_iso'
-    local_si.k_sharpen=0.
+    local_si.sharpening_target='adjusted_sa'
+    local_si.sharpening_method='b_iso_to_d_cut'
 
-    local_map_data=apply_sharpening(
-          f_array=f_array,phases=phases,
-          sharpening_info_obj=local_si,
-          crystal_symmetry=local_si.crystal_symmetry,
+
+    sa_ratio_list=[]
+    normalized_regions_list=[] 
+
+    if si.resolution: 
+      # 2017-07-26 reset b_low,b_mid,b_high, using 5.9*resolution**2 for b_mid
+      delta_search=si.search_b_max-si.search_b_min
+      b_mid=si.get_target_b_iso()
+      b_low=b_mid-150*delta_search/400
+      b_high=b_mid+250*delta_search/400
+      print >>out,"Centering search on b_iso=%7.2f" %(b_mid)
+    else:
+      b_low=min(original_b_iso,si.search_b_min) 
+      b_high=max(original_b_iso,si.search_b_max)
+      b_mid=b_low+0.75*(b_high-b_low)
+
+    for b_iso in [b_low,b_high,b_mid]:
+
+      local_si.b_sharpen=original_b_iso-b_iso
+      local_si.b_iso=b_iso
+
+      local_map_data=apply_sharpening(
+            f_array=f_array,phases=phases,
+            sharpening_info_obj=local_si,
+            crystal_symmetry=local_si.crystal_symmetry,
+            out=null_out())
+      local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
           out=null_out())
-    local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
-        out=null_out())
-    if print_result:
-      print >>out,\
-         " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
-          local_si.b_sharpen,local_si.b_iso,
-           local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
-          "  %7.3f         %7.3f" %(
-           local_si.sa_ratio,local_si.normalized_regions)
-    if local_si.adjusted_sa > local_si.maximum_low_b_adjusted_sa: # adjust weight
-      region_weight=(local_si.sa_ratio-local_si.maximum_low_b_adjusted_sa)/max(
-         1.e-10,local_si.normalized_regions)
-      print >>out,"\nRegion weight adjusted to %5.1f" %(region_weight)
-      si.region_weight=region_weight
+      sa_ratio_list.append(local_si.sa_ratio)
+      normalized_regions_list.append(local_si.normalized_regions)
+
+    # Set region weight so that either:
+    #  (1) delta_sa_ratio==region_weight*delta_normalized_regions
+    #  (2) sa_ratio=region_weight*normalized_regions (at low B)
+
+    # region weight from change over entire region 
+    ok_region_weight=True
+    d_sa_ratio=sa_ratio_list[0]-sa_ratio_list[1]
+    d_normalized_regions=normalized_regions_list[0]-normalized_regions_list[1]
+    delta_region_weight=si.region_weight_factor*d_sa_ratio/max(
+          1.e-10,d_normalized_regions)
+    if d_sa_ratio < 0 or d_normalized_regions < 0:
+      print >>out,"Not using delta_region_weight with unusable values"
+      ok_region_weight=False
+  
+
+    # region weight from initial values
+    init_region_weight=si.region_weight_factor* \
+          sa_ratio_list[0]/max(1.e-10,normalized_regions_list[0])
+
+    # Ensure that adjusted_sa at b_mid is > than either end
+    #  adjusted_sa=sa_ratio - region_weight*normalized_regions
+
+    # sa[2]=sa_ratio_list[2]-region_weight*normalized_regions[2]
+    # sa[1]=sa_ratio_list[1]-region_weight*normalized_regions[1]
+    # sa[0]=sa_ratio_list[0]-region_weight*normalized_regions[0]
+    #  sa[2] >= sa[1] and sa[2] >= sa[0]
+    # sa_ratio_list[2]-region_weight*normalized_regions[2] >= 
+    #    sa_ratio_list[1]-region_weight*normalized_regions[1]
+    max_region_weight = (sa_ratio_list[2]- sa_ratio_list[1])/max(0.001,
+         normalized_regions_list[2]-normalized_regions_list[1]) 
+    min_region_weight = (sa_ratio_list[2]- sa_ratio_list[0])/max(0.001,
+       normalized_regions_list[2]-normalized_regions_list[0]) 
+
+    min_region_weight=max(1.e-10,min_region_weight) # positive
+    max_region_weight=max(1.e-10,max_region_weight) # positive
+
+    delta_weight=max(0.,max_region_weight-min_region_weight)
+    min_buffer=delta_weight*si.region_weight_buffer
+    min_region_weight+=min_buffer
+    max_region_weight-=min_buffer 
+    if min_region_weight >= max_region_weight:
+      print >>out,"Region weight not found..."
+      ok_region_weight=False
+     
+
+    print >>out,"Region weight bounds: Min: %7.1f  Max: %7.1f " %(
+      min_region_weight,max_region_weight)
+    print >>out,"Region weight estimates:" 
+    print >>out,"From ratio of low-B surface area to regions: %7.1f" %(
+     init_region_weight) 
+    print >>out,"Ratio of change in surface area to change in regions: %7.1f" %(
+     delta_region_weight) 
+
+    # put them in bounds but note if we did it
+  
+
+    out_of_range=False 
+    if ok_region_weight and si.region_weight_method=='initial_ratio':
+      if init_region_weight > max_region_weight or \
+          init_region_weight<min_region_weight:
+        init_region_weight=max(
+          min_region_weight,min(max_region_weight,init_region_weight))
+        out_of_range=True
+      print >>out,"\nRegion weight adjusted to %7.1f using initial ratio" %(
+          init_region_weight)
+      si.region_weight=init_region_weight
+
+    elif ok_region_weight and si.region_weight_method=='delta_ratio':
+      if delta_region_weight > max_region_weight or \
+          delta_region_weight<min_region_weight:
+        delta_region_weight=max(
+          min_region_weight,min(max_region_weight,delta_region_weight))
+        out_of_range=True
+      si.region_weight=delta_region_weight
+      print >>out,"\nRegion weight set to %7.1f using overall ratio and " %(
+          si.region_weight) +\
+          "\nfactor of %5.1f" %(si.region_weight_factor)
+
+    else: # just use resolution-based target for b_iso
+      if si.resolution:
+        print >>out,"Using resolution-based b_iso (region_weight not found)"
+        si.b_iso=si.get_target_b_iso()
+        si.sharpening_method='b_iso_to_d_cut'
+        auto_sharpen_methods=['b_iso_to_d_cut']
+        print >>out,"b_iso=%7.2f" %(si.b_iso)
+      else:
+        si.region_weight=40
+        print >>out,"\nUnable to set region_weight ... using value of %7.2f" % (
+          si.region_weight)
+
+    if out_of_range and 'resolution_dependent' in auto_sharpen_methods:
+      new_list=[]
+      have_something_left=False
+      for x in auto_sharpen_methods:
+        if x != 'resolution_dependent':
+          if str(x) != 'None':
+            have_something_left=True
+          new_list.append(x)
+      if have_something_left:
+        auto_sharpen_methods=new_list
+        print >>out,"Removed resolution_dependent sharpening ( "+\
+          "weights were out of range)"
+
+    if box_sharpening_info_obj:
+      si.local_solvent_fraction=box_sharpening_info_obj.solvent_fraction
+    else:
+      si.local_solvent_fraction=si.solvent_fraction
 
 
   null_si=None
@@ -7486,6 +7756,10 @@ def set_up_sharpening(si=None,map_data=None,out=sys.stdout):
          print >>out,"\nCarrying out specified sharpening/blurring of map"
          check_si=si  # just use input information
          check_si.show_summary(out=out)
+         if check_si.is_target_b_iso_to_d_cut():
+           check_si.b_iso=check_si.get_target_b_iso()
+           check_si.b_sharpen=None
+           print >>out,"Setting target b_iso of %7.1f " %(check_si.b_iso)
          if check_si.b_sharpen is None and check_si.b_iso is not None:
            # need to figure out b_sharpen
            b_iso=check_si.get_effective_b_iso(map_data=map_data,out=out)

@@ -499,7 +499,7 @@ class DetectorFactory:
   @staticmethod
   def simple(sensor, distance, beam_centre, fast_direction, slow_direction,
              pixel_size, image_size, trusted_range = (0.0, 0.0), mask = [],
-             px_mm=None, mu=0.0, identifier=""):
+             px_mm=None, mu=0.0, gain=None, identifier=""):
     '''Construct a simple detector at a given distance from the sample
     along the direct beam presumed to be aligned with -z, offset by the
     beam centre - the directions of which are given by the fast and slow
@@ -536,6 +536,7 @@ class DetectorFactory:
         trusted_range,
         px_mm,
         mu=mu,
+        gain=gain,
         identifier=identifier)
     detector[0].mask = mask
     return detector

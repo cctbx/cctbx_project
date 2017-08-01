@@ -209,7 +209,7 @@ master_phil = iotbx.phil.parse("""
 
      auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
                             *resolution_dependent model_sharpening \
-                            half_map_sharpening None
+                            half_map_sharpening target_b_iso_to_d_cut None
 
        .type = choice(multi=True)
        .short_caption = Sharpening methods
@@ -339,12 +339,39 @@ master_phil = iotbx.phil.parse("""
            transition is applied and all data is sharpened or blurred. \
            Default is 10.
 
+     adjust_region_weight = True
+       .type = bool 
+       .short_caption = Adjust region weight 
+       .help = Adjust region_weight to make overall change in surface area \
+               equal to overall change in normalized regions over the range \
+               of search_b_min to search_b_max using b_iso_to_d_cut.
 
-     maximum_low_b_adjusted_sa = 0.
+     region_weight_method = *initial_ratio delta_ratio b_iso
+       .type = choice
+       .short_caption = Region weight method
+       .help = Method for choosing region_weights. Initial_ratio uses \
+               ratio of surface area to regions at low B value.  Delta \
+               ratio uses change in this ratio from low to high B. B_iso \
+               uses resolution-dependent b_iso (not weights) with the \
+               formula b_iso=5.9*d_min**2
+
+     region_weight_factor = 1.0
        .type = float
-       .short_caption = Max low-B adjusted_sa
-       .help = Require adjusted surface area to be this value or less \
-               when map is highly sharpened (at value of search_b_min).
+       .short_caption = Region weight factor
+       .help = Multiplies region_weight after calculation with \
+               region_weight_method above
+
+     region_weight_buffer = 0.1
+       .type = float
+       .short_caption = Region weight factor buffer
+       .help = Region_weight adjusted to be region_weight_buffer \
+               away from minimum or maximum values
+
+     target_b_iso_ratio = 5.9
+       .type = float
+       .short_caption = Target b_iso ratio 
+       .help = Target b_iso ratio : b_iso is estimated as \
+               target_b_iso_ratio * resolution**2
 
      search_b_min = None
        .type = float
@@ -515,6 +542,18 @@ def get_map_coeffs_from_file(
       labels=",".join(ma.info().labels)
       if not map_coeffs_labels or labels==map_coeffs_labels:  # take it
          return ma
+def map_inside_cell(pdb_inp,crystal_symmetry=None):
+  ph=pdb_inp.construct_hierarchy()
+  xrs=ph.extract_xray_structure(crystal_symmetry=crystal_symmetry)
+  sites_cart=xrs.sites_cart()
+  from cctbx.maptbx.segment_and_split_map import move_xyz_inside_cell 
+  new_sites_cart=move_xyz_inside_cell(xyz_cart=sites_cart,
+     crystal_symmetry=crystal_symmetry)
+  xrs.set_sites_cart(sites_cart=new_sites_cart)
+  text=xrs.as_pdb_file()
+  from scitbx.array_family import flex
+  return iotbx.pdb.input(source_info="",lines=flex.split_lines(text))
+  
 
 def get_map_and_model(params=None,
     map_data=None,
@@ -598,6 +637,10 @@ def get_map_and_model(params=None,
        crystal_symmetry=crystal_symmetry,
        pdb_hierarchy=pdb_inp.construct_hierarchy(),
        out=out).as_pdb_input()
+
+    # put inside (0,1)
+    pdb_inp=map_inside_cell(pdb_inp,crystal_symmetry=crystal_symmetry)
+
 
   if params.input_files.ncs_file and not ncs_obj: # NCS
     from cctbx.maptbx.segment_and_split_map import get_ncs
@@ -693,8 +736,12 @@ def run(args=None,params=None,
         search_b_min=params.map_modification.search_b_min,
         search_b_max=params.map_modification.search_b_max,
         search_b_n=params.map_modification.search_b_n,
-        maximum_low_b_adjusted_sa=\
-           params.map_modification.maximum_low_b_adjusted_sa,
+        adjust_region_weight=params.map_modification.adjust_region_weight,
+        region_weight_method=params.map_modification.region_weight_method,
+        region_weight_factor=params.map_modification.region_weight_factor,
+        region_weight_buffer=\
+            params.map_modification.region_weight_buffer,
+        target_b_iso_ratio=params.map_modification.target_b_iso_ratio,
         b_iso=params.map_modification.b_iso,
         b_sharpen=params.map_modification.b_sharpen,
         resolution_dependent_b=\

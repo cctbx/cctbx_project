@@ -7,11 +7,12 @@ Last Changed: 07/21/2017
 Description : IOTA GUI controls
 '''
 
+import os
 import wx
 import wx.richtext
 import wx.lib.agw.floatspin as fs
 import wx.lib.agw.ultimatelistctrl as ulc
-from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
+from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin
 from wxtbx import metallicbutton as mb
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
@@ -138,10 +139,60 @@ class DataTypeChoice(wx.Panel):
 class InputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin):
   ''' Customized UltimateListCtrl with auto-width mixin'''
 
-  def __init__(self, parent, ID, pos=wx.DefaultPosition,
+  def __init__(self, parent, ID, n_cols=3, pos=wx.DefaultPosition,
                size=wx.DefaultSize, style=0):
     ulc.UltimateListCtrl.__init__(self, parent, ID, pos, size, agwStyle=style)
     ListCtrlAutoWidthMixin.__init__(self)
+
+class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
+                           ColumnSorterMixin):
+  ''' Customized Virtual UltimateListCtrl with auto-width mixin'''
+
+  def __init__(self, parent, ID, n_cols=3, pos=wx.DefaultPosition,
+               size=wx.DefaultSize, style=0):
+    ulc.UltimateListCtrl.__init__(self, parent, ID, pos, size, agwStyle=style)
+    ListCtrlAutoWidthMixin.__init__(self)
+    ColumnSorterMixin.__init__(self, n_cols)
+
+    self.data = {}
+
+  def InitializeDataMap(self, data):
+    self.data = data
+    self.itemDataMap = self.data
+    self.itemIndexMap = self.data.keys()
+    self.SetItemCount(len(self.data))
+
+  def GetListCtrl(self):
+    return self
+
+  def OnColClick(self, e):
+    print "column clicked"
+    e.Skip()
+
+  def OnGetItemToolTip(self, item, col):
+    return None
+
+  def OnGetItemTextColour(self, item, col):
+    return None
+
+  def OnGetItemText(self, item, col):
+    index = self.itemIndexMap[item]
+    s = str(self.itemDataMap[index][col])
+
+    if os.path.isfile(s):
+      s = os.path.basename(s)
+
+    return s
+
+  def OnGetItemAttr(self, item):
+    return None
+
+  def OnGetItemImage(self, item):
+    return -1
+
+  def getColumnText(self, index, col):
+    item = self.GetItem(index, col)
+    return item.GetText()
 
 class InputListItem(object):
   ''' Class that will contain all the elements of an input list entry '''
@@ -192,13 +243,19 @@ class InputListItem(object):
 
 class FileListItem(object):
   ''' Class that will contain all the elements of a file list entry '''
-  def __init__(self, path, buttons):
+  def __init__(self, path, items=None):
+    ''' A generic control to generate an entry in the file list control
+    :param path: absolute path to file
+    :param items: a dictionary of items that will be converted to attributes
+    '''
     self.id = None
     self.flag = None
     self.path = path
-    self.buttons = buttons
     self.warning = False
 
+    if items is not None:
+      for key, value in items.iteritems():
+        self.__setattr__(key, value)
 
 # --------------------------------- Controls --------------------------------- #
 
@@ -595,6 +652,44 @@ class CustomListCtrl(CtrlBase):
                                    ulc.ULC_NO_HIGHLIGHT)
     self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
     self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
+
+
+
+class CustomImageListCtrl(CtrlBase):
+  def __init__(self, parent, size=wx.DefaultSize, content_style='normal'):
+    CtrlBase.__init__(self, parent=parent, content_style=content_style)
+
+    self.sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.sizer)
+
+    # Input List control
+    self.control_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.ctr = InputListCtrl(self, ID=wx.ID_ANY, size=size,
+                             style=ulc.ULC_REPORT |
+                                   ulc.ULC_HRULES |
+                                   ulc.ULC_HAS_VARIABLE_ROW_HEIGHT |
+                                   ulc.ULC_VRULES)
+    self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
+    self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
+
+class VirtualImageListCtrl(CtrlBase):
+  def __init__(self, parent, size=wx.DefaultSize, content_style='normal'):
+    CtrlBase.__init__(self, parent=parent, content_style=content_style)
+
+    self.sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.sizer)
+
+    self.control_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.ctr = VirtualInputListCtrl(self, -1, size=size, n_cols=3,
+                                    style=ulc.ULC_REPORT |
+                                          ulc.ULC_VIRTUAL|
+                                          ulc.ULC_HRULES |
+                                          ulc.ULC_VRULES |
+                                          ulc.ULC_HAS_VARIABLE_ROW_HEIGHT)
+
+    self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
+    self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
+
 
 class PHILBox(CtrlBase):
   def __init__(self, parent,

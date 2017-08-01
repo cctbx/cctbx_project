@@ -54,9 +54,9 @@ control_phil_str = '''
   }
 '''
 
-from dials.command_line.stills_process import Processor, dials_phil_str, Script as DialsScript
+from dials.command_line.stills_process import Processor, dials_phil_str, program_defaults_phil_str, Script as DialsScript
 
-phil_scope = parse(control_phil_str + dials_phil_str, process_includes=True)
+phil_scope = parse(control_phil_str + dials_phil_str, process_includes=True).fetch(parse(program_defaults_phil_str))
 
 class Script(DialsScript, Processor):
   '''A class for running the script.'''

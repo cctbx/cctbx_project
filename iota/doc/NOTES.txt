@@ -4,3 +4,7 @@ IOTA v1.1.021 - tracker streamlined interface
 visible (spotfinding params in separate dialog)
 2. Created new iota_tracker.py module to house all the tracking GUI elements;
  iota_track_images.py merely launches the GUI, etc.
+3. List control allows selection of multiple images; toolbar view button
+launches viewer with all the images selected
+4. Virtual list control - faster updating. (Not sure this is working as
+intended, though)
