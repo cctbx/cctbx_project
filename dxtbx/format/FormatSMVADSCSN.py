@@ -29,9 +29,48 @@ class FormatSMVADSCSN(FormatSMVADSC):
     if not self.understand(image_file):
       raise IncorrectFormatError(self, image_file)
 
+    # Mapping of serial numbers to models for known detectors
+    self._sn_to_model = {401: 'Q4U',
+                         402: 'Q4',
+                         414: 'Q4',
+                         423: 'Q4R',
+                         428: 'Q4R',
+                         429: 'Q4', # or Q4R?
+                         441: 'Q210',
+                         442: 'Q210',
+                         443: 'Q210',
+                         444: 'Q210', # or Q210R?
+                         445: 'Q210',
+                         446: 'Q210',
+                         447: 'Q210',
+                         448: 'Q210',
+                         457: 'Q210R',
+                         471: 'Q270',
+                         472: 'Q270',
+                         474: 'Q270',
+                         901: 'Q210',
+                         905: 'Q315',
+                         907: 'Q315R', # or Q315?
+                         913: 'Q315',
+                         917: 'Q315R',
+                         923: 'Q315R',
+                         925: 'Q315',
+                         926: 'Q315R',
+                         928: 'Q315R',
+                         931: 'Q315R',
+                         933: 'Q315R',
+                         }
+
     FormatSMVADSC.__init__(self, image_file, **kwargs)
 
     return
+
+  def _adsc_module_gain(self):
+    '''Overload to look the model number up from the serial number table'''
+    sn = int(self._header_dictionary['DETECTOR_SN'])
+    # If not in the known list default to Q315
+    model = self._sn_to_model.get(sn, 'Q315')
+    return super(FormatSMVADSCSN, self)._adsc_module_gain(model=model)
 
   def _start(self):
 

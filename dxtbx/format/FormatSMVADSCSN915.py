@@ -62,7 +62,8 @@ class FormatSMVADSCSN915(FormatSMVADSCSN):
 
     return self._detector_factory.simple(
         'CCD', distance, (beam_y, beam_x), '+x', '-y',
-        (pixel_size, pixel_size), image_size, (underload, overload), [])
+        (pixel_size, pixel_size), image_size, (underload, overload), [],
+        gain=self._adsc_module_gain())
 
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a

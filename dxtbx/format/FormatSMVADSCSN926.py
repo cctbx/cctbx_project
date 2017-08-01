@@ -75,7 +75,7 @@ class FormatSMVADSCSN926(FormatSMVADSCSN):
     return self._detector_factory.two_theta(
         'CCD', distance, (beam_y, beam_x), '+x', '-y',
         '+x', two_theta, (pixel_size, pixel_size), image_size,
-        (underload, overload), [])
+        (underload, overload), [], gain=self._adsc_module_gain())
 
 if __name__ == '__main__':
 

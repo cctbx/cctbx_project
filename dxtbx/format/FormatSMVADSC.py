@@ -80,6 +80,48 @@ class FormatSMVADSC(FormatSMV):
 
     return self._goniometer_factory.single_axis()
 
+  def _adsc_module_gain(self, model='Q315r'):
+    '''Return an appropriate gain value in ADU per captured X-ray for an
+    ADSC CCD module.'''
+
+    # Values are based on the list used at
+    # http://bl831.als.lbl.gov/xtalsize.html and conversations with James
+    # Holton. The list combines information from manufacturer specifications
+    # (see for example
+    # http://bl831.als.lbl.gov/~gmeigs/PDF/Q315rTechSpecsNEW.pdf) and personal
+    # communications. The accuracy should not be expected to be better than
+    # 20%. Indeed these values are likely to be based on measurements of ADU
+    # per _incident_ photon, by comparison with an external device, rather than
+    # a measurement of ADU per _captured_ photon. The capture fraction of an
+    # ADSC module is expected to be about 80% for an ADSC module exposed to 12
+    # keV X-rays. However, multiplying these values by 1.25 tends to result in
+    # fewer true spots being found. So, treat these values as an empirical
+    # compromise, which is better than defaulting to a gain of 1.0.
+
+    model = model.upper()
+    if model == 'Q270':
+      return 2.8
+
+    # Get binning mode HW/SW
+    bin_lev = str(self._header_dictionary.get('BIN'))
+    bin_type = self._header_dictionary.get('BIN_TYPE')
+
+    if bin_lev.upper() == 'NONE':
+      bin_type = None
+    elif bin_type != 'HW':
+      bin_type = 'SW'
+
+    if bin_type == 'SW':
+      #return 0.6 This does not look believable. Default to 2.4 instead
+      return 2.4
+
+    if bin_type != 'HW': # assume unbinned
+      return 2.4
+    elif model.endswith('R'): # e.g. Q315r, HW binning
+      return 1.8
+    else: # e.g. Q315, HW binning
+      return 2.4
+
   def _detector(self):
     '''Return a model for a simple detector, presuming no one has
     one of these on a two-theta stage. Assert that the beam centre is
@@ -96,7 +138,8 @@ class FormatSMVADSC(FormatSMV):
 
     return self._detector_factory.simple(
         'CCD', distance, (beam_y, beam_x), '+x', '-y',
-        (pixel_size, pixel_size), image_size, (underload, overload), [])
+        (pixel_size, pixel_size), image_size, (underload, overload), [],
+        gain=self._adsc_module_gain())
 
   def _beam(self):
     '''Return a simple model for the beam.'''

@@ -66,7 +66,8 @@ class FormatSMVADSCSNAPSID19(FormatSMVADSCSN):
         'CCD', distance,
         (beam_y, (image_size[1] * pixel_size) - beam_x),
         '+x', '-y',
-        (pixel_size, pixel_size), image_size, (underload, overload), [])
+        (pixel_size, pixel_size), image_size, (underload, overload), [],
+        gain=self._adsc_module_gain())
 
   def _goniometer(self):
     '''Return a model for a simple single-axis goniometer. This should
