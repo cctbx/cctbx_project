@@ -505,7 +505,7 @@ class RunStatsSentinel(Thread):
       prepend = os.path.join(get_run_path(self.output, *self.trgr[run]), outdir)
       tag = "idx" if indexed else "shot"
       image_paths = get_paths_from_timestamps(ts, prepend=prepend, tag=tag, ext=self.trgr[run][1].format)
-      image_paths_by_run.extend(image_paths)
+      image_paths_by_run.append(image_paths)
       timestamp_strings = get_strings_from_timestamps(ts, long_form=True)
       timestamps_and_params_by_run.append((self.get_xtc_process_params_for_run(*self.trgr[run]), timestamp_strings))
     if indexed:
@@ -1902,6 +1902,7 @@ class RunStatsTab(BaseTab):
     self.ratio = 1
     self.n_strong = 40
     self.i_sigi = 1
+    self.n_dump = 10
     self.should_have_indexed_image_paths = None
     self.should_have_indexed_timestamps = None
     self.strong_indexed_image_paths = None
@@ -1945,11 +1946,16 @@ class RunStatsTab(BaseTab):
                                          label_size=(160, -1),
                                          ctrl_size=(30, -1),
                                          items=[('isigi', 1)])
+    self.n_dump_cutoff = gctr.OptionCtrl(self,
+                                         label='# images to dump:',
+                                         label_size=(160, -1),
+                                         ctrl_size=(30, -1),
+                                         items=[('n_dump', 10)])
     self.run_numbers =  gctr.CheckListCtrl(self,
                                            label='Selected runs:',
                                            label_size=(200, -1),
                                            label_style='normal',
-                                           ctrl_size=(150, 200),
+                                           ctrl_size=(150, 224),
                                            direction='vertical',
                                            choices=[])
     self.strong_indexed_list = wx.TextCtrl(self,
@@ -1983,44 +1989,46 @@ class RunStatsTab(BaseTab):
                                flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.i_sigi_cutoff, pos=(6, 0),
                                flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(7, 1),
+    self.options_opt_sizer.Add(self.n_dump_cutoff, pos=(7, 0),
+                               flag=wx.ALL, border=2)
+    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(8, 1),
                                flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
                                border=10)
     self.options_box_sizer.Add(self.options_opt_sizer)
     self.bottom_sizer.Add(self.options_box_sizer)
 
-    self.dump_images_sizer = wx.GridBagSizer(1, 2)
+    self.dump_images_sizer = wx.GridBagSizer(2, 1)
 
     strong_indexed_box = wx.StaticBox(self, label='Strongest Indexed Images')
     self.strong_indexed_box_sizer = wx.StaticBoxSizer(strong_indexed_box, wx.VERTICAL)
 
     self.strong_indexed_results_sizer = wx.GridBagSizer(1, 1)
     self.strong_indexed_results_sizer.Add(self.strong_indexed_list, pos=(0, 0),
-                                          span=(12, 45),
+                                          span=(5, 45),
                                           flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
                                           border=10)
     self.strong_indexed_box_sizer.Add(self.strong_indexed_results_sizer)
 
     self.strong_indexed_box_sizer.Add(self.idx_show_images_button,
-                                      flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
-                                      border=10)
+                                      flag=wx.LEFT | wx.RIGHT | wx.ALL | wx.EXPAND,
+                                      border=5)
 
     should_have_indexed_box = wx.StaticBox(self, label='Strong Images that Didn\'t Index')
     self.should_have_indexed_box_sizer = wx.StaticBoxSizer(should_have_indexed_box, wx.VERTICAL)
 
     self.should_have_indexed_results_sizer = wx.GridBagSizer(1, 1)
     self.should_have_indexed_results_sizer.Add(self.should_have_indexed_list, pos=(0, 0),
-                                               span=(12, 45),
+                                               span=(5, 45),
                                                flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
                                                border=10)
     self.should_have_indexed_box_sizer.Add(self.should_have_indexed_results_sizer)
 
     self.should_have_indexed_box_sizer.Add(self.shi_dump_images_button,
-                                           flag=wx.LEFT | wx.RIGHT | wx.EXPAND,
-                                           border=10)
+                                           flag=wx.LEFT | wx.RIGHT | wx.ALL | wx.EXPAND,
+                                           border=5)
 
     self.dump_images_sizer.Add(self.strong_indexed_box_sizer, pos=(0, 0))
-    self.dump_images_sizer.Add(self.should_have_indexed_box_sizer, pos=(0, 1))
+    self.dump_images_sizer.Add(self.should_have_indexed_box_sizer, pos=(1, 0))
 
     # self.bottom_sizer.Add(self.should_have_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
     # self.bottom_sizer.Add(self.strong_indexed_box_sizer, flag=wx.EXPAND | wx.ALL)
@@ -2039,6 +2047,7 @@ class RunStatsTab(BaseTab):
     self.Bind(wx.EVT_TEXT_ENTER, self.onRatioCutoff, self.ratio_cutoff.ratio)
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
     self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.i_sigi_cutoff.isigi)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onNDump, self.n_dump_cutoff.n_dump)
     self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOpenImages, self.idx_show_images_button)
     self.Bind(wx.EVT_BUTTON, self.onDumpImages, self.shi_dump_images_button)
@@ -2155,19 +2164,26 @@ class RunStatsTab(BaseTab):
 
   def print_strong_indexed_paths(self):
     try:
-      image_paths = '\n'.join(self.strong_indexed_image_paths)
+      paths = []
+      for p in self.strong_indexed_image_paths:
+        paths.extend(p)
+      image_paths = '\n'.join(paths)
       self.strong_indexed_list.SetValue(image_paths)
     except TypeError:
       print "Error getting list of best indexed images"
       pass
 
   def print_should_have_indexed_paths(self):
-    try:
-      image_paths = '\n'.join(self.should_have_indexed_image_paths)
-      self.should_have_indexed_list.SetValue(image_paths)
-    except TypeError:
-      print "Error getting list of images that should have indexed"
-      pass
+    if self.trial is not None:
+      try:
+        paths = []
+        for p in self.should_have_indexed_image_paths:
+          paths.extend(p)
+        image_paths = '\n'.join(paths)
+        self.should_have_indexed_list.SetValue(image_paths)
+      except TypeError:
+        print "Error getting list of images that should have indexed"
+        pass
 
   def select_last_n_runs(self, n):
     if self.trial is not None:
@@ -2215,47 +2231,66 @@ class RunStatsTab(BaseTab):
     except ValueError:
       pass
 
-  def onDumpImages(self, e):
-    for params, ts_list in self.should_have_indexed_timestamps:
-      if not os.path.isdir(params['output_dir']):
-        os.makedirs(params['output_dir'])
-      command = ('cctbx.xfel.xtc_dump input.experiment=%s '%params['experiment'])+\
-      ('input.run_num=%d input.address=%s '%(params['run'], params['address']))+\
-      ('format.file_format=%s '%params['format'])+\
-      ('output.output_dir=%s '%params['output_dir'])
-      if params['format'] == 'cbf':
-        command += 'format.cbf.detz_offset=%f '%params['distance']
-        if params['energy'] is not None:
-          command += 'format.cbf.override_energy=%f '%params['energy']
-        if 'Rayonix' in params['address']:
-          command += 'format.cbf.mode=rayonix '
-          if params['beamx'] is not None:
-            command += 'format.cbf.rayonix.override_beam_x=%d '%params['beamx']
-          if params['beamy'] is not None:
-            command += 'format.cbf.rayonix.override_beam_y=%d '%params['beamy']
-          if params['bin_size'] is not None:
-            command += 'format.cbf.rayonix.bin_size=%d '%params['bin_size']
-        elif 'cspad' in params['address'].lower():
-          if params['gain_mask_level'] is not None:
-            command += 'format.cbf.cspad.gain_mask_value=%f '% params['gain_mask_level']
-      elif params['format'] == 'pickle':
-        if params['config'] is not None:
-          command += 'input.cfg=%s '%params['config']
-      command += 'dispatch.selected_events=True '
-      for timestamp_string in ts_list:
-        command += 'input.timestamp=%s '%timestamp_string
-      command += '&& dials.image_viewer %s'%\
-        os.path.join(params['output_dir'], 'shot-*.%s ' % (params['format']))
-      thread = ImageDumpThread(command)
-      thread.start()
+  def onNDump(self, e):
+    n_dump = self.n_dump_cutoff.n_dump.GetValue()
+    if n_dump.isdigit():
+      self.n_dump = int(n_dump)
 
-  def onOpenImages(self, e):
-    ext = '.' + self.strong_indexed_image_timestamps[0][0]['format']
-    indexed_paths = [path.split(ext)[0]+'_indexed.pickle' for path in self.strong_indexed_image_paths]
-    command = str('dials.image_viewer ' + ' '.join(self.strong_indexed_image_paths) + \
-      ' ' + ' '.join(indexed_paths))
+  def dump_timestamps(self, params, ts_list, img_list):
+    if not os.path.isdir(params['output_dir']):
+      os.makedirs(params['output_dir'])
+    command = ('cctbx.xfel.xtc_dump input.experiment=%s '%params['experiment'])+\
+    ('input.run_num=%d input.address=%s '%(params['run'], params['address']))+\
+    ('format.file_format=%s '%params['format'])+\
+    ('output.output_dir=%s '%params['output_dir'])
+    if params['format'] == 'cbf':
+      command += 'format.cbf.detz_offset=%f '%params['distance']
+      if params['energy'] is not None:
+        command += 'format.cbf.override_energy=%f '%params['energy']
+      if 'Rayonix' in params['address']:
+        command += 'format.cbf.mode=rayonix '
+        if params['beamx'] is not None:
+          command += 'format.cbf.rayonix.override_beam_x=%d '%params['beamx']
+        if params['beamy'] is not None:
+          command += 'format.cbf.rayonix.override_beam_y=%d '%params['beamy']
+        if params['bin_size'] is not None:
+          command += 'format.cbf.rayonix.bin_size=%d '%params['bin_size']
+      elif 'cspad' in params['address'].lower():
+        if params['gain_mask_level'] is not None:
+          command += 'format.cbf.cspad.gain_mask_value=%f '% params['gain_mask_level']
+    elif params['format'] == 'pickle':
+      if params['config'] is not None:
+        command += 'input.cfg=%s '%params['config']
+    command += 'dispatch.selected_events=True '
+    for timestamp_string in ts_list[:self.n_dump]:
+      command += 'input.timestamp=%s '%timestamp_string
+    command += '&& dials.image_viewer %s'%\
+      ' '.join(map(str, img_list[:self.n_dump]))
     thread = ImageDumpThread(command)
     thread.start()
+
+  def onDumpImages(self, e):
+    for idx in xrange(len(self.should_have_indexed_timestamps)):
+      params, ts_list = self.should_have_indexed_timestamps[idx]
+      imgs = self.should_have_indexed_image_paths[idx]
+      self.dump_timestamps(params, ts_list, imgs)
+
+  def onOpenImages(self, e):
+    for idx in xrange(len(self.strong_indexed_image_timestamps)):
+      params, ts_list = self.strong_indexed_image_timestamps[idx]
+      ext = '.' + params['format']
+      image_paths = self.strong_indexed_image_paths[idx][:self.n_dump]
+      indexed_paths = [path.split(ext)[0]+'_indexed.pickle' for path in image_paths]
+      if all([os.path.exists(p) for p in (image_paths + indexed_paths)]):
+        command = str('dials.image_viewer ' + ' '.join(image_paths) + \
+          ' ' + ' '.join(indexed_paths))
+        thread = ImageDumpThread(command)
+        thread.start()
+      else:
+        shot_paths = [p.split('out')[0] + 'all' + p.split('out')[1].replace('idx', 'shot') \
+          for p in image_paths]
+        self.dump_timestamps(params, ts_list, shot_paths)
+
 
 class UnitCellTab(BaseTab):
   def __init__(self, parent, main):
