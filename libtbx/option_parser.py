@@ -4,7 +4,7 @@ from libtbx.queuing_system_utils import chunk_manager
 import copy
 import sys
 
-from optik import *
+from optparse import *
 
 def check_bool(option, opt, value):
   v = value.strip().lower()

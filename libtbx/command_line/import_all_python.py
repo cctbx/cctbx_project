@@ -16,7 +16,6 @@ ignore_modules = set([
   "libtbx.command_line.ipython_shell_start",
   "libtbx.pythonpath.deep_thought",
   "libtbx.pythonpath.stdlib",
-  "libtbx.pythonpath.optik",
   "mmtbx.pdb_distances",        # too much executed code
   "gltbx.wx_viewer_leapmotion", # crashes if Leap installed
   # non-CCTBX modules
