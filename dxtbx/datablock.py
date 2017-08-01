@@ -191,10 +191,9 @@ class DataBlock(object):
     for iset in self._imagesets:
       if isinstance(iset, ImageSweep):
         if iset.reader().is_single_file_reader():
-          template = abspath(iset.reader().master_path())
           result['imageset'].append(OrderedDict([
               ('__id__', 'ImageSweep'),
-              ('master',   abspath(iset.reader().get_path())),
+              ('master',   abspath(iset.reader().master_path())),
               ("mask", abspath_or_none(iset.external_lookup.mask.filename)),
               ("gain", abspath_or_none(iset.external_lookup.gain.filename)),
               ("pedestal", abspath_or_none(iset.external_lookup.pedestal.filename)),
