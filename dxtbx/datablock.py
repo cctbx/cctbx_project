@@ -730,7 +730,7 @@ class DataBlockDictImporter(object):
           template = load_path(imageset['master'])
           i0, i1 = scan.get_image_range()
           indices = imageset['images']
-          assert min(indices) == i0-1 and max(indices) == i1-1
+          assert min(indices) <= i0-1 and max(indices) >= i1-1
           iset = ImageSetFactory.make_sweep(
             template, range(i0, i1+1), None,
             beam, detector, gonio, scan, check_format,
