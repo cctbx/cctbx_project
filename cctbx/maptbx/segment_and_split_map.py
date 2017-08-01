@@ -6713,7 +6713,8 @@ def fit_bounds_inside_box(lower,upper,box_size=None,all=None):
     new_upper.append(u)
   return new_lower,new_upper
 
-def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
+def get_target_boxes(si=None,ncs_obj=None,map=None,
+    pdb_inp=None,out=sys.stdout):
 
   print >>out,80*"-"
   print >>out,"Getting segmented map to ID locations for sharpening"
@@ -6756,14 +6757,38 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
   centers_frac=flex.vec3_double()
   upper_bounds_list=[]
   lower_bounds_list=[]
-  for map_info_obj in tracking_data.output_region_map_info_list:
-    lower,upper=map_info_obj.lower_upper_bounds()
-    lower,upper=fit_bounds_inside_box(
-      lower,upper,box_size=si.box_size,all=map.all())
-    upper_bounds_list.append(upper)
-    lower_bounds_list.append(lower)
-    average_fract=average_from_bounds(lower,upper,grid_all=map.all())
-    centers_frac.append(average_fract)
+  if pdb_inp:
+    xyz_list=pdb_inp.atoms().extract_xyz()
+    i_end=xyz_list.size()
+    n_centers=min(i_end,max(1,len(tracking_data.output_region_map_info_list)))
+    i_step=int(0.5+min(i_end/2,i_end/n_centers)) # about n_centers
+    i_start=max(1,int(0.5+i_step/2))
+    from scitbx.matrix import col
+    ma=map.all()
+    for i in xrange(i_start,i_end+1,i_step):
+      lower_cart=col(xyz_list[i])
+      lower_frac=si.crystal_symmetry.unit_cell().fractionalize(lower_cart)
+      lower=[
+        int(0.5+ma[0]*lower_frac[0]),
+        int(0.5+ma[1]*lower_frac[1]),
+        int(0.5+ma[2]*lower_frac[2])]
+      lower,upper=fit_bounds_inside_box(
+        lower,lower,box_size=si.box_size,all=map.all())
+      upper_bounds_list.append(upper)
+      lower_bounds_list.append(lower)
+      average_fract=average_from_bounds(lower,upper,grid_all=map.all())
+      centers_frac.append(average_fract)
+  else:
+    for map_info_obj in tracking_data.output_region_map_info_list:
+      lower,upper=map_info_obj.lower_upper_bounds()
+      lower,upper=fit_bounds_inside_box(
+        lower,upper,box_size=si.box_size,all=map.all())
+      upper_bounds_list.append(upper)
+      lower_bounds_list.append(lower)
+      average_fract=average_from_bounds(lower,upper,grid_all=map.all())
+      centers_frac.append(average_fract)
+
+
   centers_cart=si.crystal_symmetry.unit_cell().orthogonalize(centers_frac)
 
 
@@ -6848,7 +6873,8 @@ def run_local_sharpening(si=None,
   sum_weight_value_map=sum_weight_map.deep_copy()
   upper_bounds_list,lower_bounds_list,\
      centers_cart_ncs_list,centers_cart,all_cart=\
-     get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,out=out)
+     get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,
+       pdb_inp=pdb_inp,out=out)
 
   dist=mean_dist_to_nearest_neighbor(all_cart)
   if not dist:
