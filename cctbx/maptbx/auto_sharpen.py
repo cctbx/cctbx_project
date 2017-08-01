@@ -373,6 +373,13 @@ master_phil = iotbx.phil.parse("""
        .help = Target b_iso ratio : b_iso is estimated as \
                target_b_iso_ratio * resolution**2
 
+     target_b_iso_model_scale = 0.
+       .type = float
+       .short_caption = scale on target b_iso ratio for model
+       .help = For model sharpening, the target_biso is scaled \
+                (normally zero).
+
+
      search_b_min = None
        .type = float
        .short_caption = Low bound for b_iso search
@@ -542,16 +549,17 @@ def get_map_coeffs_from_file(
       labels=",".join(ma.info().labels)
       if not map_coeffs_labels or labels==map_coeffs_labels:  # take it
          return ma
+
 def map_inside_cell(pdb_inp,crystal_symmetry=None):
   ph=pdb_inp.construct_hierarchy()
   pa=ph.atoms()
   sites_cart=pa.extract_xyz()
-  from cctbx.maptbx.segment_and_split_map import move_xyz_inside_cell 
+  from cctbx.maptbx.segment_and_split_map import move_xyz_inside_cell
   new_sites_cart=move_xyz_inside_cell(xyz_cart=sites_cart,
      crystal_symmetry=crystal_symmetry)
   pa.set_xyz(new_sites_cart)
-
   return ph.as_pdb_input()
+
 
 def get_map_and_model(params=None,
     map_data=None,
@@ -740,6 +748,7 @@ def run(args=None,params=None,
         region_weight_buffer=\
             params.map_modification.region_weight_buffer,
         target_b_iso_ratio=params.map_modification.target_b_iso_ratio,
+        target_b_iso_model_scale=params.map_modification.target_b_iso_model_scale,
         b_iso=params.map_modification.b_iso,
         b_sharpen=params.map_modification.b_sharpen,
         resolution_dependent_b=\

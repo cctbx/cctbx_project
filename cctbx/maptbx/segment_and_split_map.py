@@ -523,6 +523,13 @@ master_phil = iotbx.phil.parse("""
        .help = Target b_iso ratio : b_iso is estimated as \
                target_b_iso_ratio * resolution**2
 
+
+     target_b_iso_model_scale = 0.
+       .type = float
+       .short_caption = scale on target b_iso ratio for model
+       .help = For model sharpening, the target_biso is scaled \
+                (normally zero).
+
      search_b_min = -100
        .type = float
        .short_caption = Low bound for b_iso search
@@ -1481,6 +1488,7 @@ class sharpening_info:
       region_weight_factor=None,
       region_weight_buffer=None,
       target_b_iso_ratio=None,
+      target_b_iso_model_scale=None,
       box_sharpening_info_obj=None,
       chain_type=None,
       target_scale_factors=None,
@@ -1649,6 +1657,7 @@ class sharpening_info:
       self.region_weight_factor=params.map_modification.region_weight_factor
       self.region_weight_buffer=params.map_modification.region_weight_buffer
       self.target_b_iso_ratio=params.map_modification.target_b_iso_ratio
+      self.target_b_iso_model_scale=params.map_modification.target_b_iso_model_scale
 
       if sharpening_method is not None:
         self.sharpening_method=sharpening_method
@@ -6253,6 +6262,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
         'region_weight_factor',
         'region_weight_buffer',
         'target_b_iso_ratio',
+        'target_b_iso_model_scale',
        'b_iso','b_sharpen',
        'resolution_dependent_b',
        'region_weight',
@@ -6277,7 +6287,6 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        else:
          args.append("%s=%s" %(param,x))
     local_params=get_params_from_args(args)
-
     if local_params.input_files.seq_file and \
         not local_params.crystal_info.solvent_content:
         solvent_fraction=get_solvent_fraction(local_params,
@@ -7016,6 +7025,7 @@ def auto_sharpen_map_or_map_coeffs(
         region_weight_factor=None,
         region_weight_buffer=None,
         target_b_iso_ratio=None,
+        target_b_iso_model_scale=None,
         b_iso=None, # if set, use it
         b_sharpen=None, # if set, use it
         resolution_dependent_b=None, # if set, use it
