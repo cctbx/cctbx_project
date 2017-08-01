@@ -545,7 +545,7 @@ class DetectorFactory:
   def two_theta(sensor, distance, beam_centre, fast_direction,
                 slow_direction, two_theta_direction, two_theta_angle,
                 pixel_size, image_size, trusted_range = (0.0, 0.0),
-                mask = [], px_mm = None, mu=0.0, identifier=""):
+                mask = [], px_mm = None, mu=0.0, gain=None, identifier=""):
     '''Construct a simple detector at a given distance from the sample
     along the direct beam presumed to be aligned with -z, offset by the
     beam centre - the directions of which are given by the fast and slow
@@ -583,7 +583,7 @@ class DetectorFactory:
     detector = DetectorFactory.make_detector(
         DetectorFactory.sensor(sensor),
         (R * fast), (R * slow), (R * origin), pixel_size,
-        image_size, trusted_range, px_mm, mu=mu, identifier=identifier)
+        image_size, trusted_range, px_mm, mu=mu, gain=gain, identifier=identifier)
 
     detector.mask = mask
     return detector
