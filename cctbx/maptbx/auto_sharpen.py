@@ -544,16 +544,14 @@ def get_map_coeffs_from_file(
          return ma
 def map_inside_cell(pdb_inp,crystal_symmetry=None):
   ph=pdb_inp.construct_hierarchy()
-  xrs=ph.extract_xray_structure(crystal_symmetry=crystal_symmetry)
-  sites_cart=xrs.sites_cart()
+  pa=ph.atoms()
+  sites_cart=pa.extract_xyz()
   from cctbx.maptbx.segment_and_split_map import move_xyz_inside_cell 
   new_sites_cart=move_xyz_inside_cell(xyz_cart=sites_cart,
      crystal_symmetry=crystal_symmetry)
-  xrs.set_sites_cart(sites_cart=new_sites_cart)
-  text=xrs.as_pdb_file()
-  from scitbx.array_family import flex
-  return iotbx.pdb.input(source_info="",lines=flex.split_lines(text))
-  
+  pa.set_xyz(new_sites_cart)
+
+  return ph.as_pdb_input()
 
 def get_map_and_model(params=None,
     map_data=None,
