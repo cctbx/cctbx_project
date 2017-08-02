@@ -102,6 +102,10 @@ class FormatSMVADSC(FormatSMV):
     if model == 'Q270':
       return 2.8
 
+    if model.startswith('Q4'):
+      # https://web.archive.org/web/20051224172252/http://www.adsc-xray.com:80/prod_compare.html
+      return 1.25
+
     # Get binning mode HW/SW
     bin_lev = str(self._header_dictionary.get('BIN'))
     bin_type = self._header_dictionary.get('BIN_TYPE')
