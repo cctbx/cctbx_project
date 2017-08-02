@@ -188,7 +188,6 @@ tst_list = (
   "$D/idealized_aa_residues/tst.py",
   #
   "$D/regression/tst_dssp.py",
-  "$D/building/tst.py",
   "$D/regression/tst_validation_summary.py",
   "$D/regression/tst_maps_misc.py",
   "$D/regression/tst_cablam.py",
@@ -238,11 +237,9 @@ tst_list = (
   "$D/building/tst_extend_sidechains_2.py",
   # alt confs
   "$D/building/alternate_conformations/tst.py",
-  "$D/building/alternate_conformations/tst_build_simple.py",
   "$D/building/alternate_conformations/tst_backrub_conformers.py",
   "$D/building/alternate_conformations/tst_shear_conformers.py",
   "$D/building/alternate_conformations/tst_partial_omit_map.py",
-  "$D/building/alternate_conformations/tst_cmdline.py",
   "$D/disorder/tst.py",
   "$D/disorder/tst_backbone.py",
   "$D/disorder/tst_analyze_model.py",
@@ -305,9 +302,6 @@ tst_list = (
   ["$D/monomer_library/tst_linking.py", "28"],
   ["$D/monomer_library/tst_linking.py", "29"],
   #
-  "$D/regression/tst_anneal_real_space.py",
-  "$D/regression/tst_generate_disorder.py",
-  # "$D/secondary_structure/tst_base_pairing.py", # disabled due to deprecation of base_pairing.py
   "$D/ions/tst_pick_ca_svm.py",
   "$D/scaling/tst_plan_sad_experiment.py",
   #

@@ -1385,7 +1385,7 @@ Fourier image of specified resolution, etc.
       radius                 = first_inflection_point*2,
       second_derivatives     = second_derivatives)
 
-def sharpen(map, xray_structure, resolution, file_name_prefix):
+def sharpen2(map, xray_structure, resolution, file_name_prefix):
   from cctbx import miller
   fo = miller.structure_factor_box_from_map(
     crystal_symmetry = xray_structure.crystal_symmetry(), map = map)
@@ -1393,9 +1393,11 @@ def sharpen(map, xray_structure, resolution, file_name_prefix):
   fc = fo.structure_factors_from_scatterers(
     xray_structure = xray_structure).f_calc()
   d_fsc_model = fc.d_min_from_fsc(
-        other=fo, bin_width=100, fsc_cutoff=0.143).d_min
+        other=fo, bin_width=100, fsc_cutoff=0.).d_min
   print "d_fsc_model:", d_fsc_model
-  resolution = min(resolution, d_fsc_model)
+  #resolution = min(resolution, d_fsc_model)
+  #resolution = d_fsc_model
+  print resolution, d_fsc_model
   #
   xray_structure = xray_structure.set_b_iso(value=0)
   fc = fo.structure_factors_from_scatterers(
@@ -1427,7 +1429,7 @@ def sharpen(map, xray_structure, resolution, file_name_prefix):
   b=None
   ss = 1./flex.pow2(fc1.d_spacings().data()) / 4.
   data = fc1.data()
-  for b_ in range(1,500,5):
+  for b_ in range(1,500,1):
     xray_structure = xray_structure.set_b_iso(value=b_)
     sc = flex.exp(-b_*ss)
     fc1 = fc1.customized_copy(data = data*sc)
@@ -1452,6 +1454,14 @@ def sharpen(map, xray_structure, resolution, file_name_prefix):
   fft_map = fo_sharp.fft_map(crystal_gridding = cg)
   fft_map.apply_sigma_scaling()
   map_data = fft_map.real_map_unpadded()
+  #
+  import mmtbx.masks
+  mask_object = mmtbx.masks.smooth_mask(
+    xray_structure = xray_structure,
+    n_real         = map_data.all(),
+    rad_smooth     = 2.0)
+  map_data = map_data * mask_object.mask_smooth
+  #
   from iotbx import ccp4_map
   ccp4_map.write_ccp4_map(
     file_name="%s.ccp4"%file_name_prefix,

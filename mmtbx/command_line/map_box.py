@@ -219,13 +219,9 @@ Parameters:"""%h
     mask_atoms_atom_radius = params.mask_atoms_atom_radius,
     value_outside_atoms = params.value_outside_atoms,
     )
-
-  if box.initial_shift_cart:
-    print >>log,"\nInitial coordinate shift will be (%.1f,%.1f,%.1f)\n" %(
-     box.initial_shift_cart)
-  if box.total_shift_cart:
+  if box.shift_cart:
     print >>log,"Final coordinate shift: (%.1f,%.1f,%.1f)" %(
-      box.total_shift_cart)
+      tuple(box.shift_cart))
 
   print >>log,"Final cell dimensions: (%.1f,%.1f,%.1f)\n" %(
       box.box_crystal_symmetry.unit_cell().parameters()[:3])
@@ -286,13 +282,13 @@ Parameters:"""%h
     ncs_object.display_all(log=log)
     if not ncs_object or ncs_object.max_operators()<1:
       print >>log,"Skipping...no NCS available"
-    elif box.total_shift_cart:
+    elif box.shift_cart:
       from scitbx.math import  matrix
       print >>log,"Shifting NCS operators "+\
         "based on coordinate shift of (%7.1f,%7.1f,%7.1f)" %(
-        tuple(box.total_shift_cart))
+        tuple(box.shift_cart))
       ncs_object=ncs_object.coordinate_offset(
-       coordinate_offset=matrix.col(box.total_shift_cart))
+       coordinate_offset=matrix.col(box.shift_cart))
       ncs_object.display_all(log=log)
     ncs_object.format_all_for_group_specification(
        file_name=output_ncs_file)

@@ -2121,7 +2121,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
 
     if d_min is not None:
       d_min_use=d_min
-      if d_min_ratio is not None: 
+      if d_min_ratio is not None:
         d_min_use=d_min*d_min_ratio
     else:
       d_min_use=None
@@ -2129,7 +2129,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
     if crystal_symmetry.space_group().type().number() in [0,1]:
       args=['d_min=None','box=True']
     else: # cannot use box for other space groups
-      args=['d_min=%s'%(d_min_use),'box=False'] 
+      args=['d_min=%s'%(d_min_use),'box=False']
     map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
@@ -2968,7 +2968,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
     box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
-    origin_shift=box.total_shift_cart
+    origin_shift=box.shift_cart
     # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means
     #   total_shift_cart and origin_shift both positive
     map_data=box.map_box.as_double()
@@ -2994,7 +2994,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        "cutout_half_map_%s.ccp4" %(ii))
       print >>out,"Writing cutout half_map data to %s" %(cutout_half_map_file)
       write_ccp4_map(crystal_symmetry,cutout_half_map_file,new_half_map_data_list[-1])
-      
+
     half_map_data_list=new_half_map_data_list
 
     if params.map_modification.soft_mask:
@@ -6086,7 +6086,7 @@ def score_map(map_data=None,
     normalized_regions=regions/max(1,target_in_all_regions)
     skew=get_skew(map_data.as_1d())
 
-    if scale_region_weight: 
+    if scale_region_weight:
       solvent_fraction_std=0.85 # typical value, ends up as scale on weight
       region_weight_scale=(1.-solvent_fraction)/(1.-solvent_fraction_std)
       region_weight_use=region_weight*region_weight_scale
