@@ -65,11 +65,12 @@ class FormatSMVADSCSN(FormatSMVADSC):
 
     return
 
-  def _adsc_module_gain(self):
+  def _adsc_module_gain(self, model=None):
     '''Overload to look the model number up from the serial number table'''
-    sn = int(self._header_dictionary['DETECTOR_SN'])
-    # If not in the known list default to Q315
-    model = self._sn_to_model.get(sn, 'Q315')
+
+    if model is None:
+      sn = int(self._header_dictionary['DETECTOR_SN'])
+      model = self._sn_to_model.get(sn)
     return super(FormatSMVADSCSN, self)._adsc_module_gain(model=model)
 
   def _start(self):
