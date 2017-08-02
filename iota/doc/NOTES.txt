@@ -1,10 +1,4 @@
-IOTA v1.1.021 - tracker streamlined interface
+IOTA v1.1.022 - added filters to DIALS mode
 
-1. Reorganized image tracker to have just the chart and the image list
-visible (spotfinding params in separate dialog)
-2. Created new iota_tracker.py module to house all the tracking GUI elements;
- iota_track_images.py merely launches the GUI, etc.
-3. List control allows selection of multiple images; toolbar view button
-launches viewer with all the images selected
-4. Virtual list control - faster updating. (Not sure this is working as
-intended, though)
+DIALS-processed images can now be filtered by unit cell, bravais lattice,
+number of reflections or resolution. Results are reported in summary, log, etc.

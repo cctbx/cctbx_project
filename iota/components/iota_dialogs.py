@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 07/21/2017
+Last Changed: 08/01/2017
 Description : IOTA GUI Dialogs
 '''
 
@@ -1050,7 +1050,7 @@ class DIALSOptions(BaseDialog):
     options_sizer = wx.BoxSizer(wx.VERTICAL)
     self.options.SetSizer(options_sizer)
 
-    phil_box = wx.StaticBox(self, label='LABELIT Target Settings')
+    phil_box = wx.StaticBox(self, label='DIALS Target Settings')
     phil_box_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
     self.phil = ct.PHILBox(self,
                            btn_import=True,
@@ -1081,11 +1081,59 @@ class DIALSOptions(BaseDialog):
     self.auto_threshold.SetValue(True)
     dials_box_sizer.Add(self.auto_threshold, flag=wx.ALL, border=10)
 
+    # Filters
+    filter_box = wx.StaticBox(self.options, label='Filters')
+    filter_box_sizer = wx.StaticBoxSizer(filter_box, wx.VERTICAL)
+
+    self.filt_lattice = ct.OptionCtrl(self.options,
+                                      items=[('lattice', 'P4')],
+                                      checkbox=True,
+                                      checkbox_label='Bravais Lattice:',
+                                      label_size=(160, -1),
+                                      ctrl_size=(150, -1))
+    filter_box_sizer.Add(self.filt_lattice, flag=f.stack, border=10)
+
+    self.filt_uc = ct.OptionCtrl(self.options,
+                                 items=[('a', '79.4'), ('b', '79.4'),
+                                        ('c', '38.1'), ('alpha', '90'),
+                                        ('beta', '90'), ('gamma', '90'),
+                                        ('tolerance', '0.05')],
+                                 sub_labels=['a =', 'b =', 'c =',
+                                             '{} ='.format(u.alpha),
+                                             '{} ='.format(u.beta),
+                                             '{} ='.format(u.gamma),
+                                             '{} ='.format(u.sigma)],
+                                 sub_label_justify=wx.ALIGN_RIGHT,
+                                 label_size=(160, -1),
+                                 grid=(3, 6),
+                                 checkbox=True,
+                                 checkbox_label='Unit Cell',
+                                 ctrl_size=(50, -1))
+    filter_box_sizer.Add(self.filt_uc, flag=f.stack, border=10)
+
+    self.filt_res = ct.OptionCtrl(self.options,
+                                  items=[('res', '2.5')],
+                                  checkbox=True,
+                                  checkbox_label='Resolution:',
+                                  label_size=(160, -1),
+                                  ctrl_size=(100, -1))
+    filter_box_sizer.Add(self.filt_res, flag=f.stack, border=10)
+
+    self.filt_ref = ct.OptionCtrl(self.options,
+                                  items=[('ref', '100')],
+                                  checkbox=True,
+                                  checkbox_label='Num. of reflections:',
+                                  label_size=(160, -1),
+                                  ctrl_size=(100, -1))
+    filter_box_sizer.Add(self.filt_ref, flag=wx.ALL, border=10)
+
+
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
 
     # Add all to sizers
     options_sizer.Add(dials_box_sizer, flag=wx.ALL | wx.EXPAND, border=10)
+    options_sizer.Add(filter_box_sizer, flag=wx.ALL | wx.EXPAND, border=10)
     self.main_sizer.Add(phil_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.options, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(dialog_box,
@@ -1143,6 +1191,42 @@ class DIALSOptions(BaseDialog):
     self.estimate_gain.SetValue(self.params.advanced.estimate_gain)
     self.auto_threshold.SetValue(self.params.dials.auto_threshold)
 
+   # Selection filters
+    try:
+      if self.params.dials.filter.flag_on:
+        pg = self.params.dials.filter.target_pointgroup
+        ut = self.params.dials.filter.target_uc_tolerance
+        rs = self.params.dials.filter.min_resolution
+        rf = self.params.dials.filter.min_reflections
+        if self.params.dials.filter.target_unit_cell is not None:
+          try:
+            uc = self.params.dials.filter.target_unit_cell.parameters()
+          except AttributeError:
+            uc = None
+        else:
+          uc = None
+
+        if str(pg).lower() != 'none':
+          self.filt_lattice.toggle_boxes()
+          self.filt_lattice.lattice.SetValue(str(pg))
+        if str(uc).lower() != 'none':
+          self.filt_uc.toggle_boxes()
+          self.filt_uc.a.SetValue(str(uc[0]))
+          self.filt_uc.b.SetValue(str(uc[1]))
+          self.filt_uc.c.SetValue(str(uc[2]))
+          self.filt_uc.alpha.SetValue(str(uc[3]))
+          self.filt_uc.beta.SetValue(str(uc[4]))
+          self.filt_uc.gamma.SetValue(str(uc[5]))
+          self.filt_uc.tolerance.SetValue(str(ut))
+        if str(rs).lower() != 'none':
+          self.filt_res.toggle_boxes()
+          self.filt_res.res.SetValue(str(rs))
+        if str(rf).lower() != 'none':
+          self.filt_ref.toggle_boxes()
+          self.filt_ref.ref.SetValue(str(rf))
+    except AttributeError:
+      pass
+
 
   def onOK(self, e):
     ''' Populate param PHIL file for DIALS options '''
@@ -1159,11 +1243,39 @@ class DIALSOptions(BaseDialog):
     else:
       self.target_phil = self.phil.ctr.GetValue()
 
+    filter_on = bool(self.filt_lattice.toggle.GetValue() +
+                     self.filt_uc.toggle.GetValue() +
+                     self.filt_ref.toggle.GetValue() +
+                     self.filt_res.toggle.GetValue()
+                     )
+    lattice = noneset(self.filt_lattice.lattice.GetValue())
+    uc = noneset(', '.join([noneset(self.filt_uc.a.GetValue()),
+                            noneset(self.filt_uc.b.GetValue()),
+                            noneset(self.filt_uc.c.GetValue()),
+                            noneset(self.filt_uc.alpha.GetValue()),
+                            noneset(self.filt_uc.beta.GetValue()),
+                            noneset((self.filt_uc.gamma.GetValue()))
+                            ]
+                           )
+                 )
+    tolerance = noneset(self.filt_uc.tolerance.GetValue())
+    ref = noneset(self.filt_ref.ref.GetValue())
+    res = noneset(self.filt_res.res.GetValue())
+
     dials_phil_text = '\n'.join([
       'dials',
       '{',
       '  determine_sg_and_reindex = {}'.format(self.reindex.GetValue()),
       '  auto_threshold = {}'.format(self.auto_threshold.GetValue()),
+      '  filter',
+      '    {',
+      '      flag_on = {}'.format(filter_on),
+      '      target_pointgroup = {}'.format(lattice),
+      '      target_unit_cell = {}'.format(uc),
+      '      target_uc_tolerance = {}'.format(tolerance),
+      '      min_reflections = {}'.format(ref),
+      '      min_resolution = {}'.format(res),
+      '    }',
       '}',
       'advanced',
       '{',
@@ -1474,17 +1586,17 @@ class ViewerWarning(BaseDialog):
 
   def onOK(self, e):
     if self.rb1_img_view.GetValue():
-      self.no_images = 1
+      self.no_images = '1'
     elif self.rb2_img_view.GetValue():
-      self.no_images = 10
+      self.no_images = '1-10'
     elif self.rb3_img_view.GetValue():
-      self.no_images = 50
+      self.no_images = '1-50'
     elif self.rb4_img_view.GetValue():
-      self.no_images = 100
+      self.no_images = '1-100'
     elif self.rb5_img_view.GetValue():
-      self.no_images = self.img_list_length
+      self.no_images = '1-{}'.format(self.img_list_length)
     elif self.rb_custom.GetValue():
-      self.no_images = int(self.opt_custom.GetValue())
+      self.no_images = self.opt_custom.GetValue()
     self.EndModal(wx.ID_OK)
 
 class RecoveryDialog(BaseDialog):

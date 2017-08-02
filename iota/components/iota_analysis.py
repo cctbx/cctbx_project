@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 05/16/2017
+Last Changed: 08/01/2017
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -337,6 +337,8 @@ class Analyzer(object):
                                 i.fail == 'failed spotfinding']
         self.not_idx_objects = [i for i in self.all_objects if
                                 i.fail == 'failed indexing']
+        self.filter_fail_objects = [i for i in self.all_objects if
+                                    i.fail == 'failed filter']
         self.not_int_objects = [i for i in self.all_objects if
                                 i.fail == 'failed integration']
 
@@ -609,6 +611,8 @@ class Analyzer(object):
                      ''.format(len(self.not_spf_objects)))
       summary.append('failed indexing:                     {}'\
                      ''.format(len(self.not_idx_objects)))
+      summary.append('failed filter:'
+                     ''.format(len(self.filter_fail_objects)))
       summary.append('failed integration:                  {}'\
                      ''.format(len(self.not_int_objects)))
     summary.append('final integrated pickles:            {}'\
@@ -651,7 +655,7 @@ class Analyzer(object):
           for obj in self.not_int_objects:
             nif.write('{}\n'.format(obj.conv_img))
 
-      if self.params.advanced.integrate_with == 'cctbx' and len(self.filter_fail_objects) > 0:
+      if len(self.filter_fail_objects) > 0:
         with open(prefilter_fail_file, 'w') as pff:
           for obj in self.filter_fail_objects:
             pff.write('{}\n'.format(obj.conv_img))

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 05/16/2017
+Last Changed: 08/01/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -377,7 +377,20 @@ class FileListCtrl(ct.CustomListCtrl):
     if len(img_list) > 10:
       view_warning = dlg.ViewerWarning(self, len(img_list))
       if view_warning.ShowModal() == wx.ID_OK:
-        file_string = ' '.join(img_list[:view_warning.no_images])
+        # parse 'other' entry
+        img_no_string = str(view_warning.no_images).split(',')
+        filenames = []
+        for n in img_no_string:
+          if '-' in n:
+            img_limits = n.split('-')
+            start = int(min(img_limits))
+            end = int(max(img_limits))
+            if start <= len(img_list) and end <= len(img_list):
+              filenames.extend(img_list[start:end])
+          else:
+            if int(n) <= len(img_list):
+              filenames.append(img_list[int(n)])
+        file_string = ' '.join(filenames)
       else:
         return
       view_warning.Close()
@@ -597,7 +610,8 @@ class ProcessingTab(wx.Panel):
               i.fail == 'failed grid search'])],
         ['failed filter', '#ffffbf',
          len([i for i in self.finished_objects if
-              i.fail == 'failed prefilter'])],
+              i.fail == 'failed prefilter' or
+              i.fail == 'failed filter'])],
         ['failed spotfinding', '#f46d43',
          len([i for i in self.finished_objects if
               i.fail == 'failed spotfinding'])],
@@ -1117,7 +1131,7 @@ class SummaryTab(wx.Panel):
     smr_box = wx.StaticBox(self, label='Run Summary')
     smr_box.SetFont(sfont)
     smr_box_sizer = wx.StaticBoxSizer(smr_box, wx.HORIZONTAL)
-    smr_box_grid = wx.FlexGridSizer(7, 2, 5, 20)
+    smr_box_grid = wx.FlexGridSizer(8, 2, 5, 20)
     smr_btn_sizer = wx.BoxSizer(wx.VERTICAL)
 
     self.readin_txt = wx.StaticText(self, label='250')
@@ -1160,13 +1174,17 @@ class SummaryTab(wx.Panel):
       self.nospf_txt.SetFont(sfont)
       self.noidx_txt = wx.StaticText(self, label='20')
       self.noidx_txt.SetFont(sfont)
+      self.noflt_txt = wx.StaticText(self, label='20')
+      self.noflt_txt.SetFont(sfont)
       smr_box_grid.AddMany([(wx.StaticText(self,
                                            label='Failed spotfinding')),
                             (self.nospf_txt),
                             (wx.StaticText(self, label='Failed indexing')),
                             (self.noidx_txt),
                             (wx.StaticText(self, label='Failed integration')),
-                            (self.noint_txt)])
+                            (self.noint_txt),
+                            (wx.StaticText(self, label='Failed filter')),
+                            (self.noflt_txt)])
     smr_box_grid.AddMany([(wx.StaticText(self,
                                          label='Final integrated pickles')),
                           (self.final_txt)])
