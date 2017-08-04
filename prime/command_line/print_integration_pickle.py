@@ -350,7 +350,7 @@ if (__name__ == "__main__"):
         print 'Direct matrix'
         print crystal_init_orientation.direct_matrix()
     a, b, c, alpha, beta, gamma = observations.unit_cell().parameters()
-    txt_out_head= '{0:40} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.0f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f} {13:6.2f} {14:6.2f} {15:6.2f} {16:6.2f} {20:6.4f} {17:5} {18:6.2f} {19:6.2f}'.format(pickle_filename_only, observations.d_min(), np.max(observations.d_spacings().data()), xbeam, ybeam, len(observations.data()), cc_iso, np.mean(cc_bins), a, b, c, alpha, beta, gamma, observations_pickle["mosaicity"], observations_pickle["residual"], detector_distance_mm, flag_good_unit_cell, wilson_G, wilson_B, wavelength)
+    txt_out_head= '{0:40} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.0f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f} {13:6.2f} {14:6.2f} {15:6.2f} {16:6.2f} {20:6.4f} {17:5} {18:6.2f} {19:6.2f}'.format(pickle_filename_only + ' ('+ str(observations.crystal_symmetry().space_group_info())+')', observations.d_min(), np.max(observations.d_spacings().data()), xbeam, ybeam, len(observations.data()), cc_iso, np.mean(cc_bins), a, b, c, alpha, beta, gamma, observations_pickle["mosaicity"], observations_pickle["residual"], detector_distance_mm, flag_good_unit_cell, wilson_G, wilson_B, wavelength)
     print txt_out_head
     cc_bin_low_set.append(cc_iso)
     cc_bins_set.append(cc_bins)
