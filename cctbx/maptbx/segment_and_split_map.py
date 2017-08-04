@@ -336,8 +336,8 @@ master_phil = iotbx.phil.parse("""
        .help = If set, apply resolution_dependent_b (b0 b1 b2). \
              Log10(amplitudes) will start at 1, change to b0 at half \
              of resolution specified, changing linearly, \
-             change to b1 at resolution specified, \
-             and change to b2 at high-resolution limit of map
+             change to b1/2 at resolution specified, \
+             and change to b1/2+b2 at d_min_ratio*resolution
 
      d_min_ratio = 0.833
        .type = float

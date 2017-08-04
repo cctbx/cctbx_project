@@ -175,11 +175,12 @@ master_phil = iotbx.phil.parse("""
      resolution_dependent_b = None
        .type = floats
        .short_caption = resolution_dependent b
+
        .help = If set, apply resolution_dependent_b (b0 b1 b2). \
-             Log10(amplitudes) will start at 1, change to b0 at half \
+             Log10(amplitudes) will start at 1, change to b0 at half \ 
              of resolution specified, changing linearly, \
-             change to b1 at resolution specified, \
-             and change to b2 at high-resolution limit of map
+             change to b1/2 at resolution specified, \
+             and change to b1/2+b2 at d_min_ratio*resolution
 
      d_min_ratio = 0.833
        .type = float
@@ -517,6 +518,12 @@ def get_params(args,out=sys.stdout):
   return params
 
 def set_sharpen_params(params,out=sys.stdout):
+
+  
+  if params.map_modification.resolution_dependent_b==[0,0,0]:
+    params.map_modification.resolution_dependent_b=[0,0,1.e-10]
+    # just so that we know it was set
+
   if params.map_modification.b_iso:
     if params.map_modification.k_sharpen and \
         'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods:
@@ -527,12 +534,17 @@ def set_sharpen_params(params,out=sys.stdout):
     else:
       params.map_modification.auto_sharpen_methods=['b_iso']
    
-  if params.map_modification.auto_sharpen_methods in [
-     ['b_iso_to_d_cut'],['b_iso']]:
+  if (params.map_modification.b_iso and \
+       params.map_modification.auto_sharpen_methods in [
+       ['b_iso_to_d_cut'],['b_iso']])   or  \
+     (params.map_modification.resolution_dependent_b and \
+       params.map_modification.auto_sharpen_methods in [
+       ['resolution_dependent']]) :
     if params.map_modification.box_in_auto_sharpen and (
       not getattr(params.map_modification,'allow_box_if_b_iso_set',None)):
       params.map_modification.box_in_auto_sharpen=False
-      print >>out,"Set box_in_auto_sharpen=False as sharpening method is %s" %(
+      print >>out,"Set box_in_auto_sharpen=False as parameters are set "+\
+        "\nand sharpening method is %s" %(
         params.map_modification.auto_sharpen_methods[0])
   return params
    
