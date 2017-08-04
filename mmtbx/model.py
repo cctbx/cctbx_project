@@ -26,6 +26,7 @@ import iotbx.pdb
 from libtbx import group_args
 from libtbx import easy_run
 import libtbx.load_env
+from mmtbx.hydrogens import riding
 
 time_model_show = 0.0
 
@@ -250,7 +251,14 @@ class manager(object):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
     self.original_xh_lengths = None
+    self.riding_h_manager = None
     self.sync_pdb_hierarchy_with_xray_structure()
+
+  def setup_riding_h_manager(self):
+    if(self.xray_structure.hd_selection().count(True)==0): return
+    self.riding_h_manager = riding.manager(
+      pdb_hierarchy       = self.pdb_hierarchy(),
+      geometry_restraints = self.restraints_manager.geometry)
 
   def pdb_hierarchy(self, sync_with_xray_structure=False):
     """
