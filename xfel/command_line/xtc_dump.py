@@ -59,7 +59,7 @@ phil_scope = parse('''
     }
     cbf {
       detz_offset = None
-        .type = int
+        .type = float
         .help = Distance from back of detector rail to sample interaction region (CXI) \
                 or actual detector distance (XPP/MFX)
       override_energy = None
