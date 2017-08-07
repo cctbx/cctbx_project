@@ -107,6 +107,10 @@ class FormatSER(FormatMultiImage, Format):
   def get_num_images(self):
     return self._header_dictionary['ValidNumberElements']
 
+  # This is still required for dials_regression/test.py
+  def get_detectorbase(self):
+    pass
+
   def get_goniometer(self, index=None):
     return Format.get_goniometer(self)
 
