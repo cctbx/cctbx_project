@@ -264,6 +264,9 @@ xtc_phil_str = '''
               concatenated list of all the successful events examined by that process. \
               If False, output a separate json/pickle file per image (generates a \
               lot of files).
+    delete_integration_shoeboxes = True
+      .type = bool
+      .help = Delete integration shoeboxes when finished with each image.
     logging_dir = None
       .type = str
       .help = Directory output log files will be placed
