@@ -104,9 +104,7 @@ class RunSentinel(Thread):
               r.add_tag(t)
         print "%d new runs" % len(unknown_runs)
         self.post_refresh()
-      else:
-        pass #print "No new data..."
-      time.sleep(1)
+      time.sleep(10)
 
 # ------------------------------- Job Monitor ------------------------------- #
 
