@@ -116,7 +116,7 @@ class determine_connectivity(object):
         ih = ih,
         a0 = {'iseq':i_parent, 'dist_ideal': bproxy.distance_ideal,
           'angles':[]})
-      self.parents.add(i_parent) #list of parent atoms
+      self.parents.add(i_parent) #parent atoms stored in a set
 
   def find_second_neighbors_raw(self):
     """Get a an array listing all second neighbors for every H atom.
@@ -142,7 +142,7 @@ class determine_connectivity(object):
 
 
   def process_second_neighbors(self):
-    """Once canditades for second neighbors are determined, they are further
+    """Once candidates for second neighbors are determined, they are further
     processed, mainly to avoid alternative conformations of the same atom"""
     self.a0a1_dict = {}
     self.a1_atoms = set()
@@ -260,8 +260,9 @@ class determine_connectivity(object):
         alt_conf_neighbors = alt_conf_neighbors))
       # If there is no dihedral ideal angle, use randomly first atom
       # in list of third neighbors
-      self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
-      self.check_for_plane_proxy(ih)
+      if third_neighbors_reduced:
+        self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
+        self.check_for_plane_proxy(ih)
 
   def process_plane_proxies(self):
     self.plane_h = {}
