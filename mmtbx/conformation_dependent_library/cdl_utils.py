@@ -18,10 +18,9 @@ def get_c_ca_n(atom_group, return_subset=False):
     if atom:
       tmp.append(atom)
     else:
-      outl.append('    missing atom "%s %s %s %s"' % (
+      outl.append('    missing atom "%s %s %s"' % (
         name,
         atom_group.resname,
-        atom_group.parent().parent().id,
         atom_group.resseq,
       ))
       if return_subset:
