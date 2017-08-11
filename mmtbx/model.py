@@ -256,6 +256,7 @@ class manager(object):
 
   def setup_riding_h_manager(self):
     if(self.xray_structure.hd_selection().count(True)==0): return
+    if(self.restraints_manager is None): return
     self.riding_h_manager = riding.manager(
       pdb_hierarchy       = self.pdb_hierarchy(),
       geometry_restraints = self.restraints_manager.geometry)
