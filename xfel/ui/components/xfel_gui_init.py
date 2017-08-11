@@ -149,19 +149,8 @@ class JobMonitor(Thread):
       self.parent.run_window.jmn_light.change_status('idle')
 
       trials = db.get_all_trials()
-      jobs = db.get_all_jobs()
-      if self.only_active_jobs:
-        active_jobs = {}
-        for trial in trials:
-          active_jobs[trial.trial] = []
-          for rungroup in trial.rungroups:
-            for run in rungroup.runs:
-              for job in jobs:
-                if job.run.id == run.id and job.rungroup.id == rungroup.id and job.trial.id == trial.id:
-                  active_jobs[trial.trial].append(job)
-        jobs = active_jobs
-      else:
-        jobs = {t.trial:[j for j in jobs if j.trial.id == t.id] for t in trials}
+      jobs = db.get_all_jobs(active = self.only_active_jobs)
+      jobs = {t.trial:[j for j in jobs if j.trial.id == t.id] for t in trials}
 
       for js in jobs.values():
         for job in js:
