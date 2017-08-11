@@ -112,7 +112,7 @@ xtc_phil_str = '''
       .type = str
       .help = Detector address, e.g. CxiDs2.0:Cspad.0, or detector alias, e.g. Ds1CsPad
     stream = None
-      .type = int
+      .type = ints
       .expert_level = 2
       .help = Stream number to read from. Usually not necessary as psana will read the data \
               from all streams by default
@@ -608,8 +608,8 @@ class InMemScript(DialsProcessScript):
     elif params.input.use_ffb:
       # as ffb is only at SLAC, ok to hardcode /reg/d here
       dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
-    if params.input.stream is not None:
-      dataset_name += ":stream=%d"%params.input.stream
+    if params.input.stream is not None and len(params.input.stream) > 0:
+      dataset_name += ":stream=%s"%(",".join(["%d"%stream for stream in params.input.stream]))
     if params.input.calib_dir is not None:
       psana.setOption('psana.calib-dir',params.input.calib_dir)
     ds = psana.DataSource(dataset_name)
