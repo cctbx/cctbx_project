@@ -210,7 +210,7 @@ master_phil = iotbx.phil.parse("""
 
      auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
                             *resolution_dependent model_sharpening \
-                            half_map_sharpening target_b_iso_to_d_cut None
+                            half_map_sharpening *target_b_iso_to_d_cut None
 
        .type = choice(multi=True)
        .short_caption = Sharpening methods
@@ -234,13 +234,19 @@ master_phil = iotbx.phil.parse("""
                b_iso is set. Default is to set box_n_auto_sharpen=False \
                if b_iso is set.
 
+    soft_mask = False
+      .type = bool
+      .help = Use soft mask (smooth change from inside to outside with radius\
+             based on resolution of map). In development
+      .short_caption = Soft mask
+
      use_weak_density = False
        .type = bool
        .short_caption = Use box with poor density
        .help = When choosing box of representative density, use poor \
                density (to get optimized map for weaker density)
 
-     discard_if_worse = False
+     discard_if_worse = None
        .type = bool
        .short_caption = Discard sharpening if worse
        .help = Discard sharpening if worse
@@ -322,12 +328,6 @@ master_phil = iotbx.phil.parse("""
        .help = Value of map outside atoms (set to 'mean' to have mean \
                 value inside and outside mask be equal)
 
-    soft_mask = False
-      .type = bool
-      .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map). In development
-      .short_caption = Soft mask
-
      k_sharpen = None
        .type = float
        .short_caption = sharpening transition
@@ -380,6 +380,11 @@ master_phil = iotbx.phil.parse("""
        .help = For model sharpening, the target_biso is scaled \
                 (normally zero).
 
+     signal_min = 3.0
+       .type = float
+       .short_caption = Minimum signal
+       .help = Minimum signal in estimation of optimal b_iso.  If\
+                not achieved, use any other method chosen.
 
      search_b_min = None
        .type = float
@@ -751,6 +756,7 @@ def run(args=None,params=None,
         value_outside_atoms=params.map_modification.value_outside_atoms,
         k_sharpen=params.map_modification.k_sharpen,
         soft_mask=params.map_modification.soft_mask,
+        allow_box_if_b_iso_set=params.map_modification.allow_box_if_b_iso_set,
         search_b_min=params.map_modification.search_b_min,
         search_b_max=params.map_modification.search_b_max,
         search_b_n=params.map_modification.search_b_n,
@@ -760,6 +766,7 @@ def run(args=None,params=None,
         region_weight_buffer=\
             params.map_modification.region_weight_buffer,
         target_b_iso_ratio=params.map_modification.target_b_iso_ratio,
+        signal_min=params.map_modification.signal_min,
         target_b_iso_model_scale=params.map_modification.target_b_iso_model_scale,
         b_iso=params.map_modification.b_iso,
         b_sharpen=params.map_modification.b_sharpen,
