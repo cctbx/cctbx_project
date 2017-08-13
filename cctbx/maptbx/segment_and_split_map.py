@@ -322,7 +322,8 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Target b_iso
        .help = Target B-value for map (sharpening will be applied to yield \
-          this value of b_iso)
+          this value of b_iso). If sharpening method is not supplied, \
+          default is to use b_iso_to_d_cut sharpening.
 
      b_sharpen = None
        .type = float
@@ -7199,9 +7200,10 @@ def auto_sharpen_map_or_map_coeffs(
 
     return si  # si.map_data is the sharpened map
 
-def estimate_signal_to_noise(value_list=None):
+def estimate_signal_to_noise(value_list=None,minimum_value_to_include=0):
   # get "noise" from rms value of value_list(n) compared with average of n-2,n-1,n+1,n+2
   # assumes middle is the high part of the very smooth curve.
+  # Don't include values < minimum_value_to_include
   mean_square_diff=0.
   mean_square_diff_n=0.
   for b2,b1,value,p1,p2 in zip(value_list,
@@ -7209,12 +7211,20 @@ def estimate_signal_to_noise(value_list=None):
     value_list[2:],
     value_list[3:],
     value_list[4:]):
-    mean_square_diff_n+=1
-    mean_square_diff+=( (b2+b1+p1+p2)*0.25 - value)**2
+    too_low=False
+    for xx in [b2,b1,value,p1,p2]:
+      if xx <minimum_value_to_include: 
+        too_low=True
+    if not too_low:
+      mean_square_diff_n+=1
+      mean_square_diff+=( (b2+b1+p1+p2)*0.25 - value)**2
   rmsd=(mean_square_diff/max(1,mean_square_diff_n))**0.5
-  min_adj_sa=max(value_list[0],value_list[-1])
-  max_adj_sa=value_list.min_max_mean().max
-  signal_to_noise=(max_adj_sa-min_adj_sa)/max(1.e-10,rmsd)
+  if value_list.size()>0:
+    min_adj_sa=max(value_list[0],value_list[-1])
+    max_adj_sa=value_list.min_max_mean().max
+    signal_to_noise=(max_adj_sa-min_adj_sa)/max(1.e-10,rmsd)
+  else:
+    signal_to_noise=0.
   return signal_to_noise
 
 

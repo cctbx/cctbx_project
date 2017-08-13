@@ -164,7 +164,8 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Target b_iso
        .help = Target B-value for map (sharpening will be applied to yield \
-          this value of b_iso)
+          this value of b_iso). If sharpening method is not supplied, \
+          default is to use b_iso_to_d_cut sharpening.
 
      b_sharpen = None
        .type = float
@@ -328,7 +329,7 @@ master_phil = iotbx.phil.parse("""
        .help = Value of map outside atoms (set to 'mean' to have mean \
                 value inside and outside mask be equal)
 
-     k_sharpen = None
+     k_sharpen = 10
        .type = float
        .short_caption = sharpening transition
        .help = Steepness of transition between sharpening (up to resolution \
@@ -338,7 +339,6 @@ master_phil = iotbx.phil.parse("""
            sharpened. This prevents making very high-resolution data too \
            strong.  Note 2: if k_sharpen is zero or None, then no \
            transition is applied and all data is sharpened or blurred. \
-           Default is 10.
 
      adjust_region_weight = True
        .type = bool 
