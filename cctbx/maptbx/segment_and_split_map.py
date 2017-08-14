@@ -7724,6 +7724,7 @@ def run_auto_sharpen(
              "Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f " %(
            local_best_working_si.score,local_best_working_si.b_iso,
               local_best_working_si.k_sharpen)
+          working_best_si=None
           for ii in xrange(-n_range,n_range+1):
             test_b_iso=local_best_working_si.b_iso+ii*delta_b_iso
             for jj in xrange(-n_range,n_range+1):
@@ -7759,7 +7760,7 @@ def run_auto_sharpen(
           elif cycle>min_cycles:
             break  # nothing happened
        
-        if working_best_si.score > local_best_si.score:
+        if working_best_si and working_best_si.score > local_best_si.score:
           print >>out,"Using new values of b_iso and k_sharpen"
           local_best_si=working_best_si
 
