@@ -496,6 +496,12 @@ master_phil = iotbx.phil.parse("""
            transition is applied and all data is sharpened or blurred. \
            Note 3: only used if b_iso is set.
 
+     optimize_k_sharpen = None
+       .type = bool
+       .short_caption = Optimize value of k_sharpen
+       .help = Optimize value of k_sharpen. \
+                Only applies for auto_sharpen_methods b_iso_to_d_cut and \
+                b_iso
      adjust_region_weight = True
        .type = bool 
        .short_caption = Adjust region weight 
@@ -1467,6 +1473,7 @@ class sharpening_info:
       b_sharpen=None,
       b_iso=None,  # expected B_iso after applying b_sharpen
       k_sharpen=None,
+      optimize_k_sharpen=None,
       kurtosis=None,
       adjusted_sa=None,
       sa_ratio=None,
@@ -1634,6 +1641,7 @@ class sharpening_info:
       self.soft_mask=params.map_modification.soft_mask
       self.allow_box_if_b_iso_set=params.map_modification.allow_box_if_b_iso_set
       self.k_sharpen=params.map_modification.k_sharpen
+      self.optimize_k_sharpen=params.map_modification.optimize_k_sharpen
       self.sharpening_target=params.map_modification.sharpening_target
       self.residual_target=params.map_modification.residual_target
       self.eps=params.map_modification.eps
@@ -2229,7 +2237,6 @@ def apply_sharpening(map_coeffs=None,
       f_array_sharpened=absolute_scaling.anisotropic_correction(
         f_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
     else:
-
       # Apply sharpening only to data from infinity to d_min, with transition
       # steepness of k_sharpen.
       data_array=f_array.data()
@@ -6272,7 +6279,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'discard_if_worse',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
        'allow_box_if_b_iso_set',
-       'max_box_fraction','k_sharpen',
+       'max_box_fraction','k_sharpen','optimize_k_sharpen',
         'residual_target','sharpening_target',
        'search_b_min','search_b_max','search_b_n','adjust_region_weight',
        'region_weight_method',
@@ -7062,6 +7069,7 @@ def auto_sharpen_map_or_map_coeffs(
         value_outside_atoms=None,
         soft_mask=None,
         k_sharpen=None,
+        optimize_k_sharpen=None,
         search_b_min=None,
         search_b_max=None,
         search_b_n=None,
@@ -7494,7 +7502,6 @@ def run_auto_sharpen(
   null_si=None
   best_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
-  best_map_data=None
 
   if si.sharpening_is_defined():  # just do it Use this if come in with method
     print >>out,"\nUsing specified sharpening"
@@ -7559,12 +7566,12 @@ def run_auto_sharpen(
             "\nB-sharpen   B-iso   k_sharpen   SA   "+\
              "Kurtosis  sa_ratio  Normalized regions"
       # ------------------------
-      local_best_map_data=None
       local_best_si=deepcopy(si).update_with_box_sharpening_info(
         box_sharpening_info_obj=box_sharpening_info_obj)
 
       si_b_iso_list=flex.double()
       si_score_list=flex.double()
+      si_id_list=[]
       for i in xrange(b_n):
         # ============================================
         local_si=deepcopy(si).update_with_box_sharpening_info(
@@ -7651,12 +7658,13 @@ def run_auto_sharpen(
           if local_si.b_iso is not None and local_si.score is not None:
             si_b_iso_list.append(local_si.b_iso)
             si_score_list.append(local_si.score)
+            if local_si.k_sharpen is not None:
+             si_id_list.append("%.3f_%.3f" %(local_si.b_iso,local_si.k_sharpen))
 
         if m=='no_sharpening':
           null_si=local_si
         if local_best_si.score is None or local_si.score>local_best_si.score:
           local_best_si=local_si
-          local_best_map_data=local_map_data
         # ============================================
 
 
@@ -7680,21 +7688,84 @@ def run_auto_sharpen(
          "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
          local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
 
-     
       if  si_score_list.size()>1: # test for signal
         signal_to_noise=estimate_signal_to_noise(value_list=si_score_list)
-        print >>out,"Estimated signal-to-noise in ID of optimal sharpening: %5.1f" %(
+        print >>out,\
+          "Estimated signal-to-noise in ID of optimal sharpening: %5.1f" %(
            signal_to_noise)
         if signal_to_noise<local_best_si.signal_min and \
             'target_b_iso_to_d_cut' in auto_sharpen_methods:
-          print >>out,"Skipping this analysis as signal-to-noise is less than %5.1f " %(
+          print >>out,\
+            "Skipping this analysis as signal-to-noise is less than %5.1f " %(
            local_best_si.signal_min)
           local_best_si.score=None
+
+      if local_best_si.optimize_k_sharpen and \
+        local_best_si.k_sharpen is not None and \
+        local_best_si.sharpening_method in ['b_iso_to_d_cut','b_iso']:
+        print >>out,"\nOptimizing k_sharpen. "
+        print >>out,"Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f " %(
+           local_best_si.score,local_best_si.b_iso,local_best_si.k_sharpen)
+        # existing values:
+        value_dict={}
+        for id,score in zip(si_id_list,si_score_list):
+          value_dict[id]=score
+        best_score=local_best_si.score
+        delta_b_iso=delta_b
+        delta_k_sharpen=2
+        n_cycle_optimize=5
+        min_cycles=2
+        n_range=2
+        local_best_score=best_score
+        local_best_working_si=deepcopy(local_best_si)
+        for cycle in xrange(n_cycle_optimize):
+          print >>out,"Optimization cycle %s" %(cycle)
+          print >>out,\
+             "Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f " %(
+           local_best_working_si.score,local_best_working_si.b_iso,
+              local_best_working_si.k_sharpen)
+          for ii in xrange(-n_range,n_range+1):
+            test_b_iso=local_best_working_si.b_iso+ii*delta_b_iso
+            for jj in xrange(-n_range,n_range+1):
+              test_k_sharpen=local_best_working_si.k_sharpen+jj*delta_k_sharpen
+              id="%.3f_%.3f" %(test_b_iso,test_k_sharpen)
+              if id in value_dict:
+                score=value_dict[id]
+              else:
+                local_si=deepcopy(local_best_si)
+                local_f_array=f_array
+                local_phases=phases
+                local_si.k_sharpen=test_k_sharpen
+                local_si.b_iso=test_b_iso
+                local_si.b_sharpen=original_b_iso-local_si.b_iso
+
+                local_map_data=apply_sharpening(
+                  f_array=local_f_array,phases=local_phases,
+                  sharpening_info_obj=local_si,
+                  crystal_symmetry=local_si.crystal_symmetry,
+                  out=null_out())
+                local_si=score_map(
+                   map_data=local_map_data,sharpening_info_obj=local_si,
+                  out=null_out())
+                value_dict[id]=local_si.score
+                if local_si.score > local_best_score:
+                  local_best_score=local_si.score
+                  local_best_working_si=deepcopy(local_si)
+          if local_best_score > best_score:
+            best_score=local_best_score
+            working_best_si=deepcopy(local_best_working_si)
+            delta_b_iso=delta_b_iso/2
+            delta_k_sharpen=delta_k_sharpen/2
+          elif cycle>min_cycles:
+            break  # nothing happened
+       
+        if working_best_si.score > local_best_si.score:
+          print >>out,"Using new values of b_iso and k_sharpen"
+          local_best_si=working_best_si
 
       if local_best_si.score is not None and (
           best_si.score is None or local_best_si.score > best_si.score):
         best_si=local_best_si
-        best_map_data=local_best_map_data
         if not best_si.is_model_sharpening() and \
             not best_si.is_half_map_sharpening():
           print >>out,"This is the current best score\n"

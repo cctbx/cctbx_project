@@ -340,6 +340,13 @@ master_phil = iotbx.phil.parse("""
            strong.  Note 2: if k_sharpen is zero or None, then no \
            transition is applied and all data is sharpened or blurred. \
 
+     optimize_k_sharpen = None
+       .type = bool
+       .short_caption = Optimize value of k_sharpen
+       .help = Optimize value of k_sharpen. \
+                Only applies for auto_sharpen_methods b_iso_to_d_cut and \
+                b_iso.
+
      adjust_region_weight = True
        .type = bool 
        .short_caption = Adjust region weight 
@@ -551,6 +558,14 @@ def set_sharpen_params(params,out=sys.stdout):
       print >>out,"Set box_in_auto_sharpen=False as parameters are set "+\
         "\nand sharpening method is %s" %(
         params.map_modification.auto_sharpen_methods[0])
+
+  if params.map_modification.optimize_k_sharpen and \
+    not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
+       not 'b_iso' in params.map_modification.auto_sharpen_methods: 
+     print >>out,"Set optimize_k_sharpen=False as neither b_iso_to_d_cut nor"+\
+         " b_iso are used"
+     params.map_modification.optimize_k_sharpen=False
+
   return params
    
 
@@ -755,6 +770,7 @@ def run(args=None,params=None,
         mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius,
         value_outside_atoms=params.map_modification.value_outside_atoms,
         k_sharpen=params.map_modification.k_sharpen,
+        optimize_k_sharpen=params.map_modification.optimize_k_sharpen,
         soft_mask=params.map_modification.soft_mask,
         allow_box_if_b_iso_set=params.map_modification.allow_box_if_b_iso_set,
         search_b_min=params.map_modification.search_b_min,
