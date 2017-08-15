@@ -433,7 +433,7 @@ def simple(fmodel, pdb_hierarchy, params=None, log=None, show_results=False):
     shift_manager = mmtbx.utils.shift_origin(
       map_data=map_2, pdb_hierarchy=pdb_hierarchy,
       crystal_symmetry=map_handle.crystal_symmetry())
-    if (shift_manager.shift is not None):
+    if (shift_manager.shift_cart is not None):
       print >>log, "Map origin is not at (0,0,0): shifting the map and model."
     pdb_hierarchy = shift_manager.pdb_hierarchy
     map_2 = shift_manager.map_data
