@@ -222,7 +222,7 @@ master_phil = iotbx.phil.parse("""
           to sharpen variably over resolution range. Default is b_iso,\
           b_iso_to_d_cut and resolution_dependent.
 
-     box_in_auto_sharpen = True
+     box_in_auto_sharpen = False
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
@@ -354,7 +354,7 @@ master_phil = iotbx.phil.parse("""
                equal to overall change in normalized regions over the range \
                of search_b_min to search_b_max using b_iso_to_d_cut.
 
-     region_weight_method = *initial_ratio delta_ratio b_iso
+     region_weight_method = initial_ratio *delta_ratio b_iso
        .type = choice
        .short_caption = Region weight method
        .help = Method for choosing region_weights. Initial_ratio uses \
