@@ -1,8 +1,6 @@
 from __future__ import division
 import libtbx.load_env
 
-dials_regression = libtbx.env.dist_path('dials_regression')
-
 class TestFormat(object):
 
   def get_images(self):
@@ -605,4 +603,5 @@ if __name__ == '__main__':
   elif not libtbx.env.has_module("dials_regression"):
     print "Skipping test: dials_regression not present"
   else:
+    dials_regression = libtbx.env.dist_path('dials_regression')
     run()
