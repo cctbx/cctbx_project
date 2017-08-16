@@ -143,7 +143,7 @@ class geometry(geometry_no_grm):
         molprobity_scores=False,
         n_histogram_slots=10,
         cdl_restraints=False,
-        ignore_hydrogens=False,  #only used by amber
+        ignore_hydrogens=False,  # XXX only used by amber
         automatically_use_amber=True,
         ):
     super(geometry, self).__init__(
