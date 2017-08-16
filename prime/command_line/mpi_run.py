@@ -26,4 +26,4 @@ if __name__ == "__main__":
   # scaling
   qCmd = 'mpirun prime.mpi_scale '+' '.join(argv)
   cmd = ['bsub','-n', str(iparams.n_processors),'-q', iparams.queue.qname, '-o', os.path.join(iparams.run_no,'log_doMerge.out'), qCmd]
-call(cmd)
+  call(cmd)

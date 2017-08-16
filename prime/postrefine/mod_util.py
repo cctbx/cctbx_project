@@ -29,7 +29,7 @@ class intensities_scaler(object):
     self.CONST_SIG_I_FACTOR = 1.5
 
   def write_stat_pickle(self, iparams, stat_dict):
-    fname = iparams.run_no+'/pickle.stat'
+    fname = iparams.run_no+'/stats/pickle_'+str(os.getpid())+'.stat'
     if os.path.isfile(fname):
       pickle_stat = pickle.load(open(fname,"rb"))
       for key in stat_dict.keys():
@@ -40,16 +40,6 @@ class intensities_scaler(object):
       pickle.dump(pickle_stat, open(fname,"wb"))
     else:
       pickle.dump(stat_dict, open(fname,"wb"))
-
-  def read_stat_pickle(self, iparams):
-    fname = iparams.run_no+'/pickle.stat'
-    if os.path.isfile(fname):
-      pickle_stat = pickle.load(open(fname,"rb"))
-      for key in pickle_stat.keys():
-        data = pickle_stat[key]
-        print "key:", key, " size:", len(data)
-        for d in data:
-          print d
 
   def calc_avg_I_cpp(self, prep_output, iparams, avg_mode):
     group_no, group_id_list, miller_index, miller_indices_ori, I, sigI, G, B, p_set, rs_set, wavelength_set, sin_theta_over_lambda_sq, SE, uc_mean, wavelength_mean, pickle_filename_set, txt_out = prep_output
@@ -66,7 +56,8 @@ class intensities_scaler(object):
     engine.n_rejection_cycle = iparams.n_rejection_cycle
     engine.flag_output_verbose = iparams.flag_output_verbose
     results = engine.calc_avg_I()
-    mdh = merge_data_handler(results.miller_index, results.I_avg, results.sigI_avg, (results.r_meas_top, results.r_meas_btm, results.multiplicity), (results.I_avg_even, results.I_avg_odd, results.I_avg_even_h, results.I_avg_odd_h, results.I_avg_even_k, results.I_avg_odd_k, results.I_avg_even_l, results.I_avg_odd_l), uc_mean, wavelength_mean)
+    mdh = merge_data_handler()
+    mdh.extend_data(results.miller_index, results.I_avg, results.sigI_avg, (results.r_meas_top, results.r_meas_btm, results.multiplicity), (results.I_avg_even, results.I_avg_odd, results.I_avg_even_h, results.I_avg_odd_h, results.I_avg_even_k, results.I_avg_odd_k, results.I_avg_even_l, results.I_avg_odd_l), uc_mean, wavelength_mean)
     return mdh, results.txt_obs_out, results.txt_reject_out
 
   def calc_mean_unit_cell(self, results):
@@ -367,15 +358,6 @@ class intensities_scaler(object):
       cciso, n_refl_cciso = mdh.get_cciso(miller_array_iso)
       cc_anom_acentric, n_refl_anom_acentric = mdh.get_cc_anom()
       txt_out = 'Warning: flag_hush is set to True. Continue without writing merging statistic tables.\n'
-      txt_out += 'Bin Resolution Range     Completeness      <N_obs> |Rmerge  Rsplit   CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind| <I/sigI>   <I>    <sigI>    <I**2>\n'
-      txt_out += '--------------------------------------------------------------------------------------------------------------------------------------------------\n'
-      txt_out += '        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.1f %8.1f %6.2f\n' \
-        %((mdh.get_size()/miller_array_template_asu.size())*100, \
-            mdh.get_size(), miller_array_template_asu.size(),\
-            mdh.get_multiplicity(), mdh.get_r_meas()*100, mdh.get_r_split()*100, \
-            cc12*100, n_refl_cc12, cciso*100, n_refl_cciso, \
-            cc_anom_acentric, n_refl_anom_acentric, \
-            mdh.get_mean_IoversigI(), mdh.get_mean_I(), mdh.get_mean_sigI(), mdh.get_second_moment())
     else:
       #calculate isotropic B-factor
       try:
@@ -485,6 +467,15 @@ class intensities_scaler(object):
             n_refl_cc12_astar, n_refl_cc12_bstar, n_refl_cc12_cstar)
       txt_out_cone += '----------------------------------------------------------------------------------------------------------\n'
       txt_out_cone += '\n'
+      txt_out_table1 = "Table1 ("+avg_mode+")\n"
+      txt_out_table1 += "  Space group: "+str(mdh.miller_array_merge.space_group_info())+"\n"
+      txt_out_table1 += "  Cell dimensions: %6.2f, %6.2f, %6.2f, %6.2f, %6.2f, %6.2f\n"%tuple(mdh.uc_mean)
+      txt_out_table1 += "  Resolution (A): %6.2f - %6.2f (%6.2f - %6.2f)\n"%(mdh.miller_array_merge.d_max_min()[0], mdh.miller_array_merge.d_max_min()[1], sp_res[-2], sp_res[-1])
+      txt_out_table1 += "  Rmerge: %6.2f (%6.2f)\n"%(mdh.get_r_meas()*100, sp_rmerge[-1])
+      txt_out_table1 += "  CC1/2: %6.2f (%6.2f)\n"%(mdh.get_cc12()[0]*100, sp_cc12[-1])
+      txt_out_table1 += "  I/sigI: %6.2f (%6.2f)\n"%(mdh.get_mean_IoversigI(), sp_i_o_sigi[-1])
+      txt_out_table1 += "  Completeness (%%): %6.2f (%6.2f)\n"%((mdh.get_size()/miller_array_template_asu.size())*100, sp_complete[-1])
+      txt_out_table1 += "  Redundancy: %6.2f (%6.2f)\n"%(mdh.get_multiplicity(), sp_n_obs[-1])
       #save data for stat. pickle in stat_dict
       stat_dict = {"binned_resolution": [sp_res], \
       "binned_completeness": [sp_complete], \
@@ -504,8 +495,7 @@ class intensities_scaler(object):
       "space_group_info": [mdh.miller_array_merge.space_group_info()], \
       }
       self.write_stat_pickle(iparams, stat_dict)
-      txt_out += txt_out_cone
-
+      txt_out += txt_out_cone + txt_out_table1
     return mdh, txt_out
 
   def plot_stats(self, results, iparams):
@@ -564,3 +554,74 @@ class intensities_scaler(object):
         plt.ylabel('Frequencies')
         plt.title(params[i]+'\nmu %5.1f med %5.1f sigma %5.1f' %(np.mean(tmp_params), np.median(tmp_params), np.std(tmp_params)))
       plt.show()
+
+  def combine_pre_merge(self, result, iparams):
+    mi_all = flex.miller_index()
+    mio_all = flex.miller_index()
+    I_all = flex.double()
+    sigI_all = flex.double()
+    G_all = flex.double()
+    B_all = flex.double()
+    p_all = flex.double()
+    rs_all = flex.double()
+    wavelength_all = flex.double()
+    sin_all = flex.double()
+    SE_all = flex.double()
+    uc_mean_set = []
+    wavelength_mean_set = []
+    pickle_filename_all = flex.std_string()
+    for res in result:
+      for prep_output in res:
+        _, _, mi, mio, I, sigI, G, B, p, rs, wavelength, sin, SE, uc_mean, wavelength_mean, pickle_filename_set, txt_out = prep_output
+        mi_all.extend(mi)
+        mio_all.extend(mio)
+        I_all.extend(I)
+        sigI_all.extend(sigI)
+        G_all.extend(G)
+        B_all.extend(B)
+        p_all.extend(p)
+        rs_all.extend(rs)
+        wavelength_all.extend(wavelength)
+        sin_all.extend(sin)
+        SE_all.extend(SE)
+        uc_mean_set.extend(uc_mean)
+        wavelength_mean_set.append(wavelength_mean)
+        pickle_filename_all.extend(pickle_filename_set)
+    uc_mean = np.mean(np.array(uc_mean_set).reshape(-1,6), axis=0)
+    wavelength_mean = np.mean(wavelength_mean_set)
+    ms_template = crystal.symmetry(
+        unit_cell=tuple(uc_mean),
+        space_group_symbol=iparams.target_space_group
+        ).build_miller_set(
+        anomalous_flag=iparams.target_anomalous_flag,
+        d_min=iparams.merge.d_min)
+    ma_all = ms_template.array().customized_copy(indices=mi_all, data=I_all, sigmas=sigI_all)
+    #sort reflections according to asymmetric-unit symmetry hkl
+    perm = ma_all.sort_permutation(by_value="packed_indices")
+    mi_all_sort = mi_all.select(perm)
+    mio_all_sort = mio_all.select(perm)
+    I_all_sort = I_all.select(perm)
+    sigI_all_sort = sigI_all.select(perm)
+    G_all_sort = G_all.select(perm)
+    B_all_sort = B_all.select(perm)
+    p_all_sort = p_all.select(perm)
+    rs_all_sort = rs_all.select(perm)
+    wavelength_all_sort = wavelength_all.select(perm)
+    sin_all_sort = sin_all.select(perm)
+    SE_all_sort = SE_all.select(perm)
+    pickle_filename_all_sort = pickle_filename_all.select(perm)
+    ma_uniq = ma_all.merge_equivalents().array().complete_array(d_min=iparams.merge.d_min, d_max=iparams.merge.d_max)
+    matches_uniq = miller.match_multi_indices(
+                  miller_indices_unique=ma_uniq.indices(),
+                  miller_indices=mi_all_sort)
+    pair_0 = flex.int([pair[0] for pair in matches_uniq.pairs()])
+    pair_1 = flex.int([pair[1] for pair in matches_uniq.pairs()])
+    group_id_list = flex.int([pair_0[pair_1[i]] for i in range(len(matches_uniq.pairs()))])
+    tally = Counter()
+    for elem in group_id_list: tally[elem] += 1
+    cn_group = len(tally)
+    return cn_group, group_id_list, mi_all_sort, mio_all_sort, \
+           I_all_sort, sigI_all_sort, G_all_sort, B_all_sort, \
+           p_all_sort, rs_all_sort, wavelength_all_sort, sin_all_sort, SE_all_sort, uc_mean, \
+           wavelength_mean, pickle_filename_all_sort, ""
+

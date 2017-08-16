@@ -453,6 +453,7 @@ def process_input(argv=None, flag_mkdir=True):
     os.makedirs(params.run_no)
     os.makedirs(params.run_no+'/index_ambiguity')
     os.makedirs(params.run_no+'/isoform_cluster')
+    os.makedirs(params.run_no+'/stats')
 
   #capture input read out by phil
   from cStringIO import StringIO
