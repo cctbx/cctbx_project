@@ -98,6 +98,7 @@ class geometry_no_grm(object):
     if(self.ramachandran_outliers is not None):
       result = """%sMOLPROBITY STATISTICS.
 %s ALL-ATOM CLASHSCORE : %s
+%s MOLPROBITY SCORE    : %s
 %s RAMACHANDRAN PLOT:
 %s   OUTLIERS : %-5.2f %s
 %s   ALLOWED  : %-5.2f %s
@@ -113,6 +114,7 @@ class geometry_no_grm(object):
         prefix, format_value("%-6.2f",
                              self.clashscore,
                              replace_none_with=clashscore_explanation).strip(),
+        prefix, format_value("%-6.2f", self.mpscore).strip(),
         prefix,
         prefix, self.ramachandran_outliers, "%",
         prefix, self.ramachandran_allowed, "%",
