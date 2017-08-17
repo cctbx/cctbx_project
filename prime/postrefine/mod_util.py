@@ -353,12 +353,8 @@ class intensities_scaler(object):
       f_cns = open(output_mtz_file_prefix+'_merge.hkl', 'w')
       miller_array_merge_unique.export_as_cns_hkl(file_object=f_cns)
       f_cns.close()
-    if iparams.flag_hush:
-      cc12, n_refl_cc12 = mdh.get_cc12()
-      cciso, n_refl_cciso = mdh.get_cciso(miller_array_iso)
-      cc_anom_acentric, n_refl_anom_acentric = mdh.get_cc_anom()
-      txt_out = 'Warning: flag_hush is set to True. Continue without writing merging statistic tables.\n'
-    else:
+    #calculate merging stat table
+    if True:
       #calculate isotropic B-factor
       try:
         mxh = mx_handler()
@@ -477,24 +473,25 @@ class intensities_scaler(object):
       txt_out_table1 += "  Completeness (%%): %6.2f (%6.2f)\n"%((mdh.get_size()/miller_array_template_asu.size())*100, sp_complete[-1])
       txt_out_table1 += "  Redundancy: %6.2f (%6.2f)\n"%(mdh.get_multiplicity(), sp_n_obs[-1])
       #save data for stat. pickle in stat_dict
-      stat_dict = {"binned_resolution": [sp_res], \
-      "binned_completeness": [sp_complete], \
-      "binned_n_obs": [sp_n_obs], \
-      "binned_cc12": [sp_cc12], \
-      "binned_cc12_anom": [sp_cc12_anom], \
-      "binned_rmerge": [sp_rmerge], \
-      "binned_i_o_sigi": [sp_i_o_sigi], \
-      "binned_isqr": [sp_isqr], \
-      "total_res_max": [mdh.miller_array_merge.d_max_min()[0]], \
-      "total_res_min": [mdh.miller_array_merge.d_max_min()[1]], \
-      "total_completeness": [(mdh.get_size()/miller_array_template_asu.size())*100], \
-      "total_n_obs": [mdh.get_multiplicity()], \
-      "total_cc12": [mdh.get_cc12()[0]*100], \
-      "total_rmerge": [mdh.get_r_meas()*100], \
-      "total_i_o_sigi": [mdh.get_mean_IoversigI()], \
-      "space_group_info": [mdh.miller_array_merge.space_group_info()], \
-      }
-      self.write_stat_pickle(iparams, stat_dict)
+      if not iparams.flag_hush:
+        stat_dict = {"binned_resolution": [sp_res], \
+            "binned_completeness": [sp_complete], \
+            "binned_n_obs": [sp_n_obs], \
+            "binned_cc12": [sp_cc12], \
+            "binned_cc12_anom": [sp_cc12_anom], \
+            "binned_rmerge": [sp_rmerge], \
+            "binned_i_o_sigi": [sp_i_o_sigi], \
+            "binned_isqr": [sp_isqr], \
+            "total_res_max": [mdh.miller_array_merge.d_max_min()[0]], \
+            "total_res_min": [mdh.miller_array_merge.d_max_min()[1]], \
+            "total_completeness": [(mdh.get_size()/miller_array_template_asu.size())*100], \
+            "total_n_obs": [mdh.get_multiplicity()], \
+            "total_cc12": [mdh.get_cc12()[0]*100], \
+            "total_rmerge": [mdh.get_r_meas()*100], \
+            "total_i_o_sigi": [mdh.get_mean_IoversigI()], \
+            "space_group_info": [mdh.miller_array_merge.space_group_info()], \
+            }
+        self.write_stat_pickle(iparams, stat_dict)
       txt_out += txt_out_cone + txt_out_table1
     return mdh, txt_out
 

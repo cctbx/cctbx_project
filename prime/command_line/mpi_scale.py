@@ -38,6 +38,7 @@ def master(frame_objects, iparams, activity):
     cpo = its.combine_pre_merge(frame_objects, iparams)
     #assign at least 10k reflections at a time
     n_batch = int(1e4/(len(cpo[1])/cpo[0]))
+    if n_batch < 1: n_batch = 1
     print "Merging with %d batch size"%(n_batch)
     indices = range(0, cpo[0], n_batch)
     for i in indices:
@@ -93,6 +94,7 @@ def run(argv):
   if rank == 0:
     iparams, txt_out_input = process_input(argv)
     iparams.flag_volume_correction = False
+    iparams.flag_hush = True
     print txt_out_input
     frame_files = read_pickles(iparams.data)
   else:
