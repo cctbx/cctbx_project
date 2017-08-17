@@ -975,6 +975,15 @@ class DataBlockFactory(object):
         ),
         indices)])
 
+import json
+class AutoEncoder(json.JSONEncoder):
+  def default(self, obj):
+    import libtbx
+    if isinstance(obj, libtbx.AutoType):
+      return 'Auto'
+    # Let the base class default method raise the TypeError
+    return json.JSONEncoder.default(self, obj)
+
 class DataBlockDumper(object):
   ''' Class to help in dumping datablock objects. '''
 
@@ -996,7 +1005,7 @@ class DataBlockDumper(object):
         separators=(',',':'), ensure_ascii=True)
     else:
       json.dump(dictionary, open(filename, "w"),
-        indent=2, ensure_ascii=True)
+        indent=2, ensure_ascii=True, cls=AutoEncoder)
 
   def as_pickle(self, filename=None, **kwargs):
     ''' Dump datablock as pickle. '''
