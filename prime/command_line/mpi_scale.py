@@ -8,7 +8,6 @@ import sys, os
 from prime.postrefine.mod_input import process_input, read_pickles
 from prime.postrefine.mod_util import intensities_scaler
 from prime.postrefine.mod_merge_data import merge_data_handler
-import numpy as np
 from cctbx.array_family import flex
 import time, math
 
@@ -28,6 +27,7 @@ def master(frame_objects, iparams, activity):
       comm.send((activity, (frame_objects[i:i_end], iparams)), dest=rankreq)
   if activity == "pre_merge":
     n_batch = int(len(frame_objects)/(size*3))
+    if n_batch < 10: n_batch = 10
     indices = range(0, len(frame_objects), n_batch)
     for i in indices:
       i_end = i+n_batch if i+n_batch < len(frame_objects) else len(frame_objects)
@@ -36,7 +36,9 @@ def master(frame_objects, iparams, activity):
   if activity == "merge":
     its = intensities_scaler()
     cpo = its.combine_pre_merge(frame_objects, iparams)
-    n_batch = int(cpo[0]/(size*3))
+    #assign at least 10k reflections at a time
+    n_batch = int(1e4/(len(cpo[1])/cpo[0]))
+    print "Merging with %d batch size"%(n_batch)
     indices = range(0, cpo[0], n_batch)
     for i in indices:
       rankreq = comm.recv(source=MPI.ANY_SOURCE)
@@ -50,13 +52,11 @@ def master(frame_objects, iparams, activity):
       batch_prep.append(cpo[15].select(sel))
       batch_prep.append("")
       comm.send((activity, (tuple(batch_prep), iparams)), dest=rankreq)
+  print "Master for %s is completed. Time to stop all %d clients"%(activity, size-1)
   # stop clients
-  if activity in ("pre_merge", "scale", "merge"):
-    flag_done = np.zeros(size)
-    while np.sum(flag_done) < size-1:
-      rankreq = comm.recv(source=MPI.ANY_SOURCE)
-      comm.send('endrun', dest=rankreq)
-      flag_done[rankreq] = 1
+  for rankreq in range(size-1):
+    rankreq = comm.recv(source=MPI.ANY_SOURCE)
+    comm.send('endrun', dest=rankreq)
 
 def client():
   result = []
@@ -98,6 +98,7 @@ def run(argv):
   else:
     iparams = None
     frame_files = None
+  comm.Barrier()
   #assign scaling task
   if rank == 0:
     master(frame_files, iparams, "scale")
@@ -105,6 +106,7 @@ def run(argv):
   else:
     result = client()
   result = comm.gather(result, root=0)
+  comm.Barrier()
   #pre-merge task
   if rank == 0:
     results = sum(result, [])
@@ -114,6 +116,7 @@ def run(argv):
   else:
     result = client()
   result = comm.gather(result, root=0)
+  comm.Barrier()
   #merge task
   if rank == 0:
     print "Pre-merge is done on %d cores"%(len(result))
@@ -123,7 +126,9 @@ def run(argv):
     result = client()
   #finalize merge
   result = comm.gather(result, root=0)
+  comm.Barrier()
   if rank == 0:
+    print "Merge completed on %d cores"%(len(result))
     results = sum(result, [])
     mdh = None
     txt_out_rejection = ""
