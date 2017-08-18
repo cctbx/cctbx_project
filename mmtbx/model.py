@@ -166,12 +166,23 @@ class manager(object):
     self.riding_h_manager = None
     self.sync_pdb_hierarchy_with_xray_structure()
 
-  def setup_riding_h_manager(self):
+  def unset_riding_h_manager(self):
+    self.riding_h_manager = None
+
+  def setup_riding_h_manager(self, idealize=True):
+    assert self.riding_h_manager is None
+    self.pdb_hierarchy().write_pdb_file(file_name="before.pdb")
     if(self.xray_structure.hd_selection().count(True)==0): return
     if(self.restraints_manager is None): return
+    sites_cart = self.xray_structure.sites_cart()
     self.riding_h_manager = riding.manager(
       pdb_hierarchy       = self.pdb_hierarchy(),
       geometry_restraints = self.restraints_manager.geometry)
+    if(idealize):
+      self.riding_h_manager.idealize(sites_cart = sites_cart)
+      self.xray_structure.set_sites_cart(sites_cart=sites_cart)
+      self.pdb_hierarchy(sync_with_xray_structure=True)
+      self.pdb_hierarchy().write_pdb_file(file_name="after.pdb")
 
   def pdb_hierarchy(self, sync_with_xray_structure=False):
     """
