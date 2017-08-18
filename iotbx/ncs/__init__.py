@@ -24,7 +24,7 @@ ncs_search
               determined automatically)
     .short_caption = Use NCS
     .style = noauto bold
-  exclude_selection = "not (protein or nucleotide) or element H or element D"
+  exclude_selection = "element H or element D or water"
     .type = atom_selection
     .help = Atoms selected by this selection will be excluded from the model \
       before search procedures will run.
@@ -84,7 +84,7 @@ class input(object):
           # XXX warning, ncs_phil_groups can be changed inside...
           ncs_phil_groups = None,
           spec_ncs_groups=None,
-          exclude_selection="not (protein or nucleotide) or element H or element D",
+          exclude_selection="element H or element D or water",
           chain_max_rmsd=2.0,
           log=None,
           chain_similarity_threshold=0.85,
@@ -215,7 +215,7 @@ class input(object):
       # print "self.old_i_seqs", list(self.old_i_seqs)
       # self.truncated_hierarchy.atoms().reset_i_seq()
       self.truncated_hierarchy.reset_atom_i_seqs()
-      # self.truncated_hierarchy.hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
+      # self.truncated_hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
 
       if self.truncated_hierarchy.atoms_size() == 0:
         self.total_asu_length = 0
