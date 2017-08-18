@@ -528,7 +528,7 @@ class input(object):
             if(n_copy==0):
               raise Sorry(msg%s_string)
         ok_msg = "  OK. All atoms were included in" +\
-        " validated selection.\n  Nothing to worry about.\n"
+        " validated selection.\n"
         modified_msg = "  MODIFIED. Some of the atoms were excluded from" + \
         " your selection.\n  The most common reasons are:\n" + \
         "    1. Missing residues in one or several copies in NCS group.\n" + \
