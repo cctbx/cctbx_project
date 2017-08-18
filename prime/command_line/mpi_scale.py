@@ -36,8 +36,8 @@ def master(frame_objects, iparams, activity):
   if activity == "merge":
     its = intensities_scaler()
     cpo = its.combine_pre_merge(frame_objects, iparams)
-    #assign at least 10k reflections at a time
-    n_batch = int(1e4/(len(cpo[1])/cpo[0]))
+    #assign at least 100k reflections at a time
+    n_batch = int(1e5/(len(cpo[1])/cpo[0]))
     if n_batch < 1: n_batch = 1
     print "Merging with %d batch size"%(n_batch)
     indices = range(0, cpo[0], n_batch)
@@ -132,13 +132,10 @@ def run(argv):
   if rank == 0:
     print "Merge completed on %d cores"%(len(result))
     results = sum(result, [])
-    mdh = None
+    mdh = merge_data_handler()
     txt_out_rejection = ""
     for _mdh, _txt_out_rejection in results:
-      if mdh:
-        mdh.extend(_mdh)
-      else:
-        mdh = merge_data_handler()
+      mdh.extend(_mdh)
       txt_out_rejection += _txt_out_rejection
     #selet only indices with non-Inf non-Nan stats
     selections = flex.bool([False if (math.isnan(r0) or math.isinf(r0) or math.isnan(r1) or math.isinf(r1)) else True for r0, r1  in zip(mdh.r_meas_div, mdh.r_meas_divisor)])
