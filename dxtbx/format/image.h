@@ -27,18 +27,23 @@ namespace dxtbx { namespace format {
   class ImageTile {
   public:
 
-    // Variant data typedefs
-    typedef scitbx::af::versa< short,          scitbx::af::c_grid<2> > int16_type;
-    typedef scitbx::af::versa< int,            scitbx::af::c_grid<2> > int32_type;
-    typedef scitbx::af::versa< unsigned short, scitbx::af::c_grid<2> > uint16_type;
-    typedef scitbx::af::versa< unsigned int,   scitbx::af::c_grid<2> > uint32_type;
-    typedef scitbx::af::versa< float,          scitbx::af::c_grid<2> > float32_type;
-    typedef scitbx::af::versa< double,         scitbx::af::c_grid<2> > float64_type;
+    typedef scitbx::af::c_grid<2> accessor_type;
 
+    // Variant data typedefs
+    typedef scitbx::af::versa< bool,           accessor_type > bool_type;
+    typedef scitbx::af::versa< short,          accessor_type > int16_type;
+    typedef scitbx::af::versa< int,            accessor_type > int32_type;
+    typedef scitbx::af::versa< unsigned short, accessor_type > uint16_type;
+    typedef scitbx::af::versa< unsigned int,   accessor_type > uint32_type;
+    typedef scitbx::af::versa< float,          accessor_type > float32_type;
+    typedef scitbx::af::versa< double,         accessor_type > float64_type;
+
+    typedef bool_type bool_array_type;
     typedef int32_type int_array_type;
     typedef float64_type double_array_type;
 
     typedef boost::variant <
+      bool_type,
       int16_type,
       int32_type,
       uint16_type,
@@ -56,15 +61,61 @@ namespace dxtbx { namespace format {
     class ConverterVisitor : public boost::static_visitor<ArrayType> {
     public:
 
-      ArrayType operator()(ArrayType &v) const {
+      ArrayType operator()(const ArrayType &v) const {
         return v;
       }
 
       template <typename OtherArrayType>
-      ArrayType operator()(OtherArrayType &v) const {
+      ArrayType operator()(const OtherArrayType &v) const {
         ArrayType result(v.accessor());
         std::copy(v.begin(), v.end(), result.begin());
         return result;
+      }
+
+    };
+    
+    /**
+     * Is the data a bool type
+     */
+    class IsBoolVisitor : public boost::static_visitor<bool> {
+    public:
+
+      bool operator()(const bool_type &v) const {
+        return true;
+      }
+
+      template <typename OtherArrayType>
+      bool operator()(const OtherArrayType &v) const {
+        return false;
+      }
+
+    };
+
+    /**
+     * Is the data an int type
+     */
+    class IsIntVisitor : public boost::static_visitor<bool> {
+    public:
+      
+      bool operator()(const int16_type &v) const {
+        return true;
+      }
+
+      bool operator()(const int32_type &v) const {
+        return true;
+      }
+
+      bool operator()(const uint16_type &v) const {
+        return true;
+      }
+
+      bool operator()(const uint32_type &v) const {
+        return true;
+      }
+
+      template <typename OtherArrayType>
+      bool operator()(const OtherArrayType &v) const {
+        return false;
       }
 
     };
@@ -75,21 +126,53 @@ namespace dxtbx { namespace format {
     class IsDoubleVisitor : public boost::static_visitor<bool> {
     public:
 
-      bool operator()(float32_type &v) const {
+      bool operator()(const float32_type &v) const {
         return true;
       }
 
-      bool operator()(float64_type &v) const {
+      bool operator()(const float64_type &v) const {
         return true;
       }
 
       template <typename OtherArrayType>
-      bool operator()(OtherArrayType &v) const {
+      bool operator()(const OtherArrayType &v) const {
         return false;
       }
 
     };
+    
+    /**
+     * Is the array empty
+     */
+    class IsEmptyVisitor : public boost::static_visitor<bool> {
+    public:
 
+      template <typename OtherArrayType>
+      bool operator()(const OtherArrayType &v) const {
+        return v.empty();
+      }
+
+    };
+    
+    /**
+     * Get the accessor
+     */
+    class AccessorVisitor : public boost::static_visitor<accessor_type> {
+    public:
+
+      template <typename OtherArrayType>
+      accessor_type operator()(const OtherArrayType &v) const {
+        return v.accessor();
+      }
+
+    };
+
+    /**
+     * Initialize the class
+     */
+    ImageTile(variant_type data)
+      : data_(data),
+        name_("") {}
 
     /**
      * Initialize the class
@@ -97,12 +180,19 @@ namespace dxtbx { namespace format {
     ImageTile(variant_type data, const char *name)
       : data_(data),
         name_(name) {}
+    
+    /**
+     * Is the data boolean
+     */
+    bool is_bool() const {
+      return boost::apply_visitor(IsBoolVisitor(), data_);
+    }
 
     /**
      * Is the data integer
      */
     bool is_int() const {
-      return !boost::apply_visitor(IsDoubleVisitor(), data_);
+      return boost::apply_visitor(IsIntVisitor(), data_);
     }
 
     /**
@@ -110,6 +200,14 @@ namespace dxtbx { namespace format {
      */
     bool is_double() const {
       return boost::apply_visitor(IsDoubleVisitor(), data_);
+    }
+
+    /**
+     * Get the data as bool
+     */
+    bool_array_type as_bool() const {
+      DXTBX_ASSERT(is_bool());
+      return boost::apply_visitor(ConverterVisitor<bool_array_type>(), data_);
     }
 
     /**
@@ -129,8 +227,22 @@ namespace dxtbx { namespace format {
     /**
      * Get the tile name
      */
-    std::string name() {
+    std::string name() const {
       return name_;
+    }
+
+    /**
+     * Is the array empty
+     */
+    bool empty() const {
+      return boost::apply_visitor(IsEmptyVisitor(), data_);
+    }
+
+    /**
+     * Get the accessor
+     */
+    accessor_type accessor() const {
+      return boost::apply_visitor(AccessorVisitor(), data_);
     }
 
   protected:
@@ -145,6 +257,7 @@ namespace dxtbx { namespace format {
    */
   class Image {
   public:
+    typedef ImageTile::bool_type bool_type;
     typedef ImageTile::int16_type int16_type;
     typedef ImageTile::int32_type int32_type;
     typedef ImageTile::uint16_type uint16_type;
@@ -156,18 +269,19 @@ namespace dxtbx { namespace format {
     /**
      * Add a tile
      */
-    void push_back(const variant_type &tile, const char *name) {
+    void push_back(const ImageTile &tile) {
       tiles_.push_back(tile);
-      names_.push_back(name);
     }
 
     /**
      * Get the tile names
      */
     scitbx::af::shared< std::string > tile_names() const {
-      return scitbx::af::shared< std::string >(
-          &names_[0],
-          &names_[0] + names_.size());
+      scitbx::af::shared<std::string> names;
+      for (std::size_t i = 0; i < tiles_.size(); ++i) {
+        names.push_back(tiles_[i].name());
+      }
+      return names;
     }
 
     /**
@@ -175,7 +289,7 @@ namespace dxtbx { namespace format {
      */
     ImageTile tile(std::size_t index) {
       DXTBX_ASSERT(index < n_tiles());
-      return ImageTile(tiles_[index], names_[index].c_str());
+      return tiles_[index];
     }
 
     /**
@@ -187,8 +301,7 @@ namespace dxtbx { namespace format {
 
   protected:
 
-    std::vector< variant_type > tiles_;
-    std::vector< std::string > names_;
+    scitbx::af::shared<ImageTile> tiles_;
   };
 
 

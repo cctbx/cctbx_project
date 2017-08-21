@@ -110,7 +110,7 @@ namespace dxtbx { namespace format {
     Image image(std::size_t index) const {
       DXTBX_ASSERT(index < size());
       Image result;
-      result.push_back(read_data(index), "");
+      result.push_back(ImageTile(read_data(index), ""));
       return result;
     }
 

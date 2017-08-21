@@ -55,7 +55,7 @@ namespace dxtbx { namespace format {
       DXTBX_ASSERT(tiles_.size() == names_.size());
       Image result;
       for (std::size_t i = 0; i < tiles_.size(); ++i) {
-        result.push_back(tiles_[i], names_[i].c_str());
+        result.push_back(ImageTile(tiles_[i], names_[i].c_str()));
       }
       return result;
     }

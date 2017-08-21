@@ -52,17 +52,22 @@ namespace dxtbx { namespace format { namespace boost_python {
   {
 
     class_<ImageTile>("ImageTile", no_init)
+      .def("as_bool", &ImageTile::as_bool)
       .def("as_int", &ImageTile::as_int)
       .def("as_double", &ImageTile::as_double)
+      .def("is_bool", &ImageTile::is_bool)
       .def("is_int", &ImageTile::is_int)
       .def("is_double", &ImageTile::is_double)
       .def("name", &ImageTile::name)
+      .def("accessor", &ImageTile::accessor)
+      .def("empty", &ImageTile::empty)
       ;
 
     class_<Image>("Image", no_init)
       .def("tile", &Image::tile)
       .def("tile_names", &Image::tile_names)
       .def("n_tiles", &Image::n_tiles)
+      .def("push_back", &Image::push_back)
       ;
 
     class_<ImageReader>("ImageReader", no_init)
