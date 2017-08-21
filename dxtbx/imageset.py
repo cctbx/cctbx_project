@@ -217,7 +217,7 @@ class ImageSetAux(ImageSet, boost.python.injector):
       return self.partial_set(item.first, item.last)
     else:
       return self.get_corrected_data(item)
-  
+
   def __iter__(self):
     ''' Iterate over the array indices and read each image in turn. '''
     for i in range(len(self)):
@@ -763,7 +763,7 @@ class ImageSweepAux(ImageSweep, boost.python.injector):
       return self.partial_set(item.first, item.last)
     else:
       return self.get_corrected_data(item)
-  
+
   def get_template(self):
     ''' Return the template '''
     return self._data.properties['template']
@@ -912,7 +912,7 @@ class ImageSweepAux(ImageSweep, boost.python.injector):
 #   def get_template(self):
 #     ''' Return the template '''
 #     return self._data.properties['template']
-  
+
 #   def as_imageset(self):
 #     '''
 #     Return as an imageset
