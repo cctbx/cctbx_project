@@ -352,8 +352,9 @@ class box_refinement_manager(object):
         rms_angles_limit = rms_angles_limit)
       self.weight_optimal = real_space_result.weight_final
       sites_cart_box_refined = real_space_result.sites_cart_result
+      shift_back = [-box.shift_cart[i] for i in xrange(3)]
       sites_cart_box_refined_shifted_back = \
-        sites_cart_box_refined + box.shift_to_map_boxed_sites_back
+        sites_cart_box_refined + shift_back # Sure + not - ?
       sites_cart_refined = sites_cart_box_refined_shifted_back.select(sel)
       sites_cart_moving = sites_cart_moving.set_selected(
         iselection, sites_cart_refined)

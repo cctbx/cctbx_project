@@ -581,7 +581,7 @@ TER
   ncs_groups = get_ncs_groups(phil_str1, pdb_str, exclude_selection=None)
   assert len(ncs_groups) == 1
   assert len(ncs_groups[0].copies) == 1
-  assert list(ncs_groups[0].master_iselection) == [0,1,2,3,4,5,6]
+  assert list(ncs_groups[0].master_iselection) == [0,1,2,3,4,5,6], list(ncs_groups[0].master_iselection)
   assert list(ncs_groups[0].copies[0].iselection) == [14,15,16,17,18,19,20]
 
 def exercise_7():

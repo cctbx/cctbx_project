@@ -254,9 +254,9 @@ class FormatMultiImage(object):
       else:
         num_images = format_instance.get_num_images()
 
-      # Check the scan makes sense
+      # Check the scan makes sense - we must want to use <= total images
       if scan is not None:
-        assert scan.get_num_images() == num_images
+        assert scan.get_num_images() <= num_images
 
       # If any are None then read from format
       if beam is None:

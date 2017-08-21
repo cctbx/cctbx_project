@@ -3,14 +3,14 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/21/2017
+Last Changed: 08/01/2017
 Description : IOTA initialization module (also contains app info)
 '''
 
 from datetime import datetime
 
 
-iota_version = '1.1.021'
+iota_version = '1.1.022'
 now = "{:%A, %b %d, %Y. %I:%M %p}".format(datetime.now())
 
 # For GUI

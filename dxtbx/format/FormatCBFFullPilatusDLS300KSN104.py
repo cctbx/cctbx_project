@@ -41,9 +41,14 @@ class FormatCBFFullPilatusDLS300KSN104(FormatCBFFullPilatus):
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file.'''
 
+    import libtbx
     assert(self.understand(image_file))
 
     self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
+    if self._dynamic_shadowing in (libtbx.Auto, 'Auto'):
+      # We have no way of knowing if a high pressure cell is being used, so
+      # users must explicitly switch on dynamic shadowing
+      self._dynamic_shadowing = False
     FormatCBFFullPilatus.__init__(self, image_file, **kwargs)
 
     return

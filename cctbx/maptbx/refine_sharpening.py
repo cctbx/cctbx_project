@@ -187,10 +187,11 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
 
   # define Wilson B for the model
   if overall_b is None:
-    overall_b=10*resolution
-    print >>out,"Setting Wilson B = %5.1f A based on resolution of %5.1f A" %(
-      overall_b,resolution)
-
+    if si.resolution:
+      overall_b=si.get_target_b_iso()*si.target_b_iso_model_scale
+    else:
+      overall_b=0
+    print >>out,"Setting Wilson B = %5.1f A" %(overall_b)
 
   # create model map using same coeffs
   from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model

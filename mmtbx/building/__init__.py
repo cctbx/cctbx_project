@@ -609,7 +609,7 @@ class box_build_refine_base (object) :
     """
     sites_cart_box_refined_shifted_back = \
       self.box.xray_structure_box.sites_cart() + \
-      self.box.shift_to_map_boxed_sites_back
+      self.box.shift_cart
     sites_cart_refined = sites_cart_box_refined_shifted_back.select(
       self.selection_in_box)
     assert (len(self.iselection) == len(sites_cart_refined))

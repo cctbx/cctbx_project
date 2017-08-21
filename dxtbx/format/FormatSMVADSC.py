@@ -80,6 +80,76 @@ class FormatSMVADSC(FormatSMV):
 
     return self._goniometer_factory.single_axis()
 
+  def _adsc_module_gain(self, model=None):
+    '''Return an appropriate gain value in ADU per captured X-ray for an
+    ADSC CCD module. If the model is None (unknown) then make a guess based
+    on header details'''
+
+    # Values are based on a combination of manufacturer datasheets,
+    # James Holton's list at http://bl831.als.lbl.gov/xtalsize.html and
+    # empirical guesswork based on spot finding results. The accuracy should
+    # not be expected to be better than 20% and indeed may be worse than that.
+    # Values may refer to gain in ADU per incident photon rather than the
+    # more appropriate ADU per captured photon.
+
+    # Get the binning level
+    bin_lev = str(self._header_dictionary.get('BIN'))
+
+    if model is None:
+      # guesswork based on the header details
+      npx1 = int(self._header_dictionary['SIZE1'])
+      npx2 = int(self._header_dictionary['SIZE2'])
+      px_sz = float(self._header_dictionary['PIXEL_SIZE'])
+      if npx1 == npx2 == 2304 and px_sz == 0.0816:
+        model = 'Q4' # or Q4R
+      elif npx1 == npx2 == 4096 and px_sz == 0.0512:
+        model = 'Q210' # or Q210R bin none or 1x1
+      elif npx1 == npx2 == 2048 and px_sz == 0.1024:
+        model = 'Q210' # or Q210R bin 2x2
+        bin_lev = '2x2'
+      elif npx1 == npx2 == 6144 and px_sz == 0.0512:
+        model = 'Q315' # or Q315R bin none or 1x1
+      elif npx1 == npx2 == 3072 and px_sz == 0.1024:
+        model = 'Q315' # or Q315R bin 2x2
+        bin_lev = '2x2'
+      elif npx1 == npx2 == 4168 and px_sz == 0.0648:
+        model = 'Q270' # or Q270R bin none or 1x1
+      elif npx1 == npx2 == 2084 and px_sz == 0.0324:
+        model = 'Q270' # or Q270R bin 2x2
+        bin_lev = '2x2'
+      else:
+        # Unidentified model
+        return 1.0
+
+    model = model.upper()
+    if model.startswith('Q270'):
+      # Don't know the difference between binning modes in this case
+      return 2.8
+
+    if model.startswith('Q4'):
+      # https://web.archive.org/web/20051224172252/http://www.adsc-xray.com:80/prod_compare.html
+      # Don't know the difference between binning modes in this case
+      return 1.25
+
+    # Get binning mode HW/SW
+    bin_type = self._header_dictionary.get('BIN_TYPE')
+
+    if bin_lev.upper() == 'NONE':
+      bin_type = None
+    elif bin_type != 'HW':
+      bin_type = 'SW'
+
+    if bin_type == 'SW':
+      #return 0.6 This does not look believable. Default to 2.4 instead
+      return 2.4
+
+    if bin_type != 'HW': # assume unbinned
+      return 2.4
+    elif model.endswith('R'): # e.g. Q315r, HW binning
+      return 1.8
+    else: # e.g. Q315, HW binning
+      return 2.4
+
   def _detector(self):
     '''Return a model for a simple detector, presuming no one has
     one of these on a two-theta stage. Assert that the beam centre is
@@ -96,7 +166,8 @@ class FormatSMVADSC(FormatSMV):
 
     return self._detector_factory.simple(
         'CCD', distance, (beam_y, beam_x), '+x', '-y',
-        (pixel_size, pixel_size), image_size, (underload, overload), [])
+        (pixel_size, pixel_size), image_size, (underload, overload), [],
+        gain=self._adsc_module_gain())
 
   def _beam(self):
     '''Return a simple model for the beam.'''

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/25/2017
+Last Changed: 08/01/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -355,6 +355,15 @@ class Integrator(object):
           print error_message
           self.fail = 'failed integration'
 
+    if self.fail == None and self.params.dials.filter.flag_on:
+      selector = Selector(frame=self.frame,
+                          uc_tol=self.params.dials.filter.target_uc_tolerance,
+                          pg=self.params.dials.filter.target_pointgroup,
+                          uc=self.params.dials.filter.target_unit_cell,
+                          min_ref=self.params.dials.filter.min_reflections,
+                          min_res=self.params.dials.filter.min_resolution)
+      self.fail = selector.filter()
+
     with open(self.int_log, 'w') as tf:
       for i in output:
         if 'cxi_version' not in i:
@@ -409,6 +418,8 @@ class Integrator(object):
         step_id = 'INDEXING'
       elif 'integration' in self.fail:
         step_id = 'INTEGRATION'
+      elif 'filter' in self.fail:
+        step_id = 'FILTER'
       log_entry.append('\n {} FAILED - {}'.format(step_id, e))
       int_status = 'not integrated -- {}'.format(e)
       int_results = {'info':int_status}
@@ -417,6 +428,65 @@ class Integrator(object):
     log_entry = "\n".join(log_entry)
 
     return self.fail, self.final, log_entry
+
+class Selector(object):
+  """ Class for selection of optimal spotfinding parameters from grid search """
+
+  def __init__(self,
+               frame,
+               uc_tol=0,
+               pg=None,
+               uc=None,
+               min_ref=0,
+               min_res=None):
+
+    obs = frame['observations'][0]
+    self.obs_pg = frame['pointgroup']
+    self.obs_uc = [prm for prm in obs.unit_cell().parameters()]
+    self.obs_res = obs.d_max_min()[1]
+    self.obs_ref = len(obs.data())
+    self.uc = uc
+    self.uc_tol = uc_tol
+    self.pg = pg
+    self.min_ref = min_ref
+    self.min_res = min_res
+    self.fail = None
+
+  def filter(self):
+    """ Unit cell pre-filter. Applies hard space-group constraint and stringent
+        unit cell parameter restraints to filter out integration results that
+        deviate. Optional step. Unit cell tolerance user-defined. """
+
+    if self.uc != None:
+      user_uc = [prm for prm in self.uc.parameters()]
+      delta_a = abs(self.obs_uc[0] - user_uc[0])
+      delta_b = abs(self.obs_uc[1] - user_uc[1])
+      delta_c = abs(self.obs_uc[2] - user_uc[2])
+      delta_alpha = abs(self.obs_uc[3] - user_uc[3])
+      delta_beta = abs(self.obs_uc[4] - user_uc[4])
+      delta_gamma = abs(self.obs_uc[5] - user_uc[5])
+      uc_check = (delta_a <= user_uc[0] * self.uc_tol and
+                  delta_b <= user_uc[1] * self.uc_tol and
+                  delta_c <= user_uc[2] * self.uc_tol and
+                  delta_alpha <= user_uc[3] * self.uc_tol and
+                  delta_beta <= user_uc[4] * self.uc_tol and
+                  delta_gamma <= user_uc[5] * self.uc_tol)
+    else:
+      uc_check = True
+
+    i_fail = self.obs_ref <= self.min_ref or \
+             (self.min_res != None and
+              self.obs_res >= self.min_res) or \
+             (self.pg != None and
+              self.pg.replace(" ", "") != self.obs_pg.replace(" ", "")) or \
+             not uc_check
+
+    if i_fail:
+      fail = 'failed filter'
+    else:
+      fail = None
+
+    return fail
 
 # ============================================================================ #
 

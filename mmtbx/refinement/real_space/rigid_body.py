@@ -297,7 +297,7 @@ class refine_groups(object):
         box_cushion    = 5,
         selection      = flex.bool(xrs_tmp.scatterers().size(), True))
       #
-      shift_back = box.shift_to_map_boxed_sites_back
+      shift_back = [-box.shift_cart[i] for i in xrange(3)]
       ph_b       = box.pdb_hierarchy_box
       md_b       = box.map_box
       xrs_b      = box.xray_structure_box

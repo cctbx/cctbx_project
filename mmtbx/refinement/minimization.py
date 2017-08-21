@@ -19,7 +19,6 @@ class lbfgs(object):
                      model                    = None,
                      is_neutron_scat_table    = None,
                      target_weights           = None,
-                     tan_b_iso_max            = None,
                      refine_xyz               = False,
                      refine_adp               = False,
                      lbfgs_termination_params = None,
@@ -81,6 +80,7 @@ class lbfgs(object):
     if(self.collect_monitor): self.monitor.collect()
     self.neutron_refinement = (self.fmodels.fmodel_n is not None)
     self.x = flex.double(self.xray_structure.n_parameters(), 0)
+    self.riding_h_manager = self.model.riding_h_manager
     self._scatterers_start = self.xray_structure.scatterers()
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator          = self,
@@ -112,6 +112,13 @@ class lbfgs(object):
         shifts    = self.x,
         min_value = self.u_min,
         max_value = self.u_max)
+    #
+    if(self.riding_h_manager is not None and self.refine_xyz):
+      tmp = flex.vec3_double(self._scatterers_start.size(), [0,0,0])
+      tmp = tmp.set_selected(self.riding_h_manager.not_hd_selection,
+        flex.vec3_double(self.x))
+      self.x.set_selected(flex.bool(self.x.size()), tmp.as_double())
+    #
     apply_shifts_result = xray.ext.minimization_apply_shifts(
       unit_cell      = self.xray_structure.unit_cell(),
       scatterers     = self._scatterers_start,
@@ -130,6 +137,12 @@ class lbfgs(object):
         except Exception, e:
           print >> self.log, str(e)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
+    #
+    if(self.riding_h_manager is not None and self.refine_xyz):
+      sites_cart = self.xray_structure.sites_cart()
+      self.riding_h_manager.idealize(sites_cart = sites_cart)
+      self.xray_structure.set_sites_cart(sites_cart=sites_cart)
+    #
     if(self.refine_adp):
       return apply_shifts_result.u_iso_refinable_params
     else:

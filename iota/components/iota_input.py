@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/19/2017
+Last Changed: 08/01/2017
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -186,6 +186,28 @@ dials
   auto_threshold = True
     .type = bool
     .help = Set to True to estimate global threshold for each image
+  filter
+      .help = Used to throw out integration results that do not fit user-defined unit cell information
+    {
+      flag_on = False
+        .type = bool
+        .help = Set to True to activate prefilter
+      target_pointgroup = None
+        .type = str
+        .help = Target point group, e.g. "P4"
+      target_unit_cell = None
+        .type = unit_cell
+        .help = In format of "a, b, c, alpha, beta, gamma", e.g. 79.4, 79.4, 38.1, 90.0, 90.0, 90.0
+      target_uc_tolerance = None
+        .type = float
+        .help = Maximum allowed unit cell deviation from target
+      min_reflections = None
+        .type = int
+        .help = Minimum integrated reflections per image
+      min_resolution = None
+        .type = float
+        .help = Minimum resolution for accepted images
+    }
 }
 analysis
   .help = "Analysis / visualization options."

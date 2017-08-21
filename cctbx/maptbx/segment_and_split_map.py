@@ -322,7 +322,8 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Target b_iso
        .help = Target B-value for map (sharpening will be applied to yield \
-          this value of b_iso)
+          this value of b_iso). If sharpening method is not supplied, \
+          default is to use b_iso_to_d_cut sharpening.
 
      b_sharpen = None
        .type = float
@@ -336,15 +337,14 @@ master_phil = iotbx.phil.parse("""
        .help = If set, apply resolution_dependent_b (b0 b1 b2). \
              Log10(amplitudes) will start at 1, change to b0 at half \
              of resolution specified, changing linearly, \
-             change to b1 at resolution specified, \
-             and change to b2 at high-resolution limit of map
+             change to b1/2 at resolution specified, \
+             and change to b1/2+b2 at d_min_ratio*resolution
 
      d_min_ratio = 0.833
        .type = float
        .short_caption = Sharpen d_min ratio
        .help = Sharpening will be applied using d_min equal to \
-             d_min_ratio times resolution. If None, box of reflections \
-             with the same grid as the map used.
+             d_min_ratio times resolution. Default is 0.833
 
      rmsd = None
        .type = float
@@ -368,7 +368,7 @@ master_phil = iotbx.phil.parse("""
 
      auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
                             *resolution_dependent model_sharpening \
-                             half_map_sharpening target_b_iso_to_d_cut None
+                             half_map_sharpening *target_b_iso_to_d_cut None
        .type = choice(multi=True)
        .short_caption = Sharpening methods
        .help = Methods to use in sharpening. b_iso searches for b_iso to \
@@ -378,17 +378,24 @@ master_phil = iotbx.phil.parse("""
           to sharpen variably over resolution range. target_b_iso_to_d_cut \
            sets b_iso based on resolution using target_b_iso_ratio.
 
-     box_in_auto_sharpen = True
+     box_in_auto_sharpen = False
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map.
 
-    soft_mask = False
-      .type = bool
-      .help = Use soft mask (smooth change from inside to outside with radius\
+     allow_box_if_b_iso_set = False
+       .type = bool
+       .short_caption = Allow box if b_iso set 
+       .help = Allow box_in_auto_sharpen (if set to True) even if \
+               b_iso is set. Default is to set box_n_auto_sharpen=False \
+               if b_iso is set.
+
+     soft_mask = False
+       .type = bool
+       .help = Use soft mask (smooth change from inside to outside with radius\
              based on resolution of map). In development
-      .short_caption = Soft mask
+       .short_caption = Soft mask
 
      use_weak_density = False
        .type = bool
@@ -489,6 +496,12 @@ master_phil = iotbx.phil.parse("""
            transition is applied and all data is sharpened or blurred. \
            Note 3: only used if b_iso is set.
 
+     optimize_k_sharpen = None
+       .type = bool
+       .short_caption = Optimize value of k_sharpen
+       .help = Optimize value of k_sharpen. \
+                Only applies for auto_sharpen_methods b_iso_to_d_cut and \
+                b_iso
      adjust_region_weight = True
        .type = bool 
        .short_caption = Adjust region weight 
@@ -496,7 +509,7 @@ master_phil = iotbx.phil.parse("""
                equal to overall change in normalized regions over the range \
                of search_b_min to search_b_max using b_iso_to_d_cut.
 
-     region_weight_method = *initial_ratio delta_ratio b_iso
+     region_weight_method = initial_ratio *delta_ratio b_iso
        .type = choice
        .short_caption = Region weight method
        .help = Method for choosing region_weights. Initial_ratio uses \
@@ -522,6 +535,18 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Target b_iso ratio 
        .help = Target b_iso ratio : b_iso is estimated as \
                target_b_iso_ratio * resolution**2
+
+     signal_min = 3.0
+       .type = float
+       .short_caption = Minimum signal
+       .help = Minimum signal in estimation of optimal b_iso.  If\
+                not achieved, use any other method chosen.
+
+     target_b_iso_model_scale = 0.
+       .type = float
+       .short_caption = scale on target b_iso ratio for model
+       .help = For model sharpening, the target_biso is scaled \
+                (normally zero).
 
      search_b_min = -100
        .type = float
@@ -1448,6 +1473,7 @@ class sharpening_info:
       b_sharpen=None,
       b_iso=None,  # expected B_iso after applying b_sharpen
       k_sharpen=None,
+      optimize_k_sharpen=None,
       kurtosis=None,
       adjusted_sa=None,
       sa_ratio=None,
@@ -1473,6 +1499,7 @@ class sharpening_info:
       mask_atoms_atom_radius=None,
       value_outside_atoms=None,
       soft_mask=None,
+      allow_box_if_b_iso_set=None,
       search_b_min=None,
       search_b_max=None,
       search_b_n=None,
@@ -1481,6 +1508,8 @@ class sharpening_info:
       region_weight_factor=None,
       region_weight_buffer=None,
       target_b_iso_ratio=None,
+      signal_min=None,
+      target_b_iso_model_scale=None,
       box_sharpening_info_obj=None,
       chain_type=None,
       target_scale_factors=None,
@@ -1610,7 +1639,9 @@ class sharpening_info:
       self.mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius
       self.value_outside_atoms=params.map_modification.value_outside_atoms
       self.soft_mask=params.map_modification.soft_mask
+      self.allow_box_if_b_iso_set=params.map_modification.allow_box_if_b_iso_set
       self.k_sharpen=params.map_modification.k_sharpen
+      self.optimize_k_sharpen=params.map_modification.optimize_k_sharpen
       self.sharpening_target=params.map_modification.sharpening_target
       self.residual_target=params.map_modification.residual_target
       self.eps=params.map_modification.eps
@@ -1649,6 +1680,8 @@ class sharpening_info:
       self.region_weight_factor=params.map_modification.region_weight_factor
       self.region_weight_buffer=params.map_modification.region_weight_buffer
       self.target_b_iso_ratio=params.map_modification.target_b_iso_ratio
+      self.signal_min=params.map_modification.signal_min
+      self.target_b_iso_model_scale=params.map_modification.target_b_iso_model_scale
 
       if sharpening_method is not None:
         self.sharpening_method=sharpening_method
@@ -2112,7 +2145,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
 
     if d_min is not None:
       d_min_use=d_min
-      if d_min_ratio is not None: 
+      if d_min_ratio is not None:
         d_min_use=d_min*d_min_ratio
     else:
       d_min_use=None
@@ -2120,7 +2153,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
     if crystal_symmetry.space_group().type().number() in [0,1]:
       args=['d_min=None','box=True']
     else: # cannot use box for other space groups
-      args=['d_min=%s'%(d_min_use),'box=False'] 
+      args=['d_min=%s'%(d_min_use),'box=False']
     map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
@@ -2204,7 +2237,6 @@ def apply_sharpening(map_coeffs=None,
       f_array_sharpened=absolute_scaling.anisotropic_correction(
         f_array,0.0,u_star_aniso_removed,must_be_greater_than=-0.0001)
     else:
-
       # Apply sharpening only to data from infinity to d_min, with transition
       # steepness of k_sharpen.
       data_array=f_array.data()
@@ -2959,7 +2991,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
     box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
-    origin_shift=box.total_shift_cart
+    origin_shift=box.shift_cart
     # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means
     #   total_shift_cart and origin_shift both positive
     map_data=box.map_box.as_double()
@@ -2970,7 +3002,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
     print >>out, "Moving origin to (0,0,0)"
     print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(
-        origin_shift)
+        tuple(origin_shift))
     # NOTE: size and cell params are now different!
 
     new_half_map_data_list=[]
@@ -2985,7 +3017,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        "cutout_half_map_%s.ccp4" %(ii))
       print >>out,"Writing cutout half_map data to %s" %(cutout_half_map_file)
       write_ccp4_map(crystal_symmetry,cutout_half_map_file,new_half_map_data_list[-1])
-      
+
     half_map_data_list=new_half_map_data_list
 
     if params.map_modification.soft_mask:
@@ -6077,7 +6109,7 @@ def score_map(map_data=None,
     normalized_regions=regions/max(1,target_in_all_regions)
     skew=get_skew(map_data.as_1d())
 
-    if scale_region_weight: 
+    if scale_region_weight:
       solvent_fraction_std=0.85 # typical value, ends up as scale on weight
       region_weight_scale=(1.-solvent_fraction)/(1.-solvent_fraction_std)
       region_weight_use=region_weight*region_weight_scale
@@ -6246,13 +6278,16 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'resolution','d_min_ratio',
        'discard_if_worse',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
-       'max_box_fraction','k_sharpen',
+       'allow_box_if_b_iso_set',
+       'max_box_fraction','k_sharpen','optimize_k_sharpen',
         'residual_target','sharpening_target',
        'search_b_min','search_b_max','search_b_n','adjust_region_weight',
        'region_weight_method',
         'region_weight_factor',
         'region_weight_buffer',
         'target_b_iso_ratio',
+        'signal_min',
+        'target_b_iso_model_scale',
        'b_iso','b_sharpen',
        'resolution_dependent_b',
        'region_weight',
@@ -6277,7 +6312,6 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        else:
          args.append("%s=%s" %(param,x))
     local_params=get_params_from_args(args)
-
     if local_params.input_files.seq_file and \
         not local_params.crystal_info.solvent_content:
         solvent_fraction=get_solvent_fraction(local_params,
@@ -6704,7 +6738,8 @@ def fit_bounds_inside_box(lower,upper,box_size=None,all=None):
     new_upper.append(u)
   return new_lower,new_upper
 
-def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
+def get_target_boxes(si=None,ncs_obj=None,map=None,
+    pdb_inp=None,out=sys.stdout):
 
   print >>out,80*"-"
   print >>out,"Getting segmented map to ID locations for sharpening"
@@ -6747,14 +6782,38 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,out=sys.stdout):
   centers_frac=flex.vec3_double()
   upper_bounds_list=[]
   lower_bounds_list=[]
-  for map_info_obj in tracking_data.output_region_map_info_list:
-    lower,upper=map_info_obj.lower_upper_bounds()
-    lower,upper=fit_bounds_inside_box(
-      lower,upper,box_size=si.box_size,all=map.all())
-    upper_bounds_list.append(upper)
-    lower_bounds_list.append(lower)
-    average_fract=average_from_bounds(lower,upper,grid_all=map.all())
-    centers_frac.append(average_fract)
+  if pdb_inp:
+    xyz_list=pdb_inp.atoms().extract_xyz()
+    i_end=xyz_list.size()
+    n_centers=min(i_end,max(1,len(tracking_data.output_region_map_info_list)))
+    i_step=int(0.5+min(i_end/2,i_end/n_centers)) # about n_centers
+    i_start=max(1,int(0.5+i_step/2))
+    from scitbx.matrix import col
+    ma=map.all()
+    for i in xrange(i_start,i_end+1,i_step):
+      lower_cart=col(xyz_list[i])
+      lower_frac=si.crystal_symmetry.unit_cell().fractionalize(lower_cart)
+      lower=[
+        int(0.5+ma[0]*lower_frac[0]),
+        int(0.5+ma[1]*lower_frac[1]),
+        int(0.5+ma[2]*lower_frac[2])]
+      lower,upper=fit_bounds_inside_box(
+        lower,lower,box_size=si.box_size,all=map.all())
+      upper_bounds_list.append(upper)
+      lower_bounds_list.append(lower)
+      average_fract=average_from_bounds(lower,upper,grid_all=map.all())
+      centers_frac.append(average_fract)
+  else:
+    for map_info_obj in tracking_data.output_region_map_info_list:
+      lower,upper=map_info_obj.lower_upper_bounds()
+      lower,upper=fit_bounds_inside_box(
+        lower,upper,box_size=si.box_size,all=map.all())
+      upper_bounds_list.append(upper)
+      lower_bounds_list.append(lower)
+      average_fract=average_from_bounds(lower,upper,grid_all=map.all())
+      centers_frac.append(average_fract)
+
+
   centers_cart=si.crystal_symmetry.unit_cell().orthogonalize(centers_frac)
 
 
@@ -6839,7 +6898,8 @@ def run_local_sharpening(si=None,
   sum_weight_value_map=sum_weight_map.deep_copy()
   upper_bounds_list,lower_bounds_list,\
      centers_cart_ncs_list,centers_cart,all_cart=\
-     get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,out=out)
+     get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,
+       pdb_inp=pdb_inp,out=out)
 
   dist=mean_dist_to_nearest_neighbor(all_cart)
   if not dist:
@@ -6991,6 +7051,7 @@ def auto_sharpen_map_or_map_coeffs(
         use_local_aniso=None,
         auto_sharpen=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
+        allow_box_if_b_iso_set=None,
         use_weak_density=None,
         discard_if_worse=None,
         n_residues=None,
@@ -7008,6 +7069,7 @@ def auto_sharpen_map_or_map_coeffs(
         value_outside_atoms=None,
         soft_mask=None,
         k_sharpen=None,
+        optimize_k_sharpen=None,
         search_b_min=None,
         search_b_max=None,
         search_b_n=None,
@@ -7016,6 +7078,8 @@ def auto_sharpen_map_or_map_coeffs(
         region_weight_factor=None,
         region_weight_buffer=None,
         target_b_iso_ratio=None,
+        signal_min=None,
+        target_b_iso_model_scale=None,
         b_iso=None, # if set, use it
         b_sharpen=None, # if set, use it
         resolution_dependent_b=None, # if set, use it
@@ -7144,6 +7208,34 @@ def auto_sharpen_map_or_map_coeffs(
 
     return si  # si.map_data is the sharpened map
 
+def estimate_signal_to_noise(value_list=None,minimum_value_to_include=0):
+  # get "noise" from rms value of value_list(n) compared with average of n-2,n-1,n+1,n+2
+  # assumes middle is the high part of the very smooth curve.
+  # Don't include values < minimum_value_to_include
+  mean_square_diff=0.
+  mean_square_diff_n=0.
+  for b2,b1,value,p1,p2 in zip(value_list,
+    value_list[1:],
+    value_list[2:],
+    value_list[3:],
+    value_list[4:]):
+    too_low=False
+    for xx in [b2,b1,value,p1,p2]:
+      if xx <minimum_value_to_include: 
+        too_low=True
+    if not too_low:
+      mean_square_diff_n+=1
+      mean_square_diff+=( (b2+b1+p1+p2)*0.25 - value)**2
+  rmsd=(mean_square_diff/max(1,mean_square_diff_n))**0.5
+  if value_list.size()>0:
+    min_adj_sa=max(value_list[0],value_list[-1])
+    max_adj_sa=value_list.min_max_mean().max
+    signal_to_noise=(max_adj_sa-min_adj_sa)/max(1.e-10,rmsd)
+  else:
+    signal_to_noise=0.
+  return signal_to_noise
+
+
 def run_auto_sharpen(
       si=None,
       map_data=None,
@@ -7269,7 +7361,7 @@ def run_auto_sharpen(
     sa_ratio_list=[]
     normalized_regions_list=[] 
 
-    if si.resolution: 
+    if 0: #si.resolution: 
       # 2017-07-26 reset b_low,b_mid,b_high, using 5.9*resolution**2 for b_mid
       delta_search=si.search_b_max-si.search_b_min
       b_mid=si.get_target_b_iso()
@@ -7279,7 +7371,7 @@ def run_auto_sharpen(
     else:
       b_low=min(original_b_iso,si.search_b_min) 
       b_high=max(original_b_iso,si.search_b_max)
-      b_mid=b_low+0.75*(b_high-b_low)
+      b_mid=b_low+0.375*(b_high-b_low)
 
     for b_iso in [b_low,b_high,b_mid]:
 
@@ -7324,10 +7416,12 @@ def run_auto_sharpen(
     #  sa[2] >= sa[1] and sa[2] >= sa[0]
     # sa_ratio_list[2]-region_weight*normalized_regions[2] >= 
     #    sa_ratio_list[1]-region_weight*normalized_regions[1]
+    # NOTE: sa_ratio_list and normalized_regions both  decrease in order:
+    #     low med high or [0] [2] [1]
     max_region_weight = (sa_ratio_list[2]- sa_ratio_list[1])/max(0.001,
          normalized_regions_list[2]-normalized_regions_list[1]) 
-    min_region_weight = (sa_ratio_list[2]- sa_ratio_list[0])/max(0.001,
-       normalized_regions_list[2]-normalized_regions_list[0]) 
+    min_region_weight = (sa_ratio_list[0]- sa_ratio_list[2])/max(0.001,
+       normalized_regions_list[0]-normalized_regions_list[2]) 
 
     min_region_weight=max(1.e-10,min_region_weight) # positive
     max_region_weight=max(1.e-10,max_region_weight) # positive
@@ -7408,7 +7502,6 @@ def run_auto_sharpen(
   null_si=None
   best_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
-  best_map_data=None
 
   if si.sharpening_is_defined():  # just do it Use this if come in with method
     print >>out,"\nUsing specified sharpening"
@@ -7431,9 +7524,13 @@ def run_auto_sharpen(
     for m in auto_sharpen_methods:
       # ------------------------
       if m in ['no_sharpening','resolution_dependent','model_sharpening',
-          'half_map_sharpening']:
-        b_min=original_b_iso
-        b_max=original_b_iso
+          'half_map_sharpening','target_b_iso_to_d_cut']:
+        if m=='target_b_iso_to_d_cut':
+          b_min=si.get_target_b_iso()
+          b_max=si.get_target_b_iso()
+        else:
+          b_min=original_b_iso
+          b_max=original_b_iso
         b_n=1
         k_sharpen=0.
         delta_b=0
@@ -7469,10 +7566,12 @@ def run_auto_sharpen(
             "\nB-sharpen   B-iso   k_sharpen   SA   "+\
              "Kurtosis  sa_ratio  Normalized regions"
       # ------------------------
-      local_best_map_data=None
       local_best_si=deepcopy(si).update_with_box_sharpening_info(
         box_sharpening_info_obj=box_sharpening_info_obj)
 
+      si_b_iso_list=flex.double()
+      si_score_list=flex.double()
+      si_id_list=[]
       for i in xrange(b_n):
         # ============================================
         local_si=deepcopy(si).update_with_box_sharpening_info(
@@ -7556,12 +7655,16 @@ def run_auto_sharpen(
              local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
             "  %7.3f         %7.3f" %(
              local_si.sa_ratio,local_si.normalized_regions)
+          if local_si.b_iso is not None and local_si.score is not None:
+            si_b_iso_list.append(local_si.b_iso)
+            si_score_list.append(local_si.score)
+            if local_si.k_sharpen is not None:
+             si_id_list.append("%.3f_%.3f" %(local_si.b_iso,local_si.k_sharpen))
 
         if m=='no_sharpening':
           null_si=local_si
         if local_best_si.score is None or local_si.score>local_best_si.score:
           local_best_si=local_si
-          local_best_map_data=local_map_data
         # ============================================
 
 
@@ -7585,13 +7688,88 @@ def run_auto_sharpen(
          "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
          local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
 
-      if best_si.score is None or local_best_si.score > best_si.score:
+      if  si_score_list.size()>1: # test for signal
+        signal_to_noise=estimate_signal_to_noise(value_list=si_score_list)
+        print >>out,\
+          "Estimated signal-to-noise in ID of optimal sharpening: %5.1f" %(
+           signal_to_noise)
+        if signal_to_noise<local_best_si.signal_min and \
+            'target_b_iso_to_d_cut' in auto_sharpen_methods:
+          print >>out,\
+            "Skipping this analysis as signal-to-noise is less than %5.1f " %(
+           local_best_si.signal_min)
+          local_best_si.score=None
+
+      if local_best_si.optimize_k_sharpen and \
+        local_best_si.k_sharpen is not None and \
+        local_best_si.sharpening_method in ['b_iso_to_d_cut','b_iso']:
+        print >>out,"\nOptimizing k_sharpen. "
+        print >>out,"Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f " %(
+           local_best_si.score,local_best_si.b_iso,local_best_si.k_sharpen)
+        # existing values:
+        value_dict={}
+        for id,score in zip(si_id_list,si_score_list):
+          value_dict[id]=score
+        best_score=local_best_si.score
+        delta_b_iso=delta_b
+        delta_k_sharpen=2
+        n_cycle_optimize=5
+        min_cycles=2
+        n_range=2
+        local_best_score=best_score
+        local_best_working_si=deepcopy(local_best_si)
+        for cycle in xrange(n_cycle_optimize):
+          print >>out,"Optimization cycle %s" %(cycle)
+          print >>out,\
+             "Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f " %(
+           local_best_working_si.score,local_best_working_si.b_iso,
+              local_best_working_si.k_sharpen)
+          working_best_si=None
+          for ii in xrange(-n_range,n_range+1):
+            test_b_iso=local_best_working_si.b_iso+ii*delta_b_iso
+            for jj in xrange(-n_range,n_range+1):
+              test_k_sharpen=local_best_working_si.k_sharpen+jj*delta_k_sharpen
+              id="%.3f_%.3f" %(test_b_iso,test_k_sharpen)
+              if id in value_dict:
+                score=value_dict[id]
+              else:
+                local_si=deepcopy(local_best_si)
+                local_f_array=f_array
+                local_phases=phases
+                local_si.k_sharpen=test_k_sharpen
+                local_si.b_iso=test_b_iso
+                local_si.b_sharpen=original_b_iso-local_si.b_iso
+
+                local_map_data=apply_sharpening(
+                  f_array=local_f_array,phases=local_phases,
+                  sharpening_info_obj=local_si,
+                  crystal_symmetry=local_si.crystal_symmetry,
+                  out=null_out())
+                local_si=score_map(
+                   map_data=local_map_data,sharpening_info_obj=local_si,
+                  out=null_out())
+                value_dict[id]=local_si.score
+                if local_si.score > local_best_score:
+                  local_best_score=local_si.score
+                  local_best_working_si=deepcopy(local_si)
+          if local_best_score > best_score:
+            best_score=local_best_score
+            working_best_si=deepcopy(local_best_working_si)
+            delta_b_iso=delta_b_iso/2
+            delta_k_sharpen=delta_k_sharpen/2
+          elif cycle>min_cycles:
+            break  # nothing happened
+       
+        if working_best_si and working_best_si.score > local_best_si.score:
+          print >>out,"Using new values of b_iso and k_sharpen"
+          local_best_si=working_best_si
+
+      if local_best_si.score is not None and (
+          best_si.score is None or local_best_si.score > best_si.score):
         best_si=local_best_si
-        best_map_data=local_best_map_data
         if not best_si.is_model_sharpening() and \
             not best_si.is_half_map_sharpening():
           print >>out,"This is the current best score\n"
-
 
   if not best_si.is_model_sharpening() and not best_si.is_half_map_sharpening():
     print >>out,"\nOverall best sharpening method: %s Score: %7.3f\n" %(

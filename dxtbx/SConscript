@@ -29,7 +29,7 @@ if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
                                    libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'lib'))
                                  ]
 
-  env_etc.dxtbx_includes.append(os.path.join(libtbx.env.dist_path("cbflib_adaptbx"), 'msvc_include'))
+  env_etc.dxtbx_includes.append(os.path.join(env_etc.cctbx_include,"msvc9.0_include"))
   env_etc.dxtbx_includes.append(libtbx.env.under_base('libtiff'))
                                  
 # for the hdf5.h file - look at where Python is coming from unless is OS X

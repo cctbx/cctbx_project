@@ -50,6 +50,9 @@ class manager(object):
       disth = neighbors.a0['dist_ideal']
     else:
       disth = (r0 - rh).length()
+    if (not neighbors.a1 or not neighbors.b1):
+      self.unk_list.append(ih)
+      return
     i_a1 = neighbors.a1['iseq']
     i_b1 = neighbors.b1['iseq']
     r1 = matrix.col(self.sites_cart[i_a1])

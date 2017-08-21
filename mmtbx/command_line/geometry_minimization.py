@@ -94,7 +94,7 @@ minimization
     .help = stop after reaching specified cutoff value
   correct_special_position_tolerance = 1.0
     .type = float
-  riding_h = False
+  riding_h = True
     .type = bool
     .help = Use riding model for H
   move

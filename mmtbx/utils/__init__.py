@@ -3075,18 +3075,14 @@ class extract_box_around_model_and_map(object):
                value_outside_atoms=None):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
-    self.initial_shift = None
-    self.initial_shift_cart = None
-    self.total_shift_cart = None
     soo = shift_origin(map_data=self.map_data,
       xray_structure=self.xray_structure)
     self.map_data = soo.map_data
-    self.initial_shift      = soo.shift_frac
-    self.initial_shift_cart = soo.shift_cart
-    xray_structure = soo.xray_structure
+    self.shift_cart = soo.shift_cart
     if(selection is None):
-      selection = flex.bool(xray_structure.scatterers().size(), True)
-    xray_structure_selected = xray_structure.select(selection=selection)
+      xray_structure_selected = soo.xray_structure.deep_copy_scatterers()
+    else:
+      xray_structure_selected = soo.xray_structure.select(selection=selection)
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
     if(density_select):
       frac_min,frac_max=self.select_box(
@@ -3103,23 +3099,17 @@ class extract_box_around_model_and_map(object):
       frac_max = xray_structure_selected.sites_frac().max()
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
-    self.frac_min = frac_min
     na = self.map_data.all()
     self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
-    self.gridding_last=[iceil(f*n) for f,n in zip(frac_max,na)]
-    all = self.map_data.all()
+    self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
-    o = self.map_box.origin()
-    self.secondary_shift = (-o[0]/all[0],-o[1]/all[1],-o[2]/all[2])
-    self.secondary_shift_cart = cs.unit_cell().orthogonalize(self.secondary_shift)
-    ps=self.initial_shift_cart
-    ss=self.secondary_shift_cart
-    if ps is None:
-      self.total_shift_cart=ss
-    elif ss is None:
-      self.total_shift_cart=ps
+    secondary_shift_frac = [
+      -self.map_box.origin()[i]/self.map_data.all()[i] for i in xrange(3)]
+    secondary_shift_cart = cs.unit_cell().orthogonalize(secondary_shift_frac)
+    if(self.shift_cart is None):
+      self.shift_cart = secondary_shift_cart
     else:
-      self.total_shift_cart = (ps[0]+ss[0], ps[1]+ss[1], ps[2]+ss[2])
+      self.shift_cart = [self.shift_cart[i]+secondary_shift_cart[i] for i in xrange(3)]
     self.map_box.reshape(flex.grid(self.map_box.all()))
     # shrink unit cell to match the box
     p = cs.unit_cell().parameters()
@@ -3128,26 +3118,17 @@ class extract_box_around_model_and_map(object):
       abc.append( p[i] * self.map_box.all()[i]/na[i] )
     new_unit_cell_box = uctbx.unit_cell(
       parameters=(abc[0],abc[1],abc[2],p[3],p[4],p[5]))
-    cs = crystal.symmetry(unit_cell=new_unit_cell_box, space_group="P1")
-    self.box_crystal_symmetry=cs
-    sp = crystal.special_position_settings(cs)
+    self.box_crystal_symmetry = crystal.symmetry(
+      unit_cell=new_unit_cell_box, space_group="P1")
+    sp = crystal.special_position_settings(self.box_crystal_symmetry)
     # new xray_structure in the box
-    sites_frac_new = xray_structure_selected.sites_frac()+self.secondary_shift
+    sites_frac_new = xray_structure_selected.sites_frac()+secondary_shift_frac
     xray_structure_box=xray_structure_selected.replace_sites_frac(sites_frac_new)
     sites_cart = xray_structure_box.sites_cart()
     sites_frac = new_unit_cell_box.fractionalize(sites_cart)
     xray_structure_box = xray_structure_box.replace_sites_frac(sites_frac)
     self.xray_structure_box = xray.structure(
        sp,xray_structure_box.scatterers())
-    # shift to map (boxed) sites back
-    sc1 = xray_structure_selected.sites_cart()
-    sc2 = self.xray_structure_box.sites_cart()
-    if sc1.size()>0:
-      self.shift_to_map_boxed_sites_back = (sc1-sc2)[0]
-    else:
-      self.shift_to_map_boxed_sites_back = None
-    self.shift_cart = self.total_shift_cart # XXX
-    ###
     if(mask_atoms):
       import boost.python
       cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
@@ -3160,19 +3141,17 @@ class extract_box_around_model_and_map(object):
         mask_value_inside_molecule  = 1,
         mask_value_outside_molecule = 0,
         radii                       = radii)
-
-      if (soft_mask):
+      if(soft_mask):
         # make the mask a soft mask
         maptbx.unpad_in_place(map=mask)
         mask = maptbx.smooth_map(
           map              = mask,
           crystal_symmetry = cs,
           rad_smooth       = soft_mask_radius)
-
       self.map_box = self.map_box*mask
-
-      
-      if value_outside_atoms=='mean':  # default is None.
+      if(value_outside_atoms is not None):
+        assert not soft_mask
+        assert value_outside_atoms=='mean'
         #  make mean outside==mean inside
         one_d=self.map_box.as_1d()
         n_zero=mask.count(0)
@@ -3276,7 +3255,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       else:
         i_max=value_list.size()-1
         i_min=0
- 
+
       i_low= max(i_min,min(i_max,int(0.5+z_low* value_list.size())))
       i_high=max(i_min,min(i_max,int(0.5+z_high*value_list.size())))
       min_value=value_list.min_max_mean().min
@@ -3297,7 +3276,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
         return z_min,z_max
       else:
         return z_min,z_max
-       
+
     if threshold is None: threshold=0
     n_tot=value_list.size()
     assert n_tot>0

@@ -5,17 +5,62 @@ import math
 
 class merge_data_handler(object):
   """keep arrays of unmerged data"""
-  def __init__(self, miller_indices_merge, I_merge, sigI_merge, stat_all,
-                   I_two_halves_tuple, uc_mean, wavelength_mean):
+  def __init__(self):
     #extract data
-    self.miller_indices_merge = miller_indices_merge
-    self.I_merge = I_merge
-    self.sigI_merge = sigI_merge
-    self.r_meas_div, self.r_meas_divisor, self.multiplicities = stat_all
-    self.I_even, self.I_odd, self.I_even_h, self.I_odd_h, self.I_even_k, self.I_odd_k, self.I_even_l, self.I_odd_l = I_two_halves_tuple
+    self.miller_indices_merge = flex.miller_index()
+    self.I_merge = flex.double()
+    self.sigI_merge = flex.double()
+    self.r_meas_div = flex.double()
+    self.r_meas_divisor = flex.double()
+    self.multiplicities = flex.int()
+    self.I_even = flex.double()
+    self.I_odd  = flex.double()
+    self.I_even_h = flex.double()
+    self.I_odd_h = flex.double()
+    self.I_even_k = flex.double()
+    self.I_odd_k = flex.double()
+    self.I_even_l = flex.double()
+    self.I_odd_l = flex.double()
+    self.miller_array_merge = None
+
+  def extend_data(self, miller_indices_merge, I_merge, sigI_merge, stat_all,
+                   I_two_halves_tuple, uc_mean, wavelength_mean):
+    self.miller_indices_merge.extend(miller_indices_merge)
+    self.I_merge.extend(I_merge)
+    self.sigI_merge.extend(sigI_merge)
+    r_meas_div, r_meas_divisor, multiplicities = stat_all
+    self.r_meas_div.extend(r_meas_div)
+    self.r_meas_divisor.extend(r_meas_divisor)
+    self.multiplicities.extend(multiplicities)
+    I_even, I_odd, I_even_h, I_odd_h, I_even_k, I_odd_k, I_even_l, I_odd_l = I_two_halves_tuple
+    self.I_even.extend(I_even)
+    self.I_odd.extend(I_odd)
+    self.I_even_h.extend(I_even_h)
+    self.I_odd_h.extend(I_odd_h)
+    self.I_even_k.extend(I_even_k)
+    self.I_odd_k.extend(I_odd_k)
+    self.I_even_l.extend(I_even_l)
+    self.I_odd_l.extend(I_odd_l)
     self.uc_mean = uc_mean
     self.wavelength_mean = wavelength_mean
-    self.miller_array_merge = None
+
+  def extend(self, mdh):
+    self.miller_indices_merge.extend(mdh.miller_indices_merge)
+    self.I_merge.extend(mdh.I_merge)
+    self.sigI_merge.extend(mdh.sigI_merge)
+    self.r_meas_div.extend(mdh.r_meas_div)
+    self.r_meas_divisor.extend(mdh.r_meas_divisor)
+    self.multiplicities.extend(mdh.multiplicities)
+    self.I_even.extend(mdh.I_even)
+    self.I_odd.extend(mdh.I_odd)
+    self.I_even_h.extend(mdh.I_even_h)
+    self.I_odd_h.extend(mdh.I_odd_h)
+    self.I_even_k.extend(mdh.I_even_k)
+    self.I_odd_k.extend(mdh.I_odd_k)
+    self.I_even_l.extend(mdh.I_even_l)
+    self.I_odd_l.extend(mdh.I_odd_l)
+    self.uc_mean = mdh.uc_mean
+    self.wavelength_mean = mdh.wavelength_mean
 
   def generate_miller_array_from_miller_set(self, miller_set, target_anomalous_flag):
     self.miller_array_merge = miller_set.array() \
