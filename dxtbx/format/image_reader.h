@@ -66,18 +66,6 @@ namespace dxtbx { namespace format {
 
   protected:
 
-    /* /** */
-    /*  * Helper function to convert a list of tile variants to an image buffer */
-    /*  *1/ */
-    /* ImageBuffer tile_list_to_image_buffer( */
-    /*     scitbx::af::const_ref<variant_type> &tiles, */
-    /*     scitbx::af::const_ref<std::string> &names) { */
-    /*   if (boost::apply_visitor(IsDoubleVisitor(), tiles)) { */
-    /*     return ImageBuffer(boost::apply_visitor(ImageConstructor<double>(names), tiles); */
-    /*   } */
-    /*   return ImageBuffer(boost::apply_visitor(ImageConstructor<int>(names), tiles); */
-    /* } */
-
     std::string filename_;
     ImageBuffer buffer_;
   };
@@ -105,7 +93,6 @@ namespace dxtbx { namespace format {
     typedef typename ImageReaderType::uint32_type uint32_type;
     typedef typename ImageReaderType::float64_type float32_type;
     typedef typename ImageReaderType::float64_type float64_type;
-    // FIXME typedef typename ImageReaderType::variant_type variant_type;
 
     /**
      * Initialise with the filename

@@ -82,30 +82,30 @@ namespace dxtbx { namespace format {
       if (sample_format == SAMPLEFORMAT_INT) {
         if (bits_per_sample == 16) {
           DXTBX_ASSERT(8 * sizeof(short) == (bits_per_sample));
-          read_data_detail<short>(tiff);
+          read_data_detail<int, short>(tiff);
         } else if (bits_per_sample == 32) {
           DXTBX_ASSERT(8 * sizeof(int) == (bits_per_sample));
-          read_data_detail<int>(tiff);
+          read_data_detail<int, int>(tiff);
         } else {
           DXTBX_ERROR("Unsupported bits per sample");
         }
       } else if (sample_format == SAMPLEFORMAT_UINT) {
         if (bits_per_sample == 16) {
           DXTBX_ASSERT(8 * sizeof(unsigned short) == (bits_per_sample));
-          read_data_detail<unsigned short>(tiff);
+          read_data_detail<int, unsigned short>(tiff);
         } else if (bits_per_sample == 32) {
           DXTBX_ASSERT(8 * sizeof(unsigned int) == (bits_per_sample));
-          read_data_detail<unsigned int>(tiff);
+          read_data_detail<int, unsigned int>(tiff);
         } else {
           DXTBX_ERROR("Unsupported bits per sample");
         }
       } else if (sample_format == SAMPLEFORMAT_IEEEFP) {
         if (bits_per_sample == 32) {
           DXTBX_ASSERT(8 * sizeof(float) == (bits_per_sample));
-          read_data_detail<float>(tiff);
+          read_data_detail<double, float>(tiff);
         } else if (bits_per_sample == 64) {
           DXTBX_ASSERT(8 * sizeof(double) == (bits_per_sample));
-          read_data_detail<double>(tiff);
+          read_data_detail<double, double>(tiff);
         } else {
           DXTBX_ERROR("Unsupported bits per sample");
         }
@@ -117,14 +117,15 @@ namespace dxtbx { namespace format {
       TIFFClose(tiff);
     }
 
-    template <typename T>
+    template <typename OutputType, typename InputType>
     void read_data_detail(TIFF *tiff) {
 
-      typedef typename array_type<T>::type array_data_type;
+      typedef typename array_type<InputType>::type input_array_data_type;
+      typedef typename array_type<OutputType>::type output_array_data_type;
 
       // Get the scan line length and allocate a buffer
       tsize_t scanline_size = TIFFScanlineSize(tiff);
-      std::size_t element_size = sizeof(T);
+      std::size_t element_size = sizeof(InputType);
       DXTBX_ASSERT(scanline_size == element_size * fast_size_);
 
       // The image grid
@@ -133,7 +134,7 @@ namespace dxtbx { namespace format {
       scitbx::af::c_grid<2> grid(slow_size_, fast_size_);
 
       // Allocate the array
-      array_data_type data(grid);
+      input_array_data_type data(grid);
 
       // Loop through and read the data
       for (std::size_t j = 0; j < slow_size_; ++j) {
@@ -141,7 +142,9 @@ namespace dxtbx { namespace format {
       }
 
       // Add to the tiles list
-      // FIXME buffer_ = ImageBuffer(Image<T>(ImageTile<T>(data, "")));
+      output_array_data_type output(data.accessor());
+      std::copy(data.begin(), data.end(), output.begin());
+      buffer_ = ImageBuffer(Image<OutputType>(ImageTile<OutputType>(output, "")));
     }
 
     std::size_t slow_size_;

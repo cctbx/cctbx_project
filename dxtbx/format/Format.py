@@ -292,8 +292,8 @@ class Format(object):
 
   @classmethod
   def get_instance(Class, filename, **kwargs):
-    if (not hasattr(Class, "_current_instance_") or 
-        Class._current_filename_ != filename or 
+    if (not hasattr(Class, "_current_instance_") or
+        Class._current_filename_ != filename or
         Class._current_kwargs_ != kwargs):
       Class._current_instance_ = Class(filename, **kwargs)
       Class._current_filename_ = filename

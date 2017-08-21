@@ -1,3 +1,13 @@
+/*
+ * imageset.h
+ *
+ *  Copyright (C) 2017 Diamond Light Source
+ *
+ *  Author: James Parkhurst
+ *
+ *  This code is distributed under the BSD license, a copy of which is
+ *  included in the root directory of this package.
+ */
 
 #ifndef DXTBX_IMAGESET_H
 #define DXTBX_IMAGESET_H
@@ -26,75 +36,14 @@ namespace dxtbx {
   using format::ImageBuffer;
 
 
-
-  /* template <typename T> */
-  /* class ImageTile { */
-  /* public: */
-
-  /*   ImageTile() {} */
-
-  /*   ImageTile(scitbx::af::versa<T, scitbx::af::c_grid<2> > x) {} */
-
-  /*   scitbx::af::versa< T, scitbx::af::c_grid<2> > data() { */
-  /*     return scitbx::af::versa< T, scitbx::af::c_grid<2> >(); */
-  /*   } */
-  /* }; */
-
-  /* template <typename T> */
-  /* class Image { */
-  /* public: */
-
-  /*   std::size_t ntiles() const { */
-  /*     return 0; */
-  /*   } */
-
-  /*   Image<double> as_double() { */
-  /*     return Image<double>(); */
-  /*   } */
-
-  /*   ImageTile<T> operator[](std::size_t) { */
-  /*     return ImageTile<T>(); */
-  /*   } */
-    
-  /*   ImageTile<T> operator[](std::size_t) const { */
-  /*     return ImageTile<T>(); */
-  /*   } */
-
-  /*   void push_back(ImageTile<T> x) { */
-
-  /*   } */
-  /*   std::size_t size() const { */
-  /*     return 0; */
-  /*   } */    
-
-  /*   bool empty() const { */
-  /*     return true; */
-  /*   } */
-  /* }; */
-
-  /* class ImageVariant { */
-  /* public: */
-  /*   std::size_t ntiles() const { */
-  /*     return 0; */
-  /*   } */
-  /*   std::size_t size() const { */
-  /*     return 0; */
-  /*   } */    
-  /*   Image<double> as_double() { */
-  /*     return Image<double>(); */
-  /*   } */
-
-  /* }; */
-
-
   /**
    * Hold an external lookup item
    */
   template <typename T>
   class ExternalLookupItem {
   public:
-    
-    /** Construct the exteranal lookup item */ 
+
+    /** Construct the exteranal lookup item */
     ExternalLookupItem() {}
 
     /**
@@ -139,7 +88,7 @@ namespace dxtbx {
    */
   class ExternalLookup {
   public:
-    
+
     /**
      * @returns an internal reference to the mask
      */
@@ -153,7 +102,7 @@ namespace dxtbx {
     ExternalLookupItem<double>& gain() {
       return gain_;
     }
-    
+
     /**
      * @returns an internal reference to the pedestal
      */
@@ -169,6 +118,9 @@ namespace dxtbx {
   };
 
 
+  /**
+   * A class to hold data about the imageset
+   */
   class ImageSetData {
   public:
 
@@ -220,7 +172,7 @@ namespace dxtbx {
       return boost::python::extract<Beam>(
         data_.attr("beam")[index])();
     }
-    
+
     void set_beam(std::size_t index, const Beam &beam) const {
       data_.attr("beam")[index] = beam;
     }
@@ -229,7 +181,7 @@ namespace dxtbx {
       return boost::python::extract<Detector>(
         data_.attr("detector")[index])();
     }
-    
+
     void set_detector(std::size_t index, const Detector &detector) const {
       data_.attr("detector")[index] = detector;
     }
@@ -238,7 +190,7 @@ namespace dxtbx {
       return boost::python::extract<Goniometer>(
         data_.attr("goniometer")[index])();
     }
-    
+
     void set_goniometer(std::size_t index, const Goniometer &goniometer) const {
       data_.attr("goniometer")[index] = goniometer;
     }
@@ -247,7 +199,7 @@ namespace dxtbx {
       return boost::python::extract<Scan>(
         data_.attr("scan")[index])();
     }
-    
+
     void set_scan(std::size_t index, const Scan &scan) const {
       data_.attr("scan")[index] = scan;
     }
@@ -271,23 +223,31 @@ namespace dxtbx {
 
 
 
-  class DataCache {
-  public:
-
-    ImageBuffer image;
-    int index;
-
-    DataCache()
-      : index(-1) {}
-  };
-
-
   /**
    * A class to represent an imageset
    */
   class ImageSet {
   public:
 
+    /**
+     * Cache an image
+     */
+    class DataCache {
+    public:
+
+      ImageBuffer image;
+      int index;
+
+      DataCache()
+        : index(-1) {}
+    };
+
+
+    /**
+     * Default constructor throws an exception.
+     * This only here so overloaded functions that
+     * never return can be compiled without warnings.
+     */
     ImageSet() {
       DXTBX_ERROR("ImageSet needs imageset data");
     }
@@ -330,7 +290,7 @@ namespace dxtbx {
     scitbx::af::shared<std::size_t> indices() const {
       return indices_;
     }
-    
+
     /**
      * @returns The number of images
      */
@@ -352,14 +312,14 @@ namespace dxtbx {
      */
     ImageBuffer get_raw_data(std::size_t index) {
       if (data_cache_.index == index) {
-        return data_cache_.image; 
+        return data_cache_.image;
       }
       ImageBuffer image = data_.get_data(indices_[index]);
       data_cache_.index = index;
       data_cache_.image = image;
       return image;
     }
-   
+
     /**
      * Get the corrected data array (raw - pedestal) / gain
      * @param index The image index
@@ -412,7 +372,7 @@ namespace dxtbx {
       // Return the result
       return result;
     }
-    
+
     /**
      * Get the detector gain map. Either take this from the external gain map or
      * try to construct from the detector gain.
@@ -461,14 +421,14 @@ namespace dxtbx {
     Image<double> get_pedestal(std::size_t index) {
       return external_lookup().pedestal().get_data();
     }
-   
+
     /**
      * Compute the mask
      * @param index The image index
      * @returns The image mask
      */
     Image<bool> get_mask(std::size_t index) {
-      
+
       typedef scitbx::af::versa< double, scitbx::af::c_grid<2> > array_type;
 
       // Compute the trusted range mask
@@ -543,7 +503,7 @@ namespace dxtbx {
       DXTBX_ASSERT(index < indices_.size());
       return data_.get_beam(indices_[index]);
     }
-    
+
     /**
      * @param index The image index
      * @returns the detector at index
@@ -553,7 +513,7 @@ namespace dxtbx {
       DXTBX_ASSERT(index < indices_.size());
       return data_.get_detector(indices_[index]);
     }
-    
+
     /**
      * @param index The image index
      * @returns the goniometer at index
@@ -573,7 +533,7 @@ namespace dxtbx {
       DXTBX_ASSERT(index < indices_.size());
       return data_.get_scan(indices_[index]);
     }
-   
+
     /**
      * Set the beam model
      * @param index The image index
@@ -584,7 +544,7 @@ namespace dxtbx {
       DXTBX_ASSERT(index < indices_.size());
       data_.set_beam(indices_[index], beam);
     }
-    
+
     /**
      * Set the detector model
      * @param index The image index
@@ -595,7 +555,7 @@ namespace dxtbx {
       DXTBX_ASSERT(index < indices_.size());
       data_.set_detector(indices_[index], detector);
     }
-    
+
     /**
      * Set the goniometer model
      * @param index The image index
@@ -666,7 +626,10 @@ namespace dxtbx {
     virtual
     ImageSet partial_set(std::size_t first, std::size_t last) const {
       DXTBX_ASSERT(last > first);
-      return ImageSet(data_, scitbx::af::const_ref<std::size_t>(&indices_[first], last - first));
+      return ImageSet(
+          data_,
+          scitbx::af::const_ref<std::size_t>(
+            &indices_[first], last - first));
     }
 
     /**
@@ -735,7 +698,7 @@ namespace dxtbx {
       DXTBX_ASSERT(grid_size.all_gt(0));
       DXTBX_ASSERT(grid_size[0] * grid_size[1] == size());
     }
-  
+
     /**
      * @returns The grid size
      */
@@ -753,7 +716,7 @@ namespace dxtbx {
       ImageGrid result(imageset.data(), imageset.indices().const_ref(), grid_size);
       return result;
     }
-    
+
     /**
      * Convert the grid to an imageset
      * @returns An imageset
@@ -794,7 +757,7 @@ namespace dxtbx {
    */
   class ImageSweep : public ImageSet {
   public:
-   
+
     /**
      * Construct the sweep
      * @param data The imageset data
@@ -813,7 +776,7 @@ namespace dxtbx {
         detector_(detector),
         goniometer_(goniometer),
         scan_(scan) {
-      
+
       // Check the scan is the same length and number of images
       DXTBX_ASSERT(data.size() == scan.get_num_images());
 
@@ -854,7 +817,7 @@ namespace dxtbx {
       for (std::size_t i = 1; i < indices.size(); ++i) {
         DXTBX_ASSERT(indices[i] == indices[i-1]+1);
       }
-      
+
       // Set the models for each image
       for (std::size_t i = 0; i < size(); ++i) {
         ImageSet::set_beam(i, beam);
@@ -877,7 +840,7 @@ namespace dxtbx {
     Beam get_beam() const {
       return beam_;
     }
-    
+
     /**
      * @returns the detector model
      */
@@ -898,7 +861,7 @@ namespace dxtbx {
     Scan get_scan() const {
       return scan_;
     }
-  
+
     /**
      * Set the beam model
      * @param beam The beam model
@@ -920,7 +883,7 @@ namespace dxtbx {
         ImageSet::set_detector(i, detector);
       }
     }
-    
+
     /**
      * Set the goniometer model
      * @param goniometer The goniometer model
@@ -931,7 +894,7 @@ namespace dxtbx {
         ImageSet::set_goniometer(i, goniometer);
       }
     }
-    
+
     /**
      * Set the scan model
      * @param scan The scan model
@@ -944,32 +907,32 @@ namespace dxtbx {
       }
     }
 
-    /** 
+    /**
      * Override per-image model
      */
     void set_beam(std::size_t index, const Beam &beam) {
-      DXTBX_ERROR("Cannot set per-image model in sweep"); 
+      DXTBX_ERROR("Cannot set per-image model in sweep");
     }
-    
-    /** 
+
+    /**
      * Override per-image model
      */
     void set_detector(std::size_t index, const Detector &detector) {
-      DXTBX_ERROR("Cannot set per-image model in sweep"); 
+      DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
-    /** 
+    /**
      * Override per-image model
      */
     void set_goniometer(std::size_t index, const Goniometer &goniometer) {
-      DXTBX_ERROR("Cannot set per-image model in sweep"); 
+      DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
-    /** 
+    /**
      * Override per-image model
      */
     void set_scan(std::size_t index, const Scan &scan) {
-      DXTBX_ERROR("Cannot set per-image model in sweep"); 
+      DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
 
@@ -1008,7 +971,7 @@ namespace dxtbx {
      * @returns The complete sweep
      */
     ImageSweep complete_sweep() const {
-      
+
       // Compute scan
       Scan scan = data_.get_scan(0);
       for (std::size_t i = 1; i < data_.size(); ++i) {
@@ -1034,7 +997,7 @@ namespace dxtbx {
      * @returns The partial sweep
      */
     ImageSweep partial_sweep(std::size_t first, std::size_t last) const {
-      
+
       // Check slice indices
       DXTBX_ASSERT(last > first);
 
@@ -1043,14 +1006,14 @@ namespace dxtbx {
       for (std::size_t i = first+1; i < last; ++i) {
         scan += ImageSet::get_scan(i);
       }
-      
+
       // Construct the partial indices
       scitbx::af::const_ref<std::size_t> indices(&indices_[first], last - first);
 
       // Construct the partial sweep
       ImageSweep result(
-          data_, 
-          indices, 
+          data_,
+          indices,
           get_beam(),
           get_detector(),
           get_goniometer(),
@@ -1066,7 +1029,7 @@ namespace dxtbx {
     Detector detector_;
     Goniometer goniometer_;
     Scan scan_;
-      
+
   };
 
 

@@ -284,22 +284,23 @@ namespace dxtbx { namespace format {
 
       // Get the element size
       if (type_ == "int16") {
-        read_data_detail<short>(handle);
+        read_data_detail<int, short>(handle);
       } else if (type_ == "uint16") {
-        read_data_detail<unsigned short>(handle);
+        read_data_detail<int, unsigned short>(handle);
       } else if (type_ == "int32") {
-        read_data_detail<int>(handle);
+        read_data_detail<int, int>(handle);
       } else if (type_ == "uint32") {
-        read_data_detail<unsigned int>(handle);
+        read_data_detail<int, unsigned int>(handle);
       } else {
         DXTBX_ASSERT("Unsupported type");
       }
     }
 
-    template <typename T>
+    template <typename OutputType, typename InputType>
     void read_data_detail(std::ifstream &handle) {
 
-      typedef typename array_type<T>::type array_data_type;
+      typedef typename array_type<InputType>::type input_array_data_type;
+      typedef typename array_type<OutputType>::type output_array_data_type;
 
       // The image grid
       DXTBX_ASSERT(slow_size_ > 0);
@@ -307,9 +308,9 @@ namespace dxtbx { namespace format {
       scitbx::af::c_grid<2> grid(slow_size_, fast_size_);
 
       // Allocate the array
-      std::size_t element_size = sizeof(T);
+      std::size_t element_size = sizeof(InputType);
       std::size_t nbytes = element_size * slow_size_ * fast_size_;
-      array_data_type data(grid);
+      input_array_data_type data(grid);
 
       // Read the data
       handle.read(reinterpret_cast<char*>(&data[0]), nbytes);
@@ -319,11 +320,13 @@ namespace dxtbx { namespace format {
         detail::swap_bytes(data.begin(), data.end());
       }
 
-      // Add to the tiles list
-      // FIXME buffer_ = ImageBuffer(Image<T>(ImageTile<T>(data, "")));
-
       // Check handle is still good
       DXTBX_ASSERT(handle.good());
+
+      // Add to the tiles list
+      output_array_data_type output(data.accessor());
+      std::copy(data.begin(), data.end(), output.begin());
+      buffer_ = ImageBuffer(Image<OutputType>(ImageTile<OutputType>(output, "")));
     }
 
     std::size_t slow_size_;

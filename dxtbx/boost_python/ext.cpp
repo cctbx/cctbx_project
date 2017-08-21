@@ -205,7 +205,7 @@ namespace dxtbx { namespace boost_python {
   void export_imageset() {
     using namespace boost::python;
 
-    
+
     class_< ExternalLookupItem<double> >("ExternalLookupItemDouble")
       .add_property("filename",
           &ExternalLookupItem<double>::get_filename,
@@ -227,15 +227,15 @@ namespace dxtbx { namespace boost_python {
     class_<ExternalLookup>("ExternalLookup")
       .add_property("mask",
           make_function(
-            &ExternalLookup::mask, 
+            &ExternalLookup::mask,
             return_internal_reference<>()))
       .add_property("gain",
           make_function(
-            &ExternalLookup::gain, 
+            &ExternalLookup::gain,
             return_internal_reference<>()))
       .add_property("pedestal",
           make_function(
-            &ExternalLookup::pedestal, 
+            &ExternalLookup::pedestal,
             return_internal_reference<>()))
       ;
 
@@ -347,4 +347,3 @@ namespace dxtbx { namespace boost_python {
   }
 
 }} //namespace dxtbx::boost_python
-
