@@ -20,20 +20,29 @@
 
 namespace dxtbx { namespace format {
 
-
   /**
    * Base class for reading images
    */
   class ImageReader {
   public:
 
-    typedef Image::int16_type int16_type;
-    typedef Image::int32_type int32_type;
-    typedef Image::uint16_type uint16_type;
-    typedef Image::uint32_type uint32_type;
-    typedef Image::float64_type float32_type;
-    typedef Image::float64_type float64_type;
-    typedef Image::variant_type variant_type;
+    typedef scitbx::af::c_grid<2> accessor_type;
+
+    typedef scitbx::af::versa< short,          accessor_type > int16_type;
+    typedef scitbx::af::versa< int,            accessor_type > int32_type;
+    typedef scitbx::af::versa< unsigned short, accessor_type > uint16_type;
+    typedef scitbx::af::versa< unsigned int,   accessor_type > uint32_type;
+    typedef scitbx::af::versa< float,          accessor_type > float32_type;
+    typedef scitbx::af::versa< double,         accessor_type > float64_type;
+
+    typedef boost::variant<
+      int16_type,
+      int32_type,
+      uint16_type,
+      uint32_type,
+      float32_type,
+      float64_type
+    > variant_type;
 
     /**
      * Initialise with the filename
@@ -51,27 +60,33 @@ namespace dxtbx { namespace format {
     /**
      * Return the image
      */
-    Image image() const {
-      DXTBX_ASSERT(tiles_.size() == names_.size());
-      Image result;
-      for (std::size_t i = 0; i < tiles_.size(); ++i) {
-        result.push_back(ImageTile(tiles_[i], names_[i].c_str()));
-      }
-      return result;
+    ImageBuffer image() const {
+      return buffer_;
     }
 
   protected:
+   
+    /* /** */
+    /*  * Helper function to convert a list of tile variants to an image buffer */
+    /*  *1/ */
+    /* ImageBuffer tile_list_to_image_buffer( */
+    /*     scitbx::af::const_ref<variant_type> &tiles, */
+    /*     scitbx::af::const_ref<std::string> &names) { */
+    /*   if (boost::apply_visitor(IsDoubleVisitor(), tiles)) { */
+    /*     return ImageBuffer(boost::apply_visitor(ImageConstructor<double>(names), tiles); */
+    /*   } */
+    /*   return ImageBuffer(boost::apply_visitor(ImageConstructor<int>(names), tiles); */
+    /* } */
 
     std::string filename_;
-    std::vector<variant_type> tiles_;
-    std::vector<std::string> names_;
+    ImageBuffer buffer_;
   };
 
 
   class MultiImageReader {
   public:
 
-    virtual Image image(std::size_t index) const = 0;
+    virtual ImageBuffer image(std::size_t index) const = 0;
     virtual std::size_t size() const = 0;
 
   };
@@ -90,7 +105,7 @@ namespace dxtbx { namespace format {
     typedef typename ImageReaderType::uint32_type uint32_type;
     typedef typename ImageReaderType::float64_type float32_type;
     typedef typename ImageReaderType::float64_type float64_type;
-    typedef typename ImageReaderType::variant_type variant_type;
+    // FIXME typedef typename ImageReaderType::variant_type variant_type;
 
     /**
      * Initialise with the filename
@@ -115,7 +130,7 @@ namespace dxtbx { namespace format {
     /**
      * Return the image
      */
-    Image image(std::size_t index) const {
+    ImageBuffer image(std::size_t index) const {
       DXTBX_ASSERT(index < filenames_.size());
       ImageReaderType reader(filenames_[index].c_str());
       return reader.image();

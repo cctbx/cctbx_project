@@ -107,11 +107,11 @@ namespace dxtbx { namespace format {
     /**
      * Get the image at the given index
      */
-    Image image(std::size_t index) const {
+    ImageBuffer image(std::size_t index) const {
       DXTBX_ASSERT(index < size());
-      Image result;
-      result.push_back(ImageTile(read_data(index), ""));
-      return result;
+      Image<int> result;
+      result.push_back(ImageTile<int>(read_data(index), ""));
+      return ImageBuffer(result);
     }
 
   protected:

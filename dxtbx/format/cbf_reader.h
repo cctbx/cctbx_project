@@ -313,8 +313,7 @@ namespace dxtbx { namespace format {
           &data[0]);
 
       // Add to the tiles
-      tiles_.push_back(variant_type(data));
-      names_.push_back("");
+      buffer_ = ImageBuffer(Image<int>(ImageTile<int>(data)));
     }
 
   };
@@ -438,8 +437,7 @@ namespace dxtbx { namespace format {
       std::copy(buffer.data.begin(), buffer.data.end(), data.begin());
 
       // Add to the tiles
-      tiles_.push_back(variant_type(data));
-      names_.push_back("");
+      buffer_ = ImageBuffer(Image<int>(ImageTile<int>(data)));
     }
 
     /**
@@ -538,6 +536,7 @@ namespace dxtbx { namespace format {
       cbf_check(cbf_find_category(cbf_h, "array_data"));
       cbf_check(cbf_count_rows(cbf_h, &nrows));
       DXTBX_ASSERT(nrows > 0);
+      Image<T> image;
       if (nrows == 1) {
 
         // Get the data
@@ -560,8 +559,7 @@ namespace dxtbx { namespace format {
         std::copy(buffer.data.begin(), buffer.data.end(), data.begin());
 
         // Add to the tiles
-        tiles_.push_back(variant_type(data));
-        names_.push_back("");
+        image.push_back(ImageTile<T>(data));
 
       } else {
         for (std::size_t i = 0; i < nrows; ++i) {
@@ -635,8 +633,7 @@ namespace dxtbx { namespace format {
               }
 
               // Add to the tiles
-              tiles_.push_back(variant_type(data));
-              names_.push_back(section_name);
+              image.push_back(ImageTile<T>(data, section_name.c_str()));
             }
 
           } else {
@@ -649,14 +646,15 @@ namespace dxtbx { namespace format {
             std::copy(buffer.data.begin(), buffer.data.end(), data.begin());
 
             // Add to the tiles
-            tiles_.push_back(variant_type(data));
-            names_.push_back(name == 0 ? "" : name);
+            image.push_back(ImageTile<T>(data, name == 0 ? "" : name));
           }
 
           // Go to the next array
           cbf_check(cbf_next_row(cbf_h));
         }
       }
+
+      buffer_ = ImageBuffer(image);
     }
 
   };

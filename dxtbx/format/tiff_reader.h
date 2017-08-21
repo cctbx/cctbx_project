@@ -141,8 +141,7 @@ namespace dxtbx { namespace format {
       }
 
       // Add to the tiles list
-      tiles_.push_back(variant_type(data));
-      names_.push_back("");
+      // FIXME buffer_ = ImageBuffer(Image<T>(ImageTile<T>(data, "")));
     }
 
     std::size_t slow_size_;
