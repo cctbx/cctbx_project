@@ -272,20 +272,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   static
   Scan getitem_single(const Scan &scan, int index)
   {
-    // Check index
-    DXTBX_ASSERT((index >= 0) && (index < scan.get_num_images()));
-    int image_index = scan.get_image_range()[0] + index;
-
-    // Create the new epoch array
-    scitbx::af::shared<double> new_epochs(1);
-    new_epochs[0] = scan.get_image_epoch(image_index );
-    scitbx::af::shared<double> new_exposure_times(1);
-    new_exposure_times[0] = scan.get_image_exposure_time(image_index );
-
-    // Return scan
-    return Scan(vec2<int>(image_index, image_index),
-      scan.get_image_oscillation(image_index ),
-      new_exposure_times, new_epochs);
+    return scan[index];
   }
 
   static

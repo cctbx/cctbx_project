@@ -363,6 +363,23 @@ namespace dxtbx { namespace model {
       return result;
     }
 
+    Scan operator[](int index) const {
+      // Check index
+      DXTBX_ASSERT((index >= 0) && (index < get_num_images()));
+      int image_index = get_image_range()[0] + index;
+
+      // Create the new epoch array
+      scitbx::af::shared<double> new_epochs(1);
+      new_epochs[0] = get_image_epoch(image_index );
+      scitbx::af::shared<double> new_exposure_times(1);
+      new_exposure_times[0] = get_image_exposure_time(image_index );
+
+      // Return scan
+      return Scan(vec2<int>(image_index, image_index),
+        get_image_oscillation(image_index ),
+        new_exposure_times, new_epochs);
+    }
+
     friend std::ostream& operator<<(std::ostream &os, const Scan &s);
 
   private:
