@@ -21,10 +21,13 @@
 namespace dxtbx { namespace format {
 
 
+  /**
+   * An image tile containing data from a single detector panel
+   */
   template <typename T>
   class ImageTile {
   public:
-      
+
     typedef scitbx::af::c_grid<2> accessor_type;
     typedef scitbx::af::versa< T, accessor_type > array_type;
 
@@ -74,10 +77,13 @@ namespace dxtbx { namespace format {
 
     array_type data_;
     std::string name_;
-  
+
   };
 
 
+  /**
+   * An image containing data from all detector panels
+   */
   template <typename T>
   class Image {
   public:
@@ -143,25 +149,27 @@ namespace dxtbx { namespace format {
   protected:
 
     scitbx::af::shared< ImageTile<T> > tiles_;
-  
+
   };
 
+
+  /**
+   * A class to hold image data which can be either int or double
+   */
   class ImageBuffer {
   public:
 
     typedef int empty_type;
     typedef Image<int> int_image_type;
     typedef Image<double> double_image_type;
-  
 
-    // FIXME ADD EMPTY TYPE
     // The variant type
     typedef boost::variant <
       empty_type,
       int_image_type,
       double_image_type
     > variant_type;
-    
+
     /**
      * A visitor class to convert from/to different types.
      * Data is copied except when the to/from types are the same
@@ -196,7 +204,41 @@ namespace dxtbx { namespace format {
       }
 
     };
-    
+
+    /**
+     * Is the buffer empty
+     */
+    class IsEmptyVisitor : public boost::static_visitor<bool> {
+    public:
+
+      bool operator()(const empty_type &v) const {
+        return true;
+      }
+
+      template <typename OtherImageType>
+      bool operator()(const OtherImageType &v) const {
+        return false;
+      }
+
+    };
+
+    /**
+     * Is the data an int type
+     */
+    class IsIntVisitor : public boost::static_visitor<bool> {
+    public:
+
+      bool operator()(const int_image_type &v) const {
+        return true;
+      }
+
+      template <typename OtherImageType>
+      bool operator()(const OtherImageType &v) const {
+        return false;
+      }
+
+    };
+
     /**
      * Is the data a double type
      */
@@ -214,31 +256,56 @@ namespace dxtbx { namespace format {
 
     };
 
+    /**
+     * Construct an empty buffer
+     */
     ImageBuffer() {}
 
+    /**
+     * Construct a buffer with data
+     */
     ImageBuffer(variant_type data)
       : data_(data) {}
-    
-    bool is_int() const {
-      return !boost::apply_visitor(IsDoubleVisitor(), data_);
+
+    /**
+     * @returns Is the buffer empty
+     */
+    bool is_empty() const {
+      return boost::apply_visitor(IsEmptyVisitor(), data_);
     }
 
+    /**
+     * @returns Is the buffer an int
+     */
+    bool is_int() const {
+      return boost::apply_visitor(IsIntVisitor(), data_);
+    }
+
+    /**
+     * @returns Is the buffer a double
+     */
     bool is_double() const {
       return boost::apply_visitor(IsDoubleVisitor(), data_);
     }
 
+    /**
+     * @returns The buffer as an int image
+     */
     Image<int> as_int() const {
-      return boost::apply_visitor(ConverterVisitor< Image<int> >(), data_); 
+      return boost::apply_visitor(ConverterVisitor< Image<int> >(), data_);
     }
 
+    /**
+     * @returns The buffer as a double image
+     */
     Image<double> as_double() const {
-      return boost::apply_visitor(ConverterVisitor< Image<double> >(), data_); 
+      return boost::apply_visitor(ConverterVisitor< Image<double> >(), data_);
     }
 
   protected:
 
     variant_type data_;
-  
+
   };
 
 }} // namespace dxtbx::format

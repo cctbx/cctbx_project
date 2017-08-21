@@ -65,7 +65,7 @@ namespace dxtbx { namespace format {
     }
 
   protected:
-   
+
     /* /** */
     /*  * Helper function to convert a list of tile variants to an image buffer */
     /*  *1/ */
