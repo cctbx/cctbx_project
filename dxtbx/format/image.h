@@ -299,6 +299,13 @@ namespace dxtbx { namespace format {
       return tiles_.size();
     }
 
+    /**
+     * Is the image empty
+     */
+    bool empty() const {
+      return tiles_.empty();
+    }
+
   protected:
 
     scitbx::af::shared<ImageTile> tiles_;

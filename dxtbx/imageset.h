@@ -10,6 +10,7 @@
 #include <dxtbx/model/detector.h>
 #include <dxtbx/model/goniometer.h>
 #include <dxtbx/model/scan.h>
+#include <dxtbx/format/image.h>
 #include <dxtbx/error.h>
 
 namespace dxtbx {
@@ -20,66 +21,68 @@ namespace dxtbx {
   using model::Panel;
   using model::Goniometer;
   using model::Scan;
+  using format::ImageTile;
+  using format::Image;
 
 
-  template <typename T>
-  class ImageTile {
-  public:
+  /* template <typename T> */
+  /* class ImageTile { */
+  /* public: */
 
-    ImageTile() {}
+  /*   ImageTile() {} */
 
-    ImageTile(scitbx::af::versa<T, scitbx::af::c_grid<2> > x) {}
+  /*   ImageTile(scitbx::af::versa<T, scitbx::af::c_grid<2> > x) {} */
 
-    scitbx::af::versa< T, scitbx::af::c_grid<2> > data() {
-      return scitbx::af::versa< T, scitbx::af::c_grid<2> >();
-    }
-  };
+  /*   scitbx::af::versa< T, scitbx::af::c_grid<2> > data() { */
+  /*     return scitbx::af::versa< T, scitbx::af::c_grid<2> >(); */
+  /*   } */
+  /* }; */
 
-  template <typename T>
-  class Image {
-  public:
+  /* template <typename T> */
+  /* class Image { */
+  /* public: */
 
-    std::size_t ntiles() const {
-      return 0;
-    }
+  /*   std::size_t ntiles() const { */
+  /*     return 0; */
+  /*   } */
 
-    Image<double> as_double() {
-      return Image<double>();
-    }
+  /*   Image<double> as_double() { */
+  /*     return Image<double>(); */
+  /*   } */
 
-    ImageTile<T> operator[](std::size_t) {
-      return ImageTile<T>();
-    }
+  /*   ImageTile<T> operator[](std::size_t) { */
+  /*     return ImageTile<T>(); */
+  /*   } */
     
-    ImageTile<T> operator[](std::size_t) const {
-      return ImageTile<T>();
-    }
+  /*   ImageTile<T> operator[](std::size_t) const { */
+  /*     return ImageTile<T>(); */
+  /*   } */
 
-    void push_back(ImageTile<T> x) {
+  /*   void push_back(ImageTile<T> x) { */
 
-    }
-    std::size_t size() const {
-      return 0;
-    }    
+  /*   } */
+  /*   std::size_t size() const { */
+  /*     return 0; */
+  /*   } */    
 
-    bool empty() const {
-      return true;
-    }
-  };
+  /*   bool empty() const { */
+  /*     return true; */
+  /*   } */
+  /* }; */
 
-  class ImageVariant {
-  public:
-    std::size_t ntiles() const {
-      return 0;
-    }
-    std::size_t size() const {
-      return 0;
-    }    
-    Image<double> as_double() {
-      return Image<double>();
-    }
+  /* class ImageVariant { */
+  /* public: */
+  /*   std::size_t ntiles() const { */
+  /*     return 0; */
+  /*   } */
+  /*   std::size_t size() const { */
+  /*     return 0; */
+  /*   } */    
+  /*   Image<double> as_double() { */
+  /*     return Image<double>(); */
+  /*   } */
 
-  };
+  /* }; */
 
 
   /**
@@ -110,7 +113,7 @@ namespace dxtbx {
     /**
      * Get the data
      */
-    Image<T> get_data() const {
+    Image get_data() const {
       return data_;
     }
 
@@ -118,14 +121,14 @@ namespace dxtbx {
      * Set the data
      * @param data - The data
      */
-    void set_data(const Image<T> &data) {
+    void set_data(const Image &data) {
       data_ = data;
     }
 
   protected:
 
     std::string filename_;
-    Image<T> data_;
+    Image data_;
   };
 
 
@@ -134,13 +137,6 @@ namespace dxtbx {
    */
   class ExternalLookup {
   public:
-
-    /**
-     * @returns an internal reference to the mask
-     */
-    /* const ExternalLookupItem<bool>& mask() const { */
-    /*   return mask_; */
-    /* } */
     
     /**
      * @returns an internal reference to the mask
@@ -148,13 +144,6 @@ namespace dxtbx {
     ExternalLookupItem<bool>& mask() {
       return mask_;
     }
-    
-    /**
-     * @returns an internal reference to the gain
-     */
-    /* const ExternalLookupItem<double>& gain() const { */
-    /*   return gain_; */
-    /* } */
 
     /**
      * @returns an internal reference to the gain
@@ -162,13 +151,6 @@ namespace dxtbx {
     ExternalLookupItem<double>& gain() {
       return gain_;
     }
-
-    /**
-     * @returns an internal reference to the pedestal
-     */
-    /* const ExternalLookupItem<double>& pedestal() const { */
-    /*   return pedestal_; */
-    /* } */
     
     /**
      * @returns an internal reference to the pedestal
@@ -193,13 +175,13 @@ namespace dxtbx {
     ImageSetData(boost::python::object data)
       : data_(data) {}
 
-    ImageVariant get_data(std::size_t index) {
-      return boost::python::extract<ImageVariant>(
+    Image get_data(std::size_t index) {
+      return boost::python::extract<Image>(
         data_.attr("data")(index))();
     }
 
-    Image<bool> get_mask(std::size_t index) {
-      return boost::python::extract< Image<bool> >(
+    Image get_mask(std::size_t index) {
+      return boost::python::extract< Image >(
         data_.attr("mask")(index))();
     }
 
@@ -275,13 +257,6 @@ namespace dxtbx {
     /**
      * @returns The external lookup
      */
-    /* const ExternalLookup& external_lookup() const { */
-    /*   return external_lookup_; */
-    /* } */
-
-    /**
-     * @returns The external lookup
-     */
     ExternalLookup& external_lookup() {
       return external_lookup_;
     }
@@ -297,7 +272,7 @@ namespace dxtbx {
   class DataCache {
   public:
 
-    ImageVariant image;
+    Image image;
     int index;
 
     DataCache()
@@ -364,13 +339,6 @@ namespace dxtbx {
     /**
      * @returns The external lookup
      */
-    /* const ExternalLookup& external_lookup() const { */
-    /*   return data_.external_lookup(); */
-    /* } */
-
-    /**
-     * @returns The external lookup
-     */
     ExternalLookup& external_lookup() {
       return data_.external_lookup();
     }
@@ -380,11 +348,11 @@ namespace dxtbx {
      * @param index The image index
      * @returns The raw image data
      */
-    ImageVariant get_raw_data(std::size_t index) {
+    Image get_raw_data(std::size_t index) {
       if (data_cache_.index == index) {
         return data_cache_.image; 
       }
-      ImageVariant image = data_.get_data(indices_[index]);
+      Image image = data_.get_data(indices_[index]);
       data_cache_.index = index;
       data_cache_.image = image;
       return image;
@@ -395,28 +363,34 @@ namespace dxtbx {
      * @param index The image index
      * @returns The corrected data array
      */
-    Image<double> get_corrected_data(std::size_t index) {
+    Image get_corrected_data(std::size_t index) {
+
+      typedef scitbx::af::versa< double, scitbx::af::c_grid<2> > array_type;
+      typedef scitbx::af::const_ref< double, scitbx::af::c_grid<2> > const_ref_type;
 
       // Get the multi-tile data, gain and pedestal
-      Image<double> data = get_raw_data(index).as_double();
-      Image<double> gain = get_gain(index);
-      Image<double> pedestal = get_pedestal(index);
-      DXTBX_ASSERT(data.ntiles() == gain.ntiles());
-      DXTBX_ASSERT(data.ntiles() == pedestal.ntiles());
+      Image data = get_raw_data(index);
+      Image gain = get_gain(index);
+      Image pedestal = get_pedestal(index);
+      DXTBX_ASSERT(data.n_tiles() == gain.n_tiles());
+      DXTBX_ASSERT(data.n_tiles() == pedestal.n_tiles());
 
       // Loop through tiles
-      Image<double> result;
-      for (std::size_t i = 0; i < data.ntiles(); ++i) {
+      Image result;
+      for (std::size_t i = 0; i < data.n_tiles(); ++i) {
 
         // Get the data, gain and pedestal for each tile
-        scitbx::af::const_ref< double, scitbx::af::c_grid<2> > r = data[i].data().const_ref();
-        scitbx::af::const_ref< double, scitbx::af::c_grid<2> > g = gain[i].data().const_ref();
-        scitbx::af::const_ref< double, scitbx::af::c_grid<2> > p = pedestal[i].data().const_ref();
+        array_type r_array = data.tile(i).as_double();
+        array_type g_array = gain.tile(i).as_double();
+        array_type p_array = pedestal.tile(i).as_double();
+        const_ref_type r = r_array.const_ref();
+        const_ref_type g = g_array.const_ref();
+        const_ref_type p = p_array.const_ref();
         DXTBX_ASSERT(g.size() == 0 || r.accessor().all_eq(g.accessor()));
         DXTBX_ASSERT(p.size() == 0 || r.accessor().all_eq(p.accessor()));
 
         // Create the result array
-        scitbx::af::versa<double, scitbx::af::c_grid<2> > c(r.accessor());
+        array_type c(r.accessor());
         std::copy(r.begin(), r.end(), c.begin());
 
         // Apply pedestal
@@ -433,7 +407,7 @@ namespace dxtbx {
             c[i] = c[i] / g[i];
           }
         }
-        result.push_back(ImageTile<double>(c));
+        result.push_back(ImageTile(c));
       }
 
       // Return the result
@@ -446,7 +420,7 @@ namespace dxtbx {
      * @param index The image index
      * @returns The gain
      */
-    Image<double> get_gain(std::size_t index) {
+    Image get_gain(std::size_t index) {
       if (external_lookup().gain().get_data().empty()) {
 
         Detector detector = get_detector(index);
@@ -464,14 +438,13 @@ namespace dxtbx {
 
         // If using the gain from the panel, construct a gain map
         if (use_detector_gain) {
-          Image<double> result;
+          Image result;
           for (std::size_t i = 0; i < detector.size(); ++i) {
             std::size_t xsize = detector[i].get_image_size()[0];
             std::size_t ysize = detector[i].get_image_size()[1];
             scitbx::af::c_grid<2> grid(ysize, xsize);
             scitbx::af::versa<double, scitbx::af::c_grid<2> > data(grid, gain[i]);
-            ImageTile<double> tile(data);
-            result.push_back(tile);
+            result.push_back(ImageTile(data));
           }
           external_lookup().gain().set_filename("");
           external_lookup().gain().set_data(result);
@@ -486,7 +459,7 @@ namespace dxtbx {
      * @param index The image index
      * @returns The pedestal image
      */
-    Image<double> get_pedestal(std::size_t index) {
+    Image get_pedestal(std::size_t index) {
       return external_lookup().pedestal().get_data();
     }
    
@@ -495,28 +468,30 @@ namespace dxtbx {
      * @param index The image index
      * @returns The image mask
      */
-    Image<bool> get_mask(std::size_t index) {
+    Image get_mask(std::size_t index) {
+      
+      typedef scitbx::af::versa< double, scitbx::af::c_grid<2> > array_type;
 
       // Compute the trusted range mask
-      ImageVariant data = get_raw_data(index);
+      Image data = get_raw_data(index);
       Detector detector = get_detector(index);
-      DXTBX_ASSERT(data.size() == detector.size());
-      Image<bool> mask;
+      DXTBX_ASSERT(data.n_tiles() == detector.size());
+      Image mask;
       for (std::size_t i = 0; i < detector.size(); ++i) {
+        array_type d = data.tile(i).as_double();
         Panel panel = detector[i];
         mask.push_back(
-          ImageTile<bool>(
-            panel.get_trusted_range_mask(
-              data.as_double()[i].data().const_ref())));
+          ImageTile(
+            panel.get_trusted_range_mask(d.const_ref())));
       }
 
       // Combine with the dynamic mask
-      Image<bool> dyn_mask = data_.get_mask(indices_[index]);
+      Image dyn_mask = data_.get_mask(indices_[index]);
       if (!dyn_mask.empty()) {
-        DXTBX_ASSERT(dyn_mask.size() == detector.size());
+        DXTBX_ASSERT(dyn_mask.n_tiles() == detector.size());
         for (std::size_t i = 0; i < detector.size(); ++i) {
-          scitbx::af::ref< bool, scitbx::af::c_grid<2> > m1 = mask[i].data().ref();
-          scitbx::af::const_ref< bool, scitbx::af::c_grid<2> > m2 = dyn_mask[i].data().const_ref();
+          scitbx::af::ref< bool, scitbx::af::c_grid<2> > m1 = mask.tile(i).as_bool().ref();
+          scitbx::af::const_ref< bool, scitbx::af::c_grid<2> > m2 = dyn_mask.tile(i).as_bool().const_ref();
           DXTBX_ASSERT(m1.size() == m2.size());
           for (std::size_t j = 0; j < m1.size(); ++j) {
             m1[j] = m1[j] && m2[j];
@@ -525,12 +500,12 @@ namespace dxtbx {
       }
 
       // Combine with the external lookup mask
-      Image<bool> ext_mask = external_lookup().mask().get_data();
+      Image ext_mask = external_lookup().mask().get_data();
       if (!ext_mask.empty()) {
-        DXTBX_ASSERT(ext_mask.size() == detector.size());
+        DXTBX_ASSERT(ext_mask.n_tiles() == detector.size());
         for (std::size_t i = 0; i < detector.size(); ++i) {
-          scitbx::af::ref< bool, scitbx::af::c_grid<2> > m1 = mask[i].data().ref();
-          scitbx::af::const_ref< bool, scitbx::af::c_grid<2> > m2 = ext_mask[i].data().const_ref();
+          scitbx::af::ref< bool, scitbx::af::c_grid<2> > m1 = mask.tile(i).as_bool().ref();
+          scitbx::af::const_ref< bool, scitbx::af::c_grid<2> > m2 = ext_mask.tile(i).as_bool().const_ref();
           DXTBX_ASSERT(m1.size() == m2.size());
           for (std::size_t j = 0; j < m1.size(); ++j) {
             m1[j] = m1[j] && m2[j];
