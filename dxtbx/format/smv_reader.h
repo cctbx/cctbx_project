@@ -8,8 +8,8 @@
  *  This code is distributed under the BSD license, a copy of which is
  *  included in the root directory of this package.
  */
-#ifndef DXTBX_FORMAT_SMV_H
-#define DXTBX_FORMAT_SMV_H
+#ifndef DXTBX_FORMAT_SMV_READER_H
+#define DXTBX_FORMAT_SMV_READER_H
 
 #include <vector>
 #include <string>
@@ -336,4 +336,4 @@ namespace dxtbx { namespace format {
 
 }} // namespace dxtbx::format
 
-#endif // DXTBX_FORMAT_SMV_H
+#endif // DXTBX_FORMAT_SMV_READER_H

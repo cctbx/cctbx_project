@@ -15,9 +15,10 @@
 #include <scitbx/array_family/flex_types.h>
 #include <dxtbx/error.h>
 #include <dxtbx/format/image.h>
-#include <dxtbx/format/smv.h>
-#include <dxtbx/format/tiff.h>
-#include <dxtbx/format/cbf.h>
+#include <dxtbx/format/image_reader.h>
+#include <dxtbx/format/smv_reader.h>
+#include <dxtbx/format/tiff_reader.h>
+#include <dxtbx/format/cbf_reader.h>
 #include <dxtbx/format/hdf5_reader.h>
 #include <vector>
 #include <hdf5.h>

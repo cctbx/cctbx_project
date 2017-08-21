@@ -1,5 +1,5 @@
 /*
- * cbf.h
+ * cbf_reader.h
  *
  *  Copyright (C) 2017 Diamond Light Source
  *
@@ -8,8 +8,8 @@
  *  This code is distributed under the BSD license, a copy of which is
  *  included in the root directory of this package.
  */
-#ifndef DXTBX_FORMAT_CBF_H
-#define DXTBX_FORMAT_CBF_H
+#ifndef DXTBX_FORMAT_CBF_READER_H
+#define DXTBX_FORMAT_CBF_READER_H
 
 #include <vector>
 #include <map>
@@ -664,4 +664,4 @@ namespace dxtbx { namespace format {
 
 }} // namespace dxtbx::format
 
-#endif // DXTBX_FORMAT_CBF_H
+#endif // DXTBX_FORMAT_CBF_READER_H
