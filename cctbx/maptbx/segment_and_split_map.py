@@ -351,7 +351,13 @@ master_phil = iotbx.phil.parse("""
        .short_caption = RMSD of model
        .help = RMSD of model to true model (if supplied).  Used to \
              estimate expected fall-of with resolution of correct part \
-             of model-based map. If None, assumed to be resolution/3.
+             of model-based map. If None, assumed to be resolution \
+             times rmsd_resolution_factor.
+
+     rmsd_resolution_factor = 0.25
+       .type = float
+       .short_caption = rmsd resolution factor
+        .help = default RMSD is resolution times resolution factor
 
      fraction_complete = None
        .type = float
@@ -391,10 +397,10 @@ master_phil = iotbx.phil.parse("""
                b_iso is set. Default is to set box_n_auto_sharpen=False \
                if b_iso is set.
 
-     soft_mask = False
+     soft_mask = True
        .type = bool
        .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map). In development
+             based on resolution of map).
        .short_caption = Soft mask
 
      use_weak_density = False
@@ -643,6 +649,13 @@ master_phil = iotbx.phil.parse("""
       .type = float
       .help = Choose region where density is this fraction of maximum or greater
       .short_caption = threshold for density_select
+
+     soft_mask_in_density_select = False
+       .type = bool
+       .help = Use soft mask (smooth change from inside to outside with radius\
+             based on resolution of map) when cutting out map with map_box
+       .short_caption = Soft mask in density_select
+
 
     get_half_height_width = None
       .type = bool
@@ -1461,6 +1474,7 @@ class sharpening_info:
       d_min=None,
       d_min_ratio=None,
       rmsd=None,
+      rmsd_resolution_factor=None,
       k_sol=None,
       b_sol=None,
       fraction_complete=None,
@@ -1626,6 +1640,7 @@ class sharpening_info:
       self.max_regions_to_test=params.map_modification.max_regions_to_test
       self.d_min_ratio=params.map_modification.d_min_ratio
       self.rmsd=params.map_modification.rmsd
+      self.rmsd_resolution_factor=params.map_modification.rmsd_resolution_factor
       self.k_sol=params.map_modification.k_sol
       self.b_sol=params.map_modification.b_sol
       self.fraction_complete=params.map_modification.fraction_complete
@@ -2133,6 +2148,11 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
   print >>out,"Getting map coeffs from model with %s atoms.." %(
     xray_structure.sites_frac().size())
 
+
+  if overall_b is not None:
+    print >>out,"Setting overall b_iso to %7.1f for model " %(
+      overall_b)
+    xray_structure.set_b_iso(value=overall_b)
   model_f_array=f_array.structure_factors_from_scatterers(
       xray_structure = xray_structure).f_calc()
 
@@ -2703,6 +2723,10 @@ def get_mean_in_and_out(sel=None,
     map_data=map_data,
     out=out)
 
+  if mean_value_out is None:
+    mean_value_out=mean_value_in
+  if mean_value_in is None:
+    mean_value_in=mean_value_out
   print >>out,\
     "\nMean inside mask: %7.2f  Outside mask: %7.2f  Fraction in: %7.2f" %(
      mean_value_in,mean_value_out,fraction_in)
@@ -2768,7 +2792,7 @@ def apply_soft_mask(map_data=None,
 
   outside_set_to_mean=map_data.deep_copy()
   outside_set_to_mean.set_selected( s, 0)
-  if set_outside_to_mean_inside:
+  if set_outside_to_mean_inside or mean_value_out is None:
     outside_set_to_mean.set_selected(~s, mean_value_in)
   else:
     outside_set_to_mean.set_selected(~s, mean_value_out)
@@ -2827,8 +2851,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "b_iso, \nb_sharpen, or resolution_dependent_b"
     params.map_modification.auto_sharpen=False
 
-  if params.map_modification.soft_mask and not params.segmentation.density_select:
-    raise Sorry("Need to specify density_select=True for soft_mask")
+  if params.segmentation.soft_mask_in_density_select and \
+        not params.segmentation.density_select:
+    raise Sorry(
+     "Need to specify density_select=True for soft_mask_in_density_select")
 
   if params.output_files.output_directory and  \
      not os.path.isdir(params.output_files.output_directory):
@@ -2977,6 +3003,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        params.segmentation.density_select_threshold)
       args.append("density_select_threshold=%s" %(
          params.segmentation.density_select_threshold))
+    if params.segmentation.soft_mask_in_density_select is not None:
+      print >>out,"Soft mask for density selection will be: %s \n"%(
+       params.segmentation.soft_mask_in_density_select)
+      args.append("soft_mask=%s" %(
+         params.segmentation.soft_mask_in_density_select))
 
     if params.segmentation.get_half_height_width is not None:
       args.append("get_half_height_width=%s" %(
@@ -6207,6 +6238,12 @@ def put_bounds_in_range(
   if buffer:
      print >>out,"Buffer of %s added" %(buffer)
   for lb,ub,ms,nr in zip(lower_bounds,upper_bounds,box_size,n_real):
+    if ub<lb: ub=lb
+    if lb >ub: lb=ub
+    extra=(ms-(ub-lb))//2
+    lb=lb-extra
+    ub=ub+extra
+      
     if buffer:
        lb=lb-buffer
        ub=ub+buffer
@@ -6297,6 +6334,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'max_regions_to_test',
        'fraction_occupied',
        'rmsd',
+       'rmsd_resolution_factor',
        'k_sol',
        'b_sol',
        'fraction_complete',
@@ -7028,6 +7066,7 @@ def auto_sharpen_map_or_map_coeffs(
         ncs_obj=None,
         seq_file=None,
         rmsd=None,
+        rmsd_resolution_factor=None,
         k_sol=None,
         b_sol=None,
         fraction_complete=None,

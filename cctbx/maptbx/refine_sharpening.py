@@ -7,6 +7,7 @@ from copy import deepcopy
 
 from cctbx.array_family import flex
 import scitbx.lbfgs
+import math
 
 def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")
@@ -209,13 +210,9 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
   model_f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
 
   # Set overall_b....
-  starting_b_iso=get_b_iso(model_f_array,d_min=resolution)
-  model_f_array=\
-   model_f_array.apply_debye_waller_factors(
-      b_iso=overall_b-starting_b_iso)
   final_b_iso=get_b_iso(model_f_array,d_min=resolution)
-  print >>out,"Effective b_iso of initial and "+\
-     "adjusted model map: %6.1f A**2  %6.1f A**2" %(starting_b_iso,final_b_iso)
+  print >>out,"Effective b_iso of "+\
+     "adjusted model map:  %6.1f A**2" %(final_b_iso)
   model_map_coeffs_normalized=model_f_array.phase_transfer(
      phase_source=model_phases,deg=True)
   return model_map_coeffs_normalized
@@ -228,6 +225,7 @@ def get_b_eff(si=None,out=sys.stdout):
     print >>out,\
     "Setting b_eff for fall-off at %5.1f A**2 based on model error of %5.1f A" \
        %( b_eff,si.rmsd)
+  return b_eff
 
 def calculate_fsc(si=None,
      f_array=None,  # just used for binner
@@ -243,6 +241,11 @@ def calculate_fsc(si=None,
      out=sys.stdout):
 
   # calculate anticipated fall-off of model data with resolution
+  if si.rmsd is None:
+    si.rmsd=resolution*si.rmsd_resolution_factor
+    print >>out,"Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
+       si.rmsd,resolution)
+
   b_eff=get_b_eff(si=si,out=out)
 
   # get f and model_f vs resolution and FSC vs resolution and apply
@@ -267,6 +270,7 @@ def calculate_fsc(si=None,
   cc_list=flex.double()
   d_min_list=flex.double()
   rms_fo_list=flex.double()
+  rms_fc_list=flex.double()
   max_possible_cc=None
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
@@ -298,6 +302,7 @@ def calculate_fsc(si=None,
     cc_list.append(cc)
     d_min_list.append(d_min)
     rms_fo_list.append(rms_fo)
+    rms_fc_list.append(rms_fc)
 
     if b_eff is not None:
       max_cc_estimate=cc* math.exp(min(20.,sthol2*b_eff))
@@ -354,11 +359,10 @@ def calculate_fsc(si=None,
 
     if max_scale is None or d_min >= resolution:
       max_scale=scale_on_fo
-    else: # at less than resolution don't allow any bigger scale than last one
-      scale_on_fo=min(scale_on_fo,max_scale)
+    elif scale_on_fo > max_scale:
+      scale_on_fo=max_scale
 
     target_scale_factors.append(scale_on_fo)
-
 
   target_scale_factors=\
      target_scale_factors/target_scale_factors.min_max_mean().max
@@ -369,11 +373,10 @@ def calculate_fsc(si=None,
     target_scale_factors=flex.double(target_scale_factors.size()*(1.0,))
 
   print >>out,"\nScale factors vs resolution:"
-  import math
-  for sthol2,scale,rms_fo in zip(
-     target_sthol2,target_scale_factors,rms_fo_list):
-     print >>out,"d_min: %5.1f   scale:  %5.2f  rms F:  %7.1f" %(
-       0.5/math.sqrt(sthol2),scale,rms_fo*scale)
+  for sthol2,scale,rms_fo,cc,rms_fc in zip(
+     target_sthol2,target_scale_factors,rms_fo_list,cc_list,rms_fc_list):
+     print >>out,"d_min: %5.1f   scale:  %5.2f  rms Fo:  %7.1f rmsFc: %7.1f CC: %7.3f" %(
+       0.5/sthol2**0.5,scale,rms_fo,rms_fc,cc)
 
   si.target_scale_factors=target_scale_factors
   si.target_sthol2=target_sthol2
@@ -504,6 +507,11 @@ def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resoluti
 
   if fraction_complete is None:
     pass # XXX not implemented for fraction_complete
+
+  if rmsd is None:
+    rmsd=resolution/3.
+    print >>out,"Setting rmsd to %5.1f A based on resolution of %5.1f A" %(
+       rmsd,resolution)
 
   if rmsd is None:
     b_eff=None
@@ -731,7 +739,7 @@ class refinery:
         b=b,
         resolution=self.resolution,
         d_min_ratio=self.d_min_ratio,
-        rmsd=self.rmsd,
+        emsd=self.rmsd,
         fraction_complete=self.complete)
 
     else:
