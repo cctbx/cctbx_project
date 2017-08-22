@@ -38,6 +38,11 @@ END
 """
 
 #----------------------------------------------------
+#
+# XXX This is copy-pasted tst_connectivity.py. The only difference - the
+# use of new way of creating mmtbx.model.manager. Later original test
+# should be removed.
+#
 # This test checks for residue Tyr (pdb_str above):
 # - if all bonds involving H atoms are recognized
 # - if all angles involving H atoms are recognized
