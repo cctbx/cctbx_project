@@ -1,6 +1,6 @@
-from __future__ import division, absolute_import
+from __future__ import division
 from scitbx.array_family import flex
-import random
+from stdlib import random
 class differential_evolution_optimizer(object):
   """
 This is a python implementation of differential evolution

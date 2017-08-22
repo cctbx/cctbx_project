@@ -1,9 +1,9 @@
-from __future__ import division, absolute_import
+from __future__ import division
 from scitbx.array_family import flex
-import math
+from stdlib import math
 from libtbx.utils import Sorry
 from copy import deepcopy
-import random
+from stdlib import random
 from scitbx import simplex
 
 class dssa(object):

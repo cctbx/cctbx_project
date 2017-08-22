@@ -1,6 +1,6 @@
-from __future__ import division, absolute_import
+from __future__ import division
 from scitbx.array_family import flex
-import math
+from stdlib import math
 
 def rosca(m=9, hemisphere=True):
   """

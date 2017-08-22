@@ -2528,7 +2528,8 @@ class mask_result (object) :
 
 # XXX backwards compatibility 2011-02-08
 # bad hack... - relative import
-import f_model_info
+# Change to absolute import 
+from . import f_model_info
 class info (f_model_info.info) :
   pass
 
