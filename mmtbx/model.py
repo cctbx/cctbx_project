@@ -217,6 +217,7 @@ class manager(object):
 
       # New fancy stuff
       self._ss_annotation = self.model_input.extract_secondary_structure()
+      self.restraints_manager = None
       self._asc = None
       self._grm = None
       self._mon_lib = None
@@ -237,6 +238,12 @@ class manager(object):
     else:
       self._build_grm()
       return self.restraints_manager
+
+  def get_hierarchy(self):
+    return self._pdb_hierarchy
+
+  def get_xrs(self):
+    return self.xray_structure
 
   def _build_grm(self):
     process_pdb_file_srv = mmtbx.utils.process_pdb_file_srv(

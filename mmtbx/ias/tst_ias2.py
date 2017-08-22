@@ -11,6 +11,11 @@ from iotbx import file_reader
 import copy
 
 def exercise():
+  """
+  This is copy-paste of tst_ias.py with use of new way of creating
+  mmtbx.model.manager
+  Later original test could be removed.
+  """
   # initial setup
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
