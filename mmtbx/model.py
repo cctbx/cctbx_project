@@ -27,6 +27,7 @@ from libtbx import group_args
 from libtbx import easy_run
 import libtbx.load_env
 from mmtbx.hydrogens import riding
+from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 time_model_show = 0.0
 
@@ -120,51 +121,183 @@ class manager(object):
   """
   Wrapper class for storing and manipulating an iotbx.pdb.hierarchy object and
   a cctbx.xray.structure object, plus optional restraints-related objects.
+  Being refactored to handle all model needs.
+  Refactoring roadmap:
+  1. Be able to create it in a new way (from model_input object) and keep
+    everything else working. This constraints changing names of variables.
+  2. Use it in some small places.
+  3. Use it in phenix.refine and make sure it is really working
+  4. Check all places where it is used and convert them to new way of creating it.
+  5. Start refactoring with phenix.refine to remove unnecessary things.
   """
-  def __init__(self, xray_structure,
-                     pdb_hierarchy,
-                     processed_pdb_files_srv = None,
+
+  def __init__(self, xray_structure = None, # remove later
+                     pdb_hierarchy = None,  # remove later
+      model_input = None, # pdb_input or cif_input, make mandatory later
+      restraint_objects = None, # ligand restraints in cif format
+      pdb_interpretation_params = None,
+      build_grm = False,  # build GRM straight away, without waiting for get_grm() call
+      stop_for_unknowns = True,
+                     processed_pdb_files_srv = None, # remove later
                      # reference_sites_cart = None,
-                     restraints_manager = None,
-                     ias_xray_structure = None,
-                     refinement_flags = None,
-                     selection_moving = None,
-                     ias_manager = None,
-                     wilson_b = None,
-                     tls_groups = None,
-                     ncs_groups = None,
-                     anomalous_scatterer_groups = None,
+                     restraints_manager = None, # remove later
+                     ias_xray_structure = None, # remove later
+                     refinement_flags = None,   # remove later
+                     selection_moving = None,   # remove later
+                     ias_manager = None,        # remove later
+                     wilson_b = None,           # !!! Nothing sets it in this class. Neverhteless,
+                                                # !!! it is outputted in model_statistics, used in mmtbx/refinement
+                     tls_groups = None,         # remove later
+                     ncs_groups = None,         # remove later
+                     anomalous_scatterer_groups = None, # remove later
                      log = None):
-    self.log = log
-    self.ncs_groups = ncs_groups
-    self.processed_pdb_files_srv = processed_pdb_files_srv
-    # self.reference_sites_cart = reference_sites_cart
-    self.selection_moving = selection_moving
+
+    def _common_init():
+        self.log = log
+        self.ncs_groups = ncs_groups
+        self.processed_pdb_files_srv = processed_pdb_files_srv # to be deleted
+        # self.reference_sites_cart = reference_sites_cart
+        self.selection_moving = selection_moving
+        self.refinement_flags = refinement_flags
+        self.wilson_b = wilson_b
+        self.tls_groups = tls_groups
+        # IAS related, need a real cleaning!
+        self.ias_manager = ias_manager
+        self.ias_xray_structure = ias_xray_structure
+        self.use_ias = False
+        self.ias_selection = None
+        self.exchangable_hd_groups = []
+        if(self.xray_structure.hd_selection().count(True) > 0):
+          self.exchangable_hd_groups = utils.combine_hd_exchangable(
+            hierarchy = self._pdb_hierarchy)
+        self.original_xh_lengths = None
+        self.riding_h_manager = None
+
+    if xray_structure is not None or pdb_hierarchy is not None:
+      # Old way of doing things. Remove later completely.
+      self.restraints_manager = restraints_manager
+      self.xray_structure = xray_structure
+      # Not clear why xray_structure_initial is necessary
+      self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
+      self._pdb_hierarchy = pdb_hierarchy
+      self.pdb_atoms = self._pdb_hierarchy.atoms()
+      self.pdb_atoms.reset_i_seq()
+      if(anomalous_scatterer_groups is not None and
+          len(anomalous_scatterer_groups) == 0):
+          anomalous_scatterer_groups = None
+      self.anomalous_scatterer_groups = anomalous_scatterer_groups
+      _common_init()
+      self.sync_pdb_hierarchy_with_xray_structure()
+    else:
+      # new way of doing things. Should be compatible with old way for now
+      # to facilitate refactoring,
+      # therefore all unnecessary stuff is being initialized.
+      assert model_input is not None
+      self.model_input = model_input
+      self.restraint_objects = restraint_objects
+      self.pdb_interpretation_params = pdb_interpretation_params
+      if self.pdb_interpretation_params is None:
+        self.pdb_interpretation_params = iotbx.phil.parse(
+            input_string=params_line, process_includes=True).extract()
+      self.stop_for_unknowns = stop_for_unknowns
+      self.original_model_format = None
+      s = str(type(model_input))
+      if s.find("pdb") > 0:
+        self.original_model_format = "pdb"
+      elif s.find("cif") > 0:
+        self.original_model_format = "mmcif"
+      self._cs = self.model_input.crystal_symmetry()
+      self._pdb_hierarchy = self.model_input.construct_hierarchy()
+      self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
+          crystal_symmetry=self.cs)
+      # Not clear why xray_structure_initial and pdb_atoms are necessary
+      self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
+      self.pdb_atoms = self._pdb_hierarchy.atoms()
+      self.pdb_atoms.reset_i_seq()
+
+      # New fancy stuff
+      self._ss_annotation = self.model_input.extract_secondary_structure()
+      self._asc = None
+      self._grm = None
+      self._mon_lib = None
+      self._ener_lib = None
+      self._rotamer_eval = None
+      self._rama_eval = None
+      if(anomalous_scatterer_groups is not None and
+          len(anomalous_scatterer_groups) == 0):
+          anomalous_scatterer_groups = None
+      self.anomalous_scatterer_groups = anomalous_scatterer_groups
+      _common_init()
+      if build_grm:
+        self._build_grm()
+
+  def get_grm(self):
+    if self.restraints_manager is not None:
+      return self.restraints_manager
+    else:
+      self._build_grm()
+      return self.restraints_manager
+
+  def _build_grm(self):
+    process_pdb_file_srv = mmtbx.utils.process_pdb_file_srv(
+        crystal_symmetry          = self.cs,
+        pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
+        stop_for_unknowns         = self.stop_for_unknowns,
+        log                       = self.log,
+        cif_objects               = self.cif_objects,
+        cif_parameters            = None, # ???
+        mon_lib_srv               = None,
+        ener_lib                  = None,
+        use_neutron_distances     = self.pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
+
+    processed_pdb_file, junk = process_pdb_file_srv.process_pdb_files(
+        pdb_inp = self.model_input,
+        stop_if_duplicate_labels = True,
+        allow_missing_symmetry=False)
+
+    self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
+    self.ener_lib = process_pdb_file_srv.ener_lib
+    # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
+    # should live only here and be removed there.
+    has_hd = None
+    if(self.xray_structure is not None):
+      sctr_keys = self.xray_structure.scattering_type_registry().type_count_dict().keys()
+      has_hd = "H" in sctr_keys or "D" in sctr_keys
+    if params is None:
+      params = master_params().fetch().extract()
+    # disabled temporarily due to architecture changes
+
+    geometry = processed_pdb_file.geometry_restraints_manager(
+      show_energies                = False,
+      params_edits                 = self.pdb_interpretation_params.geometry_restraints.edits,
+      plain_pairs_radius           = 5,
+      assume_hydrogens_all_missing = not has_hd)
+
+    # For test GRM pickling
+    # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
+    # geometry = make_geo_pickle_unpickle(
+    #     geometry=geometry,
+    #     xrs=xray_structure,
+    #     prefix=None)
+
+    restraints_manager = mmtbx.restraints.manager(
+      geometry      = geometry,
+      normalization = True)
+    # Torsion restraints from reference model
+    if hasattr(params, "reference_model") and restraints_manager is not None:
+      add_reference_dihedral_restraints_if_requested(
+          geometry=restraints_manager.geometry,
+          processed_pdb_file=processed_pdb_file,
+          mon_lib_srv=self.mon_lib_srv,
+          ener_lib=self.ener_lib,
+          has_hd=has_hd,
+          params=params.reference_model,
+          selection=None,
+          log=log)
+    if(self.xray_structure is not None):
+      restraints_manager.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
-    self.xray_structure = xray_structure
-    self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
-    self._pdb_hierarchy = pdb_hierarchy
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
-    self.pdb_atoms.reset_i_seq()
-    self.refinement_flags = refinement_flags
-    self.wilson_b = wilson_b
-    self.tls_groups = tls_groups
-    if(anomalous_scatterer_groups is not None and
-      len(anomalous_scatterer_groups) == 0):
-      anomalous_scatterer_groups = None
-    self.anomalous_scatterer_groups = anomalous_scatterer_groups
-    # IAS related, need a real cleaning!
-    self.ias_manager = ias_manager
-    self.ias_xray_structure = ias_xray_structure
-    self.use_ias = False
-    self.ias_selection = None
-    self.exchangable_hd_groups = []
-    if(self.xray_structure.hd_selection().count(True) > 0):
-      self.exchangable_hd_groups = utils.combine_hd_exchangable(
-        hierarchy = self._pdb_hierarchy)
-    self.original_xh_lengths = None
-    self.riding_h_manager = None
-    self.sync_pdb_hierarchy_with_xray_structure()
+
 
   def unset_riding_h_manager(self):
     self.riding_h_manager = None
@@ -197,6 +330,7 @@ class manager(object):
     return self._pdb_hierarchy
 
   def sync_pdb_hierarchy_with_xray_structure(self):
+    # to be deleted.
     self._pdb_hierarchy.adopt_xray_structure(xray_structure=self.xray_structure)
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
@@ -976,6 +1110,7 @@ class manager(object):
 #      new_refinement_flags = self.refinement_flags.select(selection)
     new_restraints_manager = None
     if(self.restraints_manager is not None):
+      # XXX Why separate? Function call is exactly the same...
       if(isinstance(selection, flex.bool)):
         new_restraints_manager = self.restraints_manager.select(
           selection = selection)
