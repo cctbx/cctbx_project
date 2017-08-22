@@ -50,6 +50,7 @@ tst_list = (
   "$D/regression/tst_pdbtools.py",
   "$D/real_space/tst.py",
   "$D/ias/tst_ias.py",
+  "$D/ias/tst_ias2.py",
   "$D/refinement/tst_fit_rotamers.py",
   ["$D/refinement/tst_anomalous_scatterer_groups.py", "P3"],
   "$D/refinement/tst_rigid_body.py",

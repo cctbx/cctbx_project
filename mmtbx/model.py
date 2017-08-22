@@ -198,7 +198,7 @@ class manager(object):
       self.pdb_interpretation_params = pdb_interpretation_params
       if self.pdb_interpretation_params is None:
         self.pdb_interpretation_params = iotbx.phil.parse(
-            input_string=params_line, process_includes=True).extract()
+            input_string=grand_master_phil_str, process_includes=True).extract()
       self.stop_for_unknowns = stop_for_unknowns
       self.original_model_format = None
       s = str(type(model_input))
@@ -206,7 +206,7 @@ class manager(object):
         self.original_model_format = "pdb"
       elif s.find("cif") > 0:
         self.original_model_format = "mmcif"
-      self._cs = self.model_input.crystal_symmetry()
+      self.cs = self.model_input.crystal_symmetry()
       self._pdb_hierarchy = self.model_input.construct_hierarchy()
       self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=self.cs)
@@ -244,14 +244,15 @@ class manager(object):
         pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
         stop_for_unknowns         = self.stop_for_unknowns,
         log                       = self.log,
-        cif_objects               = self.cif_objects,
+        cif_objects               = self.restraint_objects,
         cif_parameters            = None, # ???
         mon_lib_srv               = None,
         ener_lib                  = None,
         use_neutron_distances     = self.pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
 
     processed_pdb_file, junk = process_pdb_file_srv.process_pdb_files(
-        pdb_inp = self.model_input,
+        # because hierarchy already extracted
+        raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
         stop_if_duplicate_labels = True,
         allow_missing_symmetry=False)
 
@@ -263,8 +264,8 @@ class manager(object):
     if(self.xray_structure is not None):
       sctr_keys = self.xray_structure.scattering_type_registry().type_count_dict().keys()
       has_hd = "H" in sctr_keys or "D" in sctr_keys
-    if params is None:
-      params = master_params().fetch().extract()
+    # if self.pdb_interpretation_params is None:
+    #   self.pdb_interpretation_params = master_params().fetch().extract()
     # disabled temporarily due to architecture changes
 
     geometry = processed_pdb_file.geometry_restraints_manager(
@@ -284,7 +285,7 @@ class manager(object):
       geometry      = geometry,
       normalization = True)
     # Torsion restraints from reference model
-    if hasattr(params, "reference_model") and restraints_manager is not None:
+    if hasattr(self.pdb_interpretation_params, "reference_model") and restraints_manager is not None:
       add_reference_dihedral_restraints_if_requested(
           geometry=restraints_manager.geometry,
           processed_pdb_file=processed_pdb_file,
