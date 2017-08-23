@@ -161,7 +161,66 @@ namespace dxtbx { namespace model { namespace boost_python {
   void export_beam()
   {
     // Export BeamBase
-    class_ <BeamBase, boost::noncopyable> ("BeamBase", no_init);
+    class_ <BeamBase, boost::noncopyable> ("BeamBase", no_init)
+      .def("get_direction",
+        &BeamBase::get_direction)
+      .def("set_direction",
+        &BeamBase::set_direction)
+      .def("get_wavelength",
+        &BeamBase::get_wavelength)
+      .def("set_wavelength",
+        &BeamBase::set_wavelength)
+      .def("get_s0",
+        &BeamBase::get_s0)
+      .def("set_s0",
+        &BeamBase::set_s0)
+      .def("get_unit_s0",
+        &BeamBase::get_unit_s0)
+      .def("set_unit_s0",
+        &BeamBase::set_unit_s0)
+      .def("get_divergence",
+        &get_divergence, (
+          arg("deg") = true))
+      .def("set_divergence",
+        &set_divergence, (
+          arg("divergence"),
+          arg("deg") = true))
+      .def("get_sigma_divergence",
+        &get_sigma_divergence, (
+          arg("deg") = true))
+      .def("set_sigma_divergence",
+        &set_sigma_divergence, (
+          arg("sigma_divergence"),
+          arg("deg") = true))
+      .def("get_polarization_normal",
+        &BeamBase::get_polarization_normal)
+      .def("set_polarization_normal",
+        &BeamBase::set_polarization_normal)
+      .def("get_polarization_fraction",
+        &BeamBase::get_polarization_fraction)
+      .def("set_polarization_fraction",
+        &BeamBase::set_polarization_fraction)
+      .def("get_flux",
+        &BeamBase::get_flux)
+      .def("set_flux",
+        &BeamBase::set_flux)
+      .def("get_transmission",
+        &BeamBase::get_transmission)
+      .def("set_transmission",
+        &BeamBase::set_transmission)
+      .def("rotate_around_origin",
+          &rotate_around_origin, (
+            arg("axis"),
+            arg("angle"),
+            arg("deg")=true))
+      .def("__eq__", &BeamBase::operator==)
+      .def("__ne__", &BeamBase::operator!=)
+      .def("is_similar_to", &BeamBase::is_similar_to, (
+            arg("other"),
+            arg("wavelength_tolerance")=1e-6,
+            arg("direction_tolerance")=1e-6,
+            arg("polarization_normal_tolerance")=1e-6,
+            arg("polarization_fraction_tolerance")=1e-6));
 
     // Export Beam : BeamBase
     class_ <Beam, boost::shared_ptr<Beam>, bases <BeamBase> > ("Beam")
@@ -202,65 +261,6 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("flux"),
             arg("transmission"),
             arg("deg") = true)))
-      .def("get_direction",
-        &Beam::get_direction)
-      .def("set_direction",
-        &Beam::set_direction)
-      .def("get_wavelength",
-        &Beam::get_wavelength)
-      .def("set_wavelength",
-        &Beam::set_wavelength)
-      .def("get_s0",
-        &Beam::get_s0)
-      .def("set_s0",
-        &Beam::set_s0)
-      .def("get_unit_s0",
-        &Beam::get_unit_s0)
-      .def("set_unit_s0",
-        &Beam::set_unit_s0)
-      .def("get_divergence",
-        &get_divergence, (
-          arg("deg") = true))
-      .def("set_divergence",
-        &set_divergence, (
-          arg("divergence"),
-          arg("deg") = true))
-      .def("get_sigma_divergence",
-        &get_sigma_divergence, (
-          arg("deg") = true))
-      .def("set_sigma_divergence",
-        &set_sigma_divergence, (
-          arg("sigma_divergence"),
-          arg("deg") = true))
-      .def("get_polarization_normal",
-        &Beam::get_polarization_normal)
-      .def("set_polarization_normal",
-        &Beam::set_polarization_normal)
-      .def("get_polarization_fraction",
-        &Beam::get_polarization_fraction)
-      .def("set_polarization_fraction",
-        &Beam::set_polarization_fraction)
-      .def("get_flux",
-        &Beam::get_flux)
-      .def("set_flux",
-        &Beam::set_flux)
-      .def("get_transmission",
-        &Beam::get_transmission)
-      .def("set_transmission",
-        &Beam::set_transmission)
-      .def("rotate_around_origin",
-          &rotate_around_origin, (
-            arg("axis"),
-            arg("angle"),
-            arg("deg")=true))
-      .def("__eq__", &Beam::operator==)
-      .def("__ne__", &Beam::operator!=)
-      .def("is_similar_to", &Beam::is_similar_to, (
-            arg("other"),
-            arg("wavelength_tolerance")=1e-6,
-            arg("direction_tolerance")=1e-6,
-            arg("polarization_normal_tolerance")=1e-6,
-            arg("polarization_fraction_tolerance")=1e-6))
       .def("__str__", &beam_to_string)
       .def("to_dict", &to_dict<Beam>)
       .def("from_dict", &from_dict<Beam>,
