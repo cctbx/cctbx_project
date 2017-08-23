@@ -329,7 +329,19 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Sharpening
        .help = Sharpen with this b-value. Contrast with b_iso that yield a \
-           targeted value of b_iso
+           targeted value of b_iso. B_sharpen greater than zero is sharpening.\
+           Less than zero is blurring.
+
+     b_blur_hires = 200
+       .type = float
+       .short_caption = high_resolution blurring
+       .help = Sharpen high_resolution data (higher than d_cut) with \
+             b_sharpen plus b_blur_hires.  Reduces sharpening (or causes \
+             blurring) at high resolution. \ 
+             If None and b_sharpen is positive (sharpening) \
+             then high-resolution data is left as is (not sharpened). \
+             If None and b_sharpen is negative (blurring) high-resolution data\
+             is also blurred.
 
      resolution_dependent_b = None
        .type = floats
@@ -1473,6 +1485,7 @@ class sharpening_info:
       eps=None,
       d_min=None,
       d_min_ratio=None,
+      b_blur_hires=None,
       rmsd=None,
       rmsd_resolution_factor=None,
       k_sol=None,
@@ -1639,6 +1652,7 @@ class sharpening_info:
       self.region_weight=params.map_modification.region_weight
       self.max_regions_to_test=params.map_modification.max_regions_to_test
       self.d_min_ratio=params.map_modification.d_min_ratio
+      self.b_blur_hires=params.map_modification.b_blur_hires
       self.rmsd=params.map_modification.rmsd
       self.rmsd_resolution_factor=params.map_modification.rmsd_resolution_factor
       self.k_sol=params.map_modification.k_sol
@@ -1829,12 +1843,12 @@ class sharpening_info:
   def sharpen_and_score_map(self,map_data=None,set_b_iso=False,out=sys.stdout):
     if self.n_real is None: # need to get it
       self.n_real=map_data.all()
-    #print >>out,"B-iso before sharpening:",
+    print >>out,"B-iso before sharpening:",
     self.get_effective_b_iso(map_data=map_data,out=out)
     self.map_data=sharpen_map_with_si(
       sharpening_info_obj=self,map_data=map_data,
         resolution=self.resolution,out=out)
-    #print >>out,"B-iso after sharpening:",
+    print >>out,"B-iso after sharpening:",
     final_b_iso=self.get_effective_b_iso(map_data=self.map_data,out=out)
     if set_b_iso:
       self.b_iso=final_b_iso
@@ -2201,13 +2215,16 @@ def apply_sharpening(map_coeffs=None,
     sharpening_info_obj=None,
     n_real=None,b_sharpen=None,crystal_symmetry=None,
     target_scale_factors=None,
-    f_array=None,phases=None,d_min=None,k_sharpen=None,out=sys.stdout):
+    f_array=None,phases=None,d_min=None,k_sharpen=None,
+    b_blur_hires=None,
+    out=sys.stdout):
 
     if map_coeffs and f_array is None and phases is None:
       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
     if sharpening_info_obj is not None:
       b_sharpen=sharpening_info_obj.b_sharpen
+      b_blur_hires=sharpening_info_obj.b_blur_hires
       k_sharpen=sharpening_info_obj.k_sharpen
       d_min=sharpening_info_obj.resolution# changed from d_cut
       n_real=sharpening_info_obj.n_real
@@ -2215,6 +2232,7 @@ def apply_sharpening(map_coeffs=None,
       n_bins=sharpening_info_obj.n_bins
       remove_aniso=sharpening_info_obj.remove_aniso
       resolution=sharpening_info_obj.resolution
+
     if target_scale_factors:
       assert sharpening_info_obj is not None
       print >>out,"\nApplying target scale factors vs resolution"
@@ -2246,7 +2264,8 @@ def apply_sharpening(map_coeffs=None,
       return get_map_from_map_coeffs(map_coeffs=map_coeffs,
         crystal_symmetry=crystal_symmetry,n_real=n_real)
 
-    elif b_sharpen < 0 or k_sharpen<=0 or k_sharpen is None or d_min is None:
+    elif k_sharpen is None or d_min is None or k_sharpen<=0 or \
+        ( b_blur_hires is None and b_sharpen < 0):
       # 2016-08-10 original method: apply b_sharpen to all data
       # Use this if blurring (b_sharpen<0) or if k_sharpen is not set
       from cctbx import adptbx # next lines from xtriage (basic_analysis.py)
@@ -2259,20 +2278,33 @@ def apply_sharpening(map_coeffs=None,
     else:
       # Apply sharpening only to data from infinity to d_min, with transition
       # steepness of k_sharpen.
+      # 2017-08-21 if b_blur_hires is set, sharpen with
+      # b_sharpen-b_blur_hires data beyond d_min (with same
+      # transition, so transition goes from b_sharpen TO b_sharpen-b_blur_hires
       data_array=f_array.data()
       sthol_array=f_array.sin_theta_over_lambda_sq()
       d_spacings=f_array.d_spacings()
       scale_array=flex.double()
       import math
+
+      if b_blur_hires is not None:
+        b_sharpen_hires_use=b_sharpen-b_blur_hires
+      else:
+        b_sharpen_hires_use=0.
       for x,(ind,sthol),(ind1,d) in zip(data_array,sthol_array,d_spacings):
+        # for small value b=b_sharpen
+        # for large value b=-b_sharpen_hires_use
+        # transition is determined by k_sharpen
         value=min(20.,max(-20.,k_sharpen*(d_min-d)))
-        log_scale=b_sharpen*sthol/(1.+math.exp(value))
+        lowres_weight=1./(1.+math.exp(value))
+        hires_weight=max(0.,1-lowres_weight)
+        b_sharpen_use=b_sharpen*lowres_weight+b_sharpen_hires_use*hires_weight
+        log_scale=sthol*b_sharpen_use
         scale_array.append(math.exp(log_scale))
       data_array=data_array*scale_array
       f_array_sharpened=f_array.customized_copy(data=data_array)
 
     actual_b_iso=get_b_iso(f_array_sharpened,d_min=d_min)
-    #print  "B-iso after sharpening by b_sharpen=%6.1f is %7.2f\n" %( b_sharpen,actual_b_iso)
     print >>out, "B-iso after sharpening by b_sharpen=%6.1f is %7.2f\n" %(
       b_sharpen,actual_b_iso)
     sharpened_map_coeffs=f_array_sharpened.phase_transfer(
@@ -6312,7 +6344,9 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'output_directory',
        'smoothing_radius','use_local_aniso','local_aniso_in_local_sharpening',
        'local_sharpening','box_in_auto_sharpen','use_weak_density',
-       'resolution','d_min_ratio',
+       'resolution',
+       'd_min_ratio',
+       'b_blur_hires',
        'discard_if_worse',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
        'allow_box_if_b_iso_set',
@@ -7041,6 +7075,7 @@ def run_local_sharpening(si=None,
   si.map_data=sum_weight_value_map/sum_weight_map
 
   # Get overall b_iso...
+  print >>out,"\nGetting overall b_iso of composite map..."
   map_coeffs_aa,map_coeffs,f_array,phases=effective_b_iso(
      map_data=si.map_data,
       resolution=si.resolution,
@@ -7102,6 +7137,7 @@ def auto_sharpen_map_or_map_coeffs(
         residual_target=None,
         sharpening_target=None,
         d_min_ratio=None,
+        b_blur_hires=None,
         max_box_fraction=None,
         mask_atoms=None,
         mask_atoms_atom_radius=None,
@@ -7339,6 +7375,7 @@ def run_auto_sharpen(
     box_sharpening_info_obj=None
     crystal_symmetry=si.crystal_symmetry
 
+  print >>out,"\nGetting original b_iso..."
   map_coeffs_aa,map_coeffs,f_array,phases=effective_b_iso(
      map_data=map_data,
       resolution=si.resolution,
@@ -7663,7 +7700,7 @@ def run_auto_sharpen(
           local_si.b_sharpen=original_b_iso-b_iso
           local_si.b_iso=b_iso
 
-        #print >>out,"\nAbout to apply sharpening with b_iso=%6.1f A**2\n" %(b_iso)
+
         local_map_data=apply_sharpening(
             f_array=local_f_array,phases=local_phases,
             sharpening_info_obj=local_si,
@@ -7862,9 +7899,9 @@ def effective_b_iso(map_data=None,tracking_data=None,
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
     b_iso=map_coeffs_ra.b_iso
     if b_iso is not None:
-      print >>out,"Effective B-iso = %7.2f" %(b_iso)
+      print >>out,"Effective B-iso = %7.2f\n" %(b_iso)
     else:
-      print >>out,"Effective B-iso not determined"
+      print >>out,"Effective B-iso not determined\n"
     return map_coeffs_ra,map_coeffs,f_array,phases
 
 def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
@@ -7979,6 +8016,7 @@ def set_up_sharpening(si=None,map_data=None,out=sys.stdout):
            print >>out,"Setting target b_iso of %7.1f " %(check_si.b_iso)
          if check_si.b_sharpen is None and check_si.b_iso is not None:
            # need to figure out b_sharpen
+           print >>out,"\nGetting b_iso of map"
            b_iso=check_si.get_effective_b_iso(map_data=map_data,out=out)
            check_si.b_sharpen=b_iso-check_si.b_iso # sharpen is what to
            print >>out,"Value of b_sharpen to obtain b_iso of %s is %5.2f" %(

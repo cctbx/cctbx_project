@@ -173,6 +173,13 @@ master_phil = iotbx.phil.parse("""
        .help = Sharpen with this b-value. Contrast with b_iso that yield a \
            targeted value of b_iso
 
+     b_blur_hires = 200
+       .type = float
+       .short_caption = high_resolution blurring
+       .help = Blur high_resolution data (higher than d_cut) with \
+             this b-value. Contrast with b_sharpen applied to data up to\
+             d_cut.
+
      resolution_dependent_b = None
        .type = floats
        .short_caption = resolution_dependent b
@@ -772,6 +779,7 @@ def run(args=None,params=None,
         fraction_occupied=params.map_modification.fraction_occupied,
         sharpening_target=params.map_modification.sharpening_target,
         d_min_ratio=params.map_modification.d_min_ratio,
+        b_blur_hires=params.map_modification.b_blur_hires,
         max_box_fraction=params.map_modification.max_box_fraction,
         mask_atoms=params.map_modification.mask_atoms,
         mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius,
