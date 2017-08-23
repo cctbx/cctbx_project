@@ -272,6 +272,8 @@ class manager(object):
     return self.xray_structure
 
   def _create_xray_structure(self):
+    if self.xray_structure is not None:
+      return
     if self.all_chain_proxies is not None:
       self.xray_structure = self.all_chain_proxies.extract_xray_structure()
     else:
@@ -339,6 +341,8 @@ class manager(object):
         allow_missing_symmetry=True)
 
     self.all_chain_proxies = processed_pdb_file.all_chain_proxies
+    self.xray_structure = self.all_chain_proxies.extract_xray_structure()
+    self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
     self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
     self.ener_lib = process_pdb_file_srv.ener_lib
     self._ncs_obj = processed_pdb_file.ncs_obj
