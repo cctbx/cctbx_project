@@ -28,6 +28,10 @@ from libtbx import easy_run
 import libtbx.load_env
 from mmtbx.hydrogens import riding
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+from iotbx.pdb.misc_records_output import link_record_output
+from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
+    add_reference_dihedral_restraints_if_requested
+from cStringIO import StringIO
 
 time_model_show = 0.0
 
@@ -194,6 +198,8 @@ class manager(object):
       # therefore all unnecessary stuff is being initialized.
       assert model_input is not None
       self.model_input = model_input
+      # print restraint_objects
+      # STOP()
       self.restraint_objects = restraint_objects
       self.pdb_interpretation_params = pdb_interpretation_params
       if self.pdb_interpretation_params is None:
@@ -218,8 +224,12 @@ class manager(object):
       # New fancy stuff
       self._ss_annotation = self.model_input.extract_secondary_structure()
       self.restraints_manager = None
+      self.link_records_in_pdb_format = None
+      # we need them to be able to do "smart" selections implemented there...
+      self.all_chain_proxies = None
       self._asc = None
       self._grm = None
+      self._ncs_obj = None
       self._mon_lib = None
       self._ener_lib = None
       self._rotamer_eval = None
@@ -239,11 +249,62 @@ class manager(object):
       self._build_grm()
       return self.restraints_manager
 
+  def selection(self, selstr):
+    if self.all_chain_proxies is None:
+      return self._asc.selection(selstr)
+    else:
+      return self.all_chain_proxies.selection(selstr, cache=self._asc)
+
+  def iselection(self, selstr):
+    result = self.selection(selstr)
+    if result is None:
+      return None
+    return result.iselection()
+
   def get_hierarchy(self):
     return self._pdb_hierarchy
 
   def get_xrs(self):
     return self.xray_structure
+
+  def get_ncs_obj(self):
+    return self._ncs_obj
+
+  def update_xrs(self, hierarchy=None):
+    """
+    Updates xray structure using self._pdb_hierarchy for cases when it
+    was modified outside. E.g. refinement, minimization, etc.
+    """
+    if hierarchy is not None:
+      # !!! This could fail even for very similar hierarchies.
+      # see example in
+      # cctbx_project/mmtbx/secondary_structure/build/tst_1.py
+      assert hierarchy.is_similar_hierarchy(other=self._pdb_hierarchy)
+      self._pdb_hierarchy = hierarchy
+    self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
+        crystal_symmetry=self.cs)
+
+  def model_as_pdb(self, output_cs = True):
+    """
+    move all the writing here later.
+    """
+    cs_to_output = None
+    if output_cs:
+      cs_to_output = self.cs
+    result = StringIO()
+    iotbx.pdb.write_whole_pdb_file(
+        output_file=result,
+        pdb_hierarchy=self._pdb_hierarchy,
+        crystal_symmetry=self.cs,
+        ss_annotation = self._ss_annotation,
+        link_records=self.link_records_in_pdb_format)
+    return result
+
+  def model_as_cif(self):
+    pass
+
+  def input_format_was_cif(self):
+    return self.original_model_format == "mmcif"
 
   def _build_grm(self):
     process_pdb_file_srv = mmtbx.utils.process_pdb_file_srv(
@@ -261,10 +322,15 @@ class manager(object):
         # because hierarchy already extracted
         raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
         stop_if_duplicate_labels = True,
-        allow_missing_symmetry=False)
+        allow_missing_symmetry=True)
 
+    self.all_chain_proxies = processed_pdb_file.all_chain_proxies
     self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
     self.ener_lib = process_pdb_file_srv.ener_lib
+    self._ncs_obj = processed_pdb_file.ncs_obj
+    # Link treating should be rewritten. They should not be saved in
+    # all_chain_proxies and they should support mmcif.
+    self.link_records_in_pdb_format = link_record_output(processed_pdb_file.all_chain_proxies)
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
     has_hd = None
@@ -299,9 +365,9 @@ class manager(object):
           mon_lib_srv=self.mon_lib_srv,
           ener_lib=self.ener_lib,
           has_hd=has_hd,
-          params=params.reference_model,
+          params=self.pdb_interpretation_params.reference_model,
           selection=None,
-          log=log)
+          log=self.log)
     if(self.xray_structure is not None):
       restraints_manager.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager

@@ -15,6 +15,7 @@ from mmtbx.monomer_library import pdb_interpretation, server
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
 from mmtbx.hydrogens import riding
+import mmtbx.model
 
 base_params_str = """\
 silent = False
@@ -441,15 +442,51 @@ class run(object):
     self.pdb_file_names = list(self.inputs.pdb_file_names)
     if(self.params.file_name is not None):
       self.pdb_file_names.append(self.params.file_name)
-    self.processed_pdb_file = process_input_files(inputs=self.inputs,
-      params=self.params, log=self.log,
-      mon_lib_srv=self.mon_lib_srv)
-    self.ncs_obj = self.processed_pdb_file.ncs_obj
-    self.output_crystal_symmetry = \
-      not self.processed_pdb_file.is_non_crystallographic_unit_cell
-    self.xray_structure = self.processed_pdb_file.xray_structure()
+
+    #=================================================
+    cs = self.inputs.crystal_symmetry
+    is_non_crystallographic_unit_cell = False
+    import iotbx.pdb
+    pdb_combined = combine_unique_pdb_files(file_names = self.pdb_file_names)
+    pdb_inp = iotbx.pdb.input(lines=pdb_combined.raw_records, source_info=None)
+    if(cs is None):
+      is_non_crystallographic_unit_cell = True
+      cs = pdb_inp.xray_structure_simple().\
+          cubic_unit_cell_around_centered_scatterers(
+          buffer_size = 10).crystal_symmetry()
+    cif_objects = list(self.inputs.cif_objects)
+    if (len(self.params.restraints) > 0) :
+      import iotbx.cif
+      for file_name in self.params.restraints :
+        cif_object = iotbx.cif.reader(file_path=file_name, strict=False).model()
+        cif_objects.append((file_name, cif_object))
+    if (self.params.restraints_directory is not None) :
+      restraint_files = os.listdir(self.params.restraints_directory)
+      for file_name in restraint_files :
+        if (file_name.endswith(".cif")) :
+          full_path = os.path.join(self.params.restraints_directory, file_name)
+          cif_object = iotbx.cif.reader(file_path=full_path,
+            strict=False).model()
+          cif_objects.append((full_path, cif_object))
+
+
+    self.model = mmtbx.model.manager(
+        model_input = pdb_inp,
+        restraint_objects = cif_objects,
+        pdb_interpretation_params = self.params,
+        stop_for_unknowns = self.params.stop_for_unknowns,
+        build_grm = True,
+        log = self.log)
+
+    #=========================
+    # self.processed_pdb_file = process_input_files(inputs=self.inputs,
+    #   params=self.params, log=self.log,
+    #   mon_lib_srv=self.mon_lib_srv)
+    self.ncs_obj = self.model.get_ncs_obj()#processed_pdb_file.ncs_obj
+    self.output_crystal_symmetry = is_non_crystallographic_unit_cell
+    self.xray_structure = self.model.get_xrs()
     self.sites_cart_start = self.xray_structure.sites_cart().deep_copy()
-    self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    self.pdb_hierarchy = self.model.get_hierarchy()
     if(self.params.show_states):
       self.states_collector = mmtbx.utils.states(
         xray_structure = self.xray_structure,
@@ -457,19 +494,13 @@ class run(object):
 
   def atom_selection(self, prefix):
     broadcast(m=prefix, log = self.log)
-    self.selection = mmtbx.utils.atom_selection(
-      all_chain_proxies = self.processed_pdb_file.all_chain_proxies,
-      string = self.params.selection)
+    self.selection = self.model.selection(selstr = self.params.selection)
     print >> self.log, "  selected %s atoms out of total %s"%(
       str(self.selection.count(True)),str(self.selection.size()))
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
-    self.grm = get_geometry_restraints_manager(
-      processed_pdb_file = self.processed_pdb_file,
-      xray_structure     = self.xray_structure,
-      params             = self.params,
-      log                = self.log)
+    self.grm = self.model.get_grm()
 
   def setup_riding_h(self, prefix):
     if(not (self.params.minimization.riding_h and
@@ -525,8 +556,8 @@ class run(object):
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
 
   def write_pdb_file(self, prefix):
-    from iotbx.pdb.misc_records_output import link_record_output
-    link_records = link_record_output(self.processed_pdb_file.all_chain_proxies)
+    # from iotbx.pdb.misc_records_output import link_record_output
+    # link_records = link_record_output(self.processed_pdb_file.all_chain_proxies)
     broadcast(m=prefix, log = self.log)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     ofn = self.params.output_file_name_prefix
@@ -543,15 +574,19 @@ class run(object):
     print >> self.log, self.min_max_mean_shift()
 
     print >> self.log, self.min_max_mean_shift()
-    cs = None
-    if self.output_crystal_symmetry:
-      cs = self.xray_structure.crystal_symmetry()
-    write_whole_pdb_file(
-      file_name=ofn,
-      processed_pdb_file=self.processed_pdb_file,
-      pdb_hierarchy=self.pdb_hierarchy,
-      crystal_symmetry=cs,
-      link_records=link_records)
+    r = self.model.model_as_pdb(output_cs=self.output_crystal_symmetry)
+    f = open(ofn, 'w')
+    f.write(r.getvalue())
+    f.close()
+    # cs = None
+    # if self.output_crystal_symmetry:
+    #   cs = self.xray_structure.crystal_symmetry()
+    # write_whole_pdb_file(
+    #   file_name=ofn,
+    #   processed_pdb_file=self.processed_pdb_file,
+    #   pdb_hierarchy=self.pdb_hierarchy,
+    #   crystal_symmetry=cs,
+    #   link_records=link_records)
     if(self.states_collector):
       self.states_collector.write(
         file_name=ofn[:].replace(".pdb","_all_states.pdb"))
