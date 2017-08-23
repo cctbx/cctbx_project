@@ -32,6 +32,7 @@ from iotbx.pdb.misc_records_output import link_record_output
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
 from cStringIO import StringIO
+from copy import deepcopy
 
 time_model_show = 0.0
 
@@ -171,9 +172,6 @@ class manager(object):
         self.use_ias = False
         self.ias_selection = None
         self.exchangable_hd_groups = []
-        if(self.xray_structure.hd_selection().count(True) > 0):
-          self.exchangable_hd_groups = utils.combine_hd_exchangable(
-            hierarchy = self._pdb_hierarchy)
         self.original_xh_lengths = None
         self.riding_h_manager = None
 
@@ -213,11 +211,9 @@ class manager(object):
       elif s.find("cif") > 0:
         self.original_model_format = "mmcif"
       self.cs = self.model_input.crystal_symmetry()
-      self._pdb_hierarchy = self.model_input.construct_hierarchy()
-      self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
-          crystal_symmetry=self.cs)
+      self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
+      self.xray_structure = None
       # Not clear why xray_structure_initial and pdb_atoms are necessary
-      self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
       self.pdb_atoms = self._pdb_hierarchy.atoms()
       self.pdb_atoms.reset_i_seq()
 
@@ -241,6 +237,12 @@ class manager(object):
       _common_init()
       if build_grm:
         self._build_grm()
+      # hack for now.
+      self._create_xray_structure()
+    if(self.xray_structure.hd_selection().count(True) > 0):
+      self.exchangable_hd_groups = utils.combine_hd_exchangable(
+        hierarchy = self._pdb_hierarchy)
+
 
   def get_grm(self):
     if self.restraints_manager is not None:
@@ -265,7 +267,18 @@ class manager(object):
     return self._pdb_hierarchy
 
   def get_xrs(self):
+    if self.xray_structure is None:
+      self._create_xray_structure()
     return self.xray_structure
+
+  def _create_xray_structure(self):
+    if self.all_chain_proxies is not None:
+      self.xray_structure = self.all_chain_proxies.extract_xray_structure()
+    else:
+      self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
+          crystal_symmetry=self.cs)
+    self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
+
 
   def get_ncs_obj(self):
     return self._ncs_obj
@@ -319,8 +332,9 @@ class manager(object):
         use_neutron_distances     = self.pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
 
     processed_pdb_file, junk = process_pdb_file_srv.process_pdb_files(
+        pdb_inp = self.model_input,
         # because hierarchy already extracted
-        raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
+        # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
         stop_if_duplicate_labels = True,
         allow_missing_symmetry=True)
 
@@ -328,9 +342,6 @@ class manager(object):
     self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
     self.ener_lib = process_pdb_file_srv.ener_lib
     self._ncs_obj = processed_pdb_file.ncs_obj
-    # Link treating should be rewritten. They should not be saved in
-    # all_chain_proxies and they should support mmcif.
-    self.link_records_in_pdb_format = link_record_output(processed_pdb_file.all_chain_proxies)
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
     has_hd = None
@@ -340,13 +351,15 @@ class manager(object):
     # if self.pdb_interpretation_params is None:
     #   self.pdb_interpretation_params = master_params().fetch().extract()
     # disabled temporarily due to architecture changes
-
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies                = False,
       params_edits                 = self.pdb_interpretation_params.geometry_restraints.edits,
       plain_pairs_radius           = 5,
       assume_hydrogens_all_missing = not has_hd)
 
+    # Link treating should be rewritten. They should not be saved in
+    # all_chain_proxies and they should support mmcif.
+    self.link_records_in_pdb_format = link_record_output(processed_pdb_file.all_chain_proxies)
     # For test GRM pickling
     # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
     # geometry = make_geo_pickle_unpickle(
