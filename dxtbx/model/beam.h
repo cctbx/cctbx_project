@@ -24,7 +24,64 @@ namespace dxtbx { namespace model {
   using scitbx::vec3;
 
   /** Base class for beam objects */
-  class BeamBase {};
+  class BeamBase {
+  public:
+    virtual ~BeamBase() {}
+
+    // Get the direction
+    virtual vec3 <double> get_direction() const = 0;
+    // Get the wavelength
+    virtual double get_wavelength() const = 0;
+    // Get the beam divergence
+    virtual double get_divergence() const = 0;
+    // Get the standard deviation of the beam divergence
+    virtual double get_sigma_divergence() const = 0;
+    // Set the direction.
+    virtual void set_direction(vec3 <double> direction) = 0;
+    // Set the wavelength
+    virtual void set_wavelength(double wavelength) = 0;
+    // Get the wave vector in units of inverse angstroms
+    virtual vec3 <double> get_s0() const = 0;
+    // Set the direction and wavelength from s0
+    virtual void set_s0(vec3<double> s0) = 0;
+    // Get the wave vector from source to sample with unit length
+    virtual vec3 <double> get_unit_s0() const = 0;
+    // Set the direction using the unit_s0 vector
+    virtual void set_unit_s0(vec3<double> unit_s0) = 0;
+    // Set the beam divergence
+    virtual void set_divergence(double divergence) = 0;
+    // Set the standard deviation of the beam divergence
+    virtual void set_sigma_divergence(double sigma_divergence) = 0;
+    // Get the polarization
+    virtual vec3 <double> get_polarization_normal() const = 0;
+    // Get the polarization fraction
+    virtual double get_polarization_fraction() const = 0;
+    // Set the polarization plane
+    virtual void set_polarization_normal(vec3 <double> polarization_normal) = 0;
+    // Set the polarization fraction
+    virtual void set_polarization_fraction(double polarization_fraction) = 0;
+    // Set the flux
+    virtual void set_flux(double flux) = 0;
+    // Set the transmission
+    virtual void set_transmission(double transmission) = 0;
+    // Get the flux
+    virtual double get_flux() const = 0;
+    // Get the transmission
+    virtual double get_transmission() const = 0;
+    // Check wavlength and direction are (almost) same
+    virtual bool operator==(const BeamBase &rhs) const = 0;
+    // Check if two models are similar
+    virtual bool is_similar_to(
+        const BeamBase &rhs,
+        double wavelength_tolerance,
+        double direction_tolerance,
+        double polarization_normal_tolerance,
+        double polarization_fraction_tolerance) const = 0;
+    // Check wavelength and direction are not (almost) equal.
+    virtual bool operator!=(const BeamBase &rhs) const  = 0;
+    //  Rotate the beam about an axis
+    virtual void rotate_around_origin(vec3<double> axis, double angle) = 0;
+  };
 
   /** A class to represent a simple beam. */
   class Beam : public BeamBase {
@@ -243,33 +300,33 @@ namespace dxtbx { namespace model {
     }
 
     /** Check wavlength and direction are (almost) same */
-    bool operator==(const Beam &rhs) const {
+    bool operator==(const BeamBase &rhs) const {
       double eps = 1.0e-6;
-      return std::abs(angle_safe(direction_, rhs.direction_)) <= eps
-          && std::abs(wavelength_ - rhs.wavelength_) <= eps
-          && std::abs(divergence_ - rhs.divergence_) <= eps
-          && std::abs(sigma_divergence_ - rhs.sigma_divergence_) <= eps
-          && std::abs(angle_safe(polarization_normal_, rhs.polarization_normal_)) <= eps
-          && std::abs(polarization_fraction_ - rhs.polarization_fraction_) <= eps;
+      return std::abs(angle_safe(direction_, rhs.get_direction())) <= eps
+          && std::abs(wavelength_ - rhs.get_wavelength()) <= eps
+          && std::abs(divergence_ - rhs.get_divergence()) <= eps
+          && std::abs(sigma_divergence_ - rhs.get_sigma_divergence()) <= eps
+          && std::abs(angle_safe(polarization_normal_, rhs.get_polarization_normal())) <= eps
+          && std::abs(polarization_fraction_ - rhs.get_polarization_fraction()) <= eps;
     }
 
     /**
      * Check if two models are similar
      */
     bool is_similar_to(
-        const Beam &rhs,
+        const BeamBase &rhs,
         double wavelength_tolerance,
         double direction_tolerance,
         double polarization_normal_tolerance,
         double polarization_fraction_tolerance) const {
-      return std::abs(angle_safe(direction_, rhs.direction_)) <= direction_tolerance
-          && std::abs(wavelength_ - rhs.wavelength_) <= wavelength_tolerance
-          && std::abs(angle_safe(polarization_normal_, rhs.polarization_normal_)) <= polarization_normal_tolerance
-          && std::abs(polarization_fraction_ - rhs.polarization_fraction_) <= polarization_fraction_tolerance;
+      return std::abs(angle_safe(direction_, rhs.get_direction())) <= direction_tolerance
+          && std::abs(wavelength_ - rhs.get_wavelength()) <= wavelength_tolerance
+          && std::abs(angle_safe(polarization_normal_, rhs.get_polarization_normal())) <= polarization_normal_tolerance
+          && std::abs(polarization_fraction_ - rhs.get_polarization_fraction()) <= polarization_fraction_tolerance;
     }
 
     /** Check wavelength and direction are not (almost) equal. */
-    bool operator!=(const Beam &rhs) const {
+    bool operator!=(const BeamBase &rhs) const {
       return !(*this == rhs);
     }
 
