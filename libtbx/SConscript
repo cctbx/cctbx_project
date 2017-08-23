@@ -815,7 +815,7 @@ int main() {
           print ", LLVM build %i" % env_etc.apple_gcc_builds.llvm,
     try:
       subprocess.check_call(('xcodebuild', '-version'))
-    except OSError:
+    except subprocess.CalledProcessError:
       print "Not using Xcode"
     print
 
