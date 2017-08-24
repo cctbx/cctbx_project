@@ -51,7 +51,7 @@ namespace dxtbx { namespace model { namespace boost_python {
    */
   struct experiment_contains_pointers {
 
-    typedef bool (Experiment::*beam_type)(const boost::shared_ptr<Beam>&)const;
+    typedef bool (Experiment::*beam_type)(const boost::shared_ptr<BeamBase>&)const;
     typedef bool (Experiment::*detector_type)(const boost::shared_ptr<Detector>&)const;
     typedef bool (Experiment::*goniometer_type)(const boost::shared_ptr<Goniometer>&)const;
     typedef bool (Experiment::*scan_type)(const boost::shared_ptr<Scan>&)const;
@@ -88,14 +88,14 @@ namespace dxtbx { namespace model { namespace boost_python {
   {
     class_ <Experiment> ("Experiment")
       .def(init<
-          boost::shared_ptr<Beam>,
+          boost::shared_ptr<BeamBase>,
           boost::shared_ptr<Detector>,
           boost::shared_ptr<Goniometer>,
           boost::shared_ptr<Scan>,
           boost::shared_ptr<Crystal>,
           boost::python::object,
           boost::python::object>((
-              arg("beam")       = boost::shared_ptr<Beam>(),
+              arg("beam")       = boost::shared_ptr<BeamBase>(),
               arg("detector")   = boost::shared_ptr<Detector>(),
               arg("goniometer") = boost::shared_ptr<Goniometer>(),
               arg("scan")       = boost::shared_ptr<Scan>(),

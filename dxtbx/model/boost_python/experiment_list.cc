@@ -53,7 +53,7 @@ namespace dxtbx { namespace model { namespace boost_python {
    */
   struct experiment_list_contains_pointers {
 
-    typedef bool (ExperimentList::*beam_type)(const boost::shared_ptr<Beam>&)const;
+    typedef bool (ExperimentList::*beam_type)(const boost::shared_ptr<BeamBase>&)const;
     typedef bool (ExperimentList::*detector_type)(const boost::shared_ptr<Detector>&)const;
     typedef bool (ExperimentList::*goniometer_type)(const boost::shared_ptr<Goniometer>&)const;
     typedef bool (ExperimentList::*scan_type)(const boost::shared_ptr<Scan>&)const;
@@ -92,8 +92,8 @@ namespace dxtbx { namespace model { namespace boost_python {
   struct experiment_list_replace_pointers {
 
     typedef void (ExperimentList::*beam_type)(
-        boost::shared_ptr<Beam>,
-        boost::shared_ptr<Beam>);
+        boost::shared_ptr<BeamBase>,
+        boost::shared_ptr<BeamBase>);
     typedef void (ExperimentList::*detector_type)(
         boost::shared_ptr<Detector>,
         boost::shared_ptr<Detector>);
@@ -142,7 +142,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   struct experiment_list_indices_pointers {
 
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*beam_type)(
-        const boost::shared_ptr<Beam>&)const;
+        const boost::shared_ptr<BeamBase>&)const;
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*detector_type)(
         const boost::shared_ptr<Detector>&)const;
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*goniometer_type)(
@@ -256,7 +256,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("indices", experiment_list_indices_pointers::crystal())
       .def("indices", experiment_list_indices_pointers::object())
       .def("where", &ExperimentList::where, (
-        arg("beam")       = boost::shared_ptr<Beam>(),
+        arg("beam")       = boost::shared_ptr<BeamBase>(),
         arg("detector")   = boost::shared_ptr<Detector>(),
         arg("goniometer") = boost::shared_ptr<Goniometer>(),
         arg("scan")       = boost::shared_ptr<Scan>(),
