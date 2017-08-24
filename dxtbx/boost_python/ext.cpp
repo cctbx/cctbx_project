@@ -202,27 +202,27 @@ namespace dxtbx { namespace boost_python {
 
   void export_to_ewald_sphere_helpers();
 
+
+  template<typename T>
+  void external_lookup_item_wrapper(const char *name) {
+    using namespace boost::python;
+
+    class_< ExternalLookupItem<T> >(name)
+      .add_property("filename",
+          &ExternalLookupItem<T>::get_filename,
+          &ExternalLookupItem<T>::set_filename)
+      .add_property("data",
+          &ExternalLookupItem<T>::get_data,
+          &ExternalLookupItem<T>::set_data)
+      ;
+
+  }
+
   void export_imageset() {
     using namespace boost::python;
 
-
-    class_< ExternalLookupItem<double> >("ExternalLookupItemDouble")
-      .add_property("filename",
-          &ExternalLookupItem<double>::get_filename,
-          &ExternalLookupItem<double>::set_filename)
-      .add_property("data",
-          &ExternalLookupItem<double>::get_data,
-          &ExternalLookupItem<double>::set_data)
-      ;
-
-    class_< ExternalLookupItem<bool> >("ExternalLookupItemBool")
-      .add_property("filename",
-          &ExternalLookupItem<bool>::get_filename,
-          &ExternalLookupItem<bool>::set_filename)
-      .add_property("data",
-          &ExternalLookupItem<bool>::get_data,
-          &ExternalLookupItem<bool>::set_data)
-      ;
+    external_lookup_item_wrapper<double>("ExternalLookupItemDouble");
+    external_lookup_item_wrapper<bool>("ExternalLookupItemBool");
 
     class_<ExternalLookup>("ExternalLookup")
       .add_property("mask",
@@ -281,14 +281,14 @@ namespace dxtbx { namespace boost_python {
       .def("get_mask", &ImageSet::get_mask)
       .def("get_property", &ImageSet::get_property)
       .def("set_property", &ImageSet::set_property)
-      .def("get_beam", &ImageSet::get_beam)
-      .def("get_detector", &ImageSet::get_detector)
-      .def("get_goniometer", &ImageSet::get_goniometer)
-      .def("get_scan", &ImageSet::get_scan)
-      .def("set_beam", &ImageSet::set_beam)
-      .def("set_detector", &ImageSet::set_detector)
-      .def("set_goniometer", &ImageSet::set_goniometer)
-      .def("set_scan", &ImageSet::set_scan)
+      .def("get_beam", &ImageSet::get_beam_for_image)
+      .def("get_detector", &ImageSet::get_detector_for_image)
+      .def("get_goniometer", &ImageSet::get_goniometer_for_image)
+      .def("get_scan", &ImageSet::get_scan_for_image)
+      .def("set_beam", &ImageSet::set_beam_for_image)
+      .def("set_detector", &ImageSet::set_detector_for_image)
+      .def("set_goniometer", &ImageSet::set_goniometer_for_image)
+      .def("set_scan", &ImageSet::set_scan_for_image)
       .def("get_path", &ImageSet::get_path)
       .def("get_image_identifier", &ImageSet::get_image_identifier)
       .def("as_imageset", &ImageSet::as_imageset)
@@ -332,6 +332,14 @@ namespace dxtbx { namespace boost_python {
           const Goniometer &,
           const Scan &
           >())
+      .def("get_beam", &ImageSweep::get_beam)
+      .def("get_detector", &ImageSweep::get_detector)
+      .def("get_goniometer", &ImageSweep::get_goniometer)
+      .def("get_scan", &ImageSweep::get_scan)
+      .def("set_beam", &ImageSweep::set_beam)
+      .def("set_detector", &ImageSweep::set_detector)
+      .def("set_goniometer", &ImageSweep::set_goniometer)
+      .def("set_scan", &ImageSweep::set_scan)
       .def("get_array_range", &ImageSweep::get_array_range)
       .def("complete_set", &ImageSweep::complete_sweep)
       .def("partial_set", &ImageSweep::partial_sweep)

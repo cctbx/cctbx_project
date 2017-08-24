@@ -405,7 +405,7 @@ namespace dxtbx {
     Image<double> get_gain(std::size_t index) {
       if (external_lookup().gain().get_data().empty()) {
 
-        Detector detector = *get_detector(index);
+        Detector detector = *get_detector_for_image(index);
         bool use_detector_gain = true;
 
         // Compute the gain for each panel
@@ -456,7 +456,7 @@ namespace dxtbx {
 
       // Compute the trusted range mask
       Image<double> data = get_raw_data(index).as_double();
-      Detector detector = *get_detector(index);
+      Detector detector = *get_detector_for_image(index);
       DXTBX_ASSERT(data.n_tiles() == detector.size());
       Image<bool> mask;
       for (std::size_t i = 0; i < detector.size(); ++i) {
@@ -522,7 +522,7 @@ namespace dxtbx {
      * @returns the beam at index
      */
     virtual
-    beam_ptr get_beam(std::size_t index) const {
+    beam_ptr get_beam_for_image(std::size_t index) const {
       DXTBX_ASSERT(index < indices_.size());
       return data_.get_beam(indices_[index]);
     }
@@ -532,7 +532,7 @@ namespace dxtbx {
      * @returns the detector at index
      */
     virtual
-    detector_ptr get_detector(std::size_t index) const {
+    detector_ptr get_detector_for_image(std::size_t index) const {
       DXTBX_ASSERT(index < indices_.size());
       return data_.get_detector(indices_[index]);
     }
@@ -542,7 +542,7 @@ namespace dxtbx {
      * @returns the goniometer at index
      */
     virtual
-    goniometer_ptr get_goniometer(std::size_t index) const {
+    goniometer_ptr get_goniometer_for_image(std::size_t index) const {
       DXTBX_ASSERT(index < indices_.size());
       return data_.get_goniometer(indices_[index]);
     }
@@ -552,7 +552,7 @@ namespace dxtbx {
      * @returns the scan at index
      */
     virtual
-    scan_ptr get_scan(std::size_t index) const {
+    scan_ptr get_scan_for_image(std::size_t index) const {
       DXTBX_ASSERT(index < indices_.size());
       return data_.get_scan(indices_[index]);
     }
@@ -563,7 +563,7 @@ namespace dxtbx {
      * @param beam The beam model
      */
     virtual
-    void set_beam(std::size_t index, const beam_ptr &beam) {
+    void set_beam_for_image(std::size_t index, const beam_ptr &beam) {
       DXTBX_ASSERT(index < indices_.size());
       data_.set_beam(indices_[index], beam);
     }
@@ -574,7 +574,7 @@ namespace dxtbx {
      * @param detector The detector model
      */
     virtual
-    void set_detector(std::size_t index, const detector_ptr &detector) {
+    void set_detector_for_image(std::size_t index, const detector_ptr &detector) {
       DXTBX_ASSERT(index < indices_.size());
       data_.set_detector(indices_[index], detector);
     }
@@ -585,7 +585,7 @@ namespace dxtbx {
      * @param goniometer The goniometer model
      */
     virtual
-    void set_goniometer(std::size_t index, const goniometer_ptr &goniometer) {
+    void set_goniometer_for_image(std::size_t index, const goniometer_ptr &goniometer) {
       DXTBX_ASSERT(index < indices_.size());
       data_.set_goniometer(indices_[index], goniometer);
     }
@@ -596,7 +596,7 @@ namespace dxtbx {
      * @param scan The scan model
      */
     virtual
-    void set_scan(std::size_t index, const scan_ptr &scan) {
+    void set_scan_for_image(std::size_t index, const scan_ptr &scan) {
       DXTBX_ASSERT(scan->get_num_images() == 1);
       DXTBX_ASSERT(index < indices_.size());
       data_.set_scan(indices_[index], scan);
@@ -805,10 +805,10 @@ namespace dxtbx {
 
       // Set the models for each image
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_beam(i, beam_);
-        ImageSet::set_detector(i, detector_);
-        ImageSet::set_goniometer(i, goniometer_);
-        ImageSet::set_scan(i, scan_ptr(new Scan(scan[i])));
+        ImageSet::set_beam_for_image(i, beam_);
+        ImageSet::set_detector_for_image(i, detector_);
+        ImageSet::set_goniometer_for_image(i, goniometer_);
+        ImageSet::set_scan_for_image(i, scan_ptr(new Scan(scan[i])));
       }
     }
 
@@ -843,10 +843,10 @@ namespace dxtbx {
 
       // Set the models for each image
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_beam(i, beam_);
-        ImageSet::set_detector(i, detector_);
-        ImageSet::set_goniometer(i, goniometer_);
-        ImageSet::set_scan(i, scan_ptr(new Scan(scan[i])));
+        ImageSet::set_beam_for_image(i, beam_);
+        ImageSet::set_detector_for_image(i, detector_);
+        ImageSet::set_goniometer_for_image(i, goniometer_);
+        ImageSet::set_scan_for_image(i, scan_ptr(new Scan(scan[i])));
       }
     }
 
@@ -860,29 +860,29 @@ namespace dxtbx {
     /**
      * @returns the beam model
      */
-    Beam get_beam() const {
-      return *beam_;
+    beam_ptr get_beam() const {
+      return beam_;
     }
 
     /**
      * @returns the detector model
      */
-    Detector get_detector() const {
-      return *detector_;
+    detector_ptr get_detector() const {
+      return detector_;
     }
 
     /**
      * @returns the goniometer model
      */
-    Goniometer get_goniometer() const {
-      return *goniometer_;
+    goniometer_ptr get_goniometer() const {
+      return goniometer_;
     }
 
     /**
      * @returns the scan model
      */
-    Scan get_scan() const {
-      return *scan_;
+    scan_ptr get_scan() const {
+      return scan_;
     }
 
     /**
@@ -892,7 +892,7 @@ namespace dxtbx {
     void set_beam(const Beam &beam) {
       beam_ = beam_ptr(new Beam(beam));
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_beam(i, beam_);
+        ImageSet::set_beam_for_image(i, beam_);
       }
     }
 
@@ -903,7 +903,7 @@ namespace dxtbx {
     void set_detector(const Detector &detector) {
       detector_ = detector_ptr(new Detector(detector));
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_detector(i, detector_);
+        ImageSet::set_detector_for_image(i, detector_);
       }
     }
 
@@ -914,7 +914,7 @@ namespace dxtbx {
     void set_goniometer(const Goniometer &goniometer) {
       goniometer_ = goniometer_ptr(new Goniometer(goniometer));
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_goniometer(i, goniometer_);
+        ImageSet::set_goniometer_for_image(i, goniometer_);
       }
     }
 
@@ -926,35 +926,35 @@ namespace dxtbx {
       DXTBX_ASSERT(scan.get_num_images() == size());
       scan_ = scan_ptr(new Scan(scan));
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_scan(i, scan_ptr(new Scan(scan[i])));
+        ImageSet::set_scan_for_image(i, scan_ptr(new Scan(scan[i])));
       }
     }
 
     /**
      * Override per-image model
      */
-    void set_beam(std::size_t index, const beam_ptr &beam) {
+    void set_beam_for_image(std::size_t index, const beam_ptr &beam) {
       DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
-    void set_detector(std::size_t index, const detector_ptr &detector) {
+    void set_detector_for_image(std::size_t index, const detector_ptr &detector) {
       DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
-    void set_goniometer(std::size_t index, const goniometer_ptr &goniometer) {
+    void set_goniometer_for_image(std::size_t index, const goniometer_ptr &goniometer) {
       DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
-    void set_scan(std::size_t index, const scan_ptr &scan) {
+    void set_scan_for_image(std::size_t index, const scan_ptr &scan) {
       DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
@@ -1004,9 +1004,9 @@ namespace dxtbx {
       // Construct a sweep
       ImageSweep result(
           data_,
-          get_beam(),
-          get_detector(),
-          get_goniometer(),
+          *get_beam(),
+          *get_detector(),
+          *get_goniometer(),
           scan);
 
       // Return the sweep
@@ -1025,9 +1025,9 @@ namespace dxtbx {
       DXTBX_ASSERT(last > first);
 
       // Construct a partial scan
-      Scan scan = *ImageSet::get_scan(first);
+      Scan scan = *ImageSet::get_scan_for_image(first);
       for (std::size_t i = first+1; i < last; ++i) {
-        scan += *ImageSet::get_scan(i);
+        scan += *ImageSet::get_scan_for_image(i);
       }
 
       // Construct the partial indices
@@ -1037,9 +1037,9 @@ namespace dxtbx {
       ImageSweep result(
           data_,
           indices,
-          get_beam(),
-          get_detector(),
-          get_goniometer(),
+          *get_beam(),
+          *get_detector(),
+          *get_goniometer(),
           scan);
 
       // Return the sweep
