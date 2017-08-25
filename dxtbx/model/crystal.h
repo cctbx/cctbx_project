@@ -569,6 +569,7 @@ namespace dxtbx { namespace model {
           new_direct_matrix[6],
           new_direct_matrix[7],
           new_direct_matrix[8]);
+      // FIXME use a copy constructor. As written, this doesn't copy mosaicity or parameters from derived classes
       boost::shared_ptr<Crystal> other = boost::shared_ptr<Crystal>(new Crystal(
           real_space_a,
           real_space_b,
