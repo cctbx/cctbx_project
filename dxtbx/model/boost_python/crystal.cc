@@ -133,7 +133,55 @@ namespace dxtbx { namespace model { namespace boost_python {
 
   void export_crystal()
   {
-    class_ <Crystal> ("Crystal", no_init)
+    class_ <CrystalBase, boost::noncopyable> ("CrystalBase", no_init)
+      .def("set_unit_cell", &CrystalBase::set_unit_cell)
+      .def("update_B", &CrystalBase::update_B)
+      .def("set_U", &CrystalBase::set_U)
+      .def("get_U", &CrystalBase::get_U)
+      .def("set_B", &CrystalBase::set_B)
+      .def("get_B", &CrystalBase::get_B)
+      .def("set_A", &CrystalBase::set_A)
+      .def("get_A", &CrystalBase::get_A)
+      .def("get_unit_cell", &CrystalBase::get_unit_cell)
+      .def("get_real_space_vectors", &CrystalBase::get_real_space_vectors)
+      .def("set_space_group", &CrystalBase::set_space_group)
+      .def("get_space_group", &CrystalBase::get_space_group)
+      .add_property("num_scan_points", &CrystalBase::get_num_scan_points)
+      .def("get_num_scan_points", &CrystalBase::get_num_scan_points)
+      .def("set_A_at_scan_points", &CrystalBase::set_A_at_scan_points)
+      .def("set_A_at_scan_points", &Crystal_set_A_at_scan_points_from_tuple)
+      .def("set_A_at_scan_points", &Crystal_set_A_at_scan_points_from_list)
+      .def("get_A_at_scan_point", &CrystalBase::get_A_at_scan_point)
+      .def("get_B_at_scan_point", &CrystalBase::get_B_at_scan_point)
+      .def("get_U_at_scan_point", &CrystalBase::get_U_at_scan_point)
+      .def("get_unit_cell_at_scan_point", &CrystalBase::get_unit_cell_at_scan_point)
+      .def("reset_scan_points", &CrystalBase::reset_scan_points)
+      .def("change_basis", &CrystalBase::change_basis)
+      .def("update", &CrystalBase::update)
+      .def("rotate_around_origin", &CrystalBase::rotate_around_origin, (
+            arg("axis"),
+            arg("angle"),
+            arg("deg")=true))
+      .def("is_similar_to", &CrystalBase::is_similar_to, (
+            arg("other"),
+            arg("angle_tolerance")=0.01,
+            arg("uc_rel_length_tolerance")=0.01,
+            arg("uc_abs_angle_tolerance")=1.0,
+            arg("mosaicity_tolerance")=0.8))
+      .def("get_B_covariance", &CrystalBase::get_B_covariance)
+      .def("set_B_covariance", &CrystalBase::set_B_covariance)
+      .def("set_B_covariance", &Crystal_set_B_covariance_from_tuple)
+      .def("get_cell_parameter_sd", &CrystalBase::get_cell_parameter_sd)
+      .def("get_cell_volume_sd", &CrystalBase::get_cell_volume_sd)
+      .def("reset_unit_cell_errors", &CrystalBase::reset_unit_cell_errors)
+      .def("get_mosaicity", &CrystalBase::get_mosaicity, (
+            arg("deg")=true))
+      .def("set_mosaicity", &CrystalBase::set_mosaicity, (
+            arg("mosaicity"),
+            arg("deg")=true))
+      .def("__eq__", &CrystalBase::operator==);
+
+    class_ <Crystal, bases <CrystalBase> > ("Crystal", no_init)
       .def(init<const Crystal&>())
       .def("__init__",
           make_constructor(
@@ -151,53 +199,10 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("real_space_b"),
             arg("real_space_c"),
             arg("space_group_symbol"))))
-      .def("set_unit_cell", &Crystal::set_unit_cell)
-      .def("update_B", &Crystal::update_B)
-      .def("set_U", &Crystal::set_U)
-      .def("get_U", &Crystal::get_U)
-      .def("set_B", &Crystal::set_B)
-      .def("get_B", &Crystal::get_B)
-      .def("set_A", &Crystal::set_A)
-      .def("get_A", &Crystal::get_A)
-      .def("get_unit_cell", &Crystal::get_unit_cell)
-      .def("get_real_space_vectors", &Crystal::get_real_space_vectors)
-      .def("set_space_group", &Crystal::set_space_group)
-      .def("get_space_group", &Crystal::get_space_group)
-      .add_property("num_scan_points", &Crystal::get_num_scan_points)
-      .def("get_num_scan_points", &Crystal::get_num_scan_points)
-      .def("set_A_at_scan_points", &Crystal::set_A_at_scan_points)
-      .def("set_A_at_scan_points", &Crystal_set_A_at_scan_points_from_tuple)
-      .def("set_A_at_scan_points", &Crystal_set_A_at_scan_points_from_list)
-      .def("get_A_at_scan_point", &Crystal::get_A_at_scan_point)
-      .def("get_B_at_scan_point", &Crystal::get_B_at_scan_point)
-      .def("get_U_at_scan_point", &Crystal::get_U_at_scan_point)
-      .def("get_unit_cell_at_scan_point", &Crystal::get_unit_cell_at_scan_point)
-      .def("reset_scan_points", &Crystal::reset_scan_points)
-      .def("change_basis", &Crystal::change_basis)
-      .def("update", &Crystal::update)
-      .def("rotate_around_origin", &Crystal::rotate_around_origin, (
-            arg("axis"),
-            arg("angle"),
-            arg("deg")=true))
-      .def("is_similar_to", &Crystal::is_similar_to, (
-            arg("other"),
-            arg("angle_tolerance")=0.01,
-            arg("uc_rel_length_tolerance")=0.01,
-            arg("uc_abs_angle_tolerance")=1.0,
-            arg("mosaicity_tolerance")=0.8))
-      .def("get_B_covariance", &Crystal::get_B_covariance)
-      .def("set_B_covariance", &Crystal::set_B_covariance)
-      .def("set_B_covariance", &Crystal_set_B_covariance_from_tuple)
-      .def("get_cell_parameter_sd", &Crystal::get_cell_parameter_sd)
-      .def("get_cell_volume_sd", &Crystal::get_cell_volume_sd)
-      .def("reset_unit_cell_errors", &Crystal::reset_unit_cell_errors)
-      .def("get_mosaicity", &Crystal::get_mosaicity, (
-            arg("deg")=true))
-      .def("set_mosaicity", &Crystal::set_mosaicity, (
-            arg("mosaicity"),
-            arg("deg")=true))
-      .def("__eq__", &Crystal::operator==)
       .def_pickle(CrystalPickleSuite());
+
+    register_ptr_to_python<boost::shared_ptr<CrystalBase> >();
+    register_ptr_to_python<boost::shared_ptr<Crystal> >();
   }
 
 }}} // namespace = dxtbx::model::boost_python
