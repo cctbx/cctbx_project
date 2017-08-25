@@ -313,7 +313,24 @@ class manager(object):
         crystal_symmetry=self.cs,
         ss_annotation = self._ss_annotation,
         link_records=self.link_records_in_pdb_format)
-    return result
+    return result.getvalue()
+
+  def restraints_as_geo(self, force=False):
+    """
+    get geo file as string.
+    force = True actually will try to build GRM. Not advised, because if
+    it is not already build, most likely a program never needed it, so
+    no reason to output.
+    """
+    result = StringIO()
+    if force:
+      self.get_grm()
+    self.restraints_manager.geometry.show_sorted(
+        flags=None,
+        sites_cart=self.xray_structure.sites_cart(),
+        site_labels=self.xray_structure.scatterers().extract_labels(),
+        f=result)
+    return result.getvalue()
 
   def model_as_cif(self):
     pass
@@ -393,6 +410,10 @@ class manager(object):
           header="# Geometry restraints after refinement\n",
           xray_structure=self.xray_structure)
 
+  def get_riding_h_manager(self):
+    if self.riding_h_manager is None:
+      self.setup_riding_h_manager(idealize=True)
+    return self.riding_h_manager
 
   def unset_riding_h_manager(self):
     self.riding_h_manager = None

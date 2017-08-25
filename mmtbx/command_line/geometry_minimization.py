@@ -374,7 +374,6 @@ class run(object):
     self.grm                  = None
     self.time_strings         = []
     self.total_time           = 0
-    self.output_file_name     = None
     self.pdb_file_names       = []
     self.use_directory_prefix = use_directory_prefix
     self.sites_cart_start     = None
@@ -423,6 +422,26 @@ class run(object):
   def format_usage_message (self) :
     format_usage_message(log=self.log)
 
+  def setup_output_file_names(self):
+    # for pdb
+    ofn = self.params.output_file_name_prefix
+    directory = self.params.directory
+    base_name = ""
+    if self.use_directory_prefix and directory is not None:
+      base_name = directory
+    suffix = "_" + self._pdb_suffix  + ".pdb"
+    if self.params.output_file_name_prefix is None:
+      in_fn = os.path.basename(self.pdb_file_names[0])
+      ind = max(0, in_fn.rfind("."))
+      ofn = in_fn + suffix
+      if ind > 0:
+        ofn = in_fn[:ind]+suffix
+    else:
+      ofn = self.params.output_file_name_prefix+".pdb"
+    self.result_model_fname = os.path.join(base_name, ofn)
+    self.result_states_fname = self.result_model_fname[:].replace(".pdb","_all_states.pdb")
+    self.final_geo_fname = self.result_model_fname[:].replace(".pdb",".geo")
+
   def initialize(self, prefix):
     if (self.log is None) : self.log = sys.stdout
     if(len(self.args)==0):
@@ -436,6 +455,7 @@ class run(object):
     self.inputs.params.show(prefix="  ", out=self.log)
     if(len(self.args)==0): sys.exit(0)
     self.mon_lib_srv = server.server()
+    self.setup_output_file_names()
 
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -469,7 +489,6 @@ class run(object):
             strict=False).model()
           cif_objects.append((full_path, cif_object))
 
-
     self.model = mmtbx.model.manager(
         model_input = pdb_inp,
         restraint_objects = cif_objects,
@@ -478,10 +497,6 @@ class run(object):
         build_grm = True,
         log = self.log)
 
-    #=========================
-    # self.processed_pdb_file = process_input_files(inputs=self.inputs,
-    #   params=self.params, log=self.log,
-    #   mon_lib_srv=self.mon_lib_srv)
     self.ncs_obj = self.model.get_ncs_obj()#processed_pdb_file.ncs_obj
     self.output_crystal_symmetry = is_non_crystallographic_unit_cell
     self.xray_structure = self.model.get_xrs()
@@ -506,10 +521,7 @@ class run(object):
     if(not (self.params.minimization.riding_h and
             self.xray_structure.hd_selection().count(True)>0)): return
     broadcast(m=prefix, log = self.log)
-    self.riding_h_manager = riding.manager(
-      pdb_hierarchy       = self.pdb_hierarchy,
-      geometry_restraints = self.grm.geometry)
-    self.riding_h_manager.idealize(pdb_hierarchy = self.pdb_hierarchy)
+    self.model.setup_riding_h_manager(idealize=True)
 
   def minimization(self, prefix): # XXX USE alternate_nonbonded_off_on etc
     broadcast(m=prefix, log = self.log)
@@ -560,37 +572,18 @@ class run(object):
     # link_records = link_record_output(self.processed_pdb_file.all_chain_proxies)
     broadcast(m=prefix, log = self.log)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    ofn = self.params.output_file_name_prefix
-    directory = self.params.directory
-    suffix = "_" + self._pdb_suffix  + ".pdb"
-    if(ofn is None):
-      pfn = os.path.basename(self.pdb_file_names[0])
-      ind = max(0,pfn.rfind("."))
-      ofn = pfn+suffix if ind==0 else pfn[:ind]+suffix
-    else: ofn = self.params.output_file_name_prefix+".pdb"
-    if (self.use_directory_prefix) and (directory is not None) :
-      ofn = os.path.join(directory, ofn)
-    print >> self.log, "  output file name:", ofn
+    print >> self.log, "  output file name:", self.result_model_fname
     print >> self.log, self.min_max_mean_shift()
 
     print >> self.log, self.min_max_mean_shift()
     r = self.model.model_as_pdb(output_cs=self.output_crystal_symmetry)
-    f = open(ofn, 'w')
-    f.write(r.getvalue())
+    f = open(self.result_model_fname, 'w')
+    f.write(r)
     f.close()
-    # cs = None
-    # if self.output_crystal_symmetry:
-    #   cs = self.xray_structure.crystal_symmetry()
-    # write_whole_pdb_file(
-    #   file_name=ofn,
-    #   processed_pdb_file=self.processed_pdb_file,
-    #   pdb_hierarchy=self.pdb_hierarchy,
-    #   crystal_symmetry=cs,
-    #   link_records=link_records)
+
     if(self.states_collector):
       self.states_collector.write(
-        file_name=ofn[:].replace(".pdb","_all_states.pdb"))
-    self.output_file_name = os.path.abspath(ofn)
+        file_name=self.result_states_fname)
 
   def min_max_mean_shift(self):
     return "min,max,mean shift from start: %6.3f %6.3f %6.3f"%flex.sqrt((
@@ -600,15 +593,12 @@ class run(object):
   def write_geo_file(self, prefix):
     if(self.params.write_geo_file and self.grm is not None):
       broadcast(m=prefix, log = self.log)
-      ofn = os.path.basename(self.output_file_name).replace(".pdb",".geo")
-      directory = self.params.directory
-      if (self.use_directory_prefix) and (directory is not None) :
-        ofn = os.path.join(directory, ofn)
       # no output of NCS stuff here
-      self.grm.write_geo_file(
-          file_name=ofn,
-          header="# Geometry restraints after refinement\n",
-          xray_structure=self.xray_structure)
+      restr_txt = self.model.restraints_as_geo()
+      f = open(self.final_geo_fname, "w")
+      f.write("# Geometry restraints after refinement\n")
+      f.write(restr_txt)
+      f.close()
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
