@@ -36,6 +36,17 @@ namespace dxtbx {
   using format::Image;
   using format::ImageBuffer;
 
+  namespace detail {
+    
+    template <typename T>
+    T safe_dereference(boost::shared_ptr<T> ptr) {
+      T * item = ptr.get();
+      DXTBX_ASSERT(item != NULL);
+      return *item;
+    }
+
+  }
+
 
   /**
    * Hold an external lookup item
@@ -132,16 +143,24 @@ namespace dxtbx {
 
     ImageSetData() {}
 
-    ImageSetData(boost::python::object data)
-      : data_(data),
-        beams_(boost::python::len(data)),
-        detectors_(boost::python::len(data)),
-        goniometers_(boost::python::len(data)),
-        scans_(boost::python::len(data)) {}
+    ImageSetData(boost::python::object reader,
+                 boost::python::object masker)
+      : reader_(reader),
+        masker_(masker),
+        beams_(boost::python::len(reader)),
+        detectors_(boost::python::len(reader)),
+        goniometers_(boost::python::len(reader)),
+        scans_(boost::python::len(reader)) {
+      DXTBX_ASSERT(boost::python::len(reader) == boost::python::len(masker));
+    }
+    
 
     ImageBuffer get_data(std::size_t index) {
-      return boost::python::extract<ImageBuffer>(
-        data_.attr("data")(index))();
+      boost::python::tuple d = reader_.attr("read")(index);
+        
+      ImageBuffer buffer(image);
+
+      return buffer;
     }
 
     Image<bool> get_mask(std::size_t index) {
@@ -597,7 +616,7 @@ namespace dxtbx {
      */
     virtual
     void set_scan_for_image(std::size_t index, const scan_ptr &scan) {
-      DXTBX_ASSERT(scan->get_num_images() == 1);
+      DXTBX_ASSERT(scan == NULL || scan->get_num_images() == 1);
       DXTBX_ASSERT(index < indices_.size());
       data_.set_scan(indices_[index], scan);
     }
@@ -854,6 +873,7 @@ namespace dxtbx {
      * @returns the array range
      */
     int2 get_array_range() const {
+      DXTBX_ASSERT(scan_ != NULL);
       return scan_->get_array_range();
     }
 
@@ -996,17 +1016,17 @@ namespace dxtbx {
     ImageSweep complete_sweep() const {
 
       // Compute scan
-      Scan scan = *data_.get_scan(0);
+      Scan scan = detail::safe_dereference(data_.get_scan(0));
       for (std::size_t i = 1; i < data_.size(); ++i) {
-        scan += *data_.get_scan(i);
+        scan += detail::safe_dereference(data_.get_scan(i));
       }
 
       // Construct a sweep
       ImageSweep result(
           data_,
-          *get_beam(),
-          *get_detector(),
-          *get_goniometer(),
+          detail::safe_dereference(get_beam()),
+          detail::safe_dereference(get_detector()),
+          detail::safe_dereference(get_goniometer()),
           scan);
 
       // Return the sweep
@@ -1025,9 +1045,9 @@ namespace dxtbx {
       DXTBX_ASSERT(last > first);
 
       // Construct a partial scan
-      Scan scan = *ImageSet::get_scan_for_image(first);
+      Scan scan = detail::safe_dereference(ImageSet::get_scan_for_image(first));
       for (std::size_t i = first+1; i < last; ++i) {
-        scan += *ImageSet::get_scan_for_image(i);
+        scan += detail::safe_dereference(ImageSet::get_scan_for_image(i));
       }
 
       // Construct the partial indices
@@ -1037,9 +1057,9 @@ namespace dxtbx {
       ImageSweep result(
           data_,
           indices,
-          *get_beam(),
-          *get_detector(),
-          *get_goniometer(),
+          detail::safe_dereference(get_beam()),
+          detail::safe_dereference(get_detector()),
+          detail::safe_dereference(get_goniometer()),
           scan);
 
       // Return the sweep
