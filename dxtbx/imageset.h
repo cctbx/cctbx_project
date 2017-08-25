@@ -37,7 +37,7 @@ namespace dxtbx {
   using format::ImageBuffer;
 
   namespace detail {
-    
+
     template <typename T>
     T safe_dereference(boost::shared_ptr<T> ptr) {
       T * item = ptr.get();
@@ -153,39 +153,57 @@ namespace dxtbx {
         scans_(boost::python::len(reader)) {
       DXTBX_ASSERT(boost::python::len(reader) == boost::python::len(masker));
     }
-    
+
 
     ImageBuffer get_data(std::size_t index) {
-      boost::python::tuple d = reader_.attr("read")(index);
-        
-      ImageBuffer buffer(image);
-
+      typedef scitbx::af::versa<double, scitbx::af::c_grid<2> > double_array;
+      typedef scitbx::af::versa<int, scitbx::af::c_grid<2> > int_array;
+      boost::python::tuple d = boost::python::extract<boost::python::tuple>(
+          reader_.attr("read")(index))();
+      ImageBuffer buffer;
+      try {
+        Image<double> image;
+        for (std::size_t i = 0; i < boost::python::len(d); ++i) {
+          image.push_back(
+              ImageTile<double>(
+                boost::python::extract< double_array >(d[i])()));
+        }
+        buffer = ImageBuffer(image);
+      } catch (std::exception) {
+        Image<int> image;
+        for (std::size_t i = 0; i < boost::python::len(d); ++i) {
+          image.push_back(
+              ImageTile<int>(
+                boost::python::extract< int_array >(d[i])()));
+        }
+        buffer = ImageBuffer(image);
+      }
       return buffer;
     }
 
     Image<bool> get_mask(std::size_t index) {
       return boost::python::extract< Image<bool> >(
-        data_.attr("mask")(index))();
+        masker_.attr("mask")(index))();
     }
 
     bool has_single_file_reader() const {
       return boost::python::extract< bool >(
-        data_.attr("reader").attr("is_single_file_reader")())();
+        reader_.attr("reader").attr("is_single_file_reader")())();
     }
 
     std::string get_path(std::size_t index) const {
       return boost::python::extract< std::string >(
-        data_.attr("path")(index))();
+        reader_.attr("path")(index))();
     }
 
     std::string get_master_path() const {
       return boost::python::extract< std::string >(
-        data_.attr("path")(0))();
+        reader_.attr("path")(0))();
     }
 
     std::string get_image_identifier(std::size_t index) const {
       return boost::python::extract< std::string >(
-        data_.attr("identifier")(index))();
+        reader_.attr("identifier")(index))();
     }
 
     std::string get_property(std::string name) const {
@@ -237,7 +255,7 @@ namespace dxtbx {
     }
 
     std::size_t size() const {
-      return boost::python::len(data_);
+      return boost::python::len(reader_);
     }
 
     /**
@@ -249,7 +267,8 @@ namespace dxtbx {
 
   protected:
 
-    boost::python::object data_;
+    boost::python::object reader_;
+    boost::python::object masker_;
     scitbx::af::shared<beam_ptr> beams_;
     scitbx::af::shared<detector_ptr> detectors_;
     scitbx::af::shared<goniometer_ptr> goniometers_;
@@ -943,19 +962,17 @@ namespace dxtbx {
      * @param scan The scan model
      */
     void set_scan(const Scan &scan) {
-      if (scan.get_num_images() != size()) }
+      if (scan.get_num_images() != size()) {
+        DXTBX_ASSERT(scan_ != NULL);
         int i0 = scan.get_array_range()[0];
         int i1 = scan.get_array_range()[1];
-        int j0 = scan_.get_array_range()[0];
-        int j1 = scan_.get_array_range()[1];
+        int j0 = scan_->get_array_range()[0];
         DXTBX_ASSERT(i0 >= j0);
         DXTBX_ASSERT(i1 > i0);
         std::size_t n = i1 - i0;
         int k0 = i0 - j0;
-        int k1 = i1 - j0;
         DXTBX_ASSERT(k0 >= 0);
         std::size_t index0 = indices_[0];
-        std::size_t index1 = index0 + n;
         indices_.resize(n);
         for (std::size_t i = 0; i < n; ++i) {
           indices_[i] = index0 + i;

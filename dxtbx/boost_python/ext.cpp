@@ -240,7 +240,9 @@ namespace dxtbx { namespace boost_python {
       ;
 
     class_<ImageSetData>("ImageSetDataWrapper", no_init)
-      .def(init<boost::python::object>())
+      .def(init<
+          boost::python::object,
+          boost::python::object>())
       .def("get_data", &ImageSetData::get_data)
       .def("get_mask", &ImageSetData::get_mask)
       .def("has_single_file_reader", &ImageSetData::has_single_file_reader)
