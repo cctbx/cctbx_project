@@ -24,8 +24,6 @@ from mmtbx import utils
 from mmtbx import model_statistics
 import iotbx.pdb
 from libtbx import group_args
-from libtbx import easy_run
-import libtbx.load_env
 from mmtbx.hydrogens import riding
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import mmtbx.monomer_library.server
@@ -34,6 +32,15 @@ from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
 from cStringIO import StringIO
 from copy import deepcopy
+from mmtbx.validation.ramalyze import ramalyze
+from mmtbx.validation.rotalyze import rotalyze
+from mmtbx.validation.cbetadev import cbetadev
+from mmtbx.validation.clashscore import clashscore
+from mmtbx.validation import omegalyze
+from mmtbx.validation import cablam
+import iotbx.cif.model
+from libtbx.utils import null_out
+from libtbx.str_utils import format_value
 
 time_model_show = 0.0
 
@@ -1653,14 +1660,9 @@ class manager(object):
     self.xray_structure.set_b_iso(values = b_isos)
 
   def geometry_statistics(self,
-                          ignore_hd,
-                          molprobity_scores = False,
-                          cdl_restraints = False,
-                          general_selection = None
-                          ):
-    if(self.restraints_manager is None): return None
-    hd_selection = self.xray_structure.hd_selection()
+                          general_selection = None):
     ph = self.pdb_hierarchy(sync_with_xray_structure=True)
+    hd_selection = self.xray_structure.hd_selection()
     if(self.use_ias):
       hd_selection = hd_selection.select(~self.ias_selection)
       ph = ph.select(~self.ias_selection)
@@ -1668,35 +1670,13 @@ class manager(object):
     if general_selection is not None:
       ph = ph.select(general_selection)
       rm = rm.select(general_selection)
-    elif(ignore_hd):
+    elif(self.riding_h_manager is None):
       not_hd_sel = ~hd_selection
       ph = ph.select(not_hd_sel)
       rm = rm.select(not_hd_sel)
-    return model_statistics.statistics(
+    return statistics(
       pdb_hierarchy               = ph,
       geometry_restraints_manager = rm.geometry)
-
-  def show_geometry_statistics(self,
-                               ignore_hd, # needs to have selection
-                               message = "",
-                               out = None,
-                               molprobity_scores=False,
-                               cdl_restraints=False,
-                               general_selection=None,
-                               ):
-    if(self.restraints_manager is None): return None
-    global time_model_show
-    if(out is None): out = self.log
-    timer = user_plus_sys_time()
-    result = self.geometry_statistics(
-      ignore_hd = ignore_hd,
-      molprobity_scores=molprobity_scores,
-      cdl_restraints=cdl_restraints,
-      general_selection=general_selection,
-      )
-    result.show(log = out)
-    time_model_show += timer.elapsed()
-    return result
 
   def adp_statistics(self):
     return model_statistics.adp(model = self)
@@ -1794,3 +1774,222 @@ class manager(object):
             group.iselection = isel
             modified = True
       return modified
+
+class statistics(object):
+  def __init__(self,
+               pdb_hierarchy,
+               geometry_restraints_manager=None):
+    self.pdb_hierarchy = pdb_hierarchy
+    self.geometry_restraints_manager = geometry_restraints_manager
+    self.from_restraints = None
+    self.update()
+
+  def update(self, pdb_hierarchy=None):
+    if(pdb_hierarchy is not None):
+      self.pdb_hierarchy = pdb_hierarchy
+    if(self.geometry_restraints_manager is not None):
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      self.from_restraints = \
+        self.geometry_restraints_manager.energies_sites(
+          sites_cart        = sites_cart,
+          compute_gradients = False)
+      assert approx_equal(
+        self.from_restraints.target,
+        self.from_restraints.angle_residual_sum+
+        self.from_restraints.bond_residual_sum+
+        self.from_restraints.chirality_residual_sum+
+        self.from_restraints.dihedral_residual_sum+
+        self.from_restraints.nonbonded_residual_sum+
+        self.from_restraints.planarity_residual_sum+
+        self.from_restraints.parallelity_residual_sum+
+        self.from_restraints.reference_coordinate_residual_sum+
+        self.from_restraints.reference_dihedral_residual_sum+
+        self.from_restraints.ncs_dihedral_residual_sum+
+        self.from_restraints.den_residual_sum+
+        self.from_restraints.ramachandran_residual_sum)
+
+  def angle(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.angle_deviations()
+      n = self.from_restraints.get_filtered_n_angle_proxies()
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def bond(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.bond_deviations()
+      n = self.from_restraints.get_filtered_n_bond_proxies()
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def chirality(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.chirality_deviations()
+      n = self.from_restraints.n_chirality_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def dihedral(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.dihedral_deviations()
+      n = self.from_restraints.n_dihedral_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def planarity(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.planarity_deviations()
+      n = self.from_restraints.n_planarity_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def parallelity(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.parallelity_deviations()
+      n = self.from_restraints.n_parallelity_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def nonbonded(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.nonbonded_deviations()
+      n = self.from_restraints.n_nonbonded_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def ramachandran(self):
+    result = ramalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
+    return group_args(
+      outliers = result.percent_outliers,
+      allowed  = result.percent_allowed,
+      favored  = result.percent_favored)
+
+  def rotamer(self):
+    result = rotalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
+    return group_args(outliers = result.percent_outliers)
+
+  def c_beta(self):
+    result = cbetadev(pdb_hierarchy = self.pdb_hierarchy,
+       outliers_only = True, out = null_out()) # XXX Why it is different from others?
+    return group_args(outliers = result.get_weighted_outlier_percent())
+
+  def clash(self):
+    result = clashscore(pdb_hierarchy = self.pdb_hierarchy)
+    return group_args(
+      score = result.get_clashscore())
+
+  def cablam(self):
+    result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
+      out=null_out(), quiet=True) # XXX Why it is different from others?
+    return group_args(
+      outliers    = result.percent_outliers(),
+      disfavored  = result.percent_disfavored(),
+      ca_outliers = result.percent_ca_outliers())
+
+  def omega(self):
+    result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True) # XXX
+    # XXX Move this to omegalyze function.
+    n_proline         = result.n_proline()
+    n_general         = result.n_general()
+    n_cis_proline     = result.n_cis_proline()
+    n_cis_general     = result.n_cis_general()
+    n_twisted_proline = result.n_twisted_proline()
+    n_twisted_general = result.n_twisted_general()
+    cis_general     = 0
+    twisted_general = 0
+    cis_proline     = 0
+    twisted_proline = 0
+    if(n_proline != 0):
+      cis_proline     = n_cis_proline    *100./n_proline
+      twisted_proline = n_twisted_proline*100./n_proline
+    if(n_general != 0):
+      cis_general     = n_cis_general    *100./n_general
+      twisted_general = n_twisted_general*100./n_general
+    return group_args(
+      cis_proline     = cis_proline,
+      cis_general     = cis_general,
+      twisted_general = twisted_general,
+      twisted_proline = twisted_proline)
+
+  def show(self, log=None, prefix="", lowercase=False):
+    if(log is None): log = sys.stdout
+    def fmt(f1,f2,d1):
+      fmt_str= "%6.3f %7.3f %6d"
+      if f1 is None  : return '   -       -       -  '
+      return fmt_str%(f1,f2,d1)
+    def fmt2(f1):
+      if f1 is None: return '  -   '
+      return "%-6.3f"%(f1)
+    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
+      self.planarity(), self.nonbonded()
+    result = "%s" % prefix
+    result += """
+%sDEVIATIONS FROM IDEAL VALUES.
+%s  BOND      : %s
+%s  ANGLE     : %s
+%s  CHIRALITY : %s
+%s  PLANARITY : %s
+%s  DIHEDRAL  : %s
+%s  MIN NONBONDED DISTANCE : %s
+%s"""%(prefix,
+       prefix, fmt(b.mean, b.max, b.n),
+       prefix, fmt(a.mean, a.max, a.n),
+       prefix, fmt(c.mean, c.max, c.n),
+       prefix, fmt(p.mean, p.max, p.n),
+       prefix, fmt(d.mean, d.max, d.n),
+       prefix, fmt2(n.min),
+       prefix)
+    result += "%s" % prefix
+    result += """
+%sMOLPROBITY STATISTICS.
+%s  ALL-ATOM CLASHSCORE : %s
+%s  RAMACHANDRAN PLOT:
+%s    OUTLIERS : %-5.2f %s
+%s    ALLOWED  : %-5.2f %s
+%s    FAVORED  : %-5.2f %s
+%s  ROTAMER OUTLIERS : %s %s
+%s  CBETA DEVIATIONS : %-d
+%s  PEPTIDE PLANE:
+%s    CIS-PROLINE     : %s
+%s    CIS-GENERAL     : %s
+%s    TWISTED PROLINE : %s
+%s    TWISTED GENERAL : %s"""%(
+        prefix,
+        prefix, format_value("%-6.2f", self.clash().score).strip(),
+        prefix,
+        prefix, self.ramachandran().outliers, "%",
+        prefix, self.ramachandran().allowed, "%",
+        prefix, self.ramachandran().favored, "%",
+        prefix, str("%6.2f"%(self.rotamer().outliers)).strip(),"%",
+        prefix, self.c_beta().outliers,
+        prefix,
+        prefix, str(self.omega().cis_proline),
+        prefix, str(self.omega().cis_general),
+        prefix, str(self.omega().twisted_general),
+        prefix, str(self.omega().twisted_proline))
+    if(lowercase):
+      result = result.swapcase()
+    print >> log, result
+
+  def as_cif_block(self, cif_block=None):
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    cif_block["_refine.pdbx_stereochemistry_target_values"] = "GeoStd + Monomer Library"
+    loop = iotbx.cif.model.loop(header=(
+      "_refine_ls_restr.type",
+      "_refine_ls_restr.number",
+      "_refine_ls_restr.dev_ideal",
+      #"_refine_ls_restr.dev_ideal_target",
+      "_refine_ls_restr.weight",
+      #"_refine_ls_restr.pdbx_refine_id",
+      "_refine_ls_restr.pdbx_restraint_function",
+    ))
+    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
+      self.planarity(), self.nonbonded()
+    loop.add_row(("f_bond_d",           b.n, b.mean, "?", "?"))
+    loop.add_row(("f_angle_d",          a.n, a.mean, "?", "?"))
+    loop.add_row(("f_chiral_restr",     c.n, c.mean, "?", "?"))
+    loop.add_row(("f_plane_restr",      p.n, p.mean, "?", "?"))
+    loop.add_row(("f_dihedral_angle_d", d.n, d.mean, "?", "?"))
+    cif_block.add_loop(loop)
+    return cif_block

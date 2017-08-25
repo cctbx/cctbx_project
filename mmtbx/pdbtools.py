@@ -31,6 +31,7 @@ import scitbx.matrix
 import cStringIO
 import os, sys
 import scitbx.rigid_body
+import mmtbx.model
 
 
 modify_params_str = """\
@@ -955,11 +956,9 @@ def run(args, command_name="phenix.pdbtools", out=sys.stdout,
     if(command_line_interpreter.command_line.options.ignore_hydrogens):
       ph = ph.select(not_hd_sel)
       rm = rm.select(not_hd_sel)
-    mso = model_statistics.geometry(
+    mso = mmtbx.model.statistics(
       pdb_hierarchy      = ph,
-      molprobity_scores  = use_molprobity,
-      restraints_manager = rm.geometry,
-      cdl_restraints     = params.pdb_interpretation.restraints_library.cdl)
+      geometry_restraints_manager = rm.geometry)
     print >> log
     mso.show(log = log, prefix="", lowercase=True)
     utils.print_header("ADP statistics", out = log)

@@ -171,35 +171,19 @@ class refinement_monitor(object):
     if hasattr(self.params, "amber"): # loaded amber scope
       use_amber = self.params.amber.use_amber
       self.is_amber_monitor=use_amber
-    ignore_hd = True
-    if self.neutron_refinement or use_amber:
-      ignore_hd = False
     use_afitt = False
     if hasattr(self.params, "afitt"): # loaded amber scope
       use_afitt = self.params.afitt.use_afitt
     general_selection = None
     if use_afitt:
       from mmtbx.geometry_restraints import afitt
-      if 0:
-        general_selection = afitt.get_afitt_selection(model.restraints_manager,
-                                                      model.xray_structure,
-                                                      ignore_hd)
-        afitt_geom = model.geometry_statistics(
-          ignore_hd = ignore_hd,
-          cdl_restraints=self.params.pdb_interpretation.restraints_library.cdl,
-          general_selection=general_selection,
-          )
-        afitt_geom.show()
       general_selection = afitt.get_non_afitt_selection(
         model.restraints_manager,
         model.xray_structure.sites_cart(),
         model.xray_structure.hd_selection(),
-        ignore_hd)
+        None)
     geom = model.geometry_statistics(
-      ignore_hd = ignore_hd,
-      cdl_restraints=self.params.pdb_interpretation.restraints_library.cdl,
-      general_selection=general_selection,
-      )
+      general_selection=general_selection)
     if(geom is not None): self.geom.append(geom)
     hd_sel = None
     if(not self.neutron_refinement and not self.is_neutron_monitor):

@@ -16,6 +16,7 @@ from cctbx.eltbx import tiny_pse
 from cctbx import eltbx
 from libtbx.test_utils import approx_equal
 from mmtbx.maps.correlation import five_cc
+import mmtbx.model
 
 class rsr_model(object):
   def __init__(self,
@@ -78,10 +79,9 @@ class rsr_model(object):
     self.assert_pdb_hierarchy_xray_structure_sync()
     if(log is None): log = sys.stdout
     print >> log, "%smodel-to-map fit, CC_mask: %-6.4f"%(prefix, self.cc_mask)
-    mso = model_statistics.geometry(
-      pdb_hierarchy      = self.pdb_hierarchy,
-      molprobity_scores  = libtbx.env.has_module("probe"),
-      restraints_manager = self.geometry_restraints_manager)
+    mso = mmtbx.model.statistics(
+      pdb_hierarchy               = self.pdb_hierarchy,
+      geometry_restraints_manager = self.geometry_restraints_manager)
     mso.show(prefix=prefix, log=log, lowercase=True)
     self.stats_evaluations.append(group_args(
       cc       = self.cc_mask,
