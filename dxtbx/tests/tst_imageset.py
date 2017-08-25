@@ -185,7 +185,31 @@ class TestExternalLookup(object):
     pass
 
   def run(self):
-    pass
+    from dxtbx.imageset import ExternalLookup
+    from dxtbx.format.image import ImageTileBool
+    from dxtbx.format.image import ImageTileDouble
+    from dxtbx.format.image import ImageBool
+    from dxtbx.format.image import ImageDouble
+    from scitbx.array_family import flex
+
+    mask = flex.bool(flex.grid(10, 10), True)
+    gain = flex.double(flex.grid(10, 10), 1)
+    pedestal = flex.double(flex.grid(10, 10), 2)
+
+    lookup = ExternalLookup()
+    lookup.mask.data = ImageBool(ImageTileBool(mask))
+    lookup.gain.data = ImageDouble(ImageTileDouble(gain))
+    lookup.pedestal.data = ImageDouble(ImageTileDouble(pedestal))
+
+    mask2 = lookup.mask.data.tile(0).data()
+    gain2 = lookup.gain.data.tile(0).data()
+    pedestal2 = lookup.pedestal.data.tile(0).data()
+
+    assert mask2.all_eq(mask)
+    assert gain2.all_eq(gain)
+    assert pedestal2.all_eq(pedestal)
+
+    print 'OK'
 
 
 class TestImageSet(object):

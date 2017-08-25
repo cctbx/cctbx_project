@@ -107,8 +107,10 @@ namespace dxtbx { namespace format { namespace boost_python {
 
   BOOST_PYTHON_MODULE(dxtbx_format_image_ext)
   {
+    image_tile_wrapper<bool>("ImageTileBool");
     image_tile_wrapper<int>("ImageTileInt");
     image_tile_wrapper<double>("ImageTileDouble");
+    image_wrapper<bool>("ImageBool");
     image_wrapper<int>("ImageInt");
     image_wrapper<double>("ImageDouble");
 
