@@ -57,7 +57,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     typedef bool (ExperimentList::*detector_type)(const boost::shared_ptr<Detector>&)const;
     typedef bool (ExperimentList::*goniometer_type)(const boost::shared_ptr<Goniometer>&)const;
     typedef bool (ExperimentList::*scan_type)(const boost::shared_ptr<Scan>&)const;
-    typedef bool (ExperimentList::*crystal_type)(const boost::shared_ptr<Crystal>&)const;
+    typedef bool (ExperimentList::*crystal_type)(const boost::shared_ptr<CrystalBase>&)const;
     typedef bool (ExperimentList::*object_type)(boost::python::object)const;
 
     static beam_type beam() {
@@ -104,8 +104,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         boost::shared_ptr<Scan>,
         boost::shared_ptr<Scan>);
     typedef void (ExperimentList::*crystal_type)(
-        boost::shared_ptr<Crystal>,
-        boost::shared_ptr<Crystal>);
+        boost::shared_ptr<CrystalBase>,
+        boost::shared_ptr<CrystalBase>);
     typedef void (ExperimentList::*object_type)(
         boost::python::object,
         boost::python::object);
@@ -150,7 +150,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*scan_type)(
         const boost::shared_ptr<Scan>&)const;
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*crystal_type)(
-        const boost::shared_ptr<Crystal>&)const;
+        const boost::shared_ptr<CrystalBase>&)const;
     typedef scitbx::af::shared<std::size_t> (ExperimentList::*object_type)(
         boost::python::object)const;
 
@@ -260,7 +260,7 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("detector")   = boost::shared_ptr<Detector>(),
         arg("goniometer") = boost::shared_ptr<Goniometer>(),
         arg("scan")       = boost::shared_ptr<Scan>(),
-        arg("crystal")    = boost::shared_ptr<Crystal>(),
+        arg("crystal")    = boost::shared_ptr<CrystalBase>(),
         arg("profile")    = boost::python::object(),
         arg("imageset")   = boost::python::object()))
       .def("is_consistent", &ExperimentList::is_consistent)
