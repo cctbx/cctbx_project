@@ -213,7 +213,7 @@ namespace dxtbx {
      */
     bool has_single_file_reader() const {
       return boost::python::extract< bool >(
-        reader_.attr("reader").attr("is_single_file_reader")())();
+        reader_.attr("is_single_file_reader")())();
     }
 
     /**

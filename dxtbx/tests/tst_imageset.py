@@ -105,6 +105,45 @@ class TestFormat(object):
     print 'OK'
 
 
+class TestImageTile(object):
+
+  def __init__(self):
+    pass
+
+  def run(self):
+
+    from dxtbx.format.image import ImageTileInt
+    from scitbx.array_family import flex
+
+    data = flex.int(flex.grid(10, 10))
+    name = "TileName"
+
+    tile = ImageTileInt(data, name)
+
+    assert tile.data().all_eq(data)
+    assert tile.name() == name
+    assert tile.empty() == False
+
+    print "OK"
+
+class TestImage(object):
+
+  def __init__(self):
+    pass
+
+class TestImageBuffer(object):
+
+  def __init__(self):
+    pass
+
+
+class TestExternalLookup(object):
+
+  def __init__(self):
+    pass
+
+  def run(self):
+    pass
 
 
 class TestImageSet(object):
@@ -589,12 +628,16 @@ class TestPickleImageSet(object):
 
 def run():
 
-  TestFormat().run()
-  TestImageSet().run()
-  TestImageSweep().run()
-  TestNexusFile().run()
-  TestImageSetFactory().run()
-  TestPickleImageSet().run()
+  #TestFormat().run()
+  TestImageTile().run()
+  TestImage().run()
+  TestImageBuffer().run()
+  TestExternalLookup().run()
+  #TestImageSet().run()
+  #TestImageSweep().run()
+  #TestNexusFile().run()
+  #TestImageSetFactory().run()
+  #TestPickleImageSet().run()
 
 
 if __name__ == '__main__':
