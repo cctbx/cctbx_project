@@ -98,7 +98,8 @@ namespace dxtbx { namespace format { namespace boost_python {
       .def("tile", &image_type::tile)
       .def("tile_names", &image_type::tile_names)
       .def("n_tiles", &image_type::n_tiles)
-      .def("push_back", &image_type::push_back)
+      .def("append", &image_type::push_back)
+      .def("__len__", &image_type::n_tiles)
       ;
 
   }

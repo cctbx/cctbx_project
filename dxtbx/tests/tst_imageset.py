@@ -131,10 +131,52 @@ class TestImage(object):
   def __init__(self):
     pass
 
+  def run(self):
+    from dxtbx.format.image import ImageTileInt
+    from dxtbx.format.image import ImageInt
+    from scitbx.array_family import flex
+
+
+    data = flex.int(flex.grid(10, 10))
+    name = "TileName0"
+    tile0 = ImageTileInt(data, name)
+    image = ImageInt(tile0)
+    for i in range(1, 4):
+      data = flex.int(flex.grid(10, 10))
+      name = "TileName%d" % i
+      tile = ImageTileInt(data, name)
+      image.append(tile)
+
+    assert image.n_tiles() == 4
+    for i in range(image.n_tiles()):
+      tile = image.tile(i)
+      assert tile.name() == "TileName%d" % i
+
+    print "OK"
+
+
 class TestImageBuffer(object):
 
   def __init__(self):
     pass
+
+  def run(self):
+    from dxtbx.format.image import ImageTileInt
+    from dxtbx.format.image import ImageInt
+    from dxtbx.format.image import ImageBuffer
+    from scitbx.array_family import flex
+
+    data = flex.int(flex.grid(10, 10))
+    name = "TileName0"
+    tile0 = ImageTileInt(data, name)
+    image = ImageInt(tile0)
+
+    b = ImageBuffer(image)
+    assert b.is_int() == True
+    assert b.is_double() == False
+    assert b.is_empty() == False
+
+    print 'OK'
 
 
 class TestExternalLookup(object):
