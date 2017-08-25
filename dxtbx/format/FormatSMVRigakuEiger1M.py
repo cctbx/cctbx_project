@@ -129,7 +129,7 @@ class FormatSMVRigakuEiger1M(FormatSMVRigaku):
       detector_origin = translations[j] + detector_origin
 
     overload = int(float(self._header_dictionary['SATURATED_VALUE']))
-    underload = 0
+    underload = -1
 
     return self._detector_factory.complex(
         'PAD', detector_origin.elems, detector_fast.elems,

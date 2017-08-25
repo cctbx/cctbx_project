@@ -358,6 +358,11 @@ master_phil = iotbx.phil.parse("""
        .help = Sharpening will be applied using d_min equal to \
              d_min_ratio times resolution. Default is 0.833
 
+     input_d_cut = None
+       .type = float
+       .short_caption = d_cut
+       .help = High-resolution limit for sharpening
+
      rmsd = None
        .type = float
        .short_caption = RMSD of model
@@ -520,6 +525,14 @@ master_phil = iotbx.phil.parse("""
        .help = Optimize value of k_sharpen. \
                 Only applies for auto_sharpen_methods b_iso_to_d_cut and \
                 b_iso
+
+     optimize_d_cut = None
+       .type = bool
+       .short_caption = Optimize value of d_cut
+       .help = Optimize value of d_cut. \
+                Only applies for auto_sharpen_methods b_iso_to_d_cut and \
+                b_iso
+
      adjust_region_weight = True
        .type = bool 
        .short_caption = Adjust region weight 
@@ -1485,6 +1498,7 @@ class sharpening_info:
       eps=None,
       d_min=None,
       d_min_ratio=None,
+      input_d_cut=None,
       b_blur_hires=None,
       rmsd=None,
       rmsd_resolution_factor=None,
@@ -1501,6 +1515,7 @@ class sharpening_info:
       b_iso=None,  # expected B_iso after applying b_sharpen
       k_sharpen=None,
       optimize_k_sharpen=None,
+      optimize_d_cut=None,
       kurtosis=None,
       adjusted_sa=None,
       sa_ratio=None,
@@ -1577,6 +1592,12 @@ class sharpening_info:
         self.box_in_auto_sharpen=True
         self.sharpening_target='model'
 
+  def get_d_cut(self):
+    if self.input_d_cut is not None:
+       return self.input_d_cut
+    else:
+       return self.resolution
+
   def get_target_b_iso(self):
     if self.target_b_iso_ratio is None:
       return None
@@ -1652,6 +1673,7 @@ class sharpening_info:
       self.region_weight=params.map_modification.region_weight
       self.max_regions_to_test=params.map_modification.max_regions_to_test
       self.d_min_ratio=params.map_modification.d_min_ratio
+      self.input_d_cut=params.map_modification.input_d_cut
       self.b_blur_hires=params.map_modification.b_blur_hires
       self.rmsd=params.map_modification.rmsd
       self.rmsd_resolution_factor=params.map_modification.rmsd_resolution_factor
@@ -1671,6 +1693,7 @@ class sharpening_info:
       self.allow_box_if_b_iso_set=params.map_modification.allow_box_if_b_iso_set
       self.k_sharpen=params.map_modification.k_sharpen
       self.optimize_k_sharpen=params.map_modification.optimize_k_sharpen
+      self.optimize_d_cut=params.map_modification.optimize_d_cut
       self.sharpening_target=params.map_modification.sharpening_target
       self.residual_target=params.map_modification.residual_target
       self.eps=params.map_modification.eps
@@ -1777,7 +1800,10 @@ class sharpening_info:
       if self.b_sharpen is not None:
         print >>out,"Overall b_sharpen applied:      %7.2f A**2" %(
           self.b_sharpen)
-      print >>out,"High-resolution cutoff:         %7.2f A" %(self.resolution)
+      if self.input_d_cut:
+        print >>out,"High-resolution cutoff:         %7.2f A" %(self.input_d_cut)
+      else:
+        print >>out,"High-resolution cutoff:         %7.2f A" %(self.resolution)
     elif self.sharpening_method=="resolution_dependent":
       print >>out,"Resolution-dependent b values (%7.2f,%7.2f,%7.2f)\n" %(
         tuple(self.resolution_dependent_b))
@@ -2226,7 +2252,10 @@ def apply_sharpening(map_coeffs=None,
       b_sharpen=sharpening_info_obj.b_sharpen
       b_blur_hires=sharpening_info_obj.b_blur_hires
       k_sharpen=sharpening_info_obj.k_sharpen
-      d_min=sharpening_info_obj.resolution# changed from d_cut
+      if sharpening_info_obj.input_d_cut:
+        d_min=sharpening_info_obj.input_d_cut
+      else:
+        d_min=sharpening_info_obj.resolution# changed from d_cut
       n_real=sharpening_info_obj.n_real
       target_scale_factors=sharpening_info_obj.target_scale_factors
       n_bins=sharpening_info_obj.n_bins
@@ -6346,11 +6375,14 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'local_sharpening','box_in_auto_sharpen','use_weak_density',
        'resolution',
        'd_min_ratio',
+       'input_d_cut',
        'b_blur_hires',
        'discard_if_worse',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
        'allow_box_if_b_iso_set',
-       'max_box_fraction','k_sharpen','optimize_k_sharpen',
+       'max_box_fraction','k_sharpen',
+       'optimize_k_sharpen',
+       'optimize_d_cut',
         'residual_target','sharpening_target',
        'search_b_min','search_b_max','search_b_n','adjust_region_weight',
        'region_weight_method',
@@ -7137,6 +7169,7 @@ def auto_sharpen_map_or_map_coeffs(
         residual_target=None,
         sharpening_target=None,
         d_min_ratio=None,
+        input_d_cut=None,
         b_blur_hires=None,
         max_box_fraction=None,
         mask_atoms=None,
@@ -7144,6 +7177,7 @@ def auto_sharpen_map_or_map_coeffs(
         value_outside_atoms=None,
         soft_mask=None,
         k_sharpen=None,
+        optimize_d_cut=None,
         optimize_k_sharpen=None,
         search_b_min=None,
         search_b_max=None,
@@ -7310,6 +7344,103 @@ def estimate_signal_to_noise(value_list=None,minimum_value_to_include=0):
     signal_to_noise=0.
   return signal_to_noise
 
+def optimize_k_sharpen_or_d_cut(
+           optimize_k_sharpen=None,
+           local_best_si=None,
+           si_id_list=None,
+           si_score_list=None,
+           delta_b=None,
+           original_b_iso=None,
+           f_array=None,
+           phases=None,
+           out=sys.stdout):
+
+  if optimize_k_sharpen:
+    print >>out,"\nOptimizing k_sharpen. "
+  else:
+    print >>out,"\nOptimizing d_cut. "
+    local_best_si.input_d_cut=local_best_si.get_d_cut()
+  local_best_si.show_summary(out=out)
+    
+  print >>out,"Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
+       local_best_si.score,local_best_si.b_iso,
+       local_best_si.k_sharpen,local_best_si.get_d_cut())
+  # existing values:
+  value_dict={}
+  for id,score in zip(si_id_list,si_score_list):
+    value_dict[id]=score
+  best_score=local_best_si.score
+  delta_b_iso=delta_b
+  delta_k_sharpen=2
+  delta_d_cut=0.25
+  n_cycle_optimize=5
+  min_cycles=2
+  n_range=2
+  local_best_score=best_score
+  improved=False
+  working_best_si=deepcopy(local_best_si)
+  for cycle in xrange(n_cycle_optimize):
+    print >>out,"Optimization cycle %s" %(cycle)
+    print >>out,\
+       "Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
+     working_best_si.score,working_best_si.b_iso,
+        working_best_si.k_sharpen,working_best_si.get_d_cut())
+    local_best_working_si=deepcopy(working_best_si)
+    for ii in xrange(-n_range,n_range+1):
+      test_b_iso=working_best_si.b_iso+ii*delta_b_iso
+      for jj in xrange(-n_range,n_range+1):
+        if optimize_k_sharpen:
+          test_k_sharpen=working_best_si.k_sharpen+jj*delta_k_sharpen
+          test_d_cut=working_best_si.get_d_cut()
+        else:
+          test_d_cut=working_best_si.get_d_cut()+jj*delta_d_cut
+          test_k_sharpen=working_best_si.k_sharpen
+        id="%.3f_%.3f_%.3f" %(test_b_iso,test_k_sharpen,test_d_cut)
+        if id in value_dict:
+          score=value_dict[id]
+        else:
+          local_si=deepcopy(local_best_si)
+          local_f_array=f_array
+          local_phases=phases
+          if optimize_k_sharpen:
+            local_si.k_sharpen=test_k_sharpen
+          else:
+            local_si.input_d_cut=test_d_cut
+          local_si.b_iso=test_b_iso
+          local_si.b_sharpen=original_b_iso-local_si.b_iso
+
+          local_map_data=apply_sharpening(
+            f_array=local_f_array,phases=local_phases,
+            sharpening_info_obj=local_si,
+            crystal_symmetry=local_si.crystal_symmetry,
+            out=null_out())
+          local_si=score_map(
+             map_data=local_map_data,sharpening_info_obj=local_si,
+            out=null_out())
+          value_dict[id]=local_si.score
+          if local_si.score > local_best_score:
+            local_best_score=local_si.score
+            local_best_working_si=deepcopy(local_si)
+    if local_best_score > best_score:
+      best_score=local_best_score
+      working_best_si=deepcopy(local_best_working_si)
+      delta_b_iso=delta_b_iso/2
+      delta_k_sharpen=delta_k_sharpen/2
+      delta_d_cut=delta_d_cut/2
+      print >>out,\
+       "Current working best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
+      working_best_si.score,working_best_si.b_iso,
+        working_best_si.k_sharpen,working_best_si.get_d_cut())
+    elif cycle>min_cycles:
+      break  # nothing happened
+
+  if working_best_si and working_best_si.score > local_best_si.score:
+    print >>out,"Using new values of b_iso and k_sharpen and d_cut"
+    local_best_si=working_best_si
+
+  local_best_si.show_summary(out=out)
+
+  return local_best_si 
 
 def run_auto_sharpen(
       si=None,
@@ -7735,7 +7866,8 @@ def run_auto_sharpen(
             si_b_iso_list.append(local_si.b_iso)
             si_score_list.append(local_si.score)
             if local_si.k_sharpen is not None:
-             si_id_list.append("%.3f_%.3f" %(local_si.b_iso,local_si.k_sharpen))
+             si_id_list.append("%.3f_%.3f_%.3f" %(local_si.b_iso,local_si.k_sharpen,
+               local_si.get_d_cut()))
 
         if m=='no_sharpening':
           null_si=local_si
@@ -7776,69 +7908,46 @@ def run_auto_sharpen(
            local_best_si.signal_min)
           local_best_si.score=None
 
+      optimize_k_sharpen=False
+      optimize_d_cut=False
+      n_cycles=0
+      if local_best_si.optimize_d_cut and \
+        local_best_si.sharpening_method in ['b_iso_to_d_cut','b_iso']:
+        optimize_d_cut=True
+        n_cycles+=1
       if local_best_si.optimize_k_sharpen and \
         local_best_si.k_sharpen is not None and \
         local_best_si.sharpening_method in ['b_iso_to_d_cut','b_iso']:
-        print >>out,"\nOptimizing k_sharpen. "
-        print >>out,"Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f " %(
-           local_best_si.score,local_best_si.b_iso,local_best_si.k_sharpen)
-        # existing values:
-        value_dict={}
-        for id,score in zip(si_id_list,si_score_list):
-          value_dict[id]=score
-        best_score=local_best_si.score
-        delta_b_iso=delta_b
-        delta_k_sharpen=2
-        n_cycle_optimize=5
-        min_cycles=2
-        n_range=2
-        local_best_score=best_score
-        local_best_working_si=deepcopy(local_best_si)
-        for cycle in xrange(n_cycle_optimize):
-          print >>out,"Optimization cycle %s" %(cycle)
-          print >>out,\
-             "Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f " %(
-           local_best_working_si.score,local_best_working_si.b_iso,
-              local_best_working_si.k_sharpen)
-          working_best_si=None
-          for ii in xrange(-n_range,n_range+1):
-            test_b_iso=local_best_working_si.b_iso+ii*delta_b_iso
-            for jj in xrange(-n_range,n_range+1):
-              test_k_sharpen=local_best_working_si.k_sharpen+jj*delta_k_sharpen
-              id="%.3f_%.3f" %(test_b_iso,test_k_sharpen)
-              if id in value_dict:
-                score=value_dict[id]
-              else:
-                local_si=deepcopy(local_best_si)
-                local_f_array=f_array
-                local_phases=phases
-                local_si.k_sharpen=test_k_sharpen
-                local_si.b_iso=test_b_iso
-                local_si.b_sharpen=original_b_iso-local_si.b_iso
+        optimize_k_sharpen=True
+        n_cycles+=1
+      
+      ##########################################
+      for cycle in xrange(n_cycles):
+        if optimize_k_sharpen:
+          local_best_si=optimize_k_sharpen_or_d_cut(
+           optimize_k_sharpen=True,
+           local_best_si=local_best_si,
+           si_id_list=si_id_list, 
+           si_score_list=si_score_list, 
+           delta_b=delta_b,
+           original_b_iso=original_b_iso,
+           f_array=f_array,
+           phases=phases,
+           out=out)
+ 
+        if optimize_d_cut: 
+          local_best_si=optimize_k_sharpen_or_d_cut(
+           optimize_k_sharpen=False,
+           local_best_si=local_best_si,
+           si_id_list=si_id_list, 
+           si_score_list=si_score_list, 
+           delta_b=delta_b,
+           original_b_iso=original_b_iso,
+           f_array=f_array,
+           phases=phases,
+           out=out)
 
-                local_map_data=apply_sharpening(
-                  f_array=local_f_array,phases=local_phases,
-                  sharpening_info_obj=local_si,
-                  crystal_symmetry=local_si.crystal_symmetry,
-                  out=null_out())
-                local_si=score_map(
-                   map_data=local_map_data,sharpening_info_obj=local_si,
-                  out=null_out())
-                value_dict[id]=local_si.score
-                if local_si.score > local_best_score:
-                  local_best_score=local_si.score
-                  local_best_working_si=deepcopy(local_si)
-          if local_best_score > best_score:
-            best_score=local_best_score
-            working_best_si=deepcopy(local_best_working_si)
-            delta_b_iso=delta_b_iso/2
-            delta_k_sharpen=delta_k_sharpen/2
-          elif cycle>min_cycles:
-            break  # nothing happened
-       
-        if working_best_si and working_best_si.score > local_best_si.score:
-          print >>out,"Using new values of b_iso and k_sharpen"
-          local_best_si=working_best_si
+      ##########################################
 
       if local_best_si.score is not None and (
           best_si.score is None or local_best_si.score > best_si.score):
