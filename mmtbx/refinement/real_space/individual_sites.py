@@ -9,7 +9,7 @@ import mmtbx.ncs.ncs_utils as ncs_utils
 from libtbx.test_utils import approx_equal
 from cctbx import crystal
 import mmtbx.refinement.minimization_ncs_constraints
-
+import mmtbx.model
 
 class easy(object):
   """
@@ -448,8 +448,7 @@ class minimize_wrapper_with_map():
     self.w = 1
     print >> log, "number_of_cycles", number_of_cycles
     print >> log, "Stats before minimization:"
-    ms = mmtbx.model_statistics.statistics(
-        pdb_hierarchy=self.pdb_h)
+    ms = mmtbx.model.statistics(pdb_hierarchy=self.pdb_h)
     ms.show(log=log)
 
     while min_monitor.need_more_cycles():
@@ -553,15 +552,7 @@ class minimize_wrapper_with_map():
           max_iterations               = 100,
           refine_sites                 = True)
         self.xrs = tfg_obj.xray_structure
-          # self.structure_monitor.update(
-          #   xray_structure = tfg_obj.xray_structure,
-          #   accept_as_is   = True)
       self.pdb_h.adopt_xray_structure(self.xrs)
-      ms = mmtbx.model_statistics.statistics(
-          pdb_hierarchy=self.pdb_h)
+      ms = mmtbx.model.statistics(pdb_hierarchy=self.pdb_h)
       min_monitor.save_cycle_results(geometry=ms)
       ms.show(log=self.log)
-
-
-    # print >> log, "pdb_h", self.pdb_h.atoms_size()
-    # self.pdb_h.write_pdb_file("after_map_min.pdb")

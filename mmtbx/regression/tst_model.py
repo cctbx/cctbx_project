@@ -943,8 +943,8 @@ def exercise(mon_lib_srv, ener_lib):
   assert mol.number_of_ordered_solvent_molecules() == 0
   mol.write_pdb_file(out = open("test_model_out_nosolvent.pdb","w"))
   mol.write_pdb_file(out = open("test_model_out_noO.pdb","w"))
-  mol.show_geometry_statistics(ignore_hd = True)
-  mol.show_geometry_statistics(ignore_hd = True)
+  mol.geometry_statistics().show()
+  mol.geometry_statistics().show()
 
 ################
   geometry = processed_pdb_file.geometry_restraints_manager(
@@ -961,9 +961,9 @@ def exercise(mon_lib_srv, ener_lib):
   mol_other.xray_structure.scattering_type_registry(table = "wk1995")
 ################
 
-  mol_other.show_geometry_statistics(ignore_hd = True)
+  mol_other.geometry_statistics()
   print
-  mol.show_geometry_statistics(ignore_hd = True)
+  mol.geometry_statistics()
 
 #####
   class iso: pass

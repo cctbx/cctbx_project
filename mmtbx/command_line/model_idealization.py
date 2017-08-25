@@ -34,7 +34,7 @@ from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.validation.clashscore import check_and_add_hydrogen
-import mmtbx.model_statistics
+import mmtbx.model
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -270,15 +270,9 @@ class model_idealization():
     temp_h = self.whole_pdb_h.select(h_sel)
     self.whole_pdb_h = temp_h.deep_copy()
     self.whole_pdb_h.reset_atom_i_seqs()
-    # self.init_model_statistics = geometry_no_grm(
-    #     pdb_hierarchy=iotbx.pdb.input(
-    #       source_info=None,
-    #       lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
-    #     molprobity_scores=True)
     for_stat_h = self.get_intermediate_result_hierarchy()
 
-    self.init_model_statistics = mmtbx.model_statistics.statistics(
-        pdb_hierarchy=for_stat_h)
+    self.init_model_statistics = mmtbx.model.statistics(pdb_hierarchy=for_stat_h)
     self.time_for_init = time()-t_0
 
   def get_intermediate_result_hierarchy(self):
@@ -646,7 +640,7 @@ class model_idealization():
           reference_map=self.init_ref_map,
           # reference_map=self.reference_map,
           )
-      self.init_gm_model_statistics = mmtbx.model_statistics.statistics(
+      self.init_gm_model_statistics = mmtbx.model.statistics(
           pdb_hierarchy=self.whole_pdb_h)
       if self.params.debug:
         self.shift_and_write_result(
@@ -666,7 +660,7 @@ class model_idealization():
           hierarchy=self.whole_pdb_h,
           fname_suffix="all_idealized",
           grm=self.whole_grm)
-      self.final_model_statistics = mmtbx.model_statistics.statistics(
+      self.final_model_statistics = mmtbx.model.statistics(
           pdb_hierarchy=iotbx.pdb.input(
             source_info=None,
             lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy())
@@ -743,8 +737,8 @@ class model_idealization():
       self.log.flush()
 
     for_stat_h = self.get_intermediate_result_hierarchy()
-    self.after_ss_idealization = mmtbx.model_statistics.statistics(
-        pdb_hierarchy=for_stat_h)
+    self.after_ss_idealization = mmtbx.model.statistics(
+      pdb_hierarchy=for_stat_h)
     self.shift_and_write_result(
           hierarchy=for_stat_h,
           fname_suffix="ss_ideal_stat")
@@ -785,7 +779,7 @@ class model_idealization():
           grm=self.working_grm)
     for_stat_h = self.get_intermediate_result_hierarchy()
     # for_stat_h.write_pdb_file(file_name="compare_with_rama_ideal.pdb")
-    self.after_loop_idealization = mmtbx.model_statistics.statistics(
+    self.after_loop_idealization = mmtbx.model.statistics(
         pdb_hierarchy=for_stat_h)
 
     if self.params.add_hydrogens:
@@ -821,15 +815,8 @@ class model_idealization():
     cs_to_write = self.cs if self.shift_vector is None else None
 
     for_stat_h = self.get_intermediate_result_hierarchy()
-    self.after_rotamer_fixing = mmtbx.model_statistics.statistics(
-        pdb_hierarchy=for_stat_h)
-
-    # self.after_rotamer_fixing = geometry_no_grm(
-    #     pdb_hierarchy=iotbx.pdb.input(
-    #       source_info=None,
-    #       lines=fixed_rot_pdb_h.as_pdb_string()).construct_hierarchy(),
-    #     molprobity_scores=True)
-
+    self.after_rotamer_fixing = mmtbx.model.statistics(
+      pdb_hierarchy=for_stat_h)
     ref_hierarchy_for_final_gm = self.original_boxed_hierarchy
     if not self.params.use_starting_model_for_final_gm:
       ref_hierarchy_for_final_gm = self.whole_pdb_h
@@ -894,7 +881,7 @@ class model_idealization():
         hierarchy=self.whole_pdb_h,
         fname_suffix="all_idealized",
         grm=self.whole_grm)
-    self.final_model_statistics = mmtbx.model_statistics.statistics(
+    self.final_model_statistics = mmtbx.model.statistics(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
           lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy())
