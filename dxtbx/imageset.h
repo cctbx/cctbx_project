@@ -143,6 +143,11 @@ namespace dxtbx {
 
     ImageSetData() {}
 
+    /**
+     * Construct the imageset data object
+     * @param reader The image reader
+     * @param masker The image masker
+     */
     ImageSetData(boost::python::object reader,
                  boost::python::object masker)
       : reader_(reader),
@@ -154,7 +159,11 @@ namespace dxtbx {
       DXTBX_ASSERT(boost::python::len(reader) == boost::python::len(masker));
     }
 
-
+    /**
+     * Read some image data
+     * @param index The image index
+     * @returns The image data
+     */
     ImageBuffer get_data(std::size_t index) {
       typedef scitbx::af::versa<double, scitbx::af::c_grid<2> > double_array;
       typedef scitbx::af::versa<int, scitbx::af::c_grid<2> > int_array;
@@ -181,79 +190,153 @@ namespace dxtbx {
       return buffer;
     }
 
+    /**
+     * Read the image mask
+     * @param index The image index
+     * @returns The image mask
+     */
     Image<bool> get_mask(std::size_t index) {
-      return boost::python::extract< Image<bool> >(
-        masker_.attr("mask")(index))();
+      typedef scitbx::af::versa<bool, scitbx::af::c_grid<2> > bool_array;
+      boost::python::tuple d = boost::python::extract<boost::python::tuple>(
+          masker_.attr("read")(index))();
+      Image<bool> image;
+      for (std::size_t i = 0; i < boost::python::len(d); ++i) {
+        image.push_back(
+            ImageTile<bool>(
+              boost::python::extract< bool_array >(d[i])()));
+      }
+      return image;
     }
 
+    /**
+     * @returns Is the reader a single file reader
+     */
     bool has_single_file_reader() const {
       return boost::python::extract< bool >(
         reader_.attr("reader").attr("is_single_file_reader")())();
     }
 
+    /**
+     * @returns The image path
+     */
     std::string get_path(std::size_t index) const {
       return boost::python::extract< std::string >(
         reader_.attr("path")(index))();
     }
 
+    /**
+     * @returns The master image path
+     */
     std::string get_master_path() const {
       return boost::python::extract< std::string >(
         reader_.attr("path")(0))();
     }
 
+    /**
+     * @returns The image identifier
+     */
     std::string get_image_identifier(std::size_t index) const {
       return boost::python::extract< std::string >(
         reader_.attr("identifier")(index))();
     }
 
+    /**
+     * @returns A property
+     */
     std::string get_property(std::string name) const {
       return properties_.at(name);
     }
 
+    /**
+     * Set a property
+     */
     void set_property(std::string name, std::string value) {
       properties_[name] = value;
     }
 
+    /**
+     * Get a beam model
+     * @param index The image index
+     * @returns The beam model
+     */
     beam_ptr get_beam(std::size_t index) const {
       DXTBX_ASSERT(index < beams_.size());
       return beams_[index];
     }
 
+    /**
+     * Set a beam model
+     * @param index The image index
+     * @param The beam model
+     */
     void set_beam(std::size_t index, const beam_ptr &beam) {
       DXTBX_ASSERT(index < beams_.size());
       beams_[index] = beam;
     }
 
+    /**
+     * Get a detector model
+     * @param index The image index
+     * @returns The detector model
+     */
     detector_ptr get_detector(std::size_t index) const {
       DXTBX_ASSERT(index < detectors_.size());
       return detectors_[index];
     }
 
+    /**
+     * Set a detector model
+     * @param index The image index
+     * @param The detector model
+     */
     void set_detector(std::size_t index, const detector_ptr &detector) {
       DXTBX_ASSERT(index < detectors_.size());
       detectors_[index] = detector;
     }
 
+    /**
+     * Get a goniometer model
+     * @param index The image index
+     * @returns The goniometer model
+     */
     goniometer_ptr get_goniometer(std::size_t index) const {
       DXTBX_ASSERT(index < goniometers_.size());
       return goniometers_[index];
     }
 
+    /**
+     * Set a goniometer model
+     * @param index The image index
+     * @param The goniometer model
+     */
     void set_goniometer(std::size_t index, const goniometer_ptr &goniometer) {
       DXTBX_ASSERT(index < goniometers_.size());
       goniometers_[index] = goniometer;
     }
 
+    /**
+     * Get a scan model
+     * @param index The image index
+     * @returns The scan model
+     */
     scan_ptr get_scan(std::size_t index) const {
       DXTBX_ASSERT(index < scans_.size());
       return scans_[index];
     }
 
+    /**
+     * Set a scan model
+     * @param index The image index
+     * @param The scan model
+     */
     void set_scan(std::size_t index, const scan_ptr &scan) {
       DXTBX_ASSERT(index < scans_.size());
       scans_[index] = scan;
     }
 
+    /**
+     * @returns the number of images
+     */
     std::size_t size() const {
       return boost::python::len(reader_);
     }
