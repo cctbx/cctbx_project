@@ -942,6 +942,8 @@ def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
 # MARKED_FOR_DELETION_OLEG
 # Reason: Yet another ad-hoc writing pdb function.
 # used in mmtbx.model:write_pdb_file(), phenix.refine (!!!)
+# Probably written in pre-pdb_hierarchy era, thus copying all atom parameters
+# from xray_structure
 def write_pdb_file(
       xray_structure,
       pdb_hierarchy,

@@ -188,9 +188,12 @@ class manager(object):
       self.restraints_manager = restraints_manager
       if xray_structure is not None:
         self.xray_structure = xray_structure
+        self.cs = xray_structure.crystal_symmetry()
       # Not clear why xray_structure_initial is necessary
       self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
       self._pdb_hierarchy = pdb_hierarchy
+      self.link_records_in_pdb_format = None
+      self._ss_annotation = None
       self.pdb_atoms = self._pdb_hierarchy.atoms()
       self.pdb_atoms.reset_i_seq()
       if(anomalous_scatterer_groups is not None and
@@ -338,13 +341,21 @@ class manager(object):
 
   def model_as_pdb(self,
       output_cs = True,
-      atoms_reset_serial_first_value=None):
+      atoms_reset_serial_first_value=None,
+      link_records_text = None, # temporary, for phenix.refine
+      ss_manager = None, # temporary, for phenix.refine
+      pr_cs = None, # temporary, for phenix.refine
+      ):
     """
     move all the writing here later.
     """
+    if "_ss_manager" not in self.__dict__.keys():
+      self._ss_manager = ss_manager
     cs_to_output = None
     if output_cs:
       cs_to_output = self.cs
+    if pr_cs is not None:
+      cs_to_output = pr_cs
     # print self.cs.show_summary()
     # STOP()
     result = StringIO()
@@ -369,6 +380,9 @@ class manager(object):
     if (self.link_records_in_pdb_format is not None
         and len(self.link_records_in_pdb_format)>0):
       result.write("%s\n" % self.link_records_in_pdb_format)
+    if link_records_text is not None and len(link_records_text)>0:
+      result.write(link_records_text)
+      result.write("\n")
     if self._pdb_hierarchy is not None:
       result.write(self._pdb_hierarchy.as_pdb_string(
           crystal_symmetry=cs_to_output,
