@@ -153,6 +153,91 @@ namespace dxtbx { namespace model {
 
   }
 
+  /** Base class for crystal objects */
+  class CrystalBase {
+  public:
+    virtual ~CrystalBase() {}
+
+    // Set the unit cell parameters
+    virtual void set_unit_cell(
+        const vec3<double> &real_space_a,
+        const vec3<double> &real_space_b,
+        const vec3<double> &real_space_c) = 0;
+    // Update the B matrix
+    virtual void update_B() = 0;
+    // Set the U matrix
+    virtual void set_U(const mat3<double> &U) = 0;
+    // Set the B matrix
+    virtual void set_B(const mat3<double> &B) = 0;
+    // Set the A matrix
+    virtual void set_A(const mat3<double> &A) = 0;
+    // @returns the U matrix
+    virtual mat3<double> get_U() const = 0;
+    // @returns the B matrix
+    virtual mat3<double> get_B() const = 0;
+    // @returns the A matrix
+    virtual mat3<double> get_A() const = 0;
+    // @returns the unit_cell
+    virtual cctbx::uctbx::unit_cell get_unit_cell() const = 0;
+    // @returns the real space vectors
+    virtual scitbx::af::shared< vec3<double> > get_real_space_vectors() const  = 0;
+    // Set the space group
+    virtual void set_space_group(cctbx::sgtbx::space_group space_group)  = 0;
+    // Get the space group
+    virtual cctbx::sgtbx::space_group get_space_group() const = 0;
+    // @returns the number of scan points
+    virtual std::size_t get_num_scan_points() const = 0;
+    // Set the A matrix at scan points
+    virtual void set_A_at_scan_points(const scitbx::af::const_ref< mat3<double> > &A) = 0;
+    // Get the A matrix at scan points
+    virtual scitbx::af::shared< mat3<double> > get_A_at_scan_points() const = 0;
+    //  Get the A matrix at the scan point
+    virtual mat3<double> get_A_at_scan_point(std::size_t index) const = 0;
+    // Get the U matrix at the scan point
+    virtual mat3<double> get_U_at_scan_point(std::size_t index) const = 0;
+    // Get the B matrix at the scan point
+    virtual mat3<double> get_B_at_scan_point(std::size_t index) const = 0;
+    // Get the unit cell at the scan point
+    virtual cctbx::uctbx::unit_cell get_unit_cell_at_scan_point(std::size_t index) const = 0;
+    // Reset the scan points
+    virtual void reset_scan_points() = 0;
+    // Returns a copy of the current crystal model transformed by the given
+    // change of basis operator to the new basis.
+    virtual boost::shared_ptr<CrystalBase> change_basis(cctbx::sgtbx::change_of_basis_op change_of_basis_op) const = 0;
+    // Update crystal with parameters from another model
+    virtual void update(const CrystalBase &other) = 0;
+    // Rotate the model around an axis and angle
+    virtual void rotate_around_origin(vec3<double> axis, double angle, bool deg=false) = 0;
+    // Check if the models are equal
+    virtual bool operator==(const CrystalBase &other) const = 0;
+    // Check if models are similar
+    virtual bool is_similar_to(
+        const CrystalBase &other,
+        double angle_tolerance=0.01,
+        double uc_rel_length_tolerance=0.01,
+        double uc_abs_angle_tolerance=1.0,
+        double mosaicity_tolerance=0.8) const = 0;
+    // Return the 9*9 covariance matrix of elements of B, if available, otherwise None.
+    virtual scitbx::af::versa< double, scitbx::af::c_grid<2> > get_B_covariance() const  = 0;
+    // Set the covariance matrix
+    virtual void set_B_covariance(const scitbx::af::const_ref< double, scitbx::af::c_grid<2> > &cov) = 0;
+    // Get the cell parameter standard deviation
+    virtual scitbx::af::small<double,6> get_cell_parameter_sd() = 0;
+    // Get the cell parameter standard deviation
+    virtual scitbx::af::small<double,6> get_cell_parameter_sd_no_calc() const = 0;
+    // Get the cell volume standard deviation
+    virtual double get_cell_volume_sd_no_calc() const = 0;
+    // Get the cell volume standard deviation
+    virtual double get_cell_volume_sd() = 0;
+    virtual void calc_cell_parameter_sd() = 0;
+    // Reset unit cell errors
+    virtual void reset_unit_cell_errors() = 0;
+    // Get the mosaicity
+    virtual double get_mosaicity(bool deg=true) const = 0;
+    // Set the mosaicity
+    virtual void set_mosaicity(double mosaicity, bool deg=true) = 0;
+  };
+
   /**
    * Simple model for the crystal lattice geometry and symmetry
    *
