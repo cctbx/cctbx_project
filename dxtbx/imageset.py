@@ -725,6 +725,15 @@ class ImageSweep(ImageSet):
     self._goniometer = goniometer
     self._detector = detector
     self._scan = scan
+    for i in range(len(self)):
+      ImageSet.set_beam(self, self._beam, i)
+      ImageSet.set_detector(self, self._detector, i)
+      ImageSet.set_goniometer(self, self._goniometer, i)
+      if self._scan is not None:
+        s = self._scan[i]
+      else:
+        s = None
+      ImageSet.set_scan(self, s, i)
 
   def __getitem__(self, item):
     ''' Get an item from the sweep stream.
@@ -790,18 +799,30 @@ class ImageSweep(ImageSet):
   def set_beam(self, beam):
     ''' Set the beam. '''
     self._beam = beam
+    for i in range(len(self)):
+      ImageSet.set_beam(self, self._beam, i)
 
   def set_goniometer(self, goniometer):
     ''' Set the goniometer model '''
     self._goniometer = goniometer
+    for i in range(len(self)):
+      ImageSet.set_goniometer(self, self._goniometer, i)
 
   def set_detector(self, detector):
     ''' Set the detector model. '''
     self._detector = detector
+    for i in range(len(self)):
+      ImageSet.set_detector(self, self._detector, i)
 
   def set_scan(self, scan):
     ''' Set the scan model. '''
     self._scan = scan
+    for i in range(len(self)):
+      if self._scan is not None:
+        s = self._scan[i]
+      else:
+        s = None
+      ImageSet.set_scan(self, s, i)
 
   def get_template(self):
     ''' Return the template '''
