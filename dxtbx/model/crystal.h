@@ -257,7 +257,7 @@ namespace dxtbx { namespace model {
    * parameter controlling whether this value is treated as being an
    * angle in degrees or radians.
    */
-  class Crystal {
+  class Crystal : public CrystalBase {
   public:
 
     /**
@@ -535,7 +535,7 @@ namespace dxtbx { namespace model {
      * @param change_of_basis_op The change of basis operator.
      * @returns The crystal model transformed to the new basis.
      */
-    Crystal change_basis(cctbx::sgtbx::change_of_basis_op change_of_basis_op) const {
+    boost::shared_ptr<CrystalBase> change_basis(cctbx::sgtbx::change_of_basis_op change_of_basis_op) const {
 
       // cctbx change of basis matrices and those Giacovazzo are related by
       // inverse and transpose, i.e. Giacovazzo's "M" is related to the cctbx
@@ -569,18 +569,18 @@ namespace dxtbx { namespace model {
           new_direct_matrix[6],
           new_direct_matrix[7],
           new_direct_matrix[8]);
-      Crystal other(
+      boost::shared_ptr<Crystal> other = boost::shared_ptr<Crystal>(new Crystal(
           real_space_a,
           real_space_b,
           real_space_c,
-          get_space_group().change_basis(change_of_basis_op));
+          get_space_group().change_basis(change_of_basis_op)));
       if (get_num_scan_points() > 0) {
         mat3<double> M_inv = M.inverse();
         scitbx::af::shared< mat3<double> > new_A_at_scan_points;
         for (std::size_t i = 0; i < get_num_scan_points(); ++i) {
           new_A_at_scan_points.push_back(get_A_at_scan_point(i) * M_inv);
         }
-        other.set_A_at_scan_points(new_A_at_scan_points.const_ref());
+        other->set_A_at_scan_points(new_A_at_scan_points.const_ref());
       }
       return other;
     }
@@ -588,8 +588,8 @@ namespace dxtbx { namespace model {
     /**
      * Update crystal with parameters from another model
      */
-    void update(const Crystal &other) {
-      (*this) = other;
+    void update(const CrystalBase &other) {
+      (*this) = *dynamic_cast<const Crystal*>(&other);
     }
 
     /**
@@ -619,13 +619,13 @@ namespace dxtbx { namespace model {
     /**
      * Check if the models are equal
      */
-    bool operator==(const Crystal &other) const {
+    bool operator==(const CrystalBase &other) const {
       double d_U = 0.0;
       double d_B = 0.0;
       double eps = 1e-7;
       for (std::size_t i = 0; i < 9; ++i) {
-        d_U += std::abs(U_[i] - other.U_[i]);
-        d_B += std::abs(B_[i] - other.B_[i]);
+        d_U += std::abs(U_[i] - other.get_U()[i]);
+        d_B += std::abs(B_[i] - other.get_B()[i]);
       }
       if (get_num_scan_points() > 0) {
         if (get_num_scan_points() != other.get_num_scan_points()) {
@@ -643,18 +643,18 @@ namespace dxtbx { namespace model {
           }
         }
       }
-      double d_mosaicity = std::abs(mosaicity_ - other.mosaicity_);
+      double d_mosaicity = std::abs(mosaicity_ - other.get_mosaicity());
       return (d_U <= eps &&
               d_B <= eps &&
               d_mosaicity <= eps &&
-              space_group_ == other.space_group_);
+              space_group_ == other.get_space_group());
     }
 
     /**
      * Check if models are similar
      */
     bool is_similar_to(
-        const Crystal &other,
+        const CrystalBase &other,
         double angle_tolerance=0.01,
         double uc_rel_length_tolerance=0.01,
         double uc_abs_angle_tolerance=1.0,
