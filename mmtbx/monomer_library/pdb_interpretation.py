@@ -2928,8 +2928,13 @@ class build_all_chain_proxies(linking_mixins):
         restraints_loading_flags=None,
                 ):
     import iotbx.cif.model
+    # MARKED_FOR_DELETION_OLEG
+    # Reason: sub-optimal place for store this kind of information.
+    # Proposal: not available yet, needs to be discussed.
     self.cif = iotbx.cif.model.cif()
+    # Proposal: use origin id in proxies.
     self.pdb_link_records = {}
+    # END_MARKED_FOR_DELETION_OLEG
     if restraints_loading_flags is None:
       restraints_loading_flags = get_restraints_loading_flags(params)
     self.mon_lib_srv = mon_lib_srv

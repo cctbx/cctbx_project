@@ -1867,6 +1867,8 @@ def show_file_summary (pdb_in, hierarchy=None, out=None) :
     print >> out, format % (label + ":", str(value))
   return info
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: functionality lives in mmtbx/model.py:class model:model_as_pdb()
 def write_whole_pdb_file(
     file_name=None,
     output_file=None,
@@ -1912,3 +1914,4 @@ def write_whole_pdb_file(
   if file_name is not None:
     out.flush()
     out.close()
+# END_MARKED_FOR_DELETION_OLEG

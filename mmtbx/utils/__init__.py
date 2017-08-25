@@ -939,6 +939,9 @@ def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
           % show_string(string))
   return result
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: Yet another ad-hoc writing pdb function.
+# used in mmtbx.model:write_pdb_file(), phenix.refine (!!!)
 def write_pdb_file(
       xray_structure,
       pdb_hierarchy,
@@ -997,6 +1000,7 @@ def write_pdb_file(
       append_end=True,
       crystal_symmetry = xray_structure.crystal_symmetry(),
       atoms_reset_serial_first_value=atoms_reset_serial_first_value)
+# END_MARKED_FOR_DELETION_OLEG
 
 def print_programs_start_header(log, text):
   print >> log
@@ -1825,6 +1829,8 @@ class pdb_file(object):
         self.ignore_unknown_nonbonded_energy_types)
     if(msg is not None): raise Sorry(msg)
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: old way of creating model, used only in mmtbx/regression/tst_model.py
 def model_simple(pdb_file_names,
                  log = None,
                  normalization = True,
@@ -1878,6 +1884,7 @@ def model_simple(pdb_file_names,
     pdb_hierarchy           = pdb_hierarchy,
     log                     = log)
   return result
+# END MARKED_FOR_DELETION_OLEG
 
 def extract_tls_and_u_total_from_pdb(
       f_obs,

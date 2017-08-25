@@ -1,3 +1,8 @@
+# MARKED_FOR_DELETION_OLEG
+# Reason: sub-optimal approach to store and output custom links.
+# Proposal: use origin_id in bond proxies. Write a class capable of
+# taking GRM and hierarchy/labels to produce links in various formats.
+#
 from __future__ import division
 def link_record_output(all_chain_proxies):
   outl = ""
@@ -54,3 +59,4 @@ def link_record_output(all_chain_proxies):
     else:
       raise Sorry("PDB record type %s unknown" % key)
   return outl[:-1]
+# END_MARKED_FOR_DELETION_OLEG

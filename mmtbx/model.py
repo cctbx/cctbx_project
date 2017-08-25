@@ -21,10 +21,10 @@ from libtbx.utils import Sorry, user_plus_sys_time
 from cctbx import adp_restraints
 from mmtbx import ias
 from mmtbx import utils
-from mmtbx import model_statistics
 import iotbx.pdb
 from libtbx import group_args
 from mmtbx.hydrogens import riding
+import mmtbx.model_statistics
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import mmtbx.monomer_library.server
 from iotbx.pdb.misc_records_output import link_record_output
@@ -160,7 +160,7 @@ class manager(object):
                      ias_manager = None,        # remove later
                      wilson_b = None,           # !!! Nothing sets it in this class. Neverhteless,
                                                 # !!! it is outputted in model_statistics, used in mmtbx/refinement
-                     tls_groups = None,         # remove later
+                     tls_groups = None,         # remove later? No action performed on them here
                      ncs_groups = None,         # remove later
                      anomalous_scatterer_groups = None, # remove later
                      log = None):
@@ -186,7 +186,8 @@ class manager(object):
     if xray_structure is not None or pdb_hierarchy is not None:
       # Old way of doing things. Remove later completely.
       self.restraints_manager = restraints_manager
-      self.xray_structure = xray_structure
+      if xray_structure is not None:
+        self.xray_structure = xray_structure
       # Not clear why xray_structure_initial is necessary
       self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
       self._pdb_hierarchy = pdb_hierarchy
@@ -231,6 +232,7 @@ class manager(object):
       self.link_records_in_pdb_format = None
       # we need them to be able to do "smart" selections implemented there...
       self.all_chain_proxies = None
+      self.model_statistics_info = None
       self._asc = None
       self._grm = None
       self._ncs_obj = None
@@ -251,6 +253,23 @@ class manager(object):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
 
+  def get_model_statistics_info(self,
+      fmodel_x          = None,
+      fmodel_n          = None,
+      refinement_params = None,
+      ignore_hd         = True,
+      general_selection = None,
+      use_molprobity    = True):
+    if self.model_statistics_info is None:
+      self.model_statistics_info = mmtbx.model_statistics.info(
+          model             = self.model,
+          fmodel_x          = fmodel_x,
+          fmodel_n          = fmodel_n,
+          refinement_params = refinement_params,
+          ignore_hd         = ignore_hd,
+          general_selection = general_selection,
+          use_molprobity    = use_molprobity)
+    return self.model_statistics_info
 
   def get_grm(self):
     if self.restraints_manager is not None:
@@ -317,21 +336,100 @@ class manager(object):
     self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
         crystal_symmetry=self.cs)
 
-  def model_as_pdb(self, output_cs = True):
+  def model_as_pdb(self,
+      output_cs = True,
+      atoms_reset_serial_first_value=None):
     """
     move all the writing here later.
     """
     cs_to_output = None
     if output_cs:
       cs_to_output = self.cs
+    # print self.cs.show_summary()
+    # STOP()
     result = StringIO()
-    iotbx.pdb.write_whole_pdb_file(
-        output_file=result,
-        pdb_hierarchy=self._pdb_hierarchy,
-        crystal_symmetry=self.cs,
-        ss_annotation = self._ss_annotation,
-        link_records=self.link_records_in_pdb_format)
+    # outputting HELIX/SHEET records
+    ss_records = ""
+    ss_ann = None
+    if self._ss_manager is not None:
+      ss_ann = self._ss_manager.actual_sec_str
+    elif self._ss_annotation is not None:
+      ss_ann = self._ss_annotation
+    if ss_ann is not None:
+      ss_records = ss_ann.as_pdb_str()
+    if ss_records != "":
+      if ss_records[-1] != "\n":
+        ss_records += "\n"
+      result.write(ss_records)
+
+    #
+    # Here should be NCS output somehow
+    #
+
+    if (self.link_records_in_pdb_format is not None
+        and len(self.link_records_in_pdb_format)>0):
+      result.write("%s\n" % self.link_records_in_pdb_format)
+    if self._pdb_hierarchy is not None:
+      result.write(self._pdb_hierarchy.as_pdb_string(
+          crystal_symmetry=cs_to_output,
+          atoms_reset_serial_first_value=atoms_reset_serial_first_value,
+          append_end=True))
+    # iotbx.pdb.write_whole_pdb_file(
+    #     output_file=result,
+    #     pdb_hierarchy=self._pdb_hierarchy,
+    #     crystal_symmetry=self.cs,
+    #     ss_annotation = self._ss_annotation,
+    #     link_records=self.link_records_in_pdb_format)
     return result.getvalue()
+
+  def model_as_mmcif(self, additional_blocks):
+    out = StringIO()
+    cif = iotbx.cif.model.cif()
+    cif_block = None
+    if self.cs is not None:
+      cif_block = self.cs.as_cif_block()
+    if self._pdb_hierarchy is not None:
+      if self.cs is not None:
+        cif_block.update(pdb_hierarchy.as_cif_block())
+      else:
+        cif_block = pdb_hierarchy.as_cif_block()
+    # outputting HELIX/SHEET records
+    ss_cif_loops = []
+    ss_ann = None
+    if self.ss_manager is not None:
+      ss_ann = self.ss_manager.actual_sec_str
+    elif self._ss_annotation is not None:
+      ss_ann = self._ss_annotation
+    if ss_ann is not None:
+      ss_cif_loops = ss_ann.as_cif_loops()
+    for loop in ss_cif_loops:
+      cif_block.add_loop(loop)
+
+    self.get_model_statistics_info()
+    if self.model_statistics_info is not None:
+      cif_block.update(self.model_statistics_info.as_cif_block())
+    if additional_blocks is not None:
+      for ab in additional_blocks:
+        cif_block.update(ab)
+    cif_block.sort(key=category_sort_function)
+    cif[cif_block_name] = cif_block
+    # here we are outputting a huge number of restraints
+    #
+    if (self.all_chain_proxies is not None
+        and self.all_chain_proxies.cif is not None):
+      # should writing ALL restraints be optional?
+      from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+      skip_residues = one_letter_given_three_letter.keys() + ['HOH']
+      restraints = processed_pdb_file.all_chain_proxies.cif
+      keys = restraints.keys()
+      for key in keys:
+        # need more control
+        assert key.find('UNK')==-1
+        if key.replace('comp_', '') in skip_residues:
+          del restraints[key]
+      cif.update(processed_pdb_file.all_chain_proxies.cif)
+    cif.show(out=out, align_columns=align_columns)
+    return out.getvalue()
 
   def restraints_as_geo(self, force=False):
     """
@@ -349,9 +447,6 @@ class manager(object):
         site_labels=self.xray_structure.scatterers().extract_labels(),
         f=result)
     return result.getvalue()
-
-  def model_as_cif(self):
-    pass
 
   def input_format_was_cif(self):
     return self.original_model_format == "mmcif"
@@ -381,6 +476,7 @@ class manager(object):
     self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
     self.ener_lib = process_pdb_file_srv.ener_lib
     self._ncs_obj = processed_pdb_file.ncs_obj
+    self._ss_manager = processed_pdb_file.ss_manager
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
     has_hd = None
@@ -468,9 +564,11 @@ class manager(object):
 
   def set_sites_cart_from_hierarchy(self):
     self.xray_structure.set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
+    self.model_statistics_info = None
 
   def set_sites_cart_from_xrs(self):
     self._pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    self.model_statistics_info = None
 
   def set_sites_cart(self, sites_cart, update_grm=False):
     assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
@@ -479,12 +577,14 @@ class manager(object):
     self._pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     if update_grm:
       self.restraints_manager.geometry.pair_proxies(sites_cart)
+    self.model_statistics_info = None
 
   def sync_pdb_hierarchy_with_xray_structure(self):
     # to be deleted.
     self._pdb_hierarchy.adopt_xray_structure(xray_structure=self.xray_structure)
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
+    self.model_statistics_info = None
 
   def normalize_adjacent_adp(self):
     bond_proxies_simple, asu = \
@@ -1366,6 +1466,8 @@ class manager(object):
     out.flush()
     time_model_show += timer.elapsed()
 
+  # MARKED_FOR_DELETION_OLEG
+  # Reason: No file IO is supposed to be here
   def write_pdb_file(self, out = None, selection = None, xray_structure = None,
         return_pdb_string=False):
     return utils.write_pdb_file(
@@ -1375,6 +1477,7 @@ class manager(object):
       pdb_atoms            = self.pdb_atoms,
       selection            = selection,
       out                  = out)
+  # END_MARKED_FOR_DELETION_OLEG
 
   def add_solvent(self, solvent_xray_structure,
                         atom_name    = "O",
@@ -1680,7 +1783,7 @@ class manager(object):
       geometry_restraints_manager = rm.geometry)
 
   def adp_statistics(self):
-    return model_statistics.adp(model = self)
+    return mmtbx.model_statistics.adp(model = self)
 
   def show_adp_statistics(self,
                           prefix         = "",

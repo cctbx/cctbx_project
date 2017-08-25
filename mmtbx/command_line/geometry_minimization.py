@@ -3,7 +3,7 @@
 from __future__ import division
 import mmtbx.refinement.geometry_minimization
 import mmtbx.utils
-from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
+from iotbx.pdb import combine_unique_pdb_files
 import iotbx.phil
 from cctbx.array_family import flex
 from libtbx.utils import user_plus_sys_time, Sorry
@@ -491,7 +491,7 @@ class run(object):
         log = self.log)
 
     self.ncs_obj = self.model.get_ncs_obj()
-    self.output_crystal_symmetry = is_non_crystallographic_unit_cell
+    self.output_crystal_symmetry = not is_non_crystallographic_unit_cell
     self.sites_cart_start = self.model.get_xrs().sites_cart().deep_copy()
     if(self.params.show_states):
       self.states_collector = mmtbx.utils.states(
