@@ -145,9 +145,10 @@ def run(args):
       r1 = m.geometry_statistics(ignore_hd = False)
       m.idealize_h(show=False)
       r2 = m.geometry_statistics(ignore_hd = False)
-      print "%6.3f %6.3f %6.3f %6.3f"%(r1.a_mean,r1.b_mean, r2.a_mean,r2.b_mean)
-      assert r2.a_mean < 1.0, "assertion %f < 1.0" % r2.a_mean
-      assert r2.b_mean < 0.01, "assertion %f < 0.01" % r2.b_mean
+      print "%6.3f %6.3f %6.3f %6.3f"%(
+        r1.angle().mean,r1.bond().mean, r2.angle().mean,r2.bond().mean)
+      assert r2.angle().mean < 1.0, "assertion %f < 1.0" % r2.angle().mean
+      assert r2.bond().mean < 0.01, "assertion %f < 0.01" % r2.bond().mean
 
 if (__name__ == "__main__"):
   t0 = time.time()

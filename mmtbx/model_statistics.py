@@ -16,126 +16,229 @@ from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
 import iotbx.cif.model
+from libtbx import group_args
 
-class geometry_no_grm(object):
-  def __init__(
-      self,
-      pdb_hierarchy,
-      molprobity_scores=False,
-      ):
-    """ This class is being pickled. Try not to introduce huge members, e.g.
-    self.hierarchy, etc. This is the reason ramalyze_obj, rotalyze_obj etc
-    are not members of the class (not self.ramalyze_obj). """
-    self.clashscore            = None
-    self.ramachandran_outliers = None
-    self.ramachandran_allowed  = None
-    self.ramachandran_favored  = None
-    self.rotamer_outliers      = None
-    self.c_beta_dev            = None
-    self.mpscore               = None
-    self.omglz = None
-    self.n_cis_proline = None
-    self.n_cis_general = None
-    self.n_twisted_proline = None
-    self.n_twisted_general = None
-    if(molprobity_scores):
-      ramalyze_obj = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-      self.ramachandran_outliers = ramalyze_obj.percent_outliers
-      self.ramachandran_outliers_cf = ramalyze_obj.get_outliers_count_and_fraction()
-      self.ramachandran_allowed  = ramalyze_obj.percent_allowed
-      self.ramachandran_allowed_cf  = ramalyze_obj.get_allowed_count_and_fraction()
-      self.ramachandran_favored  = ramalyze_obj.percent_favored
-      self.ramachandran_favored_cf  = ramalyze_obj.get_favored_count_and_fraction()
-      rotalyze_obj = rotalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
-      self.rotamer_outliers = rotalyze_obj.percent_outliers
-      self.rotamer_cf = rotalyze_obj.get_outliers_count_and_fraction()
-      cbetadev_obj = cbetadev(
-        pdb_hierarchy = pdb_hierarchy,
-        outliers_only = True,
-        out           = null_out())
-      self.c_beta_dev = cbetadev_obj.get_outlier_count()
-      self.c_beta_dev_percent = cbetadev_obj.get_weighted_outlier_percent()
-      self.clashscore = clashscore(pdb_hierarchy=pdb_hierarchy).get_clashscore()
-      self.mpscore = molprobity_score(
-        clashscore = self.clashscore,
-        rota_out   = self.rotamer_outliers,
-        rama_fav   = self.ramachandran_favored)
-      omglz = omegalyze.omegalyze(
-        pdb_hierarchy=pdb_hierarchy, quiet=True)
-      self.n_proline = omglz.n_proline()
-      self.n_general = omglz.n_general()
-      self.n_cis_proline = omglz.n_cis_proline()
-      self.n_cis_general = omglz.n_cis_general()
-      self.n_twisted_proline = omglz.n_twisted_proline()
-      self.n_twisted_general = omglz.n_twisted_general()
-      self.cis_general = 0
-      self.twisted_general = 0
-      self.cis_proline = 0
-      self.twisted_proline = 0
-      if self.n_proline != 0:
-        self.cis_proline = self.n_cis_proline*100./self.n_proline
-        self.twisted_proline = self.n_twisted_proline*100./self.n_proline
-      if self.n_general != 0:
-        self.cis_general = self.n_cis_general*100./self.n_general
-        self.twisted_general = self.n_twisted_general*100./self.n_general
-      self.cablam_outliers=None
-      self.cablam_disfavored=None
-      self.cablam_ca_outliers=None
-      try:
-        cablam_results = cablam.cablamalyze(pdb_hierarchy, outliers_only=False,
-          out=null_out(), quiet=True)
-        self.cablam_outliers = cablam_results.percent_outliers()
-        self.cablam_disfavored = cablam_results.percent_disfavored()
-        self.cablam_ca_outliers = cablam_results.percent_ca_outliers()
-      except Exception as e:
-        print "CaBLAM failed with exception:"
-        print "  %s" % str(e)
-        pass
+class statistics(object):
+  def __init__(self,
+               pdb_hierarchy,
+               geometry_restraints_manager=None):
+    self.pdb_hierarchy = pdb_hierarchy
+    self.geometry_restraints_manager = geometry_restraints_manager
+    self.from_restraints = None
+    self.update()
 
-  def format_molprobity_scores(self, prefix="", lowercase=False):
-    clashscore_explanation = '"Clashscore and/or Probe failed to process model"'
-    result="%s" % prefix
-    if(self.ramachandran_outliers is not None):
-      result = """%sMOLPROBITY STATISTICS.
-%s ALL-ATOM CLASHSCORE : %s
-%s MOLPROBITY SCORE    : %s
-%s RAMACHANDRAN PLOT:
-%s   OUTLIERS : %-5.2f %s
-%s   ALLOWED  : %-5.2f %s
-%s   FAVORED  : %-5.2f %s
-%s ROTAMER OUTLIERS : %s %s
-%s CBETA DEVIATIONS : %-d
-%s PEPTIDE PLANE:
-%s   CIS-PROLINE     : %s
-%s   CIS-GENERAL     : %s
-%s   TWISTED PROLINE : %s
-%s   TWISTED GENERAL : %s"""%(
+  def update(self, pdb_hierarchy=None):
+    if(pdb_hierarchy is not None):
+      self.pdb_hierarchy = pdb_hierarchy
+    if(self.geometry_restraints_manager is not None):
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      self.from_restraints = \
+        self.geometry_restraints_manager.energies_sites(
+          sites_cart        = sites_cart,
+          compute_gradients = False)
+      assert approx_equal(
+        self.from_restraints.target,
+        self.from_restraints.angle_residual_sum+
+        self.from_restraints.bond_residual_sum+
+        self.from_restraints.chirality_residual_sum+
+        self.from_restraints.dihedral_residual_sum+
+        self.from_restraints.nonbonded_residual_sum+
+        self.from_restraints.planarity_residual_sum+
+        self.from_restraints.parallelity_residual_sum+
+        self.from_restraints.reference_coordinate_residual_sum+
+        self.from_restraints.reference_dihedral_residual_sum+
+        self.from_restraints.ncs_dihedral_residual_sum+
+        self.from_restraints.den_residual_sum+
+        self.from_restraints.ramachandran_residual_sum)
+
+  def angle(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.angle_deviations()
+      n = self.from_restraints.get_filtered_n_angle_proxies()
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def bond(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.bond_deviations()
+      n = self.from_restraints.get_filtered_n_bond_proxies()
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def chirality(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.chirality_deviations()
+      n = self.from_restraints.n_chirality_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def dihedral(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.dihedral_deviations()
+      n = self.from_restraints.n_dihedral_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def planarity(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.planarity_deviations()
+      n = self.from_restraints.n_planarity_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def parallelity(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.parallelity_deviations()
+      n = self.from_restraints.n_parallelity_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def nonbonded(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.nonbonded_deviations()
+      n = self.from_restraints.n_nonbonded_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def ramachandran(self):
+    result = ramalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
+    return group_args(
+      outliers = result.percent_outliers,
+      allowed  = result.percent_allowed,
+      favored  = result.percent_favored)
+
+  def rotamer(self):
+    result = rotalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
+    return group_args(outliers = result.percent_outliers)
+
+  def c_beta(self):
+    result = cbetadev(pdb_hierarchy = self.pdb_hierarchy,
+       outliers_only = True, out = null_out()) # XXX Why it is different from others?
+    return group_args(outliers = result.get_weighted_outlier_percent())
+
+  def clash(self):
+    result = clashscore(pdb_hierarchy = self.pdb_hierarchy)
+    return group_args(
+      score = result.get_clashscore())
+
+  def cablam(self):
+    result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
+      out=null_out(), quiet=True) # XXX Why it is different from others?
+    return group_args(
+      outliers    = result.percent_outliers(),
+      disfavored  = result.percent_disfavored(),
+      ca_outliers = result.percent_ca_outliers())
+
+  def omega(self):
+    result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True) # XXX
+    # XXX Move this to omegalyze function.
+    n_proline         = result.n_proline()
+    n_general         = result.n_general()
+    n_cis_proline     = result.n_cis_proline()
+    n_cis_general     = result.n_cis_general()
+    n_twisted_proline = result.n_twisted_proline()
+    n_twisted_general = result.n_twisted_general()
+    cis_general     = 0
+    twisted_general = 0
+    cis_proline     = 0
+    twisted_proline = 0
+    if(n_proline != 0):
+      cis_proline     = n_cis_proline    *100./n_proline
+      twisted_proline = n_twisted_proline*100./n_proline
+    if(n_general != 0):
+      cis_general     = n_cis_general    *100./n_general
+      twisted_general = n_twisted_general*100./n_general
+    return group_args(
+      cis_proline     = cis_proline,
+      cis_general     = cis_general,
+      twisted_general = twisted_general,
+      twisted_proline = twisted_proline)
+
+  def show(self, log=None, prefix="", lowercase=False):
+    if(log is None): log = sys.stdout
+    def fmt(f1,f2,d1):
+      fmt_str= "%6.3f %7.3f %6d"
+      if f1 is None  : return '   -       -       -  '
+      return fmt_str%(f1,f2,d1)
+    def fmt2(f1):
+      if f1 is None: return '  -   '
+      return "%-6.3f"%(f1)
+    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
+      self.planarity(), self.nonbonded()
+    result = "%s" % prefix
+    result += """
+%sDEVIATIONS FROM IDEAL VALUES.
+%s  BOND      : %s
+%s  ANGLE     : %s
+%s  CHIRALITY : %s
+%s  PLANARITY : %s
+%s  DIHEDRAL  : %s
+%s  MIN NONBONDED DISTANCE : %s
+%s"""%(prefix,
+       prefix, fmt(b.mean, b.max, b.n),
+       prefix, fmt(a.mean, a.max, a.n),
+       prefix, fmt(c.mean, c.max, c.n),
+       prefix, fmt(p.mean, p.max, p.n),
+       prefix, fmt(d.mean, d.max, d.n),
+       prefix, fmt2(n.min),
+       prefix)
+    result += "%s" % prefix
+    result += """
+%sMOLPROBITY STATISTICS.
+%s  ALL-ATOM CLASHSCORE : %s
+%s  RAMACHANDRAN PLOT:
+%s    OUTLIERS : %-5.2f %s
+%s    ALLOWED  : %-5.2f %s
+%s    FAVORED  : %-5.2f %s
+%s  ROTAMER OUTLIERS : %s %s
+%s  CBETA DEVIATIONS : %-d
+%s  PEPTIDE PLANE:
+%s    CIS-PROLINE     : %s
+%s    CIS-GENERAL     : %s
+%s    TWISTED PROLINE : %s
+%s    TWISTED GENERAL : %s"""%(
         prefix,
-        prefix, format_value("%-6.2f",
-                             self.clashscore,
-                             replace_none_with=clashscore_explanation).strip(),
-        prefix, format_value("%-6.2f", self.mpscore).strip(),
+        prefix, format_value("%-6.2f", self.clash().score).strip(),
         prefix,
-        prefix, self.ramachandran_outliers, "%",
-        prefix, self.ramachandran_allowed, "%",
-        prefix, self.ramachandran_favored, "%",
-        prefix, str("%6.2f"%(self.rotamer_outliers)).strip(),"%",
-        prefix, self.c_beta_dev,
+        prefix, self.ramachandran().outliers, "%",
+        prefix, self.ramachandran().allowed, "%",
+        prefix, self.ramachandran().favored, "%",
+        prefix, str("%6.2f"%(self.rotamer().outliers)).strip(),"%",
+        prefix, self.c_beta().outliers,
         prefix,
-        prefix, str(self.n_cis_proline),
-        prefix, str(self.n_cis_general),
-        prefix, str(self.n_twisted_proline),
-        prefix, str(self.n_twisted_general))
+        prefix, str(self.omega().cis_proline),
+        prefix, str(self.omega().cis_general),
+        prefix, str(self.omega().twisted_general),
+        prefix, str(self.omega().twisted_proline))
     if(lowercase):
       result = result.swapcase()
-    return result
+    print >> log, result
 
-  def show(self, prefix="", lowercase=False, out=None):
-    if(out is None): out = sys.stdout
-    result = self.format_molprobity_scores(prefix=prefix, lowercase=lowercase)
-    print >> out, result
+  def as_cif_block(self, cif_block=None):
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    cif_block["_refine.pdbx_stereochemistry_target_values"] = "GeoStd + Monomer Library"
+    loop = iotbx.cif.model.loop(header=(
+      "_refine_ls_restr.type",
+      "_refine_ls_restr.number",
+      "_refine_ls_restr.dev_ideal",
+      #"_refine_ls_restr.dev_ideal_target",
+      "_refine_ls_restr.weight",
+      #"_refine_ls_restr.pdbx_refine_id",
+      "_refine_ls_restr.pdbx_restraint_function",
+    ))
+    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
+      self.planarity(), self.nonbonded()
+    loop.add_row(("f_bond_d",           b.n, b.mean, "?", "?"))
+    loop.add_row(("f_angle_d",          a.n, a.mean, "?", "?"))
+    loop.add_row(("f_chiral_restr",     c.n, c.mean, "?", "?"))
+    loop.add_row(("f_plane_restr",      p.n, p.mean, "?", "?"))
+    loop.add_row(("f_dihedral_angle_d", d.n, d.mean, "?", "?"))
+    cif_block.add_loop(loop)
+    return cif_block
 
-class geometry(geometry_no_grm):
+# XXX TO GO NEXT
+class geometry(statistics):
   def __init__(
         self,
         pdb_hierarchy,
@@ -146,189 +249,10 @@ class geometry(geometry_no_grm):
         ignore_hydrogens=False,  # XXX only used by amber
         automatically_use_amber=True,
         ):
+
     super(geometry, self).__init__(
         pdb_hierarchy=pdb_hierarchy,
-        molprobity_scores=molprobity_scores)
-    if(restraints_manager is not None):
-      self.cdl_restraints=cdl_restraints
-      sites_cart = pdb_hierarchy.atoms().extract_xyz()
-      energies_sites = \
-        restraints_manager.energies_sites(
-          sites_cart        = sites_cart,
-          compute_gradients = False)
-      if(hasattr(energies_sites, "geometry")):
-        esg = energies_sites.geometry
-      else: esg = energies_sites
-      self.a = None
-      self.b = None
-      self.angle_deltas = None
-      self.bond_deltas = None
-      if not hasattr(esg, "angle_deviations"): return
-      if automatically_use_amber and hasattr(esg, "amber"):
-        self.used_amber=True
-        amber_parm = restraints_manager.amber_structs.parm
-        self.a, angle_deltas, angle_extremes = esg.angle_deviations(
-          sites_cart, amber_parm,
-          ignore_hd=ignore_hydrogens,
-          get_deltas=True,
-          get_extremes=True,
-          )
-        self.angle_extremes = angle_extremes
-        self.b, bond_deltas, bond_extremes = esg.bond_deviations(
-          sites_cart, amber_parm,
-          ignore_hd=ignore_hydrogens,
-          get_deltas=True,
-          get_extremes=True,
-          )
-        self.bond_extremes = bond_extremes
-        self.a_number = esg.n_angle_proxies(amber_parm,
-                                            ignore_hd=ignore_hydrogens)
-        self.b_number = esg.n_bond_proxies(amber_parm,
-                                           ignore_hd=ignore_hydrogens)
-        self.c, self.p, self.ll, self.d, self.n = None, None, None, None, None
-        self.c_number=0
-        self.p_number=0
-        self.d_number=0
-        self.bond_deltas_histogram = \
-          flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
-        self.angle_deltas_histogram = \
-          flex.histogram(data = flex.abs(angle_deltas), n_slots = n_histogram_slots)
-        # nonbonded_distances = esg.nonbonded_distances()
-        # self.nonbonded_distances_histogram = flex.histogram(
-        #   data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
-        for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
-          for value_type in [("mean",2), ("max",1), ("min",0)] :
-            name = "%s_%s" % (restraint_type, value_type[0])
-            if getattr(self, restraint_type) is None:
-              setattr(self, name, None)
-              continue
-            setattr(self, name, getattr(self, restraint_type)[value_type[1]])
-        return
-      self.a = esg.angle_deviations()
-      self.b = esg.bond_deviations()
-      self.b_z = esg.bond_deviations_z()
-      self.a_z = esg.angle_deviations_z()
-      self.b_w = esg.bond_deviations_weighted()
-      self.a_w = esg.angle_deviations_weighted()
-      self.a_number = esg.get_filtered_n_angle_proxies()
-      self.b_number = esg.get_filtered_n_bond_proxies()
-      self.c = esg.chirality_deviations()
-      self.d = esg.dihedral_deviations()
-      self.p = esg.planarity_deviations()
-      self.ll = esg.parallelity_deviations()
-      self.n = esg.nonbonded_deviations()
-      self.c_number = esg.n_chirality_proxies
-      self.d_number = esg.n_dihedral_proxies
-      self.p_number = esg.n_planarity_proxies
-      self.n_number = esg.n_nonbonded_proxies
-      #
-      for restraint_type in ["b", "a", "c", "p", "ll", "d", "n"] :
-        for value_type in [("mean",2), ("max",1), ("min",0)] :
-          name = "%s_%s" % (restraint_type, value_type[0])
-          if getattr(self, restraint_type) is None: continue
-          setattr(self, name, getattr(self, restraint_type)[value_type[1]])
-      #
-      if(hasattr(restraints_manager, "geometry")):
-        rmg = restraints_manager.geometry
-      else: rmg = restraints_manager
-      bond_deltas = geometry_restraints.bond_deltas(
-        sites_cart         = sites_cart,
-        sorted_asu_proxies = rmg.pair_proxies().bond_proxies)
-      angle_deltas = geometry_restraints.angle_deltas(
-        sites_cart = sites_cart,
-        proxies    = rmg.angle_proxies)
-      nonbonded_distances = esg.nonbonded_distances()
-      self.number_of_worst_clashes = (nonbonded_distances<0.5).count(True)
-      self.bond_deltas_histogram = \
-        flex.histogram(data = flex.abs(bond_deltas), n_slots = n_histogram_slots)
-      self.angle_deltas_histogram = \
-        flex.histogram(data = flex.abs(angle_deltas), n_slots = n_histogram_slots)
-      self.nonbonded_distances_histogram = flex.histogram(
-        data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
-      #
-      assert approx_equal(
-        esg.target,
-        esg.angle_residual_sum+
-        esg.bond_residual_sum+
-        esg.chirality_residual_sum+
-        esg.dihedral_residual_sum+
-        esg.nonbonded_residual_sum+
-        esg.planarity_residual_sum+
-        esg.parallelity_residual_sum+
-        esg.reference_coordinate_residual_sum+
-        esg.reference_dihedral_residual_sum+
-        esg.ncs_dihedral_residual_sum+
-        esg.den_residual_sum+
-        esg.ramachandran_residual_sum)
-      del energies_sites, esg # we accumulate this object, so make it clean asap
-
-  def __setattr1__(self, attr, value):
-    print '__setattr__',attr,value
-    if attr=="a_max":
-      assert 0
-    self.__dict__[attr] = value
-
-  def show(self, out=None, prefix="", pdb_deposition=False, message = "",
-                 lowercase=False):
-    if(out is None): out = sys.stdout
-    if(pdb_deposition):
-      prefix = "REMARK   3  "
-    else:
-      if hasattr(self, 'bond_extremes'): print >> out, self.bond_extremes
-      if hasattr(self, 'angle_extremes'): print >> out, self.angle_extremes
-    print >> out, self.format_basic_geometry_statistics(prefix=prefix,
-      lowercase=lowercase, show_library_name=pdb_deposition)
-    print >> out, self.format_molprobity_scores(prefix=prefix,
-      lowercase=lowercase)
-    out.flush()
-
-  def format_basic_geometry_statistics(self, prefix="", lowercase=False,
-        show_library_name=False):
-    def fmt(f1,f2,d1):
-      fmt_str= "%6.3f %7.3f %6d"
-      if f1 is None  : return '   -       -       -  '
-      return fmt_str%(f1,f2,d1)
-    def fmt2(f1):
-      if f1 is None: return '  -   '
-      return "%-6.3f"%(f1[0])
-    result = "%s" % prefix
-    if(show_library_name):
-      if getattr(self, 'used_amber', False):
-        result = """%(prefix)sAMBER FORCE FIELD
-  %(prefix)s""" % locals()
-      else:
-        rl = "GEOSTD + MON.LIB."
-        if self.cdl_restraints:
-          rl += " + CDL v1.2"
-        result = """%sRESTRAINTS LIBRARY
-  %s  %s
-  %s""" % (prefix, prefix, rl, prefix)
-
-    if getattr(self, "b_mean", None):
-      result += """
-%(prefix)sDEVIATIONS FROM IDEAL VALUES.
-%(prefix)s               RMSD     MAX  COUNT""" % locals()
-      result += "\n%s BOND      : %s" % (
-        prefix,
-        fmt(self.b_mean, self.b_max, self.b_number))
-      result += "\n%s ANGLE     : %s" % (
-        prefix,
-        fmt(self.a_mean, self.a_max, self.a_number))
-      result += """
-%s CHIRALITY : %s
-%s PLANARITY : %s
-%s DIHEDRAL  : %s
-%s MIN NONBONDED DISTANCE : %s
-%s"""%(
-       prefix, fmt(self.c_mean, self.c_max, self.c_number),
-       prefix, fmt(self.p_mean, self.p_max, self.p_number),
-       prefix, fmt(self.d_mean, self.d_max, self.d_number),
-       prefix, fmt2(self.n),
-       prefix,
-       )
-    if(lowercase):
-      result = result.swapcase()
-    return result
+        geometry_restraints_manager=restraints_manager)
 
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
@@ -345,11 +269,13 @@ class geometry(geometry_no_grm):
       #"_refine_ls_restr.pdbx_refine_id",
       "_refine_ls_restr.pdbx_restraint_function",
     ))
-    loop.add_row(("f_bond_d",           self.b_number, self.b_mean, "?", "?"))
-    loop.add_row(("f_angle_d",          self.a_number, self.a_mean, "?", "?"))
-    loop.add_row(("f_chiral_restr",     self.c_number, self.c_mean, "?", "?"))
-    loop.add_row(("f_plane_restr",      self.p_number, self.p_mean, "?", "?"))
-    loop.add_row(("f_dihedral_angle_d", self.d_number, self.d_mean, "?", "?"))
+    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
+      self.planarity(), self.nonbonded()
+    loop.add_row(("f_bond_d",           self.b.n, self.b.mean, "?", "?"))
+    loop.add_row(("f_angle_d",          self.a.n, self.a.mean, "?", "?"))
+    loop.add_row(("f_chiral_restr",     self.c.n, self.c.mean, "?", "?"))
+    loop.add_row(("f_plane_restr",      self.p.n, self.p.mean, "?", "?"))
+    loop.add_row(("f_dihedral_angle_d", self.d.n, self.d.mean, "?", "?"))
     cif_block.add_loop(loop)
     return cif_block
 
@@ -641,7 +567,7 @@ class model(object):
     if(out is None): out = sys.stdout
     if(pdb_deposition): prefix="REMARK   3  "
     if(self.geometry is not None):
-      self.geometry.show(out=out, prefix=prefix, pdb_deposition=pdb_deposition)
+      self.geometry.show(log=out, prefix=prefix)
     print >> out, prefix
     self.adp.show(out=out, prefix=prefix, padded=padded,
       pdb_deposition=pdb_deposition)

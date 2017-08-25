@@ -28,13 +28,13 @@ import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
 from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
-from mmtbx.model_statistics import geometry_no_grm
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.validation.clashscore import check_and_add_hydrogen
+import mmtbx.model_statistics
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -277,9 +277,8 @@ class model_idealization():
     #     molprobity_scores=True)
     for_stat_h = self.get_intermediate_result_hierarchy()
 
-    self.init_model_statistics = geometry_no_grm(
-        pdb_hierarchy=for_stat_h,
-        molprobity_scores=True)
+    self.init_model_statistics = mmtbx.model_statistics.statistics(
+        pdb_hierarchy=for_stat_h)
     self.time_for_init = time()-t_0
 
   def get_intermediate_result_hierarchy(self):
@@ -647,9 +646,8 @@ class model_idealization():
           reference_map=self.init_ref_map,
           # reference_map=self.reference_map,
           )
-      self.init_gm_model_statistics = geometry_no_grm(
-          pdb_hierarchy=self.whole_pdb_h,
-          molprobity_scores=True)
+      self.init_gm_model_statistics = mmtbx.model_statistics.statistics(
+          pdb_hierarchy=self.whole_pdb_h)
       if self.params.debug:
         self.shift_and_write_result(
             hierarchy=self.whole_pdb_h,
@@ -657,22 +655,21 @@ class model_idealization():
             grm=self.whole_grm)
 
     if (self.init_gm_model_statistics is not None
-        and self.init_gm_model_statistics.ramachandran_outliers == 0
-        and self.init_gm_model_statistics.twisted_general <= 0.01
-        and self.init_gm_model_statistics.twisted_proline <= 0.01
-        and self.init_gm_model_statistics.cis_general <= 0.01
-        and self.init_gm_model_statistics.cis_proline <= 0.01):
+        and self.init_gm_model_statistics.ramachandran().outliers == 0
+        and self.init_gm_model_statistics.omega().twisted_general <= 0.01
+        and self.init_gm_model_statistics.omega().twisted_proline <= 0.01
+        and self.init_gm_model_statistics.omega().cis_general <= 0.01
+        and self.init_gm_model_statistics.omega().cis_proline <= 0.01):
       print >> self.log, "Simple minimization was enough"
       # Early exit!!!
       self.shift_and_write_result(
           hierarchy=self.whole_pdb_h,
           fname_suffix="all_idealized",
           grm=self.whole_grm)
-      self.final_model_statistics = geometry_no_grm(
+      self.final_model_statistics = mmtbx.model_statistics.statistics(
           pdb_hierarchy=iotbx.pdb.input(
             source_info=None,
-            lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
-          molprobity_scores=True)
+            lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy())
       # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
       self.time_for_run = time() - t_0
       if self.params.output_pkl:
@@ -746,13 +743,11 @@ class model_idealization():
       self.log.flush()
 
     for_stat_h = self.get_intermediate_result_hierarchy()
-    self.after_ss_idealization = geometry_no_grm(
-        pdb_hierarchy=for_stat_h,
-        molprobity_scores=True)
+    self.after_ss_idealization = mmtbx.model_statistics.statistics(
+        pdb_hierarchy=for_stat_h)
     self.shift_and_write_result(
           hierarchy=for_stat_h,
-          fname_suffix="ss_ideal_stat",
-          grm=self.whole_grm)
+          fname_suffix="ss_ideal_stat")
     # self.after_ss_idealization = geometry_no_grm(
     #     pdb_hierarchy=iotbx.pdb.input(
     #       source_info=None,
@@ -790,9 +785,8 @@ class model_idealization():
           grm=self.working_grm)
     for_stat_h = self.get_intermediate_result_hierarchy()
     # for_stat_h.write_pdb_file(file_name="compare_with_rama_ideal.pdb")
-    self.after_loop_idealization = geometry_no_grm(
-        pdb_hierarchy=for_stat_h,
-        molprobity_scores=True)
+    self.after_loop_idealization = mmtbx.model_statistics.statistics(
+        pdb_hierarchy=for_stat_h)
 
     if self.params.add_hydrogens:
       print >> self.log, "Adding hydrogens"
@@ -802,7 +796,7 @@ class model_idealization():
     # fixed_rot_pdb_h = loop_ideal.resulting_pdb_h.deep_copy()
     # fixed_rot_pdb_h.reset_atom_i_seqs()
     if (self.params.additionally_fix_rotamer_outliers and
-        self.after_loop_idealization.rotamer_outliers > 0.004):
+        self.after_loop_idealization.rotamer().outliers > 0.004):
       print >> self.log, "Processing pdb file again for fixing rotamers..."
       self.log.flush()
       print >> self.log, "Fixing rotamers..."
@@ -827,9 +821,8 @@ class model_idealization():
     cs_to_write = self.cs if self.shift_vector is None else None
 
     for_stat_h = self.get_intermediate_result_hierarchy()
-    self.after_rotamer_fixing = geometry_no_grm(
-        pdb_hierarchy=for_stat_h,
-        molprobity_scores=True)
+    self.after_rotamer_fixing = mmtbx.model_statistics.statistics(
+        pdb_hierarchy=for_stat_h)
 
     # self.after_rotamer_fixing = geometry_no_grm(
     #     pdb_hierarchy=iotbx.pdb.input(
@@ -901,11 +894,10 @@ class model_idealization():
         hierarchy=self.whole_pdb_h,
         fname_suffix="all_idealized",
         grm=self.whole_grm)
-    self.final_model_statistics = geometry_no_grm(
+    self.final_model_statistics = mmtbx.model_statistics.statistics(
         pdb_hierarchy=iotbx.pdb.input(
           source_info=None,
-          lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy(),
-        molprobity_scores=True)
+          lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy())
     # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
     self.time_for_run = time() - t_0
     if self.params.output_pkl or self.params.debug:

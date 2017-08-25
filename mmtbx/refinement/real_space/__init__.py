@@ -82,7 +82,7 @@ class rsr_model(object):
       pdb_hierarchy      = self.pdb_hierarchy,
       molprobity_scores  = libtbx.env.has_module("probe"),
       restraints_manager = self.geometry_restraints_manager)
-    mso.show(prefix=prefix, out=log, lowercase=True)
+    mso.show(prefix=prefix, log=log, lowercase=True)
     self.stats_evaluations.append(group_args(
       cc       = self.cc_mask,
       geometry = mso))

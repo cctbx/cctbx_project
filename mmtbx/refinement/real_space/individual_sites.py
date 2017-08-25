@@ -405,7 +405,7 @@ class minimize_wrapper_with_map():
       log=None):
     assert grm is not None
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
-    from mmtbx.model_statistics import geometry_no_grm
+    import mmtbx.model_statistics
     from mmtbx.refinement.minimization_monitor import minimization_monitor
     self.pdb_h = pdb_h
     self.xrs = xrs
@@ -448,10 +448,9 @@ class minimize_wrapper_with_map():
     self.w = 1
     print >> log, "number_of_cycles", number_of_cycles
     print >> log, "Stats before minimization:"
-    ms = geometry_no_grm(
-        pdb_hierarchy=self.pdb_h,
-        molprobity_scores=True)
-    print >> self.log, ms.format_molprobity_scores(prefix="    ")
+    ms = mmtbx.model_statistics.statistics(
+        pdb_hierarchy=self.pdb_h)
+    ms.show(log=log)
 
     while min_monitor.need_more_cycles():
       # for x in xrange(number_of_cycles):
@@ -558,11 +557,10 @@ class minimize_wrapper_with_map():
           #   xray_structure = tfg_obj.xray_structure,
           #   accept_as_is   = True)
       self.pdb_h.adopt_xray_structure(self.xrs)
-      ms = geometry_no_grm(
-          pdb_hierarchy=self.pdb_h,
-          molprobity_scores=True)
+      ms = mmtbx.model_statistics.statistics(
+          pdb_hierarchy=self.pdb_h)
       min_monitor.save_cycle_results(geometry=ms)
-      print >> self.log, ms.format_molprobity_scores(prefix="    ")
+      ms.show(log=self.log)
 
 
     # print >> log, "pdb_h", self.pdb_h.atoms_size()

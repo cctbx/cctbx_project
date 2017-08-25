@@ -1656,9 +1656,7 @@ class manager(object):
                           ignore_hd,
                           molprobity_scores = False,
                           cdl_restraints = False,
-                          general_selection = None, # use for removing ligand
-                                                    # from output e.g. afitt
-                                                    # supersedes ignore_hd
+                          general_selection = None
                           ):
     if(self.restraints_manager is None): return None
     hd_selection = self.xray_structure.hd_selection()
@@ -1674,13 +1672,9 @@ class manager(object):
       not_hd_sel = ~hd_selection
       ph = ph.select(not_hd_sel)
       rm = rm.select(not_hd_sel)
-    return model_statistics.geometry(
-      pdb_hierarchy      = ph,
-      restraints_manager = rm,
-      molprobity_scores  = molprobity_scores,
-      cdl_restraints     = cdl_restraints,
-      ignore_hydrogens   = ignore_hd    #amber use only
-      )
+    return model_statistics.statistics(
+      pdb_hierarchy               = ph,
+      geometry_restraints_manager = rm.geometry)
 
   def show_geometry_statistics(self,
                                ignore_hd, # needs to have selection
@@ -1700,7 +1694,7 @@ class manager(object):
       cdl_restraints=cdl_restraints,
       general_selection=general_selection,
       )
-    result.show(message = message, out = out)
+    result.show(log = out)
     time_model_show += timer.elapsed()
     return result
 

@@ -100,53 +100,56 @@ class mvd(object):
       print >> log, "      number_of_non_positive_definite  : %s"%x.all.n_npd
       g = i_model.geometry_all
       if(g is not None):
+        a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
+          g.planarity(), g.nonbonded()
         print >> log, "    Stereochemistry statistics (mean, max, count) - overall:"
-        print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b[2], g.b[1], g.b_number)
-        print >> log, "      angles           : %8.4f %8.4f %d" % (g.a[2], g.a[1], g.a_number)
-        print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d[2], g.d[1], g.d_number)
-        print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c[2], g.c[1], g.c_number)
-        print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p[2], g.p[1], g.p_number)
-        print >> log, "      non-bonded (min) : %8.4f" % (g.n[0])
+        print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
+        print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
+        print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
+        print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
+        print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
+        print >> log, "      non-bonded (min) : %8.4f" % (n.min)
       if([i_model.geometry_solvent,i_model.geometry_ligand].count(None)==0):
         g = i_model.geometry_macromolecule
         if(g is not None):
+          a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
+            g.planarity(), g.nonbonded()
           print >> log, "    Stereochemistry statistics (mean, max, count) - macromolecule:"
-          print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b[2], g.b[1], g.b_number)
-          print >> log, "      angles           : %8.4f %8.4f %d" % (g.a[2], g.a[1], g.a_number)
-          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d[2], g.d[1], g.d_number)
-          print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c[2], g.c[1], g.c_number)
-          print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p[2], g.p[1], g.p_number)
-          print >> log, "      non-bonded (min) : %8.4f" % (g.n[0])
+          print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
+          print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
+          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
+          print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
+          print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
+          print >> log, "      non-bonded (min) : %8.4f" % (n.min)
         g = i_model.geometry_ligand
         if(g is not None):
+          a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
+            g.planarity(), g.nonbonded()
           print >> log, "    Stereochemistry statistics (mean, max, count) - ligands:"
-          print >> log, "      bonds            : %8.4f %8.4f %d" % (g.b[2], g.b[1], g.b_number)
-          print >> log, "      angles           : %8.4f %8.4f %d" % (g.a[2], g.a[1], g.a_number)
-          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (g.d[2], g.d[1], g.d_number)
-          print >> log, "      chirality        : %8.4f %8.4f %d" % (g.c[2], g.c[1], g.c_number)
-          print >> log, "      planarity        : %8.4f %8.4f %d" % (g.p[2], g.p[1], g.p_number)
-          print >> log, "      non-bonded (min) : %8.4f" % (g.n[0])
+          print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
+          print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
+          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
+          print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
+          print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
+          print >> log, "      non-bonded (min) : %8.4f" % (n.min)
         g = i_model.geometry_solvent
         if(g is not None):
           print >> log, "    Stereochemistry statistics - solvent:"
-          print >> log, "      non-bonded (min) : %8.4f" % (g.n[0])
+          print >> log, "      non-bonded (min) : %8.4f" % (g.nonbonded().min)
       if(i_model.molprobity is not None):
         outl = i_model.molprobity.ramalyze_outliers
         allo = i_model.molprobity.ramalyze_allowed
         favo = i_model.molprobity.ramalyze_favored
         print >> log, "    Molprobity statistics:"
         print >> log, "      Ramachandran plot, number of:"
-        print >> log, "        outliers : %-5d (%-5.2f %s)"%(outl[0],outl[1]*100.,"%")
-        print >> log, "        allowed  : %-5d (%-5.2f %s)"%(allo[0],allo[1]*100.,"%")
-        print >> log, "        favored  : %-5d (%-5.2f %s)"%(favo[0],favo[1]*100.,"%")
-        print >> log, "      Rotamer outliers        : %d (%s %s)" %(
-          i_model.molprobity.rotalyze[0],
-          str("%6.2f"%(i_model.molprobity.rotalyze[1]*100.)).strip(),"%")
+        print >> log, "        outliers : %-5.2f %s"%(outl,"%")
+        print >> log, "        allowed  : %-5.2f %s"%(allo,"%")
+        print >> log, "        favored  : %-5.2f %s"%(favo,"%")
+        print >> log, "      Rotamer outliers        : %s %s" %(
+          str("%6.2f"%(i_model.molprobity.rotalyze)).strip(),"%")
         print >> log, "      Cbeta deviations >0.25A : %d"%i_model.molprobity.cbetadev
         print >> log, "      All-atom clashscore     : %.2f (steric overlaps >0.4A per 1000 atoms)"% \
           i_model.molprobity.clashscore
-        print >> log, "      Overall score           : %.2f" % \
-          i_model.molprobity.mpscore
     #
     print >> log, "  Data:"
     result = " \n    ".join([
@@ -227,13 +230,12 @@ def molprobity_stats(model_statistics_geometry, resname_classes):
   if(need_ramachandran): # FIXME no clashscore for nucleic acids???
     msg = model_statistics_geometry
     return group_args(
-      ramalyze_outliers = msg.ramachandran_outliers_cf,
-      ramalyze_allowed  = msg.ramachandran_allowed_cf,
-      ramalyze_favored  = msg.ramachandran_favored_cf,
-      rotalyze          = msg.rotamer_cf,
-      cbetadev          = msg.c_beta_dev,
-      clashscore        = msg.clashscore,
-      mpscore           = msg.mpscore)
+      ramalyze_outliers = msg.ramachandran().outliers,
+      ramalyze_allowed  = msg.ramachandran().allowed,
+      ramalyze_favored  = msg.ramachandran().favored,
+      rotalyze          = msg.rotamer().outliers,
+      cbetadev          = msg.c_beta().outliers,
+      clashscore        = msg.clash().score)
   else: return None
 
 def show_geometry(
@@ -343,28 +345,28 @@ def show_geometry(
       model_statistics_geometry_all = model_statistics.geometry(
         pdb_hierarchy      = hierarchy_i_seq,
         molprobity_scores  = True,
-        restraints_manager = restraints_manager)
+        restraints_manager = restraints_manager.geometry)
       #
       if(atom_selections.macromolecule.count(True)>0):
         mac_sel = atom_selections_i_model.macromolecule
         model_statistics_geometry_macromolecule = model_statistics.geometry(
           pdb_hierarchy      = hierarchy_i_seq.select(mac_sel),
           molprobity_scores  = True,
-          restraints_manager = restraints_manager.select(mac_sel))
+          restraints_manager = restraints_manager.select(mac_sel).geometry)
       #
       if(atom_selections.solvent.count(True)>0):
         sol_sel = atom_selections_i_model.solvent
         model_statistics_geometry_solvent = model_statistics.geometry(
           pdb_hierarchy      = hierarchy_i_seq.select(sol_sel),
           molprobity_scores  = True,
-          restraints_manager = restraints_manager.select(sol_sel))
+          restraints_manager = restraints_manager.select(sol_sel).geometry)
       #
       if(atom_selections.ligand.count(True)>0):
         lig_sel = atom_selections_i_model.ligand
         model_statistics_geometry_ligand = model_statistics.geometry(
           pdb_hierarchy      = hierarchy_i_seq.select(lig_sel),
           molprobity_scores  = True,
-          restraints_manager = restraints_manager.select(lig_sel))
+          restraints_manager = restraints_manager.select(lig_sel).geometry)
       ###
       rms_b_iso_or_b_equiv_bonded = utils.rms_b_iso_or_b_equiv_bonded(
         restraints_manager = restraints_manager,
@@ -867,11 +869,10 @@ def summarize_results (mvd_obj) :
   if (molprobity_stats is not None) :
     c_beta_deviations = molprobity_stats.cbetadev
     clashscore = molprobity_stats.clashscore
-    rama_allowed = molprobity_stats.ramalyze_allowed[1] * 100.0
-    rama_favored = molprobity_stats.ramalyze_favored[1] * 100.0
-    rama_outliers = molprobity_stats.ramalyze_outliers[1] * 100.0
-    rotamer_outliers = molprobity_stats.rotalyze[1] * 100.0
-    mpscore = molprobity_stats.mpscore
+    rama_allowed = molprobity_stats.ramalyze_allowed
+    rama_favored = molprobity_stats.ramalyze_favored
+    rama_outliers = molprobity_stats.ramalyze_outliers
+    rotamer_outliers = molprobity_stats.rotalyze
   else:
     c_beta_deviations = clashscore = rama_allowed = rama_favored = \
       rama_outliers = rotamer_outliers = mpscore = None
@@ -940,7 +941,6 @@ def summarize_results (mvd_obj) :
     rotamer_outliers=rotamer_outliers,
     c_beta_deviations=c_beta_deviations,
     clashscore=clashscore,
-    mpscore=mpscore,
     twin_law=mvd_obj.data.twinned,
     anomalous_flag=mvd_obj.data.anomalous_flag,
     tls=getattr(getattr(getattr(mvd_obj.pdb_header, "tls", None), "pdb_inp_tls",

@@ -210,20 +210,17 @@ class refinement_monitor(object):
     self.bs_iso_min_a.append(flex.min_default( b_isos, 0))
     self.bs_iso_ave_a.append(flex.mean_default(b_isos, 0))
     self.n_solv.append(model.number_of_ordered_solvent_molecules())
-    if (len(self.geom)>0 and
-        getattr(self.geom[0], "b", None) and
-        getattr(self.geom[0], "a", None)
-        ):
+    if(len(self.geom)>0):
       if([self.bond_start,self.angle_start].count(None) == 2):
         if(len(self.geom)>0):
-          self.bond_start  = self.geom[0].b[2]
-          self.angle_start = self.geom[0].a[2]
+          self.bond_start  = self.geom[0].bond().mean
+          self.angle_start = self.geom[0].angle().mean
       if(len(self.geom)>0):
-        self.bond_final  = self.geom[len(self.geom)-1].b[2]
-        self.angle_final = self.geom[len(self.geom)-1].a[2]
+        self.bond_final  = self.geom[len(self.geom)-1].bond().mean
+        self.angle_final = self.geom[len(self.geom)-1].angle().mean
       elif(len(self.geom)==1):
-        self.bond_final  = self.geom[0].b[2]
-        self.angle_final = self.geom[0].a[2]
+        self.bond_final  = self.geom[0].bond().mean
+        self.angle_final = self.geom[0].angle().mean
     if(rigid_body_shift_accumulator is not None):
       self.rigid_body_shift_accumulator = rigid_body_shift_accumulator
     t2 = time.time()
@@ -274,9 +271,6 @@ class refinement_monitor(object):
     #
     has_bonds_angles=True
     if len(self.geom):
-      if self.geom[0].a is None:
-        has_bonds_angles=False
-    if has_bonds_angles:
       print >> out, remark + \
         " stage       r-work r-free bonds angles b_min b_max b_ave n_water shift"
       format = remark + "%s%ds"%("%",max_step_len)+\
@@ -298,7 +292,7 @@ class refinement_monitor(object):
         if(type(1.)==type(i)): i = "     "+str("%5.3f"%i)
         else: i = "%9s"%i
         if has_bonds_angles:
-          print >> out, format % (a,b,c,d.b[2],d.a[2],e,f,g,h,i)
+          print >> out, format % (a,b,c,d.bond().mean,d.angle().mean,e,f,g,h,i)
         else:
           print >> out, format % (a,b,c,e,f,g,h,i)
     print >> out, remark + separator
@@ -327,8 +321,8 @@ class refinement_monitor(object):
       r_works.append(self.r_works[i_step])
       r_frees.append(self.r_frees[i_step])
       if (self.geom is not None) and (len(self.geom) != 0) :
-        as_ave.append(self.geom[i_step].a[2])
-        bs_ave.append(self.geom[i_step].b[2])
+        as_ave.append(self.geom[i_step].angle().mean)
+        bs_ave.append(self.geom[i_step].bond().mean)
       else :
         as_ave.append(None)
         bs_ave.append(None)
