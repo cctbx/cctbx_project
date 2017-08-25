@@ -196,6 +196,11 @@ master_phil = iotbx.phil.parse("""
        .help = Sharpening will be applied using d_min equal to \
              d_min_ratio times resolution. Default is 0.833
 
+     input_d_cut = None
+       .type = float
+       .short_caption = d_cut
+       .help = High-resolution limit for sharpening
+
      rmsd = None
        .type = float
        .short_caption = RMSD of model
@@ -236,7 +241,7 @@ master_phil = iotbx.phil.parse("""
           to sharpen variably over resolution range. Default is b_iso,\
           b_iso_to_d_cut and resolution_dependent.
 
-     box_in_auto_sharpen = True
+     box_in_auto_sharpen = False
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
@@ -360,6 +365,13 @@ master_phil = iotbx.phil.parse("""
        .help = Optimize value of k_sharpen. \
                 Only applies for auto_sharpen_methods b_iso_to_d_cut and \
                 b_iso.
+
+     optimize_d_cut = None
+       .type = bool
+       .short_caption = Optimize value of d_cut
+       .help = Optimize value of d_cut. \
+                Only applies for auto_sharpen_methods b_iso_to_d_cut and \
+                b_iso
 
      adjust_region_weight = True
        .type = bool 
@@ -779,6 +791,7 @@ def run(args=None,params=None,
         fraction_occupied=params.map_modification.fraction_occupied,
         sharpening_target=params.map_modification.sharpening_target,
         d_min_ratio=params.map_modification.d_min_ratio,
+        input_d_cut=params.map_modification.input_d_cut,
         b_blur_hires=params.map_modification.b_blur_hires,
         max_box_fraction=params.map_modification.max_box_fraction,
         mask_atoms=params.map_modification.mask_atoms,
@@ -786,6 +799,7 @@ def run(args=None,params=None,
         value_outside_atoms=params.map_modification.value_outside_atoms,
         k_sharpen=params.map_modification.k_sharpen,
         optimize_k_sharpen=params.map_modification.optimize_k_sharpen,
+        optimize_d_cut=params.map_modification.optimize_d_cut,
         soft_mask=params.map_modification.soft_mask,
         allow_box_if_b_iso_set=params.map_modification.allow_box_if_b_iso_set,
         search_b_min=params.map_modification.search_b_min,
