@@ -1803,6 +1803,34 @@ class TrialDialog(BaseDialog):
   def onOK(self, e):
     if self.new:
       target_phil_str = self.phil_box.GetValue()
+
+      # Parameter validation
+      backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(self.db.params.dispatcher)]
+      if backend == 'dials':
+        from xfel.command_line.xtc_process import phil_scope
+        from iotbx.phil import parse
+        trial_params, unused = phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
+        msg = None
+        if len(unused) > 0:
+          msg = [str(item) for item in unused]
+          msg = '\n'.join(['  %s' % line for line in msg])
+          msg = 'The following definitions were not recognized:\n%s\n' % msg
+
+        try:
+          params = trial_params.extract()
+        except Exception, e:
+          if msg is None: msg = ""
+          msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
+
+        if msg is not None:
+          msg += '\nFix the parameters and press OK again'
+          msgdlg = wx.MessageDialog(self,
+                                    message=msg,
+                                    caption='Warning',
+                                    style=wx.OK |  wx.ICON_EXCLAMATION)
+          msgdlg.ShowModal()
+          return
+
       comment = self.trial_comment.ctr.GetValue()
       process_percent = int(self.throttle.ctr.GetValue())
       d_min = float(self.d_min.ctr.GetValue())

@@ -162,8 +162,6 @@ def run(args):
       base_n_subset = params.n_subset
 
       params.n_subset = base_n_subset // 2
-      odd_exp, odd_ref = generate_exp_list(params, odd_exp, odd_ref)
-      even_exp, even_ref = generate_exp_list(params, even_exp, even_ref)
 
       params.tag = base_tag + "_1"
       odd_combine_phil = write_combine_phil(params, odd_exp, odd_ref)
@@ -185,7 +183,6 @@ def run(args):
       print "Refining even numbered data using tag", params.tag
       refine(params, merged_scope, even_combine_phil)
     else:
-      all_exp, all_ref = generate_exp_list(params, all_exp, all_ref)
       combine_phil = write_combine_phil(params, all_exp, all_ref)
       refine(params, merged_scope, combine_phil)
   else:
@@ -249,44 +246,6 @@ def find_files(path, reflections):
       all_ref.append(os.path.join(path, filename))
   return all_exp, all_ref
 
-def generate_exp_list(params, all_exp, all_ref):
-  if params.n_subset is not None:
-    subset_all_exp = []
-    subset_all_ref = []
-    n_picked = 0
-    if params.n_subset_method=="random":
-      while n_picked < params.n_subset:
-        idx = random.randint(0, len(all_exp)-1)
-        subset_all_exp.append(all_exp.pop(idx))
-        subset_all_ref.append(all_ref.pop(idx))
-        n_picked += 1
-    elif params.n_subset_method=="n_refl":
-      from dials.array_family import flex
-      import cPickle as pickle
-      if params.n_refl_panel_list is None:
-        len_all_ref = flex.size_t(
-          [ len(pickle.load(open(A,"rb"))) for A in all_ref ]
-        )
-      else:
-        len_all_ref = flex.size_t()
-        for refl_file in all_ref:
-          refls = pickle.load(open(refl_file,"rb"))
-          sel = flex.bool(len(refls), False)
-          for p in params.n_refl_panel_list:
-            sel |= refls['panel'] == p
-          len_all_ref.append(len(refls.select(sel)))
-
-      sort_order = flex.sort_permutation(len_all_ref,reverse=True)
-      for idx in sort_order[:params.n_subset]:
-        subset_all_exp.append(all_exp[idx])
-        subset_all_ref.append(all_ref[idx])
-      print "Selecting a subset of %d images with highest n_refl out of %d total."%(
-        params.n_subset, len(len_all_ref))
-
-    all_exp = subset_all_exp
-    all_ref = subset_all_ref
-  return all_exp, all_ref
-
 def write_combine_phil(params, all_exp, all_ref):
   combine_phil = "%s_combine.phil"%params.tag
   f = open(combine_phil, 'w')
@@ -302,6 +261,11 @@ def write_combine_phil(params, all_exp, all_ref):
 def refine(params, merged_scope, combine_phil):
   print "Combining experiments..."
   command = "dials.combine_experiments reference_from_experiment.average_detector=True reference_from_experiment.average_hierarchy_level=0 output.experiments_filename=%s_combined_experiments.json output.reflections_filename=%s_combined_reflections.pickle %s"%(params.tag, params.tag, combine_phil)
+  if params.n_subset is not None:
+    command += " n_subset=%d n_subset_method=%s"%(params.n_subset, params.n_subset_method)
+    if params.n_refl_panel_list is not None:
+      command += " n_refl_panel_list=%s"%(",".join(["%d"%p for p in params.n_refl_panel_list]))
+
   if params.refine_energy:
     command += " reference_from_experiment.beam=0"
   print command
@@ -412,10 +376,11 @@ def refine_expanding(params, merged_scope, combine_phil):
       rest.append(p+48)
     panels.extend(rest)
 
-  levels = {0: 2} # levels 0 and 1
+  levels = {0: (0,1)} # levels 0 and 1
   for i in xrange(7):
-    levels[i+1] = 3 # levels 0, 1 and 2
+    levels[i+1] = (2,) # level 2
 
+  previous_step_and_level = None
   for j in xrange(8):
     from libtbx import easy_pickle
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]]))
@@ -431,7 +396,7 @@ def refine_expanding(params, merged_scope, combine_phil):
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
     easy_pickle.dump(output_path, data.select(sel))
 
-    for i in xrange(levels[j]):
+    for i in levels[j]:
       print "Step", j , "refining at hierarchy level", i
       refine_phil_file = "%s_refine_step%d_level%d.phil"%(params.tag, j, i)
       if i == 0:
@@ -444,15 +409,18 @@ def refine_expanding(params, merged_scope, combine_phil):
       else:
         diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
 
-      if j == 0 and i == params.start_at_hierarchy_level:
+      if previous_step_and_level is None:
         command = "dials.refine %s %s_combined_experiments.json %s_reflections_step%d.pickle"%( \
           refine_phil_file, params.tag, params.tag, j)
-      elif i == params.start_at_hierarchy_level:
-        command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_reflections_step%d.pickle"%( \
-          refine_phil_file, params.tag, j-1, levels[j-1]-1, params.tag, j)
       else:
-        command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.pickle"%( \
-          refine_phil_file, params.tag, j, i-1, params.tag, j, i-1)
+        p_step, p_level = previous_step_and_level
+        if p_step == j:
+          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_refined_reflections_step%d_level%d.pickle"%( \
+            refine_phil_file, params.tag, p_step, p_level, params.tag, p_step, p_level)
+        else:
+          command = "dials.refine %s %s_refined_experiments_step%d_level%d.json %s_reflections_step%d.pickle"%( \
+            refine_phil_file, params.tag, p_step, p_level, params.tag, j)
+
 
       diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
@@ -467,6 +435,7 @@ def refine_expanding(params, merged_scope, combine_phil):
       print command
       result = easy_run.fully_buffered(command=command).raise_if_errors()
       result.show_stdout()
+      previous_step_and_level = j,i
 
   output_geometry(params)
 

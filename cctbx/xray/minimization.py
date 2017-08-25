@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 import cctbx.xray.structure_factors
 from cctbx.xray import ext
 from cctbx import crystal
@@ -6,7 +6,7 @@ from cctbx.array_family import flex
 import scitbx.lbfgs
 import scitbx.math
 from libtbx import adopt_init_args
-from stdlib import math
+import math
 
 def add_gradients(
       scatterers,

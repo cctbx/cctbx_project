@@ -1,7 +1,7 @@
-from __future__ import division
+from __future__ import division, absolute_import
 
 import sys
-from stdlib import random
+import random
 
 from cctbx.development import random_structure
 from cctbx.development import debug_utils

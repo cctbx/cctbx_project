@@ -1,5 +1,5 @@
-from __future__ import division
 # -*- coding: utf-8 -*-
+from __future__ import division, absolute_import
 from cctbx.xray import ext
 from cctbx.xray import structure_factors
 from cctbx import miller
@@ -11,7 +11,7 @@ from cctbx import eltbx
 from cctbx.array_family import flex
 import scitbx.math
 from scitbx import matrix
-from stdlib import math
+import math
 from itertools import count
 import types
 import sys

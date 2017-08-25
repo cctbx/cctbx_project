@@ -897,17 +897,21 @@ class ImageSweepAux(ImageSweep, boost.python.injector):
 #     for i in range(len(self)):
 #       ImageSet.set_detector(self, self._detector, i)
 
-#   def set_scan(self, scan):
-#     ''' Set the scan model. '''
-#     if scan is not None:
-#       assert len(scan) == len(self._indices)
-#     self._scan = scan
-#     for i in range(len(self)):
-#       if self._scan is not None:
-#         s = self._scan[i]
-#       else:
-#         s = None
-#       ImageSet.set_scan(self, s, i)
+  # def set_scan(self, scan):
+  #   ''' Set the scan model. '''
+  #   if len(scan) != len(self):
+  #     i0, i1 = scan.get_array_range()
+  #     j0, j1 = self.get_scan().get_array_range()
+  #     assert i0 >= j0
+  #     assert i1 > i0
+  #     k0 = i0 - j0
+  #     k1 = i1 - j0
+  #     index0 = self._indices[k0]
+  #     index1 = index0 + (i1 - i0)
+  #     self._indices = list(range(index0, index1))
+  #   self._scan = scan
+  #   for i in range(len(self)):
+  #     ImageSet.set_scan(self, self._scan[i], i)
 
 #   def get_template(self):
 #     ''' Return the template '''

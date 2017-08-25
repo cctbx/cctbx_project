@@ -17,11 +17,17 @@ class target_map(object):
       unit_cell             = xray_structure.unit_cell(),
       pre_determined_n_real = map_data.all(),
         space_group_info    = xray_structure.space_group_info())
-    self.complete_set = miller.build_set(
-      crystal_symmetry = xray_structure.crystal_symmetry(),
-      anomalous_flag   = False,
-      d_min            = d_min)
-    self.miller_array = self.map_to_sf(map_data = self.map_data)
+    self.miller_array = None
+    while d_min<d_min+10.:
+      try:
+        self.complete_set = miller.build_set(
+          crystal_symmetry = xray_structure.crystal_symmetry(),
+          anomalous_flag   = False,
+          d_min            = d_min)
+        self.miller_array = self.map_to_sf(map_data = self.map_data)
+      except:
+        d_min += 0.1
+      if(self.miller_array is not None): break
     self.miller_array_masked = self.update_miller_array_masked(
       xray_structure = xray_structure)
 

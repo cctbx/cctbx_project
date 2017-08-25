@@ -240,8 +240,21 @@ def submit_job(app, job):
     phil_str += "\n" + job.rungroup.extra_phil_str
 
   if backend == 'dials':
-    from xfel.command_line.xtc_process import phil_scope
+    from xfel.command_line.xtc_process import phil_scope as orig_phil_scope
     from iotbx.phil import parse
+    if job.rungroup.two_theta_low is not None or job.rungroup.two_theta_high is not None:
+      override_str = """
+      radial_average {
+        enable = True
+        show_plots = False
+        verbose = False
+        output_bins = False
+      }
+      """
+      phil_scope = orig_phil_scope.fetch(parse(override_str))
+    else:
+      phil_scope = orig_phil_scope
+
     trial_params = phil_scope.fetch(parse(phil_str)).extract()
     image_format = trial_params.format.file_format = job.rungroup.format
     assert image_format in ['cbf', 'pickle']
@@ -320,15 +333,11 @@ def submit_job(app, job):
     trial_params.dispatch.process_percent = job.trial.process_percent
 
     if job.rungroup.two_theta_low is not None or job.rungroup.two_theta_high is not None:
-      trial_params.radial_average.enable = True
-      trial_params.radial_average.show_plots = False
-      trial_params.radial_average.verbose = False
-      trial_params.radial_average.output_bins = False
       trial_params.radial_average.two_theta_low = job.rungroup.two_theta_low
       trial_params.radial_average.two_theta_high = job.rungroup.two_theta_high
 
     working_phil = phil_scope.format(python_object=trial_params)
-    diff_phil = phil_scope.fetch_diff(source=working_phil)
+    diff_phil = orig_phil_scope.fetch_diff(source=working_phil)
 
     phil.write(diff_phil.as_str())
   elif backend == 'labelit':

@@ -5810,8 +5810,41 @@ geometry_restraints
 }
 """
 
+def exercise_alias_bug():
+  # phil scope with .alias attribute
+  buggy_phil_str = '''
+a
+  .alias = prefix.a
+{
+  enabled = False
+  b
+  {
+    enabled = True
+  }
+}
+'''
+  # same phil scope without .alias attribute
+  correct_phil_str = '''
+a
+{
+  enabled = False
+  b
+  {
+    enabled = True
+  }
+}
+
+'''
+
+  for phil_str, result in [(buggy_phil_str, 'a {\n  enabled = True\n}\n'),
+                           (correct_phil_str, '')]:
+    parsed_phil = phil.parse(phil_str)
+    diff = parsed_phil.fetch_diff(parsed_phil).as_str()
+    assert (diff == result)
+
 def exercise():
   exercise_alias()
+  exercise_alias_bug()
   exercise_adopt_scope()
   exercise_path()
   exercise_find_scope()

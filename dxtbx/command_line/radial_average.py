@@ -38,6 +38,10 @@ master_phil = libtbx.phil.parse("""
     .type = bool
   mask = None
     .type = str
+  median_filter_size = None
+    .type = int
+  x_axis = *two_theta q
+    .type = choice
 """)
 
 def distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
@@ -160,28 +164,39 @@ def run (args, image = None):
     results = sums.set_selected(counts <= 0, 0)
     results /= counts.set_selected(counts <= 0, 1).as_double()
 
+    if params.median_filter_size is not None:
+      logger.write("WARNING, the median filter is not fully propogated to the variances\n")
+      from scipy.ndimage.filters import median_filter
+      results = flex.double(median_filter(results.as_numpy_array(), size = params.median_filter_size))
+
     # calculate standard devations
     std_devs = [math.sqrt((sums_sq[i]-sums[i]*results[i])/counts[i])
                 if counts[i] > 0 else 0 for i in xrange(len(sums))]
 
-    xvals = flex.double(len(results))
-    max_twotheta = float('-inf')
-    max_result   = float('-inf')
+    twotheta = flex.double(xrange(len(results)))*extent_two_theta/params.n_bins
+    q_vals = 4*math.pi*flex.sin(math.pi*twotheta/360)/beam.get_wavelength()
+
+    if params.low_max_two_theta_limit is None:
+      subset = results
+    else:
+      subset = results.select(twotheta >= params.low_max_two_theta_limit)
+
+    max_result = flex.max(subset)
+
+    if params.x_axis == 'two_theta':
+      xvals = twotheta
+      max_x = twotheta[flex.first_index(results, max_result)]
+    elif params.x_axis == 'q':
+      xvals = q_vals
+      max_x = q_vals[flex.first_index(results, max_result)]
 
     for i in xrange(len(results)):
-      twotheta = i * extent_two_theta/params.n_bins
-      xvals[i] = twotheta
-
+      val = xvals[i]
       if params.output_bins and "%.3f"%results[i] != "nan":
-       #logger.write("%9.3f %9.3f\n"%     (twotheta,results[i]))        #.xy  format for Rex.cell.
-        logger.write("%9.3f %9.3f %9.3f\n"%(twotheta,results[i],std_devs[i])) #.xye format for GSASII
-       #logger.write("%.3f %.3f %.3f\n"%(twotheta,results[i],ds[i]))  # include calculated d spacings
-      if params.low_max_two_theta_limit is None or twotheta >= params.low_max_two_theta_limit:
-        if results[i] > max_result:
-          max_twotheta = twotheta
-          max_result = results[i]
-
-    #logger.write("Maximum 2theta for %s: %f, value: %f\n"%(file_path, max_twotheta, max_result))
+       #logger.write("%9.3f %9.3f\n"%     (val,results[i]))        #.xy  format for Rex.cell.
+        logger.write("%9.3f %9.3f %9.3f\n"%(val,results[i],std_devs[i])) #.xye format for GSASII
+       #logger.write("%.3f %.3f %.3f\n"%(val,results[i],ds[i]))  # include calculated d spacings
+    logger.write("Maximum %s: %f, value: %f\n"%(params.x_axis, max_x, max_result))
 
     if params.show_plots:
       if params.plot_x_max is not None:
@@ -191,7 +206,10 @@ def run (args, image = None):
         plt.plot(xvals.as_numpy_array(),(results/flex.max(results)).as_numpy_array(),'-')
       else:
         plt.plot(xvals.as_numpy_array(),results.as_numpy_array(),'-')
-      plt.xlabel("2 theta")
+      if params.x_axis == 'two_theta':
+        plt.xlabel("2 theta")
+      elif params.x_axis == 'q':
+        plt.xlabel("q")
       plt.ylabel("Avg ADUs")
       if params.plot_y_max is not None:
         plt.ylim(0, params.plot_y_max)

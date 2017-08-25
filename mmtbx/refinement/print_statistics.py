@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from cctbx.array_family import flex
 import scitbx.math.euler_angles
 from scitbx import matrix
@@ -8,7 +8,7 @@ import sys, time
 from libtbx import str_utils
 from libtbx.str_utils import prefix_each_line_suffix, format_value
 from libtbx import introspection
-from stdlib import math
+import math
 from cctbx import xray
 import cctbx.xray.structure_factors.global_counters
 from libtbx import easy_pickle

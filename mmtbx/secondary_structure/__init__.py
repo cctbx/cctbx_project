@@ -75,11 +75,6 @@ sec_str_master_phil_str = """
 secondary_structure
   .style = box auto_align noauto
 {
-  enabled = False
-    .short_caption = Use secondary structure restraints
-    .type = bool
-    .style = noauto bold
-    .help = Turn on secondary structure restraints (main switch)
   protein
     .style = box auto_align
   {
@@ -123,6 +118,11 @@ secondary_structure
       .help = Turn on secondary structure restraints for nucleic acids
     %s
   }
+  enabled = False
+    .short_caption = Use secondary structure restraints
+    .type = bool
+    .style = noauto bold
+    .help = Turn on secondary structure restraints (main switch)
 }
 """ % (
        proteins.helix_group_params_str,

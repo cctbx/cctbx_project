@@ -1,11 +1,11 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from scitbx.math.ext import *
 import scitbx.linalg.eigensystem
 import scitbx.math.gaussian # implicit import
 from scitbx import matrix
 from scitbx.array_family import flex
 from boost import rational # implicit import
-from stdlib import math
+import math
 
 gaussian_fit_1d_analytical.__doc__ = """
 Fits a gaussian function to a list of points.

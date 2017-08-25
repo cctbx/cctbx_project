@@ -547,8 +547,12 @@ class xfel_db_application(object):
   def get_job(self, job_id):
     return Job(self, job_id)
 
-  def get_all_jobs(self):
-    return self.get_all_x_with_subitems(Job, "job", sub_items = [(Trial, 'trial'), (Run, 'run'), (Rungroup, 'rungroup')])
+  def get_all_jobs(self, active = False):
+    if active:
+      where = "WHERE trial.active = True AND rungroup.active = True"
+    else:
+      where = None
+    return self.get_all_x_with_subitems(Job, "job", sub_items = [(Trial, 'trial'), (Run, 'run'), (Rungroup, 'rungroup')], where = where)
 
   def delete_job(self, job = None, job_id = None):
     assert [job, job_id].count(None) == 1

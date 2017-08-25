@@ -1,5 +1,5 @@
-from __future__ import division
-from stdlib import math
+from __future__ import division, absolute_import
+import math
 pi = math.pi
 
 def volume(radius_1, radius_2, distance):

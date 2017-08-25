@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
@@ -6,7 +6,7 @@ from cctbx.array_family import flex
 from cctbx.regression.tst_miller import generate_random_hl
 import scitbx.math
 from libtbx.test_utils import approx_equal
-from stdlib import math
+import math
 import sys
 
 def check_weight_without_occupancy(structure):

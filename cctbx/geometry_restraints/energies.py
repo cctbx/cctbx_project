@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from libtbx import adopt_init_args
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
 import scitbx.restraints
-from stdlib import math
+import math
 import sys
 
 class energies(scitbx.restraints.energies):

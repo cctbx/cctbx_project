@@ -112,18 +112,25 @@ xtc_phil_str = '''
       .type = str
       .help = Detector address, e.g. CxiDs2.0:Cspad.0, or detector alias, e.g. Ds1CsPad
     stream = None
-      .type = int
+      .type = ints
       .expert_level = 2
       .help = Stream number to read from. Usually not necessary as psana will read the data \
               from all streams by default
-    override_trusted_max = None
+    override_spotfinding_trusted_max = None
       .type = int
       .help = During spot finding, override the saturation value for this data. \
               Overloads will not be integrated, but they can assist with indexing.
-    override_trusted_min = None
+    override_spotfinding_trusted_min = None
       .type = int
-      .help = During spot finding and indexing, override the minimum pixel value \
+      .help = During spot finding, override the minimum pixel value \
               for this data. This does not affect integration.
+    override_integration_trusted_max = None
+      .type = int
+      .help = During integration, override the saturation value for this data.
+    override_integration_trusted_min = None
+      .type = int
+      .help = During integration, override the minimum pixel value \
+              for this data.
     use_ffb = False
       .type = bool
       .help = Run on the ffb if possible. Only for active users!
@@ -251,6 +258,15 @@ xtc_phil_str = '''
     output_dir = .
       .type = str
       .help = Directory output files will be placed
+    composite_output = True
+      .type = bool
+      .help = If True, save one set of json/pickle files per process, where each is a \
+              concatenated list of all the successful events examined by that process. \
+              If False, output a separate json/pickle file per image (generates a \
+              lot of files).
+    delete_integration_shoeboxes = True
+      .type = bool
+      .help = Delete integration shoeboxes when finished with each image.
     logging_dir = None
       .type = str
       .help = Directory output log files will be placed
@@ -268,6 +284,9 @@ xtc_phil_str = '''
       .help = The filename for saving refined experimental models
     integrated_filename = %s_integrated.pickle
       .type = str
+      .help = The filename for final experimental modls
+    integrated_experiments_filename = %s_integrated_experiments.json
+      .type = str
       .help = The filename for final integrated reflections.
     profile_filename = None
       .type = str
@@ -278,7 +297,7 @@ xtc_phil_str = '''
     reindexedstrong_filename = %s_reindexedstrong.pickle
       .type = str
       .help = The file name for re-indexed strong reflections
-    tmp_output_dir = None
+    tmp_output_dir = "(NONE)"
       .type = str
       .help = Directory for CBFlib temporary output files
   }
@@ -367,6 +386,16 @@ class InMemScript(DialsProcessScript):
 
     self.reference_detector = None
 
+    self.composite_tag = None
+    self.all_indexed_experiments = None
+    self.all_indexed_reflections = None
+    self.all_integrated_experiments = None
+    self.all_integrated_reflections = None
+    self.all_int_pickle_filenames = []
+    self.all_int_pickles = []
+
+    self.cached_ranges = None
+
   def debug_start(self, ts):
     self.debug_str = "%s,%s"%(socket.gethostname(), ts)
     self.debug_str += ",%s,%s,%s\n"
@@ -437,18 +466,21 @@ class InMemScript(DialsProcessScript):
       raise Sorry("Output path not found:" + params.output.output_dir)
 
     if params.format.file_format == "cbf":
-      #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
-      if params.output.tmp_output_dir is None:
-        tmp_dir = os.path.join(params.output.output_dir, '.tmp')
+      if params.output.tmp_output_dir == "(NONE)":
+        tmp_dir = params.output.tmp_output_dir
       else:
-        tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
-      if not os.path.exists(tmp_dir):
-        try:
-          os.makedirs(tmp_dir)
-        except Exception as e:
-          # Can fail if running multiprocessed, which is ok if the tmp folder was created
-          if not os.path.exists(tmp_dir):
-            halraiser(e)
+        #Environment variable redirect for CBFLib temporary CBF_TMP_XYZ file output
+        if params.output.tmp_output_dir is None:
+          tmp_dir = os.path.join(params.output.output_dir, '.tmp')
+        else:
+          tmp_dir = os.path.join(params.output.tmp_output_dir, '.tmp')
+        if not os.path.exists(tmp_dir):
+          try:
+            os.makedirs(tmp_dir)
+          except Exception as e:
+            # Can fail if running multiprocessed, which is ok if the tmp folder was created
+            if not os.path.exists(tmp_dir):
+              halraiser(e)
       os.environ['CBF_TMP_DIR'] = tmp_dir
 
     for abs_params in params.integration.absorption_correction:
@@ -460,13 +492,23 @@ class InMemScript(DialsProcessScript):
     self.params = params
     self.load_reference_geometry()
 
-    # The convention is to put %s in the phil parameter to add a time stamp to
-    # each output datafile. Save the initial templates here.
-    self.strong_filename_template              = params.output.strong_filename
-    self.indexed_filename_template             = params.output.indexed_filename
-    self.refined_experiments_filename_template = params.output.refined_experiments_filename
-    self.integrated_filename_template          = params.output.integrated_filename
-    self.reindexedstrong_filename_template     = params.output.reindexedstrong_filename
+    if params.output.composite_output:
+      from dxtbx.model.experiment_list import ExperimentList
+      from dials.array_family import flex
+      #self.all_strong_reflections = flex.reflection_table() # no composite strong pickles yet
+      self.all_indexed_experiments = ExperimentList()
+      self.all_indexed_reflections = flex.reflection_table()
+      self.all_integrated_experiments = ExperimentList()
+      self.all_integrated_reflections = flex.reflection_table()
+    else:
+      # The convention is to put %s in the phil parameter to add a time stamp to
+      # each output datafile. Save the initial templates here.
+      self.strong_filename_template                 = params.output.strong_filename
+      self.indexed_filename_template                = params.output.indexed_filename
+      self.refined_experiments_filename_template    = params.output.refined_experiments_filename
+      self.integrated_filename_template             = params.output.integrated_filename
+      self.integrated_experiments_filename_template = params.output.integrated_experiments_filename
+      self.reindexedstrong_filename_template        = params.output.reindexedstrong_filename
 
     # Don't allow the strong reflections to be written unless there are enough to
     # process
@@ -496,6 +538,7 @@ class InMemScript(DialsProcessScript):
     else:
       rank = 0
       size = 1
+    self.composite_tag = "%04d"%rank
 
     # Configure the logging
     if params.output.logging_dir is None:
@@ -565,8 +608,8 @@ class InMemScript(DialsProcessScript):
     elif params.input.use_ffb:
       # as ffb is only at SLAC, ok to hardcode /reg/d here
       dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
-    if params.input.stream is not None:
-      dataset_name += ":stream=%d"%params.input.stream
+    if params.input.stream is not None and len(params.input.stream) > 0:
+      dataset_name += ":stream=%s"%(",".join(["%d"%stream for stream in params.input.stream]))
     if params.input.calib_dir is not None:
       psana.setOption('psana.calib-dir',params.input.calib_dir)
     ds = psana.DataSource(dataset_name)
@@ -706,7 +749,17 @@ class InMemScript(DialsProcessScript):
           last = mem
         print 'Total memory leaked in %d cycles: %dkB' % (nevent+1-50, mem - first)
 
+    self.finalize()
+
+    if params.format.file_format == "cbf" and params.output.tmp_output_dir == "(NONE)":
+      try:
+        os.rmdir(tmp_dir)
+      except Exception, e:
+        pass
+
     if params.joint_reintegration.enable:
+      if params.output.composite_output:
+        raise NotImplementedError("Joint reintegration not implemented for composite output yet")
       assert self.params.dispatch.dump_indexed, "Cannot do joint reintegration unless indexed files were dumped"
       if rank == 0:
         reint_dir = os.path.join(params.output.output_dir, "reint")
@@ -902,7 +955,7 @@ class InMemScript(DialsProcessScript):
     if self.params.dispatch.dump_all:
       self.save_image(dxtbx_img, self.params, os.path.join(self.params.output.output_dir, "shot-" + s))
 
-    self.cache_ranges(dxtbx_img, self.params)
+    self.cache_ranges(dxtbx_img, self.params.input.override_spotfinding_trusted_min, self.params.input.override_spotfinding_trusted_max)
 
     from dxtbx.imageset import ImageSet, ImageSetData, MemReader, MemMasker
     imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
@@ -944,14 +997,17 @@ class InMemScript(DialsProcessScript):
     datablock = DataBlockFactory.from_imageset(imgset)[0]
 
     # before calling DIALS for processing, set output paths according to the templates
-    if self.indexed_filename_template is not None and "%s" in self.indexed_filename_template:
-      self.params.output.indexed_filename = os.path.join(self.params.output.output_dir, self.indexed_filename_template%("idx-" + s))
-    if "%s" in self.refined_experiments_filename_template:
-      self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, self.refined_experiments_filename_template%("idx-" + s))
-    if "%s" in self.integrated_filename_template:
-      self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
-    if "%s" in self.reindexedstrong_filename_template:
-      self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
+    if not self.params.output.composite_output:
+      if self.indexed_filename_template is not None and "%s" in self.indexed_filename_template:
+        self.params.output.indexed_filename = os.path.join(self.params.output.output_dir, self.indexed_filename_template%("idx-" + s))
+      if "%s" in self.refined_experiments_filename_template:
+        self.params.output.refined_experiments_filename = os.path.join(self.params.output.output_dir, self.refined_experiments_filename_template%("idx-" + s))
+      if "%s" in self.integrated_filename_template:
+        self.params.output.integrated_filename = os.path.join(self.params.output.output_dir, self.integrated_filename_template%("idx-" + s))
+      if "%s" in self.integrated_experiments_filename_template:
+        self.params.output.integrated_experiments_filename = os.path.join(self.params.output.output_dir, self.integrated_experiments_filename_template%("idx-" + s))
+      if "%s" in self.reindexedstrong_filename_template:
+        self.params.output.reindexedstrong_filename = os.path.join(self.params.output.output_dir, self.reindexedstrong_filename_template%("idx-" + s))
 
     if self.params.input.known_orientations_folder is not None:
       expected_orientation_path = os.path.join(self.params.input.known_orientations_folder, os.path.basename(self.params.output.refined_experiments_filename))
@@ -974,10 +1030,6 @@ class InMemScript(DialsProcessScript):
       self.params.spotfinder.lookup.mask = mask
     else:
       self.params.spotfinder.lookup.mask = tuple([a&b for a, b in zip(mask,self.spotfinder_mask)])
-    if self.integration_mask is None:
-      self.params.integration.lookup.mask = mask
-    else:
-      self.params.integration.lookup.mask = tuple([a&b for a, b in zip(mask,self.integration_mask)])
 
     self.debug_write("spotfind_start")
     try:
@@ -996,7 +1048,7 @@ class InMemScript(DialsProcessScript):
       self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
-    self.restore_ranges(dxtbx_img, self.params)
+    self.restore_ranges(dxtbx_img)
 
     # save cbf file
     if self.params.dispatch.dump_strong:
@@ -1073,6 +1125,23 @@ class InMemScript(DialsProcessScript):
 
     # integrate
     self.debug_write("integrate_start")
+    self.cache_ranges(dxtbx_img, self.params.input.override_integration_trusted_min, self.params.input.override_integration_trusted_max)
+
+    if self.cached_ranges is not None:
+      # Load a dials mask from the trusted range and psana mask
+      imgset = ImageSet(ImageSetData(MemReader([dxtbx_img]), MemMasker([dxtbx_img])))
+      imgset.set_beam(dxtbx_img.get_beam())
+      imgset.set_detector(dxtbx_img.get_detector())
+      from dials.util.masking import MaskGenerator
+      generator = MaskGenerator(self.params.border_mask)
+      mask = generator.generate(imgset)
+      if self.params.format.file_format == "cbf" and self.dials_mask is not None:
+        mask = tuple([a&b for a, b in zip(mask,self.dials_mask)])
+    if self.integration_mask is None:
+      self.params.integration.lookup.mask = mask
+    else:
+      self.params.integration.lookup.mask = tuple([a&b for a, b in zip(mask,self.integration_mask)])
+
     try:
       integrated = self.integrate(experiments, indexed)
     except Exception, e:
@@ -1081,6 +1150,7 @@ class InMemScript(DialsProcessScript):
       self.debug_write("integrate_failed_%d"%len(indexed), "fail")
       self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
+    self.restore_ranges(dxtbx_img)
 
     self.log_frame(experiments, integrated, run.run(), len(observed), timestamp, tt_low, tt_high)
     self.debug_write("integrate_ok_%d"%len(integrated), "done")
@@ -1119,12 +1189,11 @@ class InMemScript(DialsProcessScript):
 
     return dest_path
 
-  def cache_ranges(self, dxtbx_img, params):
+  def cache_ranges(self, dxtbx_img, min_val, max_val):
     """ Save the current trusted ranges, and replace them with the given overrides, if present.
     @param cspad_image dxtbx format object
-    @param params phil scope
     """
-    if params.input.override_trusted_max is None and params.input.override_trusted_min is None:
+    if min_val is None and max_val is None:
       return
 
     detector = dxtbx_img.get_detector()
@@ -1132,24 +1201,25 @@ class InMemScript(DialsProcessScript):
     for panel in detector:
       new_range = cached_range = panel.get_trusted_range()
       self.cached_ranges.append(cached_range)
-      if params.input.override_trusted_max is not None:
-        new_range = new_range[0], params.input.override_trusted_max
-      if params.input.override_trusted_min is not None:
-        new_range = params.input.override_trusted_min, new_range[1]
+      if max_val is not None:
+        new_range = new_range[0], max_val
+      if min_val is not None:
+        new_range = min_val, new_range[1]
 
       panel.set_trusted_range(new_range)
 
-  def restore_ranges(self, dxtbx_img, params):
+  def restore_ranges(self, dxtbx_img):
     """ Restore the previously cached trusted ranges, if present.
     @param cspad_image dxtbx format object
-    @param params phil scope
     """
-    if params.input.override_trusted_max is None and params.input.override_trusted_min is None:
+    if self.cached_ranges is None:
       return
 
     detector = dxtbx_img.get_detector()
     for cached_range, panel in zip(self.cached_ranges, detector):
       panel.set_trusted_range(cached_range)
+
+    self.cached_ranges = None
 
   def reindex_strong(self, experiments, strong):
     print "Reindexing strong reflections using refined experimental models and no outlier rejection..."
@@ -1159,6 +1229,18 @@ class InMemScript(DialsProcessScript):
 
     print "Indexed %d strong reflections out of %d"%(len(indexed_reflections), len(strong))
     self.save_reflections(indexed_reflections, self.params.output.reindexedstrong_filename)
+
+  def finalize(self):
+    if self.params.output.composite_output:
+      # Each process will write its own set of output files
+      s = self.composite_tag
+      self.params.output.indexed_filename                = os.path.join(self.params.output.output_dir, self.params.output.indexed_filename%("idx-" + s))
+      self.params.output.refined_experiments_filename    = os.path.join(self.params.output.output_dir, self.params.output.refined_experiments_filename%("idx-" + s))
+      self.params.output.integrated_filename             = os.path.join(self.params.output.output_dir, self.params.output.integrated_filename%("idx-" + s))
+      self.params.output.integrated_experiments_filename = os.path.join(self.params.output.output_dir, self.params.output.integrated_experiments_filename%("idx-" + s))
+      self.params.output.reindexedstrong_filename        = os.path.join(self.params.output.output_dir, self.params.output.reindexedstrong_filename%("idx-" + s))
+
+    super(InMemScript, self).finalize()
 
 if __name__ == "__main__":
   from dials.util import halraiser

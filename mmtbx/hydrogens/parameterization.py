@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from scitbx import matrix
-from stdlib import math
+import math
 from scitbx.math import dihedral_angle
 from mmtbx_hydrogens_ext import *
 

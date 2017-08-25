@@ -173,6 +173,13 @@ master_phil = iotbx.phil.parse("""
        .help = Sharpen with this b-value. Contrast with b_iso that yield a \
            targeted value of b_iso
 
+     b_blur_hires = 200
+       .type = float
+       .short_caption = high_resolution blurring
+       .help = Blur high_resolution data (higher than d_cut) with \
+             this b-value. Contrast with b_sharpen applied to data up to\
+             d_cut.
+
      resolution_dependent_b = None
        .type = floats
        .short_caption = resolution_dependent b
@@ -194,7 +201,14 @@ master_phil = iotbx.phil.parse("""
        .short_caption = RMSD of model
        .help = RMSD of model to true model (if supplied).  Used to \
              estimate expected fall-of with resolution of correct part \
-             of model-based map. If None, assumed to be resolution/3.
+             of model-based map. If None, assumed to be resolution \
+             times rmsd_resolution_factor.
+
+     rmsd_resolution_factor = 0.25
+       .type = float
+       .short_caption = rmsd resolution factor
+        .help = default RMSD is resolution times resolution factor
+
 
      fraction_complete = None
        .type = float
@@ -222,7 +236,7 @@ master_phil = iotbx.phil.parse("""
           to sharpen variably over resolution range. Default is b_iso,\
           b_iso_to_d_cut and resolution_dependent.
 
-     box_in_auto_sharpen = False
+     box_in_auto_sharpen = True
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
@@ -235,10 +249,10 @@ master_phil = iotbx.phil.parse("""
                b_iso is set. Default is to set box_n_auto_sharpen=False \
                if b_iso is set.
 
-    soft_mask = False
+    soft_mask = True
       .type = bool
       .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map). In development
+             based on resolution of map). 
       .short_caption = Soft mask
 
      use_weak_density = False
@@ -765,6 +779,7 @@ def run(args=None,params=None,
         fraction_occupied=params.map_modification.fraction_occupied,
         sharpening_target=params.map_modification.sharpening_target,
         d_min_ratio=params.map_modification.d_min_ratio,
+        b_blur_hires=params.map_modification.b_blur_hires,
         max_box_fraction=params.map_modification.max_box_fraction,
         mask_atoms=params.map_modification.mask_atoms,
         mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius,
@@ -791,6 +806,7 @@ def run(args=None,params=None,
         pdb_inp=pdb_inp,
         ncs_obj=ncs_obj,
         rmsd=params.map_modification.rmsd,
+        rmsd_resolution_factor=params.map_modification.rmsd_resolution_factor,
         b_sol=params.map_modification.b_sol,
         k_sol=params.map_modification.k_sol,
         fraction_complete=params.map_modification.fraction_complete,

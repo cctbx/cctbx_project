@@ -348,6 +348,7 @@ class get_shifter_submit_command(get_submit_command):
       raise Sorry, "sbatch script template required for shifter"
     sb = open(self.sbatch_template, "rb")
     self.sbatch_contents = sb.read()
+    self.destination = os.path.dirname(self.submit_path)
     sb.close()
     self.sbatch_path = os.path.join(self.destination, "sbatch.sh")
 
@@ -360,7 +361,7 @@ class get_shifter_submit_command(get_submit_command):
     sr.close()
     self.srun_path = os.path.join(self.destination, "srun.sh")
 
-    self.destination = os.path.dirname(self.submit_path)
+#    self.destination = os.path.dirname(self.submit_path)
 
   def eval_params(self):
     # -N <nnodes> (optional)
@@ -368,14 +369,14 @@ class get_shifter_submit_command(get_submit_command):
       str(self.params.shifter.nnodes))
 
     # -n <nproc> (optional)
-    self.srun_contents = self.substitute(self.srun_contents, "<nproc>",
+    self.sbatch_contents = self.substitute(self.sbatch_contents, "<nproc>",
       str(self.params.shifter.nproc))
 
     # -W <walltime> (optional)
     if self.params.wall_time is not None:
       hours = self.params.wall_time // 60
       minutes = self.params.wall_time % 60
-      wt_str = "-W %2d:%02d:00" % (hours, minutes)
+      wt_str = "%02d:%02d:00" % (hours, minutes)
       self.sbatch_contents = self.substitute(self.sbatch_contents, "<walltime>",
         wt_str)
 
@@ -393,7 +394,6 @@ class get_shifter_submit_command(get_submit_command):
         "<command> %s" % " ".join(self.params.extra_args))
     self.srun_contents = self.substitute(self.srun_contents, "<command>",
       self.command)
-
   def generate_submit_command(self):
     return self.params.shifter.submit_command + self.sbatch_path
 
@@ -489,6 +489,8 @@ def get_submit_command_chooser(command, submit_path, stdoutdir, params,
     choice = get_sge_submit_command
   elif params.method == "pbs":
     choice = get_pbs_submit_command
+  elif params.method == "shifter":
+    choice = get_shifter_submit_command
   elif params.method == "custom":
     choice = get_custom_submit_command
   else:
