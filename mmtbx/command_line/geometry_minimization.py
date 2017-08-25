@@ -11,7 +11,7 @@ from libtbx import runtime_utils
 import os
 import sys
 from cStringIO import StringIO
-from mmtbx.monomer_library import pdb_interpretation, server
+from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
 from mmtbx.hydrogens import riding
@@ -362,24 +362,19 @@ class run(object):
     # You are not supposed to put here (in __init__) any time-consuming stuff,
     # otherwise self.total_time would be unaccurate. It's not clear
     # why it is important.
+    self.model                = None
     self.log                  = log
     self.params               = None
     self.inputs               = None
     self.args                 = args
-    self.processed_pdb_file   = None
-    self.xray_structure       = None
-    self.pdb_hierarchy        = None
     self.selection            = None
     self.restrain_selection   = None
-    self.grm                  = None
     self.time_strings         = []
     self.total_time           = 0
     self.pdb_file_names       = []
     self.use_directory_prefix = use_directory_prefix
     self.sites_cart_start     = None
     self.states_collector     = None
-    self.mon_lib_srv          = None
-    self.riding_h_manager     = None
     self.__execute()
 
   def __execute(self):
@@ -454,8 +449,6 @@ class run(object):
     broadcast(m=prefix, log = self.log)
     self.inputs.params.show(prefix="  ", out=self.log)
     if(len(self.args)==0): sys.exit(0)
-    self.mon_lib_srv = server.server()
-    self.setup_output_file_names()
 
   def process_inputs(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -497,15 +490,14 @@ class run(object):
         build_grm = True,
         log = self.log)
 
-    self.ncs_obj = self.model.get_ncs_obj()#processed_pdb_file.ncs_obj
+    self.ncs_obj = self.model.get_ncs_obj()
     self.output_crystal_symmetry = is_non_crystallographic_unit_cell
-    self.xray_structure = self.model.get_xrs()
-    self.sites_cart_start = self.xray_structure.sites_cart().deep_copy()
-    self.pdb_hierarchy = self.model.get_hierarchy()
+    self.sites_cart_start = self.model.get_xrs().sites_cart().deep_copy()
     if(self.params.show_states):
       self.states_collector = mmtbx.utils.states(
-        xray_structure = self.xray_structure,
-        pdb_hierarchy  = self.pdb_hierarchy)
+        xray_structure = self.model.get_xrs(),
+        pdb_hierarchy  = self.model.get_hierarchy())
+    self.setup_output_file_names()
 
   def atom_selection(self, prefix):
     broadcast(m=prefix, log = self.log)
@@ -515,11 +507,10 @@ class run(object):
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
-    self.grm = self.model.get_grm()
+    self.model.get_grm()
 
   def setup_riding_h(self, prefix):
-    if(not (self.params.minimization.riding_h and
-            self.xray_structure.hd_selection().count(True)>0)): return
+    if not self.params.minimization.riding_h: return
     broadcast(m=prefix, log = self.log)
     self.model.setup_riding_h_manager(idealize=True)
 
@@ -538,9 +529,9 @@ class run(object):
         raise Sorry("Need to supply topology file using amber.coordinate_file_name=<filename>")
       run_minimization_amber(
         selection = self.selection,
-        restraints_manager = self.grm,
+        restraints_manager = self.model.get_grm(),
         params = self.params.minimization,
-        pdb_hierarchy = self.pdb_hierarchy,
+        pdb_hierarchy = self.model.get_hierarchy(),
         log = self.log,
         prmtop = self.params.amber.topology_file_name,
         ambcrd = self.params.amber.coordinate_file_name,
@@ -551,10 +542,10 @@ class run(object):
         ncs_restraints_group_list = self.ncs_obj.get_ncs_restraints_group_list()
       run_minimization(
         selection              = self.selection,
-        restraints_manager     = self.grm,
-        riding_h_manager       = self.riding_h_manager,
+        restraints_manager     = self.model.get_grm(),
+        riding_h_manager       = self.model.get_riding_h_manager(),
         params                 = self.params.minimization,
-        pdb_hierarchy          = self.pdb_hierarchy,
+        pdb_hierarchy          = self.model.get_hierarchy(),
         cdl                    = self.params.pdb_interpretation.restraints_library.cdl,
         rdl                    = self.params.pdb_interpretation.restraints_library.rdl,
         correct_hydrogens      = self.params.pdb_interpretation.correct_hydrogens,
@@ -563,15 +554,12 @@ class run(object):
         states_collector       = self.states_collector,
         log                    = self.log,
         ncs_restraints_group_list = ncs_restraints_group_list,
-        mon_lib_srv            = self.mon_lib_srv)
-    self.xray_structure.set_sites_cart(
-      sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
+        mon_lib_srv            = self.model.get_mon_lib_srv())
+    self.model.set_sites_cart_from_hierarchy()
 
   def write_pdb_file(self, prefix):
-    # from iotbx.pdb.misc_records_output import link_record_output
-    # link_records = link_record_output(self.processed_pdb_file.all_chain_proxies)
     broadcast(m=prefix, log = self.log)
-    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    # self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     print >> self.log, "  output file name:", self.result_model_fname
     print >> self.log, self.min_max_mean_shift()
 
@@ -587,11 +575,11 @@ class run(object):
 
   def min_max_mean_shift(self):
     return "min,max,mean shift from start: %6.3f %6.3f %6.3f"%flex.sqrt((
-      self.sites_cart_start - self.xray_structure.sites_cart()).dot()
+      self.sites_cart_start - self.model.get_xrs().sites_cart()).dot()
       ).min_max_mean().as_tuple()
 
   def write_geo_file(self, prefix):
-    if(self.params.write_geo_file and self.grm is not None):
+    if self.params.write_geo_file:
       broadcast(m=prefix, log = self.log)
       # no output of NCS stuff here
       restr_txt = self.model.restraints_as_geo()

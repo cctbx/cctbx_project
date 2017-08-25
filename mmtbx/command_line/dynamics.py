@@ -85,23 +85,23 @@ Usage examples:
     self.show_times()
 
   def atom_selection (self, prefix) :
-    self.selection = flex.bool(self.xray_structure.sites_cart().size(), True)
+    self.selection = flex.bool(self.model.get_xrs().sites_cart().size(), True)
     geometry_minimization.broadcast(m=prefix, log = self.log)
 
   def dynamics (self, prefix) :
     geometry_minimization.broadcast(m=prefix, log = self.log)
-    self.sites_cart = self.xray_structure.sites_cart()
+    self.sites_cart = self.model.get_xrs().sites_cart()
     if (self.params.dynamics_type == "cartesian") :
       run_cartesian_dynamics(
-        xray_structure=self.xray_structure,
-        restraints_manager=self.grm,
+        xray_structure=self.model.get_xrs(),
+        restraints_manager=self.model.get_grm(),
         states_collector=self.states_collector,
         params=self.params.cartesian_dynamics,
         stop_at_diff=self.params.stop_at_diff,
         log=self.log)
     else : # TODO
       raise NotImplementedError()
-    self.sites_cart = self.xray_structure.sites_cart()
+    self.model.set_sites_cart_from_xrs()
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :

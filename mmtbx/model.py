@@ -28,6 +28,7 @@ from libtbx import easy_run
 import libtbx.load_env
 from mmtbx.hydrogens import riding
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+import mmtbx.monomer_library.server
 from iotbx.pdb.misc_records_output import link_record_output
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
@@ -226,8 +227,8 @@ class manager(object):
       self._asc = None
       self._grm = None
       self._ncs_obj = None
-      self._mon_lib = None
-      self._ener_lib = None
+      self.mon_lib_srv = None
+      self.ener_lib = None
       self._rotamer_eval = None
       self._rama_eval = None
       if(anomalous_scatterer_groups is not None and
@@ -280,6 +281,16 @@ class manager(object):
       self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=self.cs)
     self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
+
+  def get_mon_lib_srv(self):
+    if self.mon_lib_srv is None:
+      self.mon_lib_srv = mmtbx.monomer_library.server.server()
+    return self.mon_lib_srv
+
+  def get_ener_lib(self):
+    if self.ener_lib is None:
+      self.ener_lib = mmtbx.monomer_library.server.ener_lib()
+    return self.ener_lib
 
 
   def get_ncs_obj(self):
@@ -410,8 +421,11 @@ class manager(object):
           header="# Geometry restraints after refinement\n",
           xray_structure=self.xray_structure)
 
-  def get_riding_h_manager(self):
-    if self.riding_h_manager is None:
+  def get_riding_h_manager(self, idealize=True, force=False):
+    """
+    Force=True: Force creating manager if hydrogens are available
+    """
+    if self.riding_h_manager is None and force:
       self.setup_riding_h_manager(idealize=True)
     return self.riding_h_manager
 
@@ -444,6 +458,20 @@ class manager(object):
       self._pdb_hierarchy.adopt_xray_structure(
         xray_structure = self.xray_structure)
     return self._pdb_hierarchy
+
+  def set_sites_cart_from_hierarchy(self):
+    self.xray_structure.set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
+
+  def set_sites_cart_from_xrs(self):
+    self._pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+
+  def set_sites_cart(self, sites_cart, update_grm=False):
+    assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
+        self.xray_structure.scatterers().size()
+    self.xray_structure.set_sites_cart(sites_cart)
+    self._pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    if update_grm:
+      self.restraints_manager.geometry.pair_proxies(sites_cart)
 
   def sync_pdb_hierarchy_with_xray_structure(self):
     # to be deleted.
@@ -610,13 +638,12 @@ class manager(object):
   def rotatable_hd_selection(self):
     import mmtbx.hydrogens
     if(self.processed_pdb_files_srv is not None):
-      mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
+      self.mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
     else:
-      import mmtbx.monomer_library
-      mon_lib_srv = mmtbx.monomer_library.server.server()
+      self.get_mon_lib_srv()
     rmh_sel = mmtbx.hydrogens.rotatable(
       pdb_hierarchy      = self.pdb_hierarchy(),
-      mon_lib_srv        = mon_lib_srv,
+      mon_lib_srv        = self.mon_lib_srv,
       restraints_manager = self.restraints_manager,
       log                = self.log)
     sel_i = []
