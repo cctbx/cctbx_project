@@ -56,7 +56,7 @@ namespace dxtbx { namespace model {
           boost::shared_ptr<Detector> detector,
           boost::shared_ptr<Goniometer> goniometer,
           boost::shared_ptr<Scan> scan,
-          boost::shared_ptr<Crystal> crystal,
+          boost::shared_ptr<CrystalBase> crystal,
           boost::python::object profile,
           boost::python::object imageset)
       : beam_(beam),
@@ -98,7 +98,7 @@ namespace dxtbx { namespace model {
     /**
      * Check if the crystal model is the same.
      */
-    bool contains(const boost::shared_ptr<Crystal> &crystal) const {
+    bool contains(const boost::shared_ptr<CrystalBase> &crystal) const {
       return crystal_ == crystal;
     }
 
@@ -110,7 +110,7 @@ namespace dxtbx { namespace model {
       boost::python::extract< boost::shared_ptr<Detector> > get_detector(obj);
       boost::python::extract< boost::shared_ptr<Goniometer> > get_goniometer(obj);
       boost::python::extract< boost::shared_ptr<Scan> > get_scan(obj);
-      boost::python::extract< boost::shared_ptr<Crystal> > get_crystal(obj);
+      boost::python::extract< boost::shared_ptr<CrystalBase> > get_crystal(obj);
       if (get_beam.check()) {
         return contains(get_beam());
       } else if (get_detector.check()) {
@@ -203,14 +203,14 @@ namespace dxtbx { namespace model {
     /**
      * Get the crystal model
      */
-    void set_crystal(boost::shared_ptr<Crystal> crystal) {
+    void set_crystal(boost::shared_ptr<CrystalBase> crystal) {
       crystal_ = crystal;
     }
 
     /**
      * Get the crystal model
      */
-    boost::shared_ptr<Crystal> get_crystal() const {
+    boost::shared_ptr<CrystalBase> get_crystal() const {
       return crystal_;
     }
 
@@ -248,7 +248,7 @@ namespace dxtbx { namespace model {
     boost::shared_ptr<Detector> detector_;
     boost::shared_ptr<Goniometer> goniometer_;
     boost::shared_ptr<Scan> scan_;
-    boost::shared_ptr<Crystal> crystal_;
+    boost::shared_ptr<CrystalBase> crystal_;
     boost::python::object profile_;
     boost::python::object imageset_;
 

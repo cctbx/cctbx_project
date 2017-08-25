@@ -53,7 +53,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  void Crystal_set_A_at_scan_points_from_tuple(Crystal &self, boost::python::tuple l) {
+  void Crystal_set_A_at_scan_points_from_tuple(CrystalBase &self, boost::python::tuple l) {
     scitbx::af::shared< mat3<double> > A_list;
     for (std::size_t i = 0; i < boost::python::len(l); ++i) {
       mat3<double> A = boost::python::extract< mat3<double> >(l[i]);
@@ -63,7 +63,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  void Crystal_set_A_at_scan_points_from_list(Crystal &self, boost::python::list l) {
+  void Crystal_set_A_at_scan_points_from_list(CrystalBase &self, boost::python::list l) {
     scitbx::af::shared< mat3<double> > A_list;
     for (std::size_t i = 0; i < boost::python::len(l); ++i) {
       mat3<double> A = boost::python::extract< mat3<double> >(l[i]);
@@ -73,7 +73,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  void Crystal_set_B_covariance_from_tuple(Crystal &self, boost::python::object obj) {
+  void Crystal_set_B_covariance_from_tuple(CrystalBase &self, boost::python::object obj) {
     scitbx::af::versa< double, scitbx::af::c_grid<2> > B_cov(scitbx::af::c_grid<2>(9,9));
     DXTBX_ASSERT(boost::python::len(obj) == 9*9);
     for (std::size_t i = 0; i < boost::python::len(obj); ++i) {
