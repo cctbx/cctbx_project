@@ -165,7 +165,7 @@ class FormatMultiImage(object):
       format_instance = Class(filenames[0], **format_kwargs)
     else:
       format_instance = None
-      
+
     # Read the vendor type
     if check_format is True:
       vendor = format_instance.get_vendortype()
