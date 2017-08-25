@@ -943,6 +943,24 @@ namespace dxtbx {
      * @param scan The scan model
      */
     void set_scan(const Scan &scan) {
+      if (scan.get_num_images() != size()) }
+        int i0 = scan.get_array_range()[0];
+        int i1 = scan.get_array_range()[1];
+        int j0 = scan_.get_array_range()[0];
+        int j1 = scan_.get_array_range()[1];
+        DXTBX_ASSERT(i0 >= j0);
+        DXTBX_ASSERT(i1 > i0);
+        std::size_t n = i1 - i0;
+        int k0 = i0 - j0;
+        int k1 = i1 - j0;
+        DXTBX_ASSERT(k0 >= 0);
+        std::size_t index0 = indices_[0];
+        std::size_t index1 = index0 + n;
+        indices_.resize(n);
+        for (std::size_t i = 0; i < n; ++i) {
+          indices_[i] = index0 + i;
+        }
+      }
       DXTBX_ASSERT(scan.get_num_images() == size());
       scan_ = scan_ptr(new Scan(scan));
       for (std::size_t i = 0; i < size(); ++i) {
