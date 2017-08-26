@@ -212,6 +212,84 @@ class TestExternalLookup(object):
     print 'OK'
 
 
+class TestImageSetData(object):
+
+  def run(self):
+
+    from dxtbx.imageset import ImageSetData
+    from dxtbx.format.image import ImageTileBool
+    from dxtbx.format.image import ImageTileDouble
+    from dxtbx.format.image import ImageBool
+    from dxtbx.format.image import ImageDouble
+    from scitbx.array_family import flex
+    import os.path
+    from glob import glob
+    from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus as FormatClass
+    from os.path import join
+
+    dials_regression = libtbx.env.dist_path('dials_regression')
+    filenames = sorted(glob(join(dials_regression, "centroid_test_data", "*.cbf")))
+
+    ReaderClass = FormatClass.get_reader()
+    MaskerClass = FormatClass.get_masker()
+
+    reader = ReaderClass(filenames)
+    masker = MaskerClass(filenames)
+
+    handle = ImageSetData(reader, masker)
+
+    data = handle.get_data(0).as_int().tile(0).data()
+    mask = handle.get_mask(0).tile(0).data()
+
+    assert handle.has_single_file_reader() == False
+
+    path = handle.get_path(0)
+    assert path == filenames[0]
+
+    master_path = handle.get_master_path()
+    assert master_path == ""
+
+    identifier = handle.get_image_identifier(0)
+    assert identifier == filenames[0]
+
+    beam = FormatClass(filenames[0]).get_beam()
+    detector = FormatClass(filenames[0]).get_detector()
+    goniometer = FormatClass(filenames[0]).get_goniometer()
+    scan = FormatClass(filenames[0]).get_scan()
+
+    handle.set_beam(0, beam)
+    handle.set_detector(0, detector)
+    handle.set_goniometer(0, goniometer)
+    handle.set_scan(0, scan)
+
+    beam2 = handle.get_beam(0)
+    detector2 = handle.get_detector(0)
+    goniometer2 = handle.get_goniometer(0)
+    scan2 = handle.get_scan(0)
+
+    assert beam2 == beam
+    assert detector2 == detector
+    assert goniometer2 == goniometer
+    assert scan2 == scan
+
+    mask = flex.bool(flex.grid(10, 10), True)
+    gain = flex.double(flex.grid(10, 10), 1)
+    pedestal = flex.double(flex.grid(10, 10), 2)
+
+    handle.external_lookup.mask.data = ImageBool(ImageTileBool(mask))
+    handle.external_lookup.gain.data = ImageDouble(ImageTileDouble(gain))
+    handle.external_lookup.pedestal.data = ImageDouble(ImageTileDouble(pedestal))
+
+    mask2 = handle.external_lookup.mask.data.tile(0).data()
+    gain2 = handle.external_lookup.gain.data.tile(0).data()
+    pedestal2 = handle.external_lookup.pedestal.data.tile(0).data()
+
+    assert mask2.all_eq(mask)
+    assert gain2.all_eq(gain)
+    assert pedestal2.all_eq(pedestal)
+
+    print 'OK'
+
 class TestImageSet(object):
   def get_file_list(self):
     import os.path
@@ -699,6 +777,7 @@ def run():
   TestImage().run()
   TestImageBuffer().run()
   TestExternalLookup().run()
+  TestImageSetData().run()
   #TestImageSet().run()
   #TestImageSweep().run()
   #TestNexusFile().run()

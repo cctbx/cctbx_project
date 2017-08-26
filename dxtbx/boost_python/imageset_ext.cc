@@ -45,7 +45,7 @@ namespace dxtbx { namespace boost_python {
             return_internal_reference<>()))
       ;
 
-    class_<ImageSetData>("ImageSetDataWrapper", no_init)
+    class_<ImageSetData>("ImageSetData", no_init)
       .def(init<
           boost::python::object,
           boost::python::object>())
@@ -67,7 +67,7 @@ namespace dxtbx { namespace boost_python {
       .def("set_scan", &ImageSetData::set_scan)
       .add_property("external_lookup",
           make_function(
-            &ImageSet::external_lookup,
+            &ImageSetData::external_lookup,
             return_internal_reference<>()))
       ;
 

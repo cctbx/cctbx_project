@@ -167,25 +167,82 @@ namespace dxtbx {
     ImageBuffer get_data(std::size_t index) {
       typedef scitbx::af::versa<double, scitbx::af::c_grid<2> > double_array;
       typedef scitbx::af::versa<int, scitbx::af::c_grid<2> > int_array;
-      boost::python::tuple d = boost::python::extract<boost::python::tuple>(
-          reader_.attr("read")(index))();
+      typedef scitbx::af::c_grid<2> accessor_type;
+
+      // Create the return buffer
       ImageBuffer buffer;
-      try {
-        Image<double> image;
-        for (std::size_t i = 0; i < boost::python::len(d); ++i) {
-          image.push_back(
-              ImageTile<double>(
-                boost::python::extract< double_array >(d[i])()));
+
+      // Get the image data object
+      boost::python::object data = reader_.attr("read")(index);
+
+      // Get the class name
+      std::string name = boost::python::extract<std::string>(
+          data.attr("__class__").attr("__name__"))();
+
+      if (name == "tuple") {
+
+        boost::python::tuple d = boost::python::extract<boost::python::tuple>(data);
+
+        // Get the class name
+        name = boost::python::extract<std::string>(
+            d[0].attr("__class__").attr("__name__"))();
+
+        if (name == "double") {
+          Image<double> image;
+          for (std::size_t i = 0; i < boost::python::len(d); ++i) {
+
+            scitbx::af::flex<double>::type a = boost::python::extract<
+              scitbx::af::flex<double>::type>(d[i])();
+
+            image.push_back(
+                ImageTile<double>(
+                  double_array(
+                    a.handle(),
+                    accessor_type(a.accessor()))));
+          }
+          buffer = ImageBuffer(image);
+        } else if (name == "int") {
+          Image<int> image;
+          for (std::size_t i = 0; i < boost::python::len(d); ++i) {
+            scitbx::af::flex<int>::type a = boost::python::extract<
+              scitbx::af::flex<int>::type>(d[i])();
+
+            image.push_back(
+                ImageTile<int>(
+                  int_array(
+                    a.handle(),
+                    accessor_type(a.accessor()))));
+          }
+          buffer = ImageBuffer(image);
+        } else {
+          DXTBX_ERROR("Unknown type");
         }
-        buffer = ImageBuffer(image);
-      } catch (std::exception) {
-        Image<int> image;
-        for (std::size_t i = 0; i < boost::python::len(d); ++i) {
-          image.push_back(
-              ImageTile<int>(
-                boost::python::extract< int_array >(d[i])()));
+
+      } else {
+
+        if (name == "double") {
+          scitbx::af::flex<double>::type a = boost::python::extract<
+            scitbx::af::flex<double>::type>(data)();
+
+          buffer = ImageBuffer(
+              Image<double>(
+                ImageTile<double>(
+                  double_array(
+                    a.handle(),
+                    accessor_type(a.accessor())))));
+        } else if (name == "int") {
+          scitbx::af::flex<int>::type a = boost::python::extract<
+            scitbx::af::flex<int>::type>(data)();
+
+          buffer = ImageBuffer(
+              Image<int>(
+                ImageTile<int>(
+                  int_array(
+                    a.handle(),
+                    accessor_type(a.accessor())))));
+        } else {
+          DXTBX_ERROR("Unknown type");
         }
-        buffer = ImageBuffer(image);
       }
       return buffer;
     }
@@ -196,14 +253,42 @@ namespace dxtbx {
      * @returns The image mask
      */
     Image<bool> get_mask(std::size_t index) {
+
       typedef scitbx::af::versa<bool, scitbx::af::c_grid<2> > bool_array;
-      boost::python::tuple d = boost::python::extract<boost::python::tuple>(
-          masker_.attr("read")(index))();
+      typedef scitbx::af::c_grid<2> accessor_type;
+
+      // Get the image data object
+      boost::python::object data = masker_.attr("get")(index);
+
+      // Get the class name
+      std::string name = boost::python::extract<std::string>(
+          data.attr("__class__").attr("__name__"))();
+
       Image<bool> image;
-      for (std::size_t i = 0; i < boost::python::len(d); ++i) {
+
+      if (name == "tuple") {
+        boost::python::tuple d = boost::python::extract<boost::python::tuple>(data);
+        for (std::size_t i = 0; i < boost::python::len(d); ++i) {
+          scitbx::af::flex<bool>::type a = boost::python::extract<
+            scitbx::af::flex<bool>::type>(d[i])();
+
+          image.push_back(
+              ImageTile<bool>(
+                bool_array(
+                  a.handle(),
+                  accessor_type(a.accessor()))));
+        }
+      } else if (name == "bool") {
+        scitbx::af::flex<bool>::type a = boost::python::extract<
+          scitbx::af::flex<bool>::type>(data)();
+
         image.push_back(
             ImageTile<bool>(
-              boost::python::extract< bool_array >(d[i])()));
+              bool_array(
+                a.handle(),
+                accessor_type(a.accessor()))));
+      } else {
+        DXTBX_ERROR("Unknown type");
       }
       return image;
     }
@@ -221,7 +306,7 @@ namespace dxtbx {
      */
     std::string get_path(std::size_t index) const {
       return boost::python::extract< std::string >(
-        reader_.attr("path")(index))();
+        reader_.attr("paths")()[index])();
     }
 
     /**
@@ -229,7 +314,7 @@ namespace dxtbx {
      */
     std::string get_master_path() const {
       return boost::python::extract< std::string >(
-        reader_.attr("path")(0))();
+        reader_.attr("master_path")())();
     }
 
     /**
@@ -237,7 +322,7 @@ namespace dxtbx {
      */
     std::string get_image_identifier(std::size_t index) const {
       return boost::python::extract< std::string >(
-        reader_.attr("identifier")(index))();
+        reader_.attr("identifiers")()[index])();
     }
 
     /**

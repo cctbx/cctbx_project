@@ -137,63 +137,63 @@ class ExternalLookup(object):
 
 
 
-class ImageSetData(object):
+# class ImageSetData(object):
 
-  def __init__(self,
-               reader,
-               masker=None,
-               beam = None,
-               detector = None,
-               goniometer = None,
-               scan = None,
-               properties={}):
+#   def __init__(self,
+#                reader,
+#                masker=None,
+#                beam = None,
+#                detector = None,
+#                goniometer = None,
+#                scan = None,
+#                properties={}):
 
-    # If no reader is set then throw an exception
-    if reader is None:
-      raise ValueError("ImageSet needs a reader!")
+#     # If no reader is set then throw an exception
+#     if reader is None:
+#       raise ValueError("ImageSet needs a reader!")
 
-    # Check input
-    if masker is not None:
-      assert len(masker) == len(reader)
+#     # Check input
+#     if masker is not None:
+#       assert len(masker) == len(reader)
 
-    # Set the data
-    self.reader = reader
-    self.masker = masker
-    if beam is None:
-      self.beam = dict()
-    else:
-      self.beam = beam
-    if detector is None:
-      self.detector = dict()
-    else:
-      self.detector = detector
-    if goniometer is None:
-      self.goniometer = dict()
-    else:
-      self.goniometer = goniometer
-    if scan is None:
-      self.scan = dict()
-    else:
-      self.scan = scan
-    self.properties = properties
+#     # Set the data
+#     self.reader = reader
+#     self.masker = masker
+#     if beam is None:
+#       self.beam = dict()
+#     else:
+#       self.beam = beam
+#     if detector is None:
+#       self.detector = dict()
+#     else:
+#       self.detector = detector
+#     if goniometer is None:
+#       self.goniometer = dict()
+#     else:
+#       self.goniometer = goniometer
+#     if scan is None:
+#       self.scan = dict()
+#     else:
+#       self.scan = scan
+#     self.properties = properties
 
-  def data(self, index):
-    return self.reader.read(index)
+#   def data(self, index):
+#     return self.reader.read(index)
 
-  def mask(self, index, goniometer=None):
-    return self.masker.get(index, goniometer=goniometer)
+#   def mask(self, index, goniometer=None):
+#     return self.masker.get(index, goniometer=goniometer)
 
-  def path(self, index):
-    return self.paths()[index]
+#   def path(self, index):
+#     return self.paths()[index]
 
-  def identifier(self, index):
-    return self.reader.identifier()[index]
+#   def identifier(self, index):
+#     return self.reader.identifier()[index]
 
-  def paths(self):
-    return self.reader.paths()
+#   def paths(self):
+#     return self.reader.paths()
 
-  def identifiers(self):
-    return self.reader.identifiers()
+#   def identifiers(self):
+#     return self.reader.identifiers()
 
 
 
