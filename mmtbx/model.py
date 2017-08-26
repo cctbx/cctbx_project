@@ -2042,7 +2042,7 @@ class statistics(object):
       rotamer      = self.rotamer(),
       c_beta       = self.c_beta(),
       clash        = self.clash(),
-      cablam       = self.cablam(),
+      # cablam       = self.cablam(), # broken
       omega        = self.omega())
 
   def show(self, log=None, prefix="", lowercase=False):
