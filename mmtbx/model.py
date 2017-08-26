@@ -1661,6 +1661,8 @@ class manager(object):
 
   def geometry_statistics(self,
                           general_selection = None):
+    scattering_table = \
+      self.xray_structure.scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
     ph = self.pdb_hierarchy(sync_with_xray_structure=True)
     hd_selection = self.xray_structure.hd_selection()
@@ -1668,7 +1670,8 @@ class manager(object):
       hd_selection = hd_selection.select(~self.ias_selection)
       ph = ph.select(~self.ias_selection)
     rm = self.restraints_manager
-    if(self.riding_h_manager is not None):
+    if(self.riding_h_manager is not None or
+       scattering_table in ["n_gaussian","wk1995", "it1992"]):
       not_hd_sel = ~hd_selection
       ph = ph.select(not_hd_sel)
       rm = rm.select(not_hd_sel)

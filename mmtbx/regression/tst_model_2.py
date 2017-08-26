@@ -142,9 +142,9 @@ def run(args):
         xray_structure     = xrs,
         pdb_hierarchy      = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
       #
-      r1 = m.geometry_statistics()
+      r1 = m.geometry_statistics(ignore_hd = False)
       m.idealize_h(show=False)
-      r2 = m.geometry_statistics()
+      r2 = m.geometry_statistics(ignore_hd = False)
       print "%6.3f %6.3f %6.3f %6.3f"%(
         r1.angle().mean,r1.bond().mean, r2.angle().mean,r2.bond().mean)
       assert r2.angle().mean < 1.0, "assertion %f < 1.0" % r2.angle().mean

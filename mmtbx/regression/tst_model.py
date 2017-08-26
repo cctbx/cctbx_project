@@ -1277,10 +1277,30 @@ ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
   result = model.extract_water_residue_groups()
   assert len(result)==1
 
+def exercise_6(mon_lib_srv, ener_lib):
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv    = mon_lib_srv,
+    ener_lib       = ener_lib,
+    file_name      = None,
+    raw_records    = pdb_str_00,
+    force_symmetry = True)
+  geometry = processed_pdb_file.geometry_restraints_manager(
+    show_energies      = False,
+    plain_pairs_radius = 5.0)
+  ms = mmtbx.model.statistics(
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    geometry_restraints_manager = geometry)
+  ms.show()
+  #
+  # IF you are about to change this - STOP! Likely you're doing something wrong!
+  #
+  import inspect
+  r = inspect.getargspec(mmtbx.model.statistics.__init__)
+  assert r.args == ['self', 'pdb_hierarchy', 'geometry_restraints_manager']
+
 def run():
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-
   exercise_00(mon_lib_srv, ener_lib)
   exercise(mon_lib_srv, ener_lib)
   exercise_2(mon_lib_srv, ener_lib)
@@ -1289,6 +1309,7 @@ def run():
   exercise_convert_atom()
   exercise_h_counts()
   exercise_5()
+  exercise_6(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
