@@ -379,14 +379,15 @@ class run(object):
 
   def __execute(self):
     #
-    self.caller(self.initialize,           "Initialization, inputs")
-    self.caller(self.process_inputs,       "Processing inputs")
-    self.caller(self.atom_selection,       "Atom selection")
-    self.caller(self.get_restraints,       "Geometry Restraints")
-    self.caller(self.setup_riding_h,       "Setup riding H")
-    self.caller(self.minimization,         "Minimization")
-    self.caller(self.write_pdb_file,       "Write PDB file")
-    self.caller(self.write_geo_file,       "Write GEO file")
+    self.caller(self.initialize,            "Initialization, inputs")
+    self.caller(self.process_inputs,        "Processing inputs")
+    self.caller(self.atom_selection,        "Atom selection")
+    self.caller(self.get_restraints,        "Geometry Restraints")
+    self.caller(self.setup_riding_h,        "Setup riding H")
+    self.caller(self.minimization,          "Minimization")
+    self.caller(self.write_pdb_file,        "Write PDB file")
+    self.caller(self.write_geo_file,        "Write GEO file")
+    self.caller(self.show_model_statistics, "Model statistics")
     #
     self.show_times()
 
@@ -587,6 +588,14 @@ class run(object):
       f.write("# Geometry restraints after refinement\n")
       f.write(restr_txt)
       f.close()
+
+  def show_model_statistics(self, prefix):
+    if self.params.write_geo_file:
+      broadcast(m=prefix, log = self.log)
+      s = mmtbx.model.statistics(
+        pdb_hierarchy               = self.model.get_hierarchy(),
+        geometry_restraints_manager = self.model.get_grm().geometry)
+      s.show(log = self.log)
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :

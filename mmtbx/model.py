@@ -2029,6 +2029,22 @@ class statistics(object):
       twisted_general = twisted_general,
       twisted_proline = twisted_proline)
 
+  def result(self):
+    return group_args(
+      angle        = self.angle(),
+      bond         = self.bond(),
+      chirality    = self.chirality(),
+      dihedral     = self.dihedral(),
+      planarity    = self.planarity(),
+      parallelity  = self.parallelity(),
+      nonbonded    = self.nonbonded(),
+      ramachandran = self.ramachandran(),
+      rotamer      = self.rotamer(),
+      c_beta       = self.c_beta(),
+      clash        = self.clash(),
+      cablam       = self.cablam(),
+      omega        = self.omega())
+
   def show(self, log=None, prefix="", lowercase=False):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1):

@@ -85,7 +85,7 @@ class rsr_model(object):
     mso.show(prefix=prefix, log=log, lowercase=True)
     self.stats_evaluations.append(group_args(
       cc       = self.cc_mask,
-      geometry = mso))
+      geometry = mso.result()))
 
   def update(self, xray_structure):
     self.dist_from_previous = flex.mean(self.xray_structure.distances(
