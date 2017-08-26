@@ -1661,16 +1661,14 @@ class manager(object):
 
   def geometry_statistics(self,
                           general_selection = None):
+    if(self.restraints_manager is None): return None
     ph = self.pdb_hierarchy(sync_with_xray_structure=True)
     hd_selection = self.xray_structure.hd_selection()
     if(self.use_ias):
       hd_selection = hd_selection.select(~self.ias_selection)
       ph = ph.select(~self.ias_selection)
     rm = self.restraints_manager
-    if general_selection is not None:
-      ph = ph.select(general_selection)
-      rm = rm.select(general_selection)
-    elif(self.riding_h_manager is None):
+    if(self.riding_h_manager is not None):
       not_hd_sel = ~hd_selection
       ph = ph.select(not_hd_sel)
       rm = rm.select(not_hd_sel)
