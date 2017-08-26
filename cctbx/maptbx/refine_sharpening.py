@@ -296,6 +296,7 @@ def calculate_fsc(si=None,
       rms_fo=f_array_fo.data().norm()
     else:
       rms_fo=1.
+
     if fc_map:
       fc        = fc_map.select(sel)
       f_array_fc=map_coeffs_to_fp(fc)

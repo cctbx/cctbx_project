@@ -7515,6 +7515,10 @@ def run_auto_sharpen(
       crystal_symmetry=si.crystal_symmetry,
       out=out)
   original_b_iso=map_coeffs_aa.b_iso
+  if original_b_iso is None:
+    print >>out,"Could not determine original b_iso...setting to 200"
+    original_b_iso=200.
+ 
   si.original_aniso_obj=map_coeffs_aa # set it so we can apply it later if desired
 
   if first_half_map_data:
@@ -7558,6 +7562,7 @@ def run_auto_sharpen(
       (not si.sharpening_is_defined()) and (not si.is_model_sharpening()) \
      and (not si.is_half_map_sharpening()) and (
       not si.is_target_b_iso_to_d_cut()):
+   for iii in xrange(1):  # just so we can break
 
     local_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
@@ -7580,6 +7585,7 @@ def run_auto_sharpen(
       b_high=max(original_b_iso,si.search_b_max)
       b_mid=b_low+0.375*(b_high-b_low)
 
+    ok_region_weight=True
     for b_iso in [b_low,b_high,b_mid]:
 
       local_si.b_sharpen=original_b_iso-b_iso
@@ -7592,15 +7598,18 @@ def run_auto_sharpen(
             out=null_out())
       local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
           out=null_out())
+      if local_si.sa_ratio is None or local_si.normalized_regions is None:
+        ok_region_weight=False
       sa_ratio_list.append(local_si.sa_ratio)
       normalized_regions_list.append(local_si.normalized_regions)
+    if not ok_region_weight:
+      break # skip it
 
     # Set region weight so that either:
     #  (1) delta_sa_ratio==region_weight*delta_normalized_regions
     #  (2) sa_ratio=region_weight*normalized_regions (at low B)
 
     # region weight from change over entire region 
-    ok_region_weight=True
     d_sa_ratio=sa_ratio_list[0]-sa_ratio_list[1]
     d_normalized_regions=normalized_regions_list[0]-normalized_regions_list[1]
     delta_region_weight=si.region_weight_factor*d_sa_ratio/max(
@@ -7889,12 +7898,12 @@ def run_auto_sharpen(
             "b_iso=%6.1f b_sharpen=%6.1f k_sharpen=%s: " %(
             local_best_si.b_iso,local_best_si.b_sharpen,
              local_best_si.k_sharpen)
+        if local_best_si.score is not None:
+          local_best_si.show_summary(out=out)
 
-        local_best_si.show_summary(out=out)
-
-        print >>out,\
-         "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
-         local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
+          print >>out,\
+           "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
+           local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)
 
       if  si_score_list.size()>1: # test for signal
         signal_to_noise=estimate_signal_to_noise(value_list=si_score_list)
@@ -7956,7 +7965,8 @@ def run_auto_sharpen(
             not best_si.is_half_map_sharpening():
           print >>out,"This is the current best score\n"
 
-  if not best_si.is_model_sharpening() and not best_si.is_half_map_sharpening():
+  if (best_si.score is not None )  and (
+     not best_si.is_model_sharpening() )  and (not best_si.is_half_map_sharpening()):
     print >>out,"\nOverall best sharpening method: %s Score: %7.3f\n" %(
        best_si.sharpening_method,best_si.score)
     best_si.show_summary(out=out)
