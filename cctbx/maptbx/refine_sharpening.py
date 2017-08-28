@@ -824,6 +824,7 @@ def run(map_coeffs=None,
     normalize_amplitudes_in_resdep= \
     sharpening_info_obj.normalize_amplitudes_in_resdep
   else:
+    from cctbx.maptbx.segment_and_split_map import sharpening_info
     sharpening_info_obj=sharpening_info()
 
 
@@ -890,7 +891,7 @@ def run(map_coeffs=None,
   if ma:
     (d_max,d_min)=ma.d_max_min()
     ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
-    if normalize_amplitudes: 
+    if normalize_amplitudes_in_resdep: 
       print >>out,"Normalizing structure factors..." 
       ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
   else:
