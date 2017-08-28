@@ -7345,8 +7345,8 @@ def estimate_signal_to_noise(value_list=None,minimum_value_to_include=0):
     signal_to_noise=0.
   return signal_to_noise
 
-def optimize_k_sharpen_or_d_cut(
-           optimize_k_sharpen=None,
+def optimize_k_sharpen_or_d_cut_or_b_iso(
+           optimization_target='k_sharpen',
            local_best_si=None,
            si_id_list=None,
            si_score_list=None,
@@ -7354,13 +7354,22 @@ def optimize_k_sharpen_or_d_cut(
            original_b_iso=None,
            f_array=None,
            phases=None,
+           delta_k_sharpen=2,
+           delta_d_cut=0.25,
+           n_cycle_optimize=5,
+           min_cycles=2,
+           n_range=5,
            out=sys.stdout):
 
-  if optimize_k_sharpen:
+  assert optimization_target in ['k_sharpen','d_cut','b_iso']
+  if optimization_target=='k_sharpen':
     print >>out,"\nOptimizing k_sharpen. "
-  else:
+  elif optimization_target=='d_cut':
     print >>out,"\nOptimizing d_cut. "
     local_best_si.input_d_cut=local_best_si.get_d_cut()
+  elif optimization_target=='b_iso':
+    print >>out,"\nOptimizing b_iso. "
+
   local_best_si.show_summary(out=out)
     
   print >>out,"Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
@@ -7372,30 +7381,33 @@ def optimize_k_sharpen_or_d_cut(
     value_dict[id]=score
   best_score=local_best_si.score
   delta_b_iso=delta_b
-  delta_k_sharpen=2
-  delta_d_cut=0.25
-  n_cycle_optimize=5
-  min_cycles=2
-  n_range=2
+
   local_best_score=best_score
-  improved=False
+  improving=True
   working_best_si=deepcopy(local_best_si)
   for cycle in xrange(n_cycle_optimize):
+    if not improving: break
     print >>out,"Optimization cycle %s" %(cycle)
     print >>out,\
        "Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
      working_best_si.score,working_best_si.b_iso,
         working_best_si.k_sharpen,working_best_si.get_d_cut())
     local_best_working_si=deepcopy(working_best_si)
-    for ii in xrange(-n_range,n_range+1):
-      test_b_iso=working_best_si.b_iso+ii*delta_b_iso
-      for jj in xrange(-n_range,n_range+1):
-        if optimize_k_sharpen:
-          test_k_sharpen=working_best_si.k_sharpen+jj*delta_k_sharpen
+    improving=False
+    for jj in xrange(-n_range,n_range+1):
+        if optimization_target=='k_sharpen':
+          test_k_sharpen=working_best_si.k_sharpen*delta_k_sharpen**jj
           test_d_cut=working_best_si.get_d_cut()
-        else:
-          test_d_cut=working_best_si.get_d_cut()+jj*delta_d_cut
+          test_b_iso=working_best_si.b_iso
+        elif optimization_target=='d_cut':
           test_k_sharpen=working_best_si.k_sharpen
+          test_d_cut=working_best_si.get_d_cut()+jj*delta_d_cut
+          test_b_iso=working_best_si.b_iso
+        elif optimization_target=='b_iso':
+          test_k_sharpen=working_best_si.k_sharpen
+          test_d_cut=working_best_si.get_d_cut()
+          test_b_iso=working_best_si.b_iso+jj*delta_b_iso
+
         id="%.3f_%.3f_%.3f" %(test_b_iso,test_k_sharpen,test_d_cut)
         if id in value_dict:
           score=value_dict[id]
@@ -7403,10 +7415,8 @@ def optimize_k_sharpen_or_d_cut(
           local_si=deepcopy(local_best_si)
           local_f_array=f_array
           local_phases=phases
-          if optimize_k_sharpen:
-            local_si.k_sharpen=test_k_sharpen
-          else:
-            local_si.input_d_cut=test_d_cut
+          local_si.k_sharpen=test_k_sharpen
+          local_si.input_d_cut=test_d_cut
           local_si.b_iso=test_b_iso
           local_si.b_sharpen=original_b_iso-local_si.b_iso
 
@@ -7419,6 +7429,14 @@ def optimize_k_sharpen_or_d_cut(
              map_data=local_map_data,sharpening_info_obj=local_si,
             out=null_out())
           value_dict[id]=local_si.score
+          print >>out,\
+           " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
+            local_si.b_sharpen,local_si.b_iso,
+             local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
+            "  %7.3f         %7.3f   %7.3f %7.3f " %(
+             local_si.sa_ratio,local_si.normalized_regions,
+             test_d_cut,test_k_sharpen)
+
           if local_si.score > local_best_score:
             local_best_score=local_si.score
             local_best_working_si=deepcopy(local_si)
@@ -7426,14 +7444,13 @@ def optimize_k_sharpen_or_d_cut(
       best_score=local_best_score
       working_best_si=deepcopy(local_best_working_si)
       delta_b_iso=delta_b_iso/2
-      delta_k_sharpen=delta_k_sharpen/2
+      delta_k_sharpen=delta_k_sharpen**0.5
       delta_d_cut=delta_d_cut/2
-      print >>out,\
-       "Current working best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
-      working_best_si.score,working_best_si.b_iso,
+      print >>out,"Current working best "+\
+          "score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
+            working_best_si.score,working_best_si.b_iso,
         working_best_si.k_sharpen,working_best_si.get_d_cut())
-    elif cycle>min_cycles:
-      break  # nothing happened
+      improving=True
 
   if working_best_si and working_best_si.score > local_best_si.score:
     print >>out,"Using new values of b_iso and k_sharpen and d_cut"
@@ -7921,21 +7938,23 @@ def run_auto_sharpen(
       optimize_k_sharpen=False
       optimize_d_cut=False
       n_cycles=0
-      if local_best_si.optimize_d_cut and \
+      if local_best_si.score is not None and local_best_si.optimize_d_cut and \
         local_best_si.sharpening_method in ['b_iso_to_d_cut','b_iso']:
         optimize_d_cut=True
         n_cycles+=1
-      if local_best_si.optimize_k_sharpen and \
+      if local_best_si.score is not None and \
+        local_best_si.optimize_k_sharpen and \
         local_best_si.k_sharpen is not None and \
         local_best_si.sharpening_method in ['b_iso_to_d_cut','b_iso']:
         optimize_k_sharpen=True
         n_cycles+=1
       
       ##########################################
+      optimize_b_iso=True
       for cycle in xrange(n_cycles):
         if optimize_k_sharpen:
-          local_best_si=optimize_k_sharpen_or_d_cut(
-           optimize_k_sharpen=True,
+          local_best_si=optimize_k_sharpen_or_d_cut_or_b_iso(
+           optimization_target='k_sharpen',
            local_best_si=local_best_si,
            si_id_list=si_id_list, 
            si_score_list=si_score_list, 
@@ -7946,8 +7965,20 @@ def run_auto_sharpen(
            out=out)
  
         if optimize_d_cut: 
-          local_best_si=optimize_k_sharpen_or_d_cut(
-           optimize_k_sharpen=False,
+          local_best_si=optimize_k_sharpen_or_d_cut_or_b_iso(
+           optimization_target='d_cut',
+           local_best_si=local_best_si,
+           si_id_list=si_id_list, 
+           si_score_list=si_score_list, 
+           delta_b=delta_b,
+           original_b_iso=original_b_iso,
+           f_array=f_array,
+           phases=phases,
+           out=out)
+
+        if optimize_b_iso:
+          local_best_si=optimize_k_sharpen_or_d_cut_or_b_iso(
+           optimization_target='b_iso',
            local_best_si=local_best_si,
            si_id_list=si_id_list, 
            si_score_list=si_score_list, 
