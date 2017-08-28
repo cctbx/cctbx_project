@@ -352,6 +352,11 @@ master_phil = iotbx.phil.parse("""
              change to b1/2 at resolution specified, \
              and change to b1/2+b2 at d_min_ratio*resolution
 
+     normalize_amplitudes_in_resdep = False
+       .type = bool
+       .short_caption = Normalize amplitudes in resdep
+       .help = Normalize amplitudes in resolution-dependent sharpening
+
      d_min_ratio = 0.833
        .type = float
        .short_caption = Sharpen d_min ratio
@@ -1512,6 +1517,7 @@ class sharpening_info:
       fraction_occupied=None,
       resolution=None, # changed from d_cut
       resolution_dependent_b=None,  # linear sharpening
+      normalize_amplitudes_in_resdep=None,  # linear sharpening
       b_sharpen=None,
       b_iso=None,  # expected B_iso after applying b_sharpen
       k_sharpen=None,
@@ -6394,6 +6400,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
         'target_b_iso_model_scale',
        'b_iso','b_sharpen',
        'resolution_dependent_b',
+       'normalize_amplitudes_in_resdep',
        'region_weight',
        'sa_percent',
        'n_bins',
@@ -7193,6 +7200,7 @@ def auto_sharpen_map_or_map_coeffs(
         b_iso=None, # if set, use it
         b_sharpen=None, # if set, use it
         resolution_dependent_b=None, # if set, use it
+        normalize_amplitudes_in_resdep=None, # if set, use it
         verbose=None,
         out=sys.stdout):
     if si:  #

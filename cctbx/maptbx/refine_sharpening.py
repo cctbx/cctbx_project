@@ -803,6 +803,7 @@ def run(map_coeffs=None,
   d_min_ratio=None,
   rmsd=None,
   fraction_complete=None,
+  normalize_amplitudes_in_resdep=None,
   out=sys.stdout):
 
   if sharpening_info_obj:
@@ -820,6 +821,8 @@ def run(map_coeffs=None,
     fraction_complete=sharpening_info_obj.fraction_complete
     eps=sharpening_info_obj.eps
     n_bins=sharpening_info_obj.n_bins
+    normalize_amplitudes_in_resdep= \
+    sharpening_info_obj.normalize_amplitudes_in_resdep
   else:
     sharpening_info_obj=sharpening_info()
 
@@ -885,10 +888,11 @@ def run(map_coeffs=None,
   print >>out,"Starting value: %7.2f" %(starting_result)
 
   if ma:
-    print >>out,"Normalizing structure factors..." # XXX why here?
     (d_max,d_min)=ma.d_max_min()
     ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
-    ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
+    if normalize_amplitudes: 
+      print >>out,"Normalizing structure factors..." 
+      ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
   else:
     assert resolution is not None
 
