@@ -7587,7 +7587,8 @@ def run_auto_sharpen(
   if si.adjust_region_weight and \
       (not si.sharpening_is_defined()) and (not si.is_model_sharpening()) \
      and (not si.is_half_map_sharpening()) and (
-      not si.is_target_b_iso_to_d_cut()):
+      not si.is_target_b_iso_to_d_cut()) and (
+      si.sharpening_target=='adjusted_sa'):
    for iii in xrange(1):  # just so we can break
 
     local_si=deepcopy(si).update_with_box_sharpening_info(
