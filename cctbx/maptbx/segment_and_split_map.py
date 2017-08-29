@@ -7233,10 +7233,10 @@ def auto_sharpen_map_or_map_coeffs(
       print >>out,"Set ncs copies based on ncs_obj to %s" %(ncs_copies)
 
     # Determine if we are running model_sharpening
-    if pdb_inp:
-      auto_sharpen_methods=['model_sharpening']
-    elif half_map_data_list and len(half_map_data_list)==2:
+    if half_map_data_list and len(half_map_data_list)==2:
       auto_sharpen_methods=['half_map_sharpening']
+    elif pdb_inp:
+      auto_sharpen_methods=['model_sharpening']
     if not si:
       # Copy parameters to si (sharpening_info_object)
       si=set_up_si(var_dict=locals(),
@@ -7852,6 +7852,7 @@ def run_auto_sharpen(
           local_si.b_iso=original_b_iso
           from cctbx.maptbx.refine_sharpening import scale_amplitudes
           scale_amplitudes(
+            model_map_coeffs=model_map_coeffs,
             map_coeffs=map_coeffs,
             first_half_map_coeffs=first_half_map_coeffs,
             second_half_map_coeffs=second_half_map_coeffs,

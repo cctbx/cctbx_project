@@ -261,8 +261,8 @@ def calculate_fsc(si=None,
   else: # half_dataset
     mc1=first_half_map_coeffs
     mc2=second_half_map_coeffs
-    fo_map=map_coeffs # scale map_coeffs to FSC**0.5 for now
-    fc_map=None # XXX will later be dummy_model_map_coeffs
+    fo_map=map_coeffs # scale map_coeffs to cc*
+    fc_map=model_map_coeffs 
     b_eff=None
     
 
@@ -435,7 +435,8 @@ def scale_amplitudes(model_map_coeffs=None,
   #    normalized model map_coeffs, except that the target fall-off should be
   #    skipped (could use fall-off based on a dummy model...)
 
-  if model_map_coeffs:
+  if model_map_coeffs and (
+      not first_half_map_coeffs or not second_half_map_coeffs):
     is_model_based=True
   else:
     assert si.target_scale_factors or (
