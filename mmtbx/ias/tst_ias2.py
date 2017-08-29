@@ -40,7 +40,11 @@ def exercise():
     if(opt == ["L"]):
       params.build_ias_types = opt
       mol.add_ias(fmodel = None, ias_params = params)
-      mol.write_pdb_file(out=open("zz.pdb","w"))
+      mol.set_sites_cart_from_xrs()
+      f = open("zz.pdb","w")
+      pdb_str = mol.model_as_pdb()
+      f.write(pdb_str)
+      f.close()
       assert mol.ias_selection.size() == 47, mol.ias_selection.size()
       assert mol.ias_selection.count(True) == 6, mol.ias_selection.count(True)
       assert mol.ias_selection.count(False) == 41, mol.ias_selection.count(False)

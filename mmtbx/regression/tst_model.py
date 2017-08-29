@@ -934,15 +934,27 @@ def exercise(mon_lib_srv, ener_lib):
 ################
 
 
-
+  # Not clear why one needed 2 identical files...
   mol_copy = mol.deep_copy()
   assert mol.number_of_ordered_solvent_molecules() == 9
-  mol.write_pdb_file(out = open("test_model_out.pdb","w"))
-  mol.write_pdb_file(out = open("test_model_out_nohydrogens.pdb","w"))
+  f1 = open("test_model_out.pdb","w")
+  f2 = open("test_model_out_nohydrogens.pdb","w")
+  pdb_str = mol.model_as_pdb()
+  f1.write(pdb_str)
+  pdb_str = mol.model_as_pdb()
+  f2.write(pdb_str)
+  f1.close()
+  f2.close()
   mol = mol.remove_solvent()
   assert mol.number_of_ordered_solvent_molecules() == 0
-  mol.write_pdb_file(out = open("test_model_out_nosolvent.pdb","w"))
-  mol.write_pdb_file(out = open("test_model_out_noO.pdb","w"))
+  f1 = open("test_model_out_nosolvent.pdb","w")
+  f2 = open("test_model_out_noO.pdb","w")
+  pdb_str = mol.model_as_pdb()
+  f1.write(pdb_str)
+  pdb_str = mol.model_as_pdb()
+  f2.write(pdb_str)
+  f1.close()
+  f2.close()
   mol.geometry_statistics().show()
   mol.geometry_statistics().show()
 
@@ -983,9 +995,15 @@ def exercise(mon_lib_srv, ener_lib):
 
   rm = mol.restraints_manager
 
-  mol_copy.write_pdb_file(out = open("XXX.pdb","w"))
-  mol_copy.write_pdb_file(out = open("XXXr.pdb","w"))
-
+  # Not clear why one needed 2 identical files...
+  f1 = open("XXX.pdb","w")
+  f2 = open("XXXr.pdb","w")
+  pdb_str = mol_copy.model_as_pdb()
+  f1.write(pdb_str)
+  pdb_str = mol_copy.model_as_pdb()
+  f2.write(pdb_str)
+  f1.close()
+  f2.close()
 
 def exercise_2(mon_lib_srv, ener_lib):
   pdb_file = libtbx.env.find_in_repositories(

@@ -736,7 +736,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       solvent_xray_structure = new_xrs,
       refine_occupancies     = False,
       refine_adp             = "isotropic")
-    pdb_str = mol.write_pdb_file(return_pdb_string=True)
+    pdb_str = mol.model_as_pdb()
     processed_pdb_file = pdb_inter.process(
       mon_lib_srv    = mon_lib_srv,
       ener_lib       = ener_lib,

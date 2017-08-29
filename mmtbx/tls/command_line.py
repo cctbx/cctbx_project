@@ -236,9 +236,10 @@ def run(args, command_name = "phenix.tls"):
   #
   if(ofn is not None):
     utils.print_header("Write output PDB file %s"%ofn, out = log)
-    utils.write_pdb_file(
-      xray_structure = xray_structure,
-      pdb_hierarchy  = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-      out            = ofo)
+    pdb_h = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    pdb_h.adopt_xray_structure(xray_structure)
+    pdb_str = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies.pdb_hierarchy.as_pdb_string(
+        crystal_symmetry=xray_structure.crystal_symmetry())
+    ofo.write(pdb_str)
     ofo.close()
     print >> log, "All done."
