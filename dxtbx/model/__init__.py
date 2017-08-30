@@ -42,6 +42,10 @@ class DetectorAux(boost.python.injector, Detector):
 class CrystalAux(boost.python.injector, Crystal):
 
   def show(self, show_scan_varying=False, out=None):
+    CrystalAux._show(self, show_scan_varying, out)
+
+  @staticmethod
+  def _show(self, show_scan_varying=False, out=None):
     from scitbx import matrix
     if out is None:
       import sys
@@ -109,7 +113,8 @@ class CrystalAux(boost.python.injector, Crystal):
     s.seek(0)
     return s.read()
 
-  def to_dict(crystal):
+  @staticmethod
+  def _to_dict(crystal):
     ''' Convert the crystal model to a dictionary
 
     Params:
@@ -130,9 +135,6 @@ class CrystalAux(boost.python.injector, Crystal):
 
     # Get the space group Hall symbol
     hall = crystal.get_space_group().info().type().hall_symbol()
-
-    # Get the mosaicity
-    mosaicity = crystal.get_mosaicity()
 
     # New parameters for maximum likelihood values
     try:
@@ -157,7 +159,6 @@ class CrystalAux(boost.python.injector, Crystal):
       ('real_space_b', real_space_b),
       ('real_space_c', real_space_c),
       ('space_group_hall_symbol', hall),
-      ('mosaicity', mosaicity),
       ('ML_half_mosaicity_deg', ML_half_mosaicity_deg),
       ('ML_domain_size_ang', ML_domain_size_ang)])
 
@@ -176,6 +177,9 @@ class CrystalAux(boost.python.injector, Crystal):
       xl_dict['B_covariance'] = cov_B
 
     return xl_dict
+
+  def to_dict(crystal):
+    return CrystalAux._to_dict(crystal)
 
   @staticmethod
   def from_dict(d):
@@ -236,6 +240,78 @@ class CrystalAux(boost.python.injector, Crystal):
     except KeyError:
       pass
 
+    return xl
+
+class MosaicCrystalAux(CrystalAux, MosaicCrystal):
+  def show(self, show_scan_varying=False, out=None):
+    from scitbx import matrix
+    CrystalAux._show(self, show_scan_varying, out)
+
+    if out is None:
+      import sys
+      out = sys.stdout
+
+    msg = []
+    msg.append("    Mosaicity:  %.6f"%self.get_mosaicity())
+
+    print >> out, "\n".join(msg)
+
+  def __str__(self):
+    from cStringIO import StringIO
+    s = StringIO()
+    msg = self.show(out=s)
+    s.seek(0)
+    return s.read()
+
+  def to_dict(crystal):
+    ''' Convert the crystal model to a dictionary
+
+    Params:
+        crystal The crystal model
+
+    Returns:
+        A dictionary of the parameters
+
+    '''
+    xl_dict = CrystalAux._to_dict(crystal)
+
+
+    # Get the mosaicity
+    mosaicity = crystal.get_mosaicity()
+    xl_dict['mosaicity'] = mosaicity
+
+    return xl_dict
+
+  @staticmethod
+  def from_dict(d):
+    ''' Convert the dictionary to a crystal model
+
+    Params:
+        d The dictionary of parameters
+
+    Returns:
+        The crystal model
+
+    '''
+    xl = MosaicCrystal(CrystalAux.from_dict(d))
+
+    # These parameters don't survive the Crystal copy constructor so have to be re-set
+    # New parameters for maximum likelihood values
+    try:
+      xl._ML_half_mosaicity_deg = d['ML_half_mosaicity_deg']
+    except KeyError:
+      pass
+    try:
+      xl._ML_domain_size_ang = d['ML_domain_size_ang']
+    except KeyError:
+      pass
+
+    # Isoforms used for stills
+    try:
+      xl.identified_isoform = d['identified_isoform']
+    except KeyError:
+      pass
+
     # Extract mosaicity, if present
     try:
       mosaicity = d['mosaicity']
@@ -244,7 +320,6 @@ class CrystalAux(boost.python.injector, Crystal):
       pass
 
     return xl
-
 
 class ExperimentListAux(boost.python.injector, ExperimentList):
 
@@ -323,7 +398,6 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
     ''' Serialize the experiment list to dictionary. '''
     from libtbx.containers import OrderedDict
     from dxtbx.imageset import ImageSet, ImageSweep, ImageGrid
-    from dxtbx.format.FormatMultiImage import FormatMultiImage
 
     # Check the experiment list is consistent
     assert(self.is_consistent())

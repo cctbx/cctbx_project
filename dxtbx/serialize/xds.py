@@ -100,7 +100,6 @@ def to_crystal(filename):
   '''
   from rstbx.cftbx.coordinate_frame_converter import \
       coordinate_frame_converter
-  from dxtbx.model import Crystal
   from cctbx.sgtbx import space_group, space_group_symbols
 
   # Get the real space coordinate frame
@@ -113,12 +112,20 @@ def to_crystal(filename):
   mosaicity = cfc.get('mosaicity')
 
   # Return the crystal model
-  crystal = Crystal(
-      real_space_a=real_space_a,
-      real_space_b=real_space_b,
-      real_space_c=real_space_c,
-      space_group=space_group)
-  if (mosaicity is not None):
+  if (mosaicity is None):
+    from dxtbx.model import Crystal
+    crystal = Crystal(
+        real_space_a=real_space_a,
+        real_space_b=real_space_b,
+        real_space_c=real_space_c,
+        space_group=space_group)
+  else:
+    from dxtbx.model import MosaicCrystal
+    crystal = MosaicCrystal(
+        real_space_a=real_space_a,
+        real_space_b=real_space_b,
+        real_space_c=real_space_c,
+        space_group=space_group)
     crystal.set_mosaicity(mosaicity)
   return crystal
 

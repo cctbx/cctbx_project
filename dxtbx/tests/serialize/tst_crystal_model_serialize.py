@@ -7,22 +7,32 @@ class Test(object):
 
   def run(self):
     self.tst_crystal()
+    self.tst_crystal(mosaic=True)
     self.tst_crystal_with_scan_points()
 
-  def tst_crystal(self):
-    from dxtbx.model import Crystal, CrystalFactory
+  def tst_crystal(self, mosaic=False):
+    from dxtbx.model import CrystalFactory
     from scitbx import matrix
 
     real_space_a = matrix.col((35.2402102454, -7.60002142787, 22.080026774))
     real_space_b = matrix.col((22.659572494, 1.47163505925, -35.6586361881))
     real_space_c = matrix.col((5.29417246554, 38.9981792999, 4.97368666613))
 
-    c1 = Crystal(
-        real_space_a=real_space_a,
-        real_space_b=real_space_b,
-        real_space_c=real_space_c,
-        space_group_symbol="P 1 2/m 1")
-    c1.set_mosaicity(0.1)
+    if mosaic:
+      from dxtbx.model import MosaicCrystal
+      c1 = MosaicCrystal(
+          real_space_a=real_space_a,
+          real_space_b=real_space_b,
+          real_space_c=real_space_c,
+          space_group_symbol="P 1 2/m 1")
+      c1.set_mosaicity(0.1)
+    else:
+      from dxtbx.model import Crystal
+      c1 = Crystal(
+          real_space_a=real_space_a,
+          real_space_b=real_space_b,
+          real_space_c=real_space_c,
+          space_group_symbol="P 1 2/m 1")
 
     d = c1.to_dict()
     c2 = CrystalFactory.from_dict(d)
@@ -31,7 +41,8 @@ class Test(object):
     assert(abs(matrix.col(d['real_space_b']) - real_space_b) <= eps)
     assert(abs(matrix.col(d['real_space_c']) - real_space_c) <= eps)
     assert(d['space_group_hall_symbol'] == "-P 2y")
-    assert(d['mosaicity'] == 0.1)
+    if mosaic:
+      assert(d['mosaicity'] == 0.1)
     assert(c1 == c2)
     print 'OK'
 
