@@ -41,6 +41,9 @@ from mmtbx.validation import cablam
 import iotbx.cif.model
 from libtbx.utils import null_out
 from libtbx.str_utils import format_value
+from mmtbx.refinement import print_statistics
+import mmtbx.tls.tools as tls_tools
+from iotbx.pdb.atom_selection import AtomSelectionError
 
 time_model_show = 0.0
 
@@ -151,6 +154,7 @@ class manager(object):
       pdb_interpretation_params = None,
       build_grm = False,  # build GRM straight away, without waiting for get_grm() call
       stop_for_unknowns = True,
+      all_chain_proxies = None, # Temporary, for refactoring phenix.refine
                      processed_pdb_files_srv = None, # remove later
                      # reference_sites_cart = None,
                      restraints_manager = None, # remove later
@@ -182,9 +186,15 @@ class manager(object):
         self.exchangable_hd_groups = []
         self.original_xh_lengths = None
         self.riding_h_manager = None
+        self.header_tls_groups = None
 
+    self._asc = None
     if xray_structure is not None or pdb_hierarchy is not None:
       # Old way of doing things. Remove later completely.
+      self.model_input = model_input
+      self.all_chain_proxies = all_chain_proxies
+      if self.all_chain_proxies is not None:
+        self._asc = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
       self.restraints_manager = restraints_manager
       if xray_structure is not None:
         self.xray_structure = xray_structure
@@ -236,8 +246,8 @@ class manager(object):
       # we need them to be able to do "smart" selections implemented there...
       self.all_chain_proxies = None
       self.model_statistics_info = None
-      self._asc = None
       self._grm = None
+      self._asc = self._pdb_hierarchy.atom_selection_cache()
       self._ncs_obj = None
       self.mon_lib_srv = None
       self.ener_lib = None
@@ -485,6 +495,7 @@ class manager(object):
         allow_missing_symmetry=True)
 
     self.all_chain_proxies = processed_pdb_file.all_chain_proxies
+    self._asc = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
     self.xray_structure = self.all_chain_proxies.extract_xray_structure()
     self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
     self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
@@ -537,6 +548,74 @@ class manager(object):
           file_name="starting_geo_model.geo",
           header="# Geometry restraints after refinement\n",
           xray_structure=self.xray_structure)
+    #
+    # Here we do all what is necessary when GRM and all related become available
+    #
+    self.extract_tls_selections_from_input()
+
+  def get_header_tls_selections(self):
+    if "input_tls_selections" not in self.__dict__.keys():
+      self.extract_tls_selections_from_input()
+    return self.input_tls_selections
+
+  def get_searched_tls_selections(self, nproc):
+    if "searched_tls_selections" not in self.__dict__.keys():
+      from mmtbx.command_line import find_tls_groups
+      tls_params = find_tls_groups.master_phil.fetch().extract()
+      tls_params.nproc = nproc
+      self.searched_tls_selections = find_tls_groups.find_tls(
+        params=tls_params,
+        pdb_inp=self.model_input,
+        pdb_hierarchy=self._pdb_hierarchy,
+        xray_structure=deepcopy(self.xray_structure),
+        return_as_list=True,
+        ignore_pdb_header_groups=True,
+        out=StringIO())
+    return self.searched_tls_selections
+
+  def determine_tls_groups(self, selection_strings, generate_tlsos):
+    self.tls_groups = tls_tools.tls_groups(selection_strings = selection_strings)
+    if generate_tlsos is not None:
+
+      tlsos = tls_tools.generate_tlsos(
+        selections     = generate_tlsos,
+        xray_structure = self.xray_structure,
+        value          = 0.0)
+      self.tls_groups.tlsos = tlsos
+
+  def extract_tls_selections_from_input(self):
+    self.input_tls_selections = []
+    acp = self.all_chain_proxies
+    pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
+    if(pdb_inp_tls.tls_present):
+      print_statistics.make_header(
+        "TLS group selections from PDB file header", out=self.log)
+      print >> self.log, "TLS group selections:"
+      atom_counts = []
+      for t in pdb_inp_tls.tls_params:
+        try :
+          n_atoms = self.iselection(t.selection_string).size()
+        except AtomSelectionError, e :
+          print >> self.log, "AtomSelectionError:"
+          print >> self.log, str(e)
+          print >> self.log, "Ignoring PDB header TLS groups"
+          self.input_tls_selections = []
+          return
+        print >> self.log, "  selection string:"
+        print >> self.log, "    %s"%t.selection_string
+        print >> self.log, "    selects %d atoms"%n_atoms
+        self.input_tls_selections.append(t.selection_string)
+        atom_counts.append(n_atoms)
+      if(pdb_inp_tls.tls_present):
+        if(pdb_inp_tls.error_string is not None):
+          print >> self.log, "  %s"%pdb_inp_tls.error_string
+          self.input_tls_selections = []
+      if(0 in atom_counts):
+        msg="""
+  One of TLS selections is an empty selection: skipping TLS infromation found in
+  PDB file header.
+"""
+        print >> self.log, msg
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """
