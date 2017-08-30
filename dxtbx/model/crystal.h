@@ -215,8 +215,9 @@ namespace dxtbx { namespace model {
         const CrystalBase &other,
         double angle_tolerance=0.01,
         double uc_rel_length_tolerance=0.01,
-        double uc_abs_angle_tolerance=1.0,
-        double mosaicity_tolerance=0.8) const = 0;
+        double uc_abs_angle_tolerance=1.0) const = 0; // FIXME remove these tolerances and move them to other classes?
+    // Check if the models are not equal
+    virtual bool operator!=(const CrystalBase &other) const = 0;
     // Return the 9*9 covariance matrix of elements of B, if available, otherwise None.
     virtual scitbx::af::versa< double, scitbx::af::c_grid<2> > get_B_covariance() const  = 0;
     // Set the covariance matrix
@@ -232,10 +233,6 @@ namespace dxtbx { namespace model {
     virtual void calc_cell_parameter_sd() = 0;
     // Reset unit cell errors
     virtual void reset_unit_cell_errors() = 0;
-    // Get the mosaicity
-    virtual double get_mosaicity(bool deg=true) const = 0;
-    // Set the mosaicity
-    virtual void set_mosaicity(double mosaicity, bool deg=true) = 0;
   };
 
   /**
@@ -253,9 +250,6 @@ namespace dxtbx { namespace model {
    *     or
    * space_group_symbol = "Hall:P 2 2 -1ab"
 
-   * Optionally the crystal mosaicity value may be set, with the deg
-   * parameter controlling whether this value is treated as being an
-   * angle in degrees or radians.
    */
   class Crystal : public CrystalBase {
   public:
@@ -273,8 +267,7 @@ namespace dxtbx { namespace model {
           other.A_at_scan_points_.end()),
         cov_B_(other.cov_B_.accessor()),
         cell_sd_(other.cell_sd_),
-        cell_volume_sd_(other.cell_volume_sd_),
-        mosaicity_(other.mosaicity_) {
+        cell_volume_sd_(other.cell_volume_sd_) {
       std::copy(
           other.cov_B_.begin(),
           other.cov_B_.end(),
@@ -294,8 +287,7 @@ namespace dxtbx { namespace model {
             const vec3<double> &real_space_c,
             const cctbx::sgtbx::space_group &space_group)
       : space_group_(space_group),
-        cell_volume_sd_(0),
-        mosaicity_(0) {
+        cell_volume_sd_(0) {
 
       // Setting matrix at initialisation
       mat3<double> A = mat3<double>(
@@ -644,10 +636,8 @@ namespace dxtbx { namespace model {
           }
         }
       }
-      double d_mosaicity = std::abs(mosaicity_ - other.get_mosaicity());
       return (d_U <= eps &&
               d_B <= eps &&
-              d_mosaicity <= eps &&
               space_group_ == other.get_space_group());
     }
 
@@ -658,24 +648,10 @@ namespace dxtbx { namespace model {
         const CrystalBase &other,
         double angle_tolerance=0.01,
         double uc_rel_length_tolerance=0.01,
-        double uc_abs_angle_tolerance=1.0,
-        double mosaicity_tolerance=0.8) const {
+        double uc_abs_angle_tolerance=1.0) const {
 
       // space group test
       if (get_space_group() != other.get_space_group()) {
-        return false;
-      }
-
-      // mosaicity test
-      double m_a = get_mosaicity();
-      double m_b = other.get_mosaicity();
-      double min_m = std::min(m_a, m_b);
-      double max_m = std::max(m_a, m_b);
-      if (min_m <= 0) {
-        if (max_m > 0.0) {
-          return false;
-        }
-      } else if (min_m / max_m < mosaicity_tolerance) {
         return false;
       }
 
@@ -730,6 +706,11 @@ namespace dxtbx { namespace model {
       }
 
       return true;
+    }
+
+    /** Check if models are not equal */
+    bool operator!=(const CrystalBase &rhs) const {
+      return !(*this == rhs);
     }
 
     /**
@@ -949,6 +930,111 @@ namespace dxtbx { namespace model {
       cell_volume_sd_ = 0;
     }
 
+  protected:
+
+    cctbx::sgtbx::space_group space_group_;
+    cctbx::uctbx::unit_cell unit_cell_;
+    mat3<double> U_;
+    mat3<double> B_;
+    scitbx::af::shared< mat3<double> > A_at_scan_points_;
+    scitbx::af::versa<double, scitbx::af::c_grid<2> > cov_B_;
+    scitbx::af::small<double,6> cell_sd_;
+    double cell_volume_sd_;
+  };
+
+  /* Extended Crystal class adding a simple value for mosaicity.
+   * The deg parameter controlls whether this value is treated as being an
+   * angle in degrees or radians.
+   */
+  class MosaicCrystal : public Crystal {
+  public:
+    /**
+     * Copy crystal model from MosaicCrystal class
+     */
+    MosaicCrystal(const MosaicCrystal &other)
+      : Crystal(other),
+        mosaicity_(other.mosaicity_) {}
+    /**
+     * Copy crystal model from Crystal class
+     */
+    MosaicCrystal(const Crystal &other)
+      : Crystal(other),
+        mosaicity_(0) {}
+
+    /**
+     * Initialise the crystal
+     *
+     * @param real_space_a The real_space a axis
+     * @param real_space_b The real_space b axis
+     * @param real_space_c The real_space c axis
+     * @param space_group The space group object
+     */
+    MosaicCrystal(const vec3<double> &real_space_a,
+            const vec3<double> &real_space_b,
+            const vec3<double> &real_space_c,
+            const cctbx::sgtbx::space_group &space_group)
+      : Crystal(real_space_a, real_space_b, real_space_c, space_group),
+        mosaicity_(0) {}
+
+    /**
+     * Constructor for pickling
+     */
+    MosaicCrystal(
+        cctbx::sgtbx::space_group space_group,
+        cctbx::uctbx::unit_cell unit_cell,
+        mat3<double> U,
+        mat3<double> B,
+        scitbx::af::shared< mat3<double> > A_at_scan_points,
+        scitbx::af::versa<double, scitbx::af::c_grid<2> > cov_B,
+        scitbx::af::small<double,6> cell_sd,
+        double cell_volume_sd,
+        double mosaicity)
+      : Crystal(space_group,unit_cell,U,B,A_at_scan_points,
+        cov_B,cell_sd,cell_volume_sd),
+        mosaicity_(mosaicity) {}
+
+    /**
+     * Check if the models are equal
+     */
+    bool operator==(const CrystalBase &other) const {
+      double eps = 1e-7;
+      const MosaicCrystal* mosaic_other = dynamic_cast<const MosaicCrystal*>(&other);
+      if (!mosaic_other) return false;
+
+      double d_mosaicity = std::abs(mosaicity_ - mosaic_other->get_mosaicity());
+      return (d_mosaicity <= eps &&
+              Crystal::operator==(other));
+    }
+
+    /**
+     * Check if models are similar
+     */
+    bool is_similar_to(
+        const CrystalBase &other,
+        double angle_tolerance=0.01,
+        double uc_rel_length_tolerance=0.01,
+        double uc_abs_angle_tolerance=1.0,
+        double mosaicity_tolerance=0.8) const {
+
+      // mosaicity test
+      const MosaicCrystal* mosaic_other = dynamic_cast<const MosaicCrystal*>(&other);
+      if (!mosaic_other) return false;
+
+      double m_a = get_mosaicity();
+      double m_b = mosaic_other->get_mosaicity();
+      double min_m = std::min(m_a, m_b);
+      double max_m = std::max(m_a, m_b);
+      if (min_m <= 0) {
+        if (max_m > 0.0) {
+          return false;
+        }
+      } else if (min_m / max_m < mosaicity_tolerance) {
+        return false;
+      }
+
+      return Crystal::is_similar_to(other, angle_tolerance, uc_rel_length_tolerance, uc_abs_angle_tolerance);
+    }
+
     /**
      * Get the mosaicity
      */
@@ -970,17 +1056,6 @@ namespace dxtbx { namespace model {
       }
     }
 
-
-  protected:
-
-    cctbx::sgtbx::space_group space_group_;
-    cctbx::uctbx::unit_cell unit_cell_;
-    mat3<double> U_;
-    mat3<double> B_;
-    scitbx::af::shared< mat3<double> > A_at_scan_points_;
-    scitbx::af::versa<double, scitbx::af::c_grid<2> > cov_B_;
-    scitbx::af::small<double,6> cell_sd_;
-    double cell_volume_sd_;
     double mosaicity_;
   };
 

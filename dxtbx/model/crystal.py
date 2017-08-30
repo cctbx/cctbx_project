@@ -17,8 +17,6 @@ class CrystalFactory(object):
         The crystal model
 
     '''
-    from dxtbx.model import Crystal
-
     # If None, return None
     if d == None:
       if t == None: return None
@@ -27,7 +25,12 @@ class CrystalFactory(object):
       d = dict(t.items() + d.items())
 
     # Create the model from the dictionary
-    return Crystal.from_dict(d)
+    if 'mosaicity' in d:
+      from dxtbx.model import MosaicCrystal
+      return MosaicCrystal.from_dict(d)
+    else:
+      from dxtbx.model import Crystal
+      return Crystal.from_dict(d)
 
   @staticmethod
   def from_mosflm_matrix(mosflm_A_matrix,

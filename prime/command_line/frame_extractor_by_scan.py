@@ -103,8 +103,10 @@ class ConstructFrame(object):
 
   # get mosaicity
   def populate_mosaicity(self):
-    assert self.xtal.get_mosaicity() is not None, "no mosaicity"
-    self.frame['mosaicity'] = self.xtal.get_mosaicity()
+    try:
+      self.frame['mosaicity'] = self.xtal.get_mosaicity()
+    except AttributeError, e:
+      pass
 
   # get any available ML values
   def populate_ML_values(self):
