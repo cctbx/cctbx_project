@@ -946,18 +946,18 @@ namespace dxtbx { namespace model {
    * The deg parameter controlls whether this value is treated as being an
    * angle in degrees or radians.
    */
-  class MosaicCrystal : public Crystal {
+  class MosaicCrystalKabsch2010 : public Crystal {
   public:
     /**
-     * Copy crystal model from MosaicCrystal class
+     * Copy crystal model from MosaicCrystalKabsch2010 class
      */
-    MosaicCrystal(const MosaicCrystal &other)
+    MosaicCrystalKabsch2010(const MosaicCrystalKabsch2010 &other)
       : Crystal(other),
         mosaicity_(other.mosaicity_) {}
     /**
      * Copy crystal model from Crystal class
      */
-    MosaicCrystal(const Crystal &other)
+    MosaicCrystalKabsch2010(const Crystal &other)
       : Crystal(other),
         mosaicity_(0) {}
 
@@ -969,7 +969,7 @@ namespace dxtbx { namespace model {
      * @param real_space_c The real_space c axis
      * @param space_group The space group object
      */
-    MosaicCrystal(const vec3<double> &real_space_a,
+    MosaicCrystalKabsch2010(const vec3<double> &real_space_a,
             const vec3<double> &real_space_b,
             const vec3<double> &real_space_c,
             const cctbx::sgtbx::space_group &space_group)
@@ -979,7 +979,7 @@ namespace dxtbx { namespace model {
     /**
      * Constructor for pickling
      */
-    MosaicCrystal(
+    MosaicCrystalKabsch2010(
         cctbx::sgtbx::space_group space_group,
         cctbx::uctbx::unit_cell unit_cell,
         mat3<double> U,
@@ -998,7 +998,7 @@ namespace dxtbx { namespace model {
      */
     bool operator==(const CrystalBase &other) const {
       double eps = 1e-7;
-      const MosaicCrystal* mosaic_other = dynamic_cast<const MosaicCrystal*>(&other);
+      const MosaicCrystalKabsch2010* mosaic_other = dynamic_cast<const MosaicCrystalKabsch2010*>(&other);
       if (!mosaic_other) return false;
 
       double d_mosaicity = std::abs(mosaicity_ - mosaic_other->get_mosaicity());
@@ -1017,7 +1017,7 @@ namespace dxtbx { namespace model {
         double mosaicity_tolerance=0.8) const {
 
       // mosaicity test
-      const MosaicCrystal* mosaic_other = dynamic_cast<const MosaicCrystal*>(&other);
+      const MosaicCrystalKabsch2010* mosaic_other = dynamic_cast<const MosaicCrystalKabsch2010*>(&other);
       if (!mosaic_other) return false;
 
       double m_a = get_mosaicity();

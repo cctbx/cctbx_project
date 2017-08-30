@@ -116,8 +116,8 @@ class construct_reflection_table_and_experiment_list(object):
     real_c = direct_matrix[6:9]
     lattice = self.ucell.lattice_symmetry_group()
     if 'mosaicity' in self.data:
-      from dxtbx.model import MosaicCrystal
-      self.crystal = MosaicCrystal(real_a, real_b, real_c, space_group=lattice)
+      from dxtbx.model import MosaicCrystalKabsch2010
+      self.crystal = MosaicCrystalKabsch2010(real_a, real_b, real_c, space_group=lattice)
       self.crystal.set_mosaicity(self.data['mosaicity'])
     else:
       from dxtbx.model import Crystal

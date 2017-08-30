@@ -53,13 +53,13 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  MosaicCrystal* make_mosaic_crystal_default(
+  MosaicCrystalKabsch2010* make_mosaic_crystal_default(
       const vec3<double> &real_space_a,
       const vec3<double> &real_space_b,
       const vec3<double> &real_space_c,
       const cctbx::sgtbx::space_group &space_group) {
 
-    MosaicCrystal *crystal = new MosaicCrystal(
+    MosaicCrystalKabsch2010 *crystal = new MosaicCrystalKabsch2010(
       real_space_a,
       real_space_b,
       real_space_c,
@@ -69,13 +69,13 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  MosaicCrystal* make_mosaic_crystal_with_symbol(
+  MosaicCrystalKabsch2010* make_mosaic_crystal_with_symbol(
       const vec3<double> &real_space_a,
       const vec3<double> &real_space_b,
       const vec3<double> &real_space_c,
       const std::string &space_group_symbol) {
 
-    MosaicCrystal *crystal = new MosaicCrystal(
+    MosaicCrystalKabsch2010 *crystal = new MosaicCrystalKabsch2010(
       real_space_a,
       real_space_b,
       real_space_c,
@@ -160,9 +160,9 @@ namespace dxtbx { namespace model { namespace boost_python {
     static bool getstate_manages_dict() { return true; }
   };
 
-  struct MosaicCrystalPickleSuite: CrystalPickleSuite {
+  struct MosaicCrystalKabsch2010PickleSuite: CrystalPickleSuite {
     static
-    boost::python::tuple getinitargs(const MosaicCrystal &obj) {
+    boost::python::tuple getinitargs(const MosaicCrystalKabsch2010 &obj) {
       scitbx::af::shared< vec3<double> > real_space_v = obj.get_real_space_vectors();
       return boost::python::make_tuple(
           real_space_v[0],
@@ -174,7 +174,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     static
     boost::python::tuple getstate(boost::python::object obj)
     {
-      const MosaicCrystal &crystal = boost::python::extract<const MosaicCrystal &>(obj)();
+      const MosaicCrystalKabsch2010 &crystal = boost::python::extract<const MosaicCrystalKabsch2010 &>(obj)();
       return boost::python::make_tuple(
           obj.attr("__dict__"),
           crystal.get_A_at_scan_points(),
@@ -185,7 +185,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     static
     void setstate(boost::python::object obj, boost::python::tuple state)
     {
-      MosaicCrystal &crystal = boost::python::extract<MosaicCrystal&>(obj)();
+      MosaicCrystalKabsch2010 &crystal = boost::python::extract<MosaicCrystalKabsch2010&>(obj)();
       DXTBX_ASSERT(boost::python::len(state) == 4);
 
         // restore the object's __dict__
@@ -270,8 +270,8 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("space_group_symbol"))))
       .def_pickle(CrystalPickleSuite());
 
-    class_ <MosaicCrystal, bases <CrystalBase> > ("MosaicCrystal", no_init)
-      .def(init<const MosaicCrystal&>())
+    class_ <MosaicCrystalKabsch2010, bases <CrystalBase> > ("MosaicCrystalKabsch2010", no_init)
+      .def(init<const MosaicCrystalKabsch2010&>())
       .def(init<const Crystal&>())
       .def("__init__",
           make_constructor(
@@ -289,22 +289,22 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("real_space_b"),
             arg("real_space_c"),
             arg("space_group_symbol"))))
-      .def("is_similar_to", &MosaicCrystal::is_similar_to, (
+      .def("is_similar_to", &MosaicCrystalKabsch2010::is_similar_to, (
             arg("other"),
             arg("angle_tolerance")=0.01,
             arg("uc_rel_length_tolerance")=0.01,
             arg("uc_abs_angle_tolerance")=1.0,
             arg("mosaicity_tolerance")=0.8))
-      .def("get_mosaicity", &MosaicCrystal::get_mosaicity, (
+      .def("get_mosaicity", &MosaicCrystalKabsch2010::get_mosaicity, (
             arg("deg")=true))
-      .def("set_mosaicity", &MosaicCrystal::set_mosaicity, (
+      .def("set_mosaicity", &MosaicCrystalKabsch2010::set_mosaicity, (
             arg("mosaicity"),
             arg("deg")=true))
-      .def_pickle(MosaicCrystalPickleSuite());
+      .def_pickle(MosaicCrystalKabsch2010PickleSuite());
 
     register_ptr_to_python<boost::shared_ptr<CrystalBase> >();
     register_ptr_to_python<boost::shared_ptr<Crystal> >();
-    register_ptr_to_python<boost::shared_ptr<MosaicCrystal> >();
+    register_ptr_to_python<boost::shared_ptr<MosaicCrystalKabsch2010> >();
   }
 
 }}} // namespace = dxtbx::model::boost_python
