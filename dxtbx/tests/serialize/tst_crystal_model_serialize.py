@@ -19,8 +19,8 @@ class Test(object):
     real_space_c = matrix.col((5.29417246554, 38.9981792999, 4.97368666613))
 
     if mosaic:
-      from dxtbx.model import MosaicCrystal
-      c1 = MosaicCrystal(
+      from dxtbx.model import MosaicCrystalKabsch2010
+      c1 = MosaicCrystalKabsch2010(
           real_space_a=real_space_a,
           real_space_b=real_space_b,
           real_space_c=real_space_c,

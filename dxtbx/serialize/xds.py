@@ -120,8 +120,8 @@ def to_crystal(filename):
         real_space_c=real_space_c,
         space_group=space_group)
   else:
-    from dxtbx.model import MosaicCrystal
-    crystal = MosaicCrystal(
+    from dxtbx.model import MosaicCrystalKabsch2010
+    crystal = MosaicCrystalKabsch2010(
         real_space_a=real_space_a,
         real_space_b=real_space_b,
         real_space_c=real_space_c,

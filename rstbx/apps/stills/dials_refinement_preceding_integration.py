@@ -485,8 +485,8 @@ class integrate_one_frame(IntegrationMetaProcedure):
       )
 
     direct = matrix.sqr(setting_specific_ai.getOrientation().direct_matrix())
-    from dxtbx.model import MosaicCrystal
-    crystal = MosaicCrystal(
+    from dxtbx.model import MosaicCrystalKabsch2010
+    crystal = MosaicCrystalKabsch2010(
       real_space_a = matrix.row(direct[0:3]),
       real_space_b = matrix.row(direct[3:6]),
       real_space_c = matrix.row(direct[6:9]),
