@@ -53,7 +53,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  MosaicCrystalKabsch2010* make_mosaic_crystal_default(
+  MosaicCrystalKabsch2010* make_kabsch2010_mosaic_crystal_default(
       const vec3<double> &real_space_a,
       const vec3<double> &real_space_b,
       const vec3<double> &real_space_c,
@@ -69,13 +69,47 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
-  MosaicCrystalKabsch2010* make_mosaic_crystal_with_symbol(
+  MosaicCrystalKabsch2010* make_kabsch2010_mosaic_crystal_with_symbol(
       const vec3<double> &real_space_a,
       const vec3<double> &real_space_b,
       const vec3<double> &real_space_c,
       const std::string &space_group_symbol) {
 
     MosaicCrystalKabsch2010 *crystal = new MosaicCrystalKabsch2010(
+      real_space_a,
+      real_space_b,
+      real_space_c,
+      cctbx::sgtbx::space_group(
+        cctbx::sgtbx::space_group_symbols(
+          space_group_symbol)));
+
+    return crystal;
+  }
+
+  static
+  MosaicCrystalSauter2014* make_sauter2014_mosaic_crystal_default(
+      const vec3<double> &real_space_a,
+      const vec3<double> &real_space_b,
+      const vec3<double> &real_space_c,
+      const cctbx::sgtbx::space_group &space_group) {
+
+    MosaicCrystalSauter2014 *crystal = new MosaicCrystalSauter2014(
+      real_space_a,
+      real_space_b,
+      real_space_c,
+      space_group);
+
+    return crystal;
+  }
+
+  static
+  MosaicCrystalSauter2014* make_sauter2014_mosaic_crystal_with_symbol(
+      const vec3<double> &real_space_a,
+      const vec3<double> &real_space_b,
+      const vec3<double> &real_space_c,
+      const std::string &space_group_symbol) {
+
+    MosaicCrystalSauter2014 *crystal = new MosaicCrystalSauter2014(
       real_space_a,
       real_space_b,
       real_space_c,
@@ -205,6 +239,54 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   };
 
+  struct MosaicCrystalSauter2014PickleSuite: CrystalPickleSuite {
+    static
+    boost::python::tuple getinitargs(const MosaicCrystalSauter2014 &obj) {
+      scitbx::af::shared< vec3<double> > real_space_v = obj.get_real_space_vectors();
+      return boost::python::make_tuple(
+          real_space_v[0],
+          real_space_v[1],
+          real_space_v[2],
+          obj.get_space_group());
+    }
+
+    static
+    boost::python::tuple getstate(boost::python::object obj)
+    {
+      const MosaicCrystalSauter2014 &crystal = boost::python::extract<const MosaicCrystalSauter2014 &>(obj)();
+      return boost::python::make_tuple(
+          obj.attr("__dict__"),
+          crystal.get_A_at_scan_points(),
+          crystal.get_B_covariance(),
+          crystal.get_half_mosaicity_deg(),
+          crystal.get_domain_size_ang());
+    }
+
+    static
+    void setstate(boost::python::object obj, boost::python::tuple state)
+    {
+      MosaicCrystalSauter2014 &crystal = boost::python::extract<MosaicCrystalSauter2014&>(obj)();
+      DXTBX_ASSERT(boost::python::len(state) == 5);
+
+        // restore the object's __dict__
+      boost::python::dict d = boost::python::extract<boost::python::dict>(
+          obj.attr("__dict__"))();
+      d.update(state[0]);
+
+      // restore the internal state of the C++ object
+      scitbx::af::const_ref< mat3<double> > A_list = boost::python::extract<
+        scitbx::af::const_ref< mat3<double> > >(state[1]);
+      scitbx::af::const_ref< double, scitbx::af::c_grid<2> > cov_B = boost::python::extract<
+        scitbx::af::const_ref< double, scitbx::af::c_grid<2> > >(state[2]);
+      crystal.set_A_at_scan_points(A_list);
+      crystal.set_B_covariance(cov_B);
+      double half_mosaicity_deg = boost::python::extract<double>(state[3]);
+      crystal.set_half_mosaicity_deg(half_mosaicity_deg);
+      double domain_size_ang = boost::python::extract<double>(state[3]);
+      crystal.set_domain_size_ang(domain_size_ang);
+    }
+  };
+
   void export_crystal()
   {
     class_ <CrystalBase, boost::noncopyable> ("CrystalBase", no_init)
@@ -275,7 +357,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def(init<const Crystal&>())
       .def("__init__",
           make_constructor(
-          &make_mosaic_crystal_default,
+          &make_kabsch2010_mosaic_crystal_default,
           default_call_policies(), (
             arg("real_space_a"),
             arg("real_space_b"),
@@ -283,7 +365,7 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("space_group"))))
       .def("__init__",
           make_constructor(
-          &make_mosaic_crystal_with_symbol,
+          &make_kabsch2010_mosaic_crystal_with_symbol,
           default_call_policies(), (
             arg("real_space_a"),
             arg("real_space_b"),
@@ -302,9 +384,44 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("deg")=true))
       .def_pickle(MosaicCrystalKabsch2010PickleSuite());
 
+    class_ <MosaicCrystalSauter2014, bases <CrystalBase> > ("MosaicCrystalSauter2014", no_init)
+      .def(init<const MosaicCrystalSauter2014&>())
+      .def(init<const Crystal&>())
+      .def("__init__",
+          make_constructor(
+          &make_sauter2014_mosaic_crystal_default,
+          default_call_policies(), (
+            arg("real_space_a"),
+            arg("real_space_b"),
+            arg("real_space_c"),
+            arg("space_group"))))
+      .def("__init__",
+          make_constructor(
+          &make_sauter2014_mosaic_crystal_with_symbol,
+          default_call_policies(), (
+            arg("real_space_a"),
+            arg("real_space_b"),
+            arg("real_space_c"),
+            arg("space_group_symbol"))))
+      .def("is_similar_to", &MosaicCrystalSauter2014::is_similar_to, (
+            arg("other"),
+            arg("angle_tolerance")=0.01,
+            arg("uc_rel_length_tolerance")=0.01,
+            arg("uc_abs_angle_tolerance")=1.0,
+            arg("half_mosaicity_tolerance")=0.4,
+            arg("domain_size_tolerance")=1.0))
+      .def("get_half_mosaicity_deg", &MosaicCrystalSauter2014::get_half_mosaicity_deg)
+      .def("set_half_mosaicity_deg", &MosaicCrystalSauter2014::set_half_mosaicity_deg, (
+            arg("half_mosaicity_deg")))
+      .def("get_domain_size_ang", &MosaicCrystalSauter2014::get_domain_size_ang)
+      .def("set_domain_size_ang", &MosaicCrystalSauter2014::set_domain_size_ang, (
+            arg("domain_size_ang")))
+      .def_pickle(MosaicCrystalSauter2014PickleSuite());
+
     register_ptr_to_python<boost::shared_ptr<CrystalBase> >();
     register_ptr_to_python<boost::shared_ptr<Crystal> >();
     register_ptr_to_python<boost::shared_ptr<MosaicCrystalKabsch2010> >();
+    register_ptr_to_python<boost::shared_ptr<MosaicCrystalSauter2014> >();
   }
 
 }}} // namespace = dxtbx::model::boost_python
