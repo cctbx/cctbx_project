@@ -943,7 +943,7 @@ namespace dxtbx { namespace model {
   };
 
   /* Extended Crystal class adding a simple value for mosaicity.
-   * The deg parameter controlls whether this value is treated as being an
+   * The deg parameter controls whether this value is treated as being an
    * angle in degrees or radians.
    */
   class MosaicCrystalKabsch2010 : public Crystal {
@@ -1057,6 +1057,143 @@ namespace dxtbx { namespace model {
     }
 
     double mosaicity_;
+  };
+
+
+  /* Extended Crystal class adding two values for mosaicity, the mosaic
+   * angle and the domain size.
+   */
+  class MosaicCrystalSauter2014 : public Crystal {
+  public:
+    /**
+     * Copy crystal model from MosaicCrystalSauter2014 class
+     */
+    MosaicCrystalSauter2014(const MosaicCrystalSauter2014 &other)
+      : Crystal(other),
+        half_mosaicity_deg_(other.half_mosaicity_deg_),
+        domain_size_ang_(other.domain_size_ang_) {}
+    /**
+     * Copy crystal model from Crystal class
+     */
+    MosaicCrystalSauter2014(const Crystal &other)
+      : Crystal(other),
+        half_mosaicity_deg_(0),
+        domain_size_ang_(0) {}
+
+    /**
+     * Initialise the crystal
+     *
+     * @param real_space_a The real_space a axis
+     * @param real_space_b The real_space b axis
+     * @param real_space_c The real_space c axis
+     * @param space_group The space group object
+     */
+    MosaicCrystalSauter2014(const vec3<double> &real_space_a,
+            const vec3<double> &real_space_b,
+            const vec3<double> &real_space_c,
+            const cctbx::sgtbx::space_group &space_group)
+      : Crystal(real_space_a, real_space_b, real_space_c, space_group),
+        half_mosaicity_deg_(0),
+        domain_size_ang_(0) {}
+
+    /**
+     * Constructor for pickling
+     */
+    MosaicCrystalSauter2014(
+        cctbx::sgtbx::space_group space_group,
+        cctbx::uctbx::unit_cell unit_cell,
+        mat3<double> U,
+        mat3<double> B,
+        scitbx::af::shared< mat3<double> > A_at_scan_points,
+        scitbx::af::versa<double, scitbx::af::c_grid<2> > cov_B,
+        scitbx::af::small<double,6> cell_sd,
+        double cell_volume_sd,
+        double half_mosaicity_deg,
+        double domain_size_ang)
+      : Crystal(space_group,unit_cell,U,B,A_at_scan_points,
+        cov_B,cell_sd,cell_volume_sd),
+        half_mosaicity_deg_(half_mosaicity_deg),
+        domain_size_ang_(domain_size_ang) {}
+
+    /**
+     * Check if the models are equal
+     */
+    bool operator==(const CrystalBase &other) const {
+      double eps = 1e-7;
+      const MosaicCrystalSauter2014* mosaic_other = dynamic_cast<const MosaicCrystalSauter2014*>(&other);
+      if (!mosaic_other) return false;
+
+      double d_half_mosaicity_deg = std::abs(half_mosaicity_deg_ - mosaic_other->get_half_mosaicity_deg());
+      double d_domain_size_ang = std::abs(domain_size_ang_ - mosaic_other->get_domain_size_ang());
+      return (d_half_mosaicity_deg <= eps &&
+              d_domain_size_ang <= eps &&
+              Crystal::operator==(other));
+    }
+
+    /**
+     * Check if models are similar
+     */
+    bool is_similar_to(
+        const CrystalBase &other,
+        double angle_tolerance=0.01,
+        double uc_rel_length_tolerance=0.01,
+        double uc_abs_angle_tolerance=1.0,
+        double half_mosaicity_tolerance=0.4,
+        double domain_size_tolerance=1.0) const {
+
+      // mosaicity test
+      const MosaicCrystalSauter2014* mosaic_other = dynamic_cast<const MosaicCrystalSauter2014*>(&other);
+      if (!mosaic_other) return false;
+
+      double m_a = get_half_mosaicity_deg();
+      double m_b = mosaic_other->get_half_mosaicity_deg();
+      double min_m = std::min(m_a, m_b);
+      double max_m = std::max(m_a, m_b);
+      if (min_m <= 0) {
+        if (max_m > 0.0) {
+          return false;
+        }
+      } else if (min_m / max_m < half_mosaicity_tolerance) {
+        return false;
+      }
+
+      if (std::abs(get_domain_size_ang() - mosaic_other->get_domain_size_ang()) > domain_size_tolerance) {
+        return false;
+      }
+
+      return Crystal::is_similar_to(other, angle_tolerance, uc_rel_length_tolerance, uc_abs_angle_tolerance);
+    }
+
+    /**
+     * Get the half mosaic angle value (degrees)
+     */
+    double get_half_mosaicity_deg() const {
+      return half_mosaicity_deg_;
+    }
+
+    /**
+     * Set the half mosaic angle value (degrees)
+     */
+    void set_half_mosaicity_deg(double half_mosaicity_deg) {
+      half_mosaicity_deg_ = half_mosaicity_deg;
+    }
+
+    /**
+     * Get the half mosaic angle value (degrees)
+     */
+    double get_domain_size_ang() const {
+      return domain_size_ang_;
+    }
+
+    /**
+     * Set the mosaic domain size (angstroms)
+     */
+    void set_domain_size_ang(double domain_size_ang) {
+      domain_size_ang_ = domain_size_ang;
+    }
+
+    double half_mosaicity_deg_;
+    double domain_size_ang_;
   };
 
 }} // namespace dxtbx::model
