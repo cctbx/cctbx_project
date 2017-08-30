@@ -988,7 +988,7 @@ def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
     derivative_S.append(dS)
   return derivative_T,derivative_L,derivative_S
 
-def check_tls_selections_for_waters (
+def water_in_tls_selections (
     tls_selections,
     pdb_hierarchy) :
   cache = pdb_hierarchy.atom_selection_cache()
@@ -998,8 +998,9 @@ def check_tls_selections_for_waters (
     group_sel = cache.selection(sele_str)
     tls_sel |= group_sel
   if ((tls_sel & water_sel).count(True) > 0) :
-    raise Sorry("TLS groups contain waters, which will conflict with the "+
-      "water picking procedure.")
+    return True
+  return False
+
 
 def u_cart_from_ensemble(models):
   xyz_all = []
