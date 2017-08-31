@@ -457,14 +457,12 @@ class Format(object):
       # Create the sweep
       iset = ImageSweep(
         ImageSetData(
-          reader     = reader,
-          masker     = masker,
-          properties = {
-            "vendor"   : vendor,
-            "params"   : params,
-            "format"   : Class,
-            "template" : template,
-          }),
+          reader   = reader,
+          masker   = masker,
+          vendor   = vendor,
+          params   = params,
+          format   = Class,
+          template = template),
         beam       = beam,
         detector   = detector,
         goniometer = goniometer,

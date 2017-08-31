@@ -10,7 +10,7 @@
 namespace dxtbx { namespace boost_python {
 
   namespace detail {
-    
+
     std::string pickle_dumps(boost::python::object x) {
       boost::python::object main = boost::python::import("__main__");
       boost::python::object global(main.attr("__dict__"));
@@ -35,6 +35,7 @@ namespace dxtbx { namespace boost_python {
   boost::shared_ptr<ImageSetData> make_imageset_data(
       boost::python::object reader,
       boost::python::object masker,
+      std::string filename_template,
       std::string vendor,
       boost::python::dict params,
       boost::python::object format) {
@@ -43,12 +44,28 @@ namespace dxtbx { namespace boost_python {
     boost::shared_ptr<ImageSetData> self(new ImageSetData(reader, masker));
 
     // Set some stuff
+    self->set_template(filename_template);
     self->set_vendor(vendor);
     self->set_params(detail::pickle_dumps(params));
     self->set_format(detail::pickle_dumps(format));
 
     // Return the imageset data
     return self;
+  }
+
+  boost::shared_ptr<ImageSet> make_imageset(
+      const ImageSetData &data,
+      boost::python::object indices) {
+
+    if (indices == boost::python::object()) {
+      return boost::shared_ptr<ImageSet>(new ImageSet(data));
+    }
+
+    return boost::shared_ptr<ImageSet>(
+        new ImageSet(
+          data,
+          boost::python::extract<
+            scitbx::af::const_ref<std::size_t> >(indices)()));
   }
 
   boost::python::object ImageSetData_get_params(ImageSetData &self) {
@@ -58,7 +75,7 @@ namespace dxtbx { namespace boost_python {
   void ImageSetData_set_params(ImageSetData &self, boost::python::dict params) {
     self.set_params(detail::pickle_dumps(params));
   }
-  
+
   boost::python::object ImageSetData_get_format(ImageSetData &self) {
     return detail::pickle_loads(self.get_format());
   }
@@ -106,15 +123,14 @@ namespace dxtbx { namespace boost_python {
     class_<ImageSetData, boost::shared_ptr<ImageSetData> >("ImageSetData", no_init)
       .def(init<
           boost::python::object,
-          boost::python::object>((
-              arg("reader"),
-              arg("masker"))))
-      .def("__init__", 
+          boost::python::object>())
+      .def("__init__",
           make_constructor(
             &make_imageset_data,
             default_call_policies(), (
               arg("reader"),
               arg("masker"),
+              arg("template") = "",
               arg("vendor") = "",
               arg("params") = boost::python::object(),
               arg("format") = boost::python::object())))
@@ -134,6 +150,8 @@ namespace dxtbx { namespace boost_python {
       .def("set_detector", &ImageSetData::set_detector)
       .def("set_goniometer", &ImageSetData::set_goniometer)
       .def("set_scan", &ImageSetData::set_scan)
+      .def("get_template", &ImageSetData::get_template)
+      .def("set_template", &ImageSetData::set_template)
       .def("get_vendor", &ImageSetData::get_vendor)
       .def("set_vendor", &ImageSetData::set_vendor)
       .def("get_params", &ImageSetData_get_params)
@@ -147,13 +165,12 @@ namespace dxtbx { namespace boost_python {
       ;
 
     class_<ImageSet>("ImageSet", no_init)
-      .def(init<
-          const ImageSetData &
-          >())
-      .def(init<
-          const ImageSetData &,
-          const scitbx::af::const_ref<std::size_t> &
-          >())
+      .def("__init__",
+          make_constructor(
+            &make_imageset,
+            default_call_policies(), (
+              arg("data"),
+              arg("indices") = boost::python::object())))
       .def("data", &ImageSet::data)
       .def("indices", &ImageSet::indices)
       .def("size", &ImageSet::size)
@@ -188,12 +205,15 @@ namespace dxtbx { namespace boost_python {
       .def(init<
           const ImageSetData &,
           int2
-          >())
+          >((arg("data"),
+             arg("grid_size"))))
       .def(init<
           const ImageSetData &,
           const scitbx::af::const_ref<std::size_t> &,
           int2
-          >())
+          >((arg("data"),
+             arg("indices"),
+             arg("grid_size"))))
       .def("get_grid_size", &ImageGrid::get_grid_size)
       .def("from_imageset", &ImageGrid::from_imageset)
       ;
@@ -205,7 +225,12 @@ namespace dxtbx { namespace boost_python {
           const Detector &,
           const Goniometer &,
           const Scan &
-          >())
+          >((
+              arg("data"),
+              arg("beam"),
+              arg("detector"),
+              arg("goniometer"),
+              arg("scan"))))
       .def(init<
           const ImageSetData &,
           const scitbx::af::const_ref<std::size_t> &,
@@ -213,7 +238,21 @@ namespace dxtbx { namespace boost_python {
           const Detector &,
           const Goniometer &,
           const Scan &
-          >())
+          >((
+              arg("data"),
+              arg("indices"),
+              arg("beam"),
+              arg("detector"),
+              arg("goniometer"),
+              arg("scan"))))
+      .def("get_beam", &ImageSweep::get_beam_for_image)
+      .def("get_detector", &ImageSweep::get_detector_for_image)
+      .def("get_goniometer", &ImageSweep::get_goniometer_for_image)
+      .def("get_scan", &ImageSweep::get_scan_for_image)
+      .def("set_beam", &ImageSweep::set_beam_for_image)
+      .def("set_detector", &ImageSweep::set_detector_for_image)
+      .def("set_goniometer", &ImageSweep::set_goniometer_for_image)
+      .def("set_scan", &ImageSweep::set_scan_for_image)
       .def("get_beam", &ImageSweep::get_beam)
       .def("get_detector", &ImageSweep::get_detector)
       .def("get_goniometer", &ImageSweep::get_goniometer)

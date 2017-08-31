@@ -527,7 +527,7 @@ class TestImageSweep(object):
     try:
       sweep.get_detectorbase(outside_index)
       assert(False)
-    except IndexError:
+    except Exception:
       pass
     print 'OK'
 
@@ -539,10 +539,16 @@ class TestImageSweep(object):
     print 'OK'
 
   def tst_get_models_index(self, sweep, index=None):
-    sweep.get_detector(index)
-    sweep.get_beam(index)
-    sweep.get_goniometer(index)
-    sweep.get_scan(index)
+    if index is not None:
+      sweep.get_detector(index)
+      sweep.get_beam(index)
+      sweep.get_goniometer(index)
+      sweep.get_scan(index)
+    else:
+      sweep.get_detector()
+      sweep.get_beam()
+      sweep.get_goniometer()
+      sweep.get_scan()
 
     # Ensure state at zero
     sweep[0]
@@ -772,16 +778,16 @@ class TestPickleImageSet(object):
 
 def run():
 
-  #TestFormat().run()
+  TestFormat().run()
   TestImageTile().run()
   TestImage().run()
   TestImageBuffer().run()
   TestExternalLookup().run()
   TestImageSetData().run()
   TestImageSet().run()
-  #TestImageSweep().run()
-  #TestNexusFile().run()
-  #TestImageSetFactory().run()
+  TestImageSweep().run()
+  TestNexusFile().run()
+  TestImageSetFactory().run()
   #TestPickleImageSet().run()
 
 

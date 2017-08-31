@@ -413,7 +413,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       ;
 
     // Export a Detector base class
-    class_ <Detector> ("Detector")
+    class_ <Detector, boost::shared_ptr<Detector> > ("Detector")
       .def(init<const Panel&>())
       .def("hierarchy",
           (Detector::node_pointer(Detector::*)())&Detector::root,

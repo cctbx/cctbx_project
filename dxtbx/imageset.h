@@ -165,7 +165,7 @@ namespace dxtbx {
     boost::python::object reader() {
       return reader_;
     }
-    
+
     /**
      * @returns The masker object
      */
@@ -361,6 +361,20 @@ namespace dxtbx {
     }
 
     /**
+     * @returns the template
+     */
+    std::string get_template() const {
+      return template_;
+    }
+
+    /**
+     * @param x the template
+     */
+    void set_template(std::string x) {
+      template_ = x;
+    }
+
+    /**
      * @returns the vendor
      */
     std::string get_vendor() const {
@@ -373,7 +387,7 @@ namespace dxtbx {
     void set_vendor(std::string x) {
       vendor_ = x;
     }
-    
+
     /**
      * @returns the params
      */
@@ -401,6 +415,7 @@ namespace dxtbx {
     void set_format(std::string x) {
       format_ = x;
     }
+
   protected:
 
     ImageBuffer get_image_buffer_from_tuple(boost::python::tuple obj) {
@@ -420,7 +435,7 @@ namespace dxtbx {
       }
       return buffer;
     }
-    
+
     ImageBuffer get_image_buffer_from_object(boost::python::object obj) {
 
       // Get the class name
@@ -438,7 +453,7 @@ namespace dxtbx {
       }
       return buffer;
     }
-    
+
     template <typename T>
     Image<T> get_image_from_tuple(boost::python::tuple obj) {
       Image<T> image;
@@ -450,9 +465,9 @@ namespace dxtbx {
 
     template <typename T>
     ImageTile<T> get_image_tile_from_object(boost::python::object obj) {
-      
+
       typedef typename scitbx::af::flex<T>::type flex_type;
-      
+
       // Extract the data
       flex_type a = boost::python::extract<flex_type>(obj)();
 
@@ -471,6 +486,7 @@ namespace dxtbx {
     scitbx::af::shared<scan_ptr> scans_;
     ExternalLookup external_lookup_;
 
+    std::string template_;
     std::string vendor_;
     std::string params_;
     std::string format_;
@@ -513,12 +529,18 @@ namespace dxtbx {
     }
 
     /**
+     * Destructor
+     */
+    virtual ~ImageSet() {}
+
+    /**
      * Construct the imageset
      * @param data The imageset data
      */
     ImageSet(const ImageSetData &data)
       : data_(data),
         indices_(data.size()) {
+      DXTBX_ASSERT(data.size() > 0);
       for (std::size_t i = 0; i < indices_.size(); ++i) {
         indices_[i] = i;
       }
@@ -534,6 +556,7 @@ namespace dxtbx {
           const scitbx::af::const_ref<std::size_t> &indices)
       : data_(data),
         indices_(indices.begin(), indices.end()) {
+      DXTBX_ASSERT(indices.size() > 0);
       DXTBX_ASSERT(scitbx::af::max(indices) < data.size());
     }
 
@@ -607,7 +630,7 @@ namespace dxtbx {
         const_ref_type r = data.tile(i).data().const_ref();
 
         // Get the gain and dark
-        const_ref_type g = gain.n_tiles() > 0 
+        const_ref_type g = gain.n_tiles() > 0
           ? gain.tile(i).data().const_ref()
           : const_ref_type(NULL, scitbx::af::c_grid<2>(0,0));
         const_ref_type p = dark.n_tiles() > 0
@@ -964,6 +987,11 @@ namespace dxtbx {
     }
 
     /**
+     * Destructor
+     */
+    virtual ~ImageGrid() {}
+
+    /**
      * @returns The grid size
      */
     int2 get_grid_size() const {
@@ -1090,6 +1118,11 @@ namespace dxtbx {
         ImageSet::set_scan_for_image(scan_ptr(new Scan(scan[i])), i);
       }
     }
+
+    /**
+     * Destructor
+     */
+    virtual ~ImageSweep() {}
 
     /**
      * @returns the array range

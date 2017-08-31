@@ -255,14 +255,14 @@ class ImageSetAux(boost.python.injector, ImageSet):
   def reader(self):
     '''
     Return the reader
-    
+
     '''
     return self.data().reader()
 
   def masker(self):
     '''
     Return the masker
-    
+
     '''
     return self.data().masker()
 
@@ -780,7 +780,7 @@ class ImageSweepAux(ImageSweep, boost.python.injector):
 
   def get_template(self):
     ''' Return the template '''
-    return self._data.properties['template']
+    return self.data().get_template()
 
 
 # class ImageSweep(ImageSet):
