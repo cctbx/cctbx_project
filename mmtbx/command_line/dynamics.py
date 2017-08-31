@@ -108,7 +108,7 @@ class launcher (runtime_utils.target_with_save_result) :
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
     return run(args=self.args, log=sys.stdout,
-      use_directory_prefix=False).output_file_name
+      use_directory_prefix=False).result_model_fname
 
 def validate_params (params) :
   return geometry_minimization.validate_params(params)
