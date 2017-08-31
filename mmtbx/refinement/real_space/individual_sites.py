@@ -1,5 +1,4 @@
 from __future__ import division
-from cctbx.maptbx import real_space_target_and_gradients
 from libtbx import adopt_init_args, Auto
 import scitbx.lbfgs
 from cctbx import maptbx
@@ -10,6 +9,7 @@ from libtbx.test_utils import approx_equal
 from cctbx import crystal
 import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.model
+from cctbx.maptbx import minimization
 
 class easy(object):
   """
@@ -162,7 +162,7 @@ class diff_map(object):
 
   def refine(self, weight, sites_cart=None, xray_structure=None):
     assert xray_structure is not None and [sites_cart,xray_structure].count(None)==1
-    self.refined = real_space_target_and_gradients.minimization(
+    self.refined = minimization.run(
       xray_structure              = xray_structure,
       miller_array                = self.miller_array,
       crystal_gridding            = self.crystal_gridding,
@@ -173,7 +173,7 @@ class diff_map(object):
       real_space_target_weight    = weight,
       restraints_target_weight    = self.restraints_target_weight,
       geometry_restraints_manager = self.geometry_restraints_manager,
-      target_type                 = "diff_map")
+      target_type                 = "diffmap")
 
   def sites_cart(self):
     assert self.refined is not None

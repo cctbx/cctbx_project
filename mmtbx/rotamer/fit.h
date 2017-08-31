@@ -4,11 +4,12 @@
 #include <boost/python/list.hpp>
 #include <boost/python/detail/api_placeholder.hpp>
 #include <boost/python/extract.hpp>
-#include <cctbx/maptbx/real_space_gradients_simple.h>
+#include <cctbx/maptbx/target_and_gradients.h>
 #include <scitbx/math/fast_approx_math.h>
 #include <scitbx/math/rotate_around_axis.h>
 #include <scitbx/vec3.h>
-#include <cctbx/maptbx/eight_point_interpolation.h>
+
+
 
 namespace mmtbx { namespace rotamer {
 namespace af=scitbx::af;
@@ -68,7 +69,7 @@ public:
           step,
           n);
       }
-      FloatType mv = cctbx::maptbx::real_space_target_simple<FloatType, FloatType>(
+      FloatType mv = cctbx::maptbx::target_and_gradients::simple::target<FloatType, FloatType>(
         unit_cell,
         density_map,
         all_points_cp.ref(),

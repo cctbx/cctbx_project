@@ -5,31 +5,6 @@ import scitbx.lbfgs
 from libtbx import adopt_init_args
 from cctbx import xray
 
-class target_and_gradients(object):
-
-  def __init__(self,
-               unit_cell,
-               density_map,
-               sites_cart,
-               real_space_gradients_delta,
-               selection):
-    adopt_init_args(self, locals())
-
-  def target(self):
-    return -1.*maptbx.real_space_target_simple(
-      unit_cell   = self.unit_cell,
-      density_map = self.density_map,
-      sites_cart  = self.sites_cart,
-      selection   = self.selection)
-
-  def gradients(self):
-    return -1.*maptbx.real_space_gradients_simple(
-      unit_cell   = self.unit_cell,
-      density_map = self.density_map,
-      sites_cart  = self.sites_cart,
-      delta       = self.real_space_gradients_delta,
-      selection   = self.selection)
-
 def local_standard_deviations_target_per_site(
       unit_cell, density_map, weight_map, weight_map_scale_factor,
       sites_cart, site_radii):
@@ -167,17 +142,14 @@ class lbfgs(object):
       rs_g = flex.vec3_double(O.sites_cart_variable.size(), (0,0,0))
     else:
       if (O.local_standard_deviations_radius is None):
-        rs_f = maptbx.real_space_target_simple(
+        o = maptbx.target_and_gradients_simple(
           unit_cell   = O.unit_cell,
-          density_map = O.density_map,
-          sites_cart  = O.sites_cart_variable,
-          selection   = O.selection_variable_real_space)
-        rs_g = maptbx.real_space_gradients_simple(
-          unit_cell   = O.unit_cell,
-          density_map = O.density_map,
+          map_target  = O.density_map,
           sites_cart  = O.sites_cart_variable,
           delta       = O.real_space_gradients_delta,
           selection   = O.selection_variable_real_space)
+        rs_f = o.target()
+        rs_g = o.gradients()
       else:
         rs_f = local_standard_deviations_target(
           unit_cell=O.unit_cell,

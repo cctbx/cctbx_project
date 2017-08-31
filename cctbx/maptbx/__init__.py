@@ -140,6 +140,8 @@ def value_at_closest_grid_point(map, x_frac):
 flex.int.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.value_at_closest_grid_point = value_at_closest_grid_point
 flex.double.eight_point_interpolation = eight_point_interpolation
+flex.double.eight_point_interpolation_with_gradients = \
+  eight_point_interpolation_with_gradients
 flex.double.tricubic_interpolation = tricubic_interpolation
 
 def cc_peak(cutoff, map_1=None,map_2=None, map_coeffs_1=None,map_coeffs_2=None):

@@ -93,10 +93,61 @@ namespace cctbx { namespace maptbx {
       }
 
       IndexType i_grid;
-
-    protected:
       FloatType weights_[3][2];
   };
+
+  template <
+    typename MapFloatType,
+    typename SiteFloatType>
+  af::tiny<MapFloatType, 4>
+  eight_point_interpolation_with_gradients(
+    af::const_ref<MapFloatType, af::c_grid_padded<3> > const& map,
+    scitbx::vec3<SiteFloatType> const& x_frac,
+    scitbx::vec3<SiteFloatType> const& step)
+  {
+    typedef af::c_grid_padded<3>::index_type index_t;
+    typedef typename index_t::value_type iv_t;
+    index_t const& grid_n = map.accessor().focus();
+    get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
+    MapFloatType result = 0;
+    MapFloatType f_000, f_100, f_010, f_110, f_001, f_101, f_011, f_111;
+    for(iv_t s0=0;s0<2;s0++) { iv_t i0 = (corner.i_grid[0] + s0) % grid_n[0];
+    for(iv_t s1=0;s1<2;s1++) { iv_t i1 = (corner.i_grid[1] + s1) % grid_n[1];
+    for(iv_t s2=0;s2<2;s2++) { iv_t i2 = (corner.i_grid[2] + s2) % grid_n[2];
+      MapFloatType map_value = map(i0,i1,i2);
+      result += map_value * corner.weight(s0,s1,s2);
+      if(s0==0&&s1==0&&s2==0) f_000 = map_value;
+      if(s0==1&&s1==0&&s2==0) f_100 = map_value;
+      if(s0==0&&s1==1&&s2==0) f_010 = map_value;
+      if(s0==1&&s1==1&&s2==0) f_110 = map_value;
+      if(s0==0&&s1==0&&s2==1) f_001 = map_value;
+      if(s0==1&&s1==0&&s2==1) f_101 = map_value;
+      if(s0==0&&s1==1&&s2==1) f_011 = map_value;
+      if(s0==1&&s1==1&&s2==1) f_111 = map_value;
+    }}}
+    MapFloatType x = corner.weights_[0][1];
+    MapFloatType y = corner.weights_[1][1];
+    MapFloatType z = corner.weights_[2][1];
+    MapFloatType f_x00 = (1-x)*f_000 + x*f_100;
+    MapFloatType f_x01 = (1-x)*f_001 + x*f_101;
+    MapFloatType f_0y0 = (1-y)*f_000 + y*f_010;
+    MapFloatType f_0y1 = (1-y)*f_001 + y*f_011;
+    MapFloatType f_x10 = (1-x)*f_010 + x*f_110;
+    MapFloatType f_x11 = (1-x)*f_011 + x*f_111;
+    MapFloatType f_1y0 = (1-y)*f_100 + y*f_110;
+    MapFloatType f_1y1 = (1-y)*f_101 + y*f_111;
+    MapFloatType f_xy0 = (1-y)*f_x00 + y*f_x10;
+    MapFloatType f_x0z = (1-z)*f_x00 + z*f_x01;
+    MapFloatType f_0yz = (1-z)*f_0y0 + z*f_0y1;
+    MapFloatType f_xy1 = (1-y)*f_x01 + y*f_x11;
+    MapFloatType f_x1z = (1-z)*f_x10 + z*f_x11;
+    MapFloatType f_1yz = (1-z)*f_1y0 + z*f_1y1;
+    //CCTBX_ASSERT((1-z)*f_xy0+z*f_xy1, result);
+    MapFloatType gx = (f_1yz-f_0yz) / step[0];
+    MapFloatType gy = (f_x1z-f_x0z) / step[1];
+    MapFloatType gz = (f_xy1-f_xy0) / step[2];
+    return af::tiny<MapFloatType, 4>(result, gx,gy,gz);
+  }
 
   template <
     typename MapFloatType,

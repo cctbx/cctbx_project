@@ -3,8 +3,6 @@
 #include <cctbx/maptbx/fft.h>
 #include <cctbx/maptbx/average_densities.h>
 #include <cctbx/maptbx/standard_deviations_around_sites.hpp>
-#include <cctbx/maptbx/real_space_gradients_simple.h>
-#include <cctbx/maptbx/real_space_target_and_gradients.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
@@ -20,6 +18,7 @@
 #include <cctbx/maptbx/mask_utils.h>
 #include <cctbx/maptbx/map_accumulator.h>
 #include <cctbx/maptbx/ft_analytical_1d_point_scatterer_at_origin.h>
+#include <cctbx/maptbx/target_and_gradients.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -32,14 +31,12 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_statistics();
   void wrap_structure_factors();
   void wrap_coordinate_transformers();
-  void wrap_mappers();
-  void wrap_basic_map();
-  void wrap_real_space_refinement();
 
   template <typename FloatType, typename GridType>
   struct map_accumulator_wrapper
   {
-    typedef map_accumulator<FloatType, GridType> w_t;
+    //typedef map_accumulator<FloatType, GridType> w_t; // works too
+    typedef cctbx::maptbx::map_accumulator<FloatType, GridType> w_t;
     static void wrap() {
       using namespace boost::python;
       class_<w_t>("map_accumulator", no_init)
@@ -97,18 +94,16 @@ namespace {
     wrap_statistics();
     wrap_structure_factors();
     wrap_coordinate_transformers();
-    wrap_mappers();
-    wrap_basic_map();
-    wrap_real_space_refinement();
 
+// Real-space target and gradients ---------------------------------------------
     {
-      typedef target_and_gradients w_t;
-      class_<w_t>("target_and_gradients", no_init)
+      typedef cctbx::maptbx::target_and_gradients::diffmap::compute w_t;
+      class_<w_t>("target_and_gradients_diffmap", no_init)
         .def(init<uctbx::unit_cell const&,
-                  af::const_ref<double, af::c_grid_padded<3> > const&,
-                  af::const_ref<double, af::c_grid_padded<3> > const&,
-                  double const&,
-                  af::const_ref<scitbx::vec3<double> > const& >((
+             af::const_ref<double, af::c_grid_padded<3> > const&,
+             af::const_ref<double, af::c_grid_padded<3> > const&,
+             double const&,
+             af::const_ref<scitbx::vec3<double> > const& >((
                                     arg("unit_cell"),
                                     arg("map_target"),
                                     arg("map_current"),
@@ -118,6 +113,93 @@ namespace {
         .def("gradients", &w_t::gradients)
       ;
     }
+
+    {
+      typedef cctbx::maptbx::target_and_gradients::simple::compute<double> w_t;
+      class_<w_t>("target_and_gradients_simple", no_init)
+        .def(init<uctbx::unit_cell const&,
+             af::const_ref<double, af::c_grid_padded<3> > const&,
+             af::const_ref<scitbx::vec3<double> > const&,
+             double const&,
+             af::const_ref<bool> const& >((
+                                    arg("unit_cell"),
+                                    arg("map_target"),
+                                    arg("sites_cart"),
+                                    arg("delta"),
+                                    arg("selection"))))
+        .def("target", &w_t::target)
+        .def("gradients", &w_t::gradients)
+      ;
+    }
+
+    def("real_space_target_simple",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&,
+         af::const_ref<bool> const&))
+           cctbx::maptbx::target_and_gradients::simple::target, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart"),
+             arg("selection")));
+
+    def("real_space_target_simple",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           cctbx::maptbx::target_and_gradients::simple::target, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart")));
+
+    def("real_space_target_simple",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&,
+         af::const_ref<std::size_t> const&))
+           cctbx::maptbx::target_and_gradients::simple::target, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart"),
+             arg("selection")));
+
+    def("real_space_target_simple",
+      (double(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           cctbx::maptbx::target_and_gradients::simple::target, (
+             arg("density_map"),
+             arg("sites_frac")));
+
+    def("real_space_target_simple_per_site",
+      (af::shared<double>(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           cctbx::maptbx::target_and_gradients::simple::target_per_site, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart")));
+
+    def("real_space_gradients_simple",
+      (af::shared<scitbx::vec3<double> >(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&,
+         double,
+         af::const_ref<bool> const&))
+           cctbx::maptbx::target_and_gradients::simple::gradients, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart"),
+             arg("delta"),
+             arg("selection")));
+
+// -----------------------------------------------------------------------------
+
     {
       typedef grid_points_in_sphere_around_atom_and_distances w_t;
 
@@ -832,6 +914,11 @@ namespace {
       (double(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
          scitbx::vec3<double> const&)) eight_point_interpolation);
+    def("eight_point_interpolation_with_gradients",
+      (af::tiny<double, 4>(*)
+        (af::const_ref<double, af::c_grid_padded<3> > const&,
+         scitbx::vec3<double> const&,
+         scitbx::vec3<double> const&)) eight_point_interpolation_with_gradients);
     def("closest_grid_point",
       (af::c_grid_padded<3>::index_type(*)
         (af::flex_grid<> const&,
@@ -858,69 +945,6 @@ namespace {
         (af::const_ref<double, af::flex_grid<> > const&,
          crystal::direct_space_asu::asu_mappings<double> &,
          fractional<double> const&)) asu_eight_point_interpolation);
-
-    def("real_space_target_simple",
-      (double(*)
-        (uctbx::unit_cell const&,
-         af::const_ref<double, af::c_grid_padded<3> > const&,
-         af::const_ref<scitbx::vec3<double> > const&,
-         af::const_ref<bool> const&))
-           real_space_target_simple, (
-             arg("unit_cell"),
-             arg("density_map"),
-             arg("sites_cart"),
-             arg("selection")));
-
-    def("real_space_target_simple",
-      (double(*)
-        (uctbx::unit_cell const&,
-         af::const_ref<double, af::c_grid_padded<3> > const&,
-         af::const_ref<scitbx::vec3<double> > const&))
-           real_space_target_simple, (
-             arg("unit_cell"),
-             arg("density_map"),
-             arg("sites_cart")));
-
-    def("real_space_target_simple",
-      (double(*)
-        (uctbx::unit_cell const&,
-         af::const_ref<double, af::c_grid_padded<3> > const&,
-         af::const_ref<scitbx::vec3<double> > const&,
-         af::const_ref<std::size_t> const&))
-           real_space_target_simple, (
-             arg("unit_cell"),
-             arg("density_map"),
-             arg("sites_cart"),
-             arg("selection")));
-
-    def("real_space_target_simple",
-      (double(*)
-        (af::const_ref<double, af::c_grid<3> > const&,
-         af::const_ref<scitbx::vec3<double> > const&))
-           real_space_target_simple, (
-             arg("density_map"),
-             arg("sites_frac")));
-    def("real_space_target_simple_per_site",
-      (af::shared<double>(*)
-        (uctbx::unit_cell const&,
-         af::const_ref<double, af::c_grid_padded<3> > const&,
-         af::const_ref<scitbx::vec3<double> > const&))
-           real_space_target_simple_per_site, (
-             arg("unit_cell"),
-             arg("density_map"),
-             arg("sites_cart")));
-    def("real_space_gradients_simple",
-      (af::shared<scitbx::vec3<double> >(*)
-        (uctbx::unit_cell const&,
-         af::const_ref<double, af::c_grid_padded<3> > const&,
-         af::const_ref<scitbx::vec3<double> > const&,
-         double,
-         af::const_ref<bool> const&)) real_space_gradients_simple, (
-           arg("unit_cell"),
-           arg("density_map"),
-           arg("sites_cart"),
-           arg("delta"),
-           arg("selection")));
 
     def("standard_deviations_around_sites",
       standard_deviations_around_sites, (
