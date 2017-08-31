@@ -44,6 +44,7 @@ from libtbx.str_utils import format_value
 from mmtbx.refinement import print_statistics
 import mmtbx.tls.tools as tls_tools
 from iotbx.pdb.atom_selection import AtomSelectionError
+from mmtbx.refinement import anomalous_scatterer_groups
 
 time_model_show = 0.0
 
@@ -208,7 +209,7 @@ class manager(object):
       self.pdb_atoms.reset_i_seq()
       if(anomalous_scatterer_groups is not None and
           len(anomalous_scatterer_groups) == 0):
-          anomalous_scatterer_groups = None
+        anomalous_scatterer_groups = None
       self.anomalous_scatterer_groups = anomalous_scatterer_groups
       _common_init()
       self.sync_pdb_hierarchy_with_xray_structure()
@@ -255,7 +256,7 @@ class manager(object):
       self._rama_eval = None
       if(anomalous_scatterer_groups is not None and
           len(anomalous_scatterer_groups) == 0):
-          anomalous_scatterer_groups = None
+        anomalous_scatterer_groups = None
       self.anomalous_scatterer_groups = anomalous_scatterer_groups
       _common_init()
       if build_grm:
@@ -283,6 +284,45 @@ class manager(object):
           general_selection = general_selection,
           use_molprobity    = use_molprobity)
     return self.model_statistics_info
+
+  def initialize_anomalous_scatterer_groups(
+      self,
+      find_automatically=True,
+      groups_from_params=None):
+    self.n_anomalous_total = 0
+    result = []
+    if find_automatically:
+      result = anomalous_scatterer_groups.find_anomalous_scatterer_groups(
+        pdb_atoms=self.all_chain_proxies.pdb_atoms,
+        xray_structure=self.xray_structure,
+        group_same_element=False,
+        out=self.log)
+      for group in result:
+        self.n_anomalous_total += group.iselection.size()
+    else:
+      if len(groups_from_params) != 0:
+        chain_proxies = self.all_chain_proxies
+        sel_cache = self._asc
+        for group in groups_from_params:
+          if (group.f_prime is None): group.f_prime = 0
+          if (group.f_double_prime is None): group.f_double_prime = 0
+          aag = xray.anomalous_scatterer_group(
+            iselection=chain_proxies.phil_atom_selection(
+              cache=sel_cache,
+              scope_extract=group,
+              attr="selection",
+              raise_if_empty_selection=True).iselection(),
+            f_prime=group.f_prime,
+            f_double_prime=group.f_double_prime,
+            refine=group.refine,
+            selection_string=group.selection)
+          # aag.show_summary(out=log)
+          result.append(aag)
+          self.n_anomalous_total += aag.iselection.size()
+    self.anomalous_scatterer_groups = result
+    for group in self.anomalous_scatterer_groups:
+      group.copy_to_scatterers_in_place(scatterers=self.xray_structure.scatterers())
+    return self.anomalous_scatterer_groups, self.n_anomalous_total
 
   def get_grm(self):
     if self.restraints_manager is not None:
