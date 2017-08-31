@@ -160,6 +160,20 @@ namespace dxtbx {
     }
 
     /**
+     * @returns The reader object
+     */
+    boost::python::object reader() {
+      return reader_;
+    }
+    
+    /**
+     * @returns The masker object
+     */
+    boost::python::object masker() {
+      return masker_;
+    }
+
+    /**
      * Read some image data
      * @param index The image index
      * @returns The image data
@@ -179,70 +193,12 @@ namespace dxtbx {
       std::string name = boost::python::extract<std::string>(
           data.attr("__class__").attr("__name__"))();
 
+      // Extract the image buffer
       if (name == "tuple") {
-
-        boost::python::tuple d = boost::python::extract<boost::python::tuple>(data);
-
-        // Get the class name
-        name = boost::python::extract<std::string>(
-            d[0].attr("__class__").attr("__name__"))();
-
-        if (name == "double") {
-          Image<double> image;
-          for (std::size_t i = 0; i < boost::python::len(d); ++i) {
-
-            scitbx::af::flex<double>::type a = boost::python::extract<
-              scitbx::af::flex<double>::type>(d[i])();
-
-            image.push_back(
-                ImageTile<double>(
-                  double_array(
-                    a.handle(),
-                    accessor_type(a.accessor()))));
-          }
-          buffer = ImageBuffer(image);
-        } else if (name == "int") {
-          Image<int> image;
-          for (std::size_t i = 0; i < boost::python::len(d); ++i) {
-            scitbx::af::flex<int>::type a = boost::python::extract<
-              scitbx::af::flex<int>::type>(d[i])();
-
-            image.push_back(
-                ImageTile<int>(
-                  int_array(
-                    a.handle(),
-                    accessor_type(a.accessor()))));
-          }
-          buffer = ImageBuffer(image);
-        } else {
-          DXTBX_ERROR("Unknown type");
-        }
-
+        buffer = get_image_buffer_from_tuple(
+          boost::python::extract<boost::python::tuple>(data)());
       } else {
-
-        if (name == "double") {
-          scitbx::af::flex<double>::type a = boost::python::extract<
-            scitbx::af::flex<double>::type>(data)();
-
-          buffer = ImageBuffer(
-              Image<double>(
-                ImageTile<double>(
-                  double_array(
-                    a.handle(),
-                    accessor_type(a.accessor())))));
-        } else if (name == "int") {
-          scitbx::af::flex<int>::type a = boost::python::extract<
-            scitbx::af::flex<int>::type>(data)();
-
-          buffer = ImageBuffer(
-              Image<int>(
-                ImageTile<int>(
-                  int_array(
-                    a.handle(),
-                    accessor_type(a.accessor())))));
-        } else {
-          DXTBX_ERROR("Unknown type");
-        }
+        buffer = get_image_buffer_from_object(data);
       }
       return buffer;
     }
@@ -257,6 +213,9 @@ namespace dxtbx {
       typedef scitbx::af::versa<bool, scitbx::af::c_grid<2> > bool_array;
       typedef scitbx::af::c_grid<2> accessor_type;
 
+      // Create return buffer
+      Image<bool> image;
+
       // Get the image data object
       boost::python::object data = masker_.attr("get")(index);
 
@@ -264,29 +223,11 @@ namespace dxtbx {
       std::string name = boost::python::extract<std::string>(
           data.attr("__class__").attr("__name__"))();
 
-      Image<bool> image;
-
       if (name == "tuple") {
-        boost::python::tuple d = boost::python::extract<boost::python::tuple>(data);
-        for (std::size_t i = 0; i < boost::python::len(d); ++i) {
-          scitbx::af::flex<bool>::type a = boost::python::extract<
-            scitbx::af::flex<bool>::type>(d[i])();
-
-          image.push_back(
-              ImageTile<bool>(
-                bool_array(
-                  a.handle(),
-                  accessor_type(a.accessor()))));
-        }
+        image = get_image_from_tuple<bool>(
+            boost::python::extract<boost::python::tuple>(data)());
       } else if (name == "bool") {
-        scitbx::af::flex<bool>::type a = boost::python::extract<
-          scitbx::af::flex<bool>::type>(data)();
-
-        image.push_back(
-            ImageTile<bool>(
-              bool_array(
-                a.handle(),
-                accessor_type(a.accessor()))));
+        image = Image<bool>(get_image_tile_from_object<bool>(data));
       } else {
         DXTBX_ERROR("Unknown type");
       }
@@ -326,20 +267,6 @@ namespace dxtbx {
     }
 
     /**
-     * @returns A property
-     */
-    std::string get_property(std::string name) const {
-      return properties_.at(name);
-    }
-
-    /**
-     * Set a property
-     */
-    void set_property(std::string name, std::string value) {
-      properties_[name] = value;
-    }
-
-    /**
      * Get a beam model
      * @param index The image index
      * @returns The beam model
@@ -354,7 +281,7 @@ namespace dxtbx {
      * @param index The image index
      * @param The beam model
      */
-    void set_beam(std::size_t index, const beam_ptr &beam) {
+    void set_beam(const beam_ptr &beam, std::size_t index) {
       DXTBX_ASSERT(index < beams_.size());
       beams_[index] = beam;
     }
@@ -374,7 +301,7 @@ namespace dxtbx {
      * @param index The image index
      * @param The detector model
      */
-    void set_detector(std::size_t index, const detector_ptr &detector) {
+    void set_detector(const detector_ptr &detector, std::size_t index) {
       DXTBX_ASSERT(index < detectors_.size());
       detectors_[index] = detector;
     }
@@ -394,7 +321,7 @@ namespace dxtbx {
      * @param index The image index
      * @param The goniometer model
      */
-    void set_goniometer(std::size_t index, const goniometer_ptr &goniometer) {
+    void set_goniometer(const goniometer_ptr &goniometer, std::size_t index) {
       DXTBX_ASSERT(index < goniometers_.size());
       goniometers_[index] = goniometer;
     }
@@ -414,7 +341,7 @@ namespace dxtbx {
      * @param index The image index
      * @param The scan model
      */
-    void set_scan(std::size_t index, const scan_ptr &scan) {
+    void set_scan(const scan_ptr &scan, std::size_t index) {
       DXTBX_ASSERT(index < scans_.size());
       scans_[index] = scan;
     }
@@ -433,7 +360,108 @@ namespace dxtbx {
       return external_lookup_;
     }
 
+    /**
+     * @returns the vendor
+     */
+    std::string get_vendor() const {
+      return vendor_;
+    }
+
+    /**
+     * @param x the vendor
+     */
+    void set_vendor(std::string x) {
+      vendor_ = x;
+    }
+    
+    /**
+     * @returns the params
+     */
+    std::string get_params() const {
+      return params_;
+    }
+
+    /**
+     * @param x the params
+     */
+    void set_params(std::string x) {
+      params_ = x;
+    }
+
+    /**
+     * @returns the format
+     */
+    std::string get_format() const {
+      return format_;
+    }
+
+    /**
+     * @param x the format
+     */
+    void set_format(std::string x) {
+      format_ = x;
+    }
   protected:
+
+    ImageBuffer get_image_buffer_from_tuple(boost::python::tuple obj) {
+
+      // Get the class name
+      std::string name = boost::python::extract<std::string>(
+          obj[0].attr("__class__").attr("__name__"))();
+
+      // Read the image
+      ImageBuffer buffer;
+      if (name == "double") {
+        buffer = ImageBuffer(get_image_from_tuple<double>(obj));
+      } else if (name == "int") {
+        buffer = ImageBuffer(get_image_from_tuple<int>(obj));
+      } else {
+        DXTBX_ERROR("Unknown type");
+      }
+      return buffer;
+    }
+    
+    ImageBuffer get_image_buffer_from_object(boost::python::object obj) {
+
+      // Get the class name
+      std::string name = boost::python::extract<std::string>(
+          obj.attr("__class__").attr("__name__"))();
+
+      // Read the image
+      ImageBuffer buffer;
+      if (name == "double") {
+        buffer = ImageBuffer(Image<double>(get_image_tile_from_object<double>(obj)));
+      } else if (name == "int") {
+        buffer = ImageBuffer(Image<int>(get_image_tile_from_object<int>(obj)));
+      } else {
+        DXTBX_ERROR("Unknown type");
+      }
+      return buffer;
+    }
+    
+    template <typename T>
+    Image<T> get_image_from_tuple(boost::python::tuple obj) {
+      Image<T> image;
+      for (std::size_t i = 0; i < boost::python::len(obj); ++i) {
+        image.push_back(get_image_tile_from_object<T>(obj[i]));
+      }
+      return image;
+    }
+
+    template <typename T>
+    ImageTile<T> get_image_tile_from_object(boost::python::object obj) {
+      
+      typedef typename scitbx::af::flex<T>::type flex_type;
+      
+      // Extract the data
+      flex_type a = boost::python::extract<flex_type>(obj)();
+
+      // Return the image tile
+      return ImageTile<T>(
+        scitbx::af::versa<T, scitbx::af::c_grid<2> >(
+          a.handle(),
+          scitbx::af::c_grid<2>(a.accessor())));
+    }
 
     boost::python::object reader_;
     boost::python::object masker_;
@@ -441,8 +469,11 @@ namespace dxtbx {
     scitbx::af::shared<detector_ptr> detectors_;
     scitbx::af::shared<goniometer_ptr> goniometers_;
     scitbx::af::shared<scan_ptr> scans_;
-    std::map<std::string,std::string> properties_;
     ExternalLookup external_lookup_;
+
+    std::string vendor_;
+    std::string params_;
+    std::string format_;
   };
 
 
@@ -540,6 +571,7 @@ namespace dxtbx {
      * @returns The raw image data
      */
     ImageBuffer get_raw_data(std::size_t index) {
+      DXTBX_ASSERT(index < indices_.size());
       if (data_cache_.index == index) {
         return data_cache_.image;
       }
@@ -560,28 +592,39 @@ namespace dxtbx {
       typedef scitbx::af::const_ref< double, scitbx::af::c_grid<2> > const_ref_type;
 
       // Get the multi-tile data, gain and pedestal
+      DXTBX_ASSERT(index < indices_.size());
       Image<double> data = get_raw_data(index).as_double();
       Image<double> gain = get_gain(index);
-      Image<double> pedestal = get_pedestal(index);
-      DXTBX_ASSERT(data.n_tiles() == gain.n_tiles());
-      DXTBX_ASSERT(data.n_tiles() == pedestal.n_tiles());
+      Image<double> dark = get_pedestal(index);
+      DXTBX_ASSERT(gain.n_tiles() == 0 || data.n_tiles() == gain.n_tiles());
+      DXTBX_ASSERT(dark.n_tiles() == 0 || data.n_tiles() == dark.n_tiles());
 
       // Loop through tiles
       Image<double> result;
       for (std::size_t i = 0; i < data.n_tiles(); ++i) {
 
-        // Get the data, gain and pedestal for each tile
+        // Get the data
         const_ref_type r = data.tile(i).data().const_ref();
-        const_ref_type g = gain.tile(i).data().const_ref();
-        const_ref_type p = pedestal.tile(i).data().const_ref();
+
+        // Get the gain and dark
+        const_ref_type g = gain.n_tiles() > 0 
+          ? gain.tile(i).data().const_ref()
+          : const_ref_type(NULL, scitbx::af::c_grid<2>(0,0));
+        const_ref_type p = dark.n_tiles() > 0
+          ? dark.tile(i).data().const_ref()
+          : const_ref_type(NULL, scitbx::af::c_grid<2>(0,0));
+
+        // Check gain and dark sizes
         DXTBX_ASSERT(g.size() == 0 || r.accessor().all_eq(g.accessor()));
         DXTBX_ASSERT(p.size() == 0 || r.accessor().all_eq(p.accessor()));
 
         // Create the result array
         array_type c(r.accessor());
+
+        // Copy the data values
         std::copy(r.begin(), r.end(), c.begin());
 
-        // Apply pedestal
+        // Apply dark
         if (p.size() > 0) {
           for (std::size_t j = 0; j < r.size(); ++j) {
             c[i] = c[i] - p[i];
@@ -595,6 +638,8 @@ namespace dxtbx {
             c[i] = c[i] / g[i];
           }
         }
+
+        // Add the image tile
         result.push_back(ImageTile<double>(c));
       }
 
@@ -609,12 +654,16 @@ namespace dxtbx {
      * @returns The gain
      */
     Image<double> get_gain(std::size_t index) {
+
+      // If the external lookup is empty
+      DXTBX_ASSERT(index < indices_.size());
       if (external_lookup().gain().get_data().empty()) {
 
-        Detector detector = *get_detector_for_image(index);
-        bool use_detector_gain = true;
+        // Get the detector
+        Detector detector = detail::safe_dereference(get_detector_for_image(index));
 
         // Compute the gain for each panel
+        bool use_detector_gain = true;
         std::vector<double> gain(detector.size(), 0);
         for (std::size_t i = 0; i < detector.size(); ++i) {
           gain[i] = detector[i].get_gain();
@@ -634,6 +683,8 @@ namespace dxtbx {
             scitbx::af::versa<double, scitbx::af::c_grid<2> > data(grid, gain[i]);
             result.push_back(ImageTile<double>(data));
           }
+
+          // Set the gain map
           external_lookup().gain().set_filename("");
           external_lookup().gain().set_data(result);
         }
@@ -648,6 +699,7 @@ namespace dxtbx {
      * @returns The pedestal image
      */
     Image<double> get_pedestal(std::size_t index) {
+      DXTBX_ASSERT(index < indices_.size());
       return external_lookup().pedestal().get_data();
     }
 
@@ -661,8 +713,9 @@ namespace dxtbx {
       typedef scitbx::af::versa< double, scitbx::af::c_grid<2> > array_type;
 
       // Compute the trusted range mask
+      DXTBX_ASSERT(index < indices_.size());
       Image<double> data = get_raw_data(index).as_double();
-      Detector detector = *get_detector_for_image(index);
+      Detector detector = detail::safe_dereference(get_detector_for_image(index));
       DXTBX_ASSERT(data.n_tiles() == detector.size());
       Image<bool> mask;
       for (std::size_t i = 0; i < detector.size(); ++i) {
@@ -703,24 +756,6 @@ namespace dxtbx {
 
       // Return the mask
       return mask;
-    }
-
-    /**
-     * Get the property
-     * @param name The property name
-     * @returns The property string
-     */
-    std::string get_property(const std::string &name) const {
-      return data_.get_property(name);
-    }
-
-    /**
-     * Set the property
-     * @param name The property name
-     * @param data The property string
-     */
-    void set_property(const std::string &name, const std::string &data) {
-      data_.set_property(name, data);
     }
 
     /**
@@ -769,9 +804,9 @@ namespace dxtbx {
      * @param beam The beam model
      */
     virtual
-    void set_beam_for_image(std::size_t index, const beam_ptr &beam) {
+    void set_beam_for_image(const beam_ptr &beam, std::size_t index) {
       DXTBX_ASSERT(index < indices_.size());
-      data_.set_beam(indices_[index], beam);
+      data_.set_beam(beam, indices_[index]);
     }
 
     /**
@@ -780,9 +815,9 @@ namespace dxtbx {
      * @param detector The detector model
      */
     virtual
-    void set_detector_for_image(std::size_t index, const detector_ptr &detector) {
+    void set_detector_for_image(const detector_ptr &detector, std::size_t index) {
       DXTBX_ASSERT(index < indices_.size());
-      data_.set_detector(indices_[index], detector);
+      data_.set_detector(detector, indices_[index]);
     }
 
     /**
@@ -791,9 +826,9 @@ namespace dxtbx {
      * @param goniometer The goniometer model
      */
     virtual
-    void set_goniometer_for_image(std::size_t index, const goniometer_ptr &goniometer) {
+    void set_goniometer_for_image(const goniometer_ptr &goniometer, std::size_t index) {
       DXTBX_ASSERT(index < indices_.size());
-      data_.set_goniometer(indices_[index], goniometer);
+      data_.set_goniometer(goniometer, indices_[index]);
     }
 
     /**
@@ -802,10 +837,10 @@ namespace dxtbx {
      * @param scan The scan model
      */
     virtual
-    void set_scan_for_image(std::size_t index, const scan_ptr &scan) {
+    void set_scan_for_image(const scan_ptr &scan, std::size_t index) {
       DXTBX_ASSERT(scan == NULL || scan->get_num_images() == 1);
       DXTBX_ASSERT(index < indices_.size());
-      data_.set_scan(indices_[index], scan);
+      data_.set_scan(scan, indices_[index]);
     }
 
     /**
@@ -1011,10 +1046,10 @@ namespace dxtbx {
 
       // Set the models for each image
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_beam_for_image(i, beam_);
-        ImageSet::set_detector_for_image(i, detector_);
-        ImageSet::set_goniometer_for_image(i, goniometer_);
-        ImageSet::set_scan_for_image(i, scan_ptr(new Scan(scan[i])));
+        ImageSet::set_beam_for_image(beam_, i);
+        ImageSet::set_detector_for_image(detector_, i);
+        ImageSet::set_goniometer_for_image(goniometer_, i);
+        ImageSet::set_scan_for_image(scan_ptr(new Scan(scan[i])), i);
       }
     }
 
@@ -1049,10 +1084,10 @@ namespace dxtbx {
 
       // Set the models for each image
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_beam_for_image(i, beam_);
-        ImageSet::set_detector_for_image(i, detector_);
-        ImageSet::set_goniometer_for_image(i, goniometer_);
-        ImageSet::set_scan_for_image(i, scan_ptr(new Scan(scan[i])));
+        ImageSet::set_beam_for_image(beam_, i);
+        ImageSet::set_detector_for_image(detector_, i);
+        ImageSet::set_goniometer_for_image(goniometer_, i);
+        ImageSet::set_scan_for_image(scan_ptr(new Scan(scan[i])), i);
       }
     }
 
@@ -1099,7 +1134,7 @@ namespace dxtbx {
     void set_beam(const Beam &beam) {
       beam_ = beam_ptr(new Beam(beam));
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_beam_for_image(i, beam_);
+        ImageSet::set_beam_for_image(beam_, i);
       }
     }
 
@@ -1110,7 +1145,7 @@ namespace dxtbx {
     void set_detector(const Detector &detector) {
       detector_ = detector_ptr(new Detector(detector));
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_detector_for_image(i, detector_);
+        ImageSet::set_detector_for_image(detector_, i);
       }
     }
 
@@ -1121,7 +1156,7 @@ namespace dxtbx {
     void set_goniometer(const Goniometer &goniometer) {
       goniometer_ = goniometer_ptr(new Goniometer(goniometer));
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_goniometer_for_image(i, goniometer_);
+        ImageSet::set_goniometer_for_image(goniometer_, i);
       }
     }
 
@@ -1149,35 +1184,35 @@ namespace dxtbx {
       DXTBX_ASSERT(scan.get_num_images() == size());
       scan_ = scan_ptr(new Scan(scan));
       for (std::size_t i = 0; i < size(); ++i) {
-        ImageSet::set_scan_for_image(i, scan_ptr(new Scan(scan[i])));
+        ImageSet::set_scan_for_image(scan_ptr(new Scan(scan[i])), i);
       }
     }
 
     /**
      * Override per-image model
      */
-    void set_beam_for_image(std::size_t index, const beam_ptr &beam) {
+    void set_beam_for_image(const beam_ptr &beam, std::size_t index) {
       DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
-    void set_detector_for_image(std::size_t index, const detector_ptr &detector) {
+    void set_detector_for_image(const detector_ptr &detector, std::size_t index) {
       DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
-    void set_goniometer_for_image(std::size_t index, const goniometer_ptr &goniometer) {
+    void set_goniometer_for_image(const goniometer_ptr &goniometer, std::size_t index) {
       DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
-    void set_scan_for_image(std::size_t index, const scan_ptr &scan) {
+    void set_scan_for_image(const scan_ptr &scan, std::size_t index) {
       DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 

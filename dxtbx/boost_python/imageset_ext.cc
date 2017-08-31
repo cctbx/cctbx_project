@@ -1,5 +1,6 @@
 #include <boost/python.hpp>
 #include <boost/python/def.hpp>
+#include <boost/shared_ptr.hpp>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/flex_types.h>
 #include <vector>
@@ -8,6 +9,63 @@
 
 namespace dxtbx { namespace boost_python {
 
+  namespace detail {
+    
+    std::string pickle_dumps(boost::python::object x) {
+      boost::python::object main = boost::python::import("__main__");
+      boost::python::object global(main.attr("__dict__"));
+      boost::python::object result = exec(
+          "def dumps(x):import pickle; return pickle.dumps(x)",
+          global, global);
+      boost::python::object dumps = global["dumps"];
+      return boost::python::extract<std::string>(dumps(x))();
+    }
+
+    boost::python::object pickle_loads(std::string x) {
+      boost::python::object main = boost::python::import("__main__");
+      boost::python::object global(main.attr("__dict__"));
+      boost::python::object result = exec(
+          "def loads(x):import pickle; return pickle.loads(x)",
+          global, global);
+      boost::python::object loads = global["loads"];
+      return loads(x);
+    }
+  }
+
+  boost::shared_ptr<ImageSetData> make_imageset_data(
+      boost::python::object reader,
+      boost::python::object masker,
+      std::string vendor,
+      boost::python::dict params,
+      boost::python::object format) {
+
+    // Create the pointer
+    boost::shared_ptr<ImageSetData> self(new ImageSetData(reader, masker));
+
+    // Set some stuff
+    self->set_vendor(vendor);
+    self->set_params(detail::pickle_dumps(params));
+    self->set_format(detail::pickle_dumps(format));
+
+    // Return the imageset data
+    return self;
+  }
+
+  boost::python::object ImageSetData_get_params(ImageSetData &self) {
+    return detail::pickle_loads(self.get_params());
+  }
+
+  void ImageSetData_set_params(ImageSetData &self, boost::python::dict params) {
+    self.set_params(detail::pickle_dumps(params));
+  }
+  
+  boost::python::object ImageSetData_get_format(ImageSetData &self) {
+    return detail::pickle_loads(self.get_format());
+  }
+
+  void ImageSetData_set_format(ImageSetData &self, boost::python::dict format) {
+    self.set_format(detail::pickle_dumps(format));
+  }
 
   template<typename T>
   void external_lookup_item_wrapper(const char *name) {
@@ -45,18 +103,29 @@ namespace dxtbx { namespace boost_python {
             return_internal_reference<>()))
       ;
 
-    class_<ImageSetData>("ImageSetData", no_init)
+    class_<ImageSetData, boost::shared_ptr<ImageSetData> >("ImageSetData", no_init)
       .def(init<
           boost::python::object,
-          boost::python::object>())
+          boost::python::object>((
+              arg("reader"),
+              arg("masker"))))
+      .def("__init__", 
+          make_constructor(
+            &make_imageset_data,
+            default_call_policies(), (
+              arg("reader"),
+              arg("masker"),
+              arg("vendor") = "",
+              arg("params") = boost::python::object(),
+              arg("format") = boost::python::object())))
+      .def("reader", &ImageSetData::reader)
+      .def("masker", &ImageSetData::masker)
       .def("get_data", &ImageSetData::get_data)
       .def("get_mask", &ImageSetData::get_mask)
       .def("has_single_file_reader", &ImageSetData::has_single_file_reader)
       .def("get_path", &ImageSetData::get_path)
       .def("get_master_path", &ImageSetData::get_master_path)
       .def("get_image_identifier", &ImageSetData::get_image_identifier)
-      .def("get_property", &ImageSetData::get_property)
-      .def("set_property", &ImageSetData::set_property)
       .def("get_beam", &ImageSetData::get_beam)
       .def("get_detector", &ImageSetData::get_detector)
       .def("get_goniometer", &ImageSetData::get_goniometer)
@@ -65,6 +134,12 @@ namespace dxtbx { namespace boost_python {
       .def("set_detector", &ImageSetData::set_detector)
       .def("set_goniometer", &ImageSetData::set_goniometer)
       .def("set_scan", &ImageSetData::set_scan)
+      .def("get_vendor", &ImageSetData::get_vendor)
+      .def("set_vendor", &ImageSetData::set_vendor)
+      .def("get_params", &ImageSetData_get_params)
+      .def("set_params", &ImageSetData_set_params)
+      .def("get_format_class", &ImageSetData_get_format)
+      .def("set_format_class", &ImageSetData_set_format)
       .add_property("external_lookup",
           make_function(
             &ImageSetData::external_lookup,
@@ -82,13 +157,12 @@ namespace dxtbx { namespace boost_python {
       .def("data", &ImageSet::data)
       .def("indices", &ImageSet::indices)
       .def("size", &ImageSet::size)
+      .def("__len__", &ImageSet::size)
       .def("get_raw_data", &ImageSet::get_raw_data)
       .def("get_corrected_data", &ImageSet::get_corrected_data)
       .def("get_gain", &ImageSet::get_gain)
       .def("get_pedestal", &ImageSet::get_pedestal)
       .def("get_mask", &ImageSet::get_mask)
-      .def("get_property", &ImageSet::get_property)
-      .def("set_property", &ImageSet::set_property)
       .def("get_beam", &ImageSet::get_beam_for_image)
       .def("get_detector", &ImageSet::get_detector_for_image)
       .def("get_goniometer", &ImageSet::get_goniometer_for_image)

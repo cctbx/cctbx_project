@@ -197,7 +197,7 @@ class ExternalLookup(object):
 
 
 
-class ImageSetAux(ImageSet, boost.python.injector):
+class ImageSetAux(boost.python.injector, ImageSet):
 
   def __getitem__(self, item):
     ''' Get an item from the image set stream.
@@ -214,32 +214,64 @@ class ImageSetAux(ImageSet, boost.python.injector):
 
     '''
     if isinstance(item, slice):
-      assert item.step is None
-      return self.partial_set(item.first, item.last)
+      if item.step is not None and item.step != 1:
+        raise IndexError("Step must be 1")
+      return self.partial_set(item.start, item.stop)
     else:
       return self.get_corrected_data(item)
 
   def __iter__(self):
     ''' Iterate over the array indices and read each image in turn. '''
     for i in range(len(self)):
-      yield self.get_raw_data(i)
+      yield self[i]
 
   def get_vendortype(self, index):
     ''' Get the vendor information. '''
-    return self.get_property("vendor")
+    return self.data().get_vendor()
 
   def get_format_class(self):
     ''' Get format class name '''
-    import cPickle as pickle
-    return pickle.loads(self.get_property("format"))
+    return self.data().get_format_class()
 
   def params(self):
     ''' Get the parameters '''
-    import json
-    return json.loads(self.get_property("params"))
+    return self.data().get_params()
 
+  def get_detectorbase(self, index):
+    '''
+    A function to be injected into the imageset to get the detectorbase instance
 
+    '''
+    kwargs = self.params()
+    if self.data().has_single_file_reader():
+      format_instance = self.get_format_class().get_instance(
+        self.data().get_master_path(), **kwargs)
+      return format_instance.get_detectorbase(self.indices()[index])
+    else:
+      format_instance = self.get_format_class().get_instance(
+        self.get_path(index), **kwargs)
+      return format_instance.get_detectorbase()
 
+  def reader(self):
+    '''
+    Return the reader
+    
+    '''
+    return self.data().reader()
+
+  def masker(self):
+    '''
+    Return the masker
+    
+    '''
+    return self.data().masker()
+
+  def paths(self):
+    '''
+    Return the list of paths
+
+    '''
+    return [self.get_path(i) for i in range(len(self))]
 
 #class ImageSet(object):
 
@@ -479,25 +511,6 @@ class ImageSetAux(ImageSet, boost.python.injector):
 
   #   '''
   #   return self
-
-
-
-
-def get_detectorbase(self, index):
-  '''
-  A function to be injected into the imageset to get the detectorbase instance
-
-  '''
-  kwargs = self.params()
-  if self.reader().is_single_file_reader():
-    format_instance = self.get_format_class().get_instance(self.reader().master_path(), **kwargs)
-    return format_instance.get_detectorbase(self.indices()[index])
-  else:
-    format_instance = self.get_format_class().get_instance(self.paths()[index], **kwargs)
-    return format_instance.get_detectorbase()
-
-# Inject the function
-ImageSet.get_detectorbase = get_detectorbase
 
 
 
@@ -761,7 +774,7 @@ class ImageSweepAux(ImageSweep, boost.python.injector):
     if isinstance(item, slice):
       if item.step != None:
         raise IndexError('Sweeps must be sequential')
-      return self.partial_set(item.first, item.last)
+      return self.partial_set(item.start, item.stop)
     else:
       return self.get_corrected_data(item)
 
