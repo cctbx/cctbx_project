@@ -11,6 +11,9 @@ namespace dxtbx { namespace boost_python {
 
   namespace detail {
 
+    /**
+     * Pickle a python object to a string
+     */
     std::string pickle_dumps(boost::python::object x) {
       boost::python::object main = boost::python::import("__main__");
       boost::python::object global(main.attr("__dict__"));
@@ -21,6 +24,9 @@ namespace dxtbx { namespace boost_python {
       return boost::python::extract<std::string>(dumps(x))();
     }
 
+    /**
+     * Unpickle a python object from a string
+     */
     boost::python::object pickle_loads(std::string x) {
       boost::python::object main = boost::python::import("__main__");
       boost::python::object global(main.attr("__dict__"));
@@ -32,6 +38,9 @@ namespace dxtbx { namespace boost_python {
     }
   }
 
+  /**
+   * A constructor for the imageset data class
+   */
   boost::shared_ptr<ImageSetData> make_imageset_data(
       boost::python::object reader,
       boost::python::object masker,
@@ -53,6 +62,38 @@ namespace dxtbx { namespace boost_python {
     return self;
   }
 
+  /**
+   * Set the parameters
+   */
+  boost::python::object ImageSetData_get_params(ImageSetData &self) {
+    return detail::pickle_loads(self.get_params());
+  }
+
+  /**
+   * Get the parameters
+   */
+  void ImageSetData_set_params(ImageSetData &self, boost::python::dict params) {
+    self.set_params(detail::pickle_dumps(params));
+  }
+
+  /**
+   * Set the format class
+   */
+  boost::python::object ImageSetData_get_format(ImageSetData &self) {
+    return detail::pickle_loads(self.get_format());
+  }
+
+  /**
+   * Get the format class
+   */
+  void ImageSetData_set_format(ImageSetData &self, boost::python::dict format) {
+    self.set_format(detail::pickle_dumps(format));
+  }
+
+
+  /**
+   * A constructor for the imageset class
+   */
   boost::shared_ptr<ImageSet> make_imageset(
       const ImageSetData &data,
       boost::python::object indices) {
@@ -68,22 +109,246 @@ namespace dxtbx { namespace boost_python {
             scitbx::af::const_ref<std::size_t> >(indices)()));
   }
 
-  boost::python::object ImageSetData_get_params(ImageSetData &self) {
-    return detail::pickle_loads(self.get_params());
-  }
+  /**
+   * Implement pickling for ImageSetData class
+   */
+  struct ImageSetDataPickleSuite : boost::python::pickle_suite {
 
-  void ImageSetData_set_params(ImageSetData &self, boost::python::dict params) {
-    self.set_params(detail::pickle_dumps(params));
-  }
+    static
+    boost::python::tuple getinitargs(ImageSetData obj) {
+      return boost::python::make_tuple(
+          obj.reader(),
+          obj.masker());
+    }
 
-  boost::python::object ImageSetData_get_format(ImageSetData &self) {
-    return detail::pickle_loads(self.get_format());
-  }
+    template <typename Model, typename Func>
+    static
+    boost::python::tuple get_model_list(ImageSetData obj, Func get) {
 
-  void ImageSetData_set_format(ImageSetData &self, boost::python::dict format) {
-    self.set_format(detail::pickle_dumps(format));
-  }
+      // Create a list of models and a list of indices
+      std::vector<const Model*> model_list;
+      std::vector<std::size_t> index_list;
+      for (std::size_t i = 0; i < obj.size(); ++i) {
+        Model *m = ((&obj)->*get)(i).get();
+        int k = -1;
+        for (std::size_t j = 0; j < model_list.size(); ++j) {
+          if (m == model_list[j-1]) {
+            k = j;
+            break;
+          }
+        }
+        if (k < 0) {
+          k = model_list.size();
+          model_list.push_back(m);
+        }
+        index_list.push_back(k);
+      }
 
+      // Convert to python lists and return tuple
+      boost::python::list models;
+      boost::python::list indices;
+      for (std::size_t i = 0; i < model_list.size(); ++i) {
+        models.append(model_list[i]);
+      }
+      for (std::size_t i = 0; i < index_list.size(); ++i) {
+        indices.append(index_list[i]);
+      }
+      return boost::python::make_tuple(models, indices);
+    }
+
+    static
+    boost::python::tuple get_model_tuple(ImageSetData obj) {
+      return boost::python::make_tuple(
+          ImageSetDataPickleSuite::get_model_list<Beam>(
+            obj, &ImageSetData::get_beam),
+          ImageSetDataPickleSuite::get_model_list<Detector>(
+            obj, &ImageSetData::get_detector),
+          ImageSetDataPickleSuite::get_model_list<Goniometer>(
+            obj, &ImageSetData::get_goniometer),
+          ImageSetDataPickleSuite::get_model_list<Scan>(
+            obj, &ImageSetData::get_scan));
+    }
+
+    static
+    boost::python::tuple get_lookup_tuple(ImageSetData obj) {
+      return boost::python::make_tuple(
+          boost::python::make_tuple(
+            obj.external_lookup().mask().get_filename(),
+            obj.external_lookup().mask().get_data()),
+          boost::python::make_tuple(
+            obj.external_lookup().gain().get_filename(),
+            obj.external_lookup().gain().get_data()),
+          boost::python::make_tuple(
+            obj.external_lookup().pedestal().get_filename(),
+            obj.external_lookup().pedestal().get_data()));
+    }
+
+    static
+    boost::python::tuple getstate(ImageSetData obj) {
+      return boost::python::make_tuple(
+          ImageSetDataPickleSuite::get_model_tuple(obj),
+          ImageSetDataPickleSuite::get_lookup_tuple(obj),
+          obj.get_template(),
+          obj.get_vendor(),
+          obj.get_params(),
+          obj.get_format());
+    }
+
+    template <typename Model, typename Func>
+    static
+    void set_model_list(ImageSetData &obj, boost::python::tuple data, Func set) {
+
+      // Extract to python lists
+      boost::python::list models = boost::python::extract<
+        boost::python::list>(data[0])();
+      boost::python::list indices = boost::python::extract<
+        boost::python::list>(data[1])();
+
+      // Convert to c++ vectors
+      std::vector< boost::shared_ptr<Model> > model_list;
+      std::vector< std::size_t > index_list;
+      for (std::size_t i = 0; i < boost::python::len(models); ++i) {
+        model_list.push_back(
+            boost::python::extract<
+              boost::shared_ptr<Model> >(models[i])());
+      }
+      for (std::size_t i = 0; i < boost::python::len(indices); ++i) {
+        index_list.push_back(boost::python::extract<std::size_t>(indices[i])());
+      }
+
+      // Set the models
+      DXTBX_ASSERT(index_list.size() == obj.size());
+      for (std::size_t i = 0; i < index_list.size(); ++i) {
+        DXTBX_ASSERT(index_list[i] < model_list.size());
+        ((&obj)->*set)(model_list[index_list[i]], i);
+      }
+    }
+
+    static
+    void set_model_tuple(ImageSetData &obj, boost::python::tuple models) {
+      DXTBX_ASSERT(boost::python::len(models) == 4);
+      ImageSetDataPickleSuite::set_model_list<Beam>(
+          obj,
+          boost::python::extract<boost::python::tuple>(models[0])(),
+          &ImageSetData::set_beam);
+      ImageSetDataPickleSuite::set_model_list<Detector>(
+          obj,
+          boost::python::extract<boost::python::tuple>(models[1]),
+          &ImageSetData::set_detector);
+      ImageSetDataPickleSuite::set_model_list<Goniometer>(
+          obj,
+          boost::python::extract<boost::python::tuple>(models[2]),
+          &ImageSetData::set_goniometer);
+      ImageSetDataPickleSuite::set_model_list<Scan>(
+          obj,
+          boost::python::extract<boost::python::tuple>(models[3]),
+          &ImageSetData::set_scan);
+    }
+
+    template <typename Data, typename Func>
+    static
+    void set_lookup_item(ImageSetData &obj, boost::python::tuple lookup, Func item) {
+      DXTBX_ASSERT(boost::python::len(lookup) == 2);
+
+      // Extract
+      std::string filename = boost::python::extract<std::string>(lookup[0])();
+      Data data = boost::python::extract<Data>(lookup[1])();
+
+      // Set the filename and data
+      ((&obj.external_lookup())->*item)().set_filename(filename);
+      ((&obj.external_lookup())->*item)().set_data(data);
+    }
+
+    static
+    void set_lookup_tuple(ImageSetData &obj, boost::python::tuple lookup) {
+      DXTBX_ASSERT(boost::python::len(lookup) == 3);
+      ImageSetDataPickleSuite::set_lookup_item< Image<bool> >(
+          obj,
+          boost::python::extract<boost::python::tuple>(lookup[0])(),
+          &ExternalLookup::mask);
+      ImageSetDataPickleSuite::set_lookup_item< Image<double> >(
+          obj,
+          boost::python::extract<boost::python::tuple>(lookup[1])(),
+          &ExternalLookup::gain);
+      ImageSetDataPickleSuite::set_lookup_item< Image<double> >(
+          obj,
+          boost::python::extract<boost::python::tuple>(lookup[2])(),
+          &ExternalLookup::pedestal);
+    }
+
+    static
+    void setstate(ImageSetData &obj, boost::python::tuple state) {
+
+      DXTBX_ASSERT(boost::python::len(state) == 6);
+
+      // Set the models
+      ImageSetDataPickleSuite::set_model_tuple(
+          obj,
+          boost::python::extract<boost::python::tuple>(state[0])());
+
+      // Set the lookup
+      ImageSetDataPickleSuite::set_lookup_tuple(
+          obj,
+          boost::python::extract<boost::python::tuple>(state[1])());
+
+      // Set the properties
+      obj.set_template(boost::python::extract<std::string>(state[2])());
+      obj.set_vendor(boost::python::extract<std::string>(state[3])());
+      obj.set_params(boost::python::extract<std::string>(state[4])());
+      obj.set_format(boost::python::extract<std::string>(state[5])());
+    }
+  };
+
+  /**
+   * Implement pickling for ImageSet class
+   */
+  struct ImageSetPickleSuite : boost::python::pickle_suite {
+
+    static
+    boost::python::tuple getinitargs(ImageSet obj) {
+      return boost::python::make_tuple(
+          obj.data(),
+          obj.indices());
+    }
+
+  };
+
+  /**
+   * Implement pickling for ImageGrid class
+   */
+  struct ImageGridPickleSuite : boost::python::pickle_suite {
+
+    static
+    boost::python::tuple getinitargs(ImageGrid obj) {
+      return boost::python::make_tuple(
+          obj.data(),
+          obj.indices(),
+          obj.get_grid_size());
+    }
+
+  };
+
+  /**
+   * Implement pickling for ImageSweep class
+   */
+  struct ImageSweepPickleSuite : boost::python::pickle_suite {
+
+    static
+    boost::python::tuple getinitargs(ImageSweep obj) {
+      return boost::python::make_tuple(
+          obj.data(),
+          obj.indices(),
+          obj.get_beam(),
+          obj.get_detector(),
+          obj.get_goniometer(),
+          obj.get_scan());
+    }
+
+  };
+
+  /**
+   * Wrapper for the external lookup items
+   */
   template<typename T>
   void external_lookup_item_wrapper(const char *name) {
     using namespace boost::python;
@@ -99,6 +364,9 @@ namespace dxtbx { namespace boost_python {
 
   }
 
+  /**
+   * Export the imageset classes
+   */
   void export_imageset() {
     using namespace boost::python;
 
@@ -162,6 +430,7 @@ namespace dxtbx { namespace boost_python {
           make_function(
             &ImageSetData::external_lookup,
             return_internal_reference<>()))
+      .def_pickle(ImageSetDataPickleSuite())
       ;
 
     class_<ImageSet>("ImageSet", no_init)
@@ -199,6 +468,7 @@ namespace dxtbx { namespace boost_python {
           make_function(
             &ImageSet::external_lookup,
             return_internal_reference<>()))
+      .def_pickle(ImageSetPickleSuite())
       ;
 
     class_<ImageGrid, bases<ImageSet> >("ImageGrid", no_init)
@@ -216,6 +486,7 @@ namespace dxtbx { namespace boost_python {
              arg("grid_size"))))
       .def("get_grid_size", &ImageGrid::get_grid_size)
       .def("from_imageset", &ImageGrid::from_imageset)
+      .def_pickle(ImageGridPickleSuite())
       ;
 
     class_<ImageSweep, bases<ImageSet> >("ImageSweep", no_init)
@@ -264,6 +535,7 @@ namespace dxtbx { namespace boost_python {
       .def("get_array_range", &ImageSweep::get_array_range)
       .def("complete_set", &ImageSweep::complete_sweep)
       .def("partial_set", &ImageSweep::partial_sweep)
+      .def_pickle(ImageSweepPickleSuite())
       ;
   }
 

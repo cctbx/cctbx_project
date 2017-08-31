@@ -706,10 +706,7 @@ namespace dxtbx {
             scitbx::af::versa<double, scitbx::af::c_grid<2> > data(grid, gain[i]);
             result.push_back(ImageTile<double>(data));
           }
-
-          // Set the gain map
-          external_lookup().gain().set_filename("");
-          external_lookup().gain().set_data(result);
+          return result;
         }
 
       }

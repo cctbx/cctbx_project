@@ -10,6 +10,7 @@
 #  included in the root directory of this package.
 from __future__ import absolute_import, division
 import boost.python
+import dxtbx.format.image
 from dxtbx_imageset_ext import *
 
 
@@ -116,24 +117,24 @@ class MemMasker(object):
     return len(self._images)
 
 
-class ExternalLookupItem(object):
-  '''
-  Save an external lookup item.
+# class ExternalLookupItem(object):
+#   '''
+#   Save an external lookup item.
 
-  '''
-  def __init__(self, data=None, filename=None):
-    self.data = data
-    self.filename = filename
+#   '''
+#   def __init__(self, data=None, filename=None):
+#     self.data = data
+#     self.filename = filename
 
-class ExternalLookup(object):
-  '''
-  A class to hold some external lookup data
+# class ExternalLookup(object):
+#   '''
+#   A class to hold some external lookup data
 
-  '''
-  def __init__(self):
-    self.mask = ExternalLookupItem()
-    self.gain = ExternalLookupItem()
-    self.pedestal = ExternalLookupItem()
+#   '''
+#   def __init__(self):
+#     self.mask = ExternalLookupItem()
+#     self.gain = ExternalLookupItem()
+#     self.pedestal = ExternalLookupItem()
 
 
 
@@ -514,54 +515,54 @@ class ImageSetAux(boost.python.injector, ImageSet):
 
 
 
-class ImageGrid(ImageSet):
-  '''
-  A class implementing an interface useful for processing grid scans
+# class ImageGrid(ImageSet):
+#   '''
+#   A class implementing an interface useful for processing grid scans
 
-  '''
-  def __init__(self,
-               reader,
-               masker=None,
-               properties={},
-               detectorbase_reader=None,
-               grid_size=None):
-    ''' Initialise the ImageSet object.
+#   '''
+#   def __init__(self,
+#                reader,
+#                masker=None,
+#                properties={},
+#                detectorbase_reader=None,
+#                grid_size=None):
+#     ''' Initialise the ImageSet object.
 
-    Params:
-        reader The reader object
-        array_range The image range (first, last)
+#     Params:
+#         reader The reader object
+#         array_range The image range (first, last)
 
-    '''
-    super(ImageGrid, self).__init__(
-      reader,
-      masker,
-      properties=properties,
-      detectorbase_reader=detectorbase_reader)
+#     '''
+#     super(ImageGrid, self).__init__(
+#       reader,
+#       masker,
+#       properties=properties,
+#       detectorbase_reader=detectorbase_reader)
 
-    # Set the grid size
-    num = grid_size[0] * grid_size[1]
-    assert num == len(indices)
-    self._grid_size = grid_size
+#     # Set the grid size
+#     num = grid_size[0] * grid_size[1]
+#     assert num == len(indices)
+#     self._grid_size = grid_size
 
-  def get_grid_size(self):
-    '''
-    Return the grid size
+#   def get_grid_size(self):
+#     '''
+#     Return the grid size
 
-    '''
-    return self._grid_size
+#     '''
+#     return self._grid_size
 
-  @classmethod
-  def from_imageset(cls, imageset, grid_size):
-    '''
-    Convert an imageset into an image grid
+#   @classmethod
+#   def from_imageset(cls, imageset, grid_size):
+#     '''
+#     Convert an imageset into an image grid
 
-    '''
-    return cls(
-      imageset._reader,
-      imageset._masker,
-      imageset._properties,
-      imageset._detectorbase_reader,
-      grid_size)
+#     '''
+#     return cls(
+#       imageset._reader,
+#       imageset._masker,
+#       imageset._properties,
+#       imageset._detectorbase_reader,
+#       grid_size)
 
 
 # class MemImageSet(ImageSet):
@@ -755,7 +756,7 @@ class ImageGrid(ImageSet):
 #     return MemImageSet(self._images)
 
 
-class ImageSweepAux(ImageSweep, boost.python.injector):
+class ImageSweepAux(boost.python.injector, ImageSweep):
 
   def __getitem__(self, item):
     ''' Get an item from the sweep stream.
@@ -781,6 +782,14 @@ class ImageSweepAux(ImageSweep, boost.python.injector):
   def get_template(self):
     ''' Return the template '''
     return self.data().get_template()
+
+  # def __getinitargs__(self):
+  #   '''
+  #   Return init args to pickle
+
+  #   '''
+  #   pass
+
 
 
 # class ImageSweep(ImageSet):

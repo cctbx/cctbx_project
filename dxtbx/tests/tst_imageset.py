@@ -788,7 +788,7 @@ def run():
   TestImageSweep().run()
   TestNexusFile().run()
   TestImageSetFactory().run()
-  #TestPickleImageSet().run()
+  TestPickleImageSet().run()
 
 
 if __name__ == '__main__':

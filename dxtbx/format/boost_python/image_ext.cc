@@ -72,6 +72,40 @@ namespace dxtbx { namespace format { namespace boost_python {
         name);
   }
 
+
+  template <typename T>
+  struct ImageTilePickleSuite : boost::python::pickle_suite {
+
+    static
+    boost::python::tuple getinitargs(ImageTile<T> obj) {
+      return boost::python::make_tuple(obj.data(), obj.name());
+    }
+
+  };
+
+  template <typename T>
+  struct ImagePickleSuite : boost::python::pickle_suite {
+
+    static
+    boost::python::tuple getstate(const Image<T> &obj) {
+      boost::python::list tile_list;
+      for (std::size_t i = 0; i < obj.n_tiles(); ++i) {
+        tile_list.append(obj.tile(i));
+      }
+      return boost::python::make_tuple(tile_list);
+    }
+
+    static
+    void setstate(Image<T> &obj, boost::python::tuple state) {
+      DXTBX_ASSERT(boost::python::len(state) == 1);
+      boost::python::list tile_list = boost::python::extract<boost::python::list>(state[0])();
+      for (std::size_t i = 0; i < boost::python::len(tile_list); ++i) {
+        obj.push_back(boost::python::extract< ImageTile<T> >(tile_list[i])());
+      }
+    }
+
+  };
+
   template <typename T>
   void image_tile_wrapper(const char *name) {
 
@@ -84,6 +118,7 @@ namespace dxtbx { namespace format { namespace boost_python {
       .def("name", &image_tile_type::name)
       .def("data", &image_tile_type::data)
       .def("empty", &image_tile_type::empty)
+      .def_pickle(ImageTilePickleSuite<T>())
       ;
   }
 
@@ -100,6 +135,7 @@ namespace dxtbx { namespace format { namespace boost_python {
       .def("n_tiles", &image_type::n_tiles)
       .def("append", &image_type::push_back)
       .def("__len__", &image_type::n_tiles)
+      .def_pickle(ImagePickleSuite<T>())
       ;
 
   }
