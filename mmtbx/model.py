@@ -155,7 +155,7 @@ class manager(object):
       pdb_interpretation_params = None,
       build_grm = False,  # build GRM straight away, without waiting for get_grm() call
       stop_for_unknowns = True,
-      all_chain_proxies = None, # Temporary, for refactoring phenix.refine
+      processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      processed_pdb_files_srv = None, # remove later
                      # reference_sites_cart = None,
                      restraints_manager = None, # remove later
@@ -193,7 +193,10 @@ class manager(object):
     if xray_structure is not None or pdb_hierarchy is not None:
       # Old way of doing things. Remove later completely.
       self.model_input = model_input
-      self.all_chain_proxies = all_chain_proxies
+      self.processed_pdb_file = processed_pdb_file
+      self.all_chain_proxies = None
+      if self.processed_pdb_file is not None:
+        self.all_chain_proxies = processed_pdb_file.all_chain_proxies
       if self.all_chain_proxies is not None:
         self._asc = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
       self.restraints_manager = restraints_manager
