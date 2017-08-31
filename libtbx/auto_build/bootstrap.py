@@ -2121,11 +2121,14 @@ class QRBuilder(PhenixBuilder):
 
   def get_codebases(self):
     if self.isPlatformWindows(): assert 0, 'not supported'
-    rc = self.EXTERNAL_CODEBASES + ['cctbx_project']
+    rc = self.EXTERNAL_CODEBASES #+ ['cctbx_project']
     return rc
 
   def add_tests(self):
-    pass
+    self.add_test_command('qr.test',
+                          #env = self.get_environment(),
+                          haltOnFailure=False,
+                          )
 
   def add_dispatchers(self):
     pass
