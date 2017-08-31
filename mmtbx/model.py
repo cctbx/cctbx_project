@@ -191,6 +191,8 @@ class manager(object):
 
     self._asc = None
     if xray_structure is not None or pdb_hierarchy is not None:
+      if xray_structure and pdb_hierarchy:
+        assert xray_structure.scatterers().size() == pdb_hierarchy.atoms_size()
       # Old way of doing things. Remove later completely.
       self.model_input = model_input
       self.processed_pdb_file = processed_pdb_file
