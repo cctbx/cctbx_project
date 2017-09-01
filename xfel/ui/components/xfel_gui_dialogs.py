@@ -1219,7 +1219,10 @@ class RunBlockDialog(BaseDialog):
                                       label_size=(100, -1),
                                       ctrl_size=(150, -1),
                                       choices=image_choices)
-    self.img_format.ctr.SetSelection(image_choices.index(block.format))
+    try:
+      self.img_format.ctr.SetSelection(image_choices.index(block.format))
+    except Exception:
+      pass #in case of selecting an unavailable default
     self.runblock_sizer.Add(self.img_format, flag=wx.TOP | wx.LEFT, border=10)
 
     self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
