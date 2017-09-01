@@ -1,4 +1,4 @@
-IOTA v1.1.022 - added filters to DIALS mode
+IOTA v1.1.023 - recover moved projects
 
-DIALS-processed images can now be filtered by unit cell, bravais lattice,
-number of reflections or resolution. Results are reported in summary, log, etc.
+If paths have changed in past project, can now renew input / output paths
+

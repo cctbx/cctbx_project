@@ -331,7 +331,6 @@ class MainWindow(wx.Frame):
 
   def onRecovery(self, e):
     # Find finished runs and display results
-
     int_folder = os.path.abspath('{}/integration'.format(os.curdir))
 
     if not os.path.isdir(int_folder):
@@ -354,11 +353,8 @@ class MainWindow(wx.Frame):
       self.reset_settings()
       selected = path_dlg.selected
       int_path = selected[1]
-      init_file = os.path.join(int_path, 'init.cfg')
 
-      rec_target_phil_file = os.path.join(int_path, 'target.phil')
-      with open(rec_target_phil_file, 'r') as pf:
-        rec_target_phil = pf.read()
+      init_file = os.path.join(int_path, 'init.cfg')
 
       if os.path.isfile(init_file):
         rec_init = ep.load(init_file)
@@ -378,19 +374,94 @@ class MainWindow(wx.Frame):
         input_entries = [i for i in rec_init.params.input if i != None]
         rec_init.input_list = ginp.make_input_list(input_entries)
 
-      # Re-populate input window with settings from read-in run
       self.gparams = self.iota_phil.extract()
+
+      # Test / fix input folders / files
+      for inp in self.gparams.input:
+        if not os.path.isdir(inp):
+          error_msg = wx.MessageDialog(None,
+                                       'Find Input Folder?',
+                                       'INPUT FOLDER {} NOT FOUND!'.format(inp),
+                                       wx.YES_NO | wx.ICON_ERROR)
+          if (error_msg.ShowModal() == wx.ID_YES):
+            open_dlg = wx.DirDialog(self, "Choose the input folder:",
+                                    style=wx.DD_DEFAULT_STYLE)
+            if open_dlg.ShowModal() == wx.ID_OK:
+              path = os.path.abspath(open_dlg.GetPath())
+              if path not in self.gparams.input:
+                self.gparams.input.append(path)
+            else:
+              return
+          else:
+            return
+        elif not os.path.isfile(inp):
+          error_msg = wx.MessageDialog(None,
+                                       'Find Input File?',
+                                       'INPUT FILE {} NOT FOUND!'.format(inp),
+                                       wx.YES_NO | wx.ICON_ERROR)
+          if (error_msg.ShowModal() == wx.ID_YES):
+            dlg = wx.FileDialog(
+              self, message="Select file",
+              defaultDir=os.curdir,
+              defaultFile="*",
+              wildcard="*",
+              style=wx.OPEN | wx.CHANGE_DIR
+            )
+            if dlg.ShowModal() == wx.ID_OK:
+              filepath = dlg.GetPaths()[0]
+              if filepath not in self.gparams.input:
+                self.gparams.input.append(filepath)
+            else:
+              return
+          else:
+            return
+
+      # Test / fix output folder
+      if not os.path.isdir(self.gparams.output):
+        error_msg = wx.MessageDialog(None,
+                                     'Find Output Folder?',
+                                     'OUTPUT FOLDER {} NOT FOUND!'.format(self.gparams.output),
+                                     wx.YES_NO | wx.ICON_ERROR)
+        if (error_msg.ShowModal() == wx.ID_YES):
+          open_dlg = wx.DirDialog(self, "Choose the output folder:",
+                                  style=wx.DD_DEFAULT_STYLE)
+          if open_dlg.ShowModal() == wx.ID_OK:
+            self.gparams.output = os.path.abspath(open_dlg.GetPath())
+            int_no = rec_init.int_base.split('/')[-1]
+            cnv_no = rec_init.conv_base.split('/')[-1]
+            rec_init.input_base = self.gparams.input
+            rec_init.conv_base = os.path.join(self.gparams.output,
+                                              'converted_pickles', cnv_no)
+            rec_init.int_base = os.path.join(self.gparams.output,
+                                             'integration', int_no)
+            rec_init.fin_base = os.path.join(rec_init.int_base, 'final')
+            rec_init.log_base = os.path.join(rec_init.int_base, 'logs')
+            rec_init.obj_base = os.path.join(rec_init.int_base, 'image_objects')
+            rec_init.viz_base = os.path.join(rec_init.int_base, 'visualization')
+            rec_init.logfile = os.path.join(int_path, 'iot.log')
+          else:
+            return
+        else:
+          return
+
+      # Re-populate input window with settings from read-in run (check that
+      # nothing has been moved)
+      rec_target_phil_file = os.path.join(rec_init.int_base, 'target.phil')
+      with open(rec_target_phil_file, 'r') as pf:
+        rec_target_phil = pf.read()
       self.target_phil = rec_target_phil
+
+
       self.update_input_window()
 
       # Re-open processing window with results of the run
       self.proc_window = frm.ProcWindow(self, -1, title='Image Processing',
                                         target_phil=rec_target_phil,
                                         phil=self.iota_phil)
-      self.proc_window.recover(int_path=int_path,
+      self.proc_window.recover(int_path=rec_init.int_base,
                                init=rec_init,
                                status=selected[0],
-                               params=rec_init.params)
+                               params=self.gparams)
       self.proc_window.Show(True)
 
   def onRun(self, e):
