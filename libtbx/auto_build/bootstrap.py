@@ -2088,7 +2088,7 @@ class QRBuilder(PhenixBuilder):
   EXTERNAL_CODEBASES = ["qrefine"]
 
   def add_make(self):
-    PhenixBuilder.add_make(self)
+    #PhenixBuilder.add_make(self)
     pip_installs = ['ase', 'JPype1','pymongo']
     instructions = []
     for pi in pip_installs:
