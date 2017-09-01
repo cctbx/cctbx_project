@@ -434,6 +434,8 @@ class Format(object):
       # Get the template
       if template is None:
         template = template_regex(filenames[0])[0]
+      else:
+        template = str(template)
 
       # Check scan makes sense
       if scan:

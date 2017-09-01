@@ -698,7 +698,11 @@ class ImageSetFactory(object):
   def from_template(template,
                     image_range=None,
                     check_headers=False,
-                    check_format=True):
+                    check_format=True,
+                    beam=None,
+                    detector=None,
+                    goniometer=None,
+                    scan=None):
     '''Create a new sweep from a template.
 
     Params:
@@ -747,6 +751,10 @@ class ImageSetFactory(object):
       filenames,
       template=template,
       as_sweep=True,
+      beam=beam,
+      detector=detector,
+      goniometer=goniometer,
+      scan=scan,
       check_format=check_format)
 
     # Return the sweep

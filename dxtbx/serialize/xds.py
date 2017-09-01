@@ -46,10 +46,6 @@ def to_imageset(input_filename, extra_filename=None):
     # we need the image files present to get the dxtbx models
     check_format = True
 
-  # Create the imageset
-  imageset = ImageSetFactory.from_template(
-    template, image_range=image_range, check_format=False)[0]
-
   # If an extra filename has been specified, try to load models
   if extra_filename:
     models = dxtbx.load(extra_filename)
@@ -68,13 +64,26 @@ def to_imageset(input_filename, extra_filename=None):
         panel.set_px_mm_strategy(ParallaxCorrectedPxMmStrategy(mu, t0))
         panel.set_trusted_range(
           (handle.minimum_valid_pixel_value, handle.overload))
-    imageset.set_beam(models.get_beam())
-    imageset.set_detector(detector)
-    imageset.set_goniometer(models.get_goniometer())
-    # take the image range from XDS.INP
+    beam = models.get_beam()
+    detector = models.get_detector()
+    goniometer = models.get_goniometer()
     scan = models.get_scan()
     scan.set_image_range(image_range)
-    imageset.set_scan(scan)
+  else:
+    beam = None
+    detector = None
+    goniometer = None
+    scan = None
+
+  # Create the imageset
+  imageset = ImageSetFactory.from_template(
+    template, 
+    image_range=image_range, 
+    check_format=check_format,
+    beam = beam,
+    detector = detector,
+    goniometer = goniometer,
+    scan = scan)[0]
 
   # Return the imageset
   return imageset

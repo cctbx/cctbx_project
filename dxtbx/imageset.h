@@ -1070,8 +1070,8 @@ namespace dxtbx {
         scan_(scan) {
 
       // Check the scan is the same length and number of images
-      DXTBX_ASSERT(data.size() == scan->get_num_images());
       DXTBX_ASSERT(scan.get() != NULL);
+      DXTBX_ASSERT(data.size() == scan->get_num_images());
 
       // Set the models for each image
       for (std::size_t i = 0; i < size(); ++i) {
@@ -1104,8 +1104,8 @@ namespace dxtbx {
         scan_(scan) {
 
       // Check the scan is the same length as number of indices
-      DXTBX_ASSERT(indices.size() == scan->get_num_images());
       DXTBX_ASSERT(scan.get() != NULL);
+      DXTBX_ASSERT(indices.size() == scan->get_num_images());
 
       // Check indices are sequential
       for (std::size_t i = 1; i < indices.size(); ++i) {

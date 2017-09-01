@@ -397,14 +397,14 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
           ('__id__', 'ImageSet'),
           ('images', imset.paths())])
         if imset.reader().is_single_file_reader():
-          r['single_file_indices'] = imset.indices()
+          r['single_file_indices'] = list(imset.indices())
       elif isinstance(imset, ImageGrid):
         r = OrderedDict([
           ('__id__', 'ImageGrid'),
           ('images', imset.paths()),
           ('grid_size', imset.get_grid_size())])
         if imset.reader().is_single_file_reader():
-          r['single_file_indices'] = imset.indices()
+          r['single_file_indices'] = list(imset.indices())
       else:
         raise TypeError('expected ImageSet or ImageSweep, got %s' % type(imset))
       r['mask'] = imset.external_lookup.mask.filename
