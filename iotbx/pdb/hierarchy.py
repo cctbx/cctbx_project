@@ -1310,6 +1310,78 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       conformer_indices.set_selected(altloc_indices[altloc], i+p)
     return conformer_indices
 
+  def rename_chain_id(self, old_id, new_id):
+    for model in self.models():
+      for chain in model.chains():
+        if(chain.id == old_id):
+          chain.id = new_id
+
+  def remove_atoms(self, fraction):
+    assert fraction>0 and fraction<1.
+    sel_keep = flex.random_bool(self.atoms_size(), 1-fraction)
+    return self.select(sel_keep)
+
+  def set_atomic_charge(self, iselection, charge):
+    assert isinstance(charge, int)
+    if(iselection is None):
+      raise Sorry("Specify an atom selection to apply a charge to.")
+    if(abs(charge) >= 10):
+      raise Sorry("The charge must be in the range from -9 to 9.")
+    if(iselection.size() == 0):
+      raise Sorry("Empty selection for charge modification")
+    if(charge == 0):
+      charge = "  "
+    elif (charge < 0):
+      charge = "%1d-" % abs(charge)
+    else:
+      charge = "%1d+" % charge
+    atoms = self.atoms()
+    for i_seq in iselection:
+      atom = atoms[i_seq]
+      atom.set_charge(charge)
+
+  def truncate_to_poly_gly(self):
+    pdb_atoms = self.atoms()
+    pdb_atoms.reset_i_seq()
+    from iotbx.pdb import amino_acid_codes
+    aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
+    gly_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
+    for model in self.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          def have_amino_acid():
+            for ag in rg.atom_groups():
+              if (ag.resname in aa_resnames):
+                return True
+            return False
+          if (have_amino_acid()):
+            for ag in rg.atom_groups():
+              for atom in ag.atoms():
+                if (atom.name not in gly_atom_names):
+                  ag.remove_atom(atom=atom)
+
+  def convert_semet_to_met(self):
+    for i_seq, atom in enumerate(self.atoms()):
+      if (atom.name.strip()=="SE") and (atom.element.strip().upper()=="SE"):
+        atom_group = atom.parent()
+        if(atom_group.resname == "MSE"):
+          atom_group.resname = "MET"
+          atom.name = " SD "
+          atom.element = " S"
+          for ag_atom in atom_group.atoms() :
+            ag_atom.hetero = False
+
+  def convert_met_to_semet(self):
+    for i_seq, atom in enumerate(self.atoms()):
+      if((atom.name.strip()=="SD") and (atom.element.strip().upper()=="S")):
+        atom_group = atom.parent()
+        if(atom_group.resname == "MET") :
+          atom_group.resname = "MSE"
+          atom.name = " SE "
+          atom.element = "SE"
+          for ag_atom in atom_group.atoms():
+            ag_atom.hetero = True
+
   def transfer_chains_from_other(self, other):
     from iotbx.pdb import hy36encode
     i_model = 0

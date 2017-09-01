@@ -6715,6 +6715,193 @@ END
   assert len(p1.atoms())==4
   assert approx_equal(xyz_p1, p1.atoms().extract_xyz())
 
+def exercise_convert_met_to_semet():
+  pdb_str_met1 = """
+ATOM      1  N   MET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA  MET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C   MET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O   MET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB  MET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG  MET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD  MET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE  MET B  37       8.775   5.000  10.645  1.00 10.00           C
+TER
+END
+  """
+  pdb_str_met2 = """
+ATOM      1  N  AMET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA AMET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  AMET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  AMET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB AMET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG AMET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD AMET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE AMET B  37       8.775   5.000  10.645  1.00 10.00           C
+ATOM      1  N  BMET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA BMET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  BMET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  BMET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB BMET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG BMET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD BMET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE BMET B  37       8.775   5.000  10.645  1.00 10.00           C
+TER
+END
+  """
+  for pdb_str in [pdb_str_met1, pdb_str_met2]:
+    pi = pdb.input(source_info=None, lines=pdb_str)
+    ph_met_in = pi.construct_hierarchy()
+    ph_met_in.convert_met_to_semet()
+    for rg in ph_met_in.residue_groups():
+      for rn in rg.unique_resnames():
+        assert rn=="MSE"
+    ph_met_in.convert_semet_to_met()
+    for rg in ph_met_in.residue_groups():
+      for rn in rg.unique_resnames():
+        assert rn=="MET"
+
+def exercise_truncate_to_polyala():
+  pdb_str = """
+ATOM      1  N  AMET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA AMET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  AMET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  AMET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB AMET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG AMET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD AMET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE AMET B  37       8.775   5.000  10.645  1.00 10.00           C
+ATOM      1  N  BMET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA BMET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  BMET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  BMET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB BMET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG BMET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD BMET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE BMET B  37       8.775   5.000  10.645  1.00 10.00           C
+TER
+END
+  """
+  pi = pdb.input(source_info=None, lines=pdb_str)
+  ph_in = pi.construct_hierarchy()
+  ph_in.truncate_to_poly_gly()
+  for a in ph_in.atoms():
+    assert a.name in [" N  ", " CA ", " C  ", " O  ", " CB "]
+
+def exercise_set_atomic_charge():
+  pdb_str = """
+ATOM      1  CL  CL  X   1       0.000   0.000   0.000  1.00 20.00          CL
+END
+"""
+  pi = pdb.input(source_info=None, lines=pdb_str)
+  ph = pi.construct_hierarchy()
+  ph.set_atomic_charge(iselection=flex.size_t([0]), charge=-1)
+  xrs = ph.extract_xray_structure()
+  assert (xrs.scatterers()[0].scattering_type == 'Cl1-')
+  assert (ph.atoms()[0].charge == '1-')
+
+def exercise_remove_atoms():
+  random.seed(1)
+  flex.set_random_seed(1)
+  pdb_str = """
+ATOM      1  N  AMET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA AMET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  AMET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  AMET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB AMET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG AMET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD AMET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE AMET B  37       8.775   5.000  10.645  1.00 10.00           C
+ATOM      1  N  BMET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA BMET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  BMET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  BMET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB BMET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG BMET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD BMET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE BMET B  37       8.775   5.000  10.645  1.00 10.00           C
+ATOM      1  N  AMET B  38       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA AMET B  38       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  AMET B  38       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  AMET B  38       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB AMET B  38       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG AMET B  38       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD AMET B  38       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE AMET B  38       8.775   5.000  10.645  1.00 10.00           C
+ATOM      1  N  BMET B  38       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA BMET B  38       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  BMET B  38       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  BMET B  38       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB BMET B  38       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG BMET B  38       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD BMET B  38       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE BMET B  38       8.775   5.000  10.645  1.00 10.00           C
+ATOM      1  N  AMET B  39       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA AMET B  39       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  AMET B  39       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  AMET B  39       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB AMET B  39       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG AMET B  39       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD AMET B  39       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE AMET B  39       8.775   5.000  10.645  1.00 10.00           C
+ATOM      1  N  BMET B  39       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA BMET B  39       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  BMET B  39       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  BMET B  39       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB BMET B  39       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG BMET B  39       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD BMET B  39       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE BMET B  39       8.775   5.000  10.645  1.00 10.00           C
+TER
+END
+  """
+  pi = pdb.input(source_info=None, lines=pdb_str)
+  ph_in = pi.construct_hierarchy()
+  s1 = ph_in.atoms_size()
+  ph = ph_in.remove_atoms(fraction=0.1)
+  s2 = ph.atoms_size()
+  f = s2*100./s1
+  assert f>90 and f<100
+
+def exercise_set_atomic_charge():
+  pdb_str = """
+ATOM      1  CL  CL  X   1       0.000   0.000   0.000  1.00 20.00          CL
+END
+"""
+  pi = pdb.input(source_info=None, lines=pdb_str)
+  ph = pi.construct_hierarchy()
+  ph.set_atomic_charge(iselection=flex.size_t([0]), charge=-1)
+  xrs = ph.extract_xray_structure()
+  assert (xrs.scatterers()[0].scattering_type == 'Cl1-')
+  assert (ph.atoms()[0].charge == '1-')
+
+def exercise_rename_chain_id():
+  pdb_str = """
+ATOM      1  N  AMET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA AMET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  AMET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  AMET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB AMET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG AMET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD AMET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE AMET B  37       8.775   5.000  10.645  1.00 10.00           C
+TER
+ATOM      1  N  BMET C  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA BMET C  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C  BMET C  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O  BMET C  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB BMET C  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG BMET C  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD BMET C  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE BMET C  37       8.775   5.000  10.645  1.00 10.00           C
+TER
+END
+  """
+  pi = pdb.input(source_info=None, lines=pdb_str)
+  ph_in = pi.construct_hierarchy()
+  ph_in.rename_chain_id(old_id="C", new_id="A")
+  assert [c.id.strip() for c in ph_in.chains()] == ["B","A"]
+
+
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
@@ -6729,6 +6916,11 @@ def exercise(args):
       prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
+    exercise_rename_chain_id()
+    exercise_convert_met_to_semet()
+    exercise_truncate_to_polyala()
+    exercise_set_atomic_charge()
+    exercise_remove_atoms()
     exercise_expand_to_p1()
     exercise_chunk_selections()
     exercise_set_i_seq()
