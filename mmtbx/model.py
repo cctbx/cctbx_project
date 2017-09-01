@@ -520,7 +520,11 @@ class manager(object):
   def input_format_was_cif(self):
     return self.original_model_format == "mmcif"
 
-  def _build_grm(self):
+  def _build_grm(
+      self,
+      plain_pairs_radius=5.0,
+      custom_nb_excl=None,
+      ):
     process_pdb_file_srv = mmtbx.utils.process_pdb_file_srv(
         crystal_symmetry          = self.cs,
         pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
@@ -557,9 +561,11 @@ class manager(object):
     #   self.pdb_interpretation_params = master_params().fetch().extract()
     # disabled temporarily due to architecture changes
     geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies                = False,
-      params_edits                 = self.pdb_interpretation_params.geometry_restraints.edits,
-      plain_pairs_radius           = 5,
+      show_energies      = False,
+      plain_pairs_radius = plain_pairs_radius,
+      params_edits       = self.pdb_interpretation_params.geometry_restraints.edits,
+      params_remove      = self.pdb_interpretation_params.geometry_restraints.remove,
+      custom_nonbonded_exclusions  = custom_nb_excl,
       assume_hydrogens_all_missing = not has_hd)
 
     # Link treating should be rewritten. They should not be saved in
