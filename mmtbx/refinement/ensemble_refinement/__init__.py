@@ -417,9 +417,7 @@ class run_ensemble_refinement(object):
     #Atom selections
     self.atom_selections()
 
-    self.model.show_geometry_statistics(message   = "Starting model",
-                                        ignore_hd = True,
-                                        out       = self.log)
+    self.model.geometry_statistics()
 
     self.setup_bulk_solvent_and_scale()
 

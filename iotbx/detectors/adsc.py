@@ -45,7 +45,7 @@ class ADSCImage(DetectorImageBase):
           ('DETECTOR_SN','DETECTOR_SN',int),
           ('PIXEL_SIZE','PIXEL_SIZE',float),
           ('OSC_START','OSC_START',float),
-          ('DISTANCE','DISTANCE',float),
+          ('DISTANCE',r'\nDISTANCE',float),
           ('WAVELENGTH',r'\nWAVELENGTH',float),
           ('BEAM_CENTER_X',r'\nBEAM_CENTER_X',float),
           ('BEAM_CENTER_Y',r'\nBEAM_CENTER_Y',float),

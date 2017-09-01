@@ -28,17 +28,17 @@ class target_and_gradients(object):
                real_space_target_weight = None,
                restraints_target_weight = None,
                sites_cart = None,
-               target_type = "diff_map"):
+               target_type = "diffmap"):
     adopt_init_args(self, locals())
-    assert target_type in ["simple", "diff_map"]
+    assert target_type in ["simple", "diffmap"]
     if(geometry_restraints_manager is not None):
       assert [real_space_target_weight, restraints_target_weight, sites_cart
              ].count(None)==0
       self.geom_tg_obj = geometry_restraints_manager.energies_sites(
         sites_cart = sites_cart, compute_gradients = True)
-    if(target_type == "diff_map"):
+    if(target_type == "diffmap"):
       assert map_current is not None
-      self.rsr_tg_obj = maptbx.target_and_gradients(
+      self.rsr_tg_obj = maptbx.target_and_gradients_diffmap(
         unit_cell   = unit_cell,
         map_target  = map_target,
         map_current = map_current,
@@ -46,14 +46,16 @@ class target_and_gradients(object):
         sites_frac  = sites_frac)
     if(target_type == "simple"):
       assert sites_cart is not None
-      self.rsr_tg_obj = real_space_refinement_simple.target_and_gradients(
-        unit_cell                  = unit_cell,
-        density_map                = map_target,
-        sites_cart                 = sites_cart,
-        real_space_gradients_delta = real_space_gradients_delta)
+      self.rsr_tg_obj = maptbx.target_and_gradients_simple(
+        unit_cell   = unit_cell,
+        map_target  = map_target,
+        sites_cart  = sites_cart,
+        delta       = real_space_gradients_delta,
+        selection   = flex.bool(sites_cart.size(),True))
 
   def target(self):
     rs_f = self.rsr_tg_obj.target()
+    if(self.target_type=="simple"): rs_f *= -1.
     if(self.geometry_restraints_manager):
       result = self.real_space_target_weight * rs_f + \
                self.restraints_target_weight * self.geom_tg_obj.target
@@ -63,6 +65,7 @@ class target_and_gradients(object):
 
   def gradients(self):
     rs_g = self.rsr_tg_obj.gradients()
+    if(self.target_type=="simple"): rs_g *= -1.
     if(self.geometry_restraints_manager):
       g = self.real_space_target_weight * rs_g + \
           self.restraints_target_weight * self.geom_tg_obj.gradients
@@ -72,39 +75,28 @@ class target_and_gradients(object):
 
   def weight(self):
     gx = self.rsr_tg_obj.gradients()
-    #tmp = flex.sqrt(gx.dot())
-    #sel = tmp < 3*flex.mean(tmp)
-    #gx = gx.select(sel)
-    #
     gc = self.geom_tg_obj.gradients
     tmp = flex.sqrt(gc.dot())
     sel = tmp < 3*flex.mean(tmp)
     gc = gc.select(sel)
-    #
-    #print
-    #h = flex.histogram(data = flex.sqrt(gx.dot()) , n_slots = 10)
-    #show(h)
-    #print
-    #h = flex.histogram(data = flex.sqrt(gc.dot()), n_slots = 10)
-    #show(h)
-    #print
     result = gx.norm()/gc.norm()
     return result
 
 
-class minimization(object):
+class run(object):
   def __init__(self,
         xray_structure,
         miller_array,
         crystal_gridding,
         map_target,
         step,
+        target_type,
         max_iterations=30,
         min_iterations=25,
         geometry_restraints_manager=None,
         real_space_target_weight=1,
-        restraints_target_weight=1,
-        target_type = "diff_map"):
+        restraints_target_weight=1):
+    assert target_type in ["diffmap", "simple"]
     self.step = step
     self.geometry_restraints_manager = geometry_restraints_manager
     self.real_space_target_weight = real_space_target_weight
@@ -134,7 +126,7 @@ class minimization(object):
     self.sites_cart = flex.vec3_double(self.x)
     self.xray_structure = self.xray_structure.replace_sites_cart(self.sites_cart)
     self.map_current = None
-    if(self.target_type == "diff_map"):
+    if(self.target_type == "diffmap"):
       self.map_current = self.compute_map()
     tg_obj = target_and_gradients(
       unit_cell                   = self.xray_structure.unit_cell(),

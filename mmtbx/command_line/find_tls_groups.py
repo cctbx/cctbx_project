@@ -707,6 +707,10 @@ def find_tls (params,
               return_as_list=False,
               ignore_pdb_header_groups=False,
               out=None) :
+  """
+  !!! WARNING! incoming xray_structure here gets converted to
+  isotropic B-factors IN PLACE.
+  """
   if (out is None) :
     out = sys.stdout
   print_statistics.make_header("Analyzing inputs", out=out)

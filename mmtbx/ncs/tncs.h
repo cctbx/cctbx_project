@@ -9,7 +9,7 @@
 #include <scitbx/math/g_function.h>
 #include <boost/python/list.hpp>
 #include <boost/python/extract.hpp>
-#include <cctbx/maptbx/real_space_gradients_simple.h> // import dependency
+// #include <cctbx/maptbx/real_space_gradients_simple.h> // import dependency
 #include <cctbx/sgtbx/space_group.h>
 #include <mmtbx/error.h>
 

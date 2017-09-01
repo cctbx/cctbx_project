@@ -3,7 +3,7 @@
 from __future__ import division
 import mmtbx.refinement.geometry_minimization
 import mmtbx.utils
-from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
+from iotbx.pdb import combine_unique_pdb_files
 import iotbx.phil
 from cctbx.array_family import flex
 from libtbx.utils import user_plus_sys_time, Sorry
@@ -379,14 +379,15 @@ class run(object):
 
   def __execute(self):
     #
-    self.caller(self.initialize,           "Initialization, inputs")
-    self.caller(self.process_inputs,       "Processing inputs")
-    self.caller(self.atom_selection,       "Atom selection")
-    self.caller(self.get_restraints,       "Geometry Restraints")
-    self.caller(self.setup_riding_h,       "Setup riding H")
-    self.caller(self.minimization,         "Minimization")
-    self.caller(self.write_pdb_file,       "Write PDB file")
-    self.caller(self.write_geo_file,       "Write GEO file")
+    self.caller(self.initialize,            "Initialization, inputs")
+    self.caller(self.process_inputs,        "Processing inputs")
+    self.caller(self.atom_selection,        "Atom selection")
+    self.caller(self.get_restraints,        "Geometry Restraints")
+    self.caller(self.setup_riding_h,        "Setup riding H")
+    self.caller(self.minimization,          "Minimization")
+    self.caller(self.write_pdb_file,        "Write PDB file")
+    self.caller(self.write_geo_file,        "Write GEO file")
+    self.caller(self.show_model_statistics, "Model statistics")
     #
     self.show_times()
 
@@ -491,7 +492,7 @@ class run(object):
         log = self.log)
 
     self.ncs_obj = self.model.get_ncs_obj()
-    self.output_crystal_symmetry = is_non_crystallographic_unit_cell
+    self.output_crystal_symmetry = not is_non_crystallographic_unit_cell
     self.sites_cart_start = self.model.get_xrs().sites_cart().deep_copy()
     if(self.params.show_states):
       self.states_collector = mmtbx.utils.states(
@@ -588,12 +589,21 @@ class run(object):
       f.write(restr_txt)
       f.close()
 
+  def show_model_statistics(self, prefix):
+    if self.params.write_geo_file:
+      broadcast(m=prefix, log = self.log)
+      s = mmtbx.model.statistics(
+        pdb_hierarchy               = self.model.get_hierarchy(),
+        geometry_restraints_manager = self.model.get_grm().geometry)
+      s.show(log = self.log)
+
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
     os.mkdir(self.output_dir)
     os.chdir(self.output_dir)
-    return run(args=self.args, log=sys.stdout,
-      use_directory_prefix=False).output_file_name
+    filename = run(args=self.args, log=sys.stdout,
+                   use_directory_prefix=False).result_model_fname
+    return os.path.join(self.output_dir, filename)
 
 def validate_params (params) :
   if (params.file_name is None) :

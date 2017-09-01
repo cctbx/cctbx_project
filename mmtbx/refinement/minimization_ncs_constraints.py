@@ -1,5 +1,5 @@
 from __future__ import division
-import cctbx.maptbx.real_space_refinement_simple
+from cctbx import maptbx
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
 import mmtbx.ncs.ncs_utils as nu
@@ -218,16 +218,16 @@ class target_function_and_grads_real_space(object):
       x: refined parameters
     """
     g = None
-    tg = cctbx.maptbx.real_space_refinement_simple.target_and_gradients(
-      unit_cell                  = self.unit_cell,
-      density_map                = self.map_data,
-      sites_cart                 = self.xray_structure.sites_cart(),
-      real_space_gradients_delta = self.real_space_gradients_delta,
-      selection                  = self.selection)
-    t = tg.target()
+    tg = maptbx.target_and_gradients_simple(
+      unit_cell   = self.unit_cell,
+      map_target  = self.map_data,
+      sites_cart  = self.xray_structure.sites_cart(),
+      delta       = self.real_space_gradients_delta,
+      selection   = self.selection)
+    t = tg.target()*(-1)
     if compute_gradients:
       if self.refine_sites:
-        g = tg.gradients()
+        g = tg.gradients()*(-1)
     return t, g
 
   def target_and_gradients(self,compute_gradients,xray_structure,x):

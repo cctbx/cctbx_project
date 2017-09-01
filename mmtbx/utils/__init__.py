@@ -939,65 +939,6 @@ def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
           % show_string(string))
   return result
 
-def write_pdb_file(
-      xray_structure,
-      pdb_hierarchy,
-      pdb_atoms = None,
-      write_cryst1_record = True,
-      selection = None,
-      atoms_reset_serial = True,
-      out = None,
-      return_pdb_string = False):
-  """
-  Write the specified model to a PDB-format file, incorporating refined atomic
-  parameters.
-  """
-  if (write_cryst1_record and out is not None):
-    crystal_symmetry = xray_structure.crystal_symmetry()
-    print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
-    print >> out, pdb.format_scale_records(
-      unit_cell = crystal_symmetry.unit_cell())
-  # XXX PDB_TRANSITION SLOW
-  xrs = xray_structure
-  scatterers = xrs.scatterers()
-  sites_cart = xrs.sites_cart()
-  u_isos = xrs.extract_u_iso_or_u_equiv()
-  if (selection is not None):
-    pdb_hierarchy = pdb_hierarchy.select(selection)
-    pdb_atoms = None
-    scatterers = scatterers.select(selection)
-    sites_cart = sites_cart.select(selection)
-    u_isos = u_isos.select(selection)
-  occupancies = scatterers.extract_occupancies()
-  u_carts = scatterers.extract_u_cart_plus_u_iso(xrs.unit_cell())
-  scat_types = scatterers.extract_scattering_types()
-  if (pdb_atoms is None):
-    pdb_atoms = pdb_hierarchy.atoms()
-  # XXX PDB_TRANSITION SLOW
-  for j_seq,atom in enumerate(pdb_atoms):
-    atom.xyz = sites_cart[j_seq]
-    atom.occ = occupancies[j_seq]
-    atom.b = adptbx.u_as_b(u_isos[j_seq])
-    if (scatterers[j_seq].flags.use_u_aniso()):
-      atom.uij = u_carts[j_seq]
-    else:
-      atom.uij_erase()
-    atom.set_element_and_charge_from_scattering_type_if_necessary(
-      scattering_type=scat_types[j_seq])
-  if (atoms_reset_serial):
-    atoms_reset_serial_first_value = 1
-  else:
-    atoms_reset_serial_first_value = None
-  if not return_pdb_string:
-    out.write(pdb_hierarchy.as_pdb_string(
-      append_end=True,
-      atoms_reset_serial_first_value=atoms_reset_serial_first_value))
-  else:
-    return pdb_hierarchy.as_pdb_string(
-      append_end=True,
-      crystal_symmetry = xray_structure.crystal_symmetry(),
-      atoms_reset_serial_first_value=atoms_reset_serial_first_value)
-
 def print_programs_start_header(log, text):
   print >> log
   host_and_user().show(out= log)
@@ -1825,6 +1766,8 @@ class pdb_file(object):
         self.ignore_unknown_nonbonded_energy_types)
     if(msg is not None): raise Sorry(msg)
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: old way of creating model, used only in mmtbx/regression/tst_model.py
 def model_simple(pdb_file_names,
                  log = None,
                  normalization = True,
@@ -1878,6 +1821,7 @@ def model_simple(pdb_file_names,
     pdb_hierarchy           = pdb_hierarchy,
     log                     = log)
   return result
+# END MARKED_FOR_DELETION_OLEG
 
 def extract_tls_and_u_total_from_pdb(
       f_obs,

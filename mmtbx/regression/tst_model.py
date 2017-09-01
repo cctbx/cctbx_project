@@ -934,17 +934,29 @@ def exercise(mon_lib_srv, ener_lib):
 ################
 
 
-
+  # Not clear why one needed 2 identical files...
   mol_copy = mol.deep_copy()
   assert mol.number_of_ordered_solvent_molecules() == 9
-  mol.write_pdb_file(out = open("test_model_out.pdb","w"))
-  mol.write_pdb_file(out = open("test_model_out_nohydrogens.pdb","w"))
+  f1 = open("test_model_out.pdb","w")
+  f2 = open("test_model_out_nohydrogens.pdb","w")
+  pdb_str = mol.model_as_pdb()
+  f1.write(pdb_str)
+  pdb_str = mol.model_as_pdb()
+  f2.write(pdb_str)
+  f1.close()
+  f2.close()
   mol = mol.remove_solvent()
   assert mol.number_of_ordered_solvent_molecules() == 0
-  mol.write_pdb_file(out = open("test_model_out_nosolvent.pdb","w"))
-  mol.write_pdb_file(out = open("test_model_out_noO.pdb","w"))
-  mol.show_geometry_statistics(ignore_hd = True)
-  mol.show_geometry_statistics(ignore_hd = True)
+  f1 = open("test_model_out_nosolvent.pdb","w")
+  f2 = open("test_model_out_noO.pdb","w")
+  pdb_str = mol.model_as_pdb()
+  f1.write(pdb_str)
+  pdb_str = mol.model_as_pdb()
+  f2.write(pdb_str)
+  f1.close()
+  f2.close()
+  mol.geometry_statistics().show()
+  mol.geometry_statistics().show()
 
 ################
   geometry = processed_pdb_file.geometry_restraints_manager(
@@ -961,9 +973,9 @@ def exercise(mon_lib_srv, ener_lib):
   mol_other.xray_structure.scattering_type_registry(table = "wk1995")
 ################
 
-  mol_other.show_geometry_statistics(ignore_hd = True)
+  mol_other.geometry_statistics()
   print
-  mol.show_geometry_statistics(ignore_hd = True)
+  mol.geometry_statistics()
 
 #####
   class iso: pass
@@ -983,9 +995,15 @@ def exercise(mon_lib_srv, ener_lib):
 
   rm = mol.restraints_manager
 
-  mol_copy.write_pdb_file(out = open("XXX.pdb","w"))
-  mol_copy.write_pdb_file(out = open("XXXr.pdb","w"))
-
+  # Not clear why one needed 2 identical files...
+  f1 = open("XXX.pdb","w")
+  f2 = open("XXXr.pdb","w")
+  pdb_str = mol_copy.model_as_pdb()
+  f1.write(pdb_str)
+  pdb_str = mol_copy.model_as_pdb()
+  f2.write(pdb_str)
+  f1.close()
+  f2.close()
 
 def exercise_2(mon_lib_srv, ener_lib):
   pdb_file = libtbx.env.find_in_repositories(
@@ -1277,10 +1295,30 @@ ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
   result = model.extract_water_residue_groups()
   assert len(result)==1
 
+def exercise_6(mon_lib_srv, ener_lib):
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv    = mon_lib_srv,
+    ener_lib       = ener_lib,
+    file_name      = None,
+    raw_records    = pdb_str_00,
+    force_symmetry = True)
+  geometry = processed_pdb_file.geometry_restraints_manager(
+    show_energies      = False,
+    plain_pairs_radius = 5.0)
+  ms = mmtbx.model.statistics(
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    geometry_restraints_manager = geometry)
+  ms.show()
+  #
+  # IF you are about to change this - STOP! Likely you're doing something wrong!
+  #
+  import inspect
+  r = inspect.getargspec(mmtbx.model.statistics.__init__)
+  assert r.args == ['self', 'pdb_hierarchy', 'geometry_restraints_manager']
+
 def run():
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-
   exercise_00(mon_lib_srv, ener_lib)
   exercise(mon_lib_srv, ener_lib)
   exercise_2(mon_lib_srv, ener_lib)
@@ -1289,6 +1327,7 @@ def run():
   exercise_convert_atom()
   exercise_h_counts()
   exercise_5()
+  exercise_6(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
 if (__name__ == "__main__"):

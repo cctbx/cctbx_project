@@ -21,12 +21,10 @@ from libtbx.utils import Sorry, user_plus_sys_time
 from cctbx import adp_restraints
 from mmtbx import ias
 from mmtbx import utils
-from mmtbx import model_statistics
 import iotbx.pdb
 from libtbx import group_args
-from libtbx import easy_run
-import libtbx.load_env
 from mmtbx.hydrogens import riding
+import mmtbx.model_statistics
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import mmtbx.monomer_library.server
 from iotbx.pdb.misc_records_output import link_record_output
@@ -34,6 +32,19 @@ from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
 from cStringIO import StringIO
 from copy import deepcopy
+from mmtbx.validation.ramalyze import ramalyze
+from mmtbx.validation.rotalyze import rotalyze
+from mmtbx.validation.cbetadev import cbetadev
+from mmtbx.validation.clashscore import clashscore
+from mmtbx.validation import omegalyze
+from mmtbx.validation import cablam
+import iotbx.cif.model
+from libtbx.utils import null_out
+from libtbx.str_utils import format_value
+from mmtbx.refinement import print_statistics
+import mmtbx.tls.tools as tls_tools
+from iotbx.pdb.atom_selection import AtomSelectionError
+from mmtbx.refinement import anomalous_scatterer_groups
 
 time_model_show = 0.0
 
@@ -144,6 +155,7 @@ class manager(object):
       pdb_interpretation_params = None,
       build_grm = False,  # build GRM straight away, without waiting for get_grm() call
       stop_for_unknowns = True,
+      processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      processed_pdb_files_srv = None, # remove later
                      # reference_sites_cart = None,
                      restraints_manager = None, # remove later
@@ -153,7 +165,7 @@ class manager(object):
                      ias_manager = None,        # remove later
                      wilson_b = None,           # !!! Nothing sets it in this class. Neverhteless,
                                                 # !!! it is outputted in model_statistics, used in mmtbx/refinement
-                     tls_groups = None,         # remove later
+                     tls_groups = None,         # remove later? No action performed on them here
                      ncs_groups = None,         # remove later
                      anomalous_scatterer_groups = None, # remove later
                      log = None):
@@ -175,19 +187,34 @@ class manager(object):
         self.exchangable_hd_groups = []
         self.original_xh_lengths = None
         self.riding_h_manager = None
+        self.header_tls_groups = None
 
+    self._asc = None
     if xray_structure is not None or pdb_hierarchy is not None:
+      if xray_structure and pdb_hierarchy:
+        assert xray_structure.scatterers().size() == pdb_hierarchy.atoms_size()
       # Old way of doing things. Remove later completely.
+      self.model_input = model_input
+      self.processed_pdb_file = processed_pdb_file
+      self.all_chain_proxies = None
+      if self.processed_pdb_file is not None:
+        self.all_chain_proxies = processed_pdb_file.all_chain_proxies
+      if self.all_chain_proxies is not None:
+        self._asc = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
       self.restraints_manager = restraints_manager
-      self.xray_structure = xray_structure
+      if xray_structure is not None:
+        self.xray_structure = xray_structure
+        self.cs = xray_structure.crystal_symmetry()
       # Not clear why xray_structure_initial is necessary
       self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
       self._pdb_hierarchy = pdb_hierarchy
+      self.link_records_in_pdb_format = None
+      self._ss_annotation = None
       self.pdb_atoms = self._pdb_hierarchy.atoms()
       self.pdb_atoms.reset_i_seq()
       if(anomalous_scatterer_groups is not None and
           len(anomalous_scatterer_groups) == 0):
-          anomalous_scatterer_groups = None
+        anomalous_scatterer_groups = None
       self.anomalous_scatterer_groups = anomalous_scatterer_groups
       _common_init()
       self.sync_pdb_hierarchy_with_xray_structure()
@@ -224,8 +251,9 @@ class manager(object):
       self.link_records_in_pdb_format = None
       # we need them to be able to do "smart" selections implemented there...
       self.all_chain_proxies = None
-      self._asc = None
+      self.model_statistics_info = None
       self._grm = None
+      self._asc = self._pdb_hierarchy.atom_selection_cache()
       self._ncs_obj = None
       self.mon_lib_srv = None
       self.ener_lib = None
@@ -233,7 +261,7 @@ class manager(object):
       self._rama_eval = None
       if(anomalous_scatterer_groups is not None and
           len(anomalous_scatterer_groups) == 0):
-          anomalous_scatterer_groups = None
+        anomalous_scatterer_groups = None
       self.anomalous_scatterer_groups = anomalous_scatterer_groups
       _common_init()
       if build_grm:
@@ -244,6 +272,62 @@ class manager(object):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
 
+  def get_model_statistics_info(self,
+      fmodel_x          = None,
+      fmodel_n          = None,
+      refinement_params = None,
+      ignore_hd         = True,
+      general_selection = None,
+      use_molprobity    = True):
+    if self.model_statistics_info is None:
+      self.model_statistics_info = mmtbx.model_statistics.info(
+          model             = self.model,
+          fmodel_x          = fmodel_x,
+          fmodel_n          = fmodel_n,
+          refinement_params = refinement_params,
+          ignore_hd         = ignore_hd,
+          general_selection = general_selection,
+          use_molprobity    = use_molprobity)
+    return self.model_statistics_info
+
+  def initialize_anomalous_scatterer_groups(
+      self,
+      find_automatically=True,
+      groups_from_params=None):
+    self.n_anomalous_total = 0
+    result = []
+    if find_automatically:
+      result = anomalous_scatterer_groups.find_anomalous_scatterer_groups(
+        pdb_atoms=self.all_chain_proxies.pdb_atoms,
+        xray_structure=self.xray_structure,
+        group_same_element=False,
+        out=self.log)
+      for group in result:
+        self.n_anomalous_total += group.iselection.size()
+    else:
+      if len(groups_from_params) != 0:
+        chain_proxies = self.all_chain_proxies
+        sel_cache = self._asc
+        for group in groups_from_params:
+          if (group.f_prime is None): group.f_prime = 0
+          if (group.f_double_prime is None): group.f_double_prime = 0
+          aag = xray.anomalous_scatterer_group(
+            iselection=chain_proxies.phil_atom_selection(
+              cache=sel_cache,
+              scope_extract=group,
+              attr="selection",
+              raise_if_empty_selection=True).iselection(),
+            f_prime=group.f_prime,
+            f_double_prime=group.f_double_prime,
+            refine=group.refine,
+            selection_string=group.selection)
+          # aag.show_summary(out=log)
+          result.append(aag)
+          self.n_anomalous_total += aag.iselection.size()
+    self.anomalous_scatterer_groups = result
+    for group in self.anomalous_scatterer_groups:
+      group.copy_to_scatterers_in_place(scatterers=self.xray_structure.scatterers())
+    return self.anomalous_scatterer_groups, self.n_anomalous_total
 
   def get_grm(self):
     if self.restraints_manager is not None:
@@ -310,21 +394,111 @@ class manager(object):
     self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
         crystal_symmetry=self.cs)
 
-  def model_as_pdb(self, output_cs = True):
+  def model_as_pdb(self,
+      output_cs = True,
+      atoms_reset_serial_first_value=None,
+      link_records_text = None, # temporary, for phenix.refine
+      ss_manager = None, # temporary, for phenix.refine
+      pr_cs = None, # temporary, for phenix.refine
+      ):
     """
     move all the writing here later.
     """
+    if "_ss_manager" not in self.__dict__.keys():
+      self._ss_manager = ss_manager
     cs_to_output = None
     if output_cs:
       cs_to_output = self.cs
+    if pr_cs is not None:
+      cs_to_output = pr_cs
+    # print self.cs.show_summary()
+    # STOP()
     result = StringIO()
-    iotbx.pdb.write_whole_pdb_file(
-        output_file=result,
-        pdb_hierarchy=self._pdb_hierarchy,
-        crystal_symmetry=self.cs,
-        ss_annotation = self._ss_annotation,
-        link_records=self.link_records_in_pdb_format)
+    # outputting HELIX/SHEET records
+    ss_records = ""
+    ss_ann = None
+    if self._ss_manager is not None:
+      ss_ann = self._ss_manager.actual_sec_str
+    elif self._ss_annotation is not None:
+      ss_ann = self._ss_annotation
+    if ss_ann is not None:
+      ss_records = ss_ann.as_pdb_str()
+    if ss_records != "":
+      if ss_records[-1] != "\n":
+        ss_records += "\n"
+      result.write(ss_records)
+
+    #
+    # Here should be NCS output somehow
+    #
+
+    if (self.link_records_in_pdb_format is not None
+        and len(self.link_records_in_pdb_format)>0):
+      result.write("%s\n" % self.link_records_in_pdb_format)
+    if link_records_text is not None and len(link_records_text)>0:
+      result.write(link_records_text)
+      result.write("\n")
+    if self._pdb_hierarchy is not None:
+      result.write(self._pdb_hierarchy.as_pdb_string(
+          crystal_symmetry=cs_to_output,
+          atoms_reset_serial_first_value=atoms_reset_serial_first_value,
+          append_end=True))
+    # iotbx.pdb.write_whole_pdb_file(
+    #     output_file=result,
+    #     pdb_hierarchy=self._pdb_hierarchy,
+    #     crystal_symmetry=self.cs,
+    #     ss_annotation = self._ss_annotation,
+    #     link_records=self.link_records_in_pdb_format)
     return result.getvalue()
+
+  def model_as_mmcif(self, additional_blocks):
+    out = StringIO()
+    cif = iotbx.cif.model.cif()
+    cif_block = None
+    if self.cs is not None:
+      cif_block = self.cs.as_cif_block()
+    if self._pdb_hierarchy is not None:
+      if self.cs is not None:
+        cif_block.update(pdb_hierarchy.as_cif_block())
+      else:
+        cif_block = pdb_hierarchy.as_cif_block()
+    # outputting HELIX/SHEET records
+    ss_cif_loops = []
+    ss_ann = None
+    if self.ss_manager is not None:
+      ss_ann = self.ss_manager.actual_sec_str
+    elif self._ss_annotation is not None:
+      ss_ann = self._ss_annotation
+    if ss_ann is not None:
+      ss_cif_loops = ss_ann.as_cif_loops()
+    for loop in ss_cif_loops:
+      cif_block.add_loop(loop)
+
+    self.get_model_statistics_info()
+    if self.model_statistics_info is not None:
+      cif_block.update(self.model_statistics_info.as_cif_block())
+    if additional_blocks is not None:
+      for ab in additional_blocks:
+        cif_block.update(ab)
+    cif_block.sort(key=category_sort_function)
+    cif[cif_block_name] = cif_block
+    # here we are outputting a huge number of restraints
+    #
+    if (self.all_chain_proxies is not None
+        and self.all_chain_proxies.cif is not None):
+      # should writing ALL restraints be optional?
+      from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+      skip_residues = one_letter_given_three_letter.keys() + ['HOH']
+      restraints = processed_pdb_file.all_chain_proxies.cif
+      keys = restraints.keys()
+      for key in keys:
+        # need more control
+        assert key.find('UNK')==-1
+        if key.replace('comp_', '') in skip_residues:
+          del restraints[key]
+      cif.update(processed_pdb_file.all_chain_proxies.cif)
+    cif.show(out=out, align_columns=align_columns)
+    return out.getvalue()
 
   def restraints_as_geo(self, force=False):
     """
@@ -343,13 +517,14 @@ class manager(object):
         f=result)
     return result.getvalue()
 
-  def model_as_cif(self):
-    pass
-
   def input_format_was_cif(self):
     return self.original_model_format == "mmcif"
 
-  def _build_grm(self):
+  def _build_grm(
+      self,
+      plain_pairs_radius=5.0,
+      custom_nb_excl=None,
+      ):
     process_pdb_file_srv = mmtbx.utils.process_pdb_file_srv(
         crystal_symmetry          = self.cs,
         pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
@@ -369,11 +544,13 @@ class manager(object):
         allow_missing_symmetry=True)
 
     self.all_chain_proxies = processed_pdb_file.all_chain_proxies
+    self._asc = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
     self.xray_structure = self.all_chain_proxies.extract_xray_structure()
     self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
     self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
     self.ener_lib = process_pdb_file_srv.ener_lib
     self._ncs_obj = processed_pdb_file.ncs_obj
+    self._ss_manager = processed_pdb_file.ss_manager
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
     has_hd = None
@@ -384,9 +561,11 @@ class manager(object):
     #   self.pdb_interpretation_params = master_params().fetch().extract()
     # disabled temporarily due to architecture changes
     geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies                = False,
-      params_edits                 = self.pdb_interpretation_params.geometry_restraints.edits,
-      plain_pairs_radius           = 5,
+      show_energies      = False,
+      plain_pairs_radius = plain_pairs_radius,
+      params_edits       = self.pdb_interpretation_params.geometry_restraints.edits,
+      params_remove      = self.pdb_interpretation_params.geometry_restraints.remove,
+      custom_nonbonded_exclusions  = custom_nb_excl,
       assume_hydrogens_all_missing = not has_hd)
 
     # Link treating should be rewritten. They should not be saved in
@@ -420,6 +599,74 @@ class manager(object):
           file_name="starting_geo_model.geo",
           header="# Geometry restraints after refinement\n",
           xray_structure=self.xray_structure)
+    #
+    # Here we do all what is necessary when GRM and all related become available
+    #
+    self.extract_tls_selections_from_input()
+
+  def get_header_tls_selections(self):
+    if "input_tls_selections" not in self.__dict__.keys():
+      self.extract_tls_selections_from_input()
+    return self.input_tls_selections
+
+  def get_searched_tls_selections(self, nproc):
+    if "searched_tls_selections" not in self.__dict__.keys():
+      from mmtbx.command_line import find_tls_groups
+      tls_params = find_tls_groups.master_phil.fetch().extract()
+      tls_params.nproc = nproc
+      self.searched_tls_selections = find_tls_groups.find_tls(
+        params=tls_params,
+        pdb_inp=self.model_input,
+        pdb_hierarchy=self._pdb_hierarchy,
+        xray_structure=deepcopy(self.xray_structure),
+        return_as_list=True,
+        ignore_pdb_header_groups=True,
+        out=StringIO())
+    return self.searched_tls_selections
+
+  def determine_tls_groups(self, selection_strings, generate_tlsos):
+    self.tls_groups = tls_tools.tls_groups(selection_strings = selection_strings)
+    if generate_tlsos is not None:
+
+      tlsos = tls_tools.generate_tlsos(
+        selections     = generate_tlsos,
+        xray_structure = self.xray_structure,
+        value          = 0.0)
+      self.tls_groups.tlsos = tlsos
+
+  def extract_tls_selections_from_input(self):
+    self.input_tls_selections = []
+    acp = self.all_chain_proxies
+    pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
+    if(pdb_inp_tls.tls_present):
+      print_statistics.make_header(
+        "TLS group selections from PDB file header", out=self.log)
+      print >> self.log, "TLS group selections:"
+      atom_counts = []
+      for t in pdb_inp_tls.tls_params:
+        try :
+          n_atoms = self.iselection(t.selection_string).size()
+        except AtomSelectionError, e :
+          print >> self.log, "AtomSelectionError:"
+          print >> self.log, str(e)
+          print >> self.log, "Ignoring PDB header TLS groups"
+          self.input_tls_selections = []
+          return
+        print >> self.log, "  selection string:"
+        print >> self.log, "    %s"%t.selection_string
+        print >> self.log, "    selects %d atoms"%n_atoms
+        self.input_tls_selections.append(t.selection_string)
+        atom_counts.append(n_atoms)
+      if(pdb_inp_tls.tls_present):
+        if(pdb_inp_tls.error_string is not None):
+          print >> self.log, "  %s"%pdb_inp_tls.error_string
+          self.input_tls_selections = []
+      if(0 in atom_counts):
+        msg="""
+  One of TLS selections is an empty selection: skipping TLS infromation found in
+  PDB file header.
+"""
+        print >> self.log, msg
 
   def get_riding_h_manager(self, idealize=True, force=False):
     """
@@ -461,9 +708,11 @@ class manager(object):
 
   def set_sites_cart_from_hierarchy(self):
     self.xray_structure.set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
+    self.model_statistics_info = None
 
   def set_sites_cart_from_xrs(self):
     self._pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    self.model_statistics_info = None
 
   def set_sites_cart(self, sites_cart, update_grm=False):
     assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
@@ -472,12 +721,14 @@ class manager(object):
     self._pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     if update_grm:
       self.restraints_manager.geometry.pair_proxies(sites_cart)
+    self.model_statistics_info = None
 
   def sync_pdb_hierarchy_with_xray_structure(self):
     # to be deleted.
     self._pdb_hierarchy.adopt_xray_structure(xray_structure=self.xray_structure)
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
+    self.model_statistics_info = None
 
   def normalize_adjacent_adp(self):
     bond_proxies_simple, asu = \
@@ -1359,16 +1610,6 @@ class manager(object):
     out.flush()
     time_model_show += timer.elapsed()
 
-  def write_pdb_file(self, out = None, selection = None, xray_structure = None,
-        return_pdb_string=False):
-    return utils.write_pdb_file(
-      xray_structure       = self.xray_structure,
-      pdb_hierarchy        = self._pdb_hierarchy,
-      return_pdb_string    = return_pdb_string,
-      pdb_atoms            = self.pdb_atoms,
-      selection            = selection,
-      out                  = out)
-
   def add_solvent(self, solvent_xray_structure,
                         atom_name    = "O",
                         residue_name = "HOH",
@@ -1653,59 +1894,27 @@ class manager(object):
     self.xray_structure.set_b_iso(values = b_isos)
 
   def geometry_statistics(self,
-                          ignore_hd,
-                          molprobity_scores = False,
-                          cdl_restraints = False,
-                          general_selection = None, # use for removing ligand
-                                                    # from output e.g. afitt
-                                                    # supersedes ignore_hd
-                          ):
+                          general_selection = None):
+    scattering_table = \
+      self.xray_structure.scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
-    hd_selection = self.xray_structure.hd_selection()
     ph = self.pdb_hierarchy(sync_with_xray_structure=True)
+    hd_selection = self.xray_structure.hd_selection()
     if(self.use_ias):
       hd_selection = hd_selection.select(~self.ias_selection)
       ph = ph.select(~self.ias_selection)
     rm = self.restraints_manager
-    if general_selection is not None:
-      ph = ph.select(general_selection)
-      rm = rm.select(general_selection)
-    elif(ignore_hd):
+    if(self.riding_h_manager is not None or
+       scattering_table in ["n_gaussian","wk1995", "it1992"]):
       not_hd_sel = ~hd_selection
       ph = ph.select(not_hd_sel)
       rm = rm.select(not_hd_sel)
-    return model_statistics.geometry(
-      pdb_hierarchy      = ph,
-      restraints_manager = rm,
-      molprobity_scores  = molprobity_scores,
-      cdl_restraints     = cdl_restraints,
-      ignore_hydrogens   = ignore_hd    #amber use only
-      )
-
-  def show_geometry_statistics(self,
-                               ignore_hd, # needs to have selection
-                               message = "",
-                               out = None,
-                               molprobity_scores=False,
-                               cdl_restraints=False,
-                               general_selection=None,
-                               ):
-    if(self.restraints_manager is None): return None
-    global time_model_show
-    if(out is None): out = self.log
-    timer = user_plus_sys_time()
-    result = self.geometry_statistics(
-      ignore_hd = ignore_hd,
-      molprobity_scores=molprobity_scores,
-      cdl_restraints=cdl_restraints,
-      general_selection=general_selection,
-      )
-    result.show(message = message, out = out)
-    time_model_show += timer.elapsed()
-    return result
+    return statistics(
+      pdb_hierarchy               = ph,
+      geometry_restraints_manager = rm.geometry)
 
   def adp_statistics(self):
-    return model_statistics.adp(model = self)
+    return mmtbx.model_statistics.adp(model = self)
 
   def show_adp_statistics(self,
                           prefix         = "",
@@ -1800,3 +2009,238 @@ class manager(object):
             group.iselection = isel
             modified = True
       return modified
+
+class statistics(object):
+  def __init__(self,
+               pdb_hierarchy,
+               geometry_restraints_manager=None):
+    self.pdb_hierarchy = pdb_hierarchy
+    self.geometry_restraints_manager = geometry_restraints_manager
+    self.from_restraints = None
+    self.update()
+
+  def update(self, pdb_hierarchy=None):
+    if(pdb_hierarchy is not None):
+      self.pdb_hierarchy = pdb_hierarchy
+    if(self.geometry_restraints_manager is not None):
+      sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      self.from_restraints = \
+        self.geometry_restraints_manager.energies_sites(
+          sites_cart        = sites_cart,
+          compute_gradients = False)
+      assert approx_equal(
+        self.from_restraints.target,
+        self.from_restraints.angle_residual_sum+
+        self.from_restraints.bond_residual_sum+
+        self.from_restraints.chirality_residual_sum+
+        self.from_restraints.dihedral_residual_sum+
+        self.from_restraints.nonbonded_residual_sum+
+        self.from_restraints.planarity_residual_sum+
+        self.from_restraints.parallelity_residual_sum+
+        self.from_restraints.reference_coordinate_residual_sum+
+        self.from_restraints.reference_dihedral_residual_sum+
+        self.from_restraints.ncs_dihedral_residual_sum+
+        self.from_restraints.den_residual_sum+
+        self.from_restraints.ramachandran_residual_sum)
+
+  def angle(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.angle_deviations()
+      n = self.from_restraints.get_filtered_n_angle_proxies()
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def bond(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.bond_deviations()
+      n = self.from_restraints.get_filtered_n_bond_proxies()
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def chirality(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.chirality_deviations()
+      n = self.from_restraints.n_chirality_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def dihedral(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.dihedral_deviations()
+      n = self.from_restraints.n_dihedral_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def planarity(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.planarity_deviations()
+      n = self.from_restraints.n_planarity_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def parallelity(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.parallelity_deviations()
+      n = self.from_restraints.n_parallelity_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def nonbonded(self):
+    mi,ma,me,n = 0,0,0,0
+    if(self.from_restraints is not None):
+      mi,ma,me = self.from_restraints.nonbonded_deviations()
+      n = self.from_restraints.n_nonbonded_proxies
+    return group_args(min = mi, max = ma, mean = me, n = n)
+
+  def ramachandran(self):
+    result = ramalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
+    return group_args(
+      outliers = result.percent_outliers,
+      allowed  = result.percent_allowed,
+      favored  = result.percent_favored)
+
+  def rotamer(self):
+    result = rotalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
+    return group_args(outliers = result.percent_outliers)
+
+  def c_beta(self):
+    result = cbetadev(pdb_hierarchy = self.pdb_hierarchy,
+       outliers_only = True, out = null_out()) # XXX Why it is different from others?
+    return group_args(outliers = result.get_weighted_outlier_percent())
+
+  def clash(self):
+    result = clashscore(pdb_hierarchy = self.pdb_hierarchy)
+    return group_args(
+      score = result.get_clashscore())
+
+  def cablam(self):
+    result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
+      out=null_out(), quiet=True) # XXX Why it is different from others?
+    return group_args(
+      outliers    = result.percent_outliers(),
+      disfavored  = result.percent_disfavored(),
+      ca_outliers = result.percent_ca_outliers())
+
+  def omega(self):
+    result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True) # XXX
+    # XXX Move this to omegalyze function.
+    n_proline         = result.n_proline()
+    n_general         = result.n_general()
+    n_cis_proline     = result.n_cis_proline()
+    n_cis_general     = result.n_cis_general()
+    n_twisted_proline = result.n_twisted_proline()
+    n_twisted_general = result.n_twisted_general()
+    cis_general     = 0
+    twisted_general = 0
+    cis_proline     = 0
+    twisted_proline = 0
+    if(n_proline != 0):
+      cis_proline     = n_cis_proline    *100./n_proline
+      twisted_proline = n_twisted_proline*100./n_proline
+    if(n_general != 0):
+      cis_general     = n_cis_general    *100./n_general
+      twisted_general = n_twisted_general*100./n_general
+    return group_args(
+      cis_proline     = cis_proline,
+      cis_general     = cis_general,
+      twisted_general = twisted_general,
+      twisted_proline = twisted_proline)
+
+  def result(self):
+    return group_args(
+      angle        = self.angle(),
+      bond         = self.bond(),
+      chirality    = self.chirality(),
+      dihedral     = self.dihedral(),
+      planarity    = self.planarity(),
+      parallelity  = self.parallelity(),
+      nonbonded    = self.nonbonded(),
+      ramachandran = self.ramachandran(),
+      rotamer      = self.rotamer(),
+      c_beta       = self.c_beta(),
+      clash        = self.clash(),
+      # cablam       = self.cablam(), # broken
+      omega        = self.omega())
+
+  def show(self, log=None, prefix="", lowercase=False):
+    if(log is None): log = sys.stdout
+    def fmt(f1,f2,d1):
+      fmt_str= "%6.3f %7.3f %6d"
+      if f1 is None  : return '   -       -       -  '
+      return fmt_str%(f1,f2,d1)
+    def fmt2(f1):
+      if f1 is None: return '  -   '
+      return "%-6.3f"%(f1)
+    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
+      self.planarity(), self.nonbonded()
+    result = "%s" % prefix
+    result += """
+%sDEVIATIONS FROM IDEAL VALUES.
+%s  BOND      : %s
+%s  ANGLE     : %s
+%s  CHIRALITY : %s
+%s  PLANARITY : %s
+%s  DIHEDRAL  : %s
+%s  MIN NONBONDED DISTANCE : %s
+%s"""%(prefix,
+       prefix, fmt(b.mean, b.max, b.n),
+       prefix, fmt(a.mean, a.max, a.n),
+       prefix, fmt(c.mean, c.max, c.n),
+       prefix, fmt(p.mean, p.max, p.n),
+       prefix, fmt(d.mean, d.max, d.n),
+       prefix, fmt2(n.min),
+       prefix)
+    result += "%s" % prefix
+    result += """
+%sMOLPROBITY STATISTICS.
+%s  ALL-ATOM CLASHSCORE : %s
+%s  RAMACHANDRAN PLOT:
+%s    OUTLIERS : %-5.2f %s
+%s    ALLOWED  : %-5.2f %s
+%s    FAVORED  : %-5.2f %s
+%s  ROTAMER OUTLIERS : %s %s
+%s  CBETA DEVIATIONS : %-d
+%s  PEPTIDE PLANE:
+%s    CIS-PROLINE     : %s
+%s    CIS-GENERAL     : %s
+%s    TWISTED PROLINE : %s
+%s    TWISTED GENERAL : %s"""%(
+        prefix,
+        prefix, format_value("%-6.2f", self.clash().score).strip(),
+        prefix,
+        prefix, self.ramachandran().outliers, "%",
+        prefix, self.ramachandran().allowed, "%",
+        prefix, self.ramachandran().favored, "%",
+        prefix, str("%6.2f"%(self.rotamer().outliers)).strip(),"%",
+        prefix, self.c_beta().outliers,
+        prefix,
+        prefix, str(self.omega().cis_proline),
+        prefix, str(self.omega().cis_general),
+        prefix, str(self.omega().twisted_general),
+        prefix, str(self.omega().twisted_proline))
+    if(lowercase):
+      result = result.swapcase()
+    print >> log, result
+
+  def as_cif_block(self, cif_block=None):
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    cif_block["_refine.pdbx_stereochemistry_target_values"] = "GeoStd + Monomer Library"
+    loop = iotbx.cif.model.loop(header=(
+      "_refine_ls_restr.type",
+      "_refine_ls_restr.number",
+      "_refine_ls_restr.dev_ideal",
+      #"_refine_ls_restr.dev_ideal_target",
+      "_refine_ls_restr.weight",
+      #"_refine_ls_restr.pdbx_refine_id",
+      "_refine_ls_restr.pdbx_restraint_function",
+    ))
+    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
+      self.planarity(), self.nonbonded()
+    loop.add_row(("f_bond_d",           b.n, b.mean, "?", "?"))
+    loop.add_row(("f_angle_d",          a.n, a.mean, "?", "?"))
+    loop.add_row(("f_chiral_restr",     c.n, c.mean, "?", "?"))
+    loop.add_row(("f_plane_restr",      p.n, p.mean, "?", "?"))
+    loop.add_row(("f_dihedral_angle_d", d.n, d.mean, "?", "?"))
+    cif_block.add_loop(loop)
+    return cif_block

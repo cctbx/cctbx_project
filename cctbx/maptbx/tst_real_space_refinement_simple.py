@@ -11,10 +11,11 @@ import random
 import sys
 
 def exercise_lbfgs(test_case, use_geo, out, d_min=2):
-  sites_cart, geo_manager = cctbx.geometry_restraints.manager.construct_non_crystallographic_conserving_bonds_and_angles(
-    sites_cart=flex.vec3_double(test_case.sites),
-    edge_list_bonds=test_case.bonds,
-    edge_list_angles=test_case.angles())
+  sites_cart, geo_manager = cctbx.geometry_restraints.manager.\
+    construct_non_crystallographic_conserving_bonds_and_angles(
+      sites_cart=flex.vec3_double(test_case.sites),
+      edge_list_bonds=test_case.bonds,
+      edge_list_angles=test_case.angles())
   scatterers = flex.xray_scatterer(
     sites_cart.size(), xray.scatterer(scattering_type="C", b=20))
   for sc,lbl in zip(scatterers, test_case.labels):

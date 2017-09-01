@@ -1,5 +1,4 @@
 from __future__ import division
-from cctbx.maptbx import real_space_target_and_gradients
 from libtbx import adopt_init_args, Auto
 import scitbx.lbfgs
 from cctbx import maptbx
@@ -9,7 +8,8 @@ import mmtbx.ncs.ncs_utils as ncs_utils
 from libtbx.test_utils import approx_equal
 from cctbx import crystal
 import mmtbx.refinement.minimization_ncs_constraints
-
+import mmtbx.model
+from cctbx.maptbx import minimization
 
 class easy(object):
   """
@@ -162,7 +162,7 @@ class diff_map(object):
 
   def refine(self, weight, sites_cart=None, xray_structure=None):
     assert xray_structure is not None and [sites_cart,xray_structure].count(None)==1
-    self.refined = real_space_target_and_gradients.minimization(
+    self.refined = minimization.run(
       xray_structure              = xray_structure,
       miller_array                = self.miller_array,
       crystal_gridding            = self.crystal_gridding,
@@ -173,7 +173,7 @@ class diff_map(object):
       real_space_target_weight    = weight,
       restraints_target_weight    = self.restraints_target_weight,
       geometry_restraints_manager = self.geometry_restraints_manager,
-      target_type                 = "diff_map")
+      target_type                 = "diffmap")
 
   def sites_cart(self):
     assert self.refined is not None
@@ -405,7 +405,7 @@ class minimize_wrapper_with_map():
       log=None):
     assert grm is not None
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
-    from mmtbx.model_statistics import geometry_no_grm
+    import mmtbx.model_statistics
     from mmtbx.refinement.minimization_monitor import minimization_monitor
     self.pdb_h = pdb_h
     self.xrs = xrs
@@ -448,10 +448,8 @@ class minimize_wrapper_with_map():
     self.w = 1
     print >> log, "number_of_cycles", number_of_cycles
     print >> log, "Stats before minimization:"
-    ms = geometry_no_grm(
-        pdb_hierarchy=self.pdb_h,
-        molprobity_scores=True)
-    print >> self.log, ms.format_molprobity_scores(prefix="    ")
+    ms = mmtbx.model.statistics(pdb_hierarchy=self.pdb_h)
+    ms.show(log=log)
 
     while min_monitor.need_more_cycles():
       # for x in xrange(number_of_cycles):
@@ -554,16 +552,7 @@ class minimize_wrapper_with_map():
           max_iterations               = 100,
           refine_sites                 = True)
         self.xrs = tfg_obj.xray_structure
-          # self.structure_monitor.update(
-          #   xray_structure = tfg_obj.xray_structure,
-          #   accept_as_is   = True)
       self.pdb_h.adopt_xray_structure(self.xrs)
-      ms = geometry_no_grm(
-          pdb_hierarchy=self.pdb_h,
-          molprobity_scores=True)
+      ms = mmtbx.model.statistics(pdb_hierarchy=self.pdb_h)
       min_monitor.save_cycle_results(geometry=ms)
-      print >> self.log, ms.format_molprobity_scores(prefix="    ")
-
-
-    # print >> log, "pdb_h", self.pdb_h.atoms_size()
-    # self.pdb_h.write_pdb_file("after_map_min.pdb")
+      ms.show(log=self.log)

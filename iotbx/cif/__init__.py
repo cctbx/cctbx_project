@@ -435,6 +435,8 @@ def category_sort_function(key):
     # any categories we don't know about will end up at the end of the file
     return key_category
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: functionality lives in mmtbx/model.py:class model:model_as_mmcif()
 def write_whole_cif_file(
     file_name=None,
     output_file=None,
@@ -504,3 +506,4 @@ def write_whole_cif_file(
   if file_name is not None:
     out.flush()
     out.close()
+# END_MARKED_FOR_DELETION_OLEG

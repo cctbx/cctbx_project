@@ -190,6 +190,11 @@ master_phil = iotbx.phil.parse("""
              change to b1/2 at resolution specified, \
              and change to b1/2+b2 at d_min_ratio*resolution
 
+     normalize_amplitudes_in_resdep = False
+       .type = bool
+       .short_caption = Normalize amplitudes in resdep
+       .help = Normalize amplitudes in resolution-dependent sharpening
+
      d_min_ratio = 0.833
        .type = float
        .short_caption = Sharpen d_min ratio
@@ -228,9 +233,9 @@ master_phil = iotbx.phil.parse("""
        .help = Automatically determine sharpening using kurtosis maximization\
                  or adjusted surface area. Default is True
 
-     auto_sharpen_methods = *no_sharpening *b_iso *b_iso_to_d_cut \
-                            *resolution_dependent model_sharpening \
-                            half_map_sharpening *target_b_iso_to_d_cut None
+     auto_sharpen_methods = no_sharpening b_iso *b_iso_to_d_cut \
+                            resolution_dependent model_sharpening \
+                            half_map_sharpening target_b_iso_to_d_cut None
 
        .type = choice(multi=True)
        .short_caption = Sharpening methods
@@ -238,8 +243,8 @@ master_phil = iotbx.phil.parse("""
           maximize sharpening target (kurtosis or adjusted_sa). \
           b_iso_to_d_cut applies b_iso only up to resolution specified, with \
           fall-over of k_sharpen.  Resolution dependent adjusts 3 parameters \
-          to sharpen variably over resolution range. Default is b_iso,\
-          b_iso_to_d_cut and resolution_dependent.
+          to sharpen variably over resolution range. Default is \
+          b_iso_to_d_cut .
 
      box_in_auto_sharpen = False
        .type = bool
@@ -817,6 +822,8 @@ def run(args=None,params=None,
         b_sharpen=params.map_modification.b_sharpen,
         resolution_dependent_b=\
            params.map_modification.resolution_dependent_b,
+        normalize_amplitudes_in_resdep=\
+           params.map_modification.normalize_amplitudes_in_resdep,
         pdb_inp=pdb_inp,
         ncs_obj=ncs_obj,
         rmsd=params.map_modification.rmsd,
