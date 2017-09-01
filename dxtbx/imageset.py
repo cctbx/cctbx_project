@@ -79,9 +79,17 @@ class ImageSetAux(boost.python.injector, ImageSet):
 
     '''
     if isinstance(item, slice):
+      if item.start is None:
+        start = 0
+      else:
+        start = item.start
+      if item.stop is None:
+        stop = len(self)
+      else:
+        stop = item.stop
       if item.step is not None and item.step != 1:
         raise IndexError("Step must be 1")
-      return self.partial_set(item.start, item.stop)
+      return self.partial_set(start, stop)
     else:
       return self.get_corrected_data(item)
 
@@ -395,9 +403,17 @@ class ImageSweepAux(boost.python.injector, ImageSweep):
 
     '''
     if isinstance(item, slice):
+      if item.start is None:
+        start = 0
+      else:
+        start = item.start
+      if item.stop is None:
+        stop = len(self)
+      else:
+        stop = item.stop
       if item.step != None:
         raise IndexError('Sweeps must be sequential')
-      return self.partial_set(item.start, item.stop)
+      return self.partial_set(start, stop)
     else:
       return self.get_corrected_data(item)
 

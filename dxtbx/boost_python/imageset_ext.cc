@@ -28,6 +28,9 @@ namespace dxtbx { namespace boost_python {
      * Unpickle a python object from a string
      */
     boost::python::object pickle_loads(std::string x) {
+      if (x == "") {
+        return boost::python::object();
+      }
       boost::python::object main = boost::python::import("__main__");
       boost::python::object global(main.attr("__dict__"));
       boost::python::object result = exec(
@@ -35,6 +38,19 @@ namespace dxtbx { namespace boost_python {
           global, global);
       boost::python::object loads = global["loads"];
       return loads(x);
+    }
+    
+    /**
+     * Tuple from list
+     */
+    boost::python::tuple list_to_tuple(boost::python::list x) {
+      boost::python::object main = boost::python::import("__main__");
+      boost::python::object global(main.attr("__dict__"));
+      boost::python::object result = exec(
+          "def func_list_to_tuple(x):return tuple(x)",
+          global, global);
+      boost::python::object func_list_to_tuple = global["func_list_to_tuple"];
+      return boost::python::extract<boost::python::tuple>(func_list_to_tuple(x))();
     }
   }
 
@@ -424,6 +440,45 @@ namespace dxtbx { namespace boost_python {
     obj.set_data(data);
   }
 
+
+  template <typename T>
+  boost::python::tuple image_as_tuple(const Image<T> &image) {
+    boost::python::list result;
+    for (std::size_t i = 0; i < image.n_tiles(); ++i) {
+      result.append(image.tile(i).data());
+    }
+    return detail::list_to_tuple(result);
+  }
+
+  boost::python::tuple ImageSet_get_raw_data(ImageSet &self, std::size_t index) {
+    boost::python::tuple result;
+    ImageBuffer buffer = self.get_raw_data(index);
+    if (buffer.is_int()) {
+      result = image_as_tuple<int>(buffer.as_int()); 
+    } else if (buffer.is_double()) {
+      result = image_as_tuple<double>(buffer.as_double()); 
+    } else {
+      DXTBX_ERROR("Problem reading raw data");
+    }
+    return result;
+  }
+  
+  boost::python::tuple ImageSet_get_corrected_data(ImageSet &self, std::size_t index) {
+    return image_as_tuple<double>(self.get_corrected_data(index));
+  }
+
+  boost::python::tuple ImageSet_get_gain(ImageSet &self, std::size_t index) {
+    return image_as_tuple<double>(self.get_gain(index));
+  }
+
+  boost::python::tuple ImageSet_get_pedestal(ImageSet &self, std::size_t index) {
+    return image_as_tuple<double>(self.get_pedestal(index));
+  }
+
+  boost::python::tuple ImageSet_get_mask(ImageSet &self, std::size_t index) {
+    return image_as_tuple<bool>(self.get_mask(index));
+  }
+
   /**
    * Wrapper for the external lookup items
    */
@@ -441,7 +496,7 @@ namespace dxtbx { namespace boost_python {
       ;
 
   }
-
+  
   /**
    * Export the imageset classes
    */
@@ -522,19 +577,35 @@ namespace dxtbx { namespace boost_python {
       .def("indices", &ImageSet::indices)
       .def("size", &ImageSet::size)
       .def("__len__", &ImageSet::size)
-      .def("get_raw_data", &ImageSet::get_raw_data)
-      .def("get_corrected_data", &ImageSet::get_corrected_data)
-      .def("get_gain", &ImageSet::get_gain)
-      .def("get_pedestal", &ImageSet::get_pedestal)
-      .def("get_mask", &ImageSet::get_mask)
-      .def("get_beam", &ImageSet::get_beam_for_image)
-      .def("get_detector", &ImageSet::get_detector_for_image)
-      .def("get_goniometer", &ImageSet::get_goniometer_for_image)
-      .def("get_scan", &ImageSet::get_scan_for_image)
-      .def("set_beam", &ImageSet::set_beam_for_image)
-      .def("set_detector", &ImageSet::set_detector_for_image)
-      .def("set_goniometer", &ImageSet::set_goniometer_for_image)
-      .def("set_scan", &ImageSet::set_scan_for_image)
+      .def("get_raw_data", &ImageSet_get_raw_data)
+      .def("get_corrected_data", &ImageSet_get_corrected_data)
+      .def("get_gain", &ImageSet_get_gain)
+      .def("get_pedestal", &ImageSet_get_pedestal)
+      .def("get_mask", &ImageSet_get_mask)
+      .def("get_beam", 
+          &ImageSet::get_beam_for_image, (
+            arg("index") = 0))
+      .def("get_detector", 
+          &ImageSet::get_detector_for_image, (
+            arg("index") = 0))
+      .def("get_goniometer", 
+          &ImageSet::get_goniometer_for_image, (
+            arg("index") = 0))
+      .def("get_scan", 
+          &ImageSet::get_scan_for_image, (
+            arg("index") = 0))
+      .def("set_beam", 
+          &ImageSet::set_beam_for_image, (
+            arg("index") = 0))
+      .def("set_detector", 
+          &ImageSet::set_detector_for_image, (
+            arg("index") = 0))
+      .def("set_goniometer", 
+          &ImageSet::set_goniometer_for_image, (
+            arg("index") = 0))
+      .def("set_scan", 
+          &ImageSet::set_scan_for_image, (
+            arg("index") = 0))
       .def("get_path", &ImageSet::get_path)
       .def("get_image_identifier", &ImageSet::get_image_identifier)
       .def("as_imageset", &ImageSet::as_imageset)
@@ -570,10 +641,10 @@ namespace dxtbx { namespace boost_python {
     class_<ImageSweep, bases<ImageSet> >("ImageSweep", no_init)
       .def(init<
           const ImageSetData &,
-          const Beam &,
-          const Detector &,
-          const Goniometer &,
-          const Scan &
+          const ImageSweep::beam_ptr &,
+          const ImageSweep::detector_ptr &,
+          const ImageSweep::goniometer_ptr &,
+          const ImageSweep::scan_ptr &
           >((
               arg("data"),
               arg("beam"),
@@ -583,10 +654,10 @@ namespace dxtbx { namespace boost_python {
       .def(init<
           const ImageSetData &,
           const scitbx::af::const_ref<std::size_t> &,
-          const Beam &,
-          const Detector &,
-          const Goniometer &,
-          const Scan &
+          const ImageSweep::beam_ptr &,
+          const ImageSweep::detector_ptr &,
+          const ImageSweep::goniometer_ptr &,
+          const ImageSweep::scan_ptr &
           >((
               arg("data"),
               arg("indices"),
