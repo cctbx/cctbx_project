@@ -64,6 +64,7 @@ namespace dxtbx { namespace format { namespace boost_python {
   make_image_tile_with_name(
       typename scitbx::af::flex<T>::type data,
       const char *name) {
+    std::cout << "H" << std::endl;
     DXTBX_ASSERT(data.accessor().all().size() == 2);
     return boost::make_shared< ImageTile<T> >(
         scitbx::af::versa<T, scitbx::af::c_grid<2> >(
@@ -72,6 +73,41 @@ namespace dxtbx { namespace format { namespace boost_python {
         name);
   }
 
+  template <typename T>
+  boost::shared_ptr< Image<T> >
+  make_image_from_tuple(boost::python::tuple data) {
+    typedef typename scitbx::af::flex<T>::type flex_type;
+    boost::shared_ptr< Image<T> > result(new Image<T>());
+    for (std::size_t i = 0; i < boost::python::len(data); ++i) {
+      flex_type a = boost::python::extract<flex_type>(data[i])();
+      DXTBX_ASSERT(a.accessor().all().size() == 2);
+      result->push_back(ImageTile<T>(
+        scitbx::af::versa<T, scitbx::af::c_grid<2> >(
+          a.handle(),
+          scitbx::af::c_grid<2>(a.accessor()))));
+    }
+    return result;
+  }
+
+  template <typename T>
+  boost::shared_ptr< Image<T> >
+  make_image_from_object(boost::python::object data) {
+
+    if (data != boost::python::object()) {
+      DXTBX_ERROR("No conversion to Image");
+    }
+    return boost::make_shared< Image<T> >();
+  }
+
+  template <typename T>
+  boost::shared_ptr< Image<T> >
+  make_image_from_flex(typename scitbx::af::flex<T>::type data) {
+    DXTBX_ASSERT(data.accessor().all().size() == 2);
+    return boost::make_shared< Image<T> >(ImageTile<T>(
+        scitbx::af::versa<T, scitbx::af::c_grid<2> >(
+          data.handle(),
+          scitbx::af::c_grid<2>(data.accessor()))));
+  }
 
   template <typename T>
   struct ImageTilePickleSuite : boost::python::pickle_suite {
@@ -130,9 +166,13 @@ namespace dxtbx { namespace format { namespace boost_python {
 
     class_<image_type>(name)
       .def(init< tile_type >())
+      .def("__init__", make_constructor(&make_image_from_flex<T>))
+      .def("__init__", make_constructor(&make_image_from_tuple<T>))
+      .def("__getitem__", &image_type::tile)
       .def("tile", &image_type::tile)
       .def("tile_names", &image_type::tile_names)
       .def("n_tiles", &image_type::n_tiles)
+      .def("empty", &image_type::empty)
       .def("append", &image_type::push_back)
       .def("__len__", &image_type::n_tiles)
       .def_pickle(ImagePickleSuite<T>())

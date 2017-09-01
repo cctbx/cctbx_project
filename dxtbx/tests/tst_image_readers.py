@@ -374,7 +374,7 @@ def tst_hdf5(filename):
 
   image = reader.image(0)
 
-  data1 = image.tile(0).as_int()
+  data1 = image.as_int().tile(0).data()
 
   dataset = handle['/entry/data/data']
   N, height, width = dataset.shape

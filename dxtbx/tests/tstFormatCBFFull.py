@@ -17,13 +17,13 @@ def exercise_multi_axis_goniometer():
 
   from dxtbx.imageset import ImageSetFactory
   imgset = ImageSetFactory.new(os.path.join(data_dir, "whatev1_01_00001.cbf"))[0]
-  gonio = imgset.get_goniometer()
+  gonio = imgset.get_goniometer(0)
   assert approx_equal(gonio.get_fixed_rotation(), (1,0,0,0,1,0,0,0,1))
   assert approx_equal(gonio.get_setting_rotation(), (1,0,0,0,1,0,0,0,1))
 
   from dxtbx.imageset import ImageSetFactory
   imgset = ImageSetFactory.new(os.path.join(data_dir, "whatev1_02_00001.cbf"))[0]
-  gonio = imgset.get_goniometer()
+  gonio = imgset.get_goniometer(0)
   assert approx_equal(gonio.get_fixed_rotation(), (1,0,0,0,1,0,0,0,1))
   assert approx_equal(
     gonio.get_setting_rotation(),
@@ -31,7 +31,7 @@ def exercise_multi_axis_goniometer():
 
   from dxtbx.imageset import ImageSetFactory
   imgset = ImageSetFactory.new(os.path.join(data_dir, "whatev1_03_00001.cbf"))[0]
-  gonio = imgset.get_goniometer()
+  gonio = imgset.get_goniometer(0)
   assert approx_equal(gonio.get_fixed_rotation(), (1,0,0,0,1,0,0,0,1))
   assert approx_equal(
     gonio.get_setting_rotation(),
@@ -55,10 +55,10 @@ def exercise_still():
 
   from dxtbx.imageset import ImageSetFactory
   imgset = ImageSetFactory.new(os.path.join(data_dir, "grid_full_cbf_0005.cbf"))[0]
-  if imgset.get_scan():
-    scan = imgset.get_scan()
+  if imgset.get_scan(0):
+    scan = imgset.get_scan(0)
     assert approx_equal(scan.get_image_oscillation(0), (30.0, 0.0), eps=1e-5)
-  beam = imgset.get_beam()
+  beam = imgset.get_beam(0)
   beam.get_s0()
   assert approx_equal(beam.get_s0(),
                       (-0.0, -0.0, -1.0209290454313424))

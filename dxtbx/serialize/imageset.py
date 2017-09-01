@@ -19,7 +19,7 @@ def filename_to_absolute(filename):
   return abspath(filename)
 
 def filename_or_none(filename):
-  if filename is None:
+  if filename is None or filename == "":
     return None
   return filename_to_absolute(filename)
 
@@ -80,6 +80,7 @@ def imageset_to_dict(imageset):
 
   '''
   from dxtbx.imageset import ImageSet, ImageSweep
+  from dxtbx.format.image import ImageBool, ImageDouble
 
   # If this is an imageset then return a list of filenames
   if isinstance(imageset, ImageSweep):
@@ -100,18 +101,18 @@ def basic_imageset_from_dict(d):
   imageset = ImageSetFactory.new(filenames)[0]
 
   # Set some external lookups
-  if 'mask' in d and d['mask'] is not None:
+  if 'mask' in d and d['mask'] is not None and d['mask'] is not "":
     with open(d['mask']) as infile:
       imageset.external_lookup.mask.filename = d['mask']
-      imageset.external_lookup.mask.data = pickle.load(infile)
-  if 'gain' in d and d['gain'] is not None:
+      imageset.external_lookup.mask.data = ImageBool(pickle.load(infile))
+  if 'gain' in d and d['gain'] is not None and d['gain'] is not "":
     with open(d['gain']) as infile:
       imageset.external_lookup.gain.filename = d['gain']
-      imageset.external_lookup.gain.data = pickle.load(infile)
-  if 'pedestal' in d and d['pedestal'] is not None:
+      imageset.external_lookup.gain.data = ImageDouble(pickle.load(infile))
+  if 'pedestal' in d and d['pedestal'] is not None and d['pedestal'] is not "":
     with open(d['pedestal']) as infile:
       imageset.external_lookup.pedestal.filename = d['pedestal']
-      imageset.external_lookup.pedestal.data = pickle.load(infile)
+      imageset.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
 
   # Get the existing models as dictionaries
   beam_dict = imageset.get_beam(0).to_dict()
@@ -160,18 +161,18 @@ def imagesweep_from_dict(d, check_format=True):
     scan_dict = None
 
   # Set some external lookups
-  if 'mask' in d and d['mask'] is not None:
+  if 'mask' in d and d['mask'] is not None and d['mask'] is not "":
     with open(d['mask']) as infile:
       sweep.external_lookup.mask.filename = d['mask']
-      sweep.external_lookup.mask.data = pickle.load(infile)
-  if 'gain' in d and d['gain'] is not None:
+      sweep.external_lookup.mask.data = ImageBool(pickle.load(infile))
+  if 'gain' in d and d['gain'] is not None and d['gain'] is not "":
     with open(d['gain']) as infile:
       sweep.external_lookup.gain.filename = d['gain']
-      sweep.external_lookup.gain.data = pickle.load(infile)
-  if 'pedestal' in d and d['pedestal'] is not None:
+      sweep.external_lookup.gain.data = ImageDouble(pickle.load(infile))
+  if 'pedestal' in d and d['pedestal'] is not None and d['pedestal'] is not "":
     with open(d['pedestal']) as infile:
       sweep.external_lookup.pedestal.filename = d['pedestal']
-      sweep.external_lookup.pedestal.data = pickle.load(infile)
+      sweep.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
 
   # Set the models with the exisiting models as templates
   sweep.set_beam(BeamFactory.from_dict(d.get('beam'), beam_dict))

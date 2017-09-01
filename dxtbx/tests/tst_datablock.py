@@ -217,9 +217,9 @@ class Test(object):
     assert imageset.external_lookup.mask.filename is not None
     assert imageset.external_lookup.gain.filename is not None
     assert imageset.external_lookup.pedestal.filename is not None
-    assert imageset.external_lookup.mask.data is None
-    assert imageset.external_lookup.gain.data is None
-    assert imageset.external_lookup.pedestal.data is None
+    assert imageset.external_lookup.mask.data.empty()
+    assert imageset.external_lookup.gain.data.empty()
+    assert imageset.external_lookup.pedestal.data.empty()
 
     blocks = self.encode_json_then_decode(blocks, check_format=False)
     assert(len(blocks) == 1)
@@ -227,9 +227,9 @@ class Test(object):
     assert imageset.external_lookup.mask.filename is not None
     assert imageset.external_lookup.gain.filename is not None
     assert imageset.external_lookup.pedestal.filename is not None
-    assert imageset.external_lookup.mask.data is None
-    assert imageset.external_lookup.gain.data is None
-    assert imageset.external_lookup.pedestal.data is None
+    assert imageset.external_lookup.mask.data.empty()
+    assert imageset.external_lookup.gain.data.empty()
+    assert imageset.external_lookup.pedestal.data.empty()
 
     print 'OK'
 
@@ -239,28 +239,28 @@ class Test(object):
     blocks = DataBlockFactory.from_json_file(filename)
     assert(len(blocks) == 1)
     imageset = blocks[0].extract_imagesets()[0]
-    assert imageset.external_lookup.mask.data is not None
-    assert imageset.external_lookup.gain.data is not None
-    assert imageset.external_lookup.pedestal.data is not None
+    assert not imageset.external_lookup.mask.data.empty()
+    assert not imageset.external_lookup.gain.data.empty()
+    assert not imageset.external_lookup.pedestal.data.empty()
     assert imageset.external_lookup.mask.filename is not None
     assert imageset.external_lookup.gain.filename is not None
     assert imageset.external_lookup.pedestal.filename is not None
-    assert imageset.external_lookup.mask.data.all_eq(True)
-    assert imageset.external_lookup.gain.data.all_eq(1)
-    assert imageset.external_lookup.pedestal.data.all_eq(0)
+    assert imageset.external_lookup.mask.data.tile(0).data().all_eq(True)
+    assert imageset.external_lookup.gain.data.tile(0).data().all_eq(1)
+    assert imageset.external_lookup.pedestal.data.tile(0).data().all_eq(0)
 
     blocks = self.encode_json_then_decode(blocks)
     assert(len(blocks) == 1)
     imageset = blocks[0].extract_imagesets()[0]
-    assert imageset.external_lookup.mask.data is not None
-    assert imageset.external_lookup.gain.data is not None
-    assert imageset.external_lookup.pedestal.data is not None
+    assert not imageset.external_lookup.mask.data.empty()
+    assert not imageset.external_lookup.gain.data.empty()
+    assert not imageset.external_lookup.pedestal.data.empty()
     assert imageset.external_lookup.mask.filename is not None
     assert imageset.external_lookup.gain.filename is not None
     assert imageset.external_lookup.pedestal.filename is not None
-    assert imageset.external_lookup.mask.data.all_eq(True)
-    assert imageset.external_lookup.gain.data.all_eq(1)
-    assert imageset.external_lookup.pedestal.data.all_eq(0)
+    assert imageset.external_lookup.mask.data.tile(0).data().all_eq(True)
+    assert imageset.external_lookup.gain.data.tile(0).data().all_eq(1)
+    assert imageset.external_lookup.pedestal.data.tile(0).data().all_eq(0)
 
     print 'OK'
 

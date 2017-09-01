@@ -38,6 +38,9 @@ namespace dxtbx {
 
   namespace detail {
 
+    /**
+     * Raise exception if we can't dereference pointer
+     */
     template <typename T>
     T safe_dereference(boost::shared_ptr<T> ptr) {
       T * item = ptr.get();

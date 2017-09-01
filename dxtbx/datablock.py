@@ -172,13 +172,13 @@ class DataBlock(object):
     from os.path import abspath
 
     def abspath_or_none(filename):
-      if filename is None:
+      if filename is None or filename == "":
         return None
       return abspath(filename)
 
     # Get a list of all the unique models
     b = list(self.unique_beams())
-    d = self._unique_detectors_dict()
+    d = list(self.unique_detectors())
     g = list(self.unique_goniometers())
     s = list(self.unique_scans())
 
@@ -198,7 +198,7 @@ class DataBlock(object):
               ("gain", abspath_or_none(iset.external_lookup.gain.filename)),
               ("pedestal", abspath_or_none(iset.external_lookup.pedestal.filename)),
               ('beam',       b.index(iset.get_beam())),
-              ('detector',   d[iset.get_detector()]),
+              ('detector',   d.index(iset.get_detector())),
               ('goniometer', g.index(iset.get_goniometer())),
               ('scan',       s.index(iset.get_scan())),
               ('images',     iset.indices()),
@@ -212,7 +212,7 @@ class DataBlock(object):
               ("gain", abspath_or_none(iset.external_lookup.gain.filename)),
               ("pedestal", abspath_or_none(iset.external_lookup.pedestal.filename)),
               ('beam',       b.index(iset.get_beam())),
-              ('detector',   d[iset.get_detector()]),
+              ('detector',   d.index(iset.get_detector())),
               ('goniometer', g.index(iset.get_goniometer())),
               ('scan',       s.index(iset.get_scan())),
               ('params',   iset.params())
@@ -257,7 +257,7 @@ class DataBlock(object):
 
     # Add the models to the dictionary
     result['beam'] = [bb.to_dict() for bb in b]
-    result['detector'] = [dd.to_dict() for dd in d.keys()]
+    result['detector'] = [dd.to_dict() for dd in d]
     result['goniometer'] = [gg.to_dict() for gg in g]
     result['scan'] = [ss.to_dict() for ss in s]
 
@@ -657,6 +657,7 @@ class DataBlockDictImporter(object):
     from dxtbx.model import GoniometerFactory, ScanFactory
     from dxtbx.serialize.filename import load_path
     from dxtbx.imageset import ImageSetFactory, ImageGrid
+    from dxtbx.format.image import ImageBool, ImageDouble
 
     # If we have a list, extract for each dictionary in the list
     if isinstance(obj, list):
@@ -713,19 +714,19 @@ class DataBlockDictImporter(object):
             iset.external_lookup.mask.filename = imageset['mask']
             if check_format:
               with open(imageset['mask']) as infile:
-                iset.external_lookup.mask.data = pickle.load(infile)
+                iset.external_lookup.mask.data = ImageBool(pickle.load(infile))
           if 'gain' in imageset and imageset['gain'] is not None:
             imageset['gain'] = load_path(imageset['gain'])
             iset.external_lookup.gain.filename = imageset['gain']
             if check_format:
               with open(imageset['gain']) as infile:
-                iset.external_lookup.gain.data = pickle.load(infile)
+                iset.external_lookup.gain.data = ImageDouble(pickle.load(infile))
           if 'pedestal' in imageset and imageset['pedestal'] is not None:
             imageset['pedestal'] = load_path(imageset['pedestal'])
             iset.external_lookup.pedestal.filename = imageset['pedestal']
             if check_format:
               with open(imageset['pedestal']) as infile:
-                iset.external_lookup.pedestal.data = pickle.load(infile)
+                iset.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
         elif "master" in imageset:
           template = load_path(imageset['master'])
           i0, i1 = scan.get_image_range()
@@ -740,19 +741,19 @@ class DataBlockDictImporter(object):
             iset.external_lookup.mask.filename = imageset['mask']
             if check_format:
               with open(imageset['mask']) as infile:
-                iset.external_lookup.mask.data = pickle.load(infile)
+                iset.external_lookup.mask.data = ImageBool(pickle.load(infile))
           if 'gain' in imageset and imageset['gain'] is not None:
             imageset['gain'] = load_path(imageset['gain'])
             iset.external_lookup.gain.filename = imageset['gain']
             if check_format:
               with open(imageset['gain']) as infile:
-                iset.external_lookup.gain.data = pickle.load(infile)
+                iset.external_lookup.gain.data = ImageDouble(pickle.load(infile))
           if 'pedestal' in imageset and imageset['pedestal'] is not None:
             imageset['pedestal'] = load_path(imageset['pedestal'])
             iset.external_lookup.pedestal.filename = imageset['pedestal']
             if check_format:
               with open(imageset['pedestal']) as infile:
-                iset.external_lookup.pedestal.data = pickle.load(infile)
+                iset.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
         imagesets.append(iset)
       elif ident == 'ImageSet' or ident == "ImageGrid":
         filenames = [image['filename'] for image in imageset['images']]
@@ -774,19 +775,19 @@ class DataBlockDictImporter(object):
           iset.external_lookup.mask.filename = imageset['mask']
           if check_format:
             with open(imageset['mask']) as infile:
-              iset.external_lookup.mask.data = pickle.load(infile)
+              iset.external_lookup.mask.data = ImageMask(pickle.load(infile))
         if 'gain' in imageset and imageset['gain'] is not None:
           imageset['gain'] = load_path(imageset['gain'])
           iset.external_lookup.gain.filename = imageset['gain']
           if check_format:
             with open(imageset['gain']) as infile:
-              iset.external_lookup.gain.data = pickle.load(infile)
+              iset.external_lookup.gain.data = ImageDouble(pickle.load(infile))
         if 'pedestal' in imageset and imageset['pedestal'] is not None:
           imageset['pedestal'] = load_path(imageset['pedestal'])
           iset.external_lookup.pedestal.filename = imageset['pedestal']
           if check_format:
             with open(imageset['pedestal']) as infile:
-              iset.external_lookup.pedestal.data = pickle.load(infile)
+              iset.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
         imagesets.append(iset)
       else:
         raise RuntimeError('expected ImageSet/ImageSweep, got %s' % ident)

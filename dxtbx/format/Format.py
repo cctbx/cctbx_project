@@ -454,6 +454,11 @@ class Format(object):
             format_instance = Class(f, **format_kwargs)
             scan += format_instance.get_scan()
 
+      assert beam is not None, "Can't create Sweep without beam"
+      assert detector is not None, "Can't create Sweep without detector"
+      assert goniometer is not None, "Can't create Sweep without goniometer"
+      assert scan is not None, "Can't create Sweep without scan"
+
       # Create the sweep
       iset = ImageSweep(
         ImageSetData(

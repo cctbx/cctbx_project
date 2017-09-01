@@ -35,4 +35,6 @@ def load_path(path):
 
   '''
   from os.path import abspath, expanduser, expandvars
+  if path is None or path == "":
+    return ""
   return abspath(expanduser(expandvars(path)))
