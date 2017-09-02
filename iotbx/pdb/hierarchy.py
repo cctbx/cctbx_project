@@ -1380,7 +1380,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     pdb_atoms.reset_i_seq()
     from iotbx.pdb import amino_acid_codes
     aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
-    gly_atom_names = set([" N  ", " CA ", " C  ", " O  ", " CB "])
+    gly_atom_names = set([" N  ", " CA ", " C  ", " O  "])
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():

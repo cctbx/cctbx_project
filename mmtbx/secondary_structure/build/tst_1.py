@@ -406,12 +406,15 @@ def exercise_00(prefix="exercise_00"):
   "Build poly-ALA alpha helix"
   ph = ssb.secondary_structure_from_sequence(
     alpha_helix_template, "".join(["A"]*12))
+  ph.atoms().reset_i_seq()
   #ph.write_pdb_file(file_name="%s_result.pdb"%prefix)
   sites_1 = ph.atoms().extract_xyz()
   sites_2 = iotbx.pdb.input(source_info=None,
     lines=alpha_helix_answer).construct_hierarchy().atoms().extract_xyz()
-  # print ph.as_pdb_string()
-  assert sites_1.size()==sites_2.size()
+  #of = open("1.pdb","w")
+  #print >> of, alpha_helix_answer
+  #of.close()
+  assert sites_1.size()==sites_2.size(), [sites_1.size(),sites_2.size()]
   d1 = flex.sqrt((sites_1 - sites_2).dot())
   rmsd = ssb.calculate_rmsd_smart(ph, iotbx.pdb.input(source_info=None,
     lines=alpha_helix_answer).construct_hierarchy())
