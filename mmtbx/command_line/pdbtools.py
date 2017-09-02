@@ -85,6 +85,9 @@ def get_inputs(args, log, master_params):
 def run(args, out=sys.stdout, replace_stderr=True):
   log = mmtbx.utils.set_log(args, out=out, replace_stderr=replace_stderr)
   broadcast(m="phenix.pdbtools tools for PDB model manipulations.", log=log)
+  if(len(args)==0):
+    master_params().show(out = log)
+    return None
   inputs = get_inputs(args=args, log=log, master_params=master_params())
   ### get i/o file names
   ofn = inputs.params.output.file_name
