@@ -35,6 +35,12 @@ data = None
   .multiple = True
   .help = Directory containing integrated data in pickle format.  Repeat to \
     specify additional directories.
+targlob = None
+  .type = str
+  .help = new feature, instead of data records giving directories containing integration pickles
+  .help = give a single blob giving the paths of tar files where the pickles are packaged up.
+  .help = This reduces the number of files to be read in.  But as currently implemented
+  .help = it does not reduce the number of file opens.
 predictions_to_edge {
   apply = False
     .type = bool
@@ -336,46 +342,58 @@ def get_observations (work_params):
     permissible_file_hash = dict( zip(permissible_file_names, [None]*len(permissible_file_names)) )
     n_sorry = 0
   file_names = []
-  for dir_name in data_dirs :
-    if not os.path.isdir(dir_name):
-      if os.path.isfile(dir_name):
-        #check if list-of-pickles text file is given
-        pickle_list_file = open(dir_name,'r')
-        pickle_list = pickle_list_file.read().split("\n")
-      else:
-        pickle_list = glob.glob(dir_name)
-      for pickle_filename in pickle_list:
-        if work_params.a_list is not None and pickle_filename not in permissible_file_hash:
+  if work_params.targlob is not None:
+    tar_list = glob.glob(work_params.targlob)
+    for tarname in tar_list:
+      import tarfile
+      T = tarfile.open(name=tarname, mode='r')
+      K = T.getmembers()
+      NT = len(K)
+      for nt in xrange(NT):
+        k = os.path.basename(K[nt].path)
+        file_names.append("%s;member%05d;timestamp%s"%(tarname,nt,k))
+      print tarname,NT
+  else:
+    for dir_name in data_dirs :
+      if not os.path.isdir(dir_name):
+        if os.path.isfile(dir_name):
+          #check if list-of-pickles text file is given
+          pickle_list_file = open(dir_name,'r')
+          pickle_list = pickle_list_file.read().split("\n")
+        else:
+          pickle_list = glob.glob(dir_name)
+        for pickle_filename in pickle_list:
+          if work_params.a_list is not None and pickle_filename not in permissible_file_hash:
+            # use A_list mechanism to reject files not on the "acceptable" list
+            #print "SORRY--%s FILE NOT ON THE A-List"%(pickle_filename)
+            n_sorry+=1
+            continue
+          if os.path.isfile(pickle_filename) and pickle_filename.endswith("."+extension):
+            if data_subset==0 or \
+              (data_subset==1 and (int(os.path.basename(pickle_filename).split("."+extension)[0][-1])%2==1)) or \
+              (data_subset==2 and (int(os.path.basename(pickle_filename).split("."+extension)[0][-1])%2==0)):
+              file_names.append(pickle_filename)
+        continue
+      for file_name in os.listdir(dir_name):
+        if work_params.a_list is not None and os.path.join(dir_name, file_name) not in permissible_file_hash:
           # use A_list mechanism to reject files not on the "acceptable" list
-          #print "SORRY--%s FILE NOT ON THE A-List"%(pickle_filename)
+          print "SORRY--%s FILE NOT ON THE A-List"%(os.path.join(dir_name, file_name))
           n_sorry+=1
           continue
-        if os.path.isfile(pickle_filename) and pickle_filename.endswith("."+extension):
+        if (file_name.endswith("_00000."+extension)):
           if data_subset==0 or \
-            (data_subset==1 and (int(os.path.basename(pickle_filename).split("."+extension)[0][-1])%2==1)) or \
-            (data_subset==2 and (int(os.path.basename(pickle_filename).split("."+extension)[0][-1])%2==0)):
-            file_names.append(pickle_filename)
-      continue
-    for file_name in os.listdir(dir_name):
-      if work_params.a_list is not None and os.path.join(dir_name, file_name) not in permissible_file_hash:
-        # use A_list mechanism to reject files not on the "acceptable" list
-        print "SORRY--%s FILE NOT ON THE A-List"%(os.path.join(dir_name, file_name))
-        n_sorry+=1
-        continue
-      if (file_name.endswith("_00000."+extension)):
-        if data_subset==0 or \
-          (data_subset==1 and (int(os.path.basename(file_name).split("_00000."+extension)[0][-1])%2==1)) or \
-          (data_subset==2 and (int(os.path.basename(file_name).split("_00000."+extension)[0][-1])%2==0)):
-          file_names.append(os.path.join(dir_name, file_name))
-      elif (file_name.endswith("."+extension)):
-        if data_subset==0 or \
-          (data_subset==1 and (int(os.path.basename(file_name).split("."+extension)[0][-1])%2==1)) or \
-          (data_subset==2 and (int(os.path.basename(file_name).split("."+extension)[0][-1])%2==0)):
-          file_names.append(os.path.join(dir_name, file_name))
-  if work_params.a_list is not None:
-    print ("A_LIST: %d names rejected for not being on the a_list, leaving %d accepted"%(n_sorry, len(file_names)))
-  if subsubset is not None and subsubset_total is not None:
-    file_names = [file_names[i] for i in xrange(len(file_names)) if (i+subsubset)%subsubset_total == 0]
+            (data_subset==1 and (int(os.path.basename(file_name).split("_00000."+extension)[0][-1])%2==1)) or \
+            (data_subset==2 and (int(os.path.basename(file_name).split("_00000."+extension)[0][-1])%2==0)):
+            file_names.append(os.path.join(dir_name, file_name))
+        elif (file_name.endswith("."+extension)):
+          if data_subset==0 or \
+            (data_subset==1 and (int(os.path.basename(file_name).split("."+extension)[0][-1])%2==1)) or \
+            (data_subset==2 and (int(os.path.basename(file_name).split("."+extension)[0][-1])%2==0)):
+            file_names.append(os.path.join(dir_name, file_name))
+    if work_params.a_list is not None:
+      print ("A_LIST: %d names rejected for not being on the a_list, leaving %d accepted"%(n_sorry, len(file_names)))
+    if subsubset is not None and subsubset_total is not None:
+      file_names = [file_names[i] for i in xrange(len(file_names)) if (i+subsubset)%subsubset_total == 0]
   print "Number of pickle files found:", len(file_names)
   print
   return file_names
@@ -418,10 +436,21 @@ def load_result (file_name,
   rejected, raises an exception (for tracking statistics).
   """
   # Ignore corrupted pickle files.
-  try:
-    obj = easy_pickle.load(file_name=file_name)
-  except Exception:
-    return None
+  if params.targlob is not None:
+    file_name,imember = file_name.split(";member")
+    imember,timestamp = imember.split(";timestamp")
+    import sys,tarfile
+    T = tarfile.open(name=file_name, mode='r')
+    K = T.getmembers()
+    this_member = K[int(imember)]
+    fileIO = T.extractfile(member=this_member)
+    import cPickle as pickle
+    obj = pickle.load(fileIO)
+  else:
+    try:
+      obj = easy_pickle.load(file_name=file_name)
+    except Exception:
+      return None
   if (not obj.has_key("observations")) :
     return None
   if params.isoform_name is not None:
