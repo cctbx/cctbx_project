@@ -439,7 +439,7 @@ master_phil = iotbx.phil.parse("""
        .help = When choosing box of representative density, use poor \
                density (to get optimized map for weaker density)
 
-     discard_if_worse = True
+     discard_if_worse = None
        .type = bool
        .short_caption = Discard sharpening if worse
        .help = Discard sharpening if worse
@@ -626,11 +626,6 @@ master_phil = iotbx.phil.parse("""
           (adjusted surface area).  Used to decide which sharpening approach \
           is used. Note that during optimization, residual_target is used \
           (they can be the same.)
-
-     require_improvement = True
-       .type = bool
-       .short_caption = Require improvement
-       .help = Require improvement in score for sharpening to be applied
 
      region_weight = 40
        .type = float
@@ -7354,8 +7349,7 @@ def auto_sharpen_map_or_map_coeffs(
     print >>out,"\nApplying final sharpening to entire map"
     print >>out,80*"="
     si.sharpen_and_score_map(map_data=map,set_b_iso=True,out=out)
-
-    if discard_if_worse and local_si and local_si.score > si.score:
+    if si.discard_if_worse and local_si and local_si.score > si.score:
        print >>out,"Sharpening did not improve map "+\
         "(%7.2f sharpened, %7.2f unsharpened). Discarding sharpened map" %(
         si.score,local_si.score)
@@ -7773,6 +7767,9 @@ def run_auto_sharpen(
         si.region_weight=40
         print >>out,"\nUnable to set region_weight ... using value of %7.2f" % (
           si.region_weight)
+      if si.discard_if_worse:
+        print >>out,"Setting discard_if_worse=False as region_weight failed "
+        si.discard_if_worse=False
 
     if out_of_range and 'resolution_dependent' in auto_sharpen_methods:
       new_list=[]
