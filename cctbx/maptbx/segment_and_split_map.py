@@ -413,6 +413,13 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map.
 
+     density_select_in_auto_sharpen = False
+       .type = bool
+       .short_caption = density_select to choose box
+       .help = Choose representative box of density for initial \ 
+                auto-sharpening with density_select method \
+                (choose region where there is high density)
+
      allow_box_if_b_iso_set = False
        .type = bool
        .short_caption = Allow box if b_iso set 
@@ -496,6 +503,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Max size of box for auto_sharpening
        .help = If box is greater than this fraction of entire map, use \
                 entire map.
+
+     density_select_max_box_fraction = 0.95
+       .type = float
+       .short_caption = Max size of box for density_select
+       .help = If box is greater than this fraction of entire map, use \
+                entire map for density_select. Default is 0.95
 
      mask_atoms = True
        .type = bool
@@ -1541,9 +1554,11 @@ class sharpening_info:
       original_aniso_obj=None,
       auto_sharpen=None,
       box_in_auto_sharpen=None,
+      density_select_in_auto_sharpen=None,
       use_weak_density=None,
       discard_if_worse=None,
       max_box_fraction=None,
+      density_select_max_box_fraction=None,
       mask_atoms=None,
       mask_atoms_atom_radius=None,
       value_outside_atoms=None,
@@ -1597,6 +1612,7 @@ class sharpening_info:
     if pdb_inp:
         self.sharpening_method='model_sharpening'
         self.box_in_auto_sharpen=True
+        self.density_select_in_auto_sharpen=False
         self.sharpening_target='model'
 
   def get_d_cut(self):
@@ -1693,6 +1709,7 @@ class sharpening_info:
       #  high-res cutoff of reflections is d_min*d_min_ratio
 
       self.max_box_fraction=params.map_modification.max_box_fraction
+      self.density_select_max_box_fraction=params.map_modification.density_select_max_box_fraction
       self.mask_atoms=params.map_modification.mask_atoms
       self.mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius
       self.value_outside_atoms=params.map_modification.value_outside_atoms
@@ -1716,6 +1733,7 @@ class sharpening_info:
       self.local_aniso_in_local_sharpening=\
          params.map_modification.local_aniso_in_local_sharpening
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
+      self.density_select_in_auto_sharpen=params.map_modification.density_select_in_auto_sharpen
       self.use_weak_density=params.map_modification.use_weak_density
       self.discard_if_worse=params.map_modification.discard_if_worse
       self.box_center=params.map_modification.box_center
@@ -1756,6 +1774,7 @@ class sharpening_info:
       elif pdb_inp or self.sharpening_method=='model_sharpening':
         self.sharpening_method='model_sharpening'
         self.box_in_auto_sharpen=True
+        self.density_select_in_auto_sharpen=False
         self.sharpening_target='model'
 
       elif params.map_modification.b_iso is not None or \
@@ -2015,6 +2034,8 @@ def scale_map(map,scale_rms=1.0,out=sys.stdout):
       scale=scale_rms/sd
       if 0: print >>out,"Scaling map by %7.3f to set SD=1" %(scale)
       map=map*scale
+    else:
+      print >>out,"Cannot scale map...all zeros"
     return map
 
 def scale_map_coeffs(map_coeffs,scale_max=100000.,out=sys.stdout):
@@ -2159,11 +2180,11 @@ def get_b_iso(miller_array,d_min=None,return_aniso_scale_and_b=False,
     res_cut_array=miller_array
 
   from mmtbx.scaling import absolute_scaling
-  try:
+  if 1: #try:
     aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
       miller_array=res_cut_array, n_residues=200, n_bases=0)
     b_cart=aniso_scale_and_b.b_cart
-  except Exception,e:
+  if 0: #except Exception,e:
     b_cart=[0,0,0]
     aniso_scale_and_b=None
   b_aniso_mean=0.
@@ -2933,13 +2954,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   # Test to see if we can use adjusted_sa as target and use box_map with it
   if (params.map_modification.residual_target=='adjusted_sa' or
      params.map_modification.sharpening_target=='adjusted_sa') and \
-     params.map_modification.box_in_auto_sharpen:
+     (params.map_modification.box_in_auto_sharpen or 
+       params.map_modification.density_select_in_auto_sharpen):
     print >>out,"Checking to make sure we can use adjusted_sa as target...",
     try:
       from phenix.autosol.map_to_model import iterated_solvent_fraction
     except Exception, e:
-      raise Sorry(
-      "Please either set box_in_auto_sharpen=False or \n"+\
+      raise Sorry("Please either set box_in_auto_sharpen=False and "+
+       "\ndensity_select_in_auto_sharpen=False or \n"+\
       "set residual_target=kurtosis and sharpening_target=kurtosis")
     print >>out,"OK"
 
@@ -6379,7 +6401,10 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'read_sharpened_maps', 'write_sharpened_maps', 'select_sharpened_map',
        'output_directory',
        'smoothing_radius','use_local_aniso','local_aniso_in_local_sharpening',
-       'local_sharpening','box_in_auto_sharpen','use_weak_density',
+       'local_sharpening',
+       'box_in_auto_sharpen',
+       'density_select_in_auto_sharpen',
+       'use_weak_density',
        'resolution',
        'd_min_ratio',
        'input_d_cut',
@@ -6387,7 +6412,9 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'discard_if_worse',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
        'allow_box_if_b_iso_set',
-       'max_box_fraction','k_sharpen',
+       'max_box_fraction',
+       'density_select_max_box_fraction',
+       'k_sharpen',
        'optimize_k_sharpen',
        'optimize_d_cut',
         'residual_target','sharpening_target',
@@ -6475,16 +6502,21 @@ def select_box_map_data(si=None,
            first_half_map_data=None,
            second_half_map_data=None,
            pdb_inp=None,
+           max_box_fraction=None,
            get_solvent_fraction=True,# XXX test not doing this...
            n_min=30, # at least 30 atoms to run model sharpening
            out=sys.stdout):
 
   solvent_fraction=si.solvent_fraction
   crystal_symmetry=si.crystal_symmetry
-  max_box_fraction=si.max_box_fraction
   box_size=si.box_size
-  if pdb_inp:  # use model to identify region to cut out
-    hierarchy=pdb_inp.construct_hierarchy()
+  if pdb_inp or si.density_select_in_auto_sharpen:  # use map_box
+    assert not si.local_sharpening
+    if pdb_inp:
+      hierarchy=pdb_inp.construct_hierarchy()
+    else:
+      hierarchy=None
+      assert si.density_select_in_auto_sharpen
     if si.box_center:  # center at box_center. Trim hierarchy
       lower_bounds,upper_bounds=box_from_center(si=si,
         map_data=map_data,out=out)
@@ -6522,7 +6554,10 @@ def select_box_map_data(si=None,
 
     from mmtbx.command_line.map_box import run as run_map_box
     args=[]
-    if si.mask_atoms:
+    if si.density_select_in_auto_sharpen:
+      args.append('density_select=True')
+      print >>out,"Using density_select in map_box"
+    elif si.mask_atoms:
       args.append('mask_atoms=True')
       if si.mask_atoms_atom_radius:
         args.append('mask_atoms_atom_radius=%s' %(si.mask_atoms_atom_radius))
@@ -6531,9 +6566,14 @@ def select_box_map_data(si=None,
       if si.soft_mask:
         args.append('soft_mask=%s' %(si.soft_mask))
         args.append('soft_mask_radius=%s' %(si.resolution))
+
     print >>out,"Getting map as box"
+    if hierarchy:
+      local_hierarchy=hierarchy.deep_copy()
+    else:
+      local_hierarchy=None
     box=run_map_box(args,
-        map_data=map_data,pdb_hierarchy=hierarchy.deep_copy(),
+        map_data=map_data,pdb_hierarchy=local_hierarchy,
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
     box_map=box.map_box.as_double()
@@ -6644,7 +6684,6 @@ def select_box_map_data(si=None,
       wrapping=False,
       crystal_symmetry=box_crystal_symmetry,
       solvent_fraction=box_solvent_fraction)
-
     return box_pdb_inp,box_map,box_first_half_map,box_second_half_map,\
         box_crystal_symmetry,box_sharpening_info_obj
 
@@ -7044,6 +7083,7 @@ def run_local_sharpening(si=None,
       local_si.box_size=get_box_size(lower_bound=lb,upper_bound=ub)
       local_si.box_center=center_cart
       local_si.box_in_auto_sharpen=True
+      local_si.density_select_in_auto_sharpen=False
       local_si.use_local_aniso=True
       print >>out,80*"+"
       print >>out,"Getting local sharpening for box %s" %(i)
@@ -7165,6 +7205,7 @@ def auto_sharpen_map_or_map_coeffs(
         use_local_aniso=None,
         auto_sharpen=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
+        density_select_in_auto_sharpen=None, 
         allow_box_if_b_iso_set=None,
         use_weak_density=None,
         discard_if_worse=None,
@@ -7180,6 +7221,7 @@ def auto_sharpen_map_or_map_coeffs(
         input_d_cut=None,
         b_blur_hires=None,
         max_box_fraction=None,
+        density_select_max_box_fraction=None,
         mask_atoms=None,
         mask_atoms_atom_radius=None,
         value_outside_atoms=None,
@@ -7484,11 +7526,16 @@ def run_auto_sharpen(
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
-  if si.auto_sharpen and si.box_in_auto_sharpen:
+  if si.auto_sharpen and (si.box_in_auto_sharpen or si.density_select_in_auto_sharpen):
     if pdb_inp:
       print >>out,"\nAuto-sharpening using model-defined box of density"
+      max_box_fraction=si.max_box_fraction
+    elif si.density_select_in_auto_sharpen:
+      print >>out,"\nAuto-sharpening using density_select box of density"
+      max_box_fraction=si.density_select_max_box_fraction
     else:
       print >>out,"\nAuto-sharpening using representative box of density"
+      max_box_fraction=si.max_box_fraction
     original_box_sharpening_info_obj=deepcopy(si)
     #write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
     box_pdb_inp,box_map_data,box_first_half_map_data,\
@@ -7499,6 +7546,7 @@ def run_auto_sharpen(
            first_half_map_data=first_half_map_data,
            second_half_map_data=second_half_map_data,
            pdb_inp=pdb_inp,
+           max_box_fraction=max_box_fraction,
            out=out)
     #write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
 
@@ -7518,6 +7566,9 @@ def run_auto_sharpen(
 
       map_data=box_map_data
       pdb_inp=box_pdb_inp
+      if si.density_select_in_auto_sharpen and ( # catch empty pdb_inp
+         not pdb_inp.construct_hierarchy().overall_counts().n_residues):
+        pdb_inp=None
 
       crystal_symmetry=box_crystal_symmetry
       if box_first_half_map_data:
