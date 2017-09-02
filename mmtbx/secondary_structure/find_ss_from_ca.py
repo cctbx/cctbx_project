@@ -2987,7 +2987,7 @@ class find_secondary_structure: # class to look for secondary structure
           raise Sorry("Missing file: %s" %(params.input_files.pdb_in))
         hierarchy=get_pdb_hierarchy(text=open(params.input_files.pdb_in).read())
     if hierarchy:
-      hierarchy.remove_alt_confs(always_keep_one_conformer=True)
+      hierarchy.remove_alt_confs(always_keep_one_conformer=False)
 
     if force_secondary_structure_input and not \
         (params.input_files.secondary_structure_input or user_annotation_text):
