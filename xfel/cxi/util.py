@@ -11,7 +11,7 @@ def is_odd_numbered(file_name):
   for allowable in allowable_basename_endings:
     if (file_name.endswith(allowable)):
       try:
-        return int(os.path.basename(file_name).split(allowable)[0][-1])%2==1
+        return int(os.path.basename(file_name).split(allowable)[-2][-1])%2==1
       except ValueError:
         file_name = os.path.basename(file_name).split(allowable)[0]
         break
