@@ -359,9 +359,9 @@ def get_and_split_model(pdb_hierarchy=None,
       info={})
     models=split_model(model=model,verbose=False)
     print >>out,"Split model into %d chains" %(len(models))
-    from mmtbx.pdbtools import remove_alt_confs
+
     for model in models:
-      remove_alt_confs(model.hierarchy,always_keep_one_conformer=False)
+      model.hierarchy.remove_alt_confs(always_keep_one_conformer=False)
       if get_start_end_length:
         model.info['model_start_resno']=get_first_resno(model.hierarchy)
         model.info['model_end_resno']=get_last_resno(model.hierarchy)

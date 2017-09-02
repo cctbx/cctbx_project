@@ -1310,6 +1310,41 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       conformer_indices.set_selected(altloc_indices[altloc], i+p)
     return conformer_indices
 
+  def remove_alt_confs(self, always_keep_one_conformer):
+    hierarchy = self
+    for model in hierarchy.models() :
+      for chain in model.chains() :
+        for residue_group in chain.residue_groups() :
+          atom_groups = residue_group.atom_groups()
+          assert (len(atom_groups) > 0)
+          if always_keep_one_conformer :
+            if (len(atom_groups) == 1) and (atom_groups[0].altloc == '') :
+              continue
+            atom_groups_and_occupancies = []
+            for atom_group in atom_groups :
+              if (atom_group.altloc == '') :
+                continue
+              mean_occ = flex.mean(atom_group.atoms().extract_occ())
+              atom_groups_and_occupancies.append((atom_group, mean_occ))
+            atom_groups_and_occupancies.sort(lambda a,b: cmp(b[1], a[1]))
+            for atom_group, occ in atom_groups_and_occupancies[1:] :
+              residue_group.remove_atom_group(atom_group=atom_group)
+            single_conf, occ = atom_groups_and_occupancies[0]
+            single_conf.altloc = ''
+          else :
+            for atom_group in atom_groups :
+              if (not atom_group.altloc in ["", "A"]) :
+                residue_group.remove_atom_group(atom_group=atom_group)
+              else :
+                atom_group.altloc = ""
+            if (len(residue_group.atom_groups()) == 0) :
+              chain.remove_residue_group(residue_group=residue_group)
+        if (len(chain.residue_groups()) == 0) :
+          model.remove_chain(chain=chain)
+    atoms = hierarchy.atoms()
+    new_occ = flex.double(atoms.size(), 1.0)
+    atoms.set_occ(new_occ)
+
   def rename_chain_id(self, old_id, new_id):
     for model in self.models():
       for chain in model.chains():

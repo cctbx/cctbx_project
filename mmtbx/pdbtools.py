@@ -253,19 +253,31 @@ class modify(object):
     self._change_of_basis()
     # Up to this point we are done with self.xray_structure
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    del self.xray_structure
     # Now only manipulations that use self.pdb_hierarchy are done
-    self._set_chemical_element_simple_if_necessary()
-    self._rename_chain_id()
-    self._renumber_residues()
-    self._convert_semet_to_met()
-    self._convert_met_to_semet()
-    self._set_atomic_charge()
-    self._truncate_to_poly_gly()
-    self._remove_alt_confs()
-    self._move_waters()
-    self._remove_atoms()
-    self._apply_keep_remove()
+    if(self.params.set_chemical_element_simple_if_necessary or
+       self.params.rename_chain_id.old_id or
+       self.params.renumber_residues or self.params.increment_resseq or
+       self.params.convert_semet_to_met or
+       self.params.convert_met_to_semet or
+       self.params.set_charge.charge or
+       self.params.truncate_to_polyala or
+       self.params.remove_alt_confs or
+       self.params.move_waters_last or
+       self.params.remove_fraction or
+       self.params.keep or
+       self.params.remove):
+      del self.xray_structure # it is invalide below this point
+      self._set_chemical_element_simple_if_necessary()
+      self._rename_chain_id()
+      self._renumber_residues()
+      self._convert_semet_to_met()
+      self._convert_met_to_semet()
+      self._set_atomic_charge()
+      self._truncate_to_poly_gly()
+      self._remove_alt_confs()
+      self._move_waters()
+      self._remove_atoms()
+      self._apply_keep_remove()
 
   def _apply_keep_remove(self):
     cn = [self.params.remove, self.params.keep].count(None)
@@ -318,41 +330,10 @@ class modify(object):
 
   def _remove_alt_confs(self):
     if(self.params.remove_alt_confs):
-      always_keep_one_conformer = self.params.always_keep_one_conformer
-      hierarchy = self.pdb_hierarchy
       print >> self.log, "Remove altlocs"
-      for model in hierarchy.models() :
-        for chain in model.chains() :
-          for residue_group in chain.residue_groups() :
-            atom_groups = residue_group.atom_groups()
-            assert (len(atom_groups) > 0)
-            if always_keep_one_conformer :
-              if (len(atom_groups) == 1) and (atom_groups[0].altloc == '') :
-                continue
-              atom_groups_and_occupancies = []
-              for atom_group in atom_groups :
-                if (atom_group.altloc == '') :
-                  continue
-                mean_occ = flex.mean(atom_group.atoms().extract_occ())
-                atom_groups_and_occupancies.append((atom_group, mean_occ))
-              atom_groups_and_occupancies.sort(lambda a,b: cmp(b[1], a[1]))
-              for atom_group, occ in atom_groups_and_occupancies[1:] :
-                residue_group.remove_atom_group(atom_group=atom_group)
-              single_conf, occ = atom_groups_and_occupancies[0]
-              single_conf.altloc = ''
-            else :
-              for atom_group in atom_groups :
-                if (not atom_group.altloc in ["", "A"]) :
-                  residue_group.remove_atom_group(atom_group=atom_group)
-                else :
-                  atom_group.altloc = ""
-              if (len(residue_group.atom_groups()) == 0) :
-                chain.remove_residue_group(residue_group=residue_group)
-          if (len(chain.residue_groups()) == 0) :
-            model.remove_chain(chain=chain)
-      atoms = hierarchy.atoms()
-      new_occ = flex.double(atoms.size(), 1.0)
-      atoms.set_occ(new_occ)
+      always_keep_one_conformer = self.params.always_keep_one_conformer
+      self.pdb_hierarchy.remove_alt_confs(
+        always_keep_one_conformer = self.params.always_keep_one_conformer)
 
   def _truncate_to_poly_gly(self):
     if(self.params.truncate_to_polyala):

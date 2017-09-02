@@ -2987,13 +2987,7 @@ class find_secondary_structure: # class to look for secondary structure
           raise Sorry("Missing file: %s" %(params.input_files.pdb_in))
         hierarchy=get_pdb_hierarchy(text=open(params.input_files.pdb_in).read())
     if hierarchy:
-      # remove alt conformers
-      import mmtbx.pdbtools
-      p = mmtbx.pdbtools.master_params().extract()
-      p.modify.remove_alt_confs=True
-      xrs = hierarchy.extract_xray_structure()
-      o = mmtbx.pdbtools.modify(pdb_hierarchy=hierarchy,
-        params=p.modify, xray_structure=xrs)
+      hierarchy.remove_alt_confs(always_keep_one_conformer=True)
 
     if force_secondary_structure_input and not \
         (params.input_files.secondary_structure_input or user_annotation_text):
