@@ -250,14 +250,15 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
-                auto-sharpening instead of the entire map. Default is True.
+                auto-sharpening instead of the entire map. Default is False.
 
-     density_select_in_auto_sharpen = False
+     density_select_in_auto_sharpen = True
        .type = bool
        .short_caption = density_select to choose box
        .help = Choose representative box of density for initial \ 
                 auto-sharpening with density_select method \
-                (choose region where there is high density)
+                (choose region where there is high density).  Normally use\
+                False for X-ray data and True for cryo-EM.
 
      allow_box_if_b_iso_set = False
        .type = bool

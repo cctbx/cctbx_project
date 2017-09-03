@@ -418,7 +418,9 @@ master_phil = iotbx.phil.parse("""
        .short_caption = density_select to choose box
        .help = Choose representative box of density for initial \ 
                 auto-sharpening with density_select method \
-                (choose region where there is high density)
+                (choose region where there is high density). \
+               Normally use instead density_select=True which \
+               carries out density_select at start of segmentation.
 
      allow_box_if_b_iso_set = False
        .type = bool
@@ -3082,6 +3084,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:
     print >>out,"\nTrimming map to density..."
+    # turn off density_select_in_auto_sharpen in case it was on...
+    if params.map_modification.density_select_in_auto_sharpen:
+      params.map_modification.density_select_in_auto_sharpen=False 
+      print >>out,"Turning off density_select_in_auto_sharpen as "+\
+         "it will be done here"
     args=["density_select=True","output_format=ccp4"]
     if params.segmentation.density_select_threshold is not None:
       print >>out,"Threshold for density selection will be: %6.2f \n"%(
@@ -7520,7 +7527,8 @@ def run_auto_sharpen(
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
-  if si.auto_sharpen and (si.box_in_auto_sharpen or si.density_select_in_auto_sharpen):
+  if si.auto_sharpen and (
+       si.box_in_auto_sharpen or si.density_select_in_auto_sharpen):
     if pdb_inp:
       print >>out,"\nAuto-sharpening using model-defined box of density"
       max_box_fraction=si.max_box_fraction
