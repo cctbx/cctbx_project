@@ -332,8 +332,17 @@ def run_all(params=None,out=sys.stdout):
     rv_list.append(rv)
     file_list.append(file_name)
 
+  write_summary(params=params,file_list=file_list,rv_list=rv_list, out=out)
+
+def write_summary(params=None,file_list=None,rv_list=None,
+    max_dist=None,out=sys.stdout):
+
+  if params and max_dist is None: 
+     max_dist=params.comparison.max_dist
+  if max_dist is None: max_dist=0.
+
   print >>out,"\nCLOSE is within %4.1f A. FAR is greater than this." %(
-    params.comparison.max_dist)
+    max_dist)
   print >>out,"\nCA SCORE is fraction in close CA / rmsd of these CA."
   print >>out,"\nSEQ SCORE is fraction (close and matching target sequence).\n"
 
@@ -353,7 +362,6 @@ def run_all(params=None,out=sys.stdout):
     target_length=rv.get_target_length('close')
     score=n/(max(1,target_length)*max(0.1,rmsd))
     score_list.append([score,full_f])
-    print "ZZ",full_f,rmsd,n,target_length,score
   score_list.sort()
   score_list.reverse()
   for score,full_f in score_list:
@@ -729,6 +737,7 @@ def run(args=None,
   rv.n_forward=n_forward
   rv.n_reverse=n_reverse
   rv.n=len(pair_list)
+  rv.max_dist=params.comparison.max_dist
   return rv
 
 if __name__=="__main__":
