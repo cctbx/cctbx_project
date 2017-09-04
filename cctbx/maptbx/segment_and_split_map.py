@@ -3629,8 +3629,20 @@ def choose_threshold(b_vs_region=None,map_data=None,
 def get_co(map_data=None,threshold=None,wrapping=None):
   co=maptbx.connectivity(map_data=map_data,threshold=threshold,
          wrapping=wrapping)
-  z = zip(co.regions(),range(0,co.regions().size()))
-  sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  regions=co.regions()
+  rr=range(0,co.regions().size())
+
+  regions_0=regions[0]
+  rr_0=rr[0]
+  regions=regions[1:]
+  rr=rr[1:]
+  if rr:
+    z = zip(regions,rr)
+    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  else:
+    sorted_by_volume = []
+  sorted_by_volume=[(regions_0,rr_0)]+sorted_by_volume
+
   min_b, max_b = co.get_blobs_boundaries_tuples() # As grid points, not A
   return co,sorted_by_volume,min_b,max_b
 
