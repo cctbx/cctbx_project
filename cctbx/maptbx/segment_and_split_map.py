@@ -3569,11 +3569,11 @@ def choose_threshold(b_vs_region=None,map_data=None,
         threshold=starting_density_threshold*(scale**nn)
       if threshold < lower_bound or threshold > upper_bound:
         continue
-      co = maptbx.connectivity(map_data=map_data.deep_copy(),
-         threshold=threshold,
-         wrapping=wrapping)
-      z = zip(co.regions(),range(0,co.regions().size()))
-      sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+
+      co,sorted_by_volume,min_b,max_b=get_co(
+        map_data=map_data.deep_copy(),
+         threshold=threshold,wrapping=wrapping)
+
       if len(sorted_by_volume)<2:
         score,has_sufficient_regions,too_low,too_high,expected_regions,ok=\
           None,None,None,None,None,None
@@ -6203,11 +6203,11 @@ def score_map(map_data=None,
          target_in_all_regions),map_data=map_data)
     print >>out,"Cutoff will be threshold of %7.2f marking %7.1f%% of cell" %(
               threshold,100.*(1.-solvent_fraction))
-    co = maptbx.connectivity(map_data=map_data.deep_copy(),
-           threshold=threshold,
-           wrapping=wrapping,)
-    z = zip(co.regions(),range(0,co.regions().size()))
-    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+
+    co,sorted_by_volume,min_b,max_b=get_co(
+      map_data=map_data.deep_copy(),
+       threshold=threshold,wrapping=wrapping)
+
     if len(sorted_by_volume)<2:
       return sharpening_info_obj# skip it, nothing to do
 
