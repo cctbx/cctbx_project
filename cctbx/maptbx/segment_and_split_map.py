@@ -2861,11 +2861,22 @@ def apply_soft_mask(map_data=None,
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
   #write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
-  maptbx.unpad_in_place(map=mask_data)
-  mask_data = maptbx.smooth_map(
-    map              = mask_data,
-    crystal_symmetry = crystal_symmetry,
-    rad_smooth       = rad_smooth)
+  if mask_data.count(1)  and mask_data.count(0): # something to do
+    print >>out,"Smoothing mask..."
+    maptbx.unpad_in_place(map=mask_data)
+    mask_data = maptbx.smooth_map(
+      map              = mask_data,
+      crystal_symmetry = crystal_symmetry,
+      rad_smooth       = rad_smooth)
+
+    # Make sure that mask_data max value is now 1, scale if not
+    max_mask_data_value=mask_data.as_1d().min_max_mean().max
+    if max_mask_data_value > 1.e-30 and max_mask_data_value!=1.0:
+      mask_data=mask_data*(1./max_mask_data_value)
+      print >>out,"Scaling mask by %.2f to yield maximum of 1.0 " %(
+        1./max_mask_data_value)
+  else:
+    print >>out,"Not smoothing mask that is a constant..."
 
   print >>out,"\nSmoothed mask inside and outside values"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
@@ -2876,14 +2887,14 @@ def apply_soft_mask(map_data=None,
   # Now replace value outside mask with mean_value, value inside with current,
   #   smoothly going from one to the other based on mask_data
 
-  outside_set_to_mean=map_data.deep_copy()
-  outside_set_to_mean.set_selected( s, 0)
+  set_to_mean=map_data.deep_copy()
+  ss = set_to_mean > -1.e+30
   if set_outside_to_mean_inside or mean_value_out is None:
-    outside_set_to_mean.set_selected(~s, mean_value_in)
+    set_to_mean.set_selected(~ss, mean_value_in)
   else:
-    outside_set_to_mean.set_selected(~s, mean_value_out)
+    set_to_mean.set_selected(~ss, mean_value_out)
 
-  masked_map= (map_data * mask_data )  +  (outside_set_to_mean * (1-mask_data))
+  masked_map= (map_data * mask_data )  +  (set_to_mean * (1-mask_data))
 
   print >>out,"\nFinal mean value inside and outside mask:"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
