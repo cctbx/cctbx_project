@@ -8,58 +8,13 @@ from __future__ import division
 Simple utility for printing the contents of a cctbx.xfel pickle file
 """
 
-from libtbx import easy_pickle
 import sys, os
 from iotbx.detectors.cspad_detector_formats import detector_format_version as detector_format_function
 from iotbx.detectors.cspad_detector_formats import reverse_timestamp
 from cctbx import sgtbx # import dependency
 from cctbx.array_family import flex
 
-args = sys.argv[1:]
-if "--break" in args:
-  args.remove("--break")
-  dobreak = True
-else:
-  dobreak = False
-
-if "--plots" in args:
-  args.remove("--plots")
-  doplots = True
-else:
-  doplots = False
-
-
-for path in args:
-  if not os.path.isfile(path):
-    print "Not a file:", path
-    continue
-
-  data = easy_pickle.load(path)
-  if not isinstance(data, dict):
-    print "Not a dictionary pickle"
-    continue
-
-  print "Printing contents of", path
-
-  if data.has_key('TIMESTAMP'):
-    # this is how FormatPYunspecified guesses the address
-    if not "DETECTOR_ADDRESS" in data:
-      # legacy format; try to guess the address
-      LCLS_detector_address = 'CxiDs1-0|Cspad-0'
-      if "DISTANCE" in data and data["DISTANCE"] > 1000:
-        # downstream CS-PAD detector station of CXI instrument
-        LCLS_detector_address = 'CxiDsd-0|Cspad-0'
-    else:
-      LCLS_detector_address = data["DETECTOR_ADDRESS"]
-
-    detector_format_version = detector_format_function(
-      LCLS_detector_address, reverse_timestamp(data['TIMESTAMP'])[0])
-    print "Detector format version:", detector_format_version
-    image_pickle = True
-  else:
-    print "Not an image pickle"
-    image_pickle = False
-
+def keywise_printout(data):
   for key in data:
     if key == 'ACTIVE_AREAS':
       print int(len(data[key])/4), "active areas, first one: ", list(data[key][0:4])
@@ -139,18 +94,91 @@ for path in args:
     else:
       print key, data[key]
 
-  if image_pickle:
-    import dxtbx
-    image = dxtbx.load(path)
-    tile_manager = image.detectorbase.get_tile_manager(image.detectorbase.horizons_phil_cache)
-    tiling = tile_manager.effective_tiling_as_flex_int(reapply_peripheral_margin = True)
-    print int(len(tiling)/4), "translated active areas, first one: ", list(tiling[0:4])
-
-  if dobreak:
-    print "Entering break. The pickle is loaded in the variable 'data'"
+def generate_streams_from_path(tar_or_other):
+    from tarfile import ReadError
+    import tarfile
     try:
-      from IPython import embed
-    except ImportError:
-      import pdb; pdb.set_trace()
+      T = tarfile.open(name=tar_or_other, mode='r')
+      K = T.getmembers()
+      NT = len(K)
+      for nt in xrange(NT):
+        k = os.path.basename(K[nt].path)
+        fileIO = T.extractfile(member=K[nt])
+        yield fileIO,K[nt].path
+    except ReadError,e:
+      fileIO = open(tar_or_other,'rb')
+      yield fileIO,tar_or_other
+
+def generate_data_from_streams(args):
+  import cPickle as pickle
+  for path in args:
+    if not os.path.isfile(path):
+      print "Not a file:", path
+      continue
+
+    # interpret the object as a tar of pickles, a pickle, or none of the above
+    from cPickle import UnpicklingError
+    for fileIO,path in generate_streams_from_path(path):
+      try:
+        data = pickle.load(fileIO)
+        if not isinstance(data, dict):
+          print "\nNot a dictionary pickle",path
+          continue
+        else:
+          print "\nPrinting contents of", path
+          yield data
+
+      except UnpicklingError,e:
+        print "\ndoesn't unpickle",path
+
+if __name__=="__main__":
+  args = sys.argv[1:]
+  if "--break" in args:
+    args.remove("--break")
+    dobreak = True
+  else:
+    dobreak = False
+
+  if "--plots" in args:
+    args.remove("--plots")
+    doplots = True
+  else:
+    doplots = False
+
+  for data in generate_data_from_streams(args):
+    if data.has_key('TIMESTAMP'):
+      # this is how FormatPYunspecified guesses the address
+      if not "DETECTOR_ADDRESS" in data:
+        # legacy format; try to guess the address
+        LCLS_detector_address = 'CxiDs1-0|Cspad-0'
+        if "DISTANCE" in data and data["DISTANCE"] > 1000:
+          # downstream CS-PAD detector station of CXI instrument
+          LCLS_detector_address = 'CxiDsd-0|Cspad-0'
+      else:
+        LCLS_detector_address = data["DETECTOR_ADDRESS"]
+
+      detector_format_version = detector_format_function(
+        LCLS_detector_address, reverse_timestamp(data['TIMESTAMP'])[0])
+      print "Detector format version:", detector_format_version
+      image_pickle = True
     else:
-      embed()
+      print "Not an image pickle"
+      image_pickle = False
+
+    keywise_printout(data)
+
+    if image_pickle:
+      import dxtbx
+      image = dxtbx.load(path)
+      tile_manager = image.detectorbase.get_tile_manager(image.detectorbase.horizons_phil_cache)
+      tiling = tile_manager.effective_tiling_as_flex_int(reapply_peripheral_margin = True)
+      print int(len(tiling)/4), "translated active areas, first one: ", list(tiling[0:4])
+
+    if dobreak:
+      print "Entering break. The pickle is loaded in the variable 'data'"
+      try:
+        from IPython import embed
+      except ImportError:
+        import pdb; pdb.set_trace()
+      else:
+        embed()
