@@ -282,7 +282,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       crystal.set_B_covariance(cov_B);
       double half_mosaicity_deg = boost::python::extract<double>(state[3]);
       crystal.set_half_mosaicity_deg(half_mosaicity_deg);
-      double domain_size_ang = boost::python::extract<double>(state[3]);
+      double domain_size_ang = boost::python::extract<double>(state[4]);
       crystal.set_domain_size_ang(domain_size_ang);
     }
   };
