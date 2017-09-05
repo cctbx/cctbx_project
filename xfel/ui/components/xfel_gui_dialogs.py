@@ -1809,11 +1809,19 @@ class TrialDialog(BaseDialog):
 
       # Parameter validation
       backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(self.db.params.dispatcher)]
-      if backend == 'dials':
+      if backend == 'labelit':
+        from spotfinder.applications.xfel import cxi_phil
+        phil_scope = cxi_phil.cxi_versioned_extract().persist.phil_scope
+      elif backend == 'dials':
         from xfel.command_line.xtc_process import phil_scope
-        from iotbx.phil import parse
+
+      from iotbx.phil import parse
+      msg = None
+      try:
         trial_params, unused = phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
-        msg = None
+      except Exception, e:
+        msg = '\nParameters incompatible with %s:\n%s\n' % (backend, str(e))
+      else:
         if len(unused) > 0:
           msg = [str(item) for item in unused]
           msg = '\n'.join(['  %s' % line for line in msg])
@@ -1825,14 +1833,14 @@ class TrialDialog(BaseDialog):
           if msg is None: msg = ""
           msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
 
-        if msg is not None:
-          msg += '\nFix the parameters and press OK again'
-          msgdlg = wx.MessageDialog(self,
-                                    message=msg,
-                                    caption='Warning',
-                                    style=wx.OK |  wx.ICON_EXCLAMATION)
-          msgdlg.ShowModal()
-          return
+      if msg is not None:
+        msg += '\nFix the parameters and press OK again'
+        msgdlg = wx.MessageDialog(self,
+                                  message=msg,
+                                  caption='Warning',
+                                  style=wx.OK |  wx.ICON_EXCLAMATION)
+        msgdlg.ShowModal()
+        return
 
       comment = self.trial_comment.ctr.GetValue()
       process_percent = int(self.throttle.ctr.GetValue())
