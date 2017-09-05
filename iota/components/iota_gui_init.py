@@ -376,73 +376,54 @@ class MainWindow(wx.Frame):
 
       self.gparams = self.iota_phil.extract()
 
-      # Test / fix input folders / files
-      for inp in self.gparams.input:
-        if not os.path.isdir(inp):
-          error_msg = wx.MessageDialog(None,
-                                       'Find Input Folder?',
-                                       'INPUT FOLDER {} NOT FOUND!'.format(inp),
-                                       wx.YES_NO | wx.ICON_ERROR)
-          if (error_msg.ShowModal() == wx.ID_YES):
-            open_dlg = wx.DirDialog(self, "Choose the input folder:",
-                                    style=wx.DD_DEFAULT_STYLE)
-            if open_dlg.ShowModal() == wx.ID_OK:
-              path = os.path.abspath(open_dlg.GetPath())
-              if path not in self.gparams.input:
-                self.gparams.input.append(path)
-            else:
-              return
-          else:
-            return
-        elif not os.path.isfile(inp):
-          error_msg = wx.MessageDialog(None,
-                                       'Find Input File?',
-                                       'INPUT FILE {} NOT FOUND!'.format(inp),
-                                       wx.YES_NO | wx.ICON_ERROR)
-          if (error_msg.ShowModal() == wx.ID_YES):
-            inp_dlg = wx.FileDialog(
-              self, message="Select file",
-              defaultDir=os.curdir,
-              defaultFile="*",
-              wildcard="*",
-              style=wx.OPEN | wx.CHANGE_DIR
-            )
-            if inp_dlg.ShowModal() == wx.ID_OK:
-              filepath = inp_dlg.GetPaths()[0]
-              if filepath not in self.gparams.input:
-                self.gparams.input.append(filepath)
-            else:
-              return
-          else:
-            return
-
-      # Test / fix output folder
-      if not os.path.isdir(self.gparams.output):
-        error_msg = wx.MessageDialog(None,
-                                     'Find Output Folder?',
-                                     'OUTPUT FOLDER {} NOT FOUND!'.format(self.gparams.output),
-                                     wx.YES_NO | wx.ICON_ERROR)
-        if (error_msg.ShowModal() == wx.ID_YES):
-          open_dlg = wx.DirDialog(self, "Choose the output folder:",
-                                  style=wx.DD_DEFAULT_STYLE)
-          if open_dlg.ShowModal() == wx.ID_OK:
-            self.gparams.output = os.path.abspath(open_dlg.GetPath())
-            int_no = rec_init.int_base.split('/')[-1]
-            cnv_no = rec_init.conv_base.split('/')[-1]
-            rec_init.input_base = self.gparams.input
-            rec_init.conv_base = os.path.join(self.gparams.output,
-                                              'converted_pickles', cnv_no)
-            rec_init.int_base = os.path.join(self.gparams.output,
-                                             'integration', int_no)
-            rec_init.fin_base = os.path.join(rec_init.int_base, 'final')
-            rec_init.log_base = os.path.join(rec_init.int_base, 'logs')
-            rec_init.obj_base = os.path.join(rec_init.int_base, 'image_objects')
-            rec_init.viz_base = os.path.join(rec_init.int_base, 'visualization')
-            rec_init.logfile = os.path.join(int_path, 'iot.log')
-          else:
-            return
-        else:
-          return
+      # # Test / fix input folders / files
+      # for inp in self.gparams.input:
+      #   if not os.path.exists(inp):
+      #     error_msg = wx.MessageDialog(None,
+      #                                  'INPUT PATH {} NOT FOUND!\n'
+      #                                  'Would you like to look for it?'
+      #                                  ''.format(inp),
+      #                                  wx.YES_NO | wx.ICON_ERROR)
+      #     if (error_msg.ShowModal() == wx.ID_YES):
+      #       open_dlg = wx.DirDialog(self, "Choose the input folder:",
+      #                               style=wx.DD_DEFAULT_STYLE)
+      #       if open_dlg.ShowModal() == wx.ID_OK:
+      #         path = os.path.abspath(open_dlg.GetPath())
+      #         if path not in self.gparams.input:
+      #           self.gparams.input.append(path)
+      #       else:
+      #         return
+      #     else:
+      #       return
+      #
+      # # Test / fix output folder
+      # if not os.path.isdir(self.gparams.output):
+      #   error_msg = wx.MessageDialog(None,
+      #                                'OUTPUT FOLDER {} NOT FOUND!\n'
+      #                                'Would you like to look for it?'
+      #                                ''.format(self.gparams.output),
+      #                                wx.YES_NO | wx.ICON_ERROR)
+      #   if (error_msg.ShowModal() == wx.ID_YES):
+      #     open_dlg = wx.DirDialog(self, "Choose the output folder:",
+      #                             style=wx.DD_DEFAULT_STYLE)
+      #     if open_dlg.ShowModal() == wx.ID_OK:
+      #       self.gparams.output = os.path.abspath(open_dlg.GetPath())
+      #       int_no = rec_init.int_base.split('/')[-1]
+      #       cnv_no = rec_init.conv_base.split('/')[-1]
+      #       rec_init.input_base = self.gparams.input
+      #       rec_init.conv_base = os.path.join(self.gparams.output,
+      #                                         'converted_pickles', cnv_no)
+      #       rec_init.int_base = os.path.join(self.gparams.output,
+      #                                        'integration', int_no)
+      #       rec_init.fin_base = os.path.join(rec_init.int_base, 'final')
+      #       rec_init.log_base = os.path.join(rec_init.int_base, 'logs')
+      #       rec_init.obj_base = os.path.join(rec_init.int_base, 'image_objects')
+      #       rec_init.viz_base = os.path.join(rec_init.int_base, 'visualization')
+      #       rec_init.logfile = os.path.join(int_path, 'iot.log')
+      #     else:
+      #       return
+      #   else:
+      #     return
 
       # Re-populate input window with settings from read-in run (check that
       # nothing has been moved)

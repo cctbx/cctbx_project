@@ -193,14 +193,14 @@ class ObjectFinderThread(Thread):
     new_finished_objects = [i for i in new_objects if
                             (i is not None and i.status == 'final')]
 
-    # If recovering and need to fix paths of images (final only):
-    if self.fix_paths:
-      for obj in new_finished_objects:
-        print 'Changing ', obj.final['final']
-        if obj.final['final'] is not None:
-          filename = os.path.basename(obj.final['final'])
-          obj.final['final'] = os.path.join(self.new_fin_base, filename)
-          print 'Generating filename ', obj.final['final']
+    # # If recovering and need to fix paths of images (final only):
+    # if self.fix_paths:
+    #   for obj in new_finished_objects:
+    #     print 'Changing ', obj.final['final']
+    #     if obj.final['final'] is not None:
+    #       filename = os.path.basename(obj.final['final'])
+    #       obj.final['final'] = os.path.join(self.new_fin_base, filename)
+    #       print 'Generating filename ', obj.final['final']
 
     evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=new_finished_objects)
     wx.PostEvent(self.parent, evt)
