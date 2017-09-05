@@ -400,15 +400,15 @@ class MainWindow(wx.Frame):
                                        'INPUT FILE {} NOT FOUND!'.format(inp),
                                        wx.YES_NO | wx.ICON_ERROR)
           if (error_msg.ShowModal() == wx.ID_YES):
-            dlg = wx.FileDialog(
+            inp_dlg = wx.FileDialog(
               self, message="Select file",
               defaultDir=os.curdir,
               defaultFile="*",
               wildcard="*",
               style=wx.OPEN | wx.CHANGE_DIR
             )
-            if dlg.ShowModal() == wx.ID_OK:
-              filepath = dlg.GetPaths()[0]
+            if inp_dlg.ShowModal() == wx.ID_OK:
+              filepath = inp_dlg.GetPaths()[0]
               if filepath not in self.gparams.input:
                 self.gparams.input.append(filepath)
             else:
