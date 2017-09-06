@@ -65,6 +65,10 @@ master_phil = libtbx.phil.parse("""
   soft_mask_radius=3
     .type=float
     .help = Gaussian mask smoothing radius
+  keep_map_size = False
+    .type=bool
+    .help = Keep original map gridding (do not cut anything out). \
+            Use to apply soft_mask and/or mask_atoms keeping same map size.
   gui
     .help = "GUI-specific parameter required for output directory"
   {
@@ -104,12 +108,19 @@ Parameters:"""%h
     cmd_cs=crystal_symmetry,
     master_params = master_phil)
   params = inputs.params.extract()
+  master_phil.format(python_object=params).show(out=log)
+
   # PDB file
   if params.pdb_file and not inputs.pdb_file_names and not pdb_hierarchy:
     inputs.pdb_file_names=[params.pdb_file]
   if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
-    pdb_hierarchy):
-    raise Sorry("PDB file is needed unless density_select is set.")
+    pdb_hierarchy and not params.keep_map_size):
+    raise Sorry("PDB file is needed unless density_select or keep_map_size is set .")
+  if (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy and \
+       (params.mask_atoms or params.soft_mask )):
+    raise Sorry("PDB file is needed for mask_atoms or soft_mask") 
+  if (params.density_select and params.keep_map_size):
+    raise Sorry("Cannot set both density_select and keep_map_size")
   print_statistics.make_sub_header("pdb model", out=log)
   if len(inputs.pdb_file_names)>0:
     pdb_inp = iotbx.pdb.input(file_name=inputs.pdb_file_names[0])
@@ -202,8 +213,12 @@ Parameters:"""%h
   #
   if params.value_outside_atoms=='mean':
     print >>log,"\nValue outside atoms mask will be set to mean inside mask"
-  if params.get_half_height_width:
+  if params.get_half_height_width and params.density_select:
     print >>log,"\nHalf width at half height will be used to id boundaries"
+  if params.soft_mask and sites_cart_all.size()>0:
+    print >>log,"\nSoft mask will be applied to model-based mask"
+  if params.keep_map_size:
+    print >>log,"\nEntire map will be kept (not cutting out region)"
 
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
@@ -218,6 +233,7 @@ Parameters:"""%h
     soft_mask_radius = params.soft_mask_radius,
     mask_atoms_atom_radius = params.mask_atoms_atom_radius,
     value_outside_atoms = params.value_outside_atoms,
+    keep_map_size         = params.keep_map_size,
     )
   if box.shift_cart:
     print >>log,"Final coordinate shift: (%.1f,%.1f,%.1f)" %(
