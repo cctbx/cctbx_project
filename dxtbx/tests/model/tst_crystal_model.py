@@ -4,7 +4,7 @@ from cStringIO import StringIO
 from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
 from cctbx import crystal, sgtbx, uctbx
-from dxtbx.model import Crystal, MosaicCrystalKabsch2010, CrystalFactory
+from dxtbx.model import Crystal, MosaicCrystalKabsch2010, MosaicCrystalSauter2014, CrystalFactory
 
 def random_rotation():
   import random
@@ -222,6 +222,24 @@ Crystal:
   # print "mosaic_model == model4", mosaic_model == model4 # False
   # print "mosaic_model2 == model4", mosaic_model2 == model4 # False
   # print "model4 == mosaic_model2", model4 == mosaic_model2 # True
+
+  mosaic_model = MosaicCrystalSauter2014(real_space_a=(10,0,0),
+                               real_space_b=(0,11,0),
+                               real_space_c=(0,0,12),
+                               space_group_symbol="P 1")
+  mosaic_model2 = MosaicCrystalSauter2014(real_space_a=(10,0,0),
+                                real_space_b=(0,11,0),
+                                real_space_c=(0,0,12),
+                                space_group_symbol="P 1")
+  assert approx_equal(mosaic_model.get_half_mosaicity_deg(), 0)
+  assert approx_equal(mosaic_model.get_domain_size_ang(), 0)
+  assert mosaic_model == mosaic_model2
+  mosaic_model2.set_half_mosaicity_deg(0.01)
+  assert mosaic_model != mosaic_model2
+  mosaic_model2.set_half_mosaicity_deg(0)
+  assert mosaic_model == mosaic_model2
+  mosaic_model2.set_domain_size_ang(1000)
+  assert mosaic_model != mosaic_model2
 
 def exercise_similarity():
 

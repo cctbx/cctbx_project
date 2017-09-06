@@ -66,8 +66,11 @@ class Crystal(db_proxy):
       u = matrix.sqr(crystal.get_U())  # orientation matrix
       for i in xrange(len(u)):
         kwargs['ori_%d' % (i + 1)] = u[i]
-      kwargs['mosaic_block_rotation'] = crystal._ML_half_mosaicity_deg
-      kwargs['mosaic_block_size'] = crystal._ML_domain_size_ang
+      try:
+        kwargs['mosaic_block_rotation'] = crystal.get_half_mosaicity_deg()
+        kwargs['mosaic_block_size'] = crystal.get_domain_size_ang()
+      except AttributeError:
+        pass
 
       try:
         isoform_name = crystal.identified_isoform

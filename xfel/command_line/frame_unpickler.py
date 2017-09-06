@@ -115,15 +115,27 @@ class construct_reflection_table_and_experiment_list(object):
     real_b = direct_matrix[3:6]
     real_c = direct_matrix[6:9]
     lattice = self.ucell.lattice_symmetry_group()
-    if 'mosaicity' in self.data:
-      from dxtbx.model import MosaicCrystalKabsch2010
-      self.crystal = MosaicCrystalKabsch2010(real_a, real_b, real_c, space_group=lattice)
-      self.crystal.set_mosaicity(self.data['mosaicity'])
-    else:
-      from dxtbx.model import Crystal
-      self.crystal = Crystal(real_a, real_b, real_c, space_group=lattice)
-    self.crystal._ML_half_mosaicity_deg = self.data['ML_half_mosaicity_deg'][0]
-    self.crystal._ML_domain_size_ang = self.data['ML_domain_size_ang'][0]
+    found_it = False
+    if 'ML_half_mosaicity_deg' in self.data:
+      assert 'ML_domain_size_ang' in self.data
+      if d['ML_half_mosaicity_deg'][0] is None or d['ML_domain_size_ang'][0] is None:
+        assert d['ML_half_mosaicity_deg'][0] is None and d['ML_domain_size_ang'][0] is None
+      else:
+        found_it = True
+        if 'mosaicity' in self.data and self.data['mosaicity'] > 0:
+          print "Warning, two kinds of mosaicity found. Using Sauter2014 model"
+        from dxtbx.model import MosaicCrystalSauter2014
+        self.crystal = MosaicCrystalSauter2014(real_a, real_b, real_c, space_group=lattice)
+        self.crystal.set_half_mosaicity_deg(self.data['ML_half_mosaicity_deg'][0])
+        self.crystal.set_domain_size_ang(self.data['ML_domain_size_ang'][0])
+    if not found_it:
+      if 'mosaicity' in self.data:
+        from dxtbx.model import MosaicCrystalKabsch2010
+        self.crystal = MosaicCrystalKabsch2010(real_a, real_b, real_c, space_group=lattice)
+        self.crystal.set_mosaicity(self.data['mosaicity'])
+      else:
+        from dxtbx.model import Crystal
+        self.crystal = Crystal(real_a, real_b, real_c, space_group=lattice)
     if 'identified_isoform' in self.data.keys() and self.data['identified_isoform'] is not None:
       self.crystal.identified_isoform = self.data['identified_isoform']
 

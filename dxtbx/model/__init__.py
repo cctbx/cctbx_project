@@ -136,16 +136,6 @@ class CrystalAux(boost.python.injector, Crystal):
     # Get the space group Hall symbol
     hall = crystal.get_space_group().info().type().hall_symbol()
 
-    # New parameters for maximum likelihood values
-    try:
-      ML_half_mosaicity_deg = crystal._ML_half_mosaicity_deg
-    except AttributeError:
-      ML_half_mosaicity_deg = None
-    try:
-      ML_domain_size_ang = crystal._ML_domain_size_ang
-    except AttributeError:
-      ML_domain_size_ang = None
-
     # Isoforms used for stills
     try:
       identified_isoform = crystal.identified_isoform
@@ -158,9 +148,7 @@ class CrystalAux(boost.python.injector, Crystal):
       ('real_space_a', real_space_a),
       ('real_space_b', real_space_b),
       ('real_space_c', real_space_c),
-      ('space_group_hall_symbol', hall),
-      ('ML_half_mosaicity_deg', ML_half_mosaicity_deg),
-      ('ML_domain_size_ang', ML_domain_size_ang)])
+      ('space_group_hall_symbol', hall)])
 
     if identified_isoform is not None:
       xl_dict['identified_isoform'] = identified_isoform
@@ -210,15 +198,6 @@ class CrystalAux(boost.python.injector, Crystal):
     space_group  = str("Hall:" + d['space_group_hall_symbol'])
     xl = Crystal(real_space_a, real_space_b, real_space_c,
                        space_group_symbol=space_group)
-    # New parameters for maximum likelihood values
-    try:
-      xl._ML_half_mosaicity_deg = d['ML_half_mosaicity_deg']
-    except KeyError:
-      pass
-    try:
-      xl._ML_domain_size_ang = d['ML_domain_size_ang']
-    except KeyError:
-      pass
 
     # Isoforms used for stills
     try:
@@ -295,17 +274,7 @@ class MosaicCrystalKabsch2010Aux(CrystalAux, MosaicCrystalKabsch2010):
     '''
     xl = MosaicCrystalKabsch2010(CrystalAux.from_dict(d))
 
-    # These parameters don't survive the Crystal copy constructor so have to be re-set
-    # New parameters for maximum likelihood values
-    try:
-      xl._ML_half_mosaicity_deg = d['ML_half_mosaicity_deg']
-    except KeyError:
-      pass
-    try:
-      xl._ML_domain_size_ang = d['ML_domain_size_ang']
-    except KeyError:
-      pass
-
+    # This parameter doesn't survive the Crystal copy constructor so has to be re-set.
     # Isoforms used for stills
     try:
       xl.identified_isoform = d['identified_isoform']
@@ -316,6 +285,81 @@ class MosaicCrystalKabsch2010Aux(CrystalAux, MosaicCrystalKabsch2010):
     try:
       mosaicity = d['mosaicity']
       xl.set_mosaicity(mosaicity)
+    except KeyError:
+      pass
+
+    return xl
+
+class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
+  def show(self, show_scan_varying=False, out=None):
+    from scitbx import matrix
+    CrystalAux._show(self, show_scan_varying, out)
+
+    if out is None:
+      import sys
+      out = sys.stdout
+
+    msg = []
+    msg.append("    Half mosaic angle (degrees):  %.6f"%self.get_half_mosaicity_deg())
+    msg.append("    Domain size (Angstroms):  %.6f"%self.get_domain_size_ang())
+
+    print >> out, "\n".join(msg)
+
+  def __str__(self):
+    from cStringIO import StringIO
+    s = StringIO()
+    msg = self.show(out=s)
+    s.seek(0)
+    return s.read()
+
+  def to_dict(crystal):
+    ''' Convert the crystal model to a dictionary
+
+    Params:
+        crystal The crystal model
+
+    Returns:
+        A dictionary of the parameters
+
+    '''
+    xl_dict = CrystalAux._to_dict(crystal)
+
+    # Get the mosaic parameters
+    half_mosaicity = crystal.get_half_mosaicity_deg()
+    xl_dict['ML_half_mosaicity_deg'] = half_mosaicity
+
+    domain_size = crystal.get_domain_size_ang()
+    xl_dict['ML_domain_size_ang'] = domain_size
+
+    return xl_dict
+
+  @staticmethod
+  def from_dict(d):
+    ''' Convert the dictionary to a crystal model
+
+    Params:
+        d The dictionary of parameters
+
+    Returns:
+        The crystal model
+
+    '''
+    xl = MosaicCrystalSauter2014(CrystalAux.from_dict(d))
+
+    # Parameters for maximum likelihood values
+    try:
+      xl.set_half_mosaicity_deg(d['ML_half_mosaicity_deg'])
+    except KeyError:
+      pass
+    try:
+      xl.set_domain_size_ang(d['ML_domain_size_ang'])
+    except KeyError:
+      pass
+
+    # This parameter doesn't survive the Crystal copy constructor so have to be re-set
+    # Isoforms used for stills
+    try:
+      xl.identified_isoform = d['identified_isoform']
     except KeyError:
       pass
 

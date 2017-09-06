@@ -25,6 +25,15 @@ class CrystalFactory(object):
       d = dict(t.items() + d.items())
 
     # Create the model from the dictionary
+    if 'ML_half_mosaicity_deg' in d:
+      assert 'ML_domain_size_ang' in d
+      if d['ML_half_mosaicity_deg'] is None or d['ML_domain_size_ang'] is None:
+        assert d['ML_half_mosaicity_deg'] is None and d['ML_domain_size_ang'] is None
+      else:
+        if 'mosaicity' in d and d['mosaicity'] > 0:
+          print "Warning, two kinds of mosaicity found. Using Sauter2014 model"
+        from dxtbx.model import MosaicCrystalSauter2014
+        return MosaicCrystalSauter2014.from_dict(d)
     if 'mosaicity' in d:
       from dxtbx.model import MosaicCrystalKabsch2010
       return MosaicCrystalKabsch2010.from_dict(d)
