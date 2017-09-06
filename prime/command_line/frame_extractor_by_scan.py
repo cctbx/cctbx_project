@@ -111,11 +111,11 @@ class ConstructFrame(object):
   # get any available ML values
   def populate_ML_values(self):
     try:
-      self.frame['ML_half_mosaicity_deg'] = [self.xtal._ML_half_mosaicity_deg]
+      self.frame['ML_half_mosaicity_deg'] = [self.xtal.get_half_mosaicity_deg()]
     except AttributeError:
       pass
     try:
-      self.frame['ML_domain_size_ang'] = [self.xtal._ML_domain_size_ang]
+      self.frame['ML_domain_size_ang'] = [self.xtal.get_domain_size_ang()]
     except AttributeError:
       pass
 
