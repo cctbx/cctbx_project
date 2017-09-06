@@ -157,14 +157,11 @@ class manager(object):
       stop_for_unknowns = True,
       processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      processed_pdb_files_srv = None, # remove later
-                     # reference_sites_cart = None,
                      restraints_manager = None, # remove later
                      ias_xray_structure = None, # remove later
                      refinement_flags = None,   # remove later
                      selection_moving = None,   # remove later
                      ias_manager = None,        # remove later
-                     # wilson_b = None,           # !!! Nothing sets it in this class. Neverhteless,
-                                                # !!! it is outputted in model_statistics, used in mmtbx/refinement
                      tls_groups = None,         # remove later? No action performed on them here
                      ncs_groups = None,         # remove later
                      anomalous_scatterer_groups = None, # remove later. ! It is used in def select(), hard to get rid of.
@@ -185,8 +182,6 @@ class manager(object):
     self.refinement_flags = refinement_flags
     self.selection_moving = selection_moving
     self.ias_manager = ias_manager
-    # self.wilson_b = wilson_b   # !!! Nothing sets it in this class. Neverhteless,
-                               # !!! it is outputted in model_statistics, used in mmtbx/refinement
     self.tls_groups = tls_groups         # remove later? No action performed on them here
     self.ncs_groups = ncs_groups         # remove later
     self.anomalous_scatterer_groups = anomalous_scatterer_groups, # remove later. ! It is used in def select(), hard to get rid of.
@@ -199,7 +194,6 @@ class manager(object):
         # self.reference_sites_cart = reference_sites_cart
         self.selection_moving = selection_moving
         self.refinement_flags = refinement_flags
-        # self.wilson_b = wilson_b
         self.tls_groups = tls_groups
         # IAS related, need a real cleaning!
         self.ias_manager = ias_manager
