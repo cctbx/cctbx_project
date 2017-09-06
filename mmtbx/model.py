@@ -158,7 +158,6 @@ class manager(object):
       processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      processed_pdb_files_srv = None, # remove later
                      restraints_manager = None, # remove later
-                     # ias_xray_structure = None, # remove later
                      refinement_flags = None,   # remove later
                      selection_moving = None,   # remove later
                      ias_manager = None,        # remove later
@@ -178,7 +177,6 @@ class manager(object):
     self.processed_pdb_files_srv = processed_pdb_files_srv
 
     self.restraints_manager = restraints_manager
-    # self.ias_xray_structure = ias_xray_structure
     self.refinement_flags = refinement_flags
     self.selection_moving = selection_moving
     self.ias_manager = ias_manager
@@ -191,15 +189,12 @@ class manager(object):
         self.log = log
         self.ncs_groups = ncs_groups
         self.processed_pdb_files_srv = processed_pdb_files_srv # to be deleted
-        # self.reference_sites_cart = reference_sites_cart
         self.selection_moving = selection_moving
         self.refinement_flags = refinement_flags
         self.tls_groups = tls_groups
         # IAS related, need a real cleaning!
         self.ias_manager = ias_manager
-        # self.ias_xray_structure = ias_xray_structure
         self.use_ias = False
-        # self.ias_selection = None
         self.exchangable_hd_groups = []
         self.original_xh_lengths = None
         self.riding_h_manager = None
@@ -240,8 +235,6 @@ class manager(object):
       # therefore all unnecessary stuff is being initialized.
       assert model_input is not None
       self.model_input = model_input
-      # print restraint_objects
-      # STOP()
       self.restraint_objects = restraint_objects
       self.pdb_interpretation_params = pdb_interpretation_params
       if self.pdb_interpretation_params is None:
@@ -1363,13 +1356,6 @@ class manager(object):
     size_all = self.xray_structure.scatterers().size()
     if(not build_only):
       ias_xray_structure = self.ias_manager.ias_xray_structure
-      # ias_size = ias_xray_structure.scatterers().size()
-      # tail = flex.bool(ias_size, True)
-      # tail_false = flex.bool(ias_size, False)
-      # ias_selection = flex.bool(
-      #                 self.xray_structure.scatterers().size(),False)
-      # ias_selection.extend(tail)
-      # self.ias_manager.set_ias_selection(ias_selection)
       ias_selection = self.get_ias_selection()
       self.xray_structure.concatenate_inplace(other = ias_xray_structure)
       print >> self.log, "Scattering dictionary for combined xray_structure:"
