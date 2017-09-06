@@ -412,12 +412,11 @@ class manager(object):
            get_n_reference_coordinate_proxies() >= len(restraint_sites_cart))
     ########################
 
-    selection = self.model.selection_moving
+    # selection = self.model.selection_moving
     minimized = self.model.geometry_minimization(
       max_number_of_iterations       = 500,
       correct_special_position_tolerance=1.0,
       number_of_macro_cycles         = 1,
-      selection                      = selection,
       bond                           = True,
       nonbonded                      = True,
       angle                          = True,

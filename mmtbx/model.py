@@ -159,10 +159,9 @@ class manager(object):
                      processed_pdb_files_srv = None, # remove later
                      restraints_manager = None, # remove later
                      refinement_flags = None,   # remove later
-                     selection_moving = None,   # remove later
-                     ias_manager = None,        # remove later
-                     tls_groups = None,         # remove later? No action performed on them here
-                     ncs_groups = None,         # remove later
+                     # ias_manager = None,        # remove later
+                     tls_groups = None,         # remove later? ! used in def select()
+                     # ncs_groups = None,         # remove later
                      anomalous_scatterer_groups = None, # remove later. ! It is used in def select(), hard to get rid of.
                      log = None):
 
@@ -178,23 +177,21 @@ class manager(object):
 
     self.restraints_manager = restraints_manager
     self.refinement_flags = refinement_flags
-    self.selection_moving = selection_moving
-    self.ias_manager = ias_manager
+    self.ias_manager = None
+    self.use_ias = False    # remove later, use presence of ias_manager
+                          # somewhat challenging because of ias.build_only parameter in phenix.refine
     self.tls_groups = tls_groups         # remove later? No action performed on them here
-    self.ncs_groups = ncs_groups         # remove later
+    self.ncs_groups = None         # remove later
     self.anomalous_scatterer_groups = anomalous_scatterer_groups, # remove later. ! It is used in def select(), hard to get rid of.
     self.log = log
 
     def _common_init():
         self.log = log
-        self.ncs_groups = ncs_groups
+        # self.ncs_groups = ncs_groups
         self.processed_pdb_files_srv = processed_pdb_files_srv # to be deleted
-        self.selection_moving = selection_moving
         self.refinement_flags = refinement_flags
         self.tls_groups = tls_groups
         # IAS related, need a real cleaning!
-        self.ias_manager = ias_manager
-        self.use_ias = False
         self.exchangable_hd_groups = []
         self.original_xh_lengths = None
         self.riding_h_manager = None
