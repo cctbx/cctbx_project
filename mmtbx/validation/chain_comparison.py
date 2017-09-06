@@ -384,7 +384,8 @@ def get_target_length(target_chain_ids=None,hierarchy=None,
   for model in hierarchy.models()[:1]:
     for chain in model.chains():
       if (not target_length_from_matching_chains) or chain.id in target_chain_ids:
-        total_length+=len(chain.residues())
+        for conformer in chain.conformers()[:1]:
+          total_length+=len(conformer.residues())
   return total_length
 
 def run(args=None,
