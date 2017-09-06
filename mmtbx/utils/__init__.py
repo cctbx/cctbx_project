@@ -2203,8 +2203,11 @@ class fmodel_from_xray_structure(object):
       mtz_object.write(file_name = file_name)
 
 def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
-                                ias_selection = None):
+                                ias_manager = None):
   result = None
+  ias_selection = None
+  if ias_manager is not None:
+    ias_selection = ias_manager.get_ias_selection()
   if(restraints_manager is not None):
     xrs_sel = xray_structure
     if(ias_selection is not None):

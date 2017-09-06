@@ -658,6 +658,7 @@ class manager(object):
                      file_name = None,
                      log       = None):
      adopt_init_args(self, locals())
+     self.ias_selection = None
      if(log is None): self.log = sys.stdout
      if(self.params is None): self.params = ias_master_params.extract()
      bond_proxies_simple, asu = self.geometry.get_covalent_bond_proxies()
@@ -688,6 +689,20 @@ class manager(object):
      self.ias_xray_structure.scattering_type_registry().show(out = self.log)
      if(1):
         self.write_pdb_file(out=self.log)
+
+  def set_ias_selection(self, ias_selection):
+    self.ias_selection = ias_selection
+
+  def setup_ias_selection(self):
+    ias_size = self.ias_xray_structure.scatterers().size()
+    tail = flex.bool(ias_size, True)
+    self.ias_selection = flex.bool(self.xray_structure.scatterers().size(),False)
+    self.ias_selection.extend(tail)
+
+  def get_ias_selection(self):
+    if self.ias_selection is None:
+      self.setup_ias_selection()
+    return self.ias_selection
 
   def iass_as_xray_structure(self, iass):
      ias_xray_structure = xray.structure(

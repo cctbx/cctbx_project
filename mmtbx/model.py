@@ -158,7 +158,7 @@ class manager(object):
       processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      processed_pdb_files_srv = None, # remove later
                      restraints_manager = None, # remove later
-                     ias_xray_structure = None, # remove later
+                     # ias_xray_structure = None, # remove later
                      refinement_flags = None,   # remove later
                      selection_moving = None,   # remove later
                      ias_manager = None,        # remove later
@@ -178,7 +178,7 @@ class manager(object):
     self.processed_pdb_files_srv = processed_pdb_files_srv
 
     self.restraints_manager = restraints_manager
-    self.ias_xray_structure = ias_xray_structure
+    # self.ias_xray_structure = ias_xray_structure
     self.refinement_flags = refinement_flags
     self.selection_moving = selection_moving
     self.ias_manager = ias_manager
@@ -197,9 +197,9 @@ class manager(object):
         self.tls_groups = tls_groups
         # IAS related, need a real cleaning!
         self.ias_manager = ias_manager
-        self.ias_xray_structure = ias_xray_structure
+        # self.ias_xray_structure = ias_xray_structure
         self.use_ias = False
-        self.ias_selection = None
+        # self.ias_selection = None
         self.exchangable_hd_groups = []
         self.original_xh_lengths = None
         self.riding_h_manager = None
@@ -351,6 +351,12 @@ class manager(object):
     else:
       self._build_grm()
       return self.restraints_manager
+
+  def get_ias_selection(self):
+    if self.ias_manager is None:
+      return None
+    else:
+      return self.ias_manager.get_ias_selection()
 
   def selection(self, selstr):
     if self.all_chain_proxies is None:
@@ -766,8 +772,9 @@ class manager(object):
     if(self.restraints_manager is not None):
       if(self.xray_structure.hd_selection().count(True) > 0):
         xray_structure = self.xray_structure
-        if(self.ias_selection and self.ias_selection.count(True) > 0):
-          xray_structure = self.xray_structure.select(~self.ias_selection)
+        ias_selection = self.get_ias_selection()
+        if ias_selection and ias_selection.count(True) > 0:
+          xray_structure = self.xray_structure.select(~ias_selection)
         result = xh_connectivity_table(
           geometry       = self.restraints_manager,
           xray_structure = xray_structure).table
@@ -778,8 +785,9 @@ class manager(object):
     if(self.restraints_manager is not None):
       if(self.xray_structure.hd_selection().count(True) > 0):
         xray_structure = self.xray_structure
-        if(self.ias_selection and self.ias_selection.count(True) > 0):
-          xray_structure = self.xray_structure.select(~self.ias_selection)
+        ias_selection = self.get_ias_selection()
+        if ias_selection and ias_selection.count(True) > 0:
+          xray_structure = self.xray_structure.select(~ias_selection)
         result = xh_connectivity_table2(
           geometry       = self.restraints_manager,
           xray_structure = xray_structure).table
@@ -956,8 +964,9 @@ class manager(object):
       not_hd_selection = ~hd_selection
       sol_hd = self.solvent_selection().set_selected(~hd_selection, False)
       mac_hd = hd_selection.deep_copy().set_selected(self.solvent_selection(), False)
-      if(self.ias_selection is not None):
-        not_hd_selection.set_selected(self.ias_selection, False)
+      ias_selection = self.get_ias_selection()
+      if (ias_selection is not None):
+        not_hd_selection.set_selected(ias_selection, False)
       sites_cart_mac_before = \
         self.xray_structure.sites_cart().select(not_hd_selection)
       xhd = flex.double()
@@ -972,8 +981,8 @@ class manager(object):
       for sel_pair in [(mac_hd, False), (sol_hd, True)]*2:
         if(sel_pair[0].count(True) > 0):
           sel = sel_pair[0]
-          if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
-            sel = sel.select(~self.ias_selection)
+          if(ias_selection is not None and ias_selection.count(True) > 0):
+            sel = sel.select(~ias_selection)
           min_result = self.geometry_minimization(
             correct_special_position_tolerance=correct_special_position_tolerance,
             selection = sel,
@@ -1288,8 +1297,9 @@ class manager(object):
     for i in xrange(number_of_macro_cycles):
       sites_cart = self.xray_structure.sites_cart()
       sites_cart_orig = sites_cart.deep_copy()
-      if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
-        sites_cart = sites_cart.select(~self.ias_selection)
+      ias_selection = self.get_ias_selection()
+      if ias_selection is not None and ias_selection.count(True) > 0:
+        sites_cart = sites_cart.select(~ias_selection)
       exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
         ignore_line_search_failed_step_at_lower_bound = True)
       minimized = geometry_minimization.lbfgs(
@@ -1303,8 +1313,8 @@ class manager(object):
         rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff,
         rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
         site_labels=self.xray_structure.scatterers().extract_labels())
-      if(self.ias_selection is not None):
-        for i_seq, ias_s in enumerate(self.ias_selection): # assumes that IAS appended to the back
+      if(ias_selection is not None):
+        for i_seq, ias_s in enumerate(ias_selection): # assumes that IAS appended to the back
           if(not ias_s):
             sites_cart_orig[i_seq] = sites_cart[i_seq]
       else:
@@ -1316,7 +1326,7 @@ class manager(object):
     return utils.rms_b_iso_or_b_equiv_bonded(
       restraints_manager = self.restraints_manager,
       xray_structure     = self.xray_structure,
-      ias_selection      = self.ias_selection)
+      ias_manager        = self.ias_manager)
 
   def extract_ncs_groups(self):
     result = None
@@ -1352,28 +1362,30 @@ class manager(object):
                     log                  = self.log)
     size_all = self.xray_structure.scatterers().size()
     if(not build_only):
-      self.ias_xray_structure = self.ias_manager.ias_xray_structure
-      ias_size = self.ias_xray_structure.scatterers().size()
-      tail = flex.bool(ias_size, True)
-      tail_false = flex.bool(ias_size, False)
-      self.ias_selection = flex.bool(
-                      self.xray_structure.scatterers().size(),False)
-      self.ias_selection.extend(tail)
-      self.xray_structure.concatenate_inplace(other = self.ias_xray_structure)
+      ias_xray_structure = self.ias_manager.ias_xray_structure
+      # ias_size = ias_xray_structure.scatterers().size()
+      # tail = flex.bool(ias_size, True)
+      # tail_false = flex.bool(ias_size, False)
+      # ias_selection = flex.bool(
+      #                 self.xray_structure.scatterers().size(),False)
+      # ias_selection.extend(tail)
+      # self.ias_manager.set_ias_selection(ias_selection)
+      ias_selection = self.get_ias_selection()
+      self.xray_structure.concatenate_inplace(other = ias_xray_structure)
       print >> self.log, "Scattering dictionary for combined xray_structure:"
       self.xray_structure.scattering_type_registry().show(out=self.log)
       self.xray_structure_initial.concatenate_inplace(
-                                           other = self.ias_xray_structure)
+                                           other = ias_xray_structure)
       if(self.refinement_flags is not None):
          self.old_refinement_flags = self.refinement_flags.deep_copy()
          # define flags
-         ssites = flex.bool(self.ias_xray_structure.scatterers().size(), False)
-         sadp = flex.bool(self.ias_xray_structure.scatterers().size(), False)
+         ssites = flex.bool(ias_xray_structure.scatterers().size(), False)
+         sadp = flex.bool(ias_xray_structure.scatterers().size(), False)
          # XXX set occ refinement ONLY for involved atoms
          # XXX now it refines only occupancies of IAS !!!
          occupancy_flags = []
-         ms = self.ias_selection.count(False)
-         for i in range(1, self.ias_selection.count(True)+1):
+         ms = ias_selection.count(False)
+         for i in range(1, ias_selection.count(True)+1):
            occupancy_flags.append([flex.size_t([ms+i-1])])
          # set flags
          self.refinement_flags.inflate(
@@ -1384,12 +1396,12 @@ class manager(object):
            size_all             = size_all)
          # adjust flags
          if(self.refinement_flags.sites_individual is not None):
-           self.refinement_flags.sites_individual.set_selected(self.ias_selection, False)
-           self.refinement_flags.sites_individual.set_selected(~self.ias_selection, True)
+           self.refinement_flags.sites_individual.set_selected(ias_selection, False)
+           self.refinement_flags.sites_individual.set_selected(~ias_selection, True)
          if(self.refinement_flags.adp_individual_aniso is not None):
-           self.refinement_flags.adp_individual_aniso.set_selected(self.ias_selection, False)
+           self.refinement_flags.adp_individual_aniso.set_selected(ias_selection, False)
          if(self.refinement_flags.adp_individual_iso is not None):
-           self.refinement_flags.adp_individual_iso.set_selected(self.ias_selection, True)
+           self.refinement_flags.adp_individual_iso.set_selected(ias_selection, True)
          #occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
          #self.xray_structure.scatterers().set_occupancies(occs, ~self.ias_selection)
          # D9
@@ -1399,16 +1411,16 @@ class manager(object):
            self.refinement_flags.adp_individual_aniso.set_selected(sel, True)
          if(self.refinement_flags.adp_individual_iso is not None):
            self.refinement_flags.adp_individual_iso.set_selected(sel, False)
-    n_sites = self.ias_xray_structure.scatterers().size()
+    n_sites = ias_xray_structure.scatterers().size()
     atom_names = []
-    for sc in self.ias_xray_structure.scatterers():
+    for sc in ias_xray_structure.scatterers():
       new_atom_name = sc.label.strip()
       if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
       while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
       atom_names.append(new_atom_name)
     residue_names = [ "IAS" ] * n_sites
     self._append_pdb_atoms(
-      new_xray_structure=self.ias_xray_structure,
+      new_xray_structure=ias_xray_structure,
       atom_names=atom_names,
       residue_names=residue_names,
       chain_id=" ",
@@ -1417,19 +1429,19 @@ class manager(object):
   def remove_ias(self):
     print >> self.log, ">>> Removing IAS..............."
     self.use_ias = False
+    ias_selection = self.get_ias_selection()
     if(self.ias_manager is not None):
-       self.ias_manager = None
+      self.ias_manager = None
     if(self.old_refinement_flags is not None):
-       self.refinement_flags = self.old_refinement_flags.deep_copy()
-       self.old_refinement_flags = None
-    if(self.ias_selection is not None):
-       self.xray_structure.select_inplace(
-         selection = ~self.ias_selection)
-       self.xray_structure.scattering_type_registry().show(out=self.log)
-       self._pdb_hierarchy = self._pdb_hierarchy.select(
-         atom_selection = ~self.ias_selection)
-       self.pdb_atoms = self._pdb_hierarchy.atoms()
-       self.ias_selection = None
+      self.refinement_flags = self.old_refinement_flags.deep_copy()
+      self.old_refinement_flags = None
+    if(ias_selection is not None):
+      self.xray_structure.select_inplace(
+        selection = ~ias_selection)
+      self.xray_structure.scattering_type_registry().show(out=self.log)
+      self._pdb_hierarchy = self._pdb_hierarchy.select(
+        atom_selection = ~ias_selection)
+      self.pdb_atoms = self._pdb_hierarchy.atoms()
 
   def show_rigid_bond_test(self, out=None, use_id_str=False, prefix=""):
     if (out is None): out = sys.stdout
@@ -1437,8 +1449,9 @@ class manager(object):
     unit_cell = self.xray_structure.unit_cell()
     rbt_array = flex.double()
     sites_cart = self.xray_structure.sites_cart()
-    if(self.ias_selection is not None):#
-      sites_cart = sites_cart.select(~self.ias_selection)
+    ias_selection = self.get_ias_selection()
+    if ias_selection is not None:#
+      sites_cart = sites_cart.select(~ias_selection)
     bond_proxies_simple, asu = self.restraints_manager.geometry.\
         get_all_bond_proxies(sites_cart=sites_cart)
     for proxy in bond_proxies_simple:
@@ -1474,9 +1487,10 @@ class manager(object):
         disable_asu_cache=False):
     if(self.restraints_manager is None): return None
     sites_cart = self.xray_structure.sites_cart()
-    if(self.use_ias and self.ias_selection is not None and
-       self.ias_selection.count(True) > 0):
-      sites_cart = sites_cart.select(~self.ias_selection)
+    ias_selection = self.get_ias_selection()
+    if(self.use_ias and ias_selection is not None and
+       ias_selection.count(True) > 0):
+      sites_cart = sites_cart.select(~ias_selection)
     result = self.restraints_manager.energies_sites(
       sites_cart=sites_cart,
       geometry_flags=geometry_flags,
@@ -1503,7 +1517,7 @@ class manager(object):
 
   def xray_structure_macromolecule(self):
     sel = self.solvent_selection(include_ions=True)
-    if(self.use_ias): sel = sel | self.ias_selection
+    if(self.use_ias): sel = sel | self.get_ias_selection()
     result = self.xray_structure.select(~sel)
     return result
 
@@ -1917,8 +1931,9 @@ class manager(object):
     ph = self.pdb_hierarchy(sync_with_xray_structure=True)
     hd_selection = self.xray_structure.hd_selection()
     if(self.use_ias):
-      hd_selection = hd_selection.select(~self.ias_selection)
-      ph = ph.select(~self.ias_selection)
+      ias_selection = self.get_ias_selection()
+      hd_selection = hd_selection.select(~ias_selection)
+      ph = ph.select(~ias_selection)
     rm = self.restraints_manager
     if(self.riding_h_manager is not None or
        scattering_table in ["n_gaussian","wk1995", "it1992"]):
@@ -1951,8 +1966,9 @@ class manager(object):
     xrs = self.xray_structure
     sel_ = xrs.use_u_iso() | xrs.use_u_aniso()
     selection = sel_
-    if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
-      selection = sel_.set_selected(self.ias_selection, False)
+    ias_selection = self.get_ias_selection()
+    if(ias_selection is not None and ias_selection.count(True) > 0):
+      selection = sel_.set_selected(ias_selection, False)
     n_aniso = 0
     if(self.refinement_flags.adp_individual_aniso is not None):
       n_aniso = self.refinement_flags.adp_individual_aniso.count(True)

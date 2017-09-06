@@ -177,7 +177,7 @@ def run(fmodels, model, target_weights, params, log,
         format_for_phenix_refine=False, monitor=None,
         call_back_after_step=True):
   assert fmodels.fmodel_neutron() is None # not implemented
-  assert model.ias_selection is None # tardy+ias is not a useful combination
+  assert model.ias_manager is None # tardy+ias is not a useful combination
   xs = fmodels.fmodel_xray().xray_structure
   sites_cart_start = xs.sites_cart()
   sites = sites_cart_start
