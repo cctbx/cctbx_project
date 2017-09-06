@@ -163,12 +163,34 @@ class manager(object):
                      refinement_flags = None,   # remove later
                      selection_moving = None,   # remove later
                      ias_manager = None,        # remove later
-                     wilson_b = None,           # !!! Nothing sets it in this class. Neverhteless,
+                     # wilson_b = None,           # !!! Nothing sets it in this class. Neverhteless,
                                                 # !!! it is outputted in model_statistics, used in mmtbx/refinement
                      tls_groups = None,         # remove later? No action performed on them here
                      ncs_groups = None,         # remove later
-                     anomalous_scatterer_groups = None, # remove later
+                     anomalous_scatterer_groups = None, # remove later. ! It is used in def select(), hard to get rid of.
                      log = None):
+
+    self.xray_structure = xray_structure
+    self._pdb_hierarchy = pdb_hierarchy
+    self.model_input = model_input
+    self.restraint_objects = restraint_objects
+    self.pdb_interpretation_params = pdb_interpretation_params
+    self.build_grm = build_grm
+    self.stop_for_unknowns = stop_for_unknowns
+    self.processed_pdb_file = processed_pdb_file
+    self.processed_pdb_files_srv = processed_pdb_files_srv
+
+    self.restraints_manager = restraints_manager
+    self.ias_xray_structure = ias_xray_structure
+    self.refinement_flags = refinement_flags
+    self.selection_moving = selection_moving
+    self.ias_manager = ias_manager
+    # self.wilson_b = wilson_b   # !!! Nothing sets it in this class. Neverhteless,
+                               # !!! it is outputted in model_statistics, used in mmtbx/refinement
+    self.tls_groups = tls_groups         # remove later? No action performed on them here
+    self.ncs_groups = ncs_groups         # remove later
+    self.anomalous_scatterer_groups = anomalous_scatterer_groups, # remove later. ! It is used in def select(), hard to get rid of.
+    self.log = log
 
     def _common_init():
         self.log = log
@@ -177,7 +199,7 @@ class manager(object):
         # self.reference_sites_cart = reference_sites_cart
         self.selection_moving = selection_moving
         self.refinement_flags = refinement_flags
-        self.wilson_b = wilson_b
+        # self.wilson_b = wilson_b
         self.tls_groups = tls_groups
         # IAS related, need a real cleaning!
         self.ias_manager = ias_manager
