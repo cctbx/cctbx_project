@@ -691,13 +691,6 @@ master_phil = iotbx.phil.parse("""
       .help = Choose region where density is this fraction of maximum or greater
       .short_caption = threshold for density_select
 
-     soft_mask_in_density_select = False
-       .type = bool
-       .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map) when cutting out map with map_box
-       .short_caption = Soft mask in density_select
-
-
     get_half_height_width = None
       .type = bool
       .help = Use 4 times half-width at half-height as estimate of max size
@@ -2948,11 +2941,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "b_iso, \nb_sharpen, or resolution_dependent_b"
     params.map_modification.auto_sharpen=False
 
-  if params.segmentation.soft_mask_in_density_select and \
-        not params.segmentation.density_select:
-    raise Sorry(
-     "Need to specify density_select=True for soft_mask_in_density_select")
-
   if params.output_files.output_directory and  \
      not os.path.isdir(params.output_files.output_directory):
       os.mkdir(params.output_files.output_directory)
@@ -3106,12 +3094,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        params.segmentation.density_select_threshold)
       args.append("density_select_threshold=%s" %(
          params.segmentation.density_select_threshold))
-    if params.segmentation.soft_mask_in_density_select is not None:
-      print >>out,"Soft mask for density selection will be: %s \n"%(
-       params.segmentation.soft_mask_in_density_select)
-      args.append("soft_mask=%s" %(
-         params.segmentation.soft_mask_in_density_select))
-
     if params.segmentation.get_half_height_width is not None:
       args.append("get_half_height_width=%s" %(
         params.segmentation.get_half_height_width))
