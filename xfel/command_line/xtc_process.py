@@ -361,7 +361,7 @@ extra_dials_phil_str = '''
   }
 '''
 
-class ConvertToPyObj():
+class EventOffsetSerializer(object):
   """ Pickles python object """
   def __init__(self,psanaOffset):
     self.filenames = psanaOffset.filenames()
@@ -704,7 +704,10 @@ class InMemScript(DialsProcessScript):
               self.mpi_log_write("Getting next available process\n")
               offset = evt.get(psana.EventOffset)
               rankreq = comm.recv(source=MPI.ANY_SOURCE)
-              comm.send(ConvertToPyObj(offset),dest=rankreq)
+              t = evt.get(psana.EventId).time()
+              ts = cspad_tbx.evt_timestamp((t[0],t[1]/1e6))
+              self.mpi_log_write("Process %s is ready, sending ts %s\n"%(rankreq, ts))
+              comm.send(EventOffsetSerializer(offset),dest=rankreq)
             # send a stop command to each process
             self.mpi_log_write("MPI DONE, sending stops\n")
             for rankreq in range(size-1):
