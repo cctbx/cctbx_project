@@ -692,6 +692,9 @@ class InMemScript(DialsProcessScript):
       # list of all events
       # only cycle through times in client_server mode
       if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
+        # process fractions only works in idx-striping mode
+        if params.dispatch.process_percent:
+          raise Sorry("Process percent only works in striping mode.")
         print "Using MPI client server in rax mode"
         # use a client/server approach to be sure every process is busy as much as possible
         # only do this if there are more than 2 processes, as one process will be a server
