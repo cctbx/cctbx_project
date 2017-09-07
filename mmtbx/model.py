@@ -208,7 +208,6 @@ class manager(object):
     self._rama_eval = None
     self.original_model_format = None
 
-
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
     if self.pdb_interpretation_params is None:
@@ -263,49 +262,6 @@ class manager(object):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
 
-    # if xray_structure is not None or pdb_hierarchy is not None:
-    #   if xray_structure and pdb_hierarchy:
-    #     assert xray_structure.scatterers().size() == pdb_hierarchy.atoms_size()
-    #   # Old way of doing things. Remove later completely.
-    #   # if self.processed_pdb_file is not None:
-    #   #   self.all_chain_proxies = processed_pdb_file.all_chain_proxies
-    #   # if self.all_chain_proxies is not None:
-    #   #   self._asc = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-    #   if xray_structure is not None:
-    #     self.xray_structure = xray_structure
-    #     self.cs = xray_structure.crystal_symmetry()
-    #   # self.pdb_atoms = self._pdb_hierarchy.atoms()
-    #   # self.pdb_atoms.reset_i_seq()
-    #   if(anomalous_scatterer_groups is not None and
-    #       len(anomalous_scatterer_groups) == 0):
-    #     anomalous_scatterer_groups = None
-    #   self.anomalous_scatterer_groups = anomalous_scatterer_groups
-    #   self.sync_pdb_hierarchy_with_xray_structure()
-    # else:
-    #   # new way of doing things. Should be compatible with old way for now
-    #   # to facilitate refactoring,
-    #   # therefore all unnecessary stuff is being initialized.
-    #   assert model_input is not None
-
-    #   # self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
-    #   # self.pdb_atoms = self._pdb_hierarchy.atoms()
-    #   # self.pdb_atoms.reset_i_seq()
-    #   # self._asc = self._pdb_hierarchy.atom_selection_cache()
-
-
-    #   # New fancy stuff
-    #   # we need them to be able to do "smart" selections implemented there...
-    #   # if(anomalous_scatterer_groups is not None and
-    #   #     len(anomalous_scatterer_groups) == 0):
-    #   #   anomalous_scatterer_groups = None
-    #   # self.anomalous_scatterer_groups = anomalous_scatterer_groups
-    #   # if build_grm:
-    #   #   self._build_grm()
-    #   # hack for now.
-    #   # self._create_xray_structure()
-    # if(self.xray_structure.hd_selection().count(True) > 0):
-    #   self.exchangable_hd_groups = utils.combine_hd_exchangable(
-    #     hierarchy = self._pdb_hierarchy)
 
   def get_model_statistics_info(self,
       fmodel_x          = None,
