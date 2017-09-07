@@ -205,9 +205,15 @@ class manager(object):
     self.ener_lib = None
     self._rotamer_eval = None
     self._rama_eval = None
+    self.original_model_format = None
+
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
+    if self.pdb_interpretation_params is None:
+      self.pdb_interpretation_params = iotbx.phil.parse(
+          input_string=grand_master_phil_str, process_includes=True).extract()
+
 
     if xray_structure is not None or pdb_hierarchy is not None:
       if xray_structure and pdb_hierarchy:
@@ -220,8 +226,6 @@ class manager(object):
       if xray_structure is not None:
         self.xray_structure = xray_structure
         self.cs = xray_structure.crystal_symmetry()
-      # Not clear why xray_structure_initial is necessary
-      self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
       self.pdb_atoms = self._pdb_hierarchy.atoms()
       self.pdb_atoms.reset_i_seq()
       if(anomalous_scatterer_groups is not None and
@@ -234,10 +238,6 @@ class manager(object):
       # to facilitate refactoring,
       # therefore all unnecessary stuff is being initialized.
       assert model_input is not None
-      if self.pdb_interpretation_params is None:
-        self.pdb_interpretation_params = iotbx.phil.parse(
-            input_string=grand_master_phil_str, process_includes=True).extract()
-      self.original_model_format = None
       s = str(type(model_input))
       if s.find("pdb") > 0:
         self.original_model_format = "pdb"
@@ -245,7 +245,6 @@ class manager(object):
         self.original_model_format = "mmcif"
       self.cs = self.model_input.crystal_symmetry()
       self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
-      # Not clear why xray_structure_initial and pdb_atoms are necessary
       self.pdb_atoms = self._pdb_hierarchy.atoms()
       self.pdb_atoms.reset_i_seq()
       self._asc = self._pdb_hierarchy.atom_selection_cache()
@@ -364,7 +363,6 @@ class manager(object):
     else:
       self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=self.cs)
-    self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
 
   def get_mon_lib_srv(self):
     if self.mon_lib_srv is None:
@@ -546,7 +544,6 @@ class manager(object):
     self.all_chain_proxies = processed_pdb_file.all_chain_proxies
     self._asc = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
     self.xray_structure = self.all_chain_proxies.extract_xray_structure()
-    self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
     self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
     self.ener_lib = process_pdb_file_srv.ener_lib
     self._ncs_obj = processed_pdb_file.ncs_obj
@@ -1341,8 +1338,6 @@ class manager(object):
       self.xray_structure.concatenate_inplace(other = ias_xray_structure)
       print >> self.log, "Scattering dictionary for combined xray_structure:"
       self.xray_structure.scattering_type_registry().show(out=self.log)
-      self.xray_structure_initial.concatenate_inplace(
-                                           other = ias_xray_structure)
       if(self.refinement_flags is not None):
          self.old_refinement_flags = self.refinement_flags.deep_copy()
          # define flags
@@ -1515,12 +1510,11 @@ class manager(object):
       restraints_manager         = new_restraints_manager,
       xray_structure             = self.xray_structure.select(selection),
       pdb_hierarchy              = new_pdb_hierarchy,
+      pdb_interpretation_params  = self.pdb_interpretation_params,
       refinement_flags           = new_refinement_flags,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
       anomalous_scatterer_groups = self.anomalous_scatterer_groups,
       log                        = self.log)
-    new.xray_structure_initial = \
-      self.xray_structure_initial.deep_copy_scatterers()
     new.xray_structure.scattering_type_registry()
     return new
 
