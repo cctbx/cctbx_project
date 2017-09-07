@@ -228,13 +228,16 @@ class manager(object):
     # do pdb_hierarchy
     if self._pdb_hierarchy is None: # got nothing in parameters
       if self.processed_pdb_file is not None:
-        self.all_chain_proxies = processed_pdb_file.all_chain_proxies
+        self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
         self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy()
       elif self.model_input is not None:
         self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
     self._asc = self._pdb_hierarchy.atom_selection_cache()
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
+
+    if not self.all_chain_proxies and self.processed_pdb_file:
+      self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
 
     if(anomalous_scatterer_groups is not None and
         len(anomalous_scatterer_groups) == 0):
@@ -248,6 +251,8 @@ class manager(object):
     # do xray_structure
     if self.xray_structure is None:
       self._create_xray_structure()
+    else:
+      self.cs = self.xray_structure.crystal_symmetry()
 
     assert self.xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
