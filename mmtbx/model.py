@@ -190,6 +190,7 @@ class manager(object):
     self.riding_h_manager = None
     self.header_tls_groups = None
 
+    self.cs = None
     self._asc = None
     self._ss_annotation = None
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
@@ -214,56 +215,92 @@ class manager(object):
       self.pdb_interpretation_params = iotbx.phil.parse(
           input_string=grand_master_phil_str, process_includes=True).extract()
 
-
-    if xray_structure is not None or pdb_hierarchy is not None:
-      if xray_structure and pdb_hierarchy:
-        assert xray_structure.scatterers().size() == pdb_hierarchy.atoms_size()
-      # Old way of doing things. Remove later completely.
-      if self.processed_pdb_file is not None:
-        self.all_chain_proxies = processed_pdb_file.all_chain_proxies
-      if self.all_chain_proxies is not None:
-        self._asc = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-      if xray_structure is not None:
-        self.xray_structure = xray_structure
-        self.cs = xray_structure.crystal_symmetry()
-      self.pdb_atoms = self._pdb_hierarchy.atoms()
-      self.pdb_atoms.reset_i_seq()
-      if(anomalous_scatterer_groups is not None and
-          len(anomalous_scatterer_groups) == 0):
-        anomalous_scatterer_groups = None
-      self.anomalous_scatterer_groups = anomalous_scatterer_groups
-      self.sync_pdb_hierarchy_with_xray_structure()
-    else:
-      # new way of doing things. Should be compatible with old way for now
-      # to facilitate refactoring,
-      # therefore all unnecessary stuff is being initialized.
-      assert model_input is not None
+    if self.model_input is not None:
       s = str(type(model_input))
       if s.find("pdb") > 0:
         self.original_model_format = "pdb"
       elif s.find("cif") > 0:
         self.original_model_format = "mmcif"
-      self.cs = self.model_input.crystal_symmetry()
-      self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
-      self.pdb_atoms = self._pdb_hierarchy.atoms()
-      self.pdb_atoms.reset_i_seq()
-      self._asc = self._pdb_hierarchy.atom_selection_cache()
-
-
-      # New fancy stuff
       self._ss_annotation = self.model_input.extract_secondary_structure()
-      # we need them to be able to do "smart" selections implemented there...
-      if(anomalous_scatterer_groups is not None and
-          len(anomalous_scatterer_groups) == 0):
-        anomalous_scatterer_groups = None
-      self.anomalous_scatterer_groups = anomalous_scatterer_groups
-      if build_grm:
-        self._build_grm()
-      # hack for now.
+      # input xray_structure most likely don't have proper crystal symmetry
+      self.cs = self.model_input.crystal_symmetry()
+
+    # do pdb_hierarchy
+    if self._pdb_hierarchy is None: # got nothing in parameters
+      if self.processed_pdb_file is not None:
+        self.all_chain_proxies = processed_pdb_file.all_chain_proxies
+        self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy()
+      elif self.model_input is not None:
+        self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
+    self._asc = self._pdb_hierarchy.atom_selection_cache()
+    self.pdb_atoms = self._pdb_hierarchy.atoms()
+    self.pdb_atoms.reset_i_seq()
+
+    if(anomalous_scatterer_groups is not None and
+        len(anomalous_scatterer_groups) == 0):
+      anomalous_scatterer_groups = None
+    self.anomalous_scatterer_groups = anomalous_scatterer_groups
+
+    # do GRM
+    if self.restraints_manager is None and build_grm:
+      self._build_grm()
+
+    # do xray_structure
+    if self.xray_structure is None:
       self._create_xray_structure()
+
+    assert self.xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
+
+    if self.cs is None:
+      self.cs = self.xray_structure.crystal_symmetry()
+
     if(self.xray_structure.hd_selection().count(True) > 0):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
+
+    # if xray_structure is not None or pdb_hierarchy is not None:
+    #   if xray_structure and pdb_hierarchy:
+    #     assert xray_structure.scatterers().size() == pdb_hierarchy.atoms_size()
+    #   # Old way of doing things. Remove later completely.
+    #   # if self.processed_pdb_file is not None:
+    #   #   self.all_chain_proxies = processed_pdb_file.all_chain_proxies
+    #   # if self.all_chain_proxies is not None:
+    #   #   self._asc = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
+    #   if xray_structure is not None:
+    #     self.xray_structure = xray_structure
+    #     self.cs = xray_structure.crystal_symmetry()
+    #   # self.pdb_atoms = self._pdb_hierarchy.atoms()
+    #   # self.pdb_atoms.reset_i_seq()
+    #   if(anomalous_scatterer_groups is not None and
+    #       len(anomalous_scatterer_groups) == 0):
+    #     anomalous_scatterer_groups = None
+    #   self.anomalous_scatterer_groups = anomalous_scatterer_groups
+    #   self.sync_pdb_hierarchy_with_xray_structure()
+    # else:
+    #   # new way of doing things. Should be compatible with old way for now
+    #   # to facilitate refactoring,
+    #   # therefore all unnecessary stuff is being initialized.
+    #   assert model_input is not None
+
+    #   # self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
+    #   # self.pdb_atoms = self._pdb_hierarchy.atoms()
+    #   # self.pdb_atoms.reset_i_seq()
+    #   # self._asc = self._pdb_hierarchy.atom_selection_cache()
+
+
+    #   # New fancy stuff
+    #   # we need them to be able to do "smart" selections implemented there...
+    #   # if(anomalous_scatterer_groups is not None and
+    #   #     len(anomalous_scatterer_groups) == 0):
+    #   #   anomalous_scatterer_groups = None
+    #   # self.anomalous_scatterer_groups = anomalous_scatterer_groups
+    #   # if build_grm:
+    #   #   self._build_grm()
+    #   # hack for now.
+    #   # self._create_xray_structure()
+    # if(self.xray_structure.hd_selection().count(True) > 0):
+    #   self.exchangable_hd_groups = utils.combine_hd_exchangable(
+    #     hierarchy = self._pdb_hierarchy)
 
   def get_model_statistics_info(self,
       fmodel_x          = None,
@@ -634,8 +671,13 @@ class manager(object):
   def extract_tls_selections_from_input(self):
     self.input_tls_selections = []
     acp = self.all_chain_proxies
-    pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
-    if(pdb_inp_tls.tls_present):
+    pdb_inp_tls = None
+    if acp is not None:
+      pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
+    elif self.model_input is not None:
+      pdb_inp_tls = self.model_input.extract_tls_params(self._pdb_hierarchy)
+
+    if(pdb_inp_tls and pdb_inp_tls.tls_present):
       print_statistics.make_header(
         "TLS group selections from PDB file header", out=self.log)
       print >> self.log, "TLS group selections:"
@@ -1506,6 +1548,8 @@ class manager(object):
       new_restraints_manager.geometry.pair_proxies(sites_cart =
         self.xray_structure.sites_cart().select(selection)) # XXX is it necessary ?
     new = manager(
+      model_input                = self.model_input, # any selection here?
+      processed_pdb_file         = self.processed_pdb_file,
       processed_pdb_files_srv    = self.processed_pdb_files_srv,
       restraints_manager         = new_restraints_manager,
       xray_structure             = self.xray_structure.select(selection),
