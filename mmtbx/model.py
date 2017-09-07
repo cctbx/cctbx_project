@@ -156,7 +156,7 @@ class manager(object):
       build_grm = False,  # build GRM straight away, without waiting for get_grm() call
       stop_for_unknowns = True,
       processed_pdb_file = None, # Temporary, for refactoring phenix.refine
-                     processed_pdb_files_srv = None, # remove later
+                     processed_pdb_files_srv = None, # remove later ! used in def select()
                      restraints_manager = None, # remove later
                      refinement_flags = None,   # remove later
                      # ias_manager = None,        # remove later
@@ -177,6 +177,7 @@ class manager(object):
 
     self.restraints_manager = restraints_manager
     self.refinement_flags = refinement_flags
+    # IAS related, need some cleaning!
     self.ias_manager = None
     self.use_ias = False    # remove later, use presence of ias_manager
                           # somewhat challenging because of ias.build_only parameter in phenix.refine
@@ -184,60 +185,58 @@ class manager(object):
     self.ncs_groups = None         # remove later
     self.anomalous_scatterer_groups = anomalous_scatterer_groups, # remove later. ! It is used in def select(), hard to get rid of.
     self.log = log
-
-    def _common_init():
-        self.log = log
-        # self.ncs_groups = ncs_groups
-        self.processed_pdb_files_srv = processed_pdb_files_srv # to be deleted
-        self.refinement_flags = refinement_flags
-        self.tls_groups = tls_groups
-        # IAS related, need a real cleaning!
-        self.exchangable_hd_groups = []
-        self.original_xh_lengths = None
-        self.riding_h_manager = None
-        self.header_tls_groups = None
+    self.exchangable_hd_groups = []
+    self.original_xh_lengths = None
+    self.riding_h_manager = None
+    self.header_tls_groups = None
 
     self._asc = None
+    self._ss_annotation = None
+    self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
+    self.all_chain_proxies = None # probably will keep it. Need to investigate
+          # 'smart' selections provided by it. If they useless, remove.
+
+    # These are new
+    self.model_statistics_info = None
+    self._grm = None
+    self._asc = None
+    self._ncs_obj = None
+    self.mon_lib_srv = None
+    self.ener_lib = None
+    self._rotamer_eval = None
+    self._rama_eval = None
+
+    # here we start to extract and fill appropriate field one by one
+    # depending on what's available.
+
     if xray_structure is not None or pdb_hierarchy is not None:
       if xray_structure and pdb_hierarchy:
         assert xray_structure.scatterers().size() == pdb_hierarchy.atoms_size()
       # Old way of doing things. Remove later completely.
-      self.model_input = model_input
-      self.processed_pdb_file = processed_pdb_file
-      self.all_chain_proxies = None
       if self.processed_pdb_file is not None:
         self.all_chain_proxies = processed_pdb_file.all_chain_proxies
       if self.all_chain_proxies is not None:
         self._asc = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-      self.restraints_manager = restraints_manager
       if xray_structure is not None:
         self.xray_structure = xray_structure
         self.cs = xray_structure.crystal_symmetry()
       # Not clear why xray_structure_initial is necessary
       self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
-      self._pdb_hierarchy = pdb_hierarchy
-      self.link_records_in_pdb_format = None
-      self._ss_annotation = None
       self.pdb_atoms = self._pdb_hierarchy.atoms()
       self.pdb_atoms.reset_i_seq()
       if(anomalous_scatterer_groups is not None and
           len(anomalous_scatterer_groups) == 0):
         anomalous_scatterer_groups = None
       self.anomalous_scatterer_groups = anomalous_scatterer_groups
-      _common_init()
       self.sync_pdb_hierarchy_with_xray_structure()
     else:
       # new way of doing things. Should be compatible with old way for now
       # to facilitate refactoring,
       # therefore all unnecessary stuff is being initialized.
       assert model_input is not None
-      self.model_input = model_input
-      self.restraint_objects = restraint_objects
-      self.pdb_interpretation_params = pdb_interpretation_params
       if self.pdb_interpretation_params is None:
         self.pdb_interpretation_params = iotbx.phil.parse(
             input_string=grand_master_phil_str, process_includes=True).extract()
-      self.stop_for_unknowns = stop_for_unknowns
       self.original_model_format = None
       s = str(type(model_input))
       if s.find("pdb") > 0:
@@ -246,30 +245,19 @@ class manager(object):
         self.original_model_format = "mmcif"
       self.cs = self.model_input.crystal_symmetry()
       self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
-      self.xray_structure = None
       # Not clear why xray_structure_initial and pdb_atoms are necessary
       self.pdb_atoms = self._pdb_hierarchy.atoms()
       self.pdb_atoms.reset_i_seq()
+      self._asc = self._pdb_hierarchy.atom_selection_cache()
+
 
       # New fancy stuff
       self._ss_annotation = self.model_input.extract_secondary_structure()
-      self.restraints_manager = None
-      self.link_records_in_pdb_format = None
       # we need them to be able to do "smart" selections implemented there...
-      self.all_chain_proxies = None
-      self.model_statistics_info = None
-      self._grm = None
-      self._asc = self._pdb_hierarchy.atom_selection_cache()
-      self._ncs_obj = None
-      self.mon_lib_srv = None
-      self.ener_lib = None
-      self._rotamer_eval = None
-      self._rama_eval = None
       if(anomalous_scatterer_groups is not None and
           len(anomalous_scatterer_groups) == 0):
         anomalous_scatterer_groups = None
       self.anomalous_scatterer_groups = anomalous_scatterer_groups
-      _common_init()
       if build_grm:
         self._build_grm()
       # hack for now.
@@ -902,13 +890,9 @@ class manager(object):
 
   def rotatable_hd_selection(self):
     import mmtbx.hydrogens
-    if(self.processed_pdb_files_srv is not None):
-      self.mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
-    else:
-      self.get_mon_lib_srv()
     rmh_sel = mmtbx.hydrogens.rotatable(
       pdb_hierarchy      = self.pdb_hierarchy(),
-      mon_lib_srv        = self.mon_lib_srv,
+      mon_lib_srv        = self.get_mon_lib_srv(),
       restraints_manager = self.restraints_manager,
       log                = self.log)
     sel_i = []
