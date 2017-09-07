@@ -62,7 +62,7 @@ master_phil = iotbx.phil.parse("""
       .help =Maximum distance spanned by a pair of residues.  Set by \
             default as 3.8 A for protein and 8 A for RNA
 
-    target_length_from_matching_chains = True
+    target_length_from_matching_chains = False
       .type = bool
       .short_caption = Use matching chains to get length
       .caption = Use length of chains in target that are matched to \
@@ -332,8 +332,17 @@ def run_all(params=None,out=sys.stdout):
     rv_list.append(rv)
     file_list.append(file_name)
 
+  write_summary(params=params,file_list=file_list,rv_list=rv_list, out=out)
+
+def write_summary(params=None,file_list=None,rv_list=None,
+    max_dist=None,out=sys.stdout):
+
+  if params and max_dist is None: 
+     max_dist=params.comparison.max_dist
+  if max_dist is None: max_dist=0.
+
   print >>out,"\nCLOSE is within %4.1f A. FAR is greater than this." %(
-    params.comparison.max_dist)
+    max_dist)
   print >>out,"\nCA SCORE is fraction in close CA / rmsd of these CA."
   print >>out,"\nSEQ SCORE is fraction (close and matching target sequence).\n"
 
@@ -369,12 +378,14 @@ def run_all(params=None,out=sys.stdout):
     print >>out,"%14s %4.2f %4d   %4.1f %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f" %(file_name,close_rmsd,close_n,far_away_rmsd,far_away_n,forward_n,
          reverse_n,unaligned_n,percent_close,score,match_percent,seq_score)
 
-def get_target_length(target_chain_ids=None,hierarchy=None):
+def get_target_length(target_chain_ids=None,hierarchy=None,
+     target_length_from_matching_chains=None):
   total_length=0  # just counts residues
   for model in hierarchy.models()[:1]:
     for chain in model.chains():
-      if chain.id in target_chain_ids:
-        total_length+=len(chain.residues())
+      if (not target_length_from_matching_chains) or chain.id in target_chain_ids:
+        for conformer in chain.conformers()[:1]:
+          total_length+=len(conformer.residues())
   return total_length
 
 def run(args=None,
@@ -694,7 +705,8 @@ def run(args=None,
       seq_target_xyz=get_seq_from_lines(lines_target_xyz)
       target_chain_ids=get_chains_from_lines(lines_target_xyz)
       target_length=get_target_length(target_chain_ids=target_chain_ids,
-        hierarchy=target_ca)
+        hierarchy=target_ca,
+        target_length_from_matching_chains=target_length_from_matching_chains)
       rv.add_target_length(id='close',target_length=target_length)
           
       if verbose:
@@ -726,6 +738,7 @@ def run(args=None,
   rv.n_forward=n_forward
   rv.n_reverse=n_reverse
   rv.n=len(pair_list)
+  rv.max_dist=params.comparison.max_dist
   return rv
 
 if __name__=="__main__":

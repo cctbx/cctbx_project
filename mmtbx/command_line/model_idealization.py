@@ -29,7 +29,6 @@ from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachan
 from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
 from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
-from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
@@ -334,9 +333,6 @@ class model_idealization():
       self.init_ref_map = self.reference_map
       return
     print >> self.log, "Preparing map for initial GM..."
-    # new_h = pdb_h.deep_copy()
-    # truncate_to_poly_gly(new_h)
-    # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
     asc = pdb_h.atom_selection_cache()
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
           rama_score_selection(pdb_h, self.rama_manager, "outlier",1)
@@ -377,9 +373,6 @@ class model_idealization():
 
   def prepare_reference_map(self, xrs, pdb_h):
     print >> self.log, "Preparing reference map"
-    # new_h = pdb_h.deep_copy()
-    # truncate_to_poly_gly(new_h)
-    # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
     xrs=xrs.set_b_iso(value=50)
     crystal_gridding = maptbx.crystal_gridding(
         unit_cell        = xrs.unit_cell(),
@@ -397,12 +390,7 @@ class model_idealization():
 
   def prepare_reference_map_2(self, xrs, pdb_h):
     print >> self.log, "Preparing reference map, method 2"
-    # new_h = pdb_h.deep_copy()
-    # truncate_to_poly_gly(new_h)
-    # xrs = new_h.extract_xray_structure(crystal_symmetry=xrs.crystal_symmetry())
     xrs=xrs.set_b_iso(value=50)
-
-    # side_chain_no_cb_selection = ~ xrs.main_chain_selection()
     side_chain_no_cb_selection = ~ xrs.backbone_selection()
     xrs = xrs.set_b_iso(value=200, selection=side_chain_no_cb_selection)
 

@@ -2203,8 +2203,11 @@ class fmodel_from_xray_structure(object):
       mtz_object.write(file_name = file_name)
 
 def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
-                                ias_selection = None):
+                                ias_manager = None):
   result = None
+  ias_selection = None
+  if ias_manager is not None:
+    ias_selection = ias_manager.get_ias_selection()
   if(restraints_manager is not None):
     xrs_sel = xray_structure
     if(ias_selection is not None):
@@ -3016,7 +3019,8 @@ class extract_box_around_model_and_map(object):
                soft_mask_radius=None,
                mask_atoms=False,
                mask_atoms_atom_radius=3.0,
-               value_outside_atoms=None):
+               value_outside_atoms=None,
+               keep_map_size=False):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     soo = shift_origin(map_data=self.map_data,
@@ -3028,7 +3032,14 @@ class extract_box_around_model_and_map(object):
     else:
       xray_structure_selected = soo.xray_structure.select(selection=selection)
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
-    if(density_select):
+    if (keep_map_size):  # do not change anything...keep entire map
+      self.pdb_outside_box_msg=""
+      frac_min = [0.,0.,0.]
+      frac_max = [1.,1.,1.]
+      for kk in xrange(3):
+        frac_min[kk]=max(0.,frac_min[kk])
+        frac_max[kk]=min(1.-1./map_data.all()[kk], frac_max[kk])
+    elif(density_select):
       frac_min,frac_max=self.select_box(
         threshold = threshold, xrs = xray_structure_selected,
         get_half_height_width=get_half_height_width)

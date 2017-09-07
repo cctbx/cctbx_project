@@ -413,6 +413,15 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map.
 
+     density_select_in_auto_sharpen = False
+       .type = bool
+       .short_caption = density_select to choose box
+       .help = Choose representative box of density for initial \ 
+                auto-sharpening with density_select method \
+                (choose region where there is high density). \
+               Normally use instead density_select=True which \
+               carries out density_select at start of segmentation.
+
      allow_box_if_b_iso_set = False
        .type = bool
        .short_caption = Allow box if b_iso set 
@@ -432,7 +441,7 @@ master_phil = iotbx.phil.parse("""
        .help = When choosing box of representative density, use poor \
                density (to get optimized map for weaker density)
 
-     discard_if_worse = True
+     discard_if_worse = None
        .type = bool
        .short_caption = Discard sharpening if worse
        .help = Discard sharpening if worse
@@ -496,6 +505,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Max size of box for auto_sharpening
        .help = If box is greater than this fraction of entire map, use \
                 entire map.
+
+     density_select_max_box_fraction = 0.95
+       .type = float
+       .short_caption = Max size of box for density_select
+       .help = If box is greater than this fraction of entire map, use \
+                entire map for density_select. Default is 0.95
 
      mask_atoms = True
        .type = bool
@@ -614,11 +629,6 @@ master_phil = iotbx.phil.parse("""
           is used. Note that during optimization, residual_target is used \
           (they can be the same.)
 
-     require_improvement = True
-       .type = bool
-       .short_caption = Require improvement
-       .help = Require improvement in score for sharpening to be applied
-
      region_weight = 40
        .type = float
        .short_caption = Region weighting
@@ -680,13 +690,6 @@ master_phil = iotbx.phil.parse("""
       .type = float
       .help = Choose region where density is this fraction of maximum or greater
       .short_caption = threshold for density_select
-
-     soft_mask_in_density_select = False
-       .type = bool
-       .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map) when cutting out map with map_box
-       .short_caption = Soft mask in density_select
-
 
     get_half_height_width = None
       .type = bool
@@ -1541,9 +1544,11 @@ class sharpening_info:
       original_aniso_obj=None,
       auto_sharpen=None,
       box_in_auto_sharpen=None,
+      density_select_in_auto_sharpen=None,
       use_weak_density=None,
       discard_if_worse=None,
       max_box_fraction=None,
+      density_select_max_box_fraction=None,
       mask_atoms=None,
       mask_atoms_atom_radius=None,
       value_outside_atoms=None,
@@ -1597,6 +1602,7 @@ class sharpening_info:
     if pdb_inp:
         self.sharpening_method='model_sharpening'
         self.box_in_auto_sharpen=True
+        self.density_select_in_auto_sharpen=False
         self.sharpening_target='model'
 
   def get_d_cut(self):
@@ -1693,6 +1699,7 @@ class sharpening_info:
       #  high-res cutoff of reflections is d_min*d_min_ratio
 
       self.max_box_fraction=params.map_modification.max_box_fraction
+      self.density_select_max_box_fraction=params.map_modification.density_select_max_box_fraction
       self.mask_atoms=params.map_modification.mask_atoms
       self.mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius
       self.value_outside_atoms=params.map_modification.value_outside_atoms
@@ -1716,6 +1723,7 @@ class sharpening_info:
       self.local_aniso_in_local_sharpening=\
          params.map_modification.local_aniso_in_local_sharpening
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
+      self.density_select_in_auto_sharpen=params.map_modification.density_select_in_auto_sharpen
       self.use_weak_density=params.map_modification.use_weak_density
       self.discard_if_worse=params.map_modification.discard_if_worse
       self.box_center=params.map_modification.box_center
@@ -1756,6 +1764,7 @@ class sharpening_info:
       elif pdb_inp or self.sharpening_method=='model_sharpening':
         self.sharpening_method='model_sharpening'
         self.box_in_auto_sharpen=True
+        self.density_select_in_auto_sharpen=False
         self.sharpening_target='model'
 
       elif params.map_modification.b_iso is not None or \
@@ -2015,6 +2024,8 @@ def scale_map(map,scale_rms=1.0,out=sys.stdout):
       scale=scale_rms/sd
       if 0: print >>out,"Scaling map by %7.3f to set SD=1" %(scale)
       map=map*scale
+    else:
+      print >>out,"Cannot scale map...all zeros"
     return map
 
 def scale_map_coeffs(map_coeffs,scale_max=100000.,out=sys.stdout):
@@ -2159,11 +2170,11 @@ def get_b_iso(miller_array,d_min=None,return_aniso_scale_and_b=False,
     res_cut_array=miller_array
 
   from mmtbx.scaling import absolute_scaling
-  try:
+  if 1: #try:
     aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
       miller_array=res_cut_array, n_residues=200, n_bases=0)
     b_cart=aniso_scale_and_b.b_cart
-  except Exception,e:
+  if 0: #except Exception,e:
     b_cart=[0,0,0]
     aniso_scale_and_b=None
   b_aniso_mean=0.
@@ -2843,11 +2854,22 @@ def apply_soft_mask(map_data=None,
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
   #write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
-  maptbx.unpad_in_place(map=mask_data)
-  mask_data = maptbx.smooth_map(
-    map              = mask_data,
-    crystal_symmetry = crystal_symmetry,
-    rad_smooth       = rad_smooth)
+  if mask_data.count(1)  and mask_data.count(0): # something to do
+    print >>out,"Smoothing mask..."
+    maptbx.unpad_in_place(map=mask_data)
+    mask_data = maptbx.smooth_map(
+      map              = mask_data,
+      crystal_symmetry = crystal_symmetry,
+      rad_smooth       = rad_smooth)
+
+    # Make sure that mask_data max value is now 1, scale if not
+    max_mask_data_value=mask_data.as_1d().min_max_mean().max
+    if max_mask_data_value > 1.e-30 and max_mask_data_value!=1.0:
+      mask_data=mask_data*(1./max_mask_data_value)
+      print >>out,"Scaling mask by %.2f to yield maximum of 1.0 " %(
+        1./max_mask_data_value)
+  else:
+    print >>out,"Not smoothing mask that is a constant..."
 
   print >>out,"\nSmoothed mask inside and outside values"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
@@ -2858,14 +2880,14 @@ def apply_soft_mask(map_data=None,
   # Now replace value outside mask with mean_value, value inside with current,
   #   smoothly going from one to the other based on mask_data
 
-  outside_set_to_mean=map_data.deep_copy()
-  outside_set_to_mean.set_selected( s, 0)
+  set_to_mean=map_data.deep_copy()
+  ss = set_to_mean > -1.e+30
   if set_outside_to_mean_inside or mean_value_out is None:
-    outside_set_to_mean.set_selected(~s, mean_value_in)
+    set_to_mean.set_selected(~ss, mean_value_in)
   else:
-    outside_set_to_mean.set_selected(~s, mean_value_out)
+    set_to_mean.set_selected(~ss, mean_value_out)
 
-  masked_map= (map_data * mask_data )  +  (outside_set_to_mean * (1-mask_data))
+  masked_map= (map_data * mask_data )  +  (set_to_mean * (1-mask_data))
 
   print >>out,"\nFinal mean value inside and outside mask:"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
@@ -2919,11 +2941,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "b_iso, \nb_sharpen, or resolution_dependent_b"
     params.map_modification.auto_sharpen=False
 
-  if params.segmentation.soft_mask_in_density_select and \
-        not params.segmentation.density_select:
-    raise Sorry(
-     "Need to specify density_select=True for soft_mask_in_density_select")
-
   if params.output_files.output_directory and  \
      not os.path.isdir(params.output_files.output_directory):
       os.mkdir(params.output_files.output_directory)
@@ -2933,13 +2950,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   # Test to see if we can use adjusted_sa as target and use box_map with it
   if (params.map_modification.residual_target=='adjusted_sa' or
      params.map_modification.sharpening_target=='adjusted_sa') and \
-     params.map_modification.box_in_auto_sharpen:
+     (params.map_modification.box_in_auto_sharpen or 
+       params.map_modification.density_select_in_auto_sharpen):
     print >>out,"Checking to make sure we can use adjusted_sa as target...",
     try:
       from phenix.autosol.map_to_model import iterated_solvent_fraction
     except Exception, e:
-      raise Sorry(
-      "Please either set box_in_auto_sharpen=False or \n"+\
+      raise Sorry("Please either set box_in_auto_sharpen=False and "+
+       "\ndensity_select_in_auto_sharpen=False or \n"+\
       "set residual_target=kurtosis and sharpening_target=kurtosis")
     print >>out,"OK"
 
@@ -3065,18 +3083,17 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:
     print >>out,"\nTrimming map to density..."
+    # turn off density_select_in_auto_sharpen in case it was on...
+    if params.map_modification.density_select_in_auto_sharpen:
+      params.map_modification.density_select_in_auto_sharpen=False 
+      print >>out,"Turning off density_select_in_auto_sharpen as "+\
+         "it will be done here"
     args=["density_select=True","output_format=ccp4"]
     if params.segmentation.density_select_threshold is not None:
       print >>out,"Threshold for density selection will be: %6.2f \n"%(
        params.segmentation.density_select_threshold)
       args.append("density_select_threshold=%s" %(
          params.segmentation.density_select_threshold))
-    if params.segmentation.soft_mask_in_density_select is not None:
-      print >>out,"Soft mask for density selection will be: %s \n"%(
-       params.segmentation.soft_mask_in_density_select)
-      args.append("soft_mask=%s" %(
-         params.segmentation.soft_mask_in_density_select))
-
     if params.segmentation.get_half_height_width is not None:
       args.append("get_half_height_width=%s" %(
         params.segmentation.get_half_height_width))
@@ -3545,11 +3562,11 @@ def choose_threshold(b_vs_region=None,map_data=None,
         threshold=starting_density_threshold*(scale**nn)
       if threshold < lower_bound or threshold > upper_bound:
         continue
-      co = maptbx.connectivity(map_data=map_data.deep_copy(),
-         threshold=threshold,
-         wrapping=wrapping)
-      z = zip(co.regions(),range(0,co.regions().size()))
-      sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+
+      co,sorted_by_volume,min_b,max_b=get_co(
+        map_data=map_data.deep_copy(),
+         threshold=threshold,wrapping=wrapping)
+
       if len(sorted_by_volume)<2:
         score,has_sufficient_regions,too_low,too_high,expected_regions,ok=\
           None,None,None,None,None,None
@@ -3605,8 +3622,20 @@ def choose_threshold(b_vs_region=None,map_data=None,
 def get_co(map_data=None,threshold=None,wrapping=None):
   co=maptbx.connectivity(map_data=map_data,threshold=threshold,
          wrapping=wrapping)
-  z = zip(co.regions(),range(0,co.regions().size()))
-  sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  regions=co.regions()
+  rr=range(0,co.regions().size())
+
+  regions_0=regions[0]
+  rr_0=rr[0]
+  regions=regions[1:]
+  rr=rr[1:]
+  if rr:
+    z = zip(regions,rr)
+    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+  else:
+    sorted_by_volume = []
+  sorted_by_volume=[(regions_0,rr_0)]+sorted_by_volume
+
   min_b, max_b = co.get_blobs_boundaries_tuples() # As grid points, not A
   return co,sorted_by_volume,min_b,max_b
 
@@ -6179,11 +6208,11 @@ def score_map(map_data=None,
          target_in_all_regions),map_data=map_data)
     print >>out,"Cutoff will be threshold of %7.2f marking %7.1f%% of cell" %(
               threshold,100.*(1.-solvent_fraction))
-    co = maptbx.connectivity(map_data=map_data.deep_copy(),
-           threshold=threshold,
-           wrapping=wrapping,)
-    z = zip(co.regions(),range(0,co.regions().size()))
-    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+
+    co,sorted_by_volume,min_b,max_b=get_co(
+      map_data=map_data.deep_copy(),
+       threshold=threshold,wrapping=wrapping)
+
     if len(sorted_by_volume)<2:
       return sharpening_info_obj# skip it, nothing to do
 
@@ -6379,7 +6408,10 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'read_sharpened_maps', 'write_sharpened_maps', 'select_sharpened_map',
        'output_directory',
        'smoothing_radius','use_local_aniso','local_aniso_in_local_sharpening',
-       'local_sharpening','box_in_auto_sharpen','use_weak_density',
+       'local_sharpening',
+       'box_in_auto_sharpen',
+       'density_select_in_auto_sharpen',
+       'use_weak_density',
        'resolution',
        'd_min_ratio',
        'input_d_cut',
@@ -6387,7 +6419,9 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'discard_if_worse',
        'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
        'allow_box_if_b_iso_set',
-       'max_box_fraction','k_sharpen',
+       'max_box_fraction',
+       'density_select_max_box_fraction',
+       'k_sharpen',
        'optimize_k_sharpen',
        'optimize_d_cut',
         'residual_target','sharpening_target',
@@ -6475,16 +6509,21 @@ def select_box_map_data(si=None,
            first_half_map_data=None,
            second_half_map_data=None,
            pdb_inp=None,
+           max_box_fraction=None,
            get_solvent_fraction=True,# XXX test not doing this...
            n_min=30, # at least 30 atoms to run model sharpening
            out=sys.stdout):
 
   solvent_fraction=si.solvent_fraction
   crystal_symmetry=si.crystal_symmetry
-  max_box_fraction=si.max_box_fraction
   box_size=si.box_size
-  if pdb_inp:  # use model to identify region to cut out
-    hierarchy=pdb_inp.construct_hierarchy()
+  if pdb_inp or si.density_select_in_auto_sharpen:  # use map_box
+    assert not si.local_sharpening
+    if pdb_inp:
+      hierarchy=pdb_inp.construct_hierarchy()
+    else:
+      hierarchy=None
+      assert si.density_select_in_auto_sharpen
     if si.box_center:  # center at box_center. Trim hierarchy
       lower_bounds,upper_bounds=box_from_center(si=si,
         map_data=map_data,out=out)
@@ -6522,7 +6561,10 @@ def select_box_map_data(si=None,
 
     from mmtbx.command_line.map_box import run as run_map_box
     args=[]
-    if si.mask_atoms:
+    if si.density_select_in_auto_sharpen:
+      args.append('density_select=True')
+      print >>out,"Using density_select in map_box"
+    elif si.mask_atoms:
       args.append('mask_atoms=True')
       if si.mask_atoms_atom_radius:
         args.append('mask_atoms_atom_radius=%s' %(si.mask_atoms_atom_radius))
@@ -6531,9 +6573,14 @@ def select_box_map_data(si=None,
       if si.soft_mask:
         args.append('soft_mask=%s' %(si.soft_mask))
         args.append('soft_mask_radius=%s' %(si.resolution))
+
     print >>out,"Getting map as box"
+    if hierarchy:
+      local_hierarchy=hierarchy.deep_copy()
+    else:
+      local_hierarchy=None
     box=run_map_box(args,
-        map_data=map_data,pdb_hierarchy=hierarchy.deep_copy(),
+        map_data=map_data,pdb_hierarchy=local_hierarchy,
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
     box_map=box.map_box.as_double()
@@ -6644,7 +6691,6 @@ def select_box_map_data(si=None,
       wrapping=False,
       crystal_symmetry=box_crystal_symmetry,
       solvent_fraction=box_solvent_fraction)
-
     return box_pdb_inp,box_map,box_first_half_map,box_second_half_map,\
         box_crystal_symmetry,box_sharpening_info_obj
 
@@ -7044,6 +7090,7 @@ def run_local_sharpening(si=None,
       local_si.box_size=get_box_size(lower_bound=lb,upper_bound=ub)
       local_si.box_center=center_cart
       local_si.box_in_auto_sharpen=True
+      local_si.density_select_in_auto_sharpen=False
       local_si.use_local_aniso=True
       print >>out,80*"+"
       print >>out,"Getting local sharpening for box %s" %(i)
@@ -7165,6 +7212,7 @@ def auto_sharpen_map_or_map_coeffs(
         use_local_aniso=None,
         auto_sharpen=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
+        density_select_in_auto_sharpen=None, 
         allow_box_if_b_iso_set=None,
         use_weak_density=None,
         discard_if_worse=None,
@@ -7180,6 +7228,7 @@ def auto_sharpen_map_or_map_coeffs(
         input_d_cut=None,
         b_blur_hires=None,
         max_box_fraction=None,
+        density_select_max_box_fraction=None,
         mask_atoms=None,
         mask_atoms_atom_radius=None,
         value_outside_atoms=None,
@@ -7312,8 +7361,7 @@ def auto_sharpen_map_or_map_coeffs(
     print >>out,"\nApplying final sharpening to entire map"
     print >>out,80*"="
     si.sharpen_and_score_map(map_data=map,set_b_iso=True,out=out)
-
-    if discard_if_worse and local_si and local_si.score > si.score:
+    if si.discard_if_worse and local_si and local_si.score > si.score:
        print >>out,"Sharpening did not improve map "+\
         "(%7.2f sharpened, %7.2f unsharpened). Discarding sharpened map" %(
         si.score,local_si.score)
@@ -7484,11 +7532,17 @@ def run_auto_sharpen(
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
-  if si.auto_sharpen and si.box_in_auto_sharpen:
+  if si.auto_sharpen and (
+       si.box_in_auto_sharpen or si.density_select_in_auto_sharpen):
     if pdb_inp:
       print >>out,"\nAuto-sharpening using model-defined box of density"
+      max_box_fraction=si.max_box_fraction
+    elif si.density_select_in_auto_sharpen:
+      print >>out,"\nAuto-sharpening using density_select box of density"
+      max_box_fraction=si.density_select_max_box_fraction
     else:
       print >>out,"\nAuto-sharpening using representative box of density"
+      max_box_fraction=si.max_box_fraction
     original_box_sharpening_info_obj=deepcopy(si)
     #write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
     box_pdb_inp,box_map_data,box_first_half_map_data,\
@@ -7499,6 +7553,7 @@ def run_auto_sharpen(
            first_half_map_data=first_half_map_data,
            second_half_map_data=second_half_map_data,
            pdb_inp=pdb_inp,
+           max_box_fraction=max_box_fraction,
            out=out)
     #write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
 
@@ -7518,6 +7573,9 @@ def run_auto_sharpen(
 
       map_data=box_map_data
       pdb_inp=box_pdb_inp
+      if si.density_select_in_auto_sharpen and ( # catch empty pdb_inp
+         not pdb_inp.construct_hierarchy().overall_counts().n_residues):
+        pdb_inp=None
 
       crystal_symmetry=box_crystal_symmetry
       if box_first_half_map_data:
@@ -7722,6 +7780,9 @@ def run_auto_sharpen(
         si.region_weight=40
         print >>out,"\nUnable to set region_weight ... using value of %7.2f" % (
           si.region_weight)
+      if si.discard_if_worse:
+        print >>out,"Setting discard_if_worse=False as region_weight failed "
+        si.discard_if_worse=False
 
     if out_of_range and 'resolution_dependent' in auto_sharpen_methods:
       new_list=[]

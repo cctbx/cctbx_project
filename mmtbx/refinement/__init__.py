@@ -43,7 +43,7 @@ class monitors(object):
       model                        = self.model,
       fmodel                       = self.fmodels.fmodel_xray(),
       step                         = step,
-      wilson_b                     = self.model.wilson_b,
+      wilson_b                     = self.fmodels.fmodel_xray().wilson_b(),
       rigid_body_shift_accumulator = rigid_body_shift_accumulator)
     if(self.monitor_neutron is not None):
       utils.assert_xray_structures_equal(
@@ -53,5 +53,5 @@ class monitors(object):
         model                        = self.model,
         fmodel                       = self.fmodels.fmodel_neutron(),
         step                         = step,
-        wilson_b                     = self.model.wilson_b,
+        wilson_b                     = self.fmodels.fmodel_neutron().wilson_b(),
         rigid_body_shift_accumulator = rigid_body_shift_accumulator)

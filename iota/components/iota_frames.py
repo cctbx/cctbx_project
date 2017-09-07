@@ -662,6 +662,86 @@ class ProcessingTab(wx.Panel):
 
     if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
       try:
+        # Strong reflections per frame
+        self.nsref_axes.clear()
+        self.nsref_x = np.array([i + 1.5 for i in
+                                 range(len(self.img_list))]).astype(np.double)
+        self.nsref_y = np.array([np.nan if i == 0 else i for i in
+                                 self.nref_list]).astype(np.double)
+        nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
+                       ''.format(r'$\sigma$',
+                                 self.gparams.cctbx.selection.min_sigma)
+        self.nsref = self.nsref_axes.scatter(self.nsref_x, self.nsref_y, s=45,
+                                             marker='o', edgecolors='black',
+                                             color='#ca0020', picker=True)
+
+        nsref_median = np.median([i for i in self.nref_list if i > 0])
+        nsref_med = self.nsref_axes.axhline(nsref_median, c='#ca0020', ls='--')
+
+        self.nsref_axes.set_xlim(0, np.nanmax(self.nsref_x) + 2)
+        nsref_ymax = np.nanmax(self.nsref_y) * 1.25 + 10
+        if nsref_ymax == 0:
+          nsref_ymax = 100
+        self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
+        self.nsref_axes.set_ylabel(nsref_ylabel, fontsize=10)
+        self.nsref_axes.set_xlabel('Frame')
+        self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+        self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+        # Resolution per frame
+        self.res_axes.clear()
+        self.res_x = np.array([i + 1.5 for i in range(len(self.img_list))]) \
+          .astype(np.double)
+        self.res_y = np.array([np.nan if i == 0 else i for i in self.res_list]) \
+          .astype(np.double)
+        res_m = np.isfinite(self.res_y)
+
+        self.res = self.res_axes.scatter(self.res_x[res_m], self.res_y[res_m],
+                                         s=45, marker='o', edgecolors='black',
+                                         color='#0571b0', picker=True)
+        res_median = np.median([i for i in self.res_list if i > 0])
+        res_med = self.res_axes.axhline(res_median, c='#0571b0',
+                                        ls='--')
+
+        self.res_axes.set_xlim(0, np.nanmax(self.res_x) + 2)
+        res_ymax = np.nanmax(self.res_y) * 1.1
+        res_ymin = np.nanmin(self.res_y) * 0.9
+        if res_ymin == res_ymax:
+          res_ymax = res_ymin + 1
+        self.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
+        res_ylabel = 'Resolution ({})'.format(r'$\AA$')
+        self.res_axes.set_ylabel(res_ylabel, fontsize=10)
+        self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
+        self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
+        plt.setp(self.res_axes.get_xticklabels(), visible=False)
+
+        self.nsref_pick, = self.nsref_axes.plot(self.nsref_x[0],
+                                                self.nsref_y[0],
+                                                marker='o',
+                                                ms=12, alpha=0.5,
+                                                color='yellow', visible=False)
+        self.res_pick, = self.res_axes.plot(self.res_x[0],
+                                            self.res_x[0],
+                                            marker='o',
+                                            ms=12, alpha=0.5,
+                                            color='yellow', visible=False)
+        if self.pick['image'] is not None:
+          img = self.pick['image']
+          idx = self.pick['index']
+          axis = self.pick['axis']
+          if axis == 'nsref':
+            if not np.isnan(self.nsref_y[idx]):
+              self.nsref_pick.set_visible(True)
+              self.nsref_pick.set_data(self.nsref_x[idx], self.nsref_y[idx])
+          elif axis == 'res':
+            if not np.isnan(self.res_y[idx]):
+              self.res_pick.set_visible(True)
+              self.res_pick.set_data(self.res_x[idx], self.res_y[idx])
+          self.info_txt.SetValue(img)
+          self.btn_left.Enable()
+          self.btn_right.Enable()
+          self.btn_viewer.Enable()
+
         # Unit cell histograms
         finished = [i for i in self.finished_objects if
                     i.fail == None and i.final['final'] != None]
@@ -721,86 +801,6 @@ class ProcessingTab(wx.Panel):
           self.gamma_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
           self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
           plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
-
-        # Strong reflections per frame
-        self.nsref_axes.clear()
-        self.nsref_x = np.array([i + 1.5 for i in
-                            range(len(self.img_list))]).astype(np.double)
-        self.nsref_y = np.array([np.nan if i==0 else i for i in
-                            self.nref_list]).astype(np.double)
-        nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
-                       ''.format(r'$\sigma$',
-                                 self.gparams.cctbx.selection.min_sigma)
-        self.nsref = self.nsref_axes.scatter(self.nsref_x, self.nsref_y, s=45,
-                                             marker='o', edgecolors='black',
-                                             color='#ca0020', picker=True)
-
-        nsref_median = np.median([i for i in self.nref_list if i > 0])
-        nsref_med = self.nsref_axes.axhline(nsref_median, c='#ca0020', ls='--')
-
-        self.nsref_axes.set_xlim(0, np.nanmax(self.nsref_x) + 2)
-        nsref_ymax = np.nanmax(self.nsref_y) * 1.25 + 10
-        if nsref_ymax == 0:
-          nsref_ymax = 100
-        self.nsref_axes.set_ylim(ymin=0, ymax=nsref_ymax)
-        self.nsref_axes.set_ylabel(nsref_ylabel, fontsize=10)
-        self.nsref_axes.set_xlabel('Frame')
-        self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
-        self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
-
-        # Resolution per frame
-        self.res_axes.clear()
-        self.res_x = np.array([i + 1.5 for i in range(len(self.img_list))])\
-          .astype(np.double)
-        self.res_y = np.array([np.nan if i==0 else i for i in self.res_list])\
-          .astype(np.double)
-        res_m = np.isfinite(self.res_y)
-
-        self.res = self.res_axes.scatter(self.res_x[res_m], self.res_y[res_m],
-                                         s=45, marker='o', edgecolors='black',
-                                         color='#0571b0', picker=True)
-        res_median = np.median([i for i in self.res_list if i > 0])
-        res_med = self.res_axes.axhline(res_median, c='#0571b0',
-                                                  ls='--')
-
-        self.res_axes.set_xlim(0, np.nanmax(self.res_x) + 2)
-        res_ymax = np.nanmax(self.res_y) * 1.1
-        res_ymin = np.nanmin(self.res_y) * 0.9
-        if res_ymin == res_ymax:
-          res_ymax = res_ymin + 1
-        self.res_axes.set_ylim(ymin=res_ymin, ymax=res_ymax)
-        res_ylabel = 'Resolution ({})'.format(r'$\AA$')
-        self.res_axes.set_ylabel(res_ylabel, fontsize=10)
-        self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
-        self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
-        plt.setp(self.res_axes.get_xticklabels(), visible=False)
-
-        self.nsref_pick, = self.nsref_axes.plot(self.nsref_x[0],
-                                                self.nsref_y[0],
-                                                marker='o',
-                                                ms=12, alpha=0.5,
-                                                color='yellow', visible=False)
-        self.res_pick, = self.res_axes.plot(self.res_x[0],
-                                            self.res_x[0],
-                                            marker='o',
-                                            ms=12, alpha=0.5,
-                                            color='yellow', visible=False)
-        if self.pick['image'] is not None:
-          img = self.pick['image']
-          idx = self.pick['index']
-          axis = self.pick['axis']
-          if axis == 'nsref':
-            if not np.isnan(self.nsref_y[idx]):
-              self.nsref_pick.set_visible(True)
-              self.nsref_pick.set_data(self.nsref_x[idx], self.nsref_y[idx])
-          elif axis == 'res':
-            if not np.isnan(self.res_y[idx]):
-              self.res_pick.set_visible(True)
-              self.res_pick.set_data(self.res_x[idx], self.res_y[idx])
-          self.info_txt.SetValue(img)
-          self.btn_left.Enable()
-          self.btn_right.Enable()
-          self.btn_viewer.Enable()
 
         # Beam XY (cumulative)
         info = []
@@ -1416,7 +1416,9 @@ class ProcWindow(wx.Frame):
     self.state = status
     self.start_object_finder = False
     object_finder = thr.ObjectFinderThread(self,
-                                           object_folder=self.init.obj_base)
+                                           object_folder=self.init.obj_base,
+                                           fix_paths=True,
+                                           new_fin_base=init.fin_base)
     object_finder.start()
 
 
@@ -1455,6 +1457,10 @@ class ProcWindow(wx.Frame):
       self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for
                        i, j in enumerate(self.init.gs_img_objects, 1)]
       iterable = self.img_list
+      self.status_summary = [0] * len(self.img_list)
+      self.nref_list = [0] * len(self.img_list)
+      self.nref_xaxis = [i[0] for i in self.img_list]
+      self.res_list = [0] * len(self.img_list)
       type = 'object'
       self.status_txt.SetLabel('Re-running selection...')
     else:
@@ -1492,7 +1498,6 @@ class ProcWindow(wx.Frame):
         self.res_list = [0] * len(self.img_list)
         self.status_txt.SetLabel('Processing {} images...'
                                  ''.format(len(self.img_list)))
-
     self.gauge_process.SetRange(len(self.img_list))
     img_process = thr.ProcThread(self, self.init, iterable, input_type=type,
                                  term_file=self.tmp_abort_file)
@@ -1647,7 +1652,8 @@ class ProcWindow(wx.Frame):
         try:
           self.nref_list[obj.img_index - 1] = obj.final['strong']
           self.res_list[obj.img_index - 1] = obj.final['res']
-        except Exception:
+        except Exception, e:
+          raise e
           pass
 
     self.chart_tab.init = self.init

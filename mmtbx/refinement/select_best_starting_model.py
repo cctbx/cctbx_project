@@ -389,7 +389,7 @@ def strip_model (
   assert_identical_id_str = True
   if (remove_alt_confs) :
     n_atoms_start = xray_structure.scatterers().size()
-    pdbtools.remove_alt_confs(pdb_hierarchy)
+    pdb_hierarchy.remove_alt_confs(always_keep_one_conformer=False)
     i_seqs = pdb_hierarchy.atoms().extract_i_seq()
     n_atoms_end = i_seqs.size()
     if (n_atoms_end != n_atoms_start) :
@@ -402,15 +402,7 @@ def strip_model (
     # XXX need to start from a copy here because the atom-parent relationship
     # seems to be messed up otherwise.  this is probably a bug.
     pdb_hierarchy = pdb_hierarchy.deep_copy()
-    n_mse = pdbtools.convert_semet_to_met(
-      pdb_hierarchy=pdb_hierarchy,
-      xray_structure=xray_structure)
-    if (n_mse > 0) :
-      print >> log, "  removed %d selenomethionine (MSE) residues" % n_mse
-      assert_identical_id_str = False
-      open("tmp1.pdb", "w").write(pdb_hierarchy.as_pdb_string())
-      sel = pdb_hierarchy.atom_selection_cache().selection
-      assert sel("resname MSE").count(True) == 0
+    pdb_hierarchy.convert_semet_to_met()
   if (convert_to_isotropic) :
     xray_structure.convert_to_isotropic()
     pdb_hierarchy.adopt_xray_structure(xray_structure,

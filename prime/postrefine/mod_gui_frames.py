@@ -637,9 +637,18 @@ class PRIMERunWindow(wx.Frame):
   def plot_runtime_results(self):
     ''' Plot results for each cycle upon cycle completion '''
 
-    stat_file = os.path.join(self.pparams.run_no, 'pickle.stat')
-    if os.path.isfile(stat_file):
-      info = ep.load(stat_file)
+    # Find pickle_*.stat file
+    stats_folder = os.path.join(self.pparams.run_no, 'stats')
+    stat_files = [os.path.join(stats_folder, i) for i in
+                  os.listdir(stats_folder) if i.endswith('stat')]
+
+    if stat_files != []:
+      assert len(stat_files) == 1
+      stat_file = stat_files[0]
+      if os.path.isfile(stat_file):
+        info = ep.load(stat_file)
+      else:
+        info = {}
     else:
       info = {}
 
@@ -650,9 +659,18 @@ class PRIMERunWindow(wx.Frame):
   def plot_final_results(self):
     ''' Plot final results '''
 
-    stat_file = os.path.join(self.pparams.run_no, 'pickle.stat')
-    if os.path.isfile(stat_file):
-      info = ep.load(stat_file)
+    # Find pickle_*.stat file
+    stats_folder = os.path.join(self.pparams.run_no, 'stats')
+    stat_files = [os.path.join(stats_folder, i) for i in
+                  os.listdir(stats_folder) if i.endswith('stat')]
+
+    if stat_files != []:
+      assert len(stat_files) == 1
+      stat_file = stat_files[0]
+      if os.path.isfile(stat_file):
+        info = ep.load(stat_file)
+      else:
+        info = {}
     else:
       info = {}
 

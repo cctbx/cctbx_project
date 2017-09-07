@@ -7,7 +7,6 @@ from libtbx.utils import Sorry, null_out
 from mmtbx.validation import ramalyze
 from mmtbx.building.loop_closure.ccd import ccd_cpp
 from mmtbx.building.loop_closure import utils, starting_conformations
-from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.secondary_structure.build import side_chain_placement, \
     set_xyz_smart
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
@@ -955,7 +954,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
       n_following, n_previous, include_intermediate=False, avoid_ss_annot=ss_annotation)
   print >> log, "  start_res_num, end_res_num", start_res_num, end_res_num
   xrs = original_pdb_h.extract_xray_structure()
-  truncate_to_poly_gly(pdb_hierarchy, start_res_num, end_res_num)
+  pdb_hierarchy.truncate_to_poly_gly()
   cache = pdb_hierarchy.atom_selection_cache()
   # print "POSSIBLE ERROR:", "selectioin:", "(name N or name CA or name C or name O) and resid %s through %s" % (
   #         start_res_num, end_res_num)

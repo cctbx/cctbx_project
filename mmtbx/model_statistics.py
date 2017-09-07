@@ -39,9 +39,9 @@ class model_content(object):
     print >> out,prefix+fmt%("TOTAL",self.atoms_count,self.atoms_occupancy_sum)
 
 class adp(object):
-  def __init__(self, model,  n_histogram_slots = 10, file_name=None,
+  def __init__(self, model, wilson_b = None, n_histogram_slots = 10, file_name=None,
       selection=None):
-    self.wilson_b = model.wilson_b
+    self.wilson_b = wilson_b
     self.file_name = file_name
     self.selection = selection
     self.rms_b_iso_or_b_equiv_bonded = model.rms_b_iso_or_b_equiv_bonded()
@@ -281,6 +281,7 @@ class adp(object):
 class model(object):
   def __init__(self,
                model,
+               wilson_b = None,
                use_molprobity=True,
                ncs_manager=None,
                cdl_restraints=False,
@@ -289,7 +290,7 @@ class model(object):
     self.geometry = model.geometry_statistics(
       general_selection=general_selection)
     self.content = model_content(model)
-    self.adp = adp(model)
+    self.adp = adp(model, wilson_b=wilson_b)
     self.tls_groups = model.tls_groups
     self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
     self.ncs_groups = model.extract_ncs_groups()
@@ -527,8 +528,13 @@ class info(object):
       if model.restraints_manager != None:
         if model.restraints_manager.geometry != None:
           ncs_manager = model.restraints_manager.geometry.ncs_dihedral_manager
+    if fmodel_x is not None:
+      wilson_b = fmodel_x.wilson_b()
+    elif fmodel_n is not None:
+      wilson_b = fmodel_n.wilson_b()
     self.model = mmtbx.model_statistics.model(
       model = model,
+      wilson_b = wilson_b,
       use_molprobity = use_molprobity,
       ncs_manager = ncs_manager,
       cdl_restraints = ref_par.pdb_interpretation.restraints_library.cdl,

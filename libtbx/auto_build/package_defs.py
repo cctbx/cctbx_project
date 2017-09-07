@@ -76,17 +76,14 @@ VIRTUALENV_PKG = "virtualenv-14.0.6.tar.gz" # virtualenv
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-JUNIT_XML_VERSION="1.7"
-MOCK_PKG = "mock-2.0.0.tar.gz"
-MOCK_DEP_FUNC_DICT = "ordereddict-1.1.tar.gz"
-MOCK_DEP_FUNC = "funcsigs-1.0.0.tar.gz"
-MOCK_DEP_PBR = "pbr-1.9.1.tar.gz"
-PYTEST_PKG = "pytest-2.9.1.tar.gz"
-PYTEST_DEP_PY = "py-1.4.31.tar.gz"
-PYTEST_DEP_COLORAMA = "colorama-0.3.7.tar.gz"
-CYTHON_PKG = "cython-0.22.tar.gz"
+COLORAMA_VERSION="0.3.7"
 JINJA2_VERSION = "2.9.6"
+JUNIT_XML_VERSION="1.7"
+MOCK_VERSION="2.0.0"
 PILLOW_VERSION = "4.2.1"
+PYTEST_VERSION="2.9.1"
+
+CYTHON_PKG = "cython-0.22.tar.gz"
 
 # HDF5
 BASE_HDF5_PKG_URL = "http://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/"

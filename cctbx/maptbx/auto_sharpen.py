@@ -250,7 +250,15 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Use box for auto_sharpening
        .help = Use a representative box of density for initial \
-                auto-sharpening instead of the entire map. Default is True.
+                auto-sharpening instead of the entire map. Default is False.
+
+     density_select_in_auto_sharpen = True
+       .type = bool
+       .short_caption = density_select to choose box
+       .help = Choose representative box of density for initial \ 
+                auto-sharpening with density_select method \
+                (choose region where there is high density).  Normally use\
+                False for X-ray data and True for cryo-EM.
 
      allow_box_if_b_iso_set = False
        .type = bool
@@ -331,11 +339,17 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Remove aniso
        .help = You can remove anisotropy (overall and locally) during sharpening
 
-     max_box_fraction = None
+     max_box_fraction = 0.5
        .type = float
        .short_caption = Max size of box for auto_sharpening
        .help = If box is greater than this fraction of entire map, use \
                 entire map. Default is 0.5.
+
+     density_select_max_box_fraction = 0.95
+       .type = float
+       .short_caption = Max size of box for density_select
+       .help = If box is greater than this fraction of entire map, use \
+                entire map for density_select. Default is 0.95
 
      mask_atoms = True
        .type = bool
@@ -589,6 +603,12 @@ def set_sharpen_params(params,out=sys.stdout):
       print >>out,"Set box_in_auto_sharpen=False as parameters are set "+\
         "\nand sharpening method is %s" %(
         params.map_modification.auto_sharpen_methods[0])
+    if params.map_modification.density_select_in_auto_sharpen and (
+      not getattr(params.map_modification,'allow_box_if_b_iso_set',None)):
+      params.map_modification.density_select_in_auto_sharpen=False
+      print >>out,"Set density_select_in_auto_sharpen=False as parameters are set "+\
+        "\nand sharpening method is %s" %(
+        params.map_modification.auto_sharpen_methods[0])
 
   if params.map_modification.optimize_k_sharpen and \
     not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
@@ -781,6 +801,7 @@ def run(args=None,params=None,
         local_aniso_in_local_sharpening=\
            params.map_modification.local_aniso_in_local_sharpening,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
+        density_select_in_auto_sharpen=params.map_modification.density_select_in_auto_sharpen,
         use_weak_density=params.map_modification.use_weak_density,
         discard_if_worse=params.map_modification.discard_if_worse,
         box_center=params.map_modification.box_center,
@@ -799,6 +820,7 @@ def run(args=None,params=None,
         input_d_cut=params.map_modification.input_d_cut,
         b_blur_hires=params.map_modification.b_blur_hires,
         max_box_fraction=params.map_modification.max_box_fraction,
+        density_select_max_box_fraction=params.map_modification.density_select_max_box_fraction,
         mask_atoms=params.map_modification.mask_atoms,
         mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius,
         value_outside_atoms=params.map_modification.value_outside_atoms,

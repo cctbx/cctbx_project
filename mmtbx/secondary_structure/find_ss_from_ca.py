@@ -332,7 +332,7 @@ def merge_hierarchies_from_models(models=None,resid_offset=None,
   models,sequences=sort_models_and_sequences(models,sequences)
   for model,sequence in zip(models,sequences):
     if not model or not model.hierarchy: continue
-    if not model.info: 
+    if not model.info:
         model.info={}
     if not info: info=model.info
     i=0
@@ -2987,9 +2987,7 @@ class find_secondary_structure: # class to look for secondary structure
           raise Sorry("Missing file: %s" %(params.input_files.pdb_in))
         hierarchy=get_pdb_hierarchy(text=open(params.input_files.pdb_in).read())
     if hierarchy:
-      # remove alt conformers
-      from mmtbx.pdbtools import remove_alt_confs
-      remove_alt_confs(hierarchy,always_keep_one_conformer=False)
+      hierarchy.remove_alt_confs(always_keep_one_conformer=False)
 
     if force_secondary_structure_input and not \
         (params.input_files.secondary_structure_input or user_annotation_text):

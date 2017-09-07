@@ -210,10 +210,10 @@ class lbfgs(object):
       if(compute_gradients):
         sgc = self.stereochemistry_residuals.gradients
         # ias do not participate in geometry restraints
-        if(self.model is not None and self.model.ias_selection is not None and
-           self.model.ias_selection.count(True) > 0):
-          sgc.extend(flex.vec3_double(
-            self.model.ias_selection.count(True),[0,0,0]))
+        if self.model is not None and self.model.ias_manager is not None:
+          ias_selection = self.model.ias_manager.get_ias_selection()
+          if ias_selection is not None and ias_selection.count(True) > 0:
+            sgc.extend(flex.vec3_double(ias_selection.count(True),[0,0,0]))
         xray.minimization.add_gradients(
           scatterers     = self.xray_structure.scatterers(),
           xray_gradients = self.g,

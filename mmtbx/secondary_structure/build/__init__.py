@@ -9,7 +9,6 @@ from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter as one_thre
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_one
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx import secondary_structure
-from mmtbx.pdbtools import truncate_to_poly_gly
 from mmtbx.command_line.geometry_minimization import \
   get_geometry_restraints_manager
 from time import time
@@ -261,7 +260,7 @@ def secondary_structure_from_sequence(pdb_str,
     real_res_list = pht.models()[0].chains()[0].residue_groups()
   pdb_hierarchy = iotbx.pdb.input(source_info=None, lines=pdb_str).\
       construct_hierarchy()
-  truncate_to_poly_gly(pdb_hierarchy)
+  pdb_hierarchy.truncate_to_poly_gly()
   chain = pdb_hierarchy.models()[0].chains()[0]
   current_gly_ag = chain.residue_groups()[0].atom_groups()[0]
   new_chain = iotbx.pdb.hierarchy.chain(id="A")

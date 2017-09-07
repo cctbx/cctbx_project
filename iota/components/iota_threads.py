@@ -178,16 +178,29 @@ class ObjectFinderThread(Thread):
   collect and extract info on images processed so far'''
   def __init__(self,
                parent,
-               object_folder):
+               object_folder,
+               fix_paths = False,
+               new_fin_base = None):
     Thread.__init__(self)
     self.parent = parent
     self.object_folder = object_folder
+    self.fix_paths = fix_paths
+    self.new_fin_base = new_fin_base
 
   def run(self):
     object_files = ginp.get_file_list(self.object_folder, ext_only='int')
     new_objects = [self.read_object_file(i) for i in object_files]
     new_finished_objects = [i for i in new_objects if
-                            i is not None and i.status == 'final']
+                            (i is not None and i.status == 'final')]
+
+    # # If recovering and need to fix paths of images (final only):
+    # if self.fix_paths:
+    #   for obj in new_finished_objects:
+    #     print 'Changing ', obj.final['final']
+    #     if obj.final['final'] is not None:
+    #       filename = os.path.basename(obj.final['final'])
+    #       obj.final['final'] = os.path.join(self.new_fin_base, filename)
+    #       print 'Generating filename ', obj.final['final']
 
     evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=new_finished_objects)
     wx.PostEvent(self.parent, evt)

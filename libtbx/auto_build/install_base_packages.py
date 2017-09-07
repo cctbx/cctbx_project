@@ -629,35 +629,6 @@ Installation of Python packages may fail.
       os.chdir(self.tmp_dir)
       self.verify_python_module(pkg_info['name'], confirm_import_module)
 
-  def build_python_module_pypi(self, package_name, package_version=None, download_only=False,
-      callback_before_build=None, callback_after_build=None, confirm_import_module=None):
-    '''Download a specific or the lastest version of a package from pypi and build it.'''
-    pypi_info = get_pypi_package_information(package_name, version=package_version)
-    readable_name = pypi_info['name'] + ' ' + pypi_info['version']
-    log = self.start_building_package(package_name, pkg_info=pypi_info['summary'])
-    download_file, size = self.fetch_package(
-        pkg_name=pypi_info['filename'],
-        download_url=pypi_info['url'],
-        return_file_and_status=True)
-    if size != -2: # cached download
-      assert size == pypi_info['size'], 'Download of ' + pypi_info['name'] + ' ' + pypi_info['version'] + ' failed, file size of ' + pypi_info['filename'] + ' (' + str(size) + ') does not match expected size (' + str(pypi_info['size']) + ')'
-    if download_only: return
-    if self.check_download_only(readable_name): return
-
-    self.untar_and_chdir(pkg=download_file, log=log)
-    if callback_before_build:
-      assert callback_before_build(log), package_name
-    debug_flag = ""
-    if (self.options.debug):
-      debug_flag = "--debug"
-    self.call("%s setup.py build %s" % (self.python_exe, debug_flag), log=log)
-    self.call("%s setup.py install" % self.python_exe, log=log)
-    if callback_after_build:
-      assert callback_after_build(log), package_name
-    os.chdir(self.tmp_dir)
-    if confirm_import_module:
-      self.verify_python_module(readable_name, confirm_import_module)
-
   def check_dependencies(self, packages=None):
     packages = packages or []
     if 'scipy' in packages:
@@ -914,23 +885,16 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="docutils")
 
   def build_junitxml(self):
-    self.build_python_module_pypi(
+    self.build_python_module_pip(
       'junit-xml', package_version=JUNIT_XML_VERSION)
 
   def build_pytest(self):
-    for package, name in [
-        (PYTEST_DEP_PY, 'py'),
-        (PYTEST_DEP_COLORAMA, 'colorama'),
-        (PYTEST_PKG, 'pytest'),
-        (MOCK_DEP_PBR, 'pbr'),
-        (MOCK_DEP_FUNC_DICT, 'ordereddict'),
-        (MOCK_DEP_FUNC, 'funcsigs'),
-        (MOCK_PKG, 'mock'),
-        ]:
-      self.build_python_module_simple(
-        pkg_url=pypi_pkg_url(package),
-        pkg_name=package,
-        pkg_name_label=name)
+    self.build_python_module_pip(
+      'colorama', package_version=COLORAMA_VERSION)
+    self.build_python_module_pip(
+      'mock', package_version=MOCK_VERSION)
+    self.build_python_module_pip(
+      'pytest', package_version=PYTEST_VERSION)
 
   def build_biopython(self):
     self.build_python_module_simple(
@@ -1040,7 +1004,7 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="Cython")
 
   def build_jinja2(self):
-    self.build_python_module_pypi(
+    self.build_python_module_pip(
       'Jinja2', package_version=JINJA2_VERSION,
       confirm_import_module='jinja2')
 
