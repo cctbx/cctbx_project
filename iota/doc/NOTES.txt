@@ -1,4 +1,7 @@
-IOTA v1.1.023 - recover moved projects
+IOTA v1.1.023 - PRIME GUI tweaks
 
-If paths have changed in past project, can now renew input / output paths
-
+1. Abort will now actually lead to a finish to the run
+2. Old run recovery (for showing results if run is finished)
+3. IOTA should now set up PRIME with low-res limits (not 99.9)
+4. PRIME runs are now saved under ./prime/###
+5. PRIME settings are now saved in file under ./prime/###/settings.phil
