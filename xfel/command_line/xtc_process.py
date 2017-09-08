@@ -361,6 +361,13 @@ extra_dials_phil_str = '''
   }
 '''
 
+class EventOffsetSerializer(object):
+  """ Pickles python object """
+  def __init__(self,psanaOffset):
+    self.filenames = psanaOffset.filenames()
+    self.offsets = psanaOffset.offsets()
+    self.lastBeginCalibCycleDgram = psanaOffset.lastBeginCalibCycleDgram()
+
 from xfel.ui import db_phil_str
 
 phil_scope = parse(xtc_phil_str + dials_phil_str + extra_dials_phil_str + db_phil_str, process_includes=True).fetch(parse(program_defaults_phil_str))
@@ -597,10 +604,8 @@ class InMemScript(DialsProcessScript):
     # set up psana
     if params.input.cfg is not None:
       psana.setConfigFile(params.input.cfg)
-    dataset_type = 'smd' #smd only works in striping mode now (*to be updated)
-    if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
-      dataset_type = 'idx'
-    dataset_name = "exp=%s:run=%s:%s"%(params.input.experiment,params.input.run_num,dataset_type)
+    # all cores in stripe mode and the master in client-server mode read smd
+    dataset_name = "exp=%s:run=%s:%s"%(params.input.experiment,params.input.run_num,'smd')
     if params.input.xtc_dir is not None:
       if params.input.use_ffb:
         raise Sorry("Cannot specify the xtc_dir and use SLAC's ffb system")
@@ -612,8 +617,17 @@ class InMemScript(DialsProcessScript):
       dataset_name += ":stream=%s"%(",".join(["%d"%stream for stream in params.input.stream]))
     if params.input.calib_dir is not None:
       psana.setOption('psana.calib-dir',params.input.calib_dir)
-    ds = psana.DataSource(dataset_name)
+    if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
+      dataset_name_client = dataset_name.replace(":smd",":rax")
+      # for client-server, master reads smd - clients read rax
+      if rank == 0:
+        ds = psana.DataSource(dataset_name)
+      else:
+        ds = psana.DataSource(dataset_name_client)
 
+    else:
+      # for stripe, all cores read smd
+      ds = psana.DataSource(dataset_name)
     if params.format.file_format == "cbf":
       self.psana_det = psana.Detector(params.input.address, ds.env())
 
@@ -675,34 +689,28 @@ class InMemScript(DialsProcessScript):
         import fractions
         percent = params.dispatch.process_percent / 100
         process_fractions = fractions.Fraction(percent).limit_denominator(100)
-
       # list of all events
       # only cycle through times in client_server mode
       if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
-        times = run.times()
-        nevents = min(len(times),max_events)
-        times = times[:nevents]
-        if process_fractions:
-          times = [times[i] for i in xrange(len(times)) if i % process_fractions.denominator < process_fractions.numerator]
-          print "Dividing %d of %d events (%4.1f%%) between all processes"%(len(times), nevents, 100*len(times)/nevents)
-          nevents = len(times)
-        else:
-          print "Dividing %d events between all processes" % nevents
-
-        print "Using MPI client server"
+        # process fractions only works in idx-striping mode
+        if params.dispatch.process_percent:
+          raise Sorry("Process percent only works in striping mode.")
+        print "Using MPI client server in rax mode"
         # use a client/server approach to be sure every process is busy as much as possible
         # only do this if there are more than 2 processes, as one process will be a server
         try:
           if rank == 0:
             # server process
             self.mpi_log_write("MPI START\n")
-            for t in times:
-              # a client process will indicate it's ready by sending its rank
+            for nevt, evt in enumerate(ds.events()):
+              if nevt == max_events: break
               self.mpi_log_write("Getting next available process\n")
+              offset = evt.get(psana.EventOffset)
               rankreq = comm.recv(source=MPI.ANY_SOURCE)
-              ts = cspad_tbx.evt_timestamp((t.seconds(),t.nanoseconds()/1e6))
+              t = evt.get(psana.EventId).time()
+              ts = cspad_tbx.evt_timestamp((t[0],t[1]/1e6))
               self.mpi_log_write("Process %s is ready, sending ts %s\n"%(rankreq, ts))
-              comm.send(t,dest=rankreq)
+              comm.send(EventOffsetSerializer(offset),dest=rankreq)
             # send a stop command to each process
             self.mpi_log_write("MPI DONE, sending stops\n")
             for rankreq in range(size-1):
@@ -715,9 +723,9 @@ class InMemScript(DialsProcessScript):
             while True:
               # inform the server this process is ready for an event
               comm.send(rank,dest=0)
-              evttime = comm.recv(source=0)
-              if evttime == 'endrun': break
-              evt = run.event(evttime)
+              offset = comm.recv(source=0)
+              if offset == 'endrun': break
+              evt = ds.jump(offset.filenames, offset.offsets, offset.lastBeginCalibCycleDgram)
               self.process_event(run, evt)
         except Exception, e:
           print "Error caught in main loop"

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 08/23/2016
+Last Changed: 09/07/2017
 Description : PRIME GUI Initialization module
 '''
 
@@ -76,20 +76,25 @@ class PRIMEWindow(wx.Frame):
                                                  label='Load Script',
                                                  bitmap=load_bmp,
                                                  shortHelp='Load Script',
-                                                 longHelp='Load IOTA Script')
+                                                 longHelp='Load PRIME Script')
     save_bmp = bitmaps.fetch_icon_bitmap('actions', 'save')
     self.tb_btn_save = self.toolbar.AddLabelTool(wx.ID_ANY,
                                                  label='Save Script',
                                                  bitmap=save_bmp,
                                                  shortHelp='Save Script',
-                                                 longHelp='Save IOTA Script')
+                                                 longHelp='Save PRIME Script')
     reset_bmp = bitmaps.fetch_icon_bitmap('actions', 'reload')
     self.tb_btn_reset = self.toolbar.AddLabelTool(wx.ID_ANY,
                                                   label='Reset',
                                                   bitmap=reset_bmp,
                                                   shortHelp='Reset Settings',
-                                                  longHelp='Reset IOTA settings with defaults')
+                                                  longHelp='Reset PRIME settings with defaults')
     self.toolbar.AddSeparator()
+    analyze_bmp = bitmaps.fetch_icon_bitmap('mimetypes', 'text-x-generic-2')
+    self.tb_btn_analysis = self.toolbar.AddLabelTool(wx.ID_ANY, label='Recover',
+                                                     bitmap=analyze_bmp,
+                                                     shortHelp='Recover',
+                                                     longHelp='Show past results')
     run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=run_bmp,
@@ -133,6 +138,7 @@ class PRIMEWindow(wx.Frame):
     # Toolbar button bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onPreferences, self.tb_btn_prefs)
+    self.Bind(wx.EVT_TOOL, self.onRecovery, self.tb_btn_analysis)
     self.Bind(wx.EVT_TOOL, self.onRun, self.tb_btn_run)
     self.Bind(wx.EVT_TOOL, self.onLoadScript, self.tb_btn_load)
     self.Bind(wx.EVT_TOOL, self.onSaveScript, self.tb_btn_save)
@@ -221,6 +227,61 @@ class PRIMEWindow(wx.Frame):
 
     return True
 
+  def onRecovery(self, e):
+    # Find finished runs and display results
+    p_folder = os.path.abspath('{}/prime'.format(os.curdir))
+
+    if not os.path.isdir(p_folder):
+      open_dlg = wx.DirDialog(self, "Choose the integration run:",
+                              style=wx.DD_DEFAULT_STYLE)
+      if open_dlg.ShowModal() == wx.ID_OK:
+        p_folder = open_dlg.GetPath()
+        open_dlg.Destroy()
+      else:
+        open_dlg.Destroy()
+        return
+
+    paths = [os.path.join(p_folder, p) for p in os.listdir(p_folder)]
+    paths = [p for p in paths if (os.path.isdir(p) and
+                                  os.path.basename(p).isdigit())]
+
+    path_dlg = dlg.RecoveryDialog(self)
+    path_dlg.insert_paths(paths)
+
+    if path_dlg.ShowModal() == wx.ID_OK:
+      selected = path_dlg.selected
+      prime_path = selected[1]
+      prime_status = selected[0]
+      settings_file = os.path.join(prime_path, 'settings.phil')
+
+      # If neither log-file nor stat file are found, terminate; otherwise
+      # import settings
+      if not os.path.isfile(settings_file):
+        wx.MessageBox('Cannot Import This Run \n(No Files Found!)',
+                      'Info', wx.OK | wx.ICON_ERROR)
+        return
+      else:
+        self.reset_settings()
+        with open(settings_file, 'r') as sf:
+          phil_string = sf.read()
+        read_phil = ip.parse(phil_string)
+        rec_phil = master_phil.fetch(source=read_phil)
+        self.pparams = rec_phil.extract()
+        self.input_window.pparams = self.pparams
+        self.input_window.phil_string = phil_string
+        self.update_input_window()
+
+      # If any cycles (or full run) were completed, show results
+      if prime_status == 'Unknown':
+        return
+      else:
+        self.prime_run_window = frm.PRIMERunWindow(self, -1,
+                                                   title='PRIME Output',
+                                                   params=self.pparams,
+                                                   prime_file=settings_file,
+                                                   recover=True)
+        self.prime_run_window.Show(True)
+        self.prime_run_window.recover()
 
   def onRun(self, e):
     # Run full processing
@@ -236,7 +297,8 @@ class PRIMEWindow(wx.Frame):
       for one_output in output:
         txt_out += one_output + '\n'
 
-      prime_file = os.path.join(self.out_dir, self.prime_filename)
+      source_dir = os.path.dirname(self.out_dir)
+      prime_file = os.path.join(source_dir, self.prime_filename)
       out_file = os.path.join(self.out_dir, 'stdout.log')
       with open(prime_file, 'w') as pf:
         pf.write(txt_out)
@@ -244,8 +306,7 @@ class PRIMEWindow(wx.Frame):
       self.prime_run_window = frm.PRIMERunWindow(self, -1,
                                                  title='PRIME Output',
                                                  params=self.pparams,
-                                                 prime_file=prime_file,
-                                                 out_file=out_file)
+                                                 prime_file=prime_file)
       self.prime_run_window.prev_pids = easy_run.fully_buffered('pgrep -u {} {}'
                                         ''.format(user, python)).stdout_lines
       self.prime_run_window.Show(True)
@@ -306,7 +367,7 @@ class PRIMEWindow(wx.Frame):
     self.reset_settings()
 
     user_phil = ip.parse(phil_string)
-    self.pparams = master_phil.fetch(sources=[user_phil]).extract()
+    self.pparams = master_phil.fetch(source=user_phil).extract()
     self.input_window.pparams = self.pparams
     self.input_window.phil_string = phil_string
     self.update_input_window()

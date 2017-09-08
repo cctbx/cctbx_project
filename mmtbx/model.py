@@ -156,6 +156,7 @@ class manager(object):
       build_grm = False,  # build GRM straight away, without waiting for get_grm() call
       stop_for_unknowns = True,
       processed_pdb_file = None, # Temporary, for refactoring phenix.refine
+      # for GRM
                      processed_pdb_files_srv = None, # remove later ! used in def select()
                      restraints_manager = None, # remove later
                      refinement_flags = None,   # remove later
@@ -207,6 +208,7 @@ class manager(object):
     self._rotamer_eval = None
     self._rama_eval = None
     self.original_model_format = None
+    self._ss_manager = None
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
@@ -400,15 +402,11 @@ class manager(object):
     """
     move all the writing here later.
     """
-    if "_ss_manager" not in self.__dict__.keys():
-      self._ss_manager = ss_manager
     cs_to_output = None
     if output_cs:
       cs_to_output = self.cs
     if pr_cs is not None:
       cs_to_output = pr_cs
-    # print self.cs.show_summary()
-    # STOP()
     result = StringIO()
     # outputting HELIX/SHEET records
     ss_records = ""
@@ -518,34 +516,40 @@ class manager(object):
 
   def _build_grm(
       self,
+      grm_normalization = True,
+      external_energy_function = None,
       plain_pairs_radius=5.0,
       custom_nb_excl=None,
+      file_descriptor_for_geo_in_case_of_failure=None,
       ):
-    process_pdb_file_srv = mmtbx.utils.process_pdb_file_srv(
-        crystal_symmetry          = self.cs,
-        pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
-        stop_for_unknowns         = self.stop_for_unknowns,
-        log                       = self.log,
-        cif_objects               = self.restraint_objects,
-        cif_parameters            = None, # ???
-        mon_lib_srv               = None,
-        ener_lib                  = None,
-        use_neutron_distances     = self.pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
+    if self.processed_pdb_files_srv is None:
+      self.processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
+          crystal_symmetry          = self.cs,
+          pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
+          stop_for_unknowns         = self.stop_for_unknowns,
+          log                       = self.log,
+          cif_objects               = self.restraint_objects,
+          cif_parameters            = None, # ???
+          mon_lib_srv               = None,
+          ener_lib                  = None,
+          use_neutron_distances     = self.pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
+    if self.processed_pdb_file is None:
+      self.processed_pdb_file, junk = self.processed_pdb_files_srv.process_pdb_files(
+          pdb_inp = self.model_input,
+          # because hierarchy already extracted
+          # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
+          stop_if_duplicate_labels = True,
+          allow_missing_symmetry=True)
 
-    processed_pdb_file, junk = process_pdb_file_srv.process_pdb_files(
-        pdb_inp = self.model_input,
-        # because hierarchy already extracted
-        # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
-        stop_if_duplicate_labels = True,
-        allow_missing_symmetry=True)
+    if self.all_chain_proxies is None:
+      self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
+    self._asc = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
+    if self.xray_structure is None:
+      self.xray_structure = self.all_chain_proxies.extract_xray_structure()
+    self.mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
+    self.ener_lib = self.processed_pdb_files_srv.ener_lib
+    self._ncs_obj = self.processed_pdb_file.ncs_obj
 
-    self.all_chain_proxies = processed_pdb_file.all_chain_proxies
-    self._asc = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
-    self.xray_structure = self.all_chain_proxies.extract_xray_structure()
-    self.mon_lib_srv = process_pdb_file_srv.mon_lib_srv
-    self.ener_lib = process_pdb_file_srv.ener_lib
-    self._ncs_obj = processed_pdb_file.ncs_obj
-    self._ss_manager = processed_pdb_file.ss_manager
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
     has_hd = None
@@ -555,17 +559,21 @@ class manager(object):
     # if self.pdb_interpretation_params is None:
     #   self.pdb_interpretation_params = master_params().fetch().extract()
     # disabled temporarily due to architecture changes
-    geometry = processed_pdb_file.geometry_restraints_manager(
+    geometry = self.processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = plain_pairs_radius,
       params_edits       = self.pdb_interpretation_params.geometry_restraints.edits,
       params_remove      = self.pdb_interpretation_params.geometry_restraints.remove,
       custom_nonbonded_exclusions  = custom_nb_excl,
-      assume_hydrogens_all_missing = not has_hd)
+      external_energy_function=external_energy_function,
+      assume_hydrogens_all_missing = not has_hd,
+      file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
+
+    self._ss_manager = self.processed_pdb_file.ss_manager
 
     # Link treating should be rewritten. They should not be saved in
     # all_chain_proxies and they should support mmcif.
-    self.link_records_in_pdb_format = link_record_output(processed_pdb_file.all_chain_proxies)
+    self.link_records_in_pdb_format = link_record_output(self.processed_pdb_file.all_chain_proxies)
     # For test GRM pickling
     # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
     # geometry = make_geo_pickle_unpickle(
@@ -575,12 +583,12 @@ class manager(object):
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
-      normalization = True)
+      normalization = grm_normalization)
     # Torsion restraints from reference model
     if hasattr(self.pdb_interpretation_params, "reference_model") and restraints_manager is not None:
       add_reference_dihedral_restraints_if_requested(
           geometry=restraints_manager.geometry,
-          processed_pdb_file=processed_pdb_file,
+          processed_pdb_file=self.processed_pdb_file,
           mon_lib_srv=self.mon_lib_srv,
           ener_lib=self.ener_lib,
           has_hd=has_hd,

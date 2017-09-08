@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 03/20/2017
+Last Changed: 09/07/2017
 Description : Module with miscellaneous useful functions and classes
 '''
 
@@ -94,15 +94,15 @@ def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
   """ Generates a base folder for converted pickles and/or grid search and/or
       integration results; creates subfolder numbered one more than existing
   """
-  def check_dirname(path, subdirname):
-    if os.path.isdir(os.path.join(path, subdirname)):
-      try:
-        int(subdirname)
-        return True
-      except ValueError:
-        return False
-    else:
-      return False
+  # def check_dirname(path, subdirname):
+  #   if os.path.isdir(os.path.join(path, subdirname)):
+  #     try:
+  #       int(subdirname)
+  #       return True
+  #     except ValueError:
+  #       return False
+  #   else:
+  #     return False
 
   if out_dir == None and dirname != None:
     path = os.path.abspath(os.path.join(os.curdir, dirname))
@@ -112,18 +112,21 @@ def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
     path = os.path.abspath(os.curdir)
   else:
     path = os.path.join(os.path.abspath(out_dir), dirname)
+
   if os.path.isdir(path):
-    dirnums = [int(d) for d in os.listdir(path) if check_dirname(path, d)]
+    dirs = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
+    dirnums = [int(d) for d in dirs if d.isdigit()]
     if len(dirnums) > 0:
       n_top = max(dirnums)
+      if sel_flag:
+        new_path = "{}/{:03d}".format(path, n_top)
+      else:
+        new_path = "{}/{:03d}".format(path, n_top + 1)
     else:
-      n_top = 001
-    if sel_flag:
-      new_path = "{}/{:03d}".format(path, n_top)
-    else:
-      new_path = "{}/{:03d}".format(path, n_top + 1)
+      new_path = "{}/{:03d}".format(path, 1)
   else:
     new_path = "{}/001".format(path)
+
   return new_path
 
 def find_base_dir(dirname):

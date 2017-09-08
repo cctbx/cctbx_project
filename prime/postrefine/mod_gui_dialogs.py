@@ -3,13 +3,14 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 02/09/2017
+Last Changed: 09/07/2017
 Description : PRIME GUI dialogs module
 '''
 
 import os
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
+from wxtbx import bitmaps
 
 import iota.components.iota_controls as ct
 from iota.components.iota_misc import WxFlags
@@ -190,7 +191,7 @@ class PRIMEPreferences(wx.Dialog):
     self.queue = None
     main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    main_box = wx.StaticBox(self, label='IOTA Preferences')
+    main_box = wx.StaticBox(self, label='PRIME Preferences')
     vbox = wx.StaticBoxSizer(main_box, wx.VERTICAL)
 
     self.SetSizer(main_sizer)
@@ -312,3 +313,89 @@ class TextFileView(BaseDialog):
 
     self.txt_panel.SetupScrolling()
     self.main_sizer.Add(self.txt_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+class RecoveryDialog(BaseDialog):
+
+  def __init__(self,
+               parent,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
+    BaseDialog.__init__(self, parent, style=dlg_style,
+                        label_style=label_style,
+                        content_style=content_style,
+                        size=(400, 400),
+                        title='Recover Completed Run',
+                        *args, **kwargs)
+
+
+    self.pathlist = wx.ListCtrl(self, style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
+    self.selected = None
+
+    self.pathlist.InsertColumn(0, "")
+    self.pathlist.InsertColumn(1, "Status")
+    self.pathlist.InsertColumn(2, "Path")
+
+    bmps = wx.ImageList(width=16, height=16)
+    finished_bmp = bitmaps.fetch_icon_bitmap('actions', 'button_ok', size=16)
+    aborted_bmp = bitmaps.fetch_icon_bitmap('actions', 'cancel', size=16)
+    unknown_bmp = bitmaps.fetch_icon_bitmap('actions', 'status_unknown',
+                                            size=16)
+    bmps.Add(finished_bmp)
+    bmps.Add(aborted_bmp)
+    bmps.Add(unknown_bmp)
+    self.pathlist.AssignImageList(bmps, which=1)
+
+    self.main_sizer.Add(self.pathlist, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Dialog control
+    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL),
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
+
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+
+  def insert_paths(self, pathlist):
+    for i in range(len(pathlist)):
+      logfile = os.path.join(pathlist[i], 'log.txt')
+      if os.path.isfile(logfile):
+        with open(logfile, 'r') as lf:
+          log_contents = lf.readlines()
+      else:
+        log_contents = []
+        img_id = 2
+        status = "Unknown"
+
+      stats_folder = os.path.join(pathlist[i], 'stats')
+      stat_files = [os.path.join(stats_folder, f) for f in
+                    os.listdir(stats_folder) if f.endswith('stat')]
+      if stat_files != []:
+        assert len(stat_files) == 1
+        stat_file = stat_files[0]
+        if log_contents != [] and 'Finished' in log_contents[-1]:
+          img_id = 0
+          status = 'Finished'
+        elif log_contents != [] and os.path.isfile(stat_file):
+          img_id = 1
+          status = 'Aborted'
+      else:
+        img_id = 2
+        status = "Unknown"
+
+      idx = self.pathlist.InsertImageItem(i, img_id)
+      self.pathlist.SetStringItem(idx, 1, status)
+      self.pathlist.SetStringItem(idx, 2, pathlist[i])
+      self.pathlist.SetColumnWidth(0, width=-1)
+      self.pathlist.SetColumnWidth(1, width=-1)
+      self.pathlist.SetColumnWidth(2, width=-1)
+
+
+  def onOK(self, e):
+    for i in range(self.pathlist.GetItemCount()):
+      if self.pathlist.IsSelected(i):
+
+        self.selected = [self.pathlist.GetItemText(i, col=1),
+                         self.pathlist.GetItemText(i, col=2)]
+    e.Skip()
