@@ -274,8 +274,12 @@ def construct_vector(nx_file, item, vector=None):
       vector = matrix.col(item.attrs['vector'])
       if ttype == 'translation':
         value = convert_units(value, units, 'mm')
+        if hasattr(value, '__iter__') and len(value) == 1:
+          value = value[0]
         self.vector = vector * value + self.vector
       elif ttype == 'rotation':
+        if hasattr(value, '__iter__') and len(value):
+          value = value[0]
         if units == 'rad':
           deg = False
         elif units == 'deg':
@@ -925,7 +929,8 @@ class BeamFactory(object):
     wavelength_value = wavelength[()]
     wavelength_units = wavelength.attrs['units']
 
-    if index is not None and len(wavelength_value) > 1:
+    if index is not None and hasattr(wavelength_value, '__iter__') and \
+          len(wavelength_value) > 1:
       wavelength_value = wavelength_value[index]
 
     # Convert wavelength to Angstroms
@@ -1363,6 +1368,17 @@ class GoniometerFactory(object):
     self.model = Goniometer(
       tuple(rotation_axis))
 
+def find_goniometer_rotation(obj):
+  thing = obj.handle.file[obj.handle['depends_on'][()]]
+  tree = get_depends_on_chain_using_equipment_components(thing)
+  for t in tree:
+    print t.name
+    o = obj.handle.file[t.name]
+    if o.attrs['transformation_type'] == 'rotation':
+      # if this is changing, assume is scan axis
+      v = o[()]
+      if min(v) < max(v): return o
+  raise ValueError, 'no rotation found'
 
 class ScanFactory(object):
   '''
@@ -1373,8 +1389,12 @@ class ScanFactory(object):
     from dxtbx.model import Scan
     from scitbx.array_family import flex
 
-    # Get the image and oscillation range
-    phi = obj.handle.file[obj.handle['depends_on'][()]]
+    # Get the image and oscillation range - need to search for rotations
+    # in dependency tree
+    try:
+      phi = find_goniometer_rotation(obj)
+    except ValueError, e:
+      phi = obj.handle.file[obj.handle['depends_on'][()]]
     image_range = (1, len(phi))
     if len(phi) > 1:
       oscillation = (float(phi[0]), float(phi[1]-phi[0]))
