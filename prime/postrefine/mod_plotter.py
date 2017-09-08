@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 08/23/2016
+Last Changed: 09/08/2017
 Description : PRIME Result Plotter module
 '''
 
@@ -81,7 +81,7 @@ class Plotter(object):
     ''' Displays charts of CC1/2, Completeness, Multiplicity and I / sig(I)
         per resolution bin after the final cycle of post-refinement '''
 
-    fig = plt.figure(figsize=(12, 12))
+    fig = plt.figure(figsize=(9, 9))
     gsp = gridspec.GridSpec(2, 2)
 
     fig.set_alpha(0)
@@ -90,20 +90,22 @@ class Plotter(object):
 
     x = self.info['binned_resolution'][-1]
     bins = np.arange(len(x))
-    xticks = bins[0::len(bins) // 6]
     xlabels = ["{:.2f}".format(i) for i in x]
+    sel_bins = bins[0::len(bins) // 6]
+    sel_xlabels = [xlabels[t] for t in sel_bins]
 
     # Plot CC1/2 vs. resolution
     ax_cc12 = fig.add_subplot(gsp[0])
     reslabel = 'Resolution ({})'.format(r'$\AA$')
     ax_cc12.set_xlabel(reslabel, fontsize=15)
+    ax_cc12.ticklabel_format(axis='y', style='plain')
 
     if self.params.target_anomalous_flag:
       ax_cc12.set_ylabel(r'$CC_{1/2}$ anom (%)', fontsize=15)
     else:
       ax_cc12.set_ylabel(r'$CC_{1/2}$ (%)', fontsize=15)
-    ax_cc12.set_xticks(xticks)
-    ax_cc12.set_xticklabels(xlabels)
+    ax_cc12.set_xticks(sel_bins)
+    ax_cc12.set_xticklabels(sel_xlabels)
     ax_cc12.grid(True)
     start, = ax_cc12.plot(bins, self.info['binned_cc12'][0], c='#7fcdbb', lw=2)
     end, = ax_cc12.plot(bins, self.info['binned_cc12'][-1], c='#2c7fb8', lw=3)
@@ -114,9 +116,10 @@ class Plotter(object):
     # Plot Completeness vs. resolution
     ax_comp = fig.add_subplot(gsp[1])
     ax_comp.set_xlabel(reslabel, fontsize=15)
+    ax_comp.ticklabel_format(axis='y', style='plain')
     ax_comp.set_ylabel('Completeness (%)', fontsize=15)
-    ax_comp.set_xticks(xticks)
-    ax_comp.set_xticklabels(xlabels)
+    ax_comp.set_xticks(sel_bins)
+    ax_comp.set_xticklabels(sel_xlabels)
     ax_comp.grid(True)
     start, = ax_comp.plot(bins, self.info['binned_completeness'][0],
                          c='#7fcdbb', lw=2)
@@ -129,9 +132,10 @@ class Plotter(object):
     # Plot Multiplicity (no. of observations) vs. resolution
     ax_mult = fig.add_subplot(gsp[2])
     ax_mult.set_xlabel(reslabel, fontsize=15)
+    ax_mult.ticklabel_format(axis='y', style='plain')
     ax_mult.set_ylabel('# of Observations', fontsize=15)
-    ax_mult.set_xticks(xticks)
-    ax_mult.set_xticklabels(xlabels)
+    ax_mult.set_xticks(sel_bins)
+    ax_mult.set_xticklabels(sel_xlabels)
     ax_mult.grid(True)
     start, = ax_mult.plot(bins, self.info['binned_n_obs'][0], c='#7fcdbb', lw=2)
     end, = ax_mult.plot(bins, self.info['binned_n_obs'][-1], c='#2c7fb8', lw=3)
@@ -142,9 +146,10 @@ class Plotter(object):
     # Plot I / sig(I) vs. resolution
     ax_i_sigi = fig.add_subplot(gsp[3])
     ax_i_sigi.set_xlabel(reslabel, fontsize=15)
+    ax_i_sigi.ticklabel_format(axis='y', style='plain')
     ax_i_sigi.set_ylabel(r'I / $\sigma$(I)', fontsize=15)
-    ax_i_sigi.set_xticks(xticks)
-    ax_i_sigi.set_xticklabels(xlabels)
+    ax_i_sigi.set_xticks(sel_bins)
+    ax_i_sigi.set_xticklabels(sel_xlabels)
     ax_i_sigi.grid(True)
     start, = ax_i_sigi.plot(bins, self.info['binned_i_o_sigi'][0], c='#7fcdbb',
                         lw=2)

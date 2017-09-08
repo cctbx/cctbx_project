@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 09/07/2017
+Last Changed: 09/08/2017
 Description : PRIME GUI frames module
 '''
 
@@ -331,6 +331,7 @@ class RuntimeTab(wx.Panel):
     self.cc_axes.clear()
     self.cc_axes.plot(cycles, meanCC, 'o', c='#2b8cbe', ls='-', lw=3)
     self.cc_axes.set_xlim(0, total_cycles)
+    self.cc_axes.ticklabel_format(axis='y', style='plain')
 
     # Plot mean completeness and multiplicity
     mean_comp = info['total_completeness']
@@ -340,6 +341,8 @@ class RuntimeTab(wx.Panel):
     self.mult_axes.clear()
     self.comp_axes.set_xlim(0, total_cycles)
     self.mult_axes.set_xlim(0, total_cycles)
+    self.comp_axes.ticklabel_format(axis='y', style='plain')
+    self.mult_axes.ticklabel_format(axis='y', style='plain')
     self.comp_axes.plot(cycles, mean_comp, c='#f03b20', ls='-', lw=2)
     comp = self.comp_axes.scatter(cycles, mean_comp, marker='o', s=25,
                                   edgecolors='black', color='#f03b20')
@@ -353,8 +356,9 @@ class RuntimeTab(wx.Panel):
     # Binned bar plots
     x = info['binned_resolution'][-1]
     bins = np.arange(len(x))
-    xticks = bins[0::len(bins) // 6]
     xlabels = ["{:.2f}".format(i) for i in x]
+    sel_bins = bins[0::len(bins) // 6]
+    sel_xlabels = [xlabels[t] for t in sel_bins]
 
     # plot binned stats
     self.bcc_axes.clear()
@@ -379,8 +383,8 @@ class RuntimeTab(wx.Panel):
                          where='mid')
 
     # Set x-axis tick labels
-    self.bmult_axes.set_xticks(xticks)
-    self.bmult_axes.set_xticklabels(xlabels)
+    self.bmult_axes.set_xticks(sel_bins)
+    self.bmult_axes.set_xticklabels(sel_xlabels)
     self.draw_axes()
 
     # Rejection table

@@ -1,7 +1,5 @@
 IOTA v1.1.023 - PRIME GUI tweaks
 
-1. Abort will now actually lead to a finish to the run
-2. Old run recovery (for showing results if run is finished)
-3. IOTA should now set up PRIME with low-res limits (not 99.9)
-4. PRIME runs are now saved under ./prime/###
-5. PRIME settings are now saved in file under ./prime/###/settings.phil
+1. Correct resolution bins displayed in charts
+2. Non-scientific (plain) notation for y-axis labels in charts
+3. Final chart figure stays within laptop monitor limits
