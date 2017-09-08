@@ -1372,7 +1372,6 @@ def find_goniometer_rotation(obj):
   thing = obj.handle.file[obj.handle['depends_on'][()]]
   tree = get_depends_on_chain_using_equipment_components(thing)
   for t in tree:
-    print t.name
     o = obj.handle.file[t.name]
     if o.attrs['transformation_type'] == 'rotation':
       # if this is changing, assume is scan axis
