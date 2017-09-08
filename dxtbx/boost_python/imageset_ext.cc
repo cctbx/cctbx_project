@@ -142,13 +142,13 @@ namespace dxtbx { namespace boost_python {
     boost::python::tuple get_model_list(ImageSetData obj, Func get) {
 
       // Create a list of models and a list of indices
-      std::vector<const Model*> model_list;
+      std::vector< boost::shared_ptr<Model> > model_list;
       std::vector<std::size_t> index_list;
       for (std::size_t i = 0; i < obj.size(); ++i) {
-        Model *m = ((&obj)->*get)(i).get();
+        boost::shared_ptr<Model> m = ((&obj)->*get)(i);
         int k = -1;
         for (std::size_t j = 0; j < model_list.size(); ++j) {
-          if (m == model_list[j-1]) {
+          if (m.get() == model_list[j-1].get()) {
             k = j;
             break;
           }
