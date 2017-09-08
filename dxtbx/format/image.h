@@ -91,6 +91,8 @@ namespace dxtbx { namespace format {
     typedef T data_type;
     typedef ImageTile<T> tile_type;
     typedef typename tile_type::array_type array_type;
+    typedef typename scitbx::af::shared<tile_type> tile_array_type;
+    typedef typename tile_array_type::iterator iterator;
 
     /**
      * Construct empty
@@ -144,6 +146,20 @@ namespace dxtbx { namespace format {
      */
     bool empty() const {
       return tiles_.empty();
+    }
+
+    /**
+     * Get the begin iterator
+     */
+    iterator begin() {
+      return tiles_.begin();
+    }
+
+    /**
+     * Get the end iterator
+     */
+    iterator end() {
+      return tiles_.end();
     }
 
   protected:

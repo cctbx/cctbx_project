@@ -175,6 +175,7 @@ namespace dxtbx { namespace format { namespace boost_python {
       .def("empty", &image_type::empty)
       .def("append", &image_type::push_back)
       .def("__len__", &image_type::n_tiles)
+      .def("__iter__", range(&image_type::begin, &image_type::end))
       .def_pickle(ImagePickleSuite<T>())
       ;
 

@@ -141,24 +141,26 @@ def imagesweep_from_dict(d, check_format=True):
   else:
     image_range = scan_dict.get('image_range')
 
+  # Set the models with the exisiting models as templates
+  beam = BeamFactory.from_dict(d.get('beam'))
+  goniometer = GoniometerFactory.from_dict(d.get('goniometer'))
+  detector = DetectorFactory.from_dict(d.get('detector'))
+  scan = ScanFactory.from_dict(d.get('scan'))
+
   # Construct the sweep
   try:
     sweep = ImageSetFactory.from_template(
-      template, image_range, check_format=check_format)[0]
-
-    # Get the existing models as dictionaries
-    beam_dict = sweep.get_beam().to_dict()
-    gonio_dict = sweep.get_goniometer().to_dict()
-    detector_dict = sweep.get_detector().to_dict()
-    scan_dict = sweep.get_scan().to_dict()
+      template, 
+      image_range, 
+      beam=beam,
+      detector=detector,
+      goniometer=goniometer,
+      scan=scan,
+      check_format=check_format)[0]
   except Exception:
     indices = range(image_range[0], image_range[1] + 1)
     sweep = ImageSetFactory.make_sweep(
       template, indices, check_format=False)
-    beam_dict = None
-    gonio_dict = None
-    detector_dict = None
-    scan_dict = None
 
   # Set some external lookups
   if 'mask' in d and d['mask'] is not None and d['mask'] is not "":
@@ -173,12 +175,6 @@ def imagesweep_from_dict(d, check_format=True):
     with open(d['pedestal']) as infile:
       sweep.external_lookup.pedestal.filename = d['pedestal']
       sweep.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
-
-  # Set the models with the exisiting models as templates
-  sweep.set_beam(BeamFactory.from_dict(d.get('beam'), beam_dict))
-  sweep.set_goniometer(GoniometerFactory.from_dict(d.get('goniometer'), gonio_dict))
-  sweep.set_detector(DetectorFactory.from_dict(d.get('detector'), detector_dict))
-  sweep.set_scan(ScanFactory.from_dict(d.get('scan'), scan_dict))
 
   # Return the sweep
   return sweep

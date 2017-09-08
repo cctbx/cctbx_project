@@ -559,8 +559,15 @@ namespace dxtbx {
           const scitbx::af::const_ref<std::size_t> &indices)
       : data_(data),
         indices_(indices.begin(), indices.end()) {
-      DXTBX_ASSERT(indices.size() > 0);
-      DXTBX_ASSERT(scitbx::af::max(indices) < data.size());
+      if (indices.size() == 0) {
+        DXTBX_ASSERT(data.size() > 0);
+        indices_.resize(data.size());
+        for (std::size_t i = 0; i < indices_.size(); ++i) {
+          indices_[i] = i;
+        }
+      } else {
+        DXTBX_ASSERT(scitbx::af::max(indices) < data.size());
+      }
     }
 
     /**
@@ -1105,11 +1112,13 @@ namespace dxtbx {
 
       // Check the scan is the same length as number of indices
       DXTBX_ASSERT(scan.get() != NULL);
-      DXTBX_ASSERT(indices.size() == scan->get_num_images());
 
       // Check indices are sequential
-      for (std::size_t i = 1; i < indices.size(); ++i) {
-        DXTBX_ASSERT(indices[i] == indices[i-1]+1);
+      if (indices.size() > 0) {
+        DXTBX_ASSERT(indices.size() == scan->get_num_images());
+        for (std::size_t i = 1; i < indices.size(); ++i) {
+          DXTBX_ASSERT(indices[i] == indices[i-1]+1);
+        }
       }
 
       // Set the models for each image
