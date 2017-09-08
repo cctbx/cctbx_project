@@ -2837,7 +2837,7 @@ def apply_soft_mask(map_data=None,
   # apply a soft mask based on mask_data to map_data.
   # set value outside mask==mean value inside mask or mean value outside mask
 
-  write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
+  #write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
 
   s = mask_data > threshold  # s marks inside mask
 
@@ -2853,7 +2853,7 @@ def apply_soft_mask(map_data=None,
   # Smooth the mask in place. First make it a binary mask
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
-  write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
+  #write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
   if mask_data.count(1)  and mask_data.count(0): # something to do
     print >>out,"Smoothing mask..."
     maptbx.unpad_in_place(map=mask_data)
@@ -2875,7 +2875,7 @@ def apply_soft_mask(map_data=None,
   smoothed_mean_value_in,smoothed_mean_value_out,smoothed_fraction_in=\
      get_mean_in_and_out(sel=s,map_data=mask_data, out=out)
 
-  write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
+  #write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
 
   # Now replace value outside mask with mean_value, value inside with current,
   #   smoothly going from one to the other based on mask_data
@@ -2899,7 +2899,7 @@ def apply_soft_mask(map_data=None,
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
     map_data=masked_map, out=out)
 
-  write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
+  #write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
 
   return masked_map
 
