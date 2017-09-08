@@ -2837,7 +2837,7 @@ def apply_soft_mask(map_data=None,
   # apply a soft mask based on mask_data to map_data.
   # set value outside mask==mean value inside mask or mean value outside mask
 
-  #write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
+  write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
 
   s = mask_data > threshold  # s marks inside mask
 
@@ -2847,13 +2847,13 @@ def apply_soft_mask(map_data=None,
     map_data=map_data, out=out)
 
   print >>out,"\nMask inside and outside values"
-  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
-    map_data=mask_data, out=out)
+  mask_mean_value_in,mask_mean_value_out,mask_fraction_in=get_mean_in_and_out(
+      sel=s,map_data=mask_data, out=out)
 
   # Smooth the mask in place. First make it a binary mask
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
-  #write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
+  write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
   if mask_data.count(1)  and mask_data.count(0): # something to do
     print >>out,"Smoothing mask..."
     maptbx.unpad_in_place(map=mask_data)
@@ -2872,28 +2872,34 @@ def apply_soft_mask(map_data=None,
     print >>out,"Not smoothing mask that is a constant..."
 
   print >>out,"\nSmoothed mask inside and outside values"
-  mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
-    map_data=mask_data, out=out)
+  smoothed_mean_value_in,smoothed_mean_value_out,smoothed_fraction_in=\
+     get_mean_in_and_out(sel=s,map_data=mask_data, out=out)
 
-  #write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
+  write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
 
   # Now replace value outside mask with mean_value, value inside with current,
   #   smoothly going from one to the other based on mask_data
 
-  set_to_mean=map_data.deep_copy()
-  ss = set_to_mean > -1.e+30
+  # set_to_mean will be a constant map with value equal to inside or outside
   if set_outside_to_mean_inside or mean_value_out is None:
-    set_to_mean.set_selected(~ss, mean_value_in)
+    target_value_for_outside=mean_value_in
+    print >>out,"Setting value outside mask to mean inside (%.2f)" %(
+      target_value_for_outside)
   else:
-    set_to_mean.set_selected(~ss, mean_value_out)
+    target_value_for_outside=mean_value_out
+    print >>out,"Setting value outside mask to mean outside (%.2f)" %(
+      target_value_for_outside)
+  set_to_mean=mask_data.deep_copy()
+  ss = set_to_mean > -1.e+30 # select everything
+  set_to_mean.set_selected(ss, target_value_for_outside)
 
-  masked_map= (map_data * mask_data )  +  (set_to_mean * (1-mask_data))
+  masked_map= (map_data * mask_data ) +  (set_to_mean * (1-mask_data))
 
   print >>out,"\nFinal mean value inside and outside mask:"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
-    map_data=map_data, out=out)
+    map_data=masked_map, out=out)
 
-  #write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
+  write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
 
   return masked_map
 
