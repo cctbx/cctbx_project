@@ -10,6 +10,7 @@ from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
 import sys, math, StringIO
+import iotbx.pdb
 
 import boost.python
 boost.python.import_ext("scitbx_array_family_flex_ext")
@@ -660,6 +661,21 @@ class manager(object):
   #=================================================================
   # DEN manager/proxies methods
   #=================================================================
+  def create_den_manager(self, den_params, pdb_hierarchy, log):
+    from mmtbx.den import den_restraints
+    if den_params.reference_file is not None:
+      pdb_io_ref = iotbx.pdb.input(den_params.reference_file)
+      pdb_hierarchy_ref = pdb_io_ref.construct_hierarchy()
+      pdb_hierarchy_ref.atoms().reset_i_seq()
+    else: #restrain model to starting coordinates
+      pdb_hierarchy_ref = None
+    den_manager = den_restraints(
+      pdb_hierarchy=pdb_hierarchy,
+      pdb_hierarchy_ref=pdb_hierarchy_ref,
+      params=den_params,
+      log=log)
+    self.adopt_den_manager(den_manager)
+
   def adopt_den_manager(self, den_manager):
     self.den_manager = den_manager
 

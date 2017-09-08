@@ -12,6 +12,7 @@ import scitbx.restraints
 from cctbx import adptbx
 from libtbx.utils import Sorry
 import sys
+from libtbx.str_utils import make_header
 
 class manager(object):
   """
@@ -38,9 +39,72 @@ class manager(object):
     # amber
     self.use_amber = use_amber
     self.amber_structs = amber_structs
+    self.sander = None
     #afitt
     self.use_afitt = use_afitt
     self.afitt_object = afitt_object
+
+  def init_amber(self, params, log):
+   if hasattr(params, "amber"):
+      self.use_amber = params.amber.use_amber
+      print_amber_energies = params.amber.print_amber_energies
+      if (use_amber) :
+        make_header("Initializing AMBER", out=log)
+        print >> log, "  topology    : %s" % params.amber.topology_file_name
+        print >> log, "  coordinates : %s" % params.amber.coordinate_file_name
+        from amber_adaptbx import interface
+        self.amber_structs, sander = interface.get_amber_struct_object(self.params)
+        self.sander=sander # used for cleanup
+
+  def cleanup_amber(self):
+    if self.sander and self.amber_structs:
+      if amber_structs.is_LES:
+        import sanderles; sanderles.cleanup()
+      else:
+        import sander; sander.cleanup()
+
+  def init_afitt(self, params, pdb_hierarchy, log):
+    if hasattr(params, "afitt") :
+      use_afitt = params.afitt.use_afitt
+      if (use_afitt) :
+        from mmtbx.geometry_restraints import afitt
+        # this only seems to work for a single ligand
+        # multiple ligands are using the monomers input
+        if params.afitt.ligand_file_name is None:
+          ligand_paths = params.input.monomers.file_name
+        else:
+          ligand_paths = [params.afitt.ligand_file_name]
+        afitt.validate_afitt_params(params.afitt)
+        ligand_names=params.afitt.ligand_names.split(',')
+        if len(ligand_names)!=len(ligand_paths) and len(ligand_names)==1:
+          # get restraints library instance of ligand
+          from mmtbx.monomer_library import server
+          for ligand_name in ligand_names:
+            result = server.server().get_comp_comp_id_direct(ligand_name)
+            if result is not None:
+              so = result.source_info # not the smartest way
+              if so.find("file:")==0:
+                ligand_paths=[so.split(":")[1].strip()]
+        if len(ligand_names)!=len(ligand_paths):
+          raise Sorry("need restraint CIF files for each ligand")
+        make_header("Initializing AFITT", out=log)
+        #print >> log, "  ligands: %s" % params.afitt.ligand_file_name
+        afitt_object = afitt.afitt_object(
+            ligand_paths,
+            ligand_names,
+            pdb_hierarchy,
+            params.afitt.ff,
+            params.afitt.scale)
+        print >> log, afitt_object
+        afitt_object.check_covalent(self.geometry)
+        # afitt log output
+        afitt_object.initial_energies = afitt.get_afitt_energy(
+            ligand_paths,
+            ligand_names,
+            pdb_hierarchy,
+            params.afitt.ff,
+            pdb_hierarchy.atoms().sites_cart(),
+            self.geometry)
 
   def select(self, selection):
     if (self.geometry is None):
