@@ -201,7 +201,7 @@ class DataBlock(object):
               ('detector',   d.index(iset.get_detector())),
               ('goniometer', g.index(iset.get_goniometer())),
               ('scan',       s.index(iset.get_scan())),
-              ('images',     iset.indices()),
+              ('images',     list(iset.indices())),
               ('params',   iset.params())
             ]))
         else:
