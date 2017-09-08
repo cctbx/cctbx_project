@@ -48,17 +48,17 @@ class manager(object):
    if hasattr(params, "amber"):
       self.use_amber = params.amber.use_amber
       print_amber_energies = params.amber.print_amber_energies
-      if (use_amber) :
+      if (self.use_amber) :
         make_header("Initializing AMBER", out=log)
         print >> log, "  topology    : %s" % params.amber.topology_file_name
         print >> log, "  coordinates : %s" % params.amber.coordinate_file_name
         from amber_adaptbx import interface
-        self.amber_structs, sander = interface.get_amber_struct_object(self.params)
+        self.amber_structs, sander = interface.get_amber_struct_object(params)
         self.sander=sander # used for cleanup
 
   def cleanup_amber(self):
     if self.sander and self.amber_structs:
-      if amber_structs.is_LES:
+      if self.amber_structs.is_LES:
         import sanderles; sanderles.cleanup()
       else:
         import sander; sander.cleanup()
