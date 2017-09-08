@@ -10,11 +10,14 @@ from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
 from iotbx.cif import write_whole_cif_file
 from scitbx.array_family import flex
 from libtbx import group_args
+from libtbx.utils import check_if_output_directory_exists
 
 master_params_str = """\
 model_file_name = None
-  .type = str
+  .type = path
   .help = Model file name
+  .short_caption = Input model
+  .style = bold input_file file_type:pdb file_type_default
 output
   .help = Write out file with modified model (file name is defined in \
           write_modified)
@@ -32,6 +35,7 @@ output
     .help = Choose the output format of coordinate file (PDB or mmCIF)
 }
 include scope mmtbx.pdbtools.master_params
+include scope libtbx.phil.interface.tracking_params
 """
 
 def master_params():
@@ -137,18 +141,15 @@ def run(args, out=sys.stdout, replace_stderr=True):
   broadcast(m="All done.", log=log)
   return None
 
-def finish_job (result) :
-  output_files = []
-  if isinstance(result, list) :
-    for file_name in result :
-      file_desc = None
-      base, ext = os.path.splitext(file_name)
-      if ext == ".pdb" :
-        file_desc = "Modified PDB file"
-      else :
-        file_desc = "Unknown file"
-      output_files.append((file_desc, file_name))
-  return (output_files, [])
+def validate_params (params, callback=None) :
+  if (params.model_file_name is None) :
+    raise Sorry("No PDB file(s) specified.")
+  elif (params.output.file_name is not None) :
+    if (os.path.isdir(params.output.file_name)) :
+      raise Sorry("The specified output file is a currently existing "+
+                  "directory.")
+    check_if_output_directory_exists(params.output.file_name)
+  return True
 
 class launcher (runtime_utils.target_with_save_result) :
   def run (self) :
