@@ -741,7 +741,10 @@ END
   ph_in = pi.construct_hierarchy()
   s2 = ph_in.atoms_size()
   f = s2*100./s1
-  assert f>80 and f<100
+  #
+  # UNSTABLE
+  #
+  assert f>80 and f<100, f
 
 def exercise_change_of_basis () :
   open("tmp_pdbtools_cb_op.pdb", "w").write("""\
