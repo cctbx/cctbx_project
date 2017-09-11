@@ -11,6 +11,7 @@
 from __future__ import absolute_import, division
 import boost.python
 import dxtbx.format.image
+ext = boost.python.import_ext("dxtbx_ext")
 from dxtbx_imageset_ext import *
 
 
