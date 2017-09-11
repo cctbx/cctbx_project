@@ -138,7 +138,7 @@ namespace dxtbx { namespace boost_python {
     }
 
     static
-    boost::shared_ptr<Beam> get_beam(const ImageSetData &self, std::size_t i) {
+    boost::shared_ptr<BeamBase> get_beam(const ImageSetData &self, std::size_t i) {
       return self.get_beam(i);
     }
 
@@ -194,7 +194,7 @@ namespace dxtbx { namespace boost_python {
     static
     boost::python::tuple get_model_tuple(ImageSetData obj) {
       return boost::python::make_tuple(
-          ImageSetDataPickleSuite::get_model_list<Beam>(
+          ImageSetDataPickleSuite::get_model_list<BeamBase>(
             obj, &ImageSetDataPickleSuite::get_beam),
           ImageSetDataPickleSuite::get_model_list<Detector>(
             obj, &ImageSetDataPickleSuite::get_detector),
@@ -262,7 +262,7 @@ namespace dxtbx { namespace boost_python {
     static
     void set_model_tuple(ImageSetData &obj, boost::python::tuple models) {
       DXTBX_ASSERT(boost::python::len(models) == 4);
-      ImageSetDataPickleSuite::set_model_list<Beam>(
+      ImageSetDataPickleSuite::set_model_list<BeamBase>(
           obj,
           boost::python::extract<boost::python::tuple>(models[0])(),
           &ImageSetData::set_beam);
