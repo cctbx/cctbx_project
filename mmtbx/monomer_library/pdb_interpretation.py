@@ -4291,6 +4291,7 @@ class build_all_chain_proxies(linking_mixins):
           distance_ideal=bond.distance_ideal,
           weight=geometry_restraints.sigma_as_weight(sigma=bond.sigma),
           slack=slack,
+          origin_id=3,
           rt_mx_ji=rt_mx_ji)
         bond_sym_proxies.append(p)
         b = geometry_restraints.bond(
@@ -4374,6 +4375,7 @@ class build_all_chain_proxies(linking_mixins):
         p = geometry_restraints.angle_proxy(
           i_seqs=i_seqs,
           angle_ideal=angle.angle_ideal,
+          origin_id=3,
           weight=geometry_restraints.sigma_as_weight(sigma=angle.sigma))
         a = geometry_restraints.angle(
           sites_cart=self.sites_cart,
@@ -4437,6 +4439,7 @@ class build_all_chain_proxies(linking_mixins):
           i_seqs=i_seqs,
           angle_ideal=dihedral.angle_ideal,
           weight=geometry_restraints.sigma_as_weight(sigma=dihedral.sigma),
+          origin_id=3,
           periodicity=dihedral.periodicity,
         )
         a = geometry_restraints.dihedral(
@@ -4497,6 +4500,7 @@ class build_all_chain_proxies(linking_mixins):
           sigma=planarity.sigma))
       proxy = geometry_restraints.planarity_proxy(
         i_seqs=i_seqs,
+        origin_id=3,
         weights=flex.double(weights))
       plane = geometry_restraints.planarity(
         sites_cart=self.sites_cart,
@@ -4536,11 +4540,12 @@ class build_all_chain_proxies(linking_mixins):
           n_atoms_needed="many")[0]
       weight = 1./parallelity.sigma**2
       target_angle_deg = parallelity.target_angle_deg
-      print i_seqs, j_seqs, weight
+      # print i_seqs, j_seqs, weight
       proxy = geometry_restraints.parallelity_proxy(
         i_seqs=flex.size_t(i_seqs),
         j_seqs=flex.size_t(j_seqs),
         weight=weight,
+        origin_id = 3,
         target_angle_deg=target_angle_deg)
       result.append(proxy)
     print >> log, "    Total number of custom parallelities:", len(result)

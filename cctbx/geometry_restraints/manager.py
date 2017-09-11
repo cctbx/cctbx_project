@@ -30,16 +30,21 @@ from scitbx_array_family_flex_ext import reindexing_array
 # bonds: 0 - covalent geometry
 #        1 - hydrogen bonds: both for protein SS and for NA basepairs
 #        2 - metal coordination
+#        3 - geometry_resraints.edits from users
 # angles: 0 - covalent geometry
 #         1 - angle restraints associated with NA basepair hydrogen bonds
+#         3 - geometry_resraints.edits from users
 # dihedral(torsion): 0 - covalent geometry
 #                    1 - C-beta restraints
 #                    2 - Torsion restraints on chi angles (side-chain rotamers)
+#                    3 - geometry_resraints.edits from users
 # chirality: 0 - covalent geometry
 # planarity: 0 - covalent geometry
 #            1 - planarity restraints for NA basepairs
+#            3 - geometry_resraints.edits from users
 # parallelity: 0 - stacking interaction for NA
 #              1 - restraint for NA basepairs
+#              3 - geometry_resraints.edits from users
 
 class manager(object):
 # This class is documented in
@@ -463,6 +468,59 @@ class manager(object):
   def remove_angles_in_place(self, selection):
     self.angle_proxies = self.angle_proxies.proxy_remove(
       selection=selection)
+
+  #=================================================================
+  # User-supplied restraints (geometry_restraints.edits scope)
+  #=================================================================
+  def get_user_supplied_restraints(self):
+    bonds_simpe = None
+    bonds_asu = None
+    angles = None
+    planarity = None
+    parallelity = None
+    pair_proxies = self.pair_proxies()
+    if pair_proxies is not None:
+      if pair_proxies.bond_proxies is not None:
+        bonds_simpe = pair_proxies.bond_proxies.simple.proxy_select(origin_id=3)
+        bonds_asu = pair_proxies.bond_proxies.asu.proxy_select(origin_id=3)
+    angles = self.angle_proxies.proxy_select(origin_id=3)
+    planarity = self.planarity_proxies.proxy_select(origin_id=3)
+    parallelity = self.parallelity_proxies.proxy_select(origin_id=3)
+    return bonds_simpe, bonds_asu, angles, planarity, parallelity
+
+  def remove_user_supplied_restraints_in_place(self):
+    """
+    Problem is in removing bond restraints, which is not yet implemented at all
+    and rather complicated.
+    """
+    raise NotImplementedError
+
+  def get_bond_proxies_without_user_supplied(self, sites_cart=None):
+    pair_proxies = self.pair_proxies(sites_cart=sites_cart)
+    simple = None
+    asu = None
+    if pair_proxies is not None:
+      if pair_proxies.bond_proxies is not None:
+        if pair_proxies.bond_proxies.simple is not None:
+          simple = pair_proxies.bond_proxies.simple.get_proxies_without_origin_id(origin_id=3)
+        if pair_proxies.bond_proxies.asu is not None:
+          asu = pair_proxies.bond_proxies.asu.get_proxies_without_origin_id(origin_id=3)
+    return simple, asu
+
+  def get_angle_proxies_without_user_supplied(self):
+    if self.angle_proxies is not None:
+      return self.angle_proxies.proxy_remove(origin_id=3)
+    return None
+
+  def get_planarity_proxies_without_user_supplied(self):
+    if self.planarity_proxies is not None:
+      return self.planarity_proxies.proxy_remove(origin_id=3)
+    return None
+
+  def get_parallelity_proxies_without_user_supplied(self):
+    if self.parallelity_proxies is not None:
+      return self.parallelity_proxies.proxy_remove(origin_id=3)
+    return None
 
   #=================================================================
   # Reference coordinate proxies methods
@@ -1481,6 +1539,7 @@ class manager(object):
       print >> f
       for label, origin_id in [["Bond-like", 1],
                                ["Metal coordination", 2],
+                               ["User supplied restraints", 3]
                                ]:
         tempbuffer = StringIO.StringIO()
         pair_proxies.bond_proxies.show_sorted(
@@ -1500,15 +1559,18 @@ class manager(object):
         f=f,
         origin_id=0)
       print >> f
-
-      tempbuffer = StringIO.StringIO()
-      self.angle_proxies.show_sorted(
-        by_value="residual",
-        sites_cart=sites_cart,
-        site_labels=site_labels,
-        f=tempbuffer,
-        origin_id=1)
-      print >> f, "Noncovalent b%s" % tempbuffer.getvalue()[1:]
+      for label, origin_id in [["SS restraints around h-bond", 1],
+                               ["User supplied restraints", 3]
+                               ]:
+        tempbuffer = StringIO.StringIO()
+        self.angle_proxies.show_sorted(
+            by_value="residual",
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            f=tempbuffer,
+            prefix="",
+            origin_id=origin_id)
+        print >> f, label, tempbuffer.getvalue()[5:]
 
     for p_label, proxies in [
         ("Dihedral angle", self.get_dihedral_proxies()),

@@ -423,6 +423,9 @@ Sorted by residual:
 
 """
   assert not show_diff(sio.getvalue(), expected_first_part + """\
+User supplied restraints restraints: 0
+Sorted by residual:
+
 Nonbonded interactions: 0
 
 """)
@@ -441,6 +444,9 @@ Nonbonded interactions: 0
   sio = StringIO()
   geo.show_sorted(sites_cart=sites_cart_noise, f=sio)
   assert not show_diff(sio.getvalue(), expected_first_part + """\
+User supplied restraints restraints: 0
+Sorted by residual:
+
 Nonbonded interactions: 2
 Sorted by model distance:
 nonbonded 0
@@ -605,10 +611,12 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
       "Chirality restraints: 15",
       "Planarity restraints: 4"]
   ss_geo_portions = ["Bond-like restraints: 6",
-      "Noncovalent bond angle restraints: 12", "Parallelity restraints: 4",
+      "SS restraints around h-bond angle restraints: 12",
+      "Parallelity restraints: 4",
       "Nonbonded interactions: 504"]
   non_ss_geo_portions = ["Bond-like restraints: 0",
-      "Noncovalent bond angle restraints: 0", "Parallelity restraints: 0",
+      "SS restraints around h-bond angle restraints: 0",
+      "Parallelity restraints: 0",
       "Nonbonded interactions: 526"]
   acp = processed_pdb_file.all_chain_proxies
   sites_cart = acp.sites_cart_exact()

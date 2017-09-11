@@ -489,6 +489,14 @@ def _bond_show_sorted_impl(self,
   if (n_not_shown != 0):
     print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
 
+class _(boost.python.injector, shared_bond_asu_proxy):
+  def get_proxies_without_origin_id(self, origin_id):
+    result = shared_bond_asu_proxy()
+    for p in self:
+      if p.origin_id != origin_id:
+        result.append(p)
+    return result
+
 class _(boost.python.injector, shared_bond_simple_proxy):
 
   def as_pymol_dashes(self, pdb_hierarchy):
@@ -637,6 +645,13 @@ class _(boost.python.injector, shared_bond_simple_proxy):
     result = []
     for p in self:
       if p.origin_id == origin_id:
+        result.append(p)
+    return result
+
+  def get_proxies_without_origin_id(self, origin_id):
+    result = shared_bond_simple_proxy()
+    for p in self:
+      if p.origin_id != origin_id:
         result.append(p)
     return result
 
