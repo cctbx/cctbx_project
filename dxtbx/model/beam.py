@@ -126,7 +126,8 @@ class BeamFactory:
                           divergence=None, sigma_divergence=None,
                           flux=None, transmission=None):
     assert(polarization)
-    assert(polarization_fraction)
+    assert polarization_fraction >= 0.0
+    assert polarization_fraction <= 1.0
 
     if divergence == None or sigma_divergence == None:
       divergence = 0.0
