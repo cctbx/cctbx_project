@@ -39,7 +39,7 @@ namespace dxtbx { namespace boost_python {
       boost::python::object loads = global["loads"];
       return loads(x);
     }
-    
+
     /**
      * Tuple from list
      */
@@ -454,15 +454,15 @@ namespace dxtbx { namespace boost_python {
     boost::python::tuple result;
     ImageBuffer buffer = self.get_raw_data(index);
     if (buffer.is_int()) {
-      result = image_as_tuple<int>(buffer.as_int()); 
+      result = image_as_tuple<int>(buffer.as_int());
     } else if (buffer.is_double()) {
-      result = image_as_tuple<double>(buffer.as_double()); 
+      result = image_as_tuple<double>(buffer.as_double());
     } else {
       DXTBX_ERROR("Problem reading raw data");
     }
     return result;
   }
-  
+
   boost::python::tuple ImageSet_get_corrected_data(ImageSet &self, std::size_t index) {
     return image_as_tuple<double>(self.get_corrected_data(index));
   }
@@ -496,7 +496,7 @@ namespace dxtbx { namespace boost_python {
       ;
 
   }
-  
+
   /**
    * Export the imageset classes
    */
@@ -582,28 +582,28 @@ namespace dxtbx { namespace boost_python {
       .def("get_gain", &ImageSet_get_gain)
       .def("get_pedestal", &ImageSet_get_pedestal)
       .def("get_mask", &ImageSet_get_mask)
-      .def("get_beam", 
+      .def("get_beam",
           &ImageSet::get_beam_for_image, (
             arg("index") = 0))
-      .def("get_detector", 
+      .def("get_detector",
           &ImageSet::get_detector_for_image, (
             arg("index") = 0))
-      .def("get_goniometer", 
+      .def("get_goniometer",
           &ImageSet::get_goniometer_for_image, (
             arg("index") = 0))
-      .def("get_scan", 
+      .def("get_scan",
           &ImageSet::get_scan_for_image, (
             arg("index") = 0))
-      .def("set_beam", 
+      .def("set_beam",
           &ImageSet::set_beam_for_image, (
             arg("index") = 0))
-      .def("set_detector", 
+      .def("set_detector",
           &ImageSet::set_detector_for_image, (
             arg("index") = 0))
-      .def("set_goniometer", 
+      .def("set_goniometer",
           &ImageSet::set_goniometer_for_image, (
             arg("index") = 0))
-      .def("set_scan", 
+      .def("set_scan",
           &ImageSet::set_scan_for_image, (
             arg("index") = 0))
       .def("get_path", &ImageSet::get_path)
