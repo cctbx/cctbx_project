@@ -27,7 +27,7 @@
 namespace dxtbx {
 
   using scitbx::af::int2;
-  using model::Beam;
+  using model::BeamBase;
   using model::Detector;
   using model::Panel;
   using model::Goniometer;
@@ -139,7 +139,7 @@ namespace dxtbx {
   class ImageSetData {
   public:
 
-    typedef boost::shared_ptr<Beam> beam_ptr;
+    typedef boost::shared_ptr<BeamBase> beam_ptr;
     typedef boost::shared_ptr<Detector> detector_ptr;
     typedef boost::shared_ptr<Goniometer> goniometer_ptr;
     typedef boost::shared_ptr<Scan> scan_ptr;
