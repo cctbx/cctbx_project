@@ -77,8 +77,8 @@ def to_imageset(input_filename, extra_filename=None):
 
   # Create the imageset
   imageset = ImageSetFactory.from_template(
-    template, 
-    image_range=image_range, 
+    template,
+    image_range=image_range,
     check_format=check_format,
     beam = beam,
     detector = detector,
