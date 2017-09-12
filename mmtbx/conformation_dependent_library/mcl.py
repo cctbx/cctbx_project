@@ -83,7 +83,8 @@ def update(grm,
 def _extract_sites_cart(ag, element=None):
   selection = []
   for atom in ag.atoms():
-    if element and atom.element.upper()!=element.upper(): continue
+    if element and atom.element.upper().strip()!=element.upper().strip():
+      continue
     selection.append(atom.xyz)
   return flex.vec3_double(selection)
 
@@ -97,7 +98,7 @@ def superpose_ideal_residue_coordinates(pdb_hierarchy,
                                         superpose_element=None,
                                         ):
   element_lookup = {'SF4' : 'Fe',
-                    'F3S' : 'Fe',
+                    'F3S' : 'S',
                     #'F4S' : 'S', # not done yet
                     #'CLF' : 'Fe', # too flexible
                     }
@@ -111,25 +112,31 @@ def superpose_ideal_residue_coordinates(pdb_hierarchy,
     ideal_hierarchy = get_pdb_hierarchy_from_restraints(resname)
   else:
     assert 0
-  if superpose_element:
-    sites_moving = _extract_sites_cart(ideal_hierarchy, superpose_element)
-    assert len(sites_moving), 'No atoms %s found' % superpose_element
-  else:
-    assert 0
+  sites_moving = _extract_sites_cart(ideal_hierarchy, superpose_element)
+  assert len(sites_moving), 'No atoms %s found' % superpose_element
   for ideal_ag in ideal_hierarchy.atom_groups(): break
   for sites_fixed, ag in generate_sites_fixed(pdb_hierarchy,
                                               resname,
                                               superpose_element,
                                               ):
     assert sites_fixed.size() == sites_moving.size(), '%(resname)s residue is missing atoms' % locals()
-    lsq_fit = superpose.least_squares_fit(
-      reference_sites = sites_fixed,
-      other_sites     = sites_moving)
-    new_atoms = ideal_ag.detached_copy().atoms()
-    sites_new = new_atoms.extract_xyz()
-    sites_new = lsq_fit.r.elems * sites_new + lsq_fit.t.elems
-    rmsd = sites_fixed.rms_difference(lsq_fit.other_sites_best_fit())
-    rmsd_list[ag.id_str()] = rmsd
+    import random
+    min_rmsd = 1e9
+    min_sites_cart = None
+    for i in range(100):
+      random.shuffle(sites_moving)
+      lsq_fit = superpose.least_squares_fit(
+        reference_sites = sites_fixed,
+        other_sites     = sites_moving)
+      new_atoms = ideal_ag.detached_copy().atoms()
+      sites_new = new_atoms.extract_xyz()
+      sites_new = lsq_fit.r.elems * sites_new + lsq_fit.t.elems
+      rmsd = sites_fixed.rms_difference(lsq_fit.other_sites_best_fit())
+      if rmsd<min_rmsd:
+        min_rmsd=rmsd
+        min_sites_cart = sites_new
+    rmsd_list[ag.id_str()] = min_rmsd
+    sites_new = min_sites_cart
     new_atoms.set_xyz(sites_new)
     for atom1 in ag.atoms():
       for atom2 in new_atoms:
