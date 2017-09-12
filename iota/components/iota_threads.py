@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 05/16/2017
+Last Changed: 09/12/2017
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -217,15 +217,17 @@ class ImageViewerThread(Thread):
   and hopefully will prevent the image selection dialog freezing on MacOS'''
   def __init__(self,
                parent,
-               backend,
-               file_string):
+               file_string,
+               viewer='dials.image_viewer',
+               img_type=None):
     Thread.__init__(self)
     self.parent = parent
-    self.backend = backend
     self.file_string = file_string
+    self.viewer = viewer
+    self.img_type = img_type
 
   def run(self):
-    command = '{}.image_viewer {}'.format(self.backend, self.file_string)
+    command = '{} {}'.format(self.viewer, self.file_string)
     easy_run.fully_buffered(command)
 
 

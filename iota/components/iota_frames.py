@@ -354,11 +354,11 @@ class FileListCtrl(ct.CustomListCtrl):
 
     if os.path.isfile(path):
       if type in ('raw image file', 'image pickle file'):
-        self.view_images([path])
+        self.view_images([path], img_type=type)
       elif type in ('raw image list', 'image pickle list'):
         with open(path, 'r') as f:
           file_list = [i.replace('\n', '') for i in f.readlines()]
-          self.view_images(file_list)
+          self.view_images(file_list, img_type=type)
       elif type == 'text':
         with open(path, 'r') as f:
           file_list = f.readlines()
@@ -370,39 +370,47 @@ class FileListCtrl(ct.CustomListCtrl):
                       wx.OK | wx.ICON_EXCLAMATION)
     elif os.path.isdir(path):
       file_list, _ = ginp.get_input(path, filter=True)
-      self.view_images(file_list)
+      self.view_images(file_list, img_type=type)
 
-  def view_images(self, img_list):
+  def view_images(self, img_list, img_type=None):
     ''' Launches image viewer (depending on backend) '''
-    if len(img_list) > 10:
-      view_warning = dlg.ViewerWarning(self, len(img_list))
-      if view_warning.ShowModal() == wx.ID_OK:
-        # parse 'other' entry
-        img_no_string = str(view_warning.no_images).split(',')
-        filenames = []
-        for n in img_no_string:
-          if '-' in n:
-            img_limits = n.split('-')
-            start = int(min(img_limits))
-            end = int(max(img_limits))
-            if start <= len(img_list) and end <= len(img_list):
-              filenames.extend(img_list[start:end])
-          else:
-            if int(n) <= len(img_list):
-              filenames.append(img_list[int(n)])
-        file_string = ' '.join(filenames)
-      else:
-        return
-      view_warning.Close()
+    viewer = self.parent.gparams.advanced.image_viewer
+    if viewer == 'cxi.view' and 'pickle' not in img_type:
+        wx.MessageBox('cxi.view only accepts image pickles', 'Warning',
+                      wx.OK | wx.ICON_EXCLAMATION)
     else:
-      file_string = ' '.join(img_list)
+      if len(img_list) > 10:
+        view_warning = dlg.ViewerWarning(self, len(img_list))
+        if view_warning.ShowModal() == wx.ID_OK:
+          # parse 'other' entry
+          img_no_string = str(view_warning.no_images).split(',')
+          filenames = []
+          for n in img_no_string:
+            if '-' in n:
+              img_limits = n.split('-')
+              start = int(min(img_limits))
+              end = int(max(img_limits))
+              if start <= len(img_list) and end <= len(img_list):
+                filenames.extend(img_list[start:end])
+            else:
+              if int(n) <= len(img_list):
+                filenames.append(img_list[int(n)])
+          file_string = ' '.join(filenames)
+        else:
+          return
+        view_warning.Close()
+      elif viewer == 'distl.image_viewer' and len(img_list) > 1:
+        wx.MessageBox('distl.image_viewer can show only one image', 'Warning',
+                      wx.OK | wx.ICON_EXCLAMATION)
+        file_string = img_list[0]
+      else:
+        file_string = ' '.join(img_list)
 
-    backend = self.parent.int_box.ctr.GetString(
-      self.parent.int_box.ctr.GetSelection()).lower()
-    viewer = thr.ImageViewerThread(self,
-                                   backend=backend,
-                                   file_string=file_string)
-    viewer.start()
+      viewer = thr.ImageViewerThread(self,
+                                     viewer=viewer,
+                                     file_string=file_string,
+                                     img_type=img_type)
+      viewer.start()
 
 
   def onDelButton(self, e):

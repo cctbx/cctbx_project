@@ -1,5 +1,3 @@
-IOTA v1.1.023 - PRIME GUI tweaks
+IOTA v1.1.023 - viewer selection
 
-1. Correct resolution bins displayed in charts
-2. Non-scientific (plain) notation for y-axis labels in charts
-3. Final chart figure stays within laptop monitor limits
+IOTA image viewer selection put into Preferences (dials.image_viewer default)

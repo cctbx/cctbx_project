@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/01/2017
+Last Changed: 09/12/2017
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -244,6 +244,9 @@ advanced
   experimental = False
     .type = bool
     .help = Set to true to run the experimental section of codes
+  image_viewer = *dials.image_viewer cctbx.image_viewer distl.image_viewer cxi.view
+    .type = choice
+    .help = Select image viewer (GUI only)
   monitor_mode = False
     .type = bool
     .help = Set to true to keep watch for incoming images (GUI only)
