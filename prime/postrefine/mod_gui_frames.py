@@ -410,7 +410,7 @@ class RuntimeTab(wx.Panel):
     font = {'family': 'monospace',
             'color': 'darkblue',
             'weight': 'normal',
-            'size': 13,
+            'size': 11,
             'linespacing': 2.5
             }
     self.rej_table.text(0, 0.85, txt, fontdict=font,
