@@ -1310,6 +1310,20 @@ HETATM    5  O   HOH A   5      14.172  30.496  21.689  1.00 20.00      A    O
 HETATM    6  O   HOH A   6      14.474  27.674  22.398  1.00 20.00      A    O
 HETATM    7  O   HOH A   7      14.683  29.906  19.056  1.00 20.00      A    O
 """,
+  "linking_test_Mg_HOH_CRYST1.pdb" : """
+CRYST1   13.898   13.372   13.342  90.00  90.00  90.00 P 1
+SCALE1      0.071953  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.074783  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.074951        0.00000
+HETATM    1 MG   MG  A   1       6.874   6.738   6.751  1.00 20.00      A   MG+2
+HETATM    2  O   HOH A   2       8.898   6.951   7.102  1.00 20.00      A    O
+HETATM    3  O   HOH A   3       5.000   6.581   6.333  1.00 20.00      A    O
+HETATM    4  O   HOH A   4       7.422   5.000   5.716  1.00 20.00      A    O
+HETATM    5  O   HOH A   5       6.565   8.372   7.633  1.00 20.00      A    O
+HETATM    6  O   HOH A   6       6.867   5.550   8.342  1.00 20.00      A    O
+HETATM    7  O   HOH A   7       7.076   7.782   5.000  1.00 20.00      A    O
+TER
+""",
   "linking_test_Mg_EDT.pdb" : """
 HETATM    1 MG    MG A1501      -7.869  -0.167  32.075  0.76 19.71          Mg
 HETATM    2  O01 EDT A   1      -8.014   0.505  29.989  0.49 19.08           O
@@ -2258,8 +2272,9 @@ links = {
   "linking_test_ASN_A-NAG_B.pdb" : [21, 22],
   "linking_test_nstd_rna_dna_h_bond.pdb" : [0,0],
   "linking_test_nstd_rna_dna.pdb" : [0,1],
-  "linking_test_Mg_HOH.pdb" : [0,0],                 #6], # metal coordination
-  "linking_test_Mg_EDT.pdb" : [19,19],               #25],
+  "linking_test_Mg_HOH.pdb" : [0,5],                 #6], # metal coordination
+  "linking_test_Mg_HOH_CRYST1.pdb" : [0,6],
+  "linking_test_Mg_EDT.pdb" : [19,25],               #25],
   "linking_test_1jbe_ALA-SNN-ACY-ALA.pdb" : [10,13],
   "linking_test_3gmq_NAG-FUC.pdb" : [24,25],
   "linking_test_CD_GHE_A_B.pdb" : [0,0],             #4],
@@ -2297,10 +2312,16 @@ def run_and_test(cmd, pdb, i):
   f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
   lines = f.readlines()
   f.close()
+  bonds = 0
   for line in lines:
-    if line.find("Bond restraints:")>-1:
-      bonds = int(line.split()[2])
-      break
+    for bond_like in ["Bond restraints:",
+                      'Bond-like restraints:',
+                      'Metal coordination restraints:',
+                      'User supplied restraints restraints:',
+                      ]:
+      if line.find(bond_like)>-1:
+        print 'Adding %s for %s' % (int(line.split()[-1]), bond_like)
+        bonds += int(line.split()[-1])
   assert bonds == links[pdb][i], "found %d bonds but expected %s!" % (
     bonds,
     links[pdb][i],
@@ -2311,9 +2332,9 @@ def run_and_test(cmd, pdb, i):
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
   print "OK"
   # test links
-  if pdb in ["linking_test_LEU-CSY-VAL.pdb",
-             ]:
-    return
+  #if pdb in ["linking_test_LEU-CSY-VAL.pdb",
+  #           ]:
+  #  return
   number_of_links=0
   f=file(pdb.replace(".pdb", "_minimized.pdb"), "rb")
   lines = f.readlines()
@@ -2325,15 +2346,14 @@ def run_and_test(cmd, pdb, i):
     expected = 0
   else:
     expected = links[pdb][i]-links[pdb][0]
-    if pdb in ["linking_test_Mg_EDT.pdb",
-               "linking_test_Mg_HOH.pdb",
-              ]:
-      expected += 6
-    elif pdb in ["linking_test_CD_GHE_A_B.pdb",
-                ]:
-      expected += 4
-  if pdb in ["linking_test_HEM_TYR.pdb"]:
+    #if pdb in ["linking_test_CD_GHE_A_B.pdb", # duplicates!!! shulders
+    #            ]:
+    #  expected += 4
+    if pdb in ['linking_test_LEU-CSY-VAL.pdb']:
+      expected -= 2 # peptide-like link
+  if pdb in ["linking_test_HEM_TYR.pdb"]: # uset defined edits
     expected += 1
+  #
   assert number_of_links == expected, "found %d LINK but expected %s!" % (
     number_of_links,
     expected,
@@ -2363,10 +2383,6 @@ def run(only_i=None):
     if pdb.endswith(".cif"): continue
     if pdb.endswith(".params"): continue
     if pdb in longer_tests: continue
-    if pdb in [
-        "linking_test_CD_GHE_A_B.pdb",
-        "linking_test_NAG-FU4.pdb", # get_alpha_beta seems to be broken
-        ] and 0: continue
     if pdb.find("CD_GHE")>-1: continue
     if pdb.find("partial")>-1: continue
     #if pdb.find('SO4')==-1: continue

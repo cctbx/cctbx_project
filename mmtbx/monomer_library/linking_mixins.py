@@ -906,22 +906,16 @@ Residue classes
     pair_sym_table = pair_asu_table.extract_pair_sym_table()
     n_simple, n_symmetry = 0, 0
     self.pdb_link_records.setdefault("LINK", [])
+    retain = []
     for ijk, sym_pair in enumerate(pair_sym_table.iterator()):
       i_seq, j_seq = sym_pair.i_seqs()
       origin_id=0
       if bond_data[ijk][-1]=="metal-coordination": origin_id=2
-      # adding link to PDB
       #assert len(bond_i_seqs)==1
-      self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seq],
-                                            self.pdb_atoms[j_seq],
-                                            sym_pair.rt_mx_ji
-                                          ])
       assert i_seq == nonbonded_i_seqs[i_seq]
       assert j_seq == nonbonded_i_seqs[j_seq]
       atom1 = atoms[i_seq]
       atom2 = atoms[j_seq]
-      if (sym_pair.rt_mx_ji.is_unit_mx()): n_simple += 1
-      else:                                n_symmetry += 1
       # check for NA linkage
       classes1 = linking_utils.get_classes(atom1)
       classes2 = linking_utils.get_classes(atom2)
@@ -937,21 +931,14 @@ Residue classes
             slack = ans[2]
       if equil is None:
         equil = 2.3
-      bond_params_table.update(
-        i_seq=i_seq,
-        j_seq=j_seq,
-        params=geometry_restraints.bond_params(
-          distance_ideal=equil,
-          weight=1.0/weight**2,
-          slack=slack,
-          origin_id=origin_id,
-        ))
+      added_to_asu_table = False
       try:
         #bond_asu_table.add_pair([i_seq, j_seq])
         bond_asu_table.add_pair(
           i_seq=i_seq,
           j_seq=j_seq,
           rt_mx_ji=sym_pair.rt_mx_ji)
+        added_to_asu_table = True
       except RuntimeError, e:
         error = """
     Difficulties linking atoms
@@ -960,6 +947,25 @@ Residue classes
     Suggestions include providing restraints for any unknown residues.
         """ % (atom1.quote(), atom2.quote())
         print >> log, error
+      if added_to_asu_table:
+        retain.append(ijk)
+        if (sym_pair.rt_mx_ji.is_unit_mx()): n_simple += 1
+        else:                                n_symmetry += 1
+        bond_params_table.update(
+          i_seq=i_seq,
+          j_seq=j_seq,
+          params=geometry_restraints.bond_params(
+            distance_ideal=equil,
+            weight=1.0/weight**2,
+            slack=slack,
+            origin_id=origin_id,
+          ))
+        # adding link to PDB
+        self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seq],
+                                              self.pdb_atoms[j_seq],
+                                              sym_pair.rt_mx_ji
+                                              ])
+
     # output
     if link_data:
       print >> log, "  Number of additional links: simple=%d, symmetry=%d" % (
@@ -1048,11 +1054,11 @@ Residue classes
           ("Other bonds",'bond'),
         ]:
         print >> log, "  %s:" % caption
-        for label1, label2, sym_op, bt in sorted(bond_data):
-          if sym_op is None and bt == bond_type:
+        for ijk, (label1, label2, sym_op, bt) in enumerate(sorted(bond_data)):
+          if sym_op is None and bt == bond_type and ijk in retain:
             print >> log, "    Simple bond:   %s - %s" % (label1, label2)
-        for label1, label2, sym_op, bt in sorted(bond_data):
-          if sym_op and bt == bond_type:
+        for ijk, (label1, label2, sym_op, bt) in enumerate(sorted(bond_data)):
+          if sym_op and bt == bond_type and ijk in retain:
             print >> log, "    Symmetry bond: %s - %s sym. op: %s" % (label1,
                                                                       label2,
                                                                       sym_op,
