@@ -292,21 +292,24 @@ class determine_connectivity(object):
   def assign_a0_angles(self, ih):
     """ Having a list of dictionaries for the angles involving atom a0,
     assign the angles to the correct set of three atoms. """
-    neighbors = self.h_connectivity[ih]
-    if (neighbors.number_non_h_neighbors > 1):
-      a0_iseq = neighbors.a0['iseq']
-      a1_iseq = neighbors.a1['iseq']
-      a2_iseq = neighbors.a2['iseq']
+    partners = self.h_connectivity[ih]
+    if (partners.number_non_h_neighbors > 1):
+      a0_iseq = partners.a0['iseq']
+      a1_iseq = partners.a1['iseq']
+      a2_iseq = partners.a2['iseq']
       if (a1_iseq, a2_iseq) in self.parent_angles[a0_iseq]:
         self.h_connectivity[ih].a0['angle_a1a0a2'] = \
           self.parent_angles[a0_iseq][(a1_iseq, a2_iseq)]
       elif (a2_iseq, a1_iseq) in self.parent_angles[a0_iseq]:
         self.h_connectivity[ih].a0['angle_a1a0a2'] = \
           self.parent_angles[a0_iseq][(a2_iseq, a1_iseq)]
-      else:
-        print 'something went wrong'
-      if (neighbors.number_non_h_neighbors == 3):
-        a3_iseq = neighbors.a3['iseq']
+      if ('angle_a1a0a2' not in partners.a0):
+        self.h_connectivity[ih] = neighbors(
+          ih = ih,
+          number_non_h_neighbors = 0)
+        return
+      if (partners.number_non_h_neighbors == 3):
+        a3_iseq = partners.a3['iseq']
         if (a2_iseq, a3_iseq) in self.parent_angles[a0_iseq]:
           self.h_connectivity[ih].a0['angle_a2a0a3'] = \
             self.parent_angles[a0_iseq][(a2_iseq, a3_iseq)]
@@ -319,8 +322,11 @@ class determine_connectivity(object):
         elif (a1_iseq, a3_iseq) in self.parent_angles[a0_iseq]:
           self.h_connectivity[ih].a0['angle_a3a0a1'] = \
             self.parent_angles[a0_iseq][(a1_iseq, a3_iseq)]
-        else:
-          print 'something went wrong'
+        if ('angle_a2a0a3' not in partners.a0 or 'angle_a3a0a1' not in partners.a0):
+          self.h_connectivity[ih] = neighbors(
+            ih = ih,
+            number_non_h_neighbors = 0)
+
 
   def find_third_neighbors(self):
     """ Loop through dihedral angle proxies to find third neighbor
