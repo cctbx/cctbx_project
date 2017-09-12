@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 09/08/2017
+Last Changed: 09/12/2017
 Description : PRIME Result Plotter module
 '''
 
@@ -99,6 +99,7 @@ class Plotter(object):
     reslabel = 'Resolution ({})'.format(r'$\AA$')
     ax_cc12.set_xlabel(reslabel, fontsize=15)
     ax_cc12.ticklabel_format(axis='y', style='plain')
+    ax_cc12.set_ylim(0, 100)
 
     if self.params.target_anomalous_flag:
       ax_cc12.set_ylabel(r'$CC_{1/2}$ anom (%)', fontsize=15)
@@ -107,8 +108,10 @@ class Plotter(object):
     ax_cc12.set_xticks(sel_bins)
     ax_cc12.set_xticklabels(sel_xlabels)
     ax_cc12.grid(True)
-    start, = ax_cc12.plot(bins, self.info['binned_cc12'][0], c='#7fcdbb', lw=2)
-    end, = ax_cc12.plot(bins, self.info['binned_cc12'][-1], c='#2c7fb8', lw=3)
+    cc12_start_percent = [c * 100 for c in self.info['binned_cc12'][0]]
+    cc12_end_percent = [c * 100 for c in self.info['binned_cc12'][-1]]
+    start, = ax_cc12.plot(bins, cc12_start_percent, c='#7fcdbb', lw=2)
+    end, = ax_cc12.plot(bins, cc12_end_percent, c='#2c7fb8', lw=3)
     labels = ['Initial', 'Final']
     ax_cc12.legend([start, end], labels, loc='lower left',
                           fontsize=9, fancybox=True)
@@ -120,6 +123,7 @@ class Plotter(object):
     ax_comp.set_ylabel('Completeness (%)', fontsize=15)
     ax_comp.set_xticks(sel_bins)
     ax_comp.set_xticklabels(sel_xlabels)
+    ax_comp.set_ylim(0, 100)
     ax_comp.grid(True)
     start, = ax_comp.plot(bins, self.info['binned_completeness'][0],
                          c='#7fcdbb', lw=2)

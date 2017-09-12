@@ -329,9 +329,10 @@ class RuntimeTab(wx.Panel):
     meanCC = info['total_cc12']
     cycles = range(len(meanCC))
     self.cc_axes.clear()
-    self.cc_axes.plot(cycles, meanCC, 'o', c='#2b8cbe', ls='-', lw=3)
     self.cc_axes.set_xlim(0, total_cycles)
+    self.cc_axes.set_ylim(0, 100)
     self.cc_axes.ticklabel_format(axis='y', style='plain')
+    self.cc_axes.plot(cycles, meanCC, 'o', c='#2b8cbe', ls='-', lw=3)
 
     # Plot mean completeness and multiplicity
     mean_comp = info['total_completeness']
@@ -340,6 +341,7 @@ class RuntimeTab(wx.Panel):
     self.comp_axes.clear()
     self.mult_axes.clear()
     self.comp_axes.set_xlim(0, total_cycles)
+    self.comp_axes.set_ylim(0, 100)
     self.mult_axes.set_xlim(0, total_cycles)
     self.comp_axes.ticklabel_format(axis='y', style='plain')
     self.mult_axes.ticklabel_format(axis='y', style='plain')
@@ -363,13 +365,13 @@ class RuntimeTab(wx.Panel):
     # plot binned stats
     self.bcc_axes.clear()
     if self.pparams.target_anomalous_flag:
-      binned_cc = info['binned_cc12_anom']
+      binned_cc = [c * 100 for c in info['binned_cc12_anom'][-1]]
     else:
-      binned_cc = info['binned_cc12']
+      binned_cc = [c * 100 for c in info['binned_cc12'][-1]]
 
-    self.bcc_axes.bar(bins, binned_cc[-1], color='#2b8cbe',
+    self.bcc_axes.bar(bins, binned_cc, color='#2b8cbe',
                       alpha=0.5, width=1, lw=0)
-    self.bcc_axes.step(bins, binned_cc[-1], color='blue',
+    self.bcc_axes.step(bins, binned_cc, color='blue',
                        where='mid')
     self.bcomp_axes.clear()
     self.bcomp_axes.bar(bins, info['binned_completeness'][-1],
