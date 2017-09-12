@@ -5,10 +5,10 @@ import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
 from cctbx import geometry_restraints
 from mmtbx.hydrogens import riding
-import iotbx.cif
+import iotbx.phil
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
-def exercise():
+def exercise1():
 
   pdb_str = """
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "new_coot_mod.pdb"
@@ -299,8 +299,121 @@ geometry_restraints.edits {
     assert (type1 == type2)
     #print "'%s'," % type1,
 
+def exercise2():
+  pdb_str = """
+CRYST1   16.660   12.742   18.240  90.00  90.00  90.00 P 1
+SCALE1      0.060024  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.078481  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.054825        0.00000
+ATOM      1  N   TYR A   7       9.837   5.000   6.625  1.00 15.00           N
+ATOM      2  CA  TYR A   7      10.084   6.426   6.798  1.00 15.00           C
+ATOM      3  C   TYR A   7      11.431   6.813   6.197  1.00 15.00           C
+ATOM      4  O   TYR A   7      11.660   6.642   5.000  1.00 15.00           O
+ATOM      5  CB  TYR A   7      10.042   6.803   8.281  1.00 15.00           C
+ATOM      6  CG  TYR A   7       8.697   6.593   8.948  1.00 15.00           C
+ATOM      7  CD1 TYR A   7       7.540   6.413   8.198  1.00 15.00           C
+ATOM      8  CD2 TYR A   7       8.586   6.575  10.332  1.00 15.00           C
+ATOM      9  CE1 TYR A   7       6.315   6.222   8.807  1.00 15.00           C
+ATOM     10  CE2 TYR A   7       7.364   6.384  10.950  1.00 15.00           C
+ATOM     11  CZ  TYR A   7       6.233   6.208  10.183  1.00 15.00           C
+ATOM     12  OH  TYR A   7       5.015   6.018  10.794  1.00 15.00           O
+ATOM     13  HA  TYR A   7       9.398   6.930   6.331  1.00 15.00           H
+ATOM     14  HB2 TYR A   7      10.693   6.264   8.757  1.00 15.00           H
+ATOM     15  HB3 TYR A   7      10.270   7.742   8.369  1.00 15.00           H
+ATOM     16  HD1 TYR A   7       7.589   6.422   7.269  1.00 15.00           H
+ATOM     17  HD2 TYR A   7       9.347   6.694  10.853  1.00 15.00           H
+ATOM     18  HE1 TYR A   7       5.550   6.103   8.292  1.00 15.00           H
+ATOM     19  HE2 TYR A   7       7.306   6.375  11.878  1.00 15.00           H
+ATOM     20  HH  TYR A   7       5.000   6.415  11.534  1.00 15.00           H
+TER
+HETATM   21  O   HOH B   1       5.307   7.545  13.240  1.00 30.00           O
+TER
+END
+  """
+
+  edits = """
+geometry_restraints.edits {
+  bond {
+    atom_selection_1 = chain A and resseq 7 and name HH
+    atom_selection_2 = chain B and resseq 1 and name O
+    distance_ideal = 1.81
+    sigma = 0.05
+  }
+}
+  """
+
+  type_list_known = ['3neigbs', '2tetra', '2tetra', 'flat_2neigbs',
+    'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'alg1b']
+
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+
+  gm_phil = iotbx.phil.parse(
+      input_string     = grand_master_phil_str,
+      process_includes = True)
+  edits_phil = iotbx.phil.parse(edits)
+  working_phil = gm_phil.fetch(edits_phil)
+  params = working_phil.extract()
+
+  # Make sure the angle edit is present
+  assert (params.geometry_restraints.edits.bond[0].atom_selection_1 == \
+    "chain A and resseq 7 and name HH")
+
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv    = mon_lib_srv,
+    ener_lib       = ener_lib,
+    file_name      = None,
+    raw_records    = pdb_str,
+    params         = params.pdb_interpretation,
+    log            = None)
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  xray_structure = processed_pdb_file.xray_structure()
+
+  geometry_restraints = processed_pdb_file.geometry_restraints_manager(
+    params_edits  = params.geometry_restraints.edits,
+    show_energies = False)
+
+  sites_cart = xray_structure.sites_cart()
+  atoms = pdb_hierarchy.atoms()
+
+  riding_h_manager = riding.manager(
+    pdb_hierarchy       = pdb_hierarchy,
+    geometry_restraints = geometry_restraints)
+  h_para = riding_h_manager.h_parameterization
+
+  diagnostics = riding_h_manager.diagnostics(
+    sites_cart = sites_cart,
+    threshold  = 0.05)
+  h_distances   = diagnostics.h_distances
+  unk_list      = diagnostics.unk_list
+  number_h_para = diagnostics.number_h_para
+  type_list     = diagnostics.type_list
+
+# number of H atoms in structure
+  number_h = 0
+  for h_bool in xray_structure.hd_selection():
+    if h_bool: number_h += 1
+
+  double_H = riding_h_manager.double_H
+
+# Test if number of paramterized H atoms is correct
+  assert (len(unk_list)==0), 'Not all H atoms are parameterized'
+  assert (double_H[19] == [11, 20]), 'H bound to two atoms wrongly recognized'
+  assert (number_h_para == 8), 'Not all H atoms are parameterized'
+
+  for ih in h_distances:
+   labels = atoms[ih].fetch_labels()
+   if (h_distances[ih] > 0.1):
+     assert (h_distances[ih] < 0.1), \
+       'distance too large: %s  atom: %s (%s) residue: %s ' \
+       % (h_para[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
+
+  for type1, type2 in zip(type_list, type_list_known):
+    assert (type1 == type2)
+
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  exercise()
+  exercise1()
+  exercise2()
   print "OK. Time: %8.3f"%(time.time()-t0)

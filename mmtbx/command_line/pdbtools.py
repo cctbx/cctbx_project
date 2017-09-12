@@ -7,6 +7,7 @@ from libtbx import runtime_utils
 import mmtbx.utils
 import iotbx.pdb
 from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
+from iotbx.phil import process_command_line_with_files
 from iotbx.cif import write_whole_cif_file
 from scitbx.array_family import flex
 from libtbx import group_args
@@ -15,6 +16,7 @@ from libtbx.utils import check_if_output_directory_exists
 master_params_str = """\
 model_file_name = None
   .type = path
+  .multiple = True
   .help = Model file name
   .short_caption = Input model
   .style = bold input_file file_type:pdb file_type_default
@@ -50,11 +52,14 @@ def get_inputs(args, log, master_params):
   """
   Eventually, this will be centralized.
   """
-  inputs = mmtbx.utils.process_command_line_args(
-    args          = args,
-    master_params = master_params)
+  cmdline = process_command_line_with_files(
+    args         = args,
+    master_phil  = master_params,
+    pdb_file_def = 'model_file_name'
+  )
+  params = cmdline.work.extract()
   # Model
-  file_names = inputs.pdb_file_names
+  file_names = params.model_file_name
   pdb_combined = combine_unique_pdb_files(file_names = file_names)
   pdb_inp = iotbx.pdb.input(
     source_info = None,
@@ -63,7 +68,7 @@ def get_inputs(args, log, master_params):
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   # Crystal symmetry
   fake_crystal_symmetry = False
-  crystal_symmetry = inputs.crystal_symmetry
+  crystal_symmetry = pdb_inp.crystal_symmetry()
   if(crystal_symmetry is None or
      crystal_symmetry.is_empty() or
      crystal_symmetry.is_nonsence()):
@@ -78,7 +83,7 @@ def get_inputs(args, log, master_params):
     crystal_symmetry = crystal_symmetry)
   #
   return group_args(
-    params                = inputs.params.extract(),
+    params                = params,
     pdb_file_names        = file_names,
     pdb_hierarchy         = pdb_hierarchy,
     xray_structure        = xray_structure,
