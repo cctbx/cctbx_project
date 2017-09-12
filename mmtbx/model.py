@@ -232,7 +232,7 @@ class manager(object):
       if self.cs is None:
         self.cs = self.model_input.crystal_symmetry()
 
-    if process_input:
+    if process_input or build_grm:
       assert self.processed_pdb_file is None
       assert self.all_chain_proxies is None
       self._process_input_model()
