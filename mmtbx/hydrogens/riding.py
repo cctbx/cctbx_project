@@ -72,6 +72,35 @@ class manager(object):
     new_gradients = new_gradients.select(~hd_selection)
     return new_gradients
 
+  def print_parameterization_info(self, log):
+    unk_list = self.parameterization_manager.unk_list
+    double_H = self.double_H
+    atoms = self.pdb_hierarchy.atoms()
+    if unk_list or double_H:
+      number = len(unk_list) + len(double_H)
+      m = """  The following atoms are not used in the riding H procedure. This typically
+  happens when
+  - A neighboring atom (H or non H) is missing.
+  - Restraints involving the H atom are incomplete (this occurs most likely when
+    custom restraints are supplied).
+  - An H atom has less than 3 non-H covalently bound partners.
+    (This will be addressed in the future)
+  It is not worrysome if a few atoms are listed here; but it is always helpful
+  to check the environment of these H atoms, as it might hint to missing atoms
+  or restraints.\n"""
+      print >> log, m
+      print >> log, '  Number of H atoms not used in the riding H procedure: ', \
+        number, '\n'
+      for ih in unk_list:
+        atom = atoms[ih]
+        labels = atom.fetch_labels()
+        if (labels.resname in ['DOD', 'WAT', 'HOH']):
+          continue
+        print >> log, '\t', atom.id_str()
+      for ih in double_H.keys():
+        atom = atoms[ih]
+        print >> log, '\t', atom.id_str()
+
   def diagnostics(self, sites_cart, threshold):
     h_distances = {}
     unk_list = self.parameterization_manager.unk_list
