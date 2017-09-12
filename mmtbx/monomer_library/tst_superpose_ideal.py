@@ -47,7 +47,7 @@ HETATM 9506  S4  SF4 X1001      39.895   0.913  20.872  1.00  6.51           S
   ''',
 }
 
-results = {'4udx_sf4.pdb' : [[26372, 2085], [0,0]],
+results = {'4udx_sf4.pdb' : [[10, 2799, 26372, 2085], [0,0,0,0]],
            }
 
 def run():
@@ -55,6 +55,29 @@ def run():
   f=file(fn, 'wb')
   f.write(pdbs[fn])
   f.close()
+  for i, superpose in enumerate(['None', 'all']):
+    cmd = 'phenix.geometry_minimization %s superpose_ideal=%s' % (fn,
+                                                                 superpose,
+      )
+    print cmd
+    rc = easy_run.go(cmd)
+    for line in rc.stdout_lines:
+      print line
+      if line.find('bond_residual_sum')>-1:
+        bond_value = round(float(line.split()[-1]))
+      if line.find('angle_residual_sum')>-1:
+        angle_value = round(float(line.split()[-1]))
+    assert bond_value
+    assert angle_value
+    assert bond_value==results[fn][i][0], 'not matching %s to %s' % (
+          bond_value,
+          results[fn][i][0],
+          )
+    assert angle_value==results[fn][i][1], 'not matching %s to %s' % (
+      angle_value,
+      results[fn][i][1],
+      )
+
   for i, superpose in enumerate(['None', 'all']):
     cmd = 'phenix.pdb_interpretation %s superpose_ideal=%s' % (fn,
                                                                superpose,
@@ -66,16 +89,16 @@ def run():
       if line.find('bond_residual_sum')>-1:
         value = round(float(line.split()[-1]))
         print 'value',value
-        assert value==results[fn][i][0], 'not matching %s to %s' % (
+        assert value==results[fn][i][2], 'not matching %s to %s' % (
           value,
-          results[fn][i][0],
+          results[fn][i][2],
           )
       if line.find('angle_residual_sum')>-1:
         value = round(float(line.split()[-1]))
         print 'value',value
-        assert value==results[fn][i][1], 'not matching %s to %s' % (
+        assert value==results[fn][i][3], 'not matching %s to %s' % (
           value,
-          results[fn][i][1],
+          results[fn][i][4],
           )
 
   fn = '4udx_sf4_cys.pdb'
