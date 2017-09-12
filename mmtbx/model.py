@@ -151,8 +151,10 @@ class manager(object):
   def __init__(self, xray_structure = None, # remove later
                      pdb_hierarchy = None,  # remove later
       model_input = None, # pdb_input or cif_input, make mandatory later
+      crystal_symmetry = None,
       restraint_objects = None, # ligand restraints in cif format
       pdb_interpretation_params = None,
+      process_input = False, # obtain processed_pdb_file straight away
       build_grm = False,  # build GRM straight away, without waiting for get_grm() call
       stop_for_unknowns = True,
       processed_pdb_file = None, # Temporary, for refactoring phenix.refine
@@ -175,6 +177,7 @@ class manager(object):
     self.stop_for_unknowns = stop_for_unknowns
     self.processed_pdb_file = processed_pdb_file
     self.processed_pdb_files_srv = processed_pdb_files_srv
+    self.cs = crystal_symmetry
 
     self.restraints_manager = restraints_manager
     self.refinement_flags = refinement_flags
@@ -191,7 +194,6 @@ class manager(object):
     self.riding_h_manager = None
     self.header_tls_groups = None
 
-    self.cs = None
     self._asc = None
     self._ss_annotation = None
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
@@ -199,6 +201,9 @@ class manager(object):
           # 'smart' selections provided by it. If they useless, remove.
 
     # These are new
+    self.xray_scattering_dict = None
+    self.neutron_scattering_dict = None
+    self.has_hd = None
     self.model_statistics_info = None
     self._grm = None
     self._asc = None
@@ -224,13 +229,19 @@ class manager(object):
         self.original_model_format = "mmcif"
       self._ss_annotation = self.model_input.extract_secondary_structure()
       # input xray_structure most likely don't have proper crystal symmetry
-      self.cs = self.model_input.crystal_symmetry()
+      if self.cs is None:
+        self.cs = self.model_input.crystal_symmetry()
+
+    if process_input:
+      assert self.processed_pdb_file is None
+      assert self.all_chain_proxies is None
+      self._process_input_model()
 
     # do pdb_hierarchy
     if self._pdb_hierarchy is None: # got nothing in parameters
       if self.processed_pdb_file is not None:
         self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
-        self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy()
+        self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
       elif self.model_input is not None:
         self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
     self._asc = self._pdb_hierarchy.atom_selection_cache()
@@ -253,7 +264,8 @@ class manager(object):
     if self.xray_structure is None:
       self._create_xray_structure()
     else:
-      self.cs = self.xray_structure.crystal_symmetry()
+      if self.cs is None:
+        self.cs = self.xray_structure.crystal_symmetry()
 
     assert self.xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
@@ -264,6 +276,10 @@ class manager(object):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
 
+  def get_number_of_models(self):
+    if self.model_input is not None:
+      return self.model_input.model_ids().size()
+    return 0
 
   def get_model_statistics_info(self,
       fmodel_x          = None,
@@ -514,14 +530,8 @@ class manager(object):
   def input_format_was_cif(self):
     return self.original_model_format == "mmcif"
 
-  def _build_grm(
-      self,
-      grm_normalization = True,
-      external_energy_function = None,
-      plain_pairs_radius=5.0,
-      custom_nb_excl=None,
-      file_descriptor_for_geo_in_case_of_failure=None,
-      ):
+  def _process_input_model(self):
+    assert self.get_number_of_models() < 2
     if self.processed_pdb_files_srv is None:
       self.processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
           crystal_symmetry          = self.cs,
@@ -545,17 +555,43 @@ class manager(object):
       self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
     self._asc = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
     if self.xray_structure is None:
-      self.xray_structure = self.all_chain_proxies.extract_xray_structure()
+      xray_structure_all = \
+          self.processed_pdb_file.xray_structure(show_summary = False)
+      # XXX ad hoc manipulation
+      for sc in xray_structure_all.scatterers():
+        lbl=sc.label.split()
+        if("IAS" in lbl and sc.scattering_type=="?" and lbl[1].startswith("IS")):
+          sc.scattering_type = lbl[1]
+      #
+      if(xray_structure_all is None):
+        raise Sorry("Cannot extract xray_structure.")
+      if(xray_structure_all.scatterers().size()==0):
+        raise Sorry("Empty xray_structure.")
+      self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
+      self.xray_structure = xray_structure_all
+
     self.mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
     self.ener_lib = self.processed_pdb_files_srv.ener_lib
     self._ncs_obj = self.processed_pdb_file.ncs_obj
 
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
-    has_hd = None
     if(self.xray_structure is not None):
       sctr_keys = self.xray_structure.scattering_type_registry().type_count_dict().keys()
-      has_hd = "H" in sctr_keys or "D" in sctr_keys
+      self.has_hd = "H" in sctr_keys or "D" in sctr_keys
+
+  def _build_grm(
+      self,
+      grm_normalization = True,
+      external_energy_function = None,
+      plain_pairs_radius=5.0,
+      custom_nb_excl=None,
+      file_descriptor_for_geo_in_case_of_failure=None,
+      ):
+    if self.processed_pdb_file is None:
+      self._process_input_model()
+
+
     # if self.pdb_interpretation_params is None:
     #   self.pdb_interpretation_params = master_params().fetch().extract()
     # disabled temporarily due to architecture changes
@@ -566,7 +602,7 @@ class manager(object):
       params_remove      = self.pdb_interpretation_params.geometry_restraints.remove,
       custom_nonbonded_exclusions  = custom_nb_excl,
       external_energy_function=external_energy_function,
-      assume_hydrogens_all_missing = not has_hd,
+      assume_hydrogens_all_missing = not self.has_hd,
       file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
 
     self._ss_manager = self.processed_pdb_file.ss_manager
@@ -591,7 +627,7 @@ class manager(object):
           processed_pdb_file=self.processed_pdb_file,
           mon_lib_srv=self.mon_lib_srv,
           ener_lib=self.ener_lib,
-          has_hd=has_hd,
+          has_hd=self.has_hd,
           params=self.pdb_interpretation_params.reference_model,
           selection=None,
           log=self.log)

@@ -1100,10 +1100,10 @@ class process_pdb_file_srv(object):
       ignore_unknown_scattering_types=False,
       ignore_unknown_nonbonded_energy_types=ignore_unknown_nonbonded_energy_types)
     if (msg is not None):
-      if (self.stop_for_unknowns is not None) :
-        msg += """
-  Alternatively, to continue despite this problem use:
-    stop_for_unknowns=False"""
+  #     if (self.stop_for_unknowns is not None) :
+  #       msg += """
+  # Alternatively, to continue despite this problem use:
+  #   stop_for_unknowns=False"""
       raise Sorry(msg)
     if (self.log):
       print >> self.log
@@ -1315,7 +1315,7 @@ class xray_structures_from_processed_pdb_file(object):
     self.neutron_scattering_dict = None
     self.xray_scattering_dict = None
     self.xray_structure_all = \
-     processed_pdb_file.xray_structure(show_summary = False)
+        processed_pdb_file.xray_structure(show_summary = False)
     # XXX ad hoc manipulation
     for sc in self.xray_structure_all.scatterers():
       lbl=sc.label.split()
