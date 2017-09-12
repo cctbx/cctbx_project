@@ -270,6 +270,7 @@ tst_list = (
   "$D/regression/ncs/tst_minimization_ncs_constraints_real_space.py",
   "$D/monomer_library/tst_correct_hydrogens.py",
   # automatic linking
+  "$D/monomer_library/tst_superpose_ideal.py",
   ["$D/monomer_library/tst_metal_coordination.py", "1"],
   ["$D/monomer_library/tst_metal_coordination.py", "2"],
   ["$D/monomer_library/tst_linking.py", "1"],
