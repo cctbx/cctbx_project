@@ -774,6 +774,12 @@ class TestPickleImageSet(object):
     assert(self.sweep.paths() == sweep2.paths())
     assert(self.sweep == sweep2)
 
+    # Check auxiliary methods after pickling
+    sweep3 = sweep2[0:4]
+    sweep4 = sweep3[0:2]
+    sweep4.get_detectorbase(0)
+    sweep4[0]
+
     print 'OK'
 
 def run():
