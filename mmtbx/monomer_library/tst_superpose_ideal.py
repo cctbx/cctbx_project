@@ -62,7 +62,7 @@ def run():
     print cmd
     rc = easy_run.go(cmd)
     for line in rc.stdout_lines:
-      print line
+      #print line
       if line.find('bond_residual_sum')>-1:
         bond_value = round(float(line.split()[-1]))
       if line.find('angle_residual_sum')>-1:
@@ -115,17 +115,20 @@ def run():
   #      pdb="FE4  SF4 X1001 " - pdb=" SG  CYS X  70 "'''
 
   from libtbx.test_utils import assert_lines_in_file
-  lines = '''\
-  SF4/F3S coordination
-     SF4 X1001
-       pdb="FE1  SF4 X1001 " - pdb=" SG  CYS X  51 "
-       pdb="FE4  SF4 X1001 " - pdb=" SG  CYS X  70 "
-       pdb="FE3  SF4 X1001 " - pdb=" SG  CYS X  56 "
-       pdb="FE2  SF4 X1001 " - pdb=" SG  CYS X  48 "'''
+  lines = [
+    'SF4/F3S coordination',
+    'SF4 X1001',
+    'pdb="FE1  SF4 X1001 " - pdb=" SG  CYS X  51 "',
+    'pdb="FE4  SF4 X1001 " - pdb=" SG  CYS X  70 "',
+    'pdb="FE3  SF4 X1001 " - pdb=" SG  CYS X  56 "',
+    'pdb="FE2  SF4 X1001 " - pdb=" SG  CYS X  48 "',
+    ]
   cmd = 'phenix.pdb_interpretation %s link_all=True > %s.log' % (fn, fn)
   print cmd
   assert not easy_run.call(cmd)
-  # assert_lines_in_file(file_name='%s.log' % fn, lines=lines)
+  for line in lines:
+    print line
+    assert_lines_in_file(file_name='%s.log' % fn, lines=line)
   return 0
 
 if __name__=="__main__":
