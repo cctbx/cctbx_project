@@ -33,10 +33,8 @@ def run(args):
       file_name=inp_fn,
       source_info=None,
       raise_sorry_if_format_error=True)
-  print time.time()-t0
   t0=time.time()
   pdb_h = pdb_input.construct_hierarchy()
-  print time.time()-t0
   info = pdb_h.flip_symmetric_amino_acids()
   print info
 
