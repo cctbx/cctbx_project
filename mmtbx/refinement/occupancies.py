@@ -289,8 +289,9 @@ def extract_partial_occupancy_selections(hierarchy):
   return result
 
 def occupancy_selections(
-      all_chain_proxies,
-      xray_structure,
+      model,
+      # all_chain_proxies,
+      # xray_structure,
       add_water                          = False,
       other_individual_selection_strings = None,
       other_constrained_groups           = None,
@@ -307,36 +308,36 @@ def occupancy_selections(
     other_constrained_groups = None
   if(remove_selection is not None and len(remove_selection) == 0):
     remove_selection = None
-  result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
+  result = model.pdb_hierarchy().occupancy_groups_simple(
     common_residue_name_class_only = None,
     always_group_adjacent          = False,
     ignore_hydrogens               = False)
   exchangable_hd_pairs = mmtbx.utils.combine_hd_exchangable(hierarchy =
-    all_chain_proxies.pdb_hierarchy)
+    model.pdb_hierarchy())
   if(len(exchangable_hd_pairs)==0 and result is not None):
     occupancy_regroupping(
-      pdb_hierarchy = all_chain_proxies.pdb_hierarchy,
+      pdb_hierarchy = model.pdb_hierarchy(),
       cgs           = result)
   result = mmtbx.utils.remove_selections(selection = result,
     other = exchangable_hd_pairs,
-    size = xray_structure.scatterers().size())
+    size = model.get_number_of_atoms())
   result.extend(exchangable_hd_pairs)
   # extract group-[0,1]-constrained atoms withing a residue
-  pogl = extract_partial_occupancy_selections(hierarchy = all_chain_proxies.pdb_hierarchy)
+  pogl = extract_partial_occupancy_selections(hierarchy = model.pdb_hierarchy())
   rm_duplicate_with_pogl = []
   for t_ in pogl:
     for t__ in t_:
       for t___ in t__:
         rm_duplicate_with_pogl.append(t___)
   result = mmtbx.utils.remove_selections(selection = result, other = pogl,
-    size = xray_structure.scatterers().size())
+    size = model.get_number_of_atoms())
   result.extend(pogl)
   # add partial occupancies
-  occupancies = xray_structure.scatterers().extract_occupancies()
+  occupancies = model.xray_structure.scatterers().extract_occupancies()
   sel = (occupancies != 1.) & (occupancies != 0.)
   result = add_occupancy_selection(
     result     = result,
-    size       = xray_structure.scatterers().size(),
+    size       = model.get_number_of_atoms(),
     selection  = sel,
     hd_special = None)
   # check user's input
@@ -351,10 +352,11 @@ def occupancy_selections(
   if(len(all_sel_strgs) > 0):
     for sel_str in all_sel_strgs:
       sel_str_sel = get_atom_selections(
-        all_chain_proxies   = all_chain_proxies,
+        model               = model,
+        # all_chain_proxies   = all_chain_proxies,
         selection_strings   = [sel_str],
         iselection          = True,
-        xray_structure      = xray_structure,
+        # xray_structure      = xray_structure,
         one_selection_array = True)
       if(sel_str_sel.size() == 0):
         raise Sorry("Empty selection: %s"%sel_str)
@@ -362,38 +364,42 @@ def occupancy_selections(
   if([other_individual_selection_strings,
       other_constrained_groups].count(None) == 0):
     sel1 = get_atom_selections(
-      all_chain_proxies   = all_chain_proxies,
+      model               = model,
+      # all_chain_proxies   = all_chain_proxies,
       selection_strings   = other_individual_selection_strings,
       iselection          = True,
-      xray_structure      = xray_structure,
+      # xray_structure      = xray_structure,
       one_selection_array = True)
     for other_constrained_group in other_constrained_groups:
       for other_constrained_group in other_constrained_groups:
         for cg_sel_strs in other_constrained_group.selection:
           sel2 = get_atom_selections(
-            all_chain_proxies   = all_chain_proxies,
+            model               = model,
+            # all_chain_proxies   = all_chain_proxies,
             selection_strings   = cg_sel_strs,
             iselection          = True,
-            xray_structure      = xray_structure,
+            # xray_structure      = xray_structure,
             one_selection_array = True)
           if(sel1.intersection(sel2).size() > 0):
             raise Sorry("Duplicate selection: same atoms selected for individual and group occupancy refinement.")
   # check user's input and apply remove_selection to default selection
   if(remove_selection is not None):
     sel1 = get_atom_selections(
-      all_chain_proxies   = all_chain_proxies,
+      model               = model,
+      # all_chain_proxies   = all_chain_proxies,
       selection_strings   = remove_selection,
       iselection          = True,
-      xray_structure      = xray_structure,
+      # xray_structure      = xray_structure,
       one_selection_array = True)
     if(sel1.size() == 0): # XXX check all and not total.
       raise Sorry("Empty selection: remove_selection.")
     if(other_individual_selection_strings is not None):
       sel2 = get_atom_selections(
-        all_chain_proxies   = all_chain_proxies,
+        model               = model,
+        # all_chain_proxies   = all_chain_proxies,
         selection_strings   = other_individual_selection_strings,
         iselection          = True,
-        xray_structure      = xray_structure,
+        # xray_structure      = xray_structure,
         one_selection_array = True)
       if(sel1.intersection(sel2).size() > 0):
         raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
@@ -401,28 +407,30 @@ def occupancy_selections(
       for other_constrained_group in other_constrained_groups:
         for cg_sel_strs in other_constrained_group.selection:
           sel2 = get_atom_selections(
-            all_chain_proxies   = all_chain_proxies,
+            model               = model,
+            # all_chain_proxies   = all_chain_proxies,
             selection_strings   = cg_sel_strs,
             iselection          = True,
-            xray_structure      = xray_structure,
+            # xray_structure      = xray_structure,
             one_selection_array = True)
           if(sel1.intersection(sel2).size() > 0):
             raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
     result = mmtbx.utils.remove_selections(selection = result, other = sel1,
-      size = xray_structure.scatterers().size())
+      size = model.get_number_of_atoms())
   #
   if(other_individual_selection_strings is not None):
     sel = get_atom_selections(
-      all_chain_proxies   = all_chain_proxies,
+      model               = model,
+      # all_chain_proxies   = all_chain_proxies,
       selection_strings   = other_individual_selection_strings,
       iselection          = True,
-      xray_structure      = xray_structure,
+      # xray_structure      = xray_structure,
       one_selection_array = True)
     result = mmtbx.utils.remove_selections(selection = result, other = sel,
-      size = xray_structure.scatterers().size())
+      size = model.get_number_of_atoms())
     result = add_occupancy_selection(
       result     = result,
-      size       = xray_structure.scatterers().size(),
+      size       = model.get_number_of_atoms(),
       selection  = sel,
       hd_special = None)
   if(other_constrained_groups is not None):
@@ -430,32 +438,34 @@ def occupancy_selections(
       cg_sel = []
       for cg_sel_strs in other_constrained_group.selection:
         sel = get_atom_selections(
-          all_chain_proxies   = all_chain_proxies,
+          model               = model,
+          # all_chain_proxies   = all_chain_proxies,
           selection_strings   = cg_sel_strs,
           iselection          = True,
-          xray_structure      = xray_structure,
+          # xray_structure      = xray_structure,
           one_selection_array = True)
         result = mmtbx.utils.remove_selections(selection = result, other = sel,
-          size = xray_structure.scatterers().size())
+          size = model.get_number_of_atoms())
         if(sel.size() > 0):
           cg_sel.append(list(sel))
       if(len(cg_sel) > 0):
         result.append(cg_sel)
   if(add_water):
     water_selection = get_atom_selections(
-      all_chain_proxies     = all_chain_proxies,
+      model                 = model,
+      # all_chain_proxies     = all_chain_proxies,
       selection_strings     = ['water'],
       iselection            = True,
-      xray_structure        = xray_structure,
+      # xray_structure        = xray_structure,
       allow_empty_selection = True,
       one_selection_array   = True)
     result = add_occupancy_selection(
       result     = result,
-      size       = xray_structure.scatterers().size(),
+      size       = model.get_number_of_atoms(),
       selection  = water_selection,
       hd_special = None)
   list_3d_as_bool_selection(
-    list_3d=result, size=xray_structure.scatterers().size())
+    list_3d=result, size=model.get_number_of_atoms())
   if(len(result) == 0): result = None
   if(as_flex_arrays and result is not None):
     result_ = []
@@ -467,8 +477,8 @@ def occupancy_selections(
     result = result_
     if (constrain_correlated_3d_groups) and (len(result) > 0) :
       result = assemble_constraint_groups_3d(
-        xray_structure=xray_structure,
-        pdb_atoms=all_chain_proxies.pdb_hierarchy.atoms(),
+        xray_structure=model.xray_structure,
+        pdb_atoms=model.pdb_hierarchy().atoms(),
         constraint_groups=result,
         log=log)
   return result

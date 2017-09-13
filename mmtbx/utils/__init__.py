@@ -824,8 +824,10 @@ def find_overlapping_selections (selections, selection_strings) :
           return (selection_strings[i_sel], selection_strings[j_sel])
   return None
 
-def get_atom_selections(all_chain_proxies,
-                        xray_structure,
+def get_atom_selections(
+                        # all_chain_proxies,
+                        # xray_structure,
+                        model                 = None,
                         selection_strings     = None,
                         iselection            = True,
                         one_group_per_residue = False,
@@ -833,18 +835,21 @@ def get_atom_selections(all_chain_proxies,
                         hydrogens_only        = False,
                         one_selection_array   = False,
                         parameter_name        = None):
-  atoms = all_chain_proxies.pdb_atoms
-  scatterers = xray_structure.scatterers()
-  assert atoms.size() == scatterers.size()
-  for atom, sc in zip(atoms, scatterers):
-    if (len(atom.element.strip()) == 0):
-      e,c = sc.element_and_charge_symbols()
-      if (len(e) != 0):
-        atom.element = "%2s" % e.upper()
-        atom.charge = "%-2s" % c.upper()
+  # model.set_element_charge_from_xray_structure()
+  # atoms = model.pdb_hierarchy().atoms()
+  # scatterers = model.xray_structure.scatterers()
+  # atoms = all_chain_proxies.pdb_atoms
+  # scatterers = xray_structure.scatterers()
+  # assert atoms.size() == scatterers.size()
+  # for atom, sc in zip(atoms, scatterers):
+  #   if (len(atom.element.strip()) == 0):
+  #     e,c = sc.element_and_charge_symbols()
+  #     if (len(e) != 0):
+  #       atom.element = "%2s" % e.upper()
+  #       atom.charge = "%-2s" % c.upper()
   #
-  if(hydrogens_only):
-    assert xray_structure is not None
+  # if(hydrogens_only):
+  #   assert xray_structure is not None
   if(selection_strings is None or isinstance(selection_strings, str)):
     selection_strings = [selection_strings]
   elif (len(selection_strings) == 0):
@@ -855,18 +860,19 @@ def get_atom_selections(all_chain_proxies,
     raise Sorry('Ambiguous selection.') # XXX NEED MORE INFORMATIVE MESSAGE
   selections = []
   if(ss_size == 1 and n_none == 1 and not one_group_per_residue):
-    selections.append(flex.bool(all_chain_proxies.pdb_atoms.size(), True))
+    selections.append(flex.bool(model.get_number_of_atoms(), True))
   elif(one_group_per_residue and ss_size == 1 and n_none == 1):
     assert iselection
     residues = []
     hd_selection = None
     if (hydrogens_only):
-      scat_types = xray_structure.scatterers().extract_scattering_types()
-      hd_selection = (scat_types == "H") | (scat_types == "D")
-      if (hd_selection.count(True) == 0):
+      # scat_types = xray_structure.scatterers().extract_scattering_types()
+      # hd_selection = (scat_types == "H") | (scat_types == "D")
+      # if (hd_selection.count(True) == 0):
+      if not model.has_hd:
         raise Sorry('No hydrogens to select.')
-    for model in all_chain_proxies.pdb_hierarchy.models():
-      for chain in model.chains():
+    for m in model.pdb_hierarchy().models():
+      for chain in m.chains():
         for rg in chain.residue_groups():
           rg_i_seqs = []
           for ag in rg.atom_groups():
@@ -879,27 +885,27 @@ def get_atom_selections(all_chain_proxies,
             selections.append(flex.size_t(rg_i_seqs))
   elif(ss_size != 1 or n_none == 0 and not one_group_per_residue):
     for selection_string in selection_strings:
-      selections.append(atom_selection(all_chain_proxies = all_chain_proxies,
+      selections.append(atom_selection(model             = model,
                                        string            = selection_string,
                                        allow_empty_selection = allow_empty_selection))
   else:
     raise Sorry('Ambiguous selection.')
   #
-  def selection_info (idx) :
-    sele_str = str(selection_strings[idx])
-    if (parameter_name is not None) :
-      return "for parameter %s (%s)" % (parameter_name, sele_str)
-    else :
-      return "(%s)" % sele_str
+  # def selection_info (idx) :
+  #   sele_str = str(selection_strings[idx])
+  #   if (parameter_name is not None) :
+  #     return "for parameter %s (%s)" % (parameter_name, sele_str)
+  #   else :
+  #     return "(%s)" % sele_str
   if(len(selections)>1):
     if(not isinstance(selections[0], flex.bool)):
-      tmp = flex.bool(xray_structure.scatterers().size(), selections[0]).as_int()
+      tmp = flex.bool(model.xray_structure.scatterers().size(), selections[0]).as_int()
     else:
       tmp = selections[0].deep_copy().as_int()
     for k_, tmp_s in enumerate(selections[1:]):
       k = k_ + 1 # XXX Python 2.5 workaround
       if(not isinstance(tmp_s, flex.bool)):
-        tmp = tmp + flex.bool(xray_structure.scatterers().size(),tmp_s).as_int()
+        tmp = tmp + flex.bool(model.xray_structure.scatterers().size(),tmp_s).as_int()
       else:
         tmp = tmp + tmp_s.as_int()
     if(flex.max(tmp)>1):
@@ -926,8 +932,8 @@ def get_atom_selections(all_chain_proxies,
       selections = selections.select(flex.sort_permutation(selections))
   return selections
 
-def atom_selection(all_chain_proxies, string, allow_empty_selection = False):
-  result = all_chain_proxies.selection(
+def atom_selection(model, string, allow_empty_selection = False):
+  result = model.selection(
     string=string,
     optional=(allow_empty_selection is not None))
   if (result is None):

@@ -276,6 +276,9 @@ class manager(object):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
 
+  def get_number_of_atoms(self):
+    return self.pdb_atoms.size()
+
   def get_number_of_models(self):
     if self.model_input is not None:
       return self.model_input.model_ids().size()
@@ -345,6 +348,11 @@ class manager(object):
       self._build_grm()
       return self.restraints_manager
 
+  def get_hd_selection(self):
+    if self.xray_structure is not None:
+      self.xray_structure.hd_selection()
+    return None
+
   def get_ias_selection(self):
     if self.ias_manager is None:
       return None
@@ -362,6 +370,14 @@ class manager(object):
     if result is None:
       return None
     return result.iselection()
+
+  def sel_backbone(self):
+    assert self.all_chain_proxies is not None
+    return self.all_chain_proxies.sel_backbone_or_sidechain(True, False)
+
+  def sel_sidechain(self):
+    assert self.all_chain_proxies is not None
+    return self.all_chain_proxies.sel_backbone_or_sidechain(False, True)
 
   def get_hierarchy(self):
     return self._pdb_hierarchy

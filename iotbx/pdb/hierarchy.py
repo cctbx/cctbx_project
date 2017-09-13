@@ -644,7 +644,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         a.uij_erase()
       a.set_fp(new_fp=sc.fp)
       a.set_fdp(new_fdp=sc.fdp)
-      a.set_element(sc.element_symbol())
+      element, charge = sc.element_and_charge_symbols()
+      a.set_element(element)
+      a.set_charge(charge)
     for sc, a in zip(scatterers, awl):
       id_str = a.id_str()
       resname_from_sc = id_str[10:13]
