@@ -141,7 +141,8 @@ def offset_inside_cell(center,unit_cell,orthogonalize=True):
     else:
       return matrix.col(offset_frac)
 
-def get_ncs_from_text(text=None,rotate_about_z=None,out=sys.stdout):
+def get_ncs_from_text(text=None,rotate_about_z=None,
+    rotate_about_y=None,out=sys.stdout):
   from mmtbx.ncs.ncs import ncs
   import iotbx.pdb
   ncs_object=ncs()
@@ -150,6 +151,9 @@ def get_ncs_from_text(text=None,rotate_about_z=None,out=sys.stdout):
   ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
   if rotate_about_z:
     ncs_object.rotate_about_z(rot_deg=rotate_about_z,invert_matrices=True)
+  if rotate_about_y:
+    ncs_object.rotate_about_y(rot_deg=rotate_about_y,invert_matrices=True)
+
   return ncs_object
 
 
@@ -190,6 +194,16 @@ def get_rot_z(rot_deg=None):
   ss=math.sin(theta)
   from scitbx import matrix
   return matrix.sqr((cc,ss,0,-ss,cc,0,0,0,1,))
+
+def get_rot_y(rot_deg=None):
+  import math
+  theta=rot_deg*3.14159/180.
+  cc=math.cos(theta)
+  ss=math.sin(theta)
+  from scitbx import matrix
+  return matrix.sqr((cc,0,ss,
+                    -ss,0,cc,
+                     0,1,0,))
 
 def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None):
   # generate n-fold C symmetry
@@ -1346,6 +1360,13 @@ class ncs:
     if invert_matrices:
       rot_deg=-rot_deg
     oper=get_rot_z(rot_deg=rot_deg)
+    self.rotate_matrices(rot=oper)
+
+  def rotate_about_y(self,rot_deg=None,invert_matrices=True):
+    # Rotate all the ops by rot_deg about y
+    if invert_matrices:
+      rot_deg=-rot_deg
+    oper=get_rot_y(rot_deg=rot_deg)
     self.rotate_matrices(rot=oper)
 
   def ncs_from_pdb_input_BIOMT(self,pdb_inp=None,log=None,quiet=False,
