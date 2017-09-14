@@ -135,7 +135,7 @@ class PopUpCharts(object):
     outliers.set_selected(data < q1_x - cut_x, True)
     return outliers
 
-  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None):
+  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, title = None):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
@@ -236,7 +236,7 @@ class PopUpCharts(object):
           dim_legend = legend + separator + varstr
         else:
           dim_legend = varstr
-        if name == "a":
+        if len(info_list) > 1 and name == "a":
           dim_legend = n_str + dim_legend
         hist = sub.hist(dimension, nbins, normed=False,
                  alpha=0.75, histtype='stepfilled', label = dim_legend, range = lim)
@@ -329,6 +329,8 @@ class PopUpCharts(object):
     #   fig.legend(patches, 'upper right')
 
     gsp.update(wspace=0)
+    if title is None: title = "Unit cell distribution"
+    fig.suptitle(title + " (%d xtals)" % total)
 
     if not self.interactive:
       fig.set_size_inches(xsize, ysize)
