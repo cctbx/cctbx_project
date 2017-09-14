@@ -290,8 +290,6 @@ def extract_partial_occupancy_selections(hierarchy):
 
 def occupancy_selections(
       model,
-      # all_chain_proxies,
-      # xray_structure,
       add_water                          = False,
       other_individual_selection_strings = None,
       other_constrained_groups           = None,
@@ -353,10 +351,8 @@ def occupancy_selections(
     for sel_str in all_sel_strgs:
       sel_str_sel = get_atom_selections(
         model               = model,
-        # all_chain_proxies   = all_chain_proxies,
         selection_strings   = [sel_str],
         iselection          = True,
-        # xray_structure      = xray_structure,
         one_selection_array = True)
       if(sel_str_sel.size() == 0):
         raise Sorry("Empty selection: %s"%sel_str)
@@ -365,20 +361,16 @@ def occupancy_selections(
       other_constrained_groups].count(None) == 0):
     sel1 = get_atom_selections(
       model               = model,
-      # all_chain_proxies   = all_chain_proxies,
       selection_strings   = other_individual_selection_strings,
       iselection          = True,
-      # xray_structure      = xray_structure,
       one_selection_array = True)
     for other_constrained_group in other_constrained_groups:
       for other_constrained_group in other_constrained_groups:
         for cg_sel_strs in other_constrained_group.selection:
           sel2 = get_atom_selections(
             model               = model,
-            # all_chain_proxies   = all_chain_proxies,
             selection_strings   = cg_sel_strs,
             iselection          = True,
-            # xray_structure      = xray_structure,
             one_selection_array = True)
           if(sel1.intersection(sel2).size() > 0):
             raise Sorry("Duplicate selection: same atoms selected for individual and group occupancy refinement.")
@@ -386,20 +378,16 @@ def occupancy_selections(
   if(remove_selection is not None):
     sel1 = get_atom_selections(
       model               = model,
-      # all_chain_proxies   = all_chain_proxies,
       selection_strings   = remove_selection,
       iselection          = True,
-      # xray_structure      = xray_structure,
       one_selection_array = True)
     if(sel1.size() == 0): # XXX check all and not total.
       raise Sorry("Empty selection: remove_selection.")
     if(other_individual_selection_strings is not None):
       sel2 = get_atom_selections(
         model               = model,
-        # all_chain_proxies   = all_chain_proxies,
         selection_strings   = other_individual_selection_strings,
         iselection          = True,
-        # xray_structure      = xray_structure,
         one_selection_array = True)
       if(sel1.intersection(sel2).size() > 0):
         raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
@@ -408,10 +396,8 @@ def occupancy_selections(
         for cg_sel_strs in other_constrained_group.selection:
           sel2 = get_atom_selections(
             model               = model,
-            # all_chain_proxies   = all_chain_proxies,
             selection_strings   = cg_sel_strs,
             iselection          = True,
-            # xray_structure      = xray_structure,
             one_selection_array = True)
           if(sel1.intersection(sel2).size() > 0):
             raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
@@ -421,10 +407,8 @@ def occupancy_selections(
   if(other_individual_selection_strings is not None):
     sel = get_atom_selections(
       model               = model,
-      # all_chain_proxies   = all_chain_proxies,
       selection_strings   = other_individual_selection_strings,
       iselection          = True,
-      # xray_structure      = xray_structure,
       one_selection_array = True)
     result = mmtbx.utils.remove_selections(selection = result, other = sel,
       size = model.get_number_of_atoms())
@@ -439,10 +423,8 @@ def occupancy_selections(
       for cg_sel_strs in other_constrained_group.selection:
         sel = get_atom_selections(
           model               = model,
-          # all_chain_proxies   = all_chain_proxies,
           selection_strings   = cg_sel_strs,
           iselection          = True,
-          # xray_structure      = xray_structure,
           one_selection_array = True)
         result = mmtbx.utils.remove_selections(selection = result, other = sel,
           size = model.get_number_of_atoms())
@@ -453,10 +435,8 @@ def occupancy_selections(
   if(add_water):
     water_selection = get_atom_selections(
       model                 = model,
-      # all_chain_proxies     = all_chain_proxies,
       selection_strings     = ['water'],
       iselection            = True,
-      # xray_structure        = xray_structure,
       allow_empty_selection = True,
       one_selection_array   = True)
     result = add_occupancy_selection(
