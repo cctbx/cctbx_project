@@ -9,7 +9,7 @@ help_message = """
 Plot a cloud of unit cell dimensions from stills. Provide either a combined_experiments.json
 file or a specify individual .json files on the command line. To generate an overlay of
 multiple plots (similar to grouping by run tag in the XFEL GUI), provide multiple
-combined_experiments.json files named as ${tag}_combined_experiments.json and set
+combined_experiments.json files named as ${tag}_combined_experiments*.json and set
 extract_tags to True in the phil scope.
 """
 
@@ -24,6 +24,9 @@ phil_str = """
     .type = bool
     .help = Extract tags from the names of multiple combined_experiments.json filenames and use
     .help = these tags to label multiple groups of experiments.
+  title = None
+    .type = str
+    .help = Title for the plot
 """
 phil_scope = parse(phil_str)
 
@@ -66,7 +69,7 @@ class Script(object):
     experiments_list = [e.data for e in params.input.experiments]
     if params.extract_tags:
       import os
-      experiments_tags = [os.path.basename(f.filename).split("_combined_experiments.json")[0] for f in params.input.experiments]
+      experiments_tags = [os.path.basename(f.filename).split("_combined_experiments")[0] for f in params.input.experiments]
       info_list = []
       for experiments in experiments_list:
         infos = []
@@ -82,8 +85,12 @@ class Script(object):
       info_list = [infos]
     import xfel.ui.components.xfel_gui_plotter as pltr
     plotter = pltr.PopUpCharts()
-    plotter.plot_uc_histogram(info_list=info_list, legend_list=experiments_tags, iqr_ratio = params.iqr_ratio, \
-      ranges = params.ranges)
+    plotter.plot_uc_histogram(
+      info_list=info_list,
+      legend_list=experiments_tags,
+      iqr_ratio = params.iqr_ratio,
+      ranges = params.ranges,
+      title = params.title)
     plotter.plt.show()
 
 if __name__ == '__main__':
