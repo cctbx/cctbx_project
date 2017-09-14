@@ -801,9 +801,8 @@ class run_ensemble_refinement(object):
     self.ordered_solvent_update()
     all_chain_proxies = self.generate_all_chain_proxies(model = self.model)
     hr_selections = mmtbx.utils.get_atom_selections(
-        all_chain_proxies = all_chain_proxies,
-        selection_strings = self.params.harmonic_restraints.selections,
-        xray_structure    = self.model.xray_structure)
+        model = self.model,
+        selection_strings = self.params.harmonic_restraints.selections)
     pdb_atoms = self.pdb_hierarchy().atoms()
     print >> self.log, "\nAdd atomic harmonic restraints:"
     restraint_info = []
@@ -932,9 +931,8 @@ class run_ensemble_refinement(object):
         print >> self.log, tls_group_selection_strings[0]
     #
     tls_no_sol_selections =  mmtbx.utils.get_atom_selections(
-        all_chain_proxies = all_chain_proxies,
-        selection_strings = tls_group_selection_strings,
-        xray_structure    = model_no_solvent.xray_structure)
+        model = model_no_solvent,
+        selection_strings = tls_group_selection_strings)
     #
     tls_no_hd_selection_strings = []
     for selection_string in tls_group_selection_strings:
@@ -942,9 +940,8 @@ class run_ensemble_refinement(object):
       tls_no_hd_selection_strings.append(no_hd_string)
 
     tls_no_sol_no_hd_selections = mmtbx.utils.get_atom_selections(
-        all_chain_proxies = all_chain_proxies,
-        selection_strings = tls_no_hd_selection_strings,
-        xray_structure    = model_no_solvent.xray_structure)
+        model = model_no_solvent,
+        selection_strings = tls_no_hd_selection_strings)
 
     #
     assert self.tls_manager is not None

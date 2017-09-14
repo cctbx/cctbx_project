@@ -2,9 +2,11 @@ from __future__ import division
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.refinement.occupancies import occupancy_selections
 from mmtbx.command_line import fmodel
+import mmtbx.model
 from mmtbx import utils
 from iotbx import file_reader
 import iotbx.pdb
+import iotbx.phil
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import format_cpu_times, null_out, Sorry
 import libtbx.load_env
@@ -14,6 +16,8 @@ import sys
 
 def extract_serials(atoms, occ_groups):
   r = []
+  # for atom in atoms:
+  #   assert atom.serial == atom.i_seq, "%s %d" % (atom.serial, atom.i_seq)
   for i in occ_groups:
     ri = []
     for j in i:
@@ -30,94 +34,103 @@ def make_up_other_constrained_groups_obj(selections):
     result.append( foo(selection = sel) )
   return result
 
+def get_model(file_name, log):
+  pdb_interpretation_params = iotbx.phil.parse(
+          input_string=pdb_interpretation.grand_master_phil_str, process_includes=True).extract()
+  pdb_interpretation_params.pdb_interpretation.sort_atoms=False
+  pdb_inp = iotbx.pdb.input(file_name=file_name)
+  return mmtbx.model.manager(
+      model_input = pdb_inp,
+      process_input = True,
+      pdb_interpretation_params=pdb_interpretation_params,
+      stop_for_unknowns = False,
+      log=log)
+
+def get_model_str(strings, log):
+  pdb_interpretation_params = iotbx.phil.parse(
+          input_string=pdb_interpretation.grand_master_phil_str, process_includes=True).extract()
+  pdb_interpretation_params.pdb_interpretation.sort_atoms=False
+  pdb_inp = iotbx.pdb.input(lines=strings, source_info=None)
+  return mmtbx.model.manager(
+      model_input = pdb_inp,
+      process_input = True,
+      pdb_interpretation_params=pdb_interpretation_params,
+      stop_for_unknowns = False,
+      log=log)
+
 def exercise_00(verbose):
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/gocr.pdb",
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  #
-  xray_structure = processed_pdb_file.xray_structure()
-  #
+  model = get_model(pdb_file, log)
   base = [ [[2],[3]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[24,25,26,27],[28,29,30,31]] ]
   # default
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   target = base[:]
   target.insert(3, [[21]])
   target.insert(4, [[23]])
   assert approx_equal(res, target)
   # default + add water
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     add_water         = True,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   base_21_23 = target[:]
   target.extend([[[18]], [[19]], [[20]], [[22]]])
   assert approx_equal(res, target)
   # 1
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     as_flex_arrays    = False,
     other_individual_selection_strings = ['resseq 0 and not (altloc A or altloc B)'])
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   target = base_21_23[:]
   target.extend([[[0]], [[1]], [[4]], [[5]]])
   assert approx_equal(res, target)
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     add_water         = True,
     as_flex_arrays    = False,
     other_individual_selection_strings = ['resseq 0 and not (altloc A or altloc B)'])
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   target.extend([[[18]], [[19]], [[20]], [[22]]])
   assert approx_equal(res, target)
   # 2
   other_constrained_groups = make_up_other_constrained_groups_obj(
     selections = [ ['resseq 0 and (name S or name O1)'], ['resseq 0 and (name O3 or name O4)'] ])
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     as_flex_arrays    = False,
     other_constrained_groups = other_constrained_groups)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   target = base_21_23[:]
   target.extend([[[0, 1]], [[4, 5]]])
   assert approx_equal(res, target)
   other_constrained_groups = make_up_other_constrained_groups_obj(
     selections = [ ['resseq 0 and (name S or name O1)'], ['resseq 0 and (name O3 or name O4)'] ])
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     add_water         = True,
     as_flex_arrays    = False,
     other_constrained_groups = other_constrained_groups)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   target.extend([[[18]], [[19]], [[20]], [[22]]])
   assert approx_equal(res, target)
   # 3
   other_constrained_groups = make_up_other_constrained_groups_obj(
     selections = [ ['resseq 0 and (name O3 or name O4)'] ])
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     as_flex_arrays    = False,
     other_individual_selection_strings = ['resseq 0 and (name S or name O1)'],
     other_constrained_groups = other_constrained_groups)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   target = base_21_23[:]
   target.extend([[[0]], [[1]], [[4, 5]]])
   assert approx_equal(res, target)
@@ -128,19 +141,13 @@ def exercise_01(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
+  model = get_model(pdb_file, log)
   #
   base = [ [[0,1,2,3,4,10,12,14,16,18,20,22], [5,6,7,8,9,11,13,15,17,19,21,23]] ]
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   assert approx_equal(res, base)
 
 def exercise_02(verbose):
@@ -149,19 +156,13 @@ def exercise_02(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
+  model = get_model(pdb_file, log)
   #
   base = [ [[0,1,2,3,4,5,6,7,8,9,10,11,12], [14,15,16,17,18,19,20,21,22,23,24,25,26]], [[13],[27]] ]
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   assert approx_equal(res, base)
 
 def exercise_03(verbose):
@@ -170,19 +171,13 @@ def exercise_03(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
+  model = get_model(pdb_file, log)
   #
   base = [ [[7]], [[8]], [[9],[12]], [[10],[13]], [[11],[14]] ]
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   assert approx_equal(res, base)
 
 def exercise_05(verbose):
@@ -191,22 +186,16 @@ def exercise_05(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
+  model = get_model(pdb_file, log)
   #
   base = [ [[9],[12]],  [[10],[13]], [[11],[14]], [[33],[37]], [[34],[38]],
            [[35],[39]], [[36],[40]], [[59],[65]], [[60],[66]], [[61],[67]],
            [[62],[68]], [[63],[69]], [[64],[70]], [[80],[82]], [[81],[83]],
            [[103],[105]], [[104],[106]]]
   res = occupancy_selections(
-    all_chain_proxies   = processed_pdb_file.all_chain_proxies,
-    xray_structure      = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays      = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   assert approx_equal(res, base)
 
 def exercise_06(verbose):
@@ -215,20 +204,14 @@ def exercise_06(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log, stop_for_unknowns=False)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
+  model = get_model(pdb_file, log)
   #
   base = [ [[62]], [[113]], [[65],[77]],  [[66],[78]],  [[67],[79]], [[68],[80]],
                             [[69],[81]],  [[70],[82]],  [[71],[83]], [[72],[84]],
                             [[73],[85]],  [[74],[86]],  [[75],[87]], [[76],[88]],
                             [[124],[127]],[[125],[128]],[[126],[129]]]
   res = occupancy_selections(
-    all_chain_proxies   = processed_pdb_file.all_chain_proxies,
-    xray_structure      = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays      = False)
   assert approx_equal(res, base)
 
@@ -238,19 +221,12 @@ def exercise_07(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[0, 1, 2, 3, 4]] ]
   other_constrained_groups = make_up_other_constrained_groups_obj(
     selections = [ ['resseq 0'] ])
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     other_constrained_groups = other_constrained_groups,
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
@@ -261,13 +237,7 @@ def exercise_08(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answers = [
     [ [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]], [[0,1,2,3,4,5]] ],
     [ [[4],[5]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]], [[6,7,8,9,10,11,12,13,14,15]] ],
@@ -290,8 +260,7 @@ def exercise_08(verbose):
     other_constrained_groups = make_up_other_constrained_groups_obj(
       selections = [ [group_selection] ])
     result = occupancy_selections(
-      all_chain_proxies = processed_pdb_file.all_chain_proxies,
-      xray_structure    = xray_structure,
+      model = model,
       other_constrained_groups = other_constrained_groups,
       as_flex_arrays    = False)
     assert approx_equal(result, answer)
@@ -302,13 +271,7 @@ def exercise_09(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answers = [
     [ [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]], [[0]], [[1]], [[2]], [[3]], [[4]], [[5]] ],
     [ [[4],[5]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]], [[6]], [[7]], [[8]], [[9]], [[10]], [[11]], [[12]], [[13]], [[14]], [[15]] ],
@@ -328,8 +291,7 @@ def exercise_09(verbose):
                            'resseq 0:6']
   for individual_selection, answer in zip(individual_selections, answers):
     result = occupancy_selections(
-      all_chain_proxies = processed_pdb_file.all_chain_proxies,
-      xray_structure    = xray_structure,
+      model = model,
       other_individual_selection_strings = [individual_selection],
       as_flex_arrays    = False)
     assert approx_equal(result, answer)
@@ -340,20 +302,13 @@ def exercise_10(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   e = None
   try:
     other_constrained_groups = make_up_other_constrained_groups_obj(
       selections = [ ['resseq 0'] ])
     result = occupancy_selections(
-      all_chain_proxies = processed_pdb_file.all_chain_proxies,
-      xray_structure    = xray_structure,
+      model = model,
       other_constrained_groups = other_constrained_groups,
       other_individual_selection_strings = ['resseq 0'],
       as_flex_arrays    = False)
@@ -366,18 +321,11 @@ def exercise_11(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   e = None
   try:
     result = occupancy_selections(
-      all_chain_proxies = processed_pdb_file.all_chain_proxies,
-      xray_structure    = xray_structure,
+      model = model,
       remove_selection = ['resseq 0'],
       other_individual_selection_strings = ['resseq 0'],
       as_flex_arrays    = False)
@@ -388,8 +336,7 @@ def exercise_11(verbose):
     other_constrained_groups = make_up_other_constrained_groups_obj(
       selections = [ ['resseq 0'] ])
     result = occupancy_selections(
-      all_chain_proxies = processed_pdb_file.all_chain_proxies,
-      xray_structure    = xray_structure,
+      model = model,
       other_constrained_groups = other_constrained_groups,
       remove_selection = ['resseq 0'],
       as_flex_arrays    = False)
@@ -402,19 +349,12 @@ def exercise_12(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[4],[5]], [[16],[17]], [[21]], [[23,24,25,26,27,28,29,30,31]] ]
   other_constrained_groups = make_up_other_constrained_groups_obj(
     selections = [ ['resseq 6'] ])
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     remove_selection = ['resseq 1'],
     other_constrained_groups = other_constrained_groups,
     as_flex_arrays    = False)
@@ -422,8 +362,7 @@ def exercise_12(verbose):
   #
   answer = [ [[4],[5]], [[16],[17]], [[21]], [[23]], [[24]], [[25]], [[26]], [[27]], [[28]], [[29]], [[30]], [[31]] ]
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     remove_selection = ['resseq 1'],
     other_individual_selection_strings = ['resseq 6'],
     as_flex_arrays    = False)
@@ -435,21 +374,14 @@ def exercise_13(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[8],[9]], [[10]], [[0],[1]], [[2],[3]] ]
   other_constrained_groups = make_up_other_constrained_groups_obj(
     selections = [ ['chain A and resseq 1 and name N','chain A and resseq 1 and name CA'],
                    ['chain A and resseq 1 and name C','chain A and resseq 1 and name O'] ]
     )
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     other_constrained_groups = other_constrained_groups,
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
@@ -460,13 +392,7 @@ def exercise_14(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[8],[9]], [[10]], [[0,1,2],[3,4]], [[5],[6]], [[7]] ]
 
   other_constrained_groups = make_up_other_constrained_groups_obj(
@@ -475,8 +401,7 @@ def exercise_14(verbose):
                    ['chain A and resseq 1 and name CE'] ]
     )
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     other_constrained_groups = other_constrained_groups,
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
@@ -487,13 +412,7 @@ def exercise_15(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[8],[9]], [[0,1,2],[10]], [[5,7]] ]
 
   other_constrained_groups = make_up_other_constrained_groups_obj(
@@ -501,8 +420,7 @@ def exercise_15(verbose):
                    ['chain A and resseq 1 and name CG or chain A and resseq 1 and name CE'] ]
     )
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     other_constrained_groups = other_constrained_groups,
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
@@ -513,21 +431,14 @@ def exercise_16(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[8],[9],[10]] ]
   other_constrained_groups = make_up_other_constrained_groups_obj(
     selections = [
       ['chain A and resseq 1 and name NZ and altloc A', 'chain A and resseq 1 and name NZ and altloc B', 'chain S and resseq 1'] ]
     )
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     other_constrained_groups = other_constrained_groups,
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
@@ -538,21 +449,14 @@ def exercise_17(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[8,9,10]] ]
   other_constrained_groups = make_up_other_constrained_groups_obj(
     selections = [
       ['chain A and resseq 1 and name NZ and altloc A or chain A and resseq 1 and name NZ and altloc B or chain S and resseq 1'] ]
     )
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     other_constrained_groups = other_constrained_groups,
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
@@ -563,21 +467,14 @@ def exercise_18(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[8],[9],[10]] ]
   other_constrained_groups = make_up_other_constrained_groups_obj(
    selections = [
     ['chain A and resseq 1 and name NZ and altloc A','chain A and resseq 1 and name NZ and altloc B','chain S and resseq 1 and altloc C']]
   )
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     other_constrained_groups = other_constrained_groups,
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
@@ -588,13 +485,7 @@ def exercise_19(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[8],[9],[10]] ]
   tmp = "chain A and resseq 1 and name XX and altloc A"
   other_constrained_groups = make_up_other_constrained_groups_obj(
@@ -604,8 +495,7 @@ def exercise_19(verbose):
       'chain S and resseq 1']])
   try:
     result = occupancy_selections(
-      all_chain_proxies = processed_pdb_file.all_chain_proxies,
-      xray_structure    = xray_structure,
+      model = model,
       other_constrained_groups = other_constrained_groups,
       as_flex_arrays    = False)
   except Exception, e: pass
@@ -619,17 +509,10 @@ def exercise_20(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  xray_structure = processed_pdb_file.xray_structure()
+  model = get_model(pdb_file, log)
   answer = [ [[4,5,6,7,8,9,10,11,12,13,14,15,16,17,18], [19,20,21,22,23,24,25,26,27,28,29,30,31,32,33]] ]
   result = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model = model,
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
 
@@ -639,12 +522,7 @@ def exercise_21(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
+  model = get_model(pdb_file, log)
   #
   base = [[[2], [3]],
          [[6, 7, 8, 9, 10], [11, 12, 13, 14, 15]],
@@ -667,10 +545,9 @@ def exercise_21(verbose):
          [[39], [42]],
          [[43, 44, 45, 46]]]
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   assert approx_equal(res, base)
 
 def exercise_22(verbose):
@@ -679,19 +556,13 @@ def exercise_22(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
+  model = get_model(pdb_file, log)
   #
   base = [[[0, 1, 2, 3, 8, 9, 10, 11, 12], [4, 5, 6, 7, 13, 14, 15, 16, 17]]]
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   assert approx_equal(res, base)
 
 def exercise_23(verbose):
@@ -700,19 +571,13 @@ def exercise_23(verbose):
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
+  model = get_model(pdb_file, log)
   #
   base = [[[1, 2, 3, 4, 5, 6]], [[7, 8, 9, 10, 11], [12, 13, 14, 15, 16]]]
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  res = extract_serials(model.pdb_atoms, res)
   assert approx_equal(res, base)
 
 def exercise_24(verbose):
@@ -867,15 +732,9 @@ END
   if (verbose): log = sys.stdout
   else: log = StringIO()
   for pdb_str in [pdb_str1, pdb_str2]:
-    pdb_interpretation_params = pdb_interpretation.master_params.extract()
-    pdb_interpretation_params.sort_atoms=False
-    processed_pdb_files_srv = utils.process_pdb_file_srv(
-        pdb_interpretation_params=pdb_interpretation_params, log=log)
-    processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-      raw_records = pdb_str.splitlines())
+    model = get_model_str(pdb_str, log)
     res = occupancy_selections(
-      all_chain_proxies = processed_pdb_file.all_chain_proxies,
-      xray_structure    = processed_pdb_file.xray_structure(),
+      model = model,
       as_flex_arrays    = False)
     answer = \
       [[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 48],
@@ -922,15 +781,9 @@ END
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    raw_records = pdb_str.splitlines())
+  model = get_model_str(pdb_str, log)
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
   answer = [ [[9],[10]], [[26],[27]] ]
   assert approx_equal(res, answer)
@@ -975,15 +828,9 @@ ATOM    129  D  BLEU L   6       0.595  12.387  14.715  0.50 13.93           D
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    raw_records = pdb_str.splitlines())
+  model = get_model_str(pdb_str, log)
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
   answer = [ [[32], [33]] ]
   assert approx_equal(res, answer)
@@ -1040,15 +887,9 @@ ATOM     45  HE3BMET A   0      18.343  15.241  22.899  0.51 40.99           H
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    raw_records = pdb_str.splitlines())
+  model = get_model_str(pdb_str, log)
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
   answer = [[[13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
              [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45]]]
@@ -1130,15 +971,9 @@ END
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    raw_records = pdb_str.splitlines())
+  model = get_model_str(pdb_str, log)
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
   answer = [ [[11],[12]],
              [[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,66],
@@ -1210,15 +1045,9 @@ END
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    raw_records = pdb_str.splitlines())
+  model = get_model_str(pdb_str, log)
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
   answer = [ [[3,4,5,6,19],
               [7,8,9,10,33]],
@@ -1270,15 +1099,9 @@ END
 """
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  pdb_interpretation_params = pdb_interpretation.master_params.extract()
-  pdb_interpretation_params.sort_atoms=False
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-      pdb_interpretation_params=pdb_interpretation_params, log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    raw_records = pdb_str.splitlines())
+  model = get_model_str(pdb_str, log)
   res = occupancy_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = processed_pdb_file.xray_structure(),
+    model = model,
     as_flex_arrays    = False)
   answer = [ [[0]],
              [[4, 5, 6, 7, 8, 21],
@@ -1411,7 +1234,9 @@ TER
   open("%s_start.pdb" % prefix, "w").write(
     hierarchy.as_pdb_string(crystal_symmetry=xrs))
 
-def exercise_regroup_3d () :
+def exercise_regroup_3d (verbose) :
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
   prepare_correlated_occupancy_inputs()
   # File #1 (with homogenized occupancies) should work
   # File #2 should fail due to inconsistent occupancies
@@ -1420,13 +1245,10 @@ def exercise_regroup_3d () :
     "tst_group_correlated_occupancy_in.pdb",
   ]
   for i_file, pdb_file in enumerate(pdb_files) :
-    processed_pdb_file = pdb_interpretation.run([pdb_file], log=null_out())
-    xrs = processed_pdb_file.xray_structure()
-    hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    model = get_model(pdb_file, log)
     try :
       constraint_groups = occupancy_selections(
-        all_chain_proxies=processed_pdb_file.all_chain_proxies,
-        xray_structure=xrs,
+        model = model,
         constrain_correlated_3d_groups=True,
         log=null_out())
     except Sorry, s :
@@ -1472,7 +1294,7 @@ def run():
   exercise_28(verbose=verbose)
   exercise_29(verbose=verbose)
   exercise_30(verbose=verbose)
-  exercise_regroup_3d()
+  exercise_regroup_3d(verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):

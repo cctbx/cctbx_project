@@ -12,18 +12,21 @@ from libtbx.test_utils import approx_equal, not_approx_equal, run_command, \
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
 from cctbx import adptbx
+import mmtbx.model
+import iotbx.pdb
+from cStringIO import StringIO
 
 class xray_structure_plus(object):
   def __init__(self, file_name):
-    mon_lib_srv = monomer_library.server.server()
-    ener_lib = monomer_library.server.ener_lib()
-    processed_pdb_file = monomer_library.pdb_interpretation.process(
-                                                   mon_lib_srv = mon_lib_srv,
-                                                   ener_lib    = ener_lib,
-                                                   file_name   = file_name)
-    self.xray_structure = processed_pdb_file.xray_structure(show_summary=False)
-    self.all_chain_proxies = processed_pdb_file.all_chain_proxies
-    uc = self.xray_structure.unit_cell()
+    log = StringIO()
+    pdb_inp = iotbx.pdb.input(file_name=file_name)
+    self.model = mmtbx.model.manager(
+        model_input = pdb_inp,
+        process_input = True,
+        log = log)
+    self.xray_structure = self.model.xray_structure
+    self.all_chain_proxies = self.model.all_chain_proxies
+    uc = self.model.xray_structure.unit_cell()
     self.occ           = self.xray_structure.scatterers().extract_occupancies()
     self.u_iso            = self.xray_structure.scatterers().extract_u_iso()
     self.u_cart           = self.xray_structure.scatterers().extract_u_cart(uc)
@@ -37,9 +40,8 @@ class xray_structure_plus(object):
 
   def selection(self, selection_strings):
     return utils.get_atom_selections(iselection       = False,
-                                     all_chain_proxies= self.all_chain_proxies,
-                                     selection_strings= selection_strings,
-                                     xray_structure   = self.xray_structure)[0]
+                                     model = self.model,
+                                     selection_strings= selection_strings)[0]
 
 def exercise_basic():
   pdb_str = """

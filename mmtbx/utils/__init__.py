@@ -28,6 +28,7 @@ from cctbx import adptbx
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
+import mmtbx.monomer_library.pdb_interpretation
 from iotbx.pdb import combine_unique_pdb_files
 from iotbx import mtz
 from iotbx import cif
@@ -825,8 +826,6 @@ def find_overlapping_selections (selections, selection_strings) :
   return None
 
 def get_atom_selections(
-                        # all_chain_proxies,
-                        # xray_structure,
                         model                 = None,
                         selection_strings     = None,
                         iselection            = True,
@@ -835,21 +834,6 @@ def get_atom_selections(
                         hydrogens_only        = False,
                         one_selection_array   = False,
                         parameter_name        = None):
-  # model.set_element_charge_from_xray_structure()
-  # atoms = model.pdb_hierarchy().atoms()
-  # scatterers = model.xray_structure.scatterers()
-  # atoms = all_chain_proxies.pdb_atoms
-  # scatterers = xray_structure.scatterers()
-  # assert atoms.size() == scatterers.size()
-  # for atom, sc in zip(atoms, scatterers):
-  #   if (len(atom.element.strip()) == 0):
-  #     e,c = sc.element_and_charge_symbols()
-  #     if (len(e) != 0):
-  #       atom.element = "%2s" % e.upper()
-  #       atom.charge = "%-2s" % c.upper()
-  #
-  # if(hydrogens_only):
-  #   assert xray_structure is not None
   if(selection_strings is None or isinstance(selection_strings, str)):
     selection_strings = [selection_strings]
   elif (len(selection_strings) == 0):
@@ -866,9 +850,7 @@ def get_atom_selections(
     residues = []
     hd_selection = None
     if (hydrogens_only):
-      # scat_types = xray_structure.scatterers().extract_scattering_types()
-      # hd_selection = (scat_types == "H") | (scat_types == "D")
-      # if (hd_selection.count(True) == 0):
+      scat_types = model.xray_structure.scatterers().extract_scattering_types()
       if not model.has_hd:
         raise Sorry('No hydrogens to select.')
     for m in model.pdb_hierarchy().models():
@@ -890,13 +872,6 @@ def get_atom_selections(
                                        allow_empty_selection = allow_empty_selection))
   else:
     raise Sorry('Ambiguous selection.')
-  #
-  # def selection_info (idx) :
-  #   sele_str = str(selection_strings[idx])
-  #   if (parameter_name is not None) :
-  #     return "for parameter %s (%s)" % (parameter_name, sele_str)
-  #   else :
-  #     return "(%s)" % sele_str
   if(len(selections)>1):
     if(not isinstance(selections[0], flex.bool)):
       tmp = flex.bool(model.xray_structure.scatterers().size(), selections[0]).as_int()
@@ -934,7 +909,7 @@ def get_atom_selections(
 
 def atom_selection(model, string, allow_empty_selection = False):
   result = model.selection(
-    string=string,
+    selstr=string,
     optional=(allow_empty_selection is not None))
   if (result is None):
     return None
@@ -970,15 +945,12 @@ def print_header(line, out=None):
   str_utils.make_header(line, out=out)
 
 def get_atom_selection(pdb_file_name, selection_string, iselection = False):
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv = monomer_library.server.server(),
-    ener_lib    = monomer_library.server.ener_lib(),
-    file_name   = pdb_file_name,
-    log         = None)
-  xray_structure = processed_pdb_file.xray_structure(show_summary = False)
+  import mmtbx.model
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(file_name=pdb_file_name),
+      process_input = True)
   result = get_atom_selections(
-    all_chain_proxies = processed_pdb_file.all_chain_proxies,
-    xray_structure    = xray_structure,
+    model             = model,
     selection_strings = [selection_string],
     iselection        = iselection)
   assert len(result) == 1
@@ -1010,6 +982,11 @@ class process_pdb_file_srv(object):
     self.crystal_symmetry          = crystal_symmetry
     self.pdb_parameters            = pdb_parameters
     self.pdb_interpretation_params = pdb_interpretation_params
+    if self.pdb_interpretation_params is None:
+      ppdb_interpretation_params = iotbx.phil.parse(
+          input_string=mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str,
+          process_includes=True).extract()
+      self.pdb_interpretation_params = ppdb_interpretation_params.pdb_interpretation
     self.stop_for_unknowns         = stop_for_unknowns
     self.cif_objects               = cif_objects
     self.cif_parameters            = cif_parameters
@@ -1066,8 +1043,16 @@ class process_pdb_file_srv(object):
         for file_name in pdb_file_names:
           msg.append("  %s" % show_string(file_name))
       raise Sorry("\n".join(msg))
+    # XXX! This hierarchy construction here not only excessive and not being
+    # used further, it could be catastrophic leading to:
+    # - sometimes it is impossible to construct hierarchy again from the same pdb_inp
+    # - if constructed with wrong parameters, e.g. sort_atoms, the pdb_inp is
+    #   corrupted forever.
+    # Moreover, it seems completely useless here, because there's no way to
+    # avoid "raise_duplicate_atom_labels_if_necessary" being called in
+    # pdb_interpretation.process -> all_chain_proxies!
     if(stop_if_duplicate_labels):
-      pdb_inp.construct_hierarchy(). \
+      pdb_inp.construct_hierarchy(sort_atoms=self.pdb_interpretation_params.sort_atoms). \
         overall_counts().raise_duplicate_atom_labels_if_necessary()
     #
     # converge pdb_interpretation_params and use_neutron from scattering
@@ -1721,6 +1706,8 @@ class process_command_line_args(object):
       self.reflection_file_server = reflection_file_server
     return self.reflection_file_server
 
+# MARKED_FOR_DELETION_OLEG
+# Just another "convinience" class to read pdb file. Really???
 class pdb_file(object):
 
   def __init__(self, pdb_file_names,
@@ -1771,6 +1758,7 @@ class pdb_file(object):
       ignore_unknown_nonbonded_energy_types=
         self.ignore_unknown_nonbonded_energy_types)
     if(msg is not None): raise Sorry(msg)
+# ENDMARKED_FOR_DELETION_OLEG
 
 # MARKED_FOR_DELETION_OLEG
 # Reason: old way of creating model, used only in mmtbx/regression/tst_model.py

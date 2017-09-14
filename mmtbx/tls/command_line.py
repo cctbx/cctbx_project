@@ -10,6 +10,8 @@ import iotbx.phil
 from mmtbx import utils
 from libtbx.utils import Sorry
 import mmtbx.tls.tools
+import mmtbx.model
+import iotbx.pdb
 
 
 master_params = iotbx.phil.parse("""\
@@ -102,29 +104,36 @@ def run(args, command_name = "phenix.tls"):
   if(processed_args.crystal_symmetry.unit_cell() is None or
      processed_args.crystal_symmetry.space_group() is None):
     raise Sorry("No CRYST1 record found.")
-  mmtbx_pdb_file = utils.pdb_file(
-    pdb_file_names   = processed_args.pdb_file_names,
-    cif_objects      = processed_args.cif_objects,
-    crystal_symmetry = processed_args.crystal_symmetry,
-    log              = log)
-  #
+
+  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=processed_args.pdb_file_names)
+  pdb_combined.report_non_unique(out=log)
+  if (len(pdb_combined.unique_file_names) == 0):
+    raise Sorry("No coordinate file given.")
+  raw_records = pdb_combined.raw_records
+  try:
+    pdb_inp = iotbx.pdb.input(source_info = None,
+                              lines       = flex.std_string(raw_records))
+  except ValueError, e :
+    raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
+
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      restraint_objects = processed_args.cif_objects,
+      crystal_symmetry = processed_args.crystal_symmetry,
+      log = log)
   if(not command_line.options.silent):
     utils.print_header("TLS groups from PDB file header", out = log)
   pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(
-    remark_3_records = mmtbx_pdb_file.pdb_inp.extract_remark_iii_records(3),
-    pdb_hierarchy = mmtbx_pdb_file.pdb_inp.construct_hierarchy())
+    remark_3_records = model.model_input.extract_remark_iii_records(3),
+    pdb_hierarchy = model.pdb_hierarchy())
   #
   tls_groups = []
   if(pdb_inp_tls.tls_present):
     if(pdb_inp_tls.error_string is not None):
       raise Sorry(pdb_inp_tls.error_string)
-    mmtbx_pdb_file.set_ppf()
-    xray_structure = get_xrs_helper(mmtbx_pdb_file = mmtbx_pdb_file, log = log,
-      silent = command_line.options.silent)
     pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
       pdb_inp_tls       = pdb_inp_tls,
-      all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
-      xray_structure    = xray_structure)
+      model = model)
     tls_groups = pdb_tls.pdb_inp_tls.tls_params
   #
   tls_selections_strings = []
@@ -143,8 +152,6 @@ def run(args, command_name = "phenix.tls"):
     raise Sorry("Two TLS selection sources found: PDB file header and parameters.")
   if(len(params.selection) > 0):
     tls_selections_strings = params.selection
-    xray_structure = get_xrs_helper(mmtbx_pdb_file = mmtbx_pdb_file, log = log,
-      silent = command_line.options.silent)
   if([params.combine_tls, params.extract_tls].count(True) > 1):
     raise Sorry("Cannot simultaneously pereform: combine_tls and extract_tls")
   if([params.combine_tls, params.extract_tls].count(True) > 0):
@@ -155,12 +162,11 @@ def run(args, command_name = "phenix.tls"):
     if(not command_line.options.silent):
       utils.print_header("TLS groups selections", out = log)
     selections = utils.get_atom_selections(
-      all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
-      selection_strings = tls_selections_strings,
-      xray_structure    = xray_structure)
+      model = model,
+      selection_strings = tls_selections_strings)
     if(not command_line.options.silent):
       print >> log, "Number of TLS groups: ", len(selections)
-      print >> log, "Number of atoms: %d" % xray_structure.scatterers().size()
+      print >> log, "Number of atoms: %d" % model.get_number_of_atoms()
     n_atoms_in_tls = 0
     for sel_a in selections:
       n_atoms_in_tls += sel_a.size()
@@ -195,13 +201,13 @@ def run(args, command_name = "phenix.tls"):
       "Fit TLS matrices to B-factors of selected sets of atoms", out = log)
     tlsos = mmtbx.tls.tools.generate_tlsos(
       selections     = selections,
-      xray_structure = xray_structure,
+      xray_structure = model.xray_structure,
       value          = 0.0)
     for rt,rl,rs in [[1,0,1],[1,1,1],[0,1,1],
                      [1,0,0],[0,1,0],[0,0,1],[1,1,1],
                      [0,0,1]]*10:
       tlsos = mmtbx.tls.tools.tls_from_uanisos(
-        xray_structure               = xray_structure,
+        xray_structure               = model.xray_structure,
         selections                   = selections,
         tlsos_initial                = tlsos,
         number_of_macro_cycles       = 10,
@@ -214,32 +220,30 @@ def run(args, command_name = "phenix.tls"):
         out                          = log)
       mmtbx.tls.tools.show_tls(tlsos = tlsos, out = log)
     u_cart_from_tls = mmtbx.tls.tools.u_cart_from_tls(
-      sites_cart = xray_structure.sites_cart(),
+      sites_cart = model.xray_structure.sites_cart(),
       selections = selections,
       tlsos      = tlsos)
-    unit_cell = xray_structure.unit_cell()
-    for i_seq, sc in enumerate(xray_structure.scatterers()):
+    unit_cell = model.xray_structure.unit_cell()
+    for i_seq, sc in enumerate(model.xray_structure.scatterers()):
       if(u_cart_from_tls[i_seq] != (0,0,0,0,0,0)):
         u_star_tls = adptbx.u_cart_as_u_star(unit_cell,
           tuple(u_cart_from_tls[i_seq]))
         sc.u_star = tuple(flex.double(sc.u_star) - flex.double(u_star_tls))
     for sel in selections:
-      xray_structure.convert_to_isotropic(selection = sel)
+      model.xray_structure.convert_to_isotropic(selection = sel)
     mmtbx.tls.tools.remark_3_tls(tlsos = tlsos,
       selection_strings = tls_selections_strings, out = ofo)
   #
   if(params.combine_tls):
     utils.print_header("Combine B_tls with B_residual", out = log)
-    mmtbx.tls.tools.combine_tls_and_u_local(xray_structure = xray_structure,
+    mmtbx.tls.tools.combine_tls_and_u_local(xray_structure = model.xray_structure,
       tls_selections = selections, tls_groups = tls_groups)
     print >> log, "All done."
   #
   if(ofn is not None):
     utils.print_header("Write output PDB file %s"%ofn, out = log)
-    pdb_h = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    pdb_h.adopt_xray_structure(xray_structure)
-    pdb_str = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies.pdb_hierarchy.as_pdb_string(
-        crystal_symmetry=xray_structure.crystal_symmetry())
+    model.set_sites_cart_from_xrs()
+    pdb_str = model.model_as_pdb()
     ofo.write(pdb_str)
     ofo.close()
     print >> log, "All done."

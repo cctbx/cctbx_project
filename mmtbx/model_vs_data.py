@@ -19,6 +19,9 @@ import mmtbx.restraints
 import mmtbx.maps
 import mmtbx.masks
 import mmtbx.model
+from mmtbx.monomer_library import pdb_interpretation
+import iotbx.phil
+from cStringIO import StringIO
 
 if (1):
   random.seed(0)
@@ -626,22 +629,34 @@ def run(args,
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
   #
-  mmtbx_pdb_file = mmtbx.utils.pdb_file(
-    pdb_file_names        = pdb_file_names,
-    cif_objects           = processed_args.cif_objects,
-    crystal_symmetry      = crystal_symmetry,
-    use_neutron_distances = (params.scattering_table=="neutron"),
-    ignore_unknown_nonbonded_energy_types = not show_geometry_statistics,
-    log                   = log)
-  mmtbx_pdb_file.set_ppf(stop_if_duplicate_labels = False)
-  processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
-  pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
-  pdb_inp = mmtbx_pdb_file.pdb_inp
+  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=processed_args.pdb_file_names)
+  pdb_combined.report_non_unique(out=log)
+  if (len(pdb_combined.unique_file_names) == 0):
+    raise Sorry("No coordinate file given.")
+  raw_records = pdb_combined.raw_records
+  try:
+    pdb_inp = iotbx.pdb.input(source_info = None,
+                              lines       = flex.std_string(raw_records))
+  except ValueError, e :
+    raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
+
+  pdb_interpretation_params = iotbx.phil.parse(
+      input_string=pdb_interpretation.grand_master_phil_str,
+      process_includes=True).extract()
+  pdb_interpretation_params.pdb_interpretation.use_neutron_distances = \
+      params.scattering_table=="neutron"
+
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      process_input = True,
+      pdb_interpretation_params = pdb_interpretation_params,
+      restraint_objects = processed_args.cif_objects,
+      crystal_symmetry = crystal_symmetry,
+      stop_for_unknowns = show_geometry_statistics,
+      log = StringIO())
+  processed_pdb_file = model.processed_pdb_file
   #
-  # just to avoid going any further with bad PDB file....
-  pdb_inp.xray_structures_simple()
-  #
-  acp = processed_pdb_file.all_chain_proxies
+  acp = model.all_chain_proxies
   atom_selections = group_args(
     all           = acp.selection(string = "all"),
     macromolecule = acp.selection(string = "protein or dna or rna"),
@@ -655,7 +670,7 @@ def run(args,
   if (exptl_method is not None) and ("NEUTRON" in exptl_method) :
     scattering_table = "neutron"
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
-    processed_pdb_file = processed_pdb_file,
+    processed_pdb_file = model.processed_pdb_file,
     scattering_table   = scattering_table,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
@@ -672,9 +687,7 @@ def run(args,
     n_sym_op = f_obs.crystal_symmetry().space_group_info().type().group().order_z(),
     uc_vol   = f_obs.unit_cell().volume()))
   #
-  hierarchy = pdb_inp.construct_hierarchy()
-  pdb_atoms = hierarchy.atoms()
-  pdb_atoms.reset_i_seq()
+  hierarchy = model.pdb_hierarchy()
   #
   # Extract TLS
   pdb_tls = None
@@ -682,13 +695,12 @@ def run(args,
   pdb_tls = group_args(pdb_inp_tls           = pdb_inp_tls,
                        tls_selections        = [],
                        tls_selection_strings = [])
-  # XXX no TLS + multiple models
+  # XXX no TLS + multiple models -- maybe opposite?
   if(pdb_inp_tls.tls_present and pdb_inp_tls.error_string is None and
      len(xray_structures)==1):
     pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
       pdb_inp_tls       = pdb_inp_tls,
-      all_chain_proxies = mmtbx_pdb_file.processed_pdb_file.all_chain_proxies,
-      xray_structure    = xsfppf.xray_structure_all)
+      model             = model)
     if(len(pdb_tls.tls_selections)==len(pdb_inp_tls.tls_params) and
        len(pdb_inp_tls.tls_params) > 0):
       xray_structures = [utils.extract_tls_and_u_total_from_pdb(

@@ -350,7 +350,7 @@ class manager(object):
 
   def get_hd_selection(self):
     if self.xray_structure is not None:
-      self.xray_structure.hd_selection()
+      return self.xray_structure.hd_selection()
     return None
 
   def get_ias_selection(self):
@@ -359,11 +359,11 @@ class manager(object):
     else:
       return self.ias_manager.get_ias_selection()
 
-  def selection(self, selstr):
+  def selection(self, selstr, optional=True):
     if self.all_chain_proxies is None:
-      return self._asc.selection(selstr)
+      return self._asc.selection(selstr, optional=optional)
     else:
-      return self.all_chain_proxies.selection(selstr, cache=self._asc)
+      return self.all_chain_proxies.selection(selstr, cache=self._asc, optional=optional)
 
   def iselection(self, selstr):
     result = self.selection(selstr)
@@ -547,7 +547,8 @@ class manager(object):
     return self.original_model_format == "mmcif"
 
   def _process_input_model(self):
-    assert self.get_number_of_models() < 2
+    # Not clear if we can handle this correctly for self.xray_structure
+    # assert self.get_number_of_models() < 2
     if self.processed_pdb_files_srv is None:
       self.processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
           crystal_symmetry          = self.cs,
@@ -566,10 +567,11 @@ class manager(object):
           # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
           stop_if_duplicate_labels = True,
           allow_missing_symmetry=True)
-
     if self.all_chain_proxies is None:
       self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
     self._asc = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
+    if self._pdb_hierarchy is None:
+      self._pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
     if self.xray_structure is None:
       xray_structure_all = \
           self.processed_pdb_file.xray_structure(show_summary = False)
@@ -583,7 +585,8 @@ class manager(object):
         raise Sorry("Cannot extract xray_structure.")
       if(xray_structure_all.scatterers().size()==0):
         raise Sorry("Empty xray_structure.")
-      self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
+      if self.all_chain_proxies is not None:
+        self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
       self.xray_structure = xray_structure_all
 
     self.mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
@@ -607,6 +610,7 @@ class manager(object):
     if self.processed_pdb_file is None:
       self._process_input_model()
 
+    assert self.get_number_of_models() < 2
 
     # if self.pdb_interpretation_params is None:
     #   self.pdb_interpretation_params = master_params().fetch().extract()

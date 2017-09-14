@@ -48,20 +48,19 @@ def tls_from_pdb_inp(remark_3_records, pdb_hierarchy):
     pdb_hierarchy    = pdb_hierarchy,
     chain_ids        = chain_ids)
 
-def extract_tls_from_pdb(pdb_inp_tls, all_chain_proxies, xray_structure):
+def extract_tls_from_pdb(pdb_inp_tls, model):
   if(len(pdb_inp_tls.tls_params)>0):
     tls_selection_strings = []
     for i_seq, tls_group in enumerate(pdb_inp_tls.tls_params):
       tls_selection_strings.append(tls_group.selection_string)
     try:
       selections = mmtbx.utils.get_atom_selections(
-        all_chain_proxies = all_chain_proxies,
-        selection_strings = tls_selection_strings,
-        xray_structure    = xray_structure)
+        model = model,
+        selection_strings = tls_selection_strings)
       return group_args(pdb_inp_tls           = pdb_inp_tls,
                         tls_selections        = selections,
                         tls_selection_strings = tls_selection_strings)
-    except Exception:
+    except Sorry:
       return group_args(pdb_inp_tls           = pdb_inp_tls,
                         tls_selections        = [],
                         tls_selection_strings = [])

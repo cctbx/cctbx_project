@@ -5,6 +5,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import format_cpu_times, null_out, Sorry
 import sys
+import mmtbx.model
 
 def exercise_d_data_target_d_atomic_params():
   import iotbx.pdb
@@ -223,18 +224,19 @@ END"""
   log = null_out()
   if (verbose) :
     log = sys.stdout
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=pdb_in.splitlines(), source_info=None),
+      process_input = True)
   processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     raw_records=pdb_in.splitlines())
   selections1 = utils.get_atom_selections(
-    all_chain_proxies=processed_pdb_file.all_chain_proxies,
-    xray_structure=processed_pdb_file.xray_structure(),
+    model = model,
     selection_strings=["resseq 18", "resseq 19", "resseq 20"],
     parameter_name="refine.occupancy")
   try :
     selections2 = utils.get_atom_selections(
-      all_chain_proxies=processed_pdb_file.all_chain_proxies,
-      xray_structure=processed_pdb_file.xray_structure(),
+      model = model,
       selection_strings=["resseq 18:19", "resseq 19:20"],
       parameter_name="refine.occupancy")
   except Sorry, s :
