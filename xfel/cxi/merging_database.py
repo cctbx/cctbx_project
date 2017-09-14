@@ -83,7 +83,6 @@ class manager:
       query.write(firstcomma); firstcomma=","
       query.write("('%d','%d','%d')"%(item[0],item[1],item[2]))
     query.write(" ;")
-    print query.getvalue()
     cursor.execute( query.getvalue() )
     db.commit()
 
