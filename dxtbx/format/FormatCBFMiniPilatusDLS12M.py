@@ -315,8 +315,10 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
       goniometer, coords, flex.size_t(len(coords), 1))
 
   def get_mask(self, goniometer=None):
+    from dxtbx.model import MultiAxisGoniometer
     mask = super(FormatCBFMiniPilatusDLS12M, self).get_mask()
-    if self._dynamic_shadowing:
+    if (isinstance(self.get_goniometer(), MultiAxisGoniometer) and
+        self._dynamic_shadowing):
       gonio_masker = self.get_goniometer_shadow_masker(goniometer=goniometer)
       scan = self.get_scan()
       detector = self.get_detector()
