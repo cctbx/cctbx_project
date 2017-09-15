@@ -51,18 +51,6 @@ Pupose:
 Questions and problems:
   phenixbb@phenix-online.org"""
 
-def get_xrs_helper(mmtbx_pdb_file, log, silent):
-  mmtbx_pdb_file.set_ppf()
-  xsfppf = utils.xray_structures_from_processed_pdb_file(
-    processed_pdb_file = mmtbx_pdb_file.processed_pdb_file,
-    scattering_table   = "wk1995",
-    d_min              = None)
-  xray_structure = xsfppf.xray_structure_all
-  if(not silent):
-    xray_structure.show_summary(f = log)
-    print >> log
-  return xray_structure
-
 def run(args, command_name = "phenix.tls"):
   if(len(args) == 0): args = ["--help"]
   usage_fmt = "%s pdb_file [parameters: file or command line string]"

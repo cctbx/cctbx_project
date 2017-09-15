@@ -1301,7 +1301,6 @@ def assert_water_is_consistent(model):
 # Reason: Another custom-build method to 'quickly' get more or less
 # correct xray structure(s). Should be handled by mmtbx.model.
 # Used in:
-# mmtbx/tls/command_line.py
 # mmtbx/refinement/ensemble_refinement/__init__.py
 class xray_structures_from_processed_pdb_file(object):
 
