@@ -2322,10 +2322,10 @@ def run_and_test(cmd, pdb, i):
       if line.find(bond_like)>-1:
         print 'Adding %s for %s' % (int(line.split()[-1]), bond_like)
         bonds += int(line.split()[-1])
-  assert bonds == links[pdb][i], "found %d bonds but expected %s!" % (
+  assert bonds == links[pdb][i], "found %d bonds but expected %s! File: %s" % (
     bonds,
     links[pdb][i],
-    )
+    pdb)
   new_geo = pdb.replace(".pdb", "_minimized_%d.geo" % i)
   if (os.path.isfile(new_geo)) :
     os.remove(new_geo)
@@ -2336,7 +2336,8 @@ def run_and_test(cmd, pdb, i):
   #           ]:
   #  return
   number_of_links=0
-  f=file(pdb.replace(".pdb", "_minimized.pdb"), "rb")
+  fname = pdb.replace(".pdb", "_minimized.pdb")
+  f=file(fname, "rb")
   lines = f.readlines()
   f.close()
   for line in lines:
@@ -2354,10 +2355,10 @@ def run_and_test(cmd, pdb, i):
   if pdb in ["linking_test_HEM_TYR.pdb"]: # uset defined edits
     expected += 1
   #
-  assert number_of_links == expected, "found %d LINK but expected %s!" % (
+  assert number_of_links == expected, "found %d LINK but expected %s! File: %s" % (
     number_of_links,
     expected,
-    )
+    fname)
   if 0:
     cmd = "phenix.start_coot --no-guano --pdb %s" % pdb.replace(".pdb",
                                                                 "_minimized.pdb"

@@ -440,19 +440,13 @@ class manager(object):
 
   def model_as_pdb(self,
       output_cs = True,
-      atoms_reset_serial_first_value=None,
-      link_records_text = None, # temporary, for phenix.refine
-      ss_manager = None, # temporary, for phenix.refine
-      pr_cs = None, # temporary, for phenix.refine
-      ):
+      atoms_reset_serial_first_value=None):
     """
     move all the writing here later.
     """
     cs_to_output = None
     if output_cs:
       cs_to_output = self.cs
-    if pr_cs is not None:
-      cs_to_output = pr_cs
     result = StringIO()
     # outputting HELIX/SHEET records
     ss_records = ""
@@ -475,20 +469,11 @@ class manager(object):
     if (self.link_records_in_pdb_format is not None
         and len(self.link_records_in_pdb_format)>0):
       result.write("%s\n" % self.link_records_in_pdb_format)
-    if link_records_text is not None and len(link_records_text)>0:
-      result.write(link_records_text)
-      result.write("\n")
     if self._pdb_hierarchy is not None:
       result.write(self._pdb_hierarchy.as_pdb_string(
           crystal_symmetry=cs_to_output,
           atoms_reset_serial_first_value=atoms_reset_serial_first_value,
           append_end=True))
-    # iotbx.pdb.write_whole_pdb_file(
-    #     output_file=result,
-    #     pdb_hierarchy=self._pdb_hierarchy,
-    #     crystal_symmetry=self.cs,
-    #     ss_annotation = self._ss_annotation,
-    #     link_records=self.link_records_in_pdb_format)
     return result.getvalue()
 
   def model_as_mmcif(self, additional_blocks):
@@ -505,8 +490,8 @@ class manager(object):
     # outputting HELIX/SHEET records
     ss_cif_loops = []
     ss_ann = None
-    if self.ss_manager is not None:
-      ss_ann = self.ss_manager.actual_sec_str
+    if self._ss_manager is not None:
+      ss_ann = self._ss_manager.actual_sec_str
     elif self._ss_annotation is not None:
       ss_ann = self._ss_annotation
     if ss_ann is not None:
@@ -540,7 +525,10 @@ class manager(object):
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
 
-  def restraints_as_geo(self, force=False):
+  def restraints_as_geo(self,
+      header = "# Geometry restraints\n",
+      excessive_distance_limit = 1.5,
+      force=False):
     """
     get geo file as string.
     force = True actually will try to build GRM. Not advised, because if
@@ -550,11 +538,15 @@ class manager(object):
     result = StringIO()
     if force:
       self.get_grm()
-    self.restraints_manager.geometry.show_sorted(
-        flags=None,
-        sites_cart=self.xray_structure.sites_cart(),
+    self.restraints_manager.write_geo_file(
+        sites_cart=self.pdb_hierarchy().atoms().extract_xyz(),
         site_labels=self.xray_structure.scatterers().extract_labels(),
-        f=result)
+        header=header,
+        # Stuff for outputting ncs_groups
+        excessive_distance_limit = excessive_distance_limit,
+        xray_structure=self.xray_structure,
+        processed_pdb_file=self.processed_pdb_file,
+        file_descriptor=result)
     return result.getvalue()
 
   def input_format_was_cif(self):
