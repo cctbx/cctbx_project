@@ -418,6 +418,10 @@ class manager(object):
       self.ener_lib = mmtbx.monomer_library.server.ener_lib()
     return self.ener_lib
 
+  def get_apply_cif_links(self):
+    if self.all_chain_proxies is not None:
+      return self.all_chain_proxies.apply_cif_links
+    return []
 
   def get_ncs_obj(self):
     return self._ncs_obj
