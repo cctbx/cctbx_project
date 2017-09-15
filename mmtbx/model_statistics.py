@@ -528,6 +528,7 @@ class info(object):
       if model.restraints_manager != None:
         if model.restraints_manager.geometry != None:
           ncs_manager = model.restraints_manager.geometry.ncs_dihedral_manager
+    wilson_b = None
     if fmodel_x is not None:
       wilson_b = fmodel_x.wilson_b()
     elif fmodel_n is not None:

@@ -286,7 +286,16 @@ class pair_lists_generator(object):
             self.selection_strings[i_pair+1])]))
 
 class group(object):
+  def __init__(self,
+        selection_strings,
+        registry,
+        coordinate_sigma,
+        b_factor_weight,
+        u_average_min):
+      adopt_init_args(self, locals())
+      self.selection_pairs = registry.selection_pairs()
 
+  @staticmethod
   def from_atom_selections(
         processed_pdb,
         reference_selection_string,
@@ -308,16 +317,6 @@ class group(object):
       coordinate_sigma=coordinate_sigma,
       b_factor_weight=b_factor_weight,
       u_average_min=u_average_min)
-  from_atom_selections = staticmethod(from_atom_selections)
-
-  def __init__(self,
-        selection_strings,
-        registry,
-        coordinate_sigma,
-        b_factor_weight,
-        u_average_min):
-      adopt_init_args(self, locals())
-      self.selection_pairs = registry.selection_pairs()
 
   def register_additional_isolated_sites(self, number):
     self.registry.register_additional_isolated_sites(number=number)

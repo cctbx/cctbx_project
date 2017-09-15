@@ -296,16 +296,14 @@ class manager(object):
       fmodel_x          = None,
       fmodel_n          = None,
       refinement_params = None,
-      ignore_hd         = True,
       general_selection = None,
       use_molprobity    = True):
     if self.model_statistics_info is None:
       self.model_statistics_info = mmtbx.model_statistics.info(
-          model             = self.model,
+          model             = self,
           fmodel_x          = fmodel_x,
           fmodel_n          = fmodel_n,
           refinement_params = refinement_params,
-          ignore_hd         = ignore_hd,
           general_selection = general_selection,
           use_molprobity    = use_molprobity)
     return self.model_statistics_info
@@ -476,7 +474,11 @@ class manager(object):
           append_end=True))
     return result.getvalue()
 
-  def model_as_mmcif(self, additional_blocks):
+  def model_as_mmcif(self,
+      cif_block_name = "default",
+      additional_blocks = None,
+      align_columns = False):
+    from iotbx.cif import category_sort_function
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
@@ -484,9 +486,9 @@ class manager(object):
       cif_block = self.cs.as_cif_block()
     if self._pdb_hierarchy is not None:
       if self.cs is not None:
-        cif_block.update(pdb_hierarchy.as_cif_block())
+        cif_block.update(self._pdb_hierarchy.as_cif_block())
       else:
-        cif_block = pdb_hierarchy.as_cif_block()
+        cif_block = self._pdb_hierarchy.as_cif_block()
     # outputting HELIX/SHEET records
     ss_cif_loops = []
     ss_ann = None
@@ -499,7 +501,7 @@ class manager(object):
     for loop in ss_cif_loops:
       cif_block.add_loop(loop)
 
-    self.get_model_statistics_info()
+    # self.get_model_statistics_info()
     if self.model_statistics_info is not None:
       cif_block.update(self.model_statistics_info.as_cif_block())
     if additional_blocks is not None:
@@ -514,14 +516,14 @@ class manager(object):
       # should writing ALL restraints be optional?
       from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
       skip_residues = one_letter_given_three_letter.keys() + ['HOH']
-      restraints = processed_pdb_file.all_chain_proxies.cif
+      restraints = self.all_chain_proxies.cif
       keys = restraints.keys()
       for key in keys:
         # need more control
         assert key.find('UNK')==-1
         if key.replace('comp_', '') in skip_residues:
           del restraints[key]
-      cif.update(processed_pdb_file.all_chain_proxies.cif)
+      cif.update(self.all_chain_proxies.cif)
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
 
