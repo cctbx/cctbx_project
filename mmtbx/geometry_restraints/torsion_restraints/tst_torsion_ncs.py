@@ -7,6 +7,7 @@ from cctbx import adp_restraints # import dependency
 from mmtbx.geometry_restraints.torsion_restraints import torsion_ncs, utils
 import cStringIO
 import mmtbx
+import mmtbx.model
 
 pdb_str_1 = """
 CRYST1   46.053    9.561   20.871  90.00  97.43  90.00 C 1 2 1       8
@@ -131,14 +132,13 @@ def exercise_1(mon_lib_srv, ener_lib):
   # default run (1 residue is out of NCS)
   params = pdb_interpretation.master_params.extract()
   params.ncs_search.enabled=True
-  ppf = pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      params=params,
-      raw_records=flex.split_lines(pdb_str_1))
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=flex.split_lines(pdb_str_1))
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      process_input=True,
+      pdb_interpretation_params = params)
   ncs_manager = torsion_ncs.torsion_ncs(
-                  processed_pdb_file=ppf,
-                  ncs_obj=ppf.ncs_obj,
+                  model = model,
                   log=log)
   nprox = ncs_manager.get_n_proxies()
   assert nprox == 28, "got %d instead of 28" % nprox
@@ -154,14 +154,13 @@ ncs_group {
 """)
   params = pdb_interpretation.master_params
   p = params.fetch(cuspars).extract()
-  ppf = pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      params=p,
-      raw_records=flex.split_lines(pdb_str_1))
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=flex.split_lines(pdb_str_1))
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      process_input=True,
+      pdb_interpretation_params = p)
   ncs_manager = torsion_ncs.torsion_ncs(
-                  processed_pdb_file=ppf,
-                  ncs_obj=ppf.ncs_obj,
+                  model = model,
                   log=log)
   nprox = ncs_manager.get_n_proxies()
   assert nprox == 40, "got %d instead of 40" % nprox

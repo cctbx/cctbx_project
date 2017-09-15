@@ -76,12 +76,11 @@ def all_sites_above_sigma_cutoff(sites_cart_residue,
 
 class torsion_ncs(object):
   def __init__(self,
-               processed_pdb_file=None,
+               model=None,
                fmodel=None,
                params=None,
                selection=None,
                ncs_groups=None,
-               ncs_obj = None,
                alignments=None,
                ncs_dihedral_proxies=None,
                log=None):
@@ -94,17 +93,25 @@ class torsion_ncs(object):
     self.sigma = params.sigma
     if params.limit is None or params.limit < 0:
       raise Sorry("torsion NCS limit parameter must be >= 0.0")
-    assert ncs_obj is not None
+    # assert ncs_obj is not None
     self.limit = params.limit
     self.selection = selection
-    self.processed_pdb_file = processed_pdb_file
+    self.model = model
+    self.cache = None
+    self.pdb_hierarchy = None
+    if self.model is not None:
+      self.processed_pdb_file = self.model.processed_pdb_file
+      self.pdb_hierarchy = self.model.pdb_hierarchy()
+      self.ncs_obj = self.model.get_ncs_obj()
+      self.cache = self.model._asc
+      assert self.ncs_obj is not None
+      self.cache = self.model.get_atom_selection_cache()
     #slack is not a user parameter for now
     self.slack = 0.0
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
     self.restrain_to_master_chain = params.restrain_to_master_chain
     self.fmodel = fmodel
-    self.ncs_groups = ncs_obj.get_array_of_selections()
-    self.ncs_obj = ncs_obj
+    self.ncs_groups = self.ncs_obj.get_array_of_selections()
     self.log = log
     self.params = params
     self.dp_ncs = None
@@ -114,10 +121,6 @@ class torsion_ncs(object):
     self.sa = SidechainAngles(False)
     self.rotamer_id = rotamer_eval.RotamerID()
     self.rotamer_evaluator = rotamer_eval.RotamerEval()
-    self.cache = None
-    self.pdb_hierarchy = None
-    if self.processed_pdb_file is not None:
-      self.pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
     #sanity check
     if self.pdb_hierarchy is not None:
       self.pdb_hierarchy.reset_i_seq_if_necessary()

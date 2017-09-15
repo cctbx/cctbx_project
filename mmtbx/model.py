@@ -287,6 +287,11 @@ class manager(object):
   def get_number_of_atoms(self):
     return self.pdb_atoms.size()
 
+  def get_atom_selection_cache(self):
+    if self._asc is not None:
+      return self._asc
+    return None
+
   def get_number_of_models(self):
     if self.model_input is not None:
       return self.model_input.model_ids().size()
