@@ -155,7 +155,7 @@ def exercise_combine_symmetry () :
     out=null_out())
   symm = cmdline.xray_structure.crystal_symmetry()
   assert (approx_equal(symm.unit_cell().parameters(),
-          (21.9371, 4.8659, 23.4774, 90.0, 107.0832, 90.0)))
+          (21.9371, 4.8659, 23.4774, 90.0, 107.08, 90.0), eps=0.001))
   assert (str(symm.space_group_info()) == "P 1 21 1")
   # Part 2: incompatible space groups
   f_calc_2 = f_calc.customized_copy(

@@ -1297,7 +1297,12 @@ def assert_water_is_consistent(model):
       doh = unit_cell.distance(hsite, o_site)
       assert doh >0.35 and doh < 1.45, doh
 
-
+# MARKED_FOR_DELETION_OLEG
+# Reason: Another custom-build method to 'quickly' get more or less
+# correct xray structure(s). Should be handled by mmtbx.model.
+# Used in:
+# mmtbx/tls/command_line.py
+# mmtbx/refinement/ensemble_refinement/__init__.py
 class xray_structures_from_processed_pdb_file(object):
 
   def __init__(self, processed_pdb_file, scattering_table, d_min, log = None):
@@ -1342,7 +1347,10 @@ class xray_structures_from_processed_pdb_file(object):
       self.model_selections.append(
         flex.size_t(xrange(self.xray_structure_all.scatterers().size())) )
       self.xray_structures.append(self.xray_structure_all)
+# END_MARKED_FOR_DELETION_OLEG
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: Moved to mmtbx.model.manager
 def setup_scattering_dictionaries(scattering_table,
                                   xray_structure,
                                   d_min,
@@ -1397,6 +1405,7 @@ def setup_scattering_dictionaries(scattering_table,
     if(log is not None):
       print >> log
   return xray_scattering_dict, neutron_scattering_dict
+# END_MARKED_FOR_DELETION_OLEG
 
 def fmodel_manager(
       f_obs,
@@ -1569,6 +1578,19 @@ def fmodel_simple(f_obs,
     fmodel.update_all_scales(remove_outliers = outliers_rejection)
   return fmodel
 
+def pdb_inp_from_multiple_files(pdb_files, log):
+  pdb_combined = combine_unique_pdb_files(file_names=pdb_files)
+  pdb_combined.report_non_unique(out=log)
+  if (len(pdb_combined.unique_file_names) == 0):
+    raise Sorry("No coordinate file given.")
+  raw_records = pdb_combined.raw_records
+  try:
+    pdb_inp = iotbx.pdb.input(source_info = None,
+                              lines       = flex.std_string(raw_records))
+  except ValueError, e :
+    raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
+  return pdb_inp
+
 class process_command_line_args(object):
   def __init__(self,
                args,
@@ -1706,117 +1728,6 @@ class process_command_line_args(object):
       self.reflection_file_server = reflection_file_server
     return self.reflection_file_server
 
-# MARKED_FOR_DELETION_OLEG
-# Just another "convinience" class to read pdb file. Really???
-class pdb_file(object):
-
-  def __init__(self, pdb_file_names,
-                     crystal_symmetry=None,
-                     cif_objects=[],
-                     log=None,
-                     ignore_unknown_nonbonded_energy_types=False,
-                     use_neutron_distances = False):
-    if(log is None): log = sys.stdout
-    self.processed_pdb_files_srv = None
-    self.processed_pdb_file = None
-    self.cif_objects = cif_objects
-    self.crystal_symmetry = crystal_symmetry
-    self.pdb_file_names = pdb_file_names
-    self.use_neutron_distances = use_neutron_distances
-    self.ignore_unknown_nonbonded_energy_types = \
-      ignore_unknown_nonbonded_energy_types
-    pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
-    pdb_combined.report_non_unique(out = log)
-    if(len(pdb_combined.unique_file_names) == 0):
-      raise Sorry("No coordinate file given.")
-    self.pdb_raw_records = pdb_combined.raw_records
-    self.pdb_inp = iotbx.pdb.input(source_info = None,
-      lines = flex.std_string(self.pdb_raw_records),
-      raise_sorry_if_format_error=True)
-    if(crystal_symmetry is not None and crystal_symmetry.unit_cell() is not None):
-      self.pdb_inp.crystal_symmetry(crystal_symmetry = crystal_symmetry)
-
-  def set_ppf(self, stop_if_duplicate_labels=True, log=None):
-    if(log is None): log = StringIO()
-    pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-    pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
-    pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
-    pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
-    pdb_ip.proceed_with_excessive_length_bonds=True
-    self.processed_pdb_files_srv = process_pdb_file_srv(
-      cif_objects               = self.cif_objects,
-      pdb_interpretation_params = pdb_ip,
-      crystal_symmetry          = self.crystal_symmetry,
-      use_neutron_distances     = self.use_neutron_distances,
-      stop_for_unknowns         = False,
-      log                       = log)
-    self.processed_pdb_file, self.pdb_inp = \
-      self.processed_pdb_files_srv.process_pdb_files(raw_records =
-        self.pdb_raw_records, stop_if_duplicate_labels = stop_if_duplicate_labels)
-    msg = self.processed_pdb_file.all_chain_proxies.fatal_problems_message(
-      ignore_unknown_scattering_types=False,
-      ignore_unknown_nonbonded_energy_types=
-        self.ignore_unknown_nonbonded_energy_types)
-    if(msg is not None): raise Sorry(msg)
-# ENDMARKED_FOR_DELETION_OLEG
-
-# MARKED_FOR_DELETION_OLEG
-# Reason: old way of creating model, used only in mmtbx/regression/tst_model.py
-def model_simple(pdb_file_names,
-                 log = None,
-                 normalization = True,
-                 cif_objects = [],
-                 crystal_symmetry = None,
-                 plain_pairs_radius = 5,
-                 refinement_flags = None,
-                 scattering_table = None,
-                 d_min = None):
-  cryst1 = None
-  mmtbx_pdb_file = pdb_file(
-    pdb_file_names   = pdb_file_names,
-    cif_objects      = cif_objects,
-    crystal_symmetry = crystal_symmetry,
-    log              = log)
-  mmtbx_pdb_file.set_ppf()
-  xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
-    processed_pdb_file = mmtbx_pdb_file.processed_pdb_file,
-    scattering_table   = scattering_table,
-    d_min              = d_min)
-  if(len(xsfppf.xray_structures) > 1):
-    raise Sorry("Multiple models not supported.")
-  xray_structure = xsfppf.xray_structures[0]
-  # XXX dirty
-  class rf:
-    def __init__(self, size):
-      self.individual_sites=True
-      self.individual_adp = False
-      self.sites_individual = flex.bool(size, True)
-      self.sites_torsion_angles = None
-  if(refinement_flags is None):
-    refinement_flags = rf(size = xray_structure.scatterers().size())
-  #
-  sctr_keys=xray_structure.scattering_type_registry().type_count_dict().keys()
-  has_hd = "H" in sctr_keys or "D" in sctr_keys
-  geometry = mmtbx_pdb_file.processed_pdb_file.geometry_restraints_manager(
-    show_energies                = False,
-    plain_pairs_radius           = plain_pairs_radius,
-    assume_hydrogens_all_missing = not has_hd)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry,
-    normalization = normalization)
-  pdb_hierarchy = \
-    mmtbx_pdb_file.processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  from mmtbx import model
-  result = model.manager(
-    processed_pdb_files_srv = mmtbx_pdb_file.processed_pdb_files_srv,
-    restraints_manager      = restraints_manager,
-    xray_structure          = xray_structure,
-    refinement_flags        = refinement_flags,
-    pdb_hierarchy           = pdb_hierarchy,
-    log                     = log)
-  return result
-# END MARKED_FOR_DELETION_OLEG
-
 def extract_tls_and_u_total_from_pdb(
       f_obs,
       r_free_flags,
@@ -1850,7 +1761,6 @@ def extract_tls_and_u_total_from_pdb(
   if(i_best == 0): result = xrs_1
   else: result = xrs_2
   return result
-
 
 class guess_observation_type(object):
 

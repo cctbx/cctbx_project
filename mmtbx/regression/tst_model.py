@@ -11,6 +11,7 @@ from cStringIO import StringIO
 from mmtbx import utils
 from libtbx.utils import format_cpu_times, null_out
 from libtbx.test_utils import approx_equal
+import iotbx.pdb
 
 pdb_str_00="""
 CRYST1  107.161  107.161   93.144  90.00  90.00 120.00 H 3           9
@@ -1266,9 +1267,11 @@ def exercise_h_counts():
   of = open("exercise_h_counts.pdb", "w")
   print >> of, pdb_file_exercise_h_counts
   of.close()
-  import mmtbx.utils
-  model = mmtbx.utils.model_simple(pdb_file_names=["exercise_h_counts.pdb"],
-    scattering_table="n_gaussian")
+  pdb_inp = iotbx.pdb.input(file_name = "exercise_h_counts.pdb")
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      build_grm = True)
+  model.setup_scattering_dictionaries(scattering_table="n_gaussian")
   hc = model.h_counts()
   assert approx_equal(hc.h_count                , 26   , 0.01)
   assert approx_equal(hc.h_occ_sum              , 19.4 , 0.01)
@@ -1289,9 +1292,11 @@ ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
   of = open("exercise_5.pdb", "w")
   print >> of, pdb_str
   of.close()
-  import mmtbx.utils
-  model = mmtbx.utils.model_simple(pdb_file_names=["exercise_5.pdb"],
-    scattering_table="n_gaussian")
+  pdb_inp = iotbx.pdb.input(file_name = "exercise_5.pdb")
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      build_grm = True)
+  model.setup_scattering_dictionaries(scattering_table="n_gaussian")
   result = model.extract_water_residue_groups()
   assert len(result)==1
 

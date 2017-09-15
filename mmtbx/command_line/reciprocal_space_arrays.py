@@ -3,9 +3,11 @@
 from __future__ import division
 import mmtbx.utils
 import mmtbx.f_model
+import mmtbx.model
 from iotbx import reflection_file_utils
 from iotbx import file_reader
 import iotbx.phil
+import iotbx.pdb
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
 from cStringIO import StringIO
@@ -196,16 +198,20 @@ def run(args, log = sys.stdout):
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
   #
-  mmtbx_pdb_file = mmtbx.utils.pdb_file(
-    pdb_file_names   = pdb_file_names,
-    crystal_symmetry = crystal_symmetry,
-    log              = sys.stdout)
-  if(len(mmtbx_pdb_file.pdb_inp.xray_structures_simple())>1): #XXX support multi-models
+  pdb_inp = mmtbx.utils.pdb_inp_from_multiple_files(pdb_file_names, log=sys.stdout)
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      process_input=True,
+      crystal_symmetry = crystal_symmetry,
+      log = sys.stdout)
+  # mmtbx_pdb_file = mmtbx.utils.pdb_file(
+  #   pdb_file_names   = pdb_file_names,
+  #   crystal_symmetry = crystal_symmetry,
+  #   log              = sys.stdout)
+  if(model.get_number_of_models()>1): #XXX support multi-models
     raise Sorry("Multiple model file not supported in this tool.")
   # XXX Twining not supported
-  xray_structure = mmtbx_pdb_file.pdb_inp.xray_structure_simple(
-    crystal_symmetry=crystal_symmetry,
-    weak_symmetry=True)
+  xray_structure = model.xray_structure
   if (not xray_structure.unit_cell().is_similar_to(f_obs.unit_cell())) :
     raise Sorry("The unit cells in the model and reflections files are not "+
       "isomorphous.")

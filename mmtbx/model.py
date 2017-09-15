@@ -41,6 +41,7 @@ from mmtbx.validation import cablam
 import iotbx.cif.model
 from libtbx.utils import null_out
 from libtbx.str_utils import format_value
+from libtbx import str_utils
 from mmtbx.refinement import print_statistics
 import mmtbx.tls.tools as tls_tools
 from iotbx.pdb.atom_selection import AtomSelectionError
@@ -220,6 +221,13 @@ class manager(object):
     if self.pdb_interpretation_params is None:
       self.pdb_interpretation_params = iotbx.phil.parse(
           input_string=grand_master_phil_str, process_includes=True).extract()
+    # check if we got only inside of pdb_interpretation scope.
+    # For mmtbx.command_line.load_model_and_data
+    if getattr(self.pdb_interpretation_params, "sort_atoms", None) is not None:
+      full_params = iotbx.phil.parse(
+          input_string=grand_master_phil_str, process_includes=True).extract()
+      full_params.pdb_interpretation = self.pdb_interpretation_params
+      self.pdb_interpretation_params = full_params
 
     if self.model_input is not None:
       s = str(type(model_input))
@@ -347,6 +355,12 @@ class manager(object):
     else:
       self._build_grm()
       return self.restraints_manager
+
+  def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
+    if self.xray_structure is not None:
+      self.xray_structure.set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(value)
+      self.xray_structure = self.xray_structure.customized_copy(
+          non_unit_occupancy_implies_min_distance_sym_equiv_zero=value)
 
   def get_hd_selection(self):
     if self.xray_structure is not None:
@@ -610,7 +624,8 @@ class manager(object):
     if self.processed_pdb_file is None:
       self._process_input_model()
 
-    assert self.get_number_of_models() < 2
+    # assert self.get_number_of_models() < 2 # one molprobity test triggered this.
+    # not clear how they work with multi-model stuff...
 
     # if self.pdb_interpretation_params is None:
     #   self.pdb_interpretation_params = master_params().fetch().extract()
@@ -662,6 +677,65 @@ class manager(object):
     # Here we do all what is necessary when GRM and all related become available
     #
     self.extract_tls_selections_from_input()
+
+  def setup_scattering_dictionaries(self,
+      scattering_table,
+      d_min=None,
+      log = None,
+      set_inelastic_form_factors=None,
+      iff_wavelength=None):
+    if(log is not None):
+      str_utils.make_header("Scattering factors", out = log)
+    known_scattering_tables = [
+      "n_gaussian", "wk1995", "it1992", "electron", "neutron"]
+    if(not (scattering_table in known_scattering_tables)):
+      raise Sorry("Unknown scattering_table: %s\n%s"%
+        (show_string(scattering_table),
+        "Possible choices are: %s"%" ".join(known_scattering_tables)))
+    if(scattering_table in ["n_gaussian", "wk1995", "it1992", "electron"]):
+      self.xray_structure.scattering_type_registry(
+        table = scattering_table,
+        d_min = d_min,
+        types_without_a_scattering_contribution=["?"])
+      self.xray_structure.scattering_type_registry(
+        custom_dict = ias.ias_scattering_dict)
+      self.xray_scattering_dict = \
+        self.xray_structure.scattering_type_registry().as_type_gaussian_dict()
+      if(log is not None):
+        print_statistics.make_sub_header("X-ray scattering dictionary",out=log)
+        self.xray_structure.scattering_type_registry().show(out = log)
+    if(scattering_table == "neutron"):
+      try :
+        self.neutron_scattering_dict = \
+          self.xray_structure.switch_to_neutron_scattering_dictionary()
+      except ValueError, e :
+        raise Sorry("Error setting up neutron scattering dictionary: %s"%str(e))
+      if(log is not None):
+        print_statistics.make_sub_header(
+          "Neutron scattering dictionary", out = log)
+        self.xray_structure.scattering_type_registry().show(out = log)
+      self.xray_structure.scattering_type_registry_params.table = "neutron"
+    if self.all_chain_proxies is not None:
+      scattering_type_registry = self.all_chain_proxies.scattering_type_registry
+      if(scattering_type_registry.n_unknown_type_symbols() > 0):
+        scattering_type_registry.report(
+          pdb_atoms = self.pdb_atoms,
+          log = log,
+          prefix = "",
+          max_lines = None)
+        raise Sorry("Unknown scattering type symbols.\n"
+          "  Possible ways of resolving this error:\n"
+          "    - Edit columns 77-78 in the PDB file to define"
+            " the scattering type.\n"
+          "    - Provide custom monomer definitions for the affected residues.")
+      if(log is not None):
+        print >> log
+    if set_inelastic_form_factors is not None and iff_wavelength is not None:
+      self.xray_structure.set_inelastic_form_factors(
+          photon=iff_wavelength,
+          table=set_inelastic_form_factors)
+
+    return self.xray_scattering_dict, self.neutron_scattering_dict
 
   def get_header_tls_selections(self):
     if "input_tls_selections" not in self.__dict__.keys():

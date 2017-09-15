@@ -100,6 +100,9 @@ class structure(crystal.special_position_settings):
       unit_cell = self.unit_cell(),
       space_group_info = self.space_group_info())
 
+  def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self, value):
+    self._non_unit_occupancy_implies_min_distance_sym_equiv_zero = value
+
   def erase_scatterers(self):
     """Remove all scatterers from structure
 

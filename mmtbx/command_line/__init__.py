@@ -277,6 +277,7 @@ class load_model_and_data (object) :
     import mmtbx.monomer_library.pdb_interpretation
     import mmtbx.monomer_library.server
     import mmtbx.utils
+    import mmtbx.model
     from iotbx import crystal_symmetry_from_any
     from cctbx.crystal import select_crystal_symmetry
     import iotbx.phil
@@ -473,63 +474,54 @@ class load_model_and_data (object) :
     # PDB INPUT
     self.unknown_residues_flag = False
     self.unknown_residues_error_message = False
-    if process_pdb_file :
-      pdb_interp_params = getattr(params, "pdb_interpretation", None)
-      if (pdb_interp_params is None) :
-        pdb_interp_params = \
-          mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+
+    pdb_combined = mmtbx.utils.combine_unique_pdb_files(
+      file_names=params.input.pdb.file_name,)
+    pdb_combined.report_non_unique(out=self.log)
+    pdb_raw_records = pdb_combined.raw_records
+    try:
+      self.pdb_inp = iotbx.pdb.input(source_info = None,
+                                lines       = flex.std_string(pdb_raw_records))
+    except ValueError, e :
+      raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
+
+    if (remove_unknown_scatterers):
+      h = self.pdb_inp.construct_hierarchy()
+      known_sel = h.atom_selection_cache().selection(
+        "not element X")
+      if known_sel.count(False) > 0:
+        self.pdb_inp = iotbx.pdb.input(
+            source_info = None,
+            lines=h.select(known_sel).as_pdb_string())
+
+    pdb_interp_params = getattr(params, "pdb_interpretation", None)
+    if pdb_interp_params is None:
+      pdb_interp_params = iotbx.phil.parse(
+          input_string=mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str,
+          process_includes=True).extract()
+      pdb_interp_params = pdb_interp_params.pdb_interpretation
+    pdb_interp_params.use_neutron_distances = params.input.scattering_table=="neutron"
+
+
+    stop_for_unknowns = getattr(pdb_interp_params, "stop_for_unknowns",False) or remove_unknown_scatterers
+    if not process_pdb_file:
+      stop_for_unknowns = True and not remove_unknown_scatterers
+    self.model = mmtbx.model.manager(
+        model_input = self.pdb_inp,
+        crystal_symmetry= self.crystal_symmetry,
+        restraint_objects = self.cif_objects,
+        pdb_interpretation_params = pdb_interp_params,
+        process_input = False,
+        stop_for_unknowns=stop_for_unknowns,
+        log=self.log)
+    if process_pdb_file:
       make_sub_header("Processing PDB file(s)", out=self.log)
-      pdb_combined = mmtbx.utils.combine_unique_pdb_files(
-        file_names=params.input.pdb.file_name,)
-      pdb_combined.report_non_unique(out=self.log)
-      pdb_raw_records = pdb_combined.raw_records
-      processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-        cif_objects=self.cif_objects,
-        pdb_interpretation_params=pdb_interp_params,
-        crystal_symmetry=self.crystal_symmetry,
-        use_neutron_distances=params.input.scattering_table=="neutron",
-        stop_for_unknowns=getattr(pdb_interp_params, "stop_for_unknowns",False),
-        log=self.log)
-      self.processed_pdb_file, self.pdb_inp = \
-        processed_pdb_files_srv.process_pdb_files(
-          raw_records = pdb_raw_records,
-          stop_if_duplicate_labels = False,
-          allow_missing_symmetry=\
-            (self.crystal_symmetry is None
-             or self.crystal_symmetry.unit_cell() is None
-             or self.crystal_symmetry.space_group_info() is None) and (not require_data))
-      error_msg = self.processed_pdb_file.all_chain_proxies.\
-        fatal_problems_message(
-          ignore_unknown_scattering_types=False,
-          ignore_unknown_nonbonded_energy_types=False)
-      if (error_msg is not None) :
-        self.unknown_residues_flag = True
-        self.unknown_residues_error_message = error_msg
-      self.geometry = self.processed_pdb_file.geometry_restraints_manager(
-        show_energies=False)
-      assert (self.geometry is not None)
-      self.xray_structure = self.processed_pdb_file.xray_structure()
-      chain_proxies = self.processed_pdb_file.all_chain_proxies
-      self.pdb_hierarchy = chain_proxies.pdb_hierarchy
-    else :
-      pdb_file_object = mmtbx.utils.pdb_file(
-        pdb_file_names=params.input.pdb.file_name,
-        cif_objects=self.cif_objects,
-        crystal_symmetry=self.crystal_symmetry,
-        log=self.log)
-      self.pdb_inp = pdb_file_object.pdb_inp
-      self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
-      if (remove_unknown_scatterers) :
-        known_sel = self.pdb_hierarchy.atom_selection_cache().selection(
-          "not element X")
-        if (known_sel.count(True) != len(known_sel)) :
-          self.pdb_hierarchy = self.pdb_hierarchy.select(known_sel)
-          self.xray_structure = self.pdb_hierarchy.extract_xray_structure(
-            crystal_symmetry=self.crystal_symmetry)
-      self.pdb_hierarchy.atoms().reset_i_seq()
-      if (self.xray_structure is None) :
-        self.xray_structure = self.pdb_inp.xray_structure_simple(
-          crystal_symmetry=self.crystal_symmetry)
+      full_grm = self.model.get_grm()
+      self.geometry = full_grm.geometry
+      self.processed_pdb_file = self.model.processed_pdb_file # to remove later
+    self.xray_structure = self.model.xray_structure
+    self.pdb_hierarchy = self.model.pdb_hierarchy()
+    self.pdb_hierarchy.atoms().reset_i_seq()
     # wavelength
     if (params.input.energy is not None) :
       if (params.input.wavelength is not None) :
@@ -543,17 +535,14 @@ class load_model_and_data (object) :
         params.input.wavelength = wavelength
     # set scattering table
     if (data_and_flags is not None) :
-      self.xray_structure.scattering_type_registry(
-        d_min=self.f_obs.d_min(),
-        table=params.input.scattering_table)
-      if ((params.input.wavelength is not None) and
-          (set_inelastic_form_factors is not None)) :
-        self.xray_structure.set_inelastic_form_factors(
-          photon=params.input.wavelength,
-          table=set_inelastic_form_factors)
-      make_sub_header("xray_structure summary", out=self.log)
-      self.xray_structure.scattering_type_registry().show(out = self.log)
+      self.model.setup_scattering_dictionaries(
+          scattering_table=params.input.scattering_table,
+          d_min=self.f_obs.d_min(),
+          log = self.log,
+          set_inelastic_form_factors=set_inelastic_form_factors,
+          iff_wavelength=params.input.wavelength)
       self.xray_structure.show_summary(f=self.log)
+
     # FMODEL SETUP
     if (create_fmodel) and (data_and_flags is not None) :
       make_sub_header("F(model) initialization", out=self.log)
@@ -646,7 +635,10 @@ class load_model_and_data (object) :
     """
     Instantiate an mmtbx.model.manager object with the current pdb hierarchy,
     xray structure, and geometry restraints.
+    deprecated
     """
+    return self.model
+
     if (log is None) : log = self.log
     import mmtbx.restraints
     import mmtbx.model
