@@ -215,6 +215,7 @@ class manager(object):
     self._rama_eval = None
     self.original_model_format = None
     self._ss_manager = None
+    self._site_symmetry_table = None
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
@@ -296,6 +297,13 @@ class manager(object):
     if self.model_input is not None:
       return self.model_input.model_ids().size()
     return 0
+
+  def get_site_symmetry_table(self):
+    if self._site_symmetry_table is not None:
+      return self._site_symmetry_table
+    elif self.all_chain_proxies is not None:
+      self._site_symmetry_table = self.all_chain_proxies.site_symmetry_table()
+    return self._site_symmetry_table
 
   def get_model_statistics_info(self,
       fmodel_x          = None,

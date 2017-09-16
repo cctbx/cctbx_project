@@ -200,13 +200,11 @@ def match_atoms(
 class pair_lists_generator(object):
 
   def __init__(self,
-        processed_pdb,
+        model,
         reference_selection_string,
         selection_strings,
         special_position_warnings_only,
         log):
-    self.processed_pdb = processed_pdb
-    del processed_pdb
     self.reference_selection_string = reference_selection_string
     del reference_selection_string
     self.selection_strings = selection_strings
@@ -220,12 +218,11 @@ class pair_lists_generator(object):
         "  At least two selections are required." %
           show_string(self.selection_strings[0]))
     # shortcuts
-    all_chain_proxies = self.processed_pdb.all_chain_proxies
-    self.n_seq = all_chain_proxies.pdb_atoms.size()
+    self.n_seq = model.get_number_of_atoms()
     #
     self.selection_properties = []
     for selection_string in self.selection_strings:
-      selection = all_chain_proxies.selection(string=selection_string)
+      selection = model.selection(selstr=selection_string)
       iselection = selection.iselection()
       if (iselection.size() == 0):
         raise Sorry("Empty NCS restraints selection: %s" % (
@@ -236,8 +233,8 @@ class pair_lists_generator(object):
     #
     self.registry = pair_registry(n_seq=self.n_seq, n_ncs=n_ncs)
     special_position_indices = scitbx.stl.set.unsigned(iter(
-      all_chain_proxies.site_symmetry_table().special_position_indices()))
-    pdb_hierarchy = all_chain_proxies.pdb_hierarchy
+      model.get_site_symmetry_table().special_position_indices()))
+    pdb_hierarchy = model.pdb_hierarchy()
     reference_hierarchy = pdb_hierarchy.select(
       atom_selection=self.selection_properties[0].iselection)
     for j_ncs in xrange(1,n_ncs):
@@ -267,7 +264,7 @@ class pair_lists_generator(object):
         match_atoms(
           special_position_indices=special_position_indices,
           special_position_warnings_only=special_position_warnings_only,
-          pdb_atoms=all_chain_proxies.pdb_atoms,
+          pdb_atoms=model.pdb_atoms,
           selection_strings=self.selection_strings,
           registry=self.registry,
           reference_model=r_model,
@@ -297,7 +294,7 @@ class group(object):
 
   @staticmethod
   def from_atom_selections(
-        processed_pdb,
+        model,
         reference_selection_string,
         selection_strings,
         coordinate_sigma,
@@ -306,7 +303,7 @@ class group(object):
         u_average_min=1.e-6,
         log=None):
     g = pair_lists_generator(
-      processed_pdb=processed_pdb,
+      model=model,
       reference_selection_string=reference_selection_string,
       selection_strings=selection_strings,
       special_position_warnings_only=special_position_warnings_only,

@@ -10,6 +10,8 @@ from libtbx.test_utils import Exception_expected, eps_eq, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
+import iotbx.pdb
+import mmtbx.model
 
 def finite_difference_site_gradients(
       ncs_operators,
@@ -36,16 +38,16 @@ def finite_difference_site_gradients(
     sites_cart[i_site] = site
   return gradients
 
-def exercise_two_models_with_holes(processed_pdb):
+def exercise_two_models_with_holes(model):
   selection_strings=["chain A", "chain B", "chain C", "chain D"]
   group = ncs.restraints.group.from_atom_selections(
-    processed_pdb=processed_pdb,
+    model=model,
     reference_selection_string=None,
     selection_strings=selection_strings,
     coordinate_sigma=0.05,
     b_factor_weight=0.4321,
     special_position_warnings_only=False)
-  sites_cart = processed_pdb.all_chain_proxies.pdb_atoms.extract_xyz()
+  sites_cart = model.pdb_atoms.extract_xyz()
   ncs_operators = group.operators(sites_cart=sites_cart)
   out = StringIO()
   ncs_operators.show(sites_cart=sites_cart, out=out, prefix="{*")
@@ -120,7 +122,7 @@ def exercise_two_models_with_holes(processed_pdb):
    energies_sites_no_gradients.rms_with_respect_to_average)
   site_labels = [
     '"'+atom.pdb_label_columns()+'"' for atom in
-      processed_pdb.all_chain_proxies.pdb_atoms]
+      model.pdb_atoms]
   out = StringIO()
   energies_sites.show_distances_to_average(
     site_labels=site_labels, out=out, prefix="#^")
@@ -151,7 +153,7 @@ def exercise_two_models_with_holes(processed_pdb):
                      sites_average=energies_sites.sites_average)):
     assert eps_eq(ag, fg)
   #
-  u_isos = processed_pdb.xray_structure().extract_u_iso_or_u_equiv()
+  u_isos = model.xray_structure.extract_u_iso_or_u_equiv()
   eng = group.energies_adp_iso(
     u_isos=u_isos, average_power=1, compute_gradients=False)
   energies_adp_iso_no_gradients = eng
@@ -216,7 +218,7 @@ Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
         (0.1,None)]:
     groups.members.append(
       ncs.restraints.group.from_atom_selections(
-        processed_pdb=processed_pdb,
+        model=model,
         reference_selection_string=None,
         selection_strings=selection_strings,
         coordinate_sigma=coordinate_sigma,
@@ -314,7 +316,7 @@ K&    RMS difference with respect to the reference: 0.724248
   assert selection.size() == 132
   assert selection.count(True) == 110
   out = StringIO()
-  processed_pdb.show_atoms_without_ncs_restraints(
+  model.processed_pdb_file.show_atoms_without_ncs_restraints(
     ncs_restraints_groups=groups, out=out, prefix="%&")
   assert not show_diff(out.getvalue(), """\
 %&Atoms without NCS restraints:
@@ -361,6 +363,14 @@ K&    RMS difference with respect to the reference: 0.724248
   for group in groups.members:
     assert group.registry.number_of_additional_isolated_sites == 13
 
+def get_model(fname, params=None):
+  pdb_inp = iotbx.pdb.input(file_name=fname)
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      process_input=True,
+      pdb_interpretation_params=params)
+  return model
+
 def exercise(args):
   verbose = "--verbose" in args
   if (verbose):
@@ -376,13 +386,9 @@ def exercise(args):
     print "Skipping exercise(): input files not available"
   else:
     for file_name in ["simple.pdb", "ambiguous_alignment.pdb"]:
-      processed_pdb = monomer_library.pdb_interpretation.process(
-        mon_lib_srv=mon_lib_srv,
-        ener_lib=ener_lib,
-        file_name=os.path.join(ncs_dir, file_name),
-        log=log)
+      model = get_model(os.path.join(ncs_dir, file_name))
       group = ncs.restraints.group.from_atom_selections(
-        processed_pdb=processed_pdb,
+        model = model,
         reference_selection_string=None,
         selection_strings=["chain A", "chain B"],
         coordinate_sigma=None,
@@ -394,15 +400,10 @@ def exercise(args):
         assert list(group.selection_pairs[0][1]) == [4,5,6,7]
       else:
         assert list(group.selection_pairs[0][1]) == [4,6,7,8]
-    #
-    processed_pdb = monomer_library.pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      file_name=os.path.join(ncs_dir, "no_match.pdb"),
-      log=log)
+    model = get_model(os.path.join(ncs_dir, "no_match.pdb"))
     try:
       ncs.restraints.group.from_atom_selections(
-        processed_pdb=processed_pdb,
+        model=model,
         reference_selection_string=None,
         selection_strings=["chain A", "chain B"],
         coordinate_sigma=None,
@@ -416,7 +417,7 @@ NCS restraints selections do not produce any pairs of matching atoms:
     else: raise Exception_expected
     try:
       ncs.restraints.group.from_atom_selections(
-        processed_pdb=processed_pdb,
+        model=model,
         reference_selection_string=None,
         selection_strings=["chain A", "chain C"],
         coordinate_sigma=None,
@@ -433,9 +434,10 @@ NCS restraints selections produce only one pair of matching atoms:
       ener_lib=ener_lib,
       file_name=os.path.join(ncs_dir, "special_position.pdb"),
       log=log)
+    model = get_model(os.path.join(ncs_dir, "special_position.pdb"))
     try:
       ncs.restraints.group.from_atom_selections(
-        processed_pdb=processed_pdb,
+        model=model,
         reference_selection_string=None,
         selection_strings=["chain A", "chain D"],
         coordinate_sigma=None,
@@ -449,7 +451,7 @@ NCS selection includes an atom on a special position:
     else: raise Exception_expected
     log = StringIO()
     group = ncs.restraints.group.from_atom_selections(
-      processed_pdb=processed_pdb,
+      model=model,
       reference_selection_string=None,
       selection_strings=["chain A", "chain D"],
       coordinate_sigma=None,
@@ -468,16 +470,12 @@ WARNING: NCS selection includes an atom on a special position:
 
     pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
     pdb_interpretation_params.sort_atoms=False
-
-    processed_pdb = monomer_library.pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      params=pdb_interpretation_params,
-      file_name=os.path.join(ncs_dir, "two_models_with_holes.pdb"),
-      log=log)
+    model = get_model(
+        fname=os.path.join(ncs_dir, "two_models_with_holes.pdb"),
+        params=pdb_interpretation_params)
     try:
       ncs.restraints.group.from_atom_selections(
-        processed_pdb=processed_pdb,
+        model=model,
         reference_selection_string=None,
         selection_strings=["chain A", "chain B", "chain B and resname SER"],
         coordinate_sigma=None,
@@ -491,7 +489,7 @@ Two different NCS operators applied to same pair of atoms:
    Current other selection: "chain B and resname SER"
     "ATOM      7  N   SER A   4 .*.     N  "
     "ATOM     23  N   SER B   4 .*.     N  "''')
-    exercise_two_models_with_holes(processed_pdb=processed_pdb)
+    exercise_two_models_with_holes(model=model)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
