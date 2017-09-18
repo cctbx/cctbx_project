@@ -148,6 +148,9 @@ class FormatMultiImage(object):
 
     if isinstance(filenames, str):
       filenames = [filenames]
+    elif len(filenames) > 1:
+      assert len(set(filenames)) == 1
+      filenames = filenames[0:1]
 
     # Make filenames absolute
     filenames = map(abspath, filenames)

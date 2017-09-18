@@ -238,7 +238,7 @@ class DataBlock(object):
           except Exception:
             pass
           try:
-            image_dict['detector'] = d[iset.get_detector()]
+            image_dict['detector'] = d.index(iset.get_detector())
           except Exception:
             pass
           try:
