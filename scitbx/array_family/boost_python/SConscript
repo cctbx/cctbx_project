@@ -9,22 +9,22 @@ env.SharedLibrary(target="regression_test_ext", source=[
   "regression_test_ext.cpp",
 ])
 
+# Check for the existence of numpy and use it for the bridge
 try:
   import numpy
-except ImportError:
-  numpy = None
-if (numpy is None):
-  npy_include = None
-else:
-  npy_include = op.join(op.dirname(numpy.__file__), "core", "include")
-  if (not op.isfile(op.join(npy_include, "numpy", "arrayobject.h"))):
-    npy_include = None
-if (npy_include is None):
-  env_npy = env
-else:
+
+  # Build a special environment to compile the numpy bridge in
   env_npy = env.Clone()
-  env_etc.include_registry.append(env=env_npy, paths=[npy_include])
+  env_etc.include_registry.append(env=env_npy, paths=[numpy.get_include()])
   env_npy.Append(SHCXXFLAGS=["-DSCITBX_HAVE_NUMPY_INCLUDE"])
+  
+  if env_etc.boost_version >= 106300:
+    # Link the boost_numpy library into the extension
+    env.Append(LIBS="boost_numpy")
+except ImportError:
+  # We don't have numpy
+  env_npy = env
+
 npy_bridge = env_npy.SharedObject(source="numpy_bridge.cpp")
 
 env.SharedLibrary(

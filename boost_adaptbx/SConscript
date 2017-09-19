@@ -344,15 +344,57 @@ import.cpp
 exec.cpp
 object/function_doc_signature.cpp
 """.splitlines()
+
+  # Boost 1.65 removed the numeric module
+  if env_etc.boost_version >= 106500:
+    bpl_dll_sources.remove("numeric.cpp")
+
   prefix = "#"+os.path.join(
     os.path.basename(env_etc.boost_dist), "libs", "python", "src")
   bpl_dll_sources = [os.path.join(prefix, path) for path in bpl_dll_sources]
   #
   env.Repository(os.path.dirname(env_etc.boost_dist))
   if (env_etc.static_bpl):
+    env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_STATIC_LIB"])
     env.StaticLibrary(target="#lib/boost_python", source=bpl_dll_sources)
   else:
     env.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
+
+  # Boost 1.63 added the numpy submodule. Let's build this now.
+  if env_etc.boost_version >= 106300:
+    try:
+      import numpy
+      env_npy = env.Clone()
+
+      # Since we have numpy, we can ask it for it's header path
+      env_etc.include_registry.append(env=env_npy, paths=[numpy.get_include()])
+
+      # Set up the custom OSX linking command, like everything else in this module
+      darwin_shlinkcom(env_etc, env_npy,
+                 lo="boost/libs/python/src/libboost_numpy.lo",
+                 dylib="lib/libboost_numpy.dylib")
+
+      env_npy.Append(SHCXXFLAGS=["-DBOOST_NUMPY_SOURCE"])
+      env_npy.Append(LIBS="boost_python")
+
+      bpy_numpy_sources = ["numpy/dtype.cpp", "numpy/matrix.cpp",
+                           "numpy/ndarray.cpp", "numpy/numpy.cpp",
+                           "numpy/scalars.cpp", "numpy/ufunc.cpp"]
+
+      # Put the boost repository prefix on these
+      bpy_numpy_sources = [os.path.join(prefix, path) for path in bpy_numpy_sources]
+
+      if env_etc.static_bpl:
+        env_npy.Append(SHCXXFLAGS=["-DBOOST_NUMPY_STATIC_LIB"])
+        builder = env_npy.StaticLibrary
+      else:
+        builder = env_npy.SharedLibrary
+      builder(target="#lib/boost_numpy", source=bpy_numpy_sources)
+
+    except ImportError:
+      # No numpy, no boost_numpy module
+      pass
+
   if (bool(int(ARGUMENTS.get("boost_python_tests", "0")))):
     warn_if_unexpected_md5_hexdigest(
       path=libtbx.env.under_dist("boost", "libs/python/test/Jamfile.v2"),
