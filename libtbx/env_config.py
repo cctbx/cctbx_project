@@ -2212,7 +2212,7 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="Don't force 'true division' behavior in dispatchers")
-    parser.option(None, "--skip_phenix_dispatchers",
+    parser.option("--skip-phenix-dispatchers",
       action="store_true",
       default=False,
       help="Skip all dispatchers with 'phenix' in the title")
