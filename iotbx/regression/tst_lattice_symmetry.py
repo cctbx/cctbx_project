@@ -272,7 +272,7 @@ Symmetry in minimum-lengths cell: P -1 (No. 2)
 """)
   #
   run_and_compare(
-    ['iotbx.lattice_symmetry --unit-cel="22.54 22.64 6.35 90.1 89.9 90.3" I',
+    ['iotbx.lattice_symmetry --unit_cell="22.54 22.64 6.35 90.1 89.9 90.3" I',
      'cctbx.lattice_symmetry 1'],
     """\
 
