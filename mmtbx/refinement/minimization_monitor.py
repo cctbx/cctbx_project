@@ -1,5 +1,5 @@
 from __future__ import division
-from libtbx import adopt_init_args, Auto
+from libtbx import adopt_init_args, Auto, group_args
 
 class minimization_monitor(object):
   def __init__(self,
@@ -29,7 +29,15 @@ class minimization_monitor(object):
     if geometry is None:
       assert self.mode == "simple_cycles", "Need geometry validation for decision making in other running modes"
     else:
-      self.cycles_geometry.append(geometry)
+      rama = geometry.ramachandran()
+      omega = geometry.omega()
+      res = group_args(
+          ramachandran_outliers = rama.outliers,
+          n_twisted_general = omega.n_twisted_general,
+          twisted_proline = omega.twisted_proline,
+          twisted_general = omega.twisted_general,
+          )
+      self.cycles_geometry.append(res)
 
   def geometry_improved(self):
     if len(self.cycles_geometry) > 1:

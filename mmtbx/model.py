@@ -2157,6 +2157,8 @@ class manager(object):
             modified = True
       return modified
 
+# This class should take model and/or model class should have a function to
+# create this one.
 class statistics(object):
   def __init__(self,
                pdb_hierarchy,
@@ -2239,6 +2241,9 @@ class statistics(object):
       n = self.from_restraints.n_nonbonded_proxies
     return group_args(min = mi, max = ma, mean = me, n = n)
 
+  # !!! The following 5 functions should save result for future reuse.
+  # Those also will benefit from model object, because it should contain
+  # ramachandran_eval, rotamer_eval objects (dictionaries with information)
   def ramachandran(self):
     result = ramalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
     return group_args(
@@ -2291,7 +2296,8 @@ class statistics(object):
       cis_proline     = cis_proline,
       cis_general     = cis_general,
       twisted_general = twisted_general,
-      twisted_proline = twisted_proline)
+      twisted_proline = twisted_proline,
+      n_twisted_general = n_twisted_general)
 
   def result(self):
     return group_args(

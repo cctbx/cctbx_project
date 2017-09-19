@@ -674,7 +674,7 @@ class model_idealization():
       # print >> self.log, "Splitted SS annotation"
       # print >> self.log, ann.as_pdb_str()
       print >> self.log, "Filtered SS annotation"
-      print >> self.log, self.ann.as_pdb_str(self.filtered_whole_ann)
+      print >> self.log, self.filtered_whole_ann.as_pdb_str()
 
     # getting grm with SS restraints
     self.update_ss_in_grm(self.filtered_whole_ann)
