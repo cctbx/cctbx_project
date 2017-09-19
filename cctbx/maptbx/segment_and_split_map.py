@@ -308,6 +308,32 @@ master_phil = iotbx.phil.parse("""
        .type = int
        .short_caption = Max operators to try
        .help = If ncs_type is ANY, try up to op_max-fold symmetries
+
+
+    tol_r = 0.02
+      .type = float
+      .help = tolerance in rotations for point group or helical symmetry
+      .short_caption = Rotation tolerance
+
+    abs_tol_t = 2
+      .type = float
+      .help = tolerance in translations (A) for point group or helical symmetry
+      .short_caption = Translation tolerance absolute
+
+    rel_tol_t = .05
+      .type = float
+      .help = tolerance in translations (fractional) for point group or \
+             helical symmetry
+      .short_caption = Translation tolerance fractional
+
+    require_helical_or_point_group_symmetry = True
+      .type = bool
+      .help = normally helical or point-group symmetry (or none) is expected. \
+             However in some cases (helical + rotational symmetry for \
+             example) this is not needed and is not the case.
+      .short_caption = Require helical or point-group or no symmetry 
+
+
      }
 
   map_modification {
@@ -3496,13 +3522,23 @@ def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
       ncs_object.set_unit_ncs()
     print >>out,"\nTotal of %d NCS operators read\n" %(
       ncs_object.max_operators())
-    if ncs_object.is_helical_along_z(abs_tol_t=.50):
+    if ncs_object.is_helical_along_z(
+       abs_tol_t=tracking_data.params.reconstruction_symmetry.abs_tol_t,
+       rel_tol_t=tracking_data.params.reconstruction_symmetry.rel_tol_t,
+       tol_r=tracking_data.params.reconstruction_symmetry.tol_r):
       print >>out,"This NCS is helical symmetry"
       is_helical_symmetry=True
-    elif ncs_object.is_point_group_symmetry(abs_tol_t=.50):
+    elif ncs_object.is_point_group_symmetry(
+       abs_tol_t=tracking_data.params.reconstruction_symmetry.abs_tol_t,
+       rel_tol_t=tracking_data.params.reconstruction_symmetry.rel_tol_t,
+       tol_r=tracking_data.params.reconstruction_symmetry.tol_r):
       print >>out,"This NCS is point-group symmetry"
     elif params.crystal_info.is_crystal:
       print >>out,"This NCS is crystal symmetry"
+    elif not (
+      params.reconstruction_symmetry.require_helical_or_point_group_symmetry):
+      print >>out,"WARNING: NCS is not crystal symmetry nor point-group "+\
+         "symmetry nor helical symmetry"
     else:
       raise Sorry("Need point-group or helical symmetry.")
   if not ncs_object or ncs_object.max_operators()<1:
@@ -6612,7 +6648,11 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'input_d_cut',
        'b_blur_hires',
        'discard_if_worse',
-       'mask_atoms','mask_atoms_atom_radius','value_outside_atoms','soft_mask',
+       'mask_atoms','mask_atoms_atom_radius','value_outside_atoms',
+       'soft_mask',
+       'tol_r','abs_tol_t',
+       'rel_tol_t',
+       'require_helical_or_point_group_symmetry',
        'allow_box_if_b_iso_set',
        'max_box_fraction',
        'density_select_max_box_fraction',
@@ -7428,6 +7468,10 @@ def auto_sharpen_map_or_map_coeffs(
         mask_atoms_atom_radius=None,
         value_outside_atoms=None,
         soft_mask=None,
+        tol_r=None,
+        abs_tol_t=None,
+        rel_tol_t=None,
+        require_helical_or_point_group_symmetry=None,
         k_sharpen=None,
         optimize_d_cut=None,
         optimize_k_sharpen=None,
