@@ -680,10 +680,10 @@ class manager(object):
     if(self.xray_structure is not None):
       restraints_manager.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
-    self.restraints_manager.write_geo_file(
-          file_name="starting_geo_model.geo",
-          header="# Geometry restraints after refinement\n",
-          xray_structure=self.xray_structure)
+    # self.restraints_manager.write_geo_file(
+    #       file_name="starting_geo_model.geo",
+    #       header="# Geometry restraints after refinement\n",
+    #       xray_structure=self.xray_structure)
     #
     # Here we do all what is necessary when GRM and all related become available
     #
