@@ -899,7 +899,7 @@ Wait for the command to finish, then try again.""" % vars())
   def opt_resources_ld_preload(self):
     if (self.build_options.compiler in ["icc", "icpc"]):
       raise RuntimeError(
-        "--opt-resources not supported in combination with --compiler=icc")
+        "--opt_resources not supported in combination with --compiler=icc")
     def get_libs_dir():
       if (sys.platform.startswith("linux")) :
         libs = ["libimf.so", "libirc.so"]
@@ -1390,7 +1390,7 @@ reconf:
 \t%(lsj)s
 
 redo:
-\t./bin/libtbx.configure . --clear-scons-memory
+\t./bin/libtbx.configure . --clear_scons_memory
 \t%(lsj)s
 
 clean:
@@ -2212,7 +2212,7 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="Don't force 'true division' behavior in dispatchers")
-    parser.option("--skip-phenix-dispatchers",
+    parser.option("--skip_phenix_dispatchers",
       action="store_true",
       default=False,
       help="Skip all dispatchers with 'phenix' in the title")

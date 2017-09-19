@@ -1695,7 +1695,7 @@ class CCTBXBuilder(CCIBuilder):
 
 class DIALSBuilder(CCIBuilder):
   CODEBASES_EXTRA = ['dials', 'xia2']
-  LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip-phenix-dispatchers']
+  LIBTBX_EXTRA = ['dials', 'xia2', 'prime', 'iota', '--skip_phenix_dispatchers']
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
     self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
@@ -1822,7 +1822,7 @@ class PhenixBuilder(CCIBuilder):
   def get_libtbx_configure(self):
     configlst = super(PhenixBuilder, self).get_libtbx_configure()
     if not self.isPlatformMacOSX():
-      configlst.append("--enable-openmp-if-possible=True")
+      configlst.append("--enable_openmp_if_possible=True")
     #if self.isPlatformMacOSX():
     #  configlst.append("--compiler=clang-omp")
     return configlst
