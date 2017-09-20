@@ -2369,8 +2369,8 @@ class statistics(object):
         prefix,
         prefix, str(self.omega().cis_proline),
         prefix, str(self.omega().cis_general),
-        prefix, str(self.omega().twisted_general),
-        prefix, str(self.omega().twisted_proline))
+        prefix, str(self.omega().twisted_proline),
+        prefix, str(self.omega().twisted_general))
     if(lowercase):
       result = result.swapcase()
     print >> log, result
