@@ -995,6 +995,13 @@ class kernel_normalisation(object):
       if number > d_star_sq_hkl.size():
         number = d_star_sq_hkl.size()-1
       self.kernel_width = d_star_sq_hkl[sort_permut[number]]-d_star_sq_low
+      if self.kernel_width ==0:
+        original_number=number
+        while number < d_star_sq_hkl.size()/2:
+          number+=original_number
+          self.kernel_width = d_star_sq_hkl[sort_permut[number]]-d_star_sq_low
+          if self.kernel_width>0: break
+
       assert self.kernel_width > 0
     ## Making the d_star_sq_array
     assert (n_bins>1) ## assure that there are more then 1 bins for interpolation
