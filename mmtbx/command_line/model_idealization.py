@@ -113,6 +113,10 @@ ignore_ncs = False
   .type = bool
   .help = Don't use NCS even if it is present in model.
   .expert_level = 2
+filter_input_ss = False
+  .type = bool
+  .help = Filter input annotation
+  .expert_level = 3
 debug = False
   .type = bool
   .help = Output all intermediate files
@@ -665,12 +669,15 @@ class model_idealization():
       self.original_ann = self.ann.deep_copy()
       print >> self.log, "Original SS annotation"
       print >> self.log, self.original_ann.as_pdb_str()
-      self.filtered_whole_ann = self.ann.filter_annotation(
-          hierarchy=self.whole_pdb_h,
-          asc=None)
-      self.ann = self.ann.filter_annotation(
-          hierarchy=self.working_pdb_h,
-          asc=None)
+      if self.params.filter_input_ss:
+        self.filtered_whole_ann = self.ann.filter_annotation(
+            hierarchy=self.whole_pdb_h,
+            asc=None)
+        self.ann = self.ann.filter_annotation(
+            hierarchy=self.working_pdb_h,
+            asc=None)
+      else:
+        self.filtered_whole_ann = self.original_ann.deep_copy()
       # print >> self.log, "Splitted SS annotation"
       # print >> self.log, ann.as_pdb_str()
       print >> self.log, "Filtered SS annotation"
