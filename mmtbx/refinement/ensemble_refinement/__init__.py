@@ -1722,95 +1722,29 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
   pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
   pdb_ip.proceed_with_excessive_length_bonds=True
-  processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-    cif_objects               = cif_objects,
+
+  # Model
+  pdb_inp = iotbx.pdb.input(file_name=pdb_file)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    restraint_objects = cif_objects,
     pdb_interpretation_params = pdb_ip,
-    crystal_symmetry          = inputs.xray_structure,
-    log                       = log)
-  processed_pdb_file, pdb_inp = \
-    processed_pdb_files_srv.process_pdb_files(pdb_file_names = [pdb_file])
+    log = log)
+  if model.get_number_of_models() > 1:
+    raise Sorry("Multiple models not supported.")
+  n_removed_atoms = model.remove_alternative_conformations(
+      always_keep_one_conformer=True)
 
   # Remove alternative conformations if present
-  hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  if er_params.remove_alt_conf_from_input_pdb:
-    atoms_size_pre = hierarchy.atoms_size()
-    for model in hierarchy.models() :
-      for chain in model.chains() :
-        for residue_group in chain.residue_groups() :
-          atom_groups = residue_group.atom_groups()
-          assert (len(atom_groups) > 0)
-          for atom_group in atom_groups :
-            if (not atom_group.altloc in ["", "A"]) :
-              residue_group.remove_atom_group(atom_group=atom_group)
-            else :
-              atom_group.altloc = ""
-          if (len(residue_group.atom_groups()) == 0) :
-            chain.remove_residue_group(residue_group=residue_group)
-        if (len(chain.residue_groups()) == 0) :
-          model.remove_chain(chain=chain)
-    atoms = hierarchy.atoms()
-    new_occ = flex.double(atoms.size(), 1.0)
-    atoms.set_occ(new_occ)
-    atoms_size_post = hierarchy.atoms_size()
-    if atoms_size_pre != atoms_size_post:
-      pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
-      print >> log, "\nRemoving alternative conformations"
-      print >> log, "All occupancies reset to 1.0"
-      print >> log, "New PDB : ", pdb_file_removed_alt_confs, "\n"
-      hierarchy.write_pdb_file(file_name        = pdb_file_removed_alt_confs,
-                               crystal_symmetry = pdb_inp.crystal_symmetry())
-      processed_pdb_file, pdb_inp = \
-      processed_pdb_files_srv.process_pdb_files(
-        pdb_file_names = [pdb_file_removed_alt_confs])
-      hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-
-  d_min = f_obs.d_min()
-  xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
-    processed_pdb_file = processed_pdb_file,
-    scattering_table   = "n_gaussian",
-    d_min              = d_min,
-    log                = log)
-  if(len(xsfppf.xray_structures) > 1):
-    raise Sorry("Multiple models not supported.")
-  xray_structure = xsfppf.xray_structures[0].deep_copy_scatterers()
-
-  # TODO Amber hooks
-  amber_structs = use_amber = None
-  if hasattr(params.ensemble_refinement, "amber") :
-    use_amber = params.ensemble_refinement.amber.use_amber
-    if (use_amber) :
-      amber_params = params.ensemble_refinement.amber
-      import amber_adaptbx
-      assert 0, "amber bindings out of date"
-      make_header("Initializing AMBER", out=log)
-      print >> log, "  topology: %s" % amber_params.topology_file_name
-      amber_structs = amber_adaptbx.get_amber_structs(
-        prmtop=amber_params.topology_file_name,
-        ambcrd=amber_params.coordinate_file_name)
-      if (params.hydrogens.refine.lower() == "auto") :
-      #  params.hydrogens.refine = "individual"
-        params.hydrogens.force_riding_adp = True
-
-  # Geometry manager
-  sctr_keys = \
-         xray_structure.scattering_type_registry().type_count_dict().keys()
-  has_hd = "H" in sctr_keys or "D" in sctr_keys
-
-  geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies                = False,
-      plain_pairs_radius           = 5,
-      params_edits                 = \
-        params.refinement.geometry_restraints.edits,
-      params_remove                = None,
-      custom_nonbonded_exclusions  = None,
-      external_energy_function     = None,
-      assume_hydrogens_all_missing = not has_hd)
-
-  restraints_manager = mmtbx.restraints.manager(
-      geometry      = geometry,
-      normalization = True,
-      use_amber     = use_amber,
-      amber_structs = amber_structs)
+  if n_removed_atoms > 0:
+    pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
+    print >> log, "\nRemoving alternative conformations"
+    print >> log, "All occupancies reset to 1.0"
+    print >> log, "New PDB : ", pdb_file_removed_alt_confs, "\n"
+    pdb_str = model.model_as_pdb()
+    f = open(pdb_file_removed_alt_confs, 'w')
+    f.write(pdb_str)
+    f.close()
 
   # Refinement flags
   class rf:
@@ -1824,18 +1758,10 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
       self.adp_individual_aniso = None
     def inflate(self, **keywords): pass
 
-  refinement_flags = rf(size = xray_structure.scatterers().size())
+  refinement_flags = rf(size = model.get_number_of_atoms())
 
-  # Model
-  model = mmtbx.model.manager(
-    processed_pdb_files_srv = processed_pdb_files_srv,
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    pdb_hierarchy = hierarchy,
-    tls_groups = None,
-    anomalous_scatterer_groups = None,
-    log = log)
   model.set_refinement_flags(refinement_flags)
+  model.get_grm()
 
   # Geometry file
   xray_structure = model.xray_structure

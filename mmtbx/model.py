@@ -338,7 +338,7 @@ class manager(object):
     else:
       if len(groups_from_params) != 0:
         chain_proxies = self.all_chain_proxies
-        sel_cache = self._asc
+        sel_cache = self.get_atom_selection_cache()
         for group in groups_from_params:
           if (group.f_prime is None): group.f_prime = 0
           if (group.f_double_prime is None): group.f_double_prime = 0
@@ -386,7 +386,7 @@ class manager(object):
 
   def selection(self, selstr, optional=True):
     if self.all_chain_proxies is None:
-      return self._asc.selection(selstr, optional=optional)
+      return self.get_atom_selection_cache().selection(selstr, optional=optional)
     else:
       return self.all_chain_proxies.selection(selstr, cache=self._asc, optional=optional)
 
@@ -1757,6 +1757,17 @@ class manager(object):
     out.flush()
     time_model_show += timer.elapsed()
 
+  def remove_alternative_conformations(self, always_keep_one_conformer):
+    self.geometry_restraints = None
+    self._pdb_hierarchy.remove_alt_confs(
+        always_keep_one_conformer=always_keep_one_conformer)
+    self.xray_structure = self._pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.cs)
+    self._asc = None
+    n_old_atoms = self.get_number_of_atoms()
+    self.pdb_atoms = self._pdb_hierarchy.atoms()
+    n_new_atoms = self.get_number_of_atoms()
+    return n_old_atoms - n_new_atoms
+
   def remove_solvent(self):
     result = self.select(selection = ~self.solvent_selection())
     return result
@@ -2178,7 +2189,7 @@ class manager(object):
     if ((self.anomalous_scatterer_groups is not None) and
         (len(self.anomalous_scatterer_groups) > 0)) :
       modified = False
-      sel_cache = self._pdb_hierarchy.atom_selection_cache()
+      sel_cache = self.get_atom_selection_cache()
       for i_group, group in enumerate(self.anomalous_scatterer_groups) :
         if (group.update_from_selection) :
           isel = sel_cache.selection(group.selection_string).iselection()
