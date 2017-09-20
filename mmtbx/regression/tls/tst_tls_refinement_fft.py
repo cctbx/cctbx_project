@@ -51,11 +51,11 @@ def exercise_2(eps = 1.e-6):
           value          = 0.0)
   tls_groups.tlsos = tlsos
   model = mmtbx.model.manager(
-    refinement_flags = refinement_flags,
     restraints_manager = restraints_manager,
     xray_structure = xray_structure,
     tls_groups = tls_groups,
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+  model.set_refinement_flags(refinement_flags)
 ################
 ###> Get TLS <-> Ucart
   T_initial = []

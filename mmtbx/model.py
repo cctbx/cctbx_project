@@ -162,10 +162,7 @@ class manager(object):
       # for GRM
                      processed_pdb_files_srv = None, # remove later ! used in def select()
                      restraints_manager = None, # remove later
-                     refinement_flags = None,   # remove later
-                     # ias_manager = None,        # remove later
                      tls_groups = None,         # remove later? ! used in def select()
-                     # ncs_groups = None,         # remove later
                      anomalous_scatterer_groups = None, # remove later. ! It is used in def select(), hard to get rid of.
                      log = None):
 
@@ -181,13 +178,13 @@ class manager(object):
     self.cs = crystal_symmetry
 
     self.restraints_manager = restraints_manager
-    self.refinement_flags = refinement_flags
+    self.refinement_flags = None
     # IAS related, need some cleaning!
     self.ias_manager = None
     self.use_ias = False    # remove later, use presence of ias_manager
                           # somewhat challenging because of ias.build_only parameter in phenix.refine
     self.tls_groups = tls_groups         # remove later? No action performed on them here
-    self.ncs_groups = None         # remove later
+    self.ncs_groups = None
     self.anomalous_scatterer_groups = anomalous_scatterer_groups, # remove later. ! It is used in def select(), hard to get rid of.
     self.log = log
     self.exchangable_hd_groups = []
@@ -284,6 +281,9 @@ class manager(object):
     if(self.xray_structure.hd_selection().count(True) > 0):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
+
+  def set_refinement_flags(self, flags):
+    self.refinement_flags = flags
 
   def get_number_of_atoms(self):
     return self.pdb_atoms.size()
@@ -1296,7 +1296,9 @@ class manager(object):
     raw_records = [iotbx.pdb.format_cryst1_record(
       crystal_symmetry=self.xray_structure)]
     raw_records.extend(self._pdb_hierarchy.as_pdb_string().splitlines())
+
     if(self.processed_pdb_files_srv.pdb_interpretation_params is not None):
+      # always executes
       pip = self.processed_pdb_files_srv.pdb_interpretation_params
       pip.clash_guard.nonbonded_distance_threshold = -1.0
       pip.clash_guard.max_number_of_distances_below_threshold = 100000000
@@ -1309,6 +1311,8 @@ class manager(object):
     new_xray_structure = processed_pdb_file.xray_structure(
       show_summary = False).deep_copy_scatterers()
     new_pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    # print "======================== old way======================"
+    # print new_pdb_hierarchy.as_pdb_string()
     new_pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
     # Need to reconstruct hierarchy here, because new_pdb_atoms are sorted
     # differently
@@ -1339,6 +1343,35 @@ class manager(object):
       geometry      = geometry,
       normalization = self.restraints_manager.normalization)
     self.restraints_manager = new_restraints_manager
+
+    # !!! Don't know yet why this is not working....
+    # pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records)
+    # pip = self.pdb_interpretation_params
+    # pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = -1.0
+    # pip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
+    # pip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
+    # pip.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    # pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    # flags = self.refinement_flags
+    # ppr = self.restraints_manager.geometry.plain_pairs_radius
+    # cs = self.cs
+    # norm = self.restraints_manager.normalization
+    # log = self.log
+    # self.__init__(
+    #     model_input = pdb_inp,
+    #     crystal_symmetry = cs,
+    #     restraint_objects = self.restraint_objects,
+    #     pdb_interpretation_params = pip,
+    #     process_input = True,
+    #     build_grm = False,
+    #     log = log)
+    # self._build_grm(
+    #     plain_pairs_radius = ppr,
+    #     grm_normalization = norm)
+    # self.set_refinement_flags(flags)
+    # print "======================== new way======================"
+    # print self.model_as_pdb()
+
 
   def backbone_selections(self, bool=True):
     get_class = iotbx.pdb.common_residue_names_get_class
@@ -1665,11 +1698,12 @@ class manager(object):
       xray_structure             = self.xray_structure.select(selection),
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self.pdb_interpretation_params,
-      refinement_flags           = new_refinement_flags,
+      # refinement_flags           = new_refinement_flags,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
       anomalous_scatterer_groups = self.anomalous_scatterer_groups,
       log                        = self.log)
     new.xray_structure.scattering_type_registry()
+    new.set_refinement_flags(new_refinement_flags)
     return new
 
   def number_of_ordered_solvent_molecules(self):

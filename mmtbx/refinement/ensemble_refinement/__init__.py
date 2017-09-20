@@ -1829,13 +1829,13 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   # Model
   model = mmtbx.model.manager(
     processed_pdb_files_srv = processed_pdb_files_srv,
-    refinement_flags = refinement_flags,
     restraints_manager = restraints_manager,
     xray_structure = xray_structure,
     pdb_hierarchy = hierarchy,
     tls_groups = None,
     anomalous_scatterer_groups = None,
     log = log)
+  model.set_refinement_flags(refinement_flags)
 
   # Geometry file
   xray_structure = model.xray_structure

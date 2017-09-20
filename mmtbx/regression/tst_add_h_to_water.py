@@ -98,21 +98,10 @@ def exercise_01():
   tmp_f = open(pdb_file_name, "w")
   tmp_f.write(input_model)
   tmp_f.close()
-  processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(log = StringIO())
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file_name])
-  xray_structure = processed_pdb_file.xray_structure()
-  #
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False, assume_hydrogens_all_missing = True)
-  restraints_manager = mmtbx.restraints.manager(geometry = geometry)
-  #
+  pdb_inp = iotbx.pdb.input(source_info=None, file_name=pdb_file_name)
   model = mmtbx.model.manager(
-    refinement_flags        = None,
-    processed_pdb_files_srv = processed_pdb_files_srv,
-    restraints_manager      = restraints_manager,
-    xray_structure          = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    model_input = pdb_inp,
+    build_grm = True,
     log                     = None)
   ####
   model.add_hydrogens(correct_special_position_tolerance=1.0)
