@@ -149,8 +149,7 @@ class manager(object):
   5. Start refactoring with phenix.refine to remove unnecessary things.
   """
 
-  def __init__(self, xray_structure = None, # remove later
-                     pdb_hierarchy = None,  # remove later
+  def __init__(self,
       model_input = None, # pdb_input or cif_input, make mandatory later
       crystal_symmetry = None,
       restraint_objects = None, # ligand restraints in cif format
@@ -159,12 +158,15 @@ class manager(object):
       build_grm = False,  # build GRM straight away, without waiting for get_grm() call
       stop_for_unknowns = True,
       processed_pdb_file = None, # Temporary, for refactoring phenix.refine
-      # for GRM
+      log = None
+      # for GRM, selections etc
+                     xray_structure = None, # remove later
+                     pdb_hierarchy = None,  # remove later
                      processed_pdb_files_srv = None, # remove later ! used in def select()
                      restraints_manager = None, # remove later
                      tls_groups = None,         # remove later? ! used in def select()
                      anomalous_scatterer_groups = None, # remove later. ! It is used in def select(), hard to get rid of.
-                     log = None):
+                     ):
 
     self.xray_structure = xray_structure
     self._pdb_hierarchy = pdb_hierarchy
@@ -1632,6 +1634,7 @@ class manager(object):
     return result
 
   def select(self, selection):
+    # what about NCS?
     # XXX ignores IAS
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     new_refinement_flags = None
