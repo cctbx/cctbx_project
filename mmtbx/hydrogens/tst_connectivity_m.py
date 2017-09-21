@@ -55,7 +55,7 @@ def exercise():
   model = mmtbx.model.manager(model_input=pdb_inp)
 
   pdb_hierarchy = model.get_hierarchy()
-  restraints_manager = model.get_grm()
+  restraints_manager = model.get_restraints_manager()
   geometry_restraints = restraints_manager.geometry
   xray_structure = model.get_xrs()
 

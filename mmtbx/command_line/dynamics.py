@@ -94,7 +94,7 @@ Usage examples:
     if (self.params.dynamics_type == "cartesian") :
       run_cartesian_dynamics(
         xray_structure=self.model.get_xrs(),
-        restraints_manager=self.model.get_grm(),
+        restraints_manager=self.model.get_restraints_manager(),
         states_collector=self.states_collector,
         params=self.params.cartesian_dynamics,
         stop_at_diff=self.params.stop_at_diff,

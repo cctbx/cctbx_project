@@ -155,10 +155,10 @@ class manager(object):
       restraint_objects = None, # ligand restraints in cif format
       pdb_interpretation_params = None,
       process_input = False, # obtain processed_pdb_file straight away
-      build_grm = False,  # build GRM straight away, without waiting for get_grm() call
+      build_grm = False,  # build GRM straight away, without waiting for get_restraints_manager() call
       stop_for_unknowns = True,
       processed_pdb_file = None, # Temporary, for refactoring phenix.refine
-      log = None
+      log = None,
       # for GRM, selections etc
                      xray_structure = None, # remove later
                      pdb_hierarchy = None,  # remove later
@@ -196,7 +196,7 @@ class manager(object):
     # for reprocessing. Probably select() will also use...
     self.scattering_dict_info = None
 
-    self._asc = None
+    self._atom_selection_cache = None
     self._ss_annotation = None
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
     self.all_chain_proxies = None # probably will keep it. Need to investigate
@@ -208,7 +208,7 @@ class manager(object):
     self.has_hd = None
     self.model_statistics_info = None
     self._grm = None
-    self._asc = None
+    self._atom_selection_cache = None
     self._ncs_obj = None
     self.mon_lib_srv = None
     self.ener_lib = None
@@ -254,7 +254,7 @@ class manager(object):
         self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
       elif self.model_input is not None:
         self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
-    self._asc = self._pdb_hierarchy.atom_selection_cache()
+    self._atom_selection_cache = self._pdb_hierarchy.atom_selection_cache()
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
 
@@ -293,8 +293,8 @@ class manager(object):
     return self.pdb_atoms.size()
 
   def get_atom_selection_cache(self):
-    if self._asc is not None:
-      return self._asc
+    if self._atom_selection_cache is not None:
+      return self._atom_selection_cache
     return None
 
   def get_number_of_models(self):
@@ -364,7 +364,7 @@ class manager(object):
       group.copy_to_scatterers_in_place(scatterers=self.xray_structure.scatterers())
     return self.anomalous_scatterer_groups, self.n_anomalous_total
 
-  def get_grm(self):
+  def get_restraints_manager(self):
     if self.restraints_manager is not None:
       return self.restraints_manager
     else:
@@ -392,7 +392,7 @@ class manager(object):
     if self.all_chain_proxies is None:
       return self.get_atom_selection_cache().selection(selstr, optional=optional)
     else:
-      return self.all_chain_proxies.selection(selstr, cache=self._asc, optional=optional)
+      return self.all_chain_proxies.selection(selstr, cache=self._atom_selection_cache, optional=optional)
 
   def iselection(self, selstr):
     result = self.selection(selstr)
@@ -560,7 +560,7 @@ class manager(object):
     """
     result = StringIO()
     if force:
-      self.get_grm()
+      self.get_restraints_manager()
     self.restraints_manager.write_geo_file(
         sites_cart=self.pdb_hierarchy().atoms().extract_xyz(),
         site_labels=self.xray_structure.scatterers().extract_labels(),
@@ -598,7 +598,7 @@ class manager(object):
           allow_missing_symmetry=True)
     if self.all_chain_proxies is None:
       self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
-    self._asc = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
+    self._atom_selection_cache = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
     if self._pdb_hierarchy is None:
       self._pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
     if self.xray_structure is None:
@@ -684,11 +684,7 @@ class manager(object):
     if(self.xray_structure is not None):
       restraints_manager.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
-    # self.restraints_manager.write_geo_file(
-    #       file_name="starting_geo_model.geo",
-    #       header="# Geometry restraints after refinement\n",
-    #       xray_structure=self.xray_structure)
-    #
+
     # Here we do all what is necessary when GRM and all related become available
     #
     self.extract_tls_selections_from_input()
@@ -1730,7 +1726,7 @@ class manager(object):
     self._pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer=always_keep_one_conformer)
     self.xray_structure = self._pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.cs)
-    self._asc = None
+    self._atom_selection_cache = None
     n_old_atoms = self.get_number_of_atoms()
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     n_new_atoms = self.get_number_of_atoms()

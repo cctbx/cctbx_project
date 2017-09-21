@@ -508,7 +508,7 @@ class run(object):
 
   def get_restraints(self, prefix):
     broadcast(m=prefix, log = self.log)
-    self.model.get_grm()
+    self.model.get_restraints_manager()
 
   def setup_riding_h(self, prefix):
     if not self.params.minimization.riding_h: return
@@ -530,7 +530,7 @@ class run(object):
         raise Sorry("Need to supply topology file using amber.coordinate_file_name=<filename>")
       run_minimization_amber(
         selection = self.selection,
-        restraints_manager = self.model.get_grm(),
+        restraints_manager = self.model.get_restraints_manager(),
         params = self.params.minimization,
         pdb_hierarchy = self.model.get_hierarchy(),
         log = self.log,
@@ -543,7 +543,7 @@ class run(object):
         ncs_restraints_group_list = self.ncs_obj.get_ncs_restraints_group_list()
       run_minimization(
         selection              = self.selection,
-        restraints_manager     = self.model.get_grm(),
+        restraints_manager     = self.model.get_restraints_manager(),
         riding_h_manager       = self.model.get_riding_h_manager(),
         params                 = self.params.minimization,
         pdb_hierarchy          = self.model.get_hierarchy(),
@@ -594,7 +594,7 @@ class run(object):
       broadcast(m=prefix, log = self.log)
       s = mmtbx.model.statistics(
         pdb_hierarchy               = self.model.get_hierarchy(),
-        geometry_restraints_manager = self.model.get_grm().geometry)
+        geometry_restraints_manager = self.model.get_restraints_manager().geometry)
       s.show(log = self.log)
 
 class launcher (runtime_utils.target_with_save_result) :
