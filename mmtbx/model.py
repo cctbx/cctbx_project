@@ -191,6 +191,8 @@ class manager(object):
     self.original_xh_lengths = None
     self.riding_h_manager = None
     self.header_tls_groups = None
+    # for reprocessing. Probably select() will also use...
+    self.scattering_dict_info = None
 
     self._asc = None
     self._ss_annotation = None
@@ -695,6 +697,11 @@ class manager(object):
       log = None,
       set_inelastic_form_factors=None,
       iff_wavelength=None):
+    self.scattering_dict_info = group_args(
+        scattering_table=scattering_table,
+        d_min = d_min,
+        set_inelastic_form_factors=set_inelastic_form_factors,
+        iff_wavelength=iff_wavelength)
     if(log is not None):
       str_utils.make_header("Scattering factors", out = log)
     known_scattering_tables = [
@@ -745,7 +752,6 @@ class manager(object):
       self.xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
           table=set_inelastic_form_factors)
-
     return self.xray_scattering_dict, self.neutron_scattering_dict
 
   def get_header_tls_selections(self):
@@ -1296,82 +1302,39 @@ class manager(object):
     raw_records = [iotbx.pdb.format_cryst1_record(
       crystal_symmetry=self.xray_structure)]
     raw_records.extend(self._pdb_hierarchy.as_pdb_string().splitlines())
-
-    if(self.processed_pdb_files_srv.pdb_interpretation_params is not None):
-      # always executes
-      pip = self.processed_pdb_files_srv.pdb_interpretation_params
-      pip.clash_guard.nonbonded_distance_threshold = -1.0
-      pip.clash_guard.max_number_of_distances_below_threshold = 100000000
-      pip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
-      pip.proceed_with_excessive_length_bonds=True
-      self.processed_pdb_files_srv.pdb_interpretation_params.\
-        clash_guard.nonbonded_distance_threshold=None
-    processed_pdb_file, pdb_inp = self.processed_pdb_files_srv.\
-      process_pdb_files(raw_records = raw_records)
-    new_xray_structure = processed_pdb_file.xray_structure(
-      show_summary = False).deep_copy_scatterers()
-    new_pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    # print "======================== old way======================"
-    # print new_pdb_hierarchy.as_pdb_string()
-    new_pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
-    # Need to reconstruct hierarchy here, because new_pdb_atoms are sorted
-    # differently
-    # old_pdb_atoms = self._pdb_hierarchy.atoms()
-    old_pdb_atoms = iotbx.pdb.input(
-        source_info=None, lines=self._pdb_hierarchy.as_pdb_string()).\
-            construct_hierarchy().atoms()
-    assert len(new_pdb_atoms) == len(old_pdb_atoms)
-    for a1, a2 in zip(old_pdb_atoms, new_pdb_atoms):
-      assert a1.name.strip() == a2.name.strip(), "%s != %s" % (a1.name.strip(), a2.name.strip())
-      assert a1.element.strip() == a2.element.strip()
-      assert approx_equal(a1.xyz, a2.xyz, 0.001)
-    self._pdb_hierarchy = new_pdb_hierarchy
-    self.pdb_atoms = new_pdb_atoms
-    # XXX now we gonna loose old grm (with all NCS, edits, etc...)
-    if(self.restraints_manager.ncs_groups is not None):
-      raise Sorry("Hydrogen building is not compatible with NCS refinement.")
-    sctr_keys = \
-      self.xray_structure.scattering_type_registry().type_count_dict().keys()
-    has_hd = "H" in sctr_keys or "D" in sctr_keys
-    geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = self.restraints_manager.geometry.plain_pairs_radius,
-      params_edits       = None, # XXX
-      params_remove      = None, # XXX this is lost too
-      assume_hydrogens_all_missing = not has_hd)
-    new_restraints_manager = mmtbx.restraints.manager(
-      geometry      = geometry,
-      normalization = self.restraints_manager.normalization)
-    self.restraints_manager = new_restraints_manager
-
-    # !!! Don't know yet why this is not working....
-    # pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records)
-    # pip = self.pdb_interpretation_params
-    # pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = -1.0
-    # pip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
-    # pip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
-    # pip.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    # pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    # flags = self.refinement_flags
-    # ppr = self.restraints_manager.geometry.plain_pairs_radius
-    # cs = self.cs
-    # norm = self.restraints_manager.normalization
-    # log = self.log
-    # self.__init__(
-    #     model_input = pdb_inp,
-    #     crystal_symmetry = cs,
-    #     restraint_objects = self.restraint_objects,
-    #     pdb_interpretation_params = pip,
-    #     process_input = True,
-    #     build_grm = False,
-    #     log = log)
-    # self._build_grm(
-    #     plain_pairs_radius = ppr,
-    #     grm_normalization = norm)
-    # self.set_refinement_flags(flags)
-    # print "======================== new way======================"
-    # print self.model_as_pdb()
-
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records)
+    pip = self.pdb_interpretation_params
+    pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = -1.0
+    pip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
+    pip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
+    pip.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    flags = self.refinement_flags
+    ppr = self.restraints_manager.geometry.plain_pairs_radius
+    cs = self.cs
+    norm = self.restraints_manager.normalization
+    log = self.log
+    scattering_dict_info = self.scattering_dict_info
+    self.all_chain_proxies = None
+    self.__init__(
+        model_input = pdb_inp,
+        crystal_symmetry = cs,
+        restraint_objects = self.restraint_objects,
+        pdb_interpretation_params = pip,
+        process_input = True,
+        build_grm = False,
+        log = StringIO()
+        )
+    self._build_grm(
+        plain_pairs_radius = ppr,
+        grm_normalization = norm)
+    self.set_refinement_flags(flags)
+    if scattering_dict_info is not None:
+      self.setup_scattering_dictionaries(
+          scattering_table=scattering_dict_info.scattering_table,
+          d_min = scattering_dict_info.d_min,
+          set_inelastic_form_factors = scattering_dict_info.set_inelastic_form_factors,
+          iff_wavelength = scattering_dict_info.iff_wavelength)
 
   def backbone_selections(self, bool=True):
     get_class = iotbx.pdb.common_residue_names_get_class
@@ -1672,6 +1635,7 @@ class manager(object):
     # XXX ignores IAS
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     new_refinement_flags = None
+    sdi = self.scattering_dict_info
     if(self.refinement_flags is not None):
       # XXX Tom
       try:
@@ -1704,6 +1668,7 @@ class manager(object):
       log                        = self.log)
     new.xray_structure.scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
+    new.scattering_dict_info = sdi
     return new
 
   def number_of_ordered_solvent_molecules(self):
