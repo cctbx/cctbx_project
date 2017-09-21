@@ -177,7 +177,7 @@ class manager(object):
     self.stop_for_unknowns = stop_for_unknowns
     self.processed_pdb_file = processed_pdb_file
     self.processed_pdb_files_srv = processed_pdb_files_srv
-    self.cs = crystal_symmetry
+    self._crystal_symmetry = crystal_symmetry
 
     self.restraints_manager = restraints_manager
     self.refinement_flags = None
@@ -239,8 +239,8 @@ class manager(object):
         self.original_model_format = "mmcif"
       self._ss_annotation = self.model_input.extract_secondary_structure()
       # input xray_structure most likely don't have proper crystal symmetry
-      if self.cs is None:
-        self.cs = self.model_input.crystal_symmetry()
+      if self.crystal_symmetry() is None:
+        self._crystal_symmetry = self.model_input.crystal_symmetry()
 
     if process_input or build_grm:
       assert self.processed_pdb_file is None
@@ -274,17 +274,20 @@ class manager(object):
     if self.xray_structure is None:
       self._create_xray_structure()
     else:
-      if self.cs is None:
-        self.cs = self.xray_structure.crystal_symmetry()
+      if self.crystal_symmetry() is None:
+        self._crystal_symmetry = self.xray_structure.crystal_symmetry()
 
     assert self.xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
-    if self.cs is None:
-      self.cs = self.xray_structure.crystal_symmetry()
+    if self.crystal_symmetry() is None:
+      self._crystal_symmetry = self.xray_structure.crystal_symmetry()
 
     if(self.xray_structure.hd_selection().count(True) > 0):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
+
+  def crystal_symmetry(self):
+    return self._crystal_symmetry
 
   def set_refinement_flags(self, flags):
     self.refinement_flags = flags
@@ -423,7 +426,7 @@ class manager(object):
       self.xray_structure = self.all_chain_proxies.extract_xray_structure()
     else:
       self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
-          crystal_symmetry=self.cs)
+          crystal_symmetry=self.crystal_symmetry())
 
   def get_mon_lib_srv(self):
     if self.mon_lib_srv is None:
@@ -455,7 +458,7 @@ class manager(object):
       assert hierarchy.is_similar_hierarchy(other=self._pdb_hierarchy)
       self._pdb_hierarchy = hierarchy
     self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
-        crystal_symmetry=self.cs)
+        crystal_symmetry=self.crystal_symmetry())
 
   def model_as_pdb(self,
       output_cs = True,
@@ -465,7 +468,7 @@ class manager(object):
     """
     cs_to_output = None
     if output_cs:
-      cs_to_output = self.cs
+      cs_to_output = self.crystal_symmetry()
     result = StringIO()
     # outputting HELIX/SHEET records
     ss_records = ""
@@ -503,10 +506,10 @@ class manager(object):
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
-    if self.cs is not None:
-      cif_block = self.cs.as_cif_block()
+    if self.crystal_symmetry() is not None:
+      cif_block = self.crystal_symmetry().as_cif_block()
     if self._pdb_hierarchy is not None:
-      if self.cs is not None:
+      if self.crystal_symmetry() is not None:
         cif_block.update(self._pdb_hierarchy.as_cif_block())
       else:
         cif_block = self._pdb_hierarchy.as_cif_block()
@@ -580,7 +583,7 @@ class manager(object):
     # assert self.get_number_of_models() < 2
     if self.processed_pdb_files_srv is None:
       self.processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-          crystal_symmetry          = self.cs,
+          crystal_symmetry          = self.crystal_symmetry(),
           pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
           stop_for_unknowns         = self.stop_for_unknowns,
           log                       = self.log,
@@ -1309,7 +1312,7 @@ class manager(object):
     pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     flags = self.refinement_flags
     ppr = self.restraints_manager.geometry.plain_pairs_radius
-    cs = self.cs
+    cs = self.crystal_symmetry()
     norm = self.restraints_manager.normalization
     log = self.log
     scattering_dict_info = self.scattering_dict_info
@@ -1725,7 +1728,7 @@ class manager(object):
     self.geometry_restraints = None
     self._pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer=always_keep_one_conformer)
-    self.xray_structure = self._pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.cs)
+    self.xray_structure = self._pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.crystal_symmetry())
     self._atom_selection_cache = None
     n_old_atoms = self.get_number_of_atoms()
     self.pdb_atoms = self._pdb_hierarchy.atoms()
