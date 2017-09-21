@@ -3,13 +3,14 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 09/12/2017
+Last Changed: 09/20/2017
 Description : IOTA GUI Threads and PostEvents
 '''
 
 import os
 import wx
 from threading import Thread
+import time
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
@@ -67,7 +68,7 @@ class ProcessImage():
     self.abort = abort
   def run(self):
     if self.abort:
-      raise Exception('IOTA: Run aborted by user')
+      raise SpfTermination('IOTA: Run aborted by user')
     else:
       if self.input_type == 'image':
         img_object = img.SingleImage(self.input_entry, self.init)
@@ -97,6 +98,7 @@ class ProcThread(Thread):
     self.iterable = iterable
     self.type = input_type
     self.term_file = term_file
+    self.aborted = False
 
   def run(self):
     if self.init.params.mp_method == 'multiprocessing':
@@ -104,7 +106,8 @@ class ProcThread(Thread):
         img_objects = parallel_map(iterable=self.iterable,
                                    func = self.full_proc_wrapper,
                                    processes=self.init.params.n_processors)
-      except Exception, e:
+      except SpfTermination, e:
+        self.aborted = True
         print e
         return
     else:
@@ -128,23 +131,28 @@ class ProcThread(Thread):
                     ''.format(self.init.params.output, params)
         print command
         easy_run.fully_buffered(command, join_stdout_stderr=True)
-      except Exception, e:
+      except SpfTermination, e:
         print e
 
     # Send "all done" event to GUI
     try:
-      evt = AllDone(tp_EVT_ALLDONE, -1, img_objects)
+      evt = AllDone(tp_EVT_ALLDONE, -1, img_objects=img_objects)
       wx.PostEvent(self.parent, evt)
     except TypeError, e:
       pass
 
   def full_proc_wrapper(self, input_entry):
     abort = os.path.isfile(self.term_file)
+    if abort:
+      os.remove(self.term_file)
     try:
-      proc_image_instance = ProcessImage(self.init, input_entry, self.type, abort)
+      proc_image_instance = ProcessImage(init=self.init,
+                                         input_entry=input_entry,
+                                         input_type=self.type,
+                                         abort=abort)
       proc_image = proc_image_instance.run()
       return proc_image
-    except Exception, e:
+    except SpfTermination, e:
       raise e
 
 class ImageFinderThread(Thread):
@@ -239,6 +247,13 @@ EVT_SPFDONE = wx.PyEventBinder(tp_EVT_SPFDONE, 1)
 tp_EVT_SPFALLDONE = wx.NewEventType()
 EVT_SPFALLDONE = wx.PyEventBinder(tp_EVT_SPFALLDONE, 1)
 
+tp_EVT_SLICEDONE = wx.NewEventType()
+EVT_SLICEDONE = wx.PyEventBinder(tp_EVT_SLICEDONE)
+
+class SpfTermination(Exception):
+  def __init__(self, termination):
+    Exception.__init__(self, termination)
+
 class SpotFinderAllDone(wx.PyCommandEvent):
   ''' Send event when finished all cycles  '''
   def __init__(self, etype, eid, info=None):
@@ -255,70 +270,66 @@ class SpotFinderOneDone(wx.PyCommandEvent):
   def GetValue(self):
     return self.info
 
-class SpotFinderOneThread():
-  def __init__(self, parent, processor, term_file):
-    self.meta_parent = parent.parent
-    self.processor = processor
-    self.term_file = term_file
-
-  def run(self, idx, datablock, img):
-    if os.path.isfile(self.term_file):
-      raise Exception('IOTA_TRACKER: Termination signal received!')
-    else:
-      observed = self.processor.find_spots(datablock=datablock)
-      return [idx, len(observed), img]
-
+# class SpotFinderOneThread():
+#   def __init__(self, parent, processor, term_file):
+#     self.meta_parent = parent.parent
+#     self.processor = processor
+#     self.term_file = term_file
+#
+#   def run(self, idx, img):
+#     if os.path.isfile(self.term_file):
+#       raise SpfTermination('IOTA_TRACKER: Termination signal received!')
+#     else:
+#       datablock = DataBlockFactory.from_filenames([img])[0]
+#       observed = self.processor.find_spots(datablock=datablock)
+#       return [idx, int(len(observed)), img]
 
 class SpotFinderThread(Thread):
   ''' Basic spotfinder (with defaults) that could be used to rapidly analyze
   images as they are collected '''
   def __init__(self,
                parent,
-               data_list,
-               term_file,
-               processor):
+               data_list=None,
+               term_file=None,
+               processor=None):
     Thread.__init__(self)
     self.parent = parent
     self.data_list = data_list
     self.term_file = term_file
     self.processor = processor
-    #self.spotfinder = SpotFinderOneThread(self, processor, term_file)
+    self.terminated = False
 
   def run(self):
     try:
       parallel_map(iterable=self.data_list,
                    func=self.spf_wrapper,
                    callback=self.callback,
-                   preserve_exception_message=True,
                    processes=None)
-    except Exception, e:
-      print 'SPOTFINDING THREAD:', e
+    except SpfTermination, e:
+      self.terminated = True
+      print e
 
     # Signal that this batch is finished
     try:
-      if os.path.isfile(self.term_file):
-        info = []
-      else:
-        info = self.data_list
+      if self.terminated:
+        print 'RUN TERMINATED!'
+      info = self.data_list
       evt = SpotFinderOneDone(tp_EVT_SPFALLDONE, -1, info=info)
       wx.PostEvent(self.parent, evt)
+      return
     except TypeError:
-      pass
+      return
 
   def spf_wrapper(self, img):
     if os.path.isfile(self.term_file):
-      print 'TERMINATING {}, image {} of {}' \
-            ''.format(img, self.data_list.index(img), len(self.data_list))
-      raise Exception('Termination signal received!')
+      os.remove(self.term_file)
+      raise SpfTermination('IOTA_TRACKER: Termination signal received!')
     else:
       if os.path.isfile(img):
         datablock = DataBlockFactory.from_filenames([img])[0]
-        #info = self.spotfinder.run(self.data_list.index(img), datablock, img)
-        #return info
         observed = self.processor.find_spots(datablock=datablock)
         return [int(self.data_list.index(img)), int(len(observed)), img]
       else:
-        print 'DEBUG: FILE {} DOES NOT EXIST'.format(img)
         return [int(self.data_list.index(img)), 0, img]
 
   def callback(self, info):

@@ -1,3 +1,11 @@
-IOTA v1.1.023 - viewer selection
+IOTA v1.1.024 - image tracker upgrade
 
-IOTA image viewer selection put into Preferences (dials.image_viewer default)
+1. New interface allows image selection on chart (shift-drag: user can highlight
+ a stretch of chart, the image list is then populated with filenames and the
+ images can be viewed)
+2. Click-drag allows user to select a range of chart to view close-up; slider
+ then appears that allows user to navigate along the X-axis (updated as the
+ chart is updated)
+3. Quit finally works fast, doesn't cycle through all queued images
+4. Chart update on each completed spot-finding instance, not timer (NOT sure
+ that's the best thing...)

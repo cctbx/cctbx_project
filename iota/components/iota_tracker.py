@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 07/21/2017
+Last Changed: 09/20/2017
 Description : IOTA image-tracking GUI module
 '''
 
@@ -16,6 +16,7 @@ import numpy as np
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.widgets import SpanSelector, Cursor, Slider
 
 from iotbx import phil as ip
 
@@ -139,24 +140,137 @@ class TrackChart(wx.Panel):
 
     self.xdata = []
     self.ydata = []
+    self.x_min = 0
+    self.x_max = 1
+    self.y_max = 1
+    self.bracket_set = False
+    self.button_hold = False
+    self.plot_zoom = False
+    self.chart_range = None
+    self.selector = None
+    self.max_lock = True
+    self.patch_x = 0
+    self.patch_x_last = 1
+    self.patch_width = 1
+    self.start_edge = 0
+    self.end_edge = 1
+
     self.acc_plot = self.track_axes.plot([], [], 'o', color='#4575b4')[0]
     self.rej_plot = self.track_axes.plot([], [], 'o', color='#d73027')[0]
     self.bragg_line = self.track_axes.axhline(0, c='#4575b4', ls=':', alpha=0)
-
+    self.highlight = self.track_axes.axvspan(0.5, 0.5, ls='--', alpha=0,
+                                             fc='#deebf7', ec='#2171b5')
     self.track_axes.set_autoscaley_on(True)
 
     self.track_figure.set_tight_layout(True)
     self.track_canvas = FigureCanvas(self, -1, self.track_figure)
+    self.track_axes.patch.set_visible(False)
+
+    self.plot_sb = wx.Slider(self, minValue=0, maxValue=1)
+    self.plot_sb.Hide()
 
     self.main_fig_sizer.Add(self.track_canvas, 1, wx.EXPAND)
-    self.track_figure.canvas.mpl_connect('scroll_event', self.onScroll)
+    self.main_fig_sizer.Add(self.plot_sb, flag=wx.EXPAND)
 
-  def onScroll(self, event):
-    step = int(event.step)
-    cur_bragg = self.main_window.tracker_panel.min_bragg.ctr.GetValue()
-    new_bragg = cur_bragg + step
-    self.main_window.tracker_panel.min_bragg.ctr.SetValue(new_bragg)
-    self.draw_plot(min_bragg=new_bragg)
+    # Scroll bar binding
+    self.Bind(wx.EVT_SCROLL, self.onScroll, self.plot_sb)
+
+    # Plot bindings
+    self.track_figure.canvas.mpl_connect('button_press_event', self.onPress)
+    # self.track_figure.canvas.mpl_connect('scroll_event', self.onScroll)
+
+    self.select_span = SpanSelector(ax=self.track_axes, onselect=self.onSelect,
+                                    direction='horizontal',
+                                    rectprops=dict(alpha=0.5, ls = ':',
+                                            fc='#deebf7', ec='#2171b5'))
+    self.select_span.set_active(False)
+
+    self.zoom_span = SpanSelector(ax=self.track_axes, onselect=self.onSelect,
+                                  direction='horizontal',
+                                  rectprops=dict(alpha=0.5, ls = ':',
+                                                 fc='#ffffd4', ec='#8c2d04'))
+    self.zoom_span.set_active(False)
+
+  def onSelect(self, xmin, xmax):
+    ''' Called when SpanSelector is used (i.e. click-drag-release); passes on
+        the boundaries of the span to tracker window for selection and
+        display of the selected images '''
+    if self.selector == 'select':
+      self.select_span.set_visible(True)
+      self.patch_x = int(xmin)
+      self.patch_x_last = int(xmax) + 1
+      self.patch_width = self.patch_x_last - self.patch_x
+      self.bracket_set = True
+      self.main_window.update_image_list()
+      self.main_window.tracker_panel.image_list_panel.Show()
+      self.main_window.tracker_panel.Layout()
+
+    elif self.selector == 'zoom':
+      if (int(xmax) - int(xmin) >= 5):
+        self.x_min = int(xmin)
+        self.x_max = int(xmax)
+        self.plot_zoom = True
+        self.max_lock = False
+        self.chart_range = int(self.x_max - self.x_min)
+        self.main_window.tracker_panel.chart_window.toggle.SetValue(True)
+        self.main_window.tracker_panel.chart_window.toggle_boxes(flag_on=True)
+        self.main_window.tracker_panel.chart_window.ctr.SetValue(self.chart_range)
+        sb_center = self.x_min + self.chart_range / 2
+
+        self.plot_sb.SetValue(sb_center)
+        self.plot_sb.Show()
+        self.draw_plot()
+
+        if self.bracket_set:
+          self.bracket_set = False
+          self.main_window.tracker_panel.image_list_panel.Hide()
+          self.main_window.tracker_panel.Layout()
+
+  def onScroll(self, e):
+    sb_center = self.plot_sb.GetValue()
+    half_span = (self.x_max - self.x_min) / 2
+    if sb_center - half_span == 0:
+      self.x_min = 0
+      self.x_max = half_span * 2
+    else:
+      self.x_min = sb_center - half_span
+      self.x_max = sb_center + half_span
+
+    if self.plot_sb.GetValue() == self.plot_sb.GetMax():
+      self.max_lock = True
+    else:
+      self.max_lock = False
+
+    self.draw_plot()
+
+
+  def onPress(self, e):
+    ''' If left mouse button is pressed, activates the SpanSelector;
+    otherwise, makes the span invisible and sets the toggle that clears the
+    image list; if shift key is held, does this for the Selection Span,
+    otherwise does this for the Zoom Span '''
+    if e.button != 1:
+      self.zoom_span.set_visible(False)
+      self.select_span.set_visible(False)
+      self.bracket_set = False
+      self.plot_zoom = False
+      self.plot_sb.Hide()
+      self.draw_plot()
+
+      # Hide list of images
+      self.main_window.tracker_panel.image_list_panel.Hide()
+      self.main_window.tracker_panel.chart_window.toggle.SetValue(False)
+      self.main_window.tracker_panel.chart_window.toggle_boxes(flag_on=False)
+      self.main_window.tracker_panel.Layout()
+    else:
+      if e.key == 'shift':
+        self.selector = 'select'
+        self.zoom_span.set_visible(False)
+        self.select_span.set_visible(True)
+      else:
+        self.selector = 'zoom'
+        self.zoom_span.set_visible(True)
+        self.select_span.set_visible(False)
 
   def clear_all(self):
     self.track_axes.clear()
@@ -166,12 +280,16 @@ class TrackChart(wx.Panel):
     self.track_axes.set_autoscaley_on(True)
     self.track_canvas.flush_events()
 
-  def refresh(self):
-    self.clear_all()
-    self.track_canvas.flush_events()
+  def draw_bragg_line(self):
+    min_bragg = self.main_window.tracker_panel.min_bragg.ctr.GetValue()
+    if min_bragg > 0:
+     self.bragg_line.set_alpha(1)
+    else:
+      self.bragg_line.set_alpha(0)
+    self.bragg_line.set_ydata(min_bragg)
 
-  def draw_plot(self, min_bragg=0, new_x=None, new_y=None):
-    self.track_axes.patch.set_visible(False)
+  def draw_plot(self, new_x=None, new_y=None):
+    min_bragg = self.main_window.tracker_panel.min_bragg.ctr.GetValue()
 
     if new_x is None:
       new_x = []
@@ -186,49 +304,34 @@ class TrackChart(wx.Panel):
     all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
     all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
 
-    if min_bragg > 0:
-     self.bragg_line.set_alpha(1)
-    else:
-      self.bragg_line.set_alpha(0)
-
     if nref_x != [] and nref_y != []:
-      if self.main_window.tracker_panel.chart_window.toggle.GetValue():
-        window_size = self.main_window.tracker_panel.chart_window.ctr.GetValue()
-        if window_size == '':
-          x_min = -1
-          x_max = np.max(nref_x) + 1
-        elif np.max(nref_x) > int(window_size):
-          x_min = np.max(nref_x) - int(window_size) - 1
-          x_max = np.max(nref_x)
-        else:
-          x_min = -1
-          x_max = int(window_size) + 1
-
+      if self.plot_zoom:
+        if self.max_lock:
+          self.x_max = np.max(nref_x)
+          self.x_min = self.x_max - self.chart_range
       else:
-        x_min = -1
-        x_max = np.max(nref_x) + 1
+        self.x_min = -1
+        self.x_max = np.max(nref_x) + 1
 
       if min_bragg > np.max(nref_y):
-        y_max = min_bragg + int(0.1 * min_bragg)
+        self.y_max = min_bragg + int(0.1 * min_bragg)
       else:
-        y_max = np.max(nref_y) + int(0.1 * np.max(nref_y))
+        self.y_max = np.max(nref_y) + int(0.1 * np.max(nref_y))
 
-      self.track_axes.set_xlim(x_min, x_max)
-      self.track_axes.set_ylim(0, y_max)
+      self.track_axes.set_xlim(self.x_min, self.x_max)
+      self.track_axes.set_ylim(0, self.y_max)
 
     else:
-      x_min = -1
-      x_max = 1
+      self.x_min = -1
+      self.x_max = 1
 
-    acc = [i for i in all_acc if i > x_min and i < x_max]
-    rej = [i for i in all_rej if i > x_min and i < x_max]
-
+    acc = [i for i in all_acc if i > self.x_min and i < self.x_max]
+    rej = [i for i in all_rej if i > self.x_min and i < self.x_max]
 
     self.acc_plot.set_xdata(nref_x)
     self.rej_plot.set_xdata(nref_x)
     self.acc_plot.set_ydata(nref_y)
     self.rej_plot.set_ydata(nref_y)
-    self.bragg_line.set_ydata(min_bragg)
     self.acc_plot.set_markevery(acc)
     self.rej_plot.set_markevery(rej)
 
@@ -238,12 +341,15 @@ class TrackChart(wx.Panel):
     self.main_window.tracker_panel.count_txt.SetLabel(count)
     self.main_window.tracker_panel.status_sizer.Layout()
 
-    try:
-      self.track_axes.draw_artist(self.acc_plot)
-      self.track_axes.draw_artist(self.rej_plot)
-    except ValueError, e:
-      print 'DEBUG: VALUE ERROR!!'
-      self.refresh()
+    # Set up scroll bar
+    if len(self.xdata) > 0:
+      self.plot_sb.SetMax(np.max(nref_x))
+      if self.max_lock:
+        self.plot_sb.SetValue(self.plot_sb.GetMax())
+
+    # Draw extended plots
+    self.track_axes.draw_artist(self.acc_plot)
+    self.track_axes.draw_artist(self.rej_plot)
 
 class ImageList(wx.Panel):
   def __init__(self, parent):
@@ -271,11 +377,11 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
 
 
     # Generate columns
-    self.ctr.InsertColumn(0, "#")
-    self.ctr.InsertColumn(1, "File")
-    self.ctr.InsertColumn(2, "No. Spots")
-    self.ctr.setResizeColumn(1)
-    self.ctr.setResizeColumn(2)
+    self.ctr.InsertColumn(0, "#", width=50)
+    self.ctr.InsertColumn(1, "File", width=150)
+    self.ctr.InsertColumn(2, "No. Spots", width=3)
+    #self.ctr.setResizeColumn(1)
+    #self.ctr.setResizeColumn(2)
 
     # Bindings
     self.Bind(ulc.EVT_LIST_ITEM_SELECTED, self.OnItemSelected)
@@ -324,9 +430,9 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
     self.ctr.SetItemData(idx, item)
 
     # Resize columns to fit content
-    self.ctr.SetColumnWidth(0, width=50)
-    self.ctr.SetColumnWidth(2, width=150)
-    self.ctr.SetColumnWidth(1, width=-3)
+    #self.ctr.SetColumnWidth(0, width=50)
+    #self.ctr.SetColumnWidth(2, width=150)
+    #self.ctr.SetColumnWidth(1, width=-3)
 
     self.tracker_panel.Layout()
 
@@ -365,22 +471,21 @@ class VirtualListCtrl(ct.VirtualImageListCtrl):
     self.ctr.setResizeColumn(2)
 
     # Bindings
-    self.Bind(ulc.EVT_LIST_ITEM_SELECTED, self.OnItemSelected, self.ctr)
-    self.Bind(ulc.EVT_LIST_ITEM_DESELECTED, self.OnItemDeselected, self.ctr)
+    self.Bind(ulc.EVT_LIST_CACHE_HINT, self.OnSelection, self.ctr)
     self.Bind(wx.EVT_LIST_COL_CLICK, self.ctr.OnColClick, self.ctr)
 
   def initialize_data_map(self, data):
     self.ctr.InitializeDataMap(data)
+    self.ctr.SetColumnWidth(0, width=50)
+    self.ctr.SetColumnWidth(2, width=150)
+    self.ctr.SetColumnWidth(1, width=-3)
 
-  def OnItemSelected(self, e):
-    self.main_window.toolbar.EnableTool(
-      self.main_window.tb_btn_view.GetId(), True)
-
-  def OnItemDeselected(self, e):
+  def OnSelection(self, e):
     ctr = e.GetEventObject()
     if ctr.GetSelectedItemCount() <= 0:
-      self.main_window.toolbar.EnableTool(
-        self.main_window.tb_btn_view.GetId(), False)
+      self.main_window.tracker_panel.btn_view_sel.Disable()
+    else:
+      self.main_window.tracker_panel.btn_view_sel.Enable()
 
 class TrackerPanel(wx.Panel):
   def __init__(self, parent):
@@ -449,7 +554,17 @@ class TrackerPanel(wx.Panel):
     self.image_list_panel = wx.Panel(self)
     self.image_list_sizer = wx.BoxSizer(wx.VERTICAL)
     self.image_list = ImageList(self.image_list_panel)
+    self.btn_view_sel = wx.Button(self.image_list_panel, label='View Selected')
+    self.btn_view_all = wx.Button(self.image_list_panel, label='View All')
+    self.btn_view_sel.Disable()
+    self.btn_view_all.Disable()
+
+    btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    btn_sizer.Add(self.btn_view_all, flag=wx.ALL | wx.ALIGN_RIGHT, border=5)
+    btn_sizer.Add(self.btn_view_sel, flag=wx.ALL | wx.ALIGN_RIGHT, border=5)
+
     self.image_list_sizer.Add(self.image_list, 1, flag=wx.EXPAND)
+    self.image_list_sizer.Add(btn_sizer, flag=wx.ALIGN_RIGHT)
     self.image_list_panel.SetSizer(self.image_list_sizer)
 
     self.main_sizer.Add(self.graph_panel, pos=(1, 0),
@@ -459,7 +574,7 @@ class TrackerPanel(wx.Panel):
                         border=10)
     self.main_sizer.AddGrowableCol(0)
     self.main_sizer.AddGrowableRow(1)
-
+    self.image_list_panel.Hide()
 
 class TrackerWindow(wx.Frame):
   def __init__(self, parent, id, title):
@@ -476,9 +591,9 @@ class TrackerWindow(wx.Frame):
     self.new_counts = []
     self.spotfinding_info = []
     self.all_info = []
-    self.refresh_chart = False
     self.current_min_bragg = 0
     self.waiting = False
+    self.terminated = False
 
     # Setup main sizer
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -512,14 +627,15 @@ class TrackerWindow(wx.Frame):
                                                 shortHelp='Stop',
                                                 longHelp='Stop Spotfinding')
     self.toolbar.AddSeparator()
-    view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer32')
-    self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
-                                                bitmap=view_bmp,
-                                                shortHelp='View images',
-                                                longHelp='View selected images')
+    # view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer32')
+    # self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
+    #                                             bitmap=view_bmp,
+    #                                             shortHelp='View images',
+    #                                             longHelp='View selected images')
+    # self.toolbar.EnableTool(self.tb_btn_view.GetId(), False)
+
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
-    self.toolbar.EnableTool(self.tb_btn_view.GetId(), False)
 
     if os.path.isfile(self.folder_file) and os.path.isfile(self.info_file):
       self.toolbar.EnableTool(self.tb_btn_restore.GetId(), True)
@@ -550,7 +666,9 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onRunSpotfinding, self.tb_btn_run)
     self.Bind(wx.EVT_TOOL, self.onRestoreRun, self.tb_btn_restore)
     self.Bind(wx.EVT_TOOL, self.onStop, self.tb_btn_stop)
-    self.Bind(wx.EVT_TOOL, self.onView, self.tb_btn_view)
+    self.Bind(wx.EVT_BUTTON, self.onSelView, self.tracker_panel.btn_view_sel)
+    self.Bind(wx.EVT_BUTTON, self.onAllView, self.tracker_panel.btn_view_all)
+    # self.Bind(wx.EVT_TOOL, self.onView, self.tb_btn_view)
 
     # Spotfinder / timer bindings
     self.Bind(thr.EVT_SPFDONE, self.onSpfOneDone)
@@ -561,25 +679,37 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_BUTTON, self.onSpfOptions, self.tracker_panel.spf_options)
     self.Bind(wx.EVT_SPINCTRL, self.onMinBragg,
               self.tracker_panel.min_bragg.ctr)
+    self.Bind(wx.EVT_SPINCTRL, self.onChartRange,
+              self.tracker_panel.chart_window.ctr)
 
-  def onView(self, e):
-    selection = []
+  def onSelView(self, e):
+    idxs = []
     listctrl = self.tracker_panel.image_list.image_list.ctr
-    index = listctrl.GetFirstSelected()
-    selection.append(index)
-    while len(selection) != listctrl.GetSelectedItemCount():
-      index = listctrl.GetNextSelected(index)
-      selection.append(index)
+    if listctrl.GetSelectedItemCount() == 0:
+      return
 
-    file_list = [self.data_dict[idx][1] for idx in selection]
+    index = listctrl.GetFirstSelected()
+    idxs.append(index)
+    while len(idxs) != listctrl.GetSelectedItemCount():
+      index = listctrl.GetNextSelected(index)
+      idxs.append(index)
+    self.view_images(idxs=idxs)
+
+  def onAllView(self, e):
+    listctrl = self.tracker_panel.image_list.image_list.ctr
+    idxs = range(listctrl.GetItemCount())
+    self.view_images(idxs=idxs)
+
+  def view_images(self, idxs):
+    file_list = [self.data_dict[idx][1] for idx in idxs]
     file_string = ' '.join(file_list)
 
     viewer = thr.ImageViewerThread(self,
-                                   backend='dials',
                                    file_string=file_string)
     viewer.start()
 
   def onStop(self, e):
+    self.terminated = True
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
     with open(self.term_file, 'w') as tf:
@@ -617,8 +747,12 @@ class TrackerWindow(wx.Frame):
       return
 
   def onMinBragg(self, e):
-    min_bragg = self.tracker_panel.min_bragg.ctr.GetValue()
-    self.tracker_panel.chart.draw_plot(min_bragg=min_bragg)
+    self.tracker_panel.chart.draw_bragg_line()
+
+  def onChartRange(self, e):
+    chart_range = self.tracker_panel.chart_window.ctr.GetValue()
+    self.tracker_panel.chart.chart_range = chart_range
+    self.tracker_panel.chart.max_lock = True
 
   def onSpfOptions(self, e):
     spf_dlg = DIALSSpfDialog(self,
@@ -630,7 +764,11 @@ class TrackerWindow(wx.Frame):
 
 
   def onRunSpotfinding(self, e):
+    self.terminated = False
     self.start_spotfinding()
+    self.tracker_panel.chart.draw_bragg_line()
+    self.tracker_panel.chart.select_span.set_active(True)
+    self.tracker_panel.chart.zoom_span.set_active(True)
 
   def onRestoreRun(self, e):
     self.remove_term_file()
@@ -684,7 +822,6 @@ class TrackerWindow(wx.Frame):
     self.results = []
     self.data_list = []
     self.done_list = []
-    self.tracker_panel.chart.clear_all()
     self.tracker_panel.spf_options.Enable()
 
   def run_spotfinding(self):
@@ -708,6 +845,7 @@ class TrackerWindow(wx.Frame):
       self.new_counts.append(obs_count)
       self.spotfinding_info.append([idx, obs_count, img_path])
       self.all_info.append([idx, obs_count, img_path])
+    self.plot_results()
 
   def onSpfAllDone(self, e):
     if e.GetValue() == []:
@@ -750,54 +888,45 @@ class TrackerWindow(wx.Frame):
     timer_txt = '[ {0} ]'.format(tick[self.spin_update])
     self.tracker_panel.status_txt.SetLabel('{} {}'.format(timer_txt, self.msg))
 
-    if not self.img_list_initialized and len(self.data_dict) > 0:
-      self.tracker_panel.image_list.image_list.initialize_data_map(self.data_dict)
-      self.img_list_initialized = True
-
-    if not os.path.isfile(self.term_file):
-      self.update_image_list()
-      self.plot_results()
+    if not self.terminated:
+      # self.plot_results()
       if len(self.data_list) == 0:
         self.find_new_images()
     else:
-      if self.waiting:
-        self.stop_run()
+      self.stop_run()
 
   def update_image_list(self):
-    min_bragg = self.tracker_panel.min_bragg.ctr.GetValue()
+    listctrl = self.tracker_panel.image_list.image_list.ctr
+    if self.tracker_panel.chart.bracket_set:
+      try:
+        first_img = self.tracker_panel.chart.patch_x
+        last_img = self.tracker_panel.chart.patch_x_last
 
-    # Update list if min_bragg has been changed
-    if self.current_min_bragg < min_bragg:
-      self.data_dict = {idx:item for (idx, item) in
-                        self.data_dict.iteritems() if
-                        item[2] > min_bragg}
-    elif self.current_min_bragg > min_bragg:
-      putback_hits = [i for i in self.all_info if
-                      (i[1] >= min_bragg and i[1] < self.current_min_bragg)]
+        new_data_dict = {}
+        sel_img_list = self.all_info[first_img:last_img]
+        for img in sel_img_list:
+          idx = sel_img_list.index(img)
+          new_data_dict[idx] = (img[0], img[2], img[1])
+        self.data_dict = new_data_dict
+        listctrl.InitializeDataMap(self.data_dict)
+        self.tracker_panel.btn_view_all.Enable()
 
-      for hit in putback_hits:
-        self.data_dict[hit[0]] = (hit[0], hit[2], hit[1])
-    self.current_min_bragg = min_bragg
+      except TypeError:
+        pass
 
-    # Find and input new hits
-    new_hits = [i for i in self.spotfinding_info if i[1] >= min_bragg]
-    if len(new_hits) > 0:
-      for hit in new_hits:
-        self.data_dict[hit[0]] = (hit[0], hit[2], hit[1])
-
-    # Update list data
-    self.tracker_panel.image_list.image_list.ctr.InitializeDataMap(self.data_dict)
-
+    else:
+      self.data_dict = {}
+      self.tracker_panel.btn_view_all.Disable()
+      self.tracker_panel.btn_view_sel.Disable()
+      listctrl.InitializeDataMap(self.data_dict)
 
   def plot_results(self):
-    min_bragg = self.tracker_panel.min_bragg.ctr.GetValue()
-    self.tracker_panel.chart.draw_plot(min_bragg=min_bragg,
-                                       new_x=self.new_frames,
+    self.tracker_panel.chart.draw_plot(new_x=self.new_frames,
                                        new_y=self.new_counts)
-    # Save results in a text file
-    with open(self.info_file, 'a') as f:
-      for item in self.spotfinding_info:
-        f.write('{},{},{}\n'.format(item[0], item[1], item[2]))
+    # # Save results in a text file
+    # with open(self.info_file, 'a') as f:
+    #   for item in self.spotfinding_info:
+    #     f.write('{},{},{}\n'.format(item[0], item[1], item[2]))
 
     self.spotfinding_info = []
     self.new_frames = []

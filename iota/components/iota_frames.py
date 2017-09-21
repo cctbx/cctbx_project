@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 08/01/2017
+Last Changed: 09/20/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -1507,9 +1507,12 @@ class ProcWindow(wx.Frame):
         self.status_txt.SetLabel('Processing {} images...'
                                  ''.format(len(self.img_list)))
     self.gauge_process.SetRange(len(self.img_list))
-    img_process = thr.ProcThread(self, self.init, iterable, input_type=type,
-                                 term_file=self.tmp_abort_file)
-    img_process.start()
+    self.img_process = thr.ProcThread(self,
+                                      init=self.init,
+                                      iterable=iterable,
+                                      input_type=type,
+                                      term_file=self.tmp_abort_file)
+    self.img_process.start()
 
 
   def analyze_results(self):
@@ -1675,7 +1678,7 @@ class ProcWindow(wx.Frame):
 
 
   def onTimer(self, e):
-    if os.path.isfile(self.tmp_abort_file):
+    if self.img_process.aborted:
       self.finish_process()
 
     # Find processed image objects
@@ -1780,7 +1783,7 @@ class ProcWindow(wx.Frame):
         if os.path.isfile(os.path.join(self.init.int_base, 'init.cfg')):
           self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
       return
-    elif os.path.isfile(self.tmp_abort_file):
+    elif self.img_process.aborted:
       self.gauge_process.Hide()
       font = self.sb.GetFont()
       font.SetWeight(wx.BOLD)
