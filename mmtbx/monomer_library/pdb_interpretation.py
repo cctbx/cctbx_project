@@ -5793,7 +5793,7 @@ class process(object):
       return """%s failure:
   Number of nonbonded interaction distances < %.6g: %d
     Please inspect the histogram of nonbonded interaction distances above
-    (or in the log window).
+    (or in the log window) for atoms placed too close to each other.
     To disable this error, run the same command again with the following
     additional argument:
       %s.nonbonded_distance_threshold=None""" % (
