@@ -149,52 +149,15 @@ Usage examples:
   print >> log, msg
   print >> log, "-"*79
 
-def process_input_files(inputs, params, log, mon_lib_srv=None):
-  pdb_file_names = []
-  pdb_file_names = list(inputs.pdb_file_names)
-  if (params.file_name is not None) :
-    pdb_file_names.append(params.file_name)
-  cs = inputs.crystal_symmetry
-  is_non_crystallographic_unit_cell = False
-  if(cs is None):
-    is_non_crystallographic_unit_cell = True
-    import iotbx.pdb
-    pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
-    cs = iotbx.pdb.input(source_info = None, lines = flex.std_string(
-      pdb_combined.raw_records)).xray_structure_simple().\
-        cubic_unit_cell_around_centered_scatterers(
-        buffer_size = 10).crystal_symmetry()
-  cif_objects = list(inputs.cif_objects)
-  if (len(params.restraints) > 0) :
-    import iotbx.cif
-    for file_name in params.restraints :
-      cif_object = iotbx.cif.reader(file_path=file_name, strict=False).model()
-      cif_objects.append((file_name, cif_object))
-  if (params.restraints_directory is not None) :
-    restraint_files = os.listdir(params.restraints_directory)
-    for file_name in restraint_files :
-      if (file_name.endswith(".cif")) :
-        full_path = os.path.join(params.restraints_directory, file_name)
-        cif_object = iotbx.cif.reader(file_path=full_path,
-          strict=False).model()
-        cif_objects.append((full_path, cif_object))
-  processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-    crystal_symmetry          = cs,
-    pdb_interpretation_params = params.pdb_interpretation,
-    stop_for_unknowns         = params.stop_for_unknowns,
-    log                       = log,
-    cif_objects               = cif_objects,
-    use_neutron_distances     = params.pdb_interpretation.use_neutron_distances,
-    mon_lib_srv               = mon_lib_srv)
-  processed_pdb_file, junk = processed_pdb_files_srv.\
-    process_pdb_files(pdb_file_names = pdb_file_names) # XXX remove junk
-  processed_pdb_file.is_non_crystallographic_unit_cell = \
-    is_non_crystallographic_unit_cell # XXX bad hack
-  return processed_pdb_file
 
 def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
     params=None, log=sys.stdout):
-  """This function should be transfered to be a member of processed_pdb_file
+  """
+  !!! WARNING !!! This function is deprecated and will be deleted soon.
+  !!! DO NOT USE IN ANY NEW CODE !!!
+  mmtbx.model.manager provides better functionality
+
+  This function should be transfered to be a member of processed_pdb_file
      class. It should be used in all places where geometry_restraints_manager
      is needed. """
   has_hd = None

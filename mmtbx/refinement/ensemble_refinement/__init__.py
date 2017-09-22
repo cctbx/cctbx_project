@@ -799,7 +799,6 @@ class run_ensemble_refinement(object):
     make_header("Add specific harmonic restraints", out = self.log)
     # ensures all solvent atoms are at the end prior to applying harmonic restraints
     self.ordered_solvent_update()
-    all_chain_proxies = self.generate_all_chain_proxies(model = self.model)
     hr_selections = mmtbx.utils.get_atom_selections(
         model = self.model,
         selection_strings = self.params.harmonic_restraints.selections)
@@ -893,7 +892,6 @@ class run_ensemble_refinement(object):
     make_header("Generating TLS selections from input parameters (not including solvent)", out = self.log)
     model_no_solvent = self.model.deep_copy()
     model_no_solvent = model_no_solvent.remove_solvent()
-    all_chain_proxies = self.generate_all_chain_proxies(model = model_no_solvent)
 
     if len(tls_group_selection_strings) < 1:
       print >> self.log, '\nNo TLS groups supplied - automatic setup'
@@ -957,23 +955,6 @@ class run_ensemble_refinement(object):
     self.model.tls_groups = mmtbx.tls.tools.tls_groups(
         selection_strings = self.tls_manager.tls_selection_strings_no_sol,
         tlsos             = self.tls_manager.tls_operators)
-
-  def generate_all_chain_proxies(self, model = None):
-    if model == None:
-      model = self.model
-    raw_records = [pdb.format_cryst1_record(crystal_symmetry=self.model.xray_structure.crystal_symmetry())]
-    pdb_hierarchy = model.pdb_hierarchy
-    raw_records.extend(pdb_hierarchy().as_pdb_string().splitlines())
-    pip = model.processed_pdb_files_srv.pdb_interpretation_params
-    pip.clash_guard.nonbonded_distance_threshold = -1.0
-    pip.clash_guard.max_number_of_distances_below_threshold = 100000000
-    pip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
-    pip.proceed_with_excessive_length_bonds=True
-    model.processed_pdb_files_srv.pdb_interpretation_params.\
-        clash_guard.nonbonded_distance_threshold=None
-    processed_pdb_file, pdb_inp = model.processed_pdb_files_srv.\
-      process_pdb_files(raw_records = raw_records)
-    return processed_pdb_file.all_chain_proxies
 
   def fit_tls(self, input_model, verbose = False):
     make_header("Fit TLS from reference model", out = self.log)
