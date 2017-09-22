@@ -153,6 +153,7 @@ class manager(object):
       model_input = None, # pdb_input or cif_input, make mandatory later
       crystal_symmetry = None,
       restraint_objects = None, # ligand restraints in cif format
+      monomer_parameters = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
       pdb_interpretation_params = None,
       process_input = False, # obtain processed_pdb_file straight away
       build_grm = False,  # build GRM straight away, without waiting for get_restraints_manager() call
@@ -172,6 +173,7 @@ class manager(object):
     self._pdb_hierarchy = pdb_hierarchy
     self.model_input = model_input
     self.restraint_objects = restraint_objects
+    self.monomer_parameters = monomer_parameters
     self.pdb_interpretation_params = pdb_interpretation_params
     self.build_grm = build_grm
     self.stop_for_unknowns = stop_for_unknowns
@@ -588,7 +590,7 @@ class manager(object):
           stop_for_unknowns         = self.stop_for_unknowns,
           log                       = self.log,
           cif_objects               = self.restraint_objects,
-          cif_parameters            = None, # ???
+          cif_parameters            = self.monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
           mon_lib_srv               = None,
           ener_lib                  = None,
           use_neutron_distances     = self.pdb_interpretation_params.pdb_interpretation.use_neutron_distances)

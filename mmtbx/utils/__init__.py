@@ -1007,7 +1007,9 @@ class process_pdb_file_srv(object):
                         stop_if_duplicate_labels = True,
                         allow_missing_symmetry=False):
     assert [pdb_file_names, raw_records, pdb_inp].count(None) == 2
-    if(self.cif_objects is not None):
+    # if(self.cif_objects is not None): # this could be empty and not None.
+    # This condition should just go into the function
+    if self.cif_objects is not None or self.cif_parameters is not None:
       self._process_monomer_cif_files()
     return self._process_pdb_file(
       pdb_file_names           = pdb_file_names,
