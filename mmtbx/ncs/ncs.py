@@ -1821,7 +1821,7 @@ class ncs:
   def is_point_group_symmetry(self,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     if not self._ncs_groups:
       return False
-    for ncs_group in self._ncs_groups:
+    for ncs_group in self._ncs_groups[:1]:
       if not ncs_group.is_point_group_symmetry(tol_r=tol_r,
             abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
         return False
