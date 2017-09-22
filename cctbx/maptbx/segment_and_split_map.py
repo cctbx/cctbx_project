@@ -2972,7 +2972,8 @@ def get_mask_around_molecule(map_data=None,
       map_as_double=map_data,
       out=out)
   except Exception,e:
-    solvent_fraction,mask=None,None
+    print >>out,"No mask obtained..."
+    return
 
   # Now expand the mask to increase molecular region
   expand_size=estimate_expand_size(
