@@ -423,3 +423,23 @@ class manager:
       frames['unique_file_name'].append(unique_file_name)
     stream.close()
     return frames
+
+class manager2 (manager_base):
+  # Worker threads collect their INSERT requests in a sequencer list but take no
+  # other action until master (rank=0) gathers all the requests.
+
+  def __init__(self, params):
+    self.params = params
+    self.sequencer = []
+
+  def insert_frame(self, **kwargs):
+    self.sequencer.append(dict(call="insert_frame",data=kwargs))
+    return 99999 # dummy value for frame_id_zero_base
+
+  def insert_observation(self, **kwargs):
+    self.sequencer.append(dict(call="insert_observation",data=kwargs))
+
+  def join(self):
+    """The join() function closes the database.
+    """
+    pass
