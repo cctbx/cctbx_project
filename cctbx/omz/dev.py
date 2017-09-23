@@ -635,7 +635,7 @@ class refinement(object):
       if (O.epsilons is None):
         raise RuntimeError(
           "target.type=ml can only be used if bulk_solvent_correction=True")
-      return xray.targets_maximum_likelihood_criterion(
+      return xray.mlf_target_and_gradients(
         f_obs=O.f_obs.data(),
         r_free_flags=O.r_free_flags.data(),
         f_calc=f_cbs.data(),

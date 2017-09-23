@@ -912,13 +912,27 @@ namespace {
 
     def("eight_point_interpolation",
       (double(*)
+        (af::const_ref<double, af::flex_grid<> > const&,
+         scitbx::vec3<double> const&)) eight_point_interpolation);
+    def("eight_point_interpolation",
+      (double(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
+         scitbx::vec3<double> const&)) eight_point_interpolation);
+    def("eight_point_interpolation",
+      (double(*)
+        (af::const_ref<double, af::c_grid<3> > const&,
          scitbx::vec3<double> const&)) eight_point_interpolation);
     def("eight_point_interpolation_with_gradients",
       (af::tiny<double, 4>(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
          scitbx::vec3<double> const&,
          scitbx::vec3<double> const&)) eight_point_interpolation_with_gradients);
+    def("quadratic_interpolation_with_gradients",
+      (af::tiny<double, 4>(*)
+        (af::const_ref<double, af::flex_grid<> > const&,
+         //af::const_ref<double, af::c_grid_padded<3> > const&,
+         scitbx::vec3<double> const&,
+         scitbx::vec3<double> const&)) quadratic_interpolation_with_gradients);
     def("closest_grid_point",
       (af::c_grid_padded<3>::index_type(*)
         (af::flex_grid<> const&,

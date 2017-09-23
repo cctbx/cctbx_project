@@ -42,7 +42,7 @@ class target_attributes(object):
     if (self.family == "ls"):
       return self.specialization is None
     elif (self.family == "ml"):
-      return self.specialization in [None, "hl", "sad"]
+      return self.specialization in [None, "hl", "sad", "i", "f"]
     return False
 
   def requires_experimental_phases(self):
@@ -63,7 +63,8 @@ target_names = {
   "lsm_kunit": target_attributes("lsm"),
   "lsm_k1_fixed": target_attributes("lsm"),
   "lsm_k1ask3_fixed": target_attributes("lsm"),
-  "ml": target_attributes("ml"),
+  "ml": target_attributes("ml", "f"),
+  "mli": target_attributes("ml","i"),
   "mlhl": target_attributes("ml", "hl"),
   "ml_sad": target_attributes("ml", "sad")}
 
@@ -175,6 +176,7 @@ class target_functor(object):
         alpha_beta            = alpha_beta,
         scale_factor          = manager.scale_ml_wrapper(),
         epsilons              = manager.epsilons,
+        spacialization        = attr.specialization,
         integration_step_size = 5.0)
     else:
       if (attr.pseudo_ml):

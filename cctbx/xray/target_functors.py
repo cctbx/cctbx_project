@@ -38,6 +38,7 @@ class max_like(object):
         alpha_beta,
         scale_factor,
         epsilons,
+        spacialization,
         integration_step_size=5.0):
     adopt_init_args(self, locals())
     self.centric_flags = f_obs.centric_flags().data()
@@ -46,17 +47,30 @@ class max_like(object):
     assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
     assert f_calc.space_group() == self.f_obs.space_group()
     if (self.experimental_phases is None):
-      return ext.targets_maximum_likelihood_criterion(
-        f_obs=self.f_obs.data(),
-        r_free_flags=self.r_free_flags.data(),
-        f_calc=f_calc.data(),
-        alpha=self.alpha_beta[0].data(),
-        beta=self.alpha_beta[1].data(),
-        scale_factor=self.scale_factor,
-        epsilons=self.epsilons,
-        centric_flags=self.centric_flags,
-        compute_gradients=compute_gradients)
-    return ext.targets_maximum_likelihood_criterion_hl(
+      if(self.spacialization=="f"):
+        return ext.mlf_target_and_gradients(
+          f_obs=self.f_obs.data(),
+          r_free_flags=self.r_free_flags.data(),
+          f_calc=f_calc.data(),
+          alpha=self.alpha_beta[0].data(),
+          beta=self.alpha_beta[1].data(),
+          scale_factor=self.scale_factor,
+          epsilons=self.epsilons,
+          centric_flags=self.centric_flags,
+          compute_gradients=compute_gradients)
+      elif(self.spacialization=="i"):
+        return ext.mli_target_and_gradients(
+          f_obs=self.f_obs.data(),
+          r_free_flags=self.r_free_flags.data(),
+          f_calc=f_calc.data(),
+          alpha=self.alpha_beta[0].data(),
+          beta=self.alpha_beta[1].data(),
+          scale_factor=self.scale_factor,
+          epsilons=self.epsilons,
+          centric_flags=self.centric_flags,
+          compute_gradients=compute_gradients)
+      else: assert 0 # should never get here!
+    return ext.mlhl_target_and_gradients(
       f_obs=self.f_obs.data(),
       r_free_flags=self.r_free_flags.data(),
       experimental_phases=self.experimental_phases.data(),

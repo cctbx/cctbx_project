@@ -3,6 +3,9 @@
 #include <cctbx/xray/targets.h>
 #include <cctbx/xray/targets/least_squares.h>
 #include <cctbx/xray/targets/correlation.h>
+#include <cctbx/xray/targets/mlf.h>
+#include <cctbx/xray/targets/mli.h>
+#include <cctbx/xray/targets/mlhl.h>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/docstring_options.hpp>
@@ -146,16 +149,16 @@ namespace {
     }
   };
 
-  struct maximum_likelihood_criterion_wrappers
+  struct mlf_wrappers
   {
-    typedef maximum_likelihood_criterion w_t;
+    typedef mlf::target_and_gradients w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       class_<w_t, bases<common_results> >(
-          "targets_maximum_likelihood_criterion", no_init)
+          "mlf_target_and_gradients", no_init)
         .def(init<
           af::const_ref<double> const&,
           af::const_ref<bool> const&,
@@ -179,16 +182,49 @@ namespace {
     }
   };
 
-  struct maximum_likelihood_criterion_hl_wrappers
+  struct mli_wrappers
   {
-    typedef maximum_likelihood_criterion_hl w_t;
+    typedef mli::target_and_gradients w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       class_<w_t, bases<common_results> >(
-          "targets_maximum_likelihood_criterion_hl", no_init)
+          "mli_target_and_gradients", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          bool>((
+            arg("f_obs"),
+            arg("r_free_flags"),
+            arg("f_calc"),
+            arg("alpha"),
+            arg("beta"),
+            arg("scale_factor"),
+            arg("epsilons"),
+            arg("centric_flags"),
+            arg("compute_gradients"))))
+      ;
+    }
+  };
+
+  struct mlhl_wrappers
+  {
+    typedef mlhl::target_and_gradients w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<common_results> >(
+          "mlhl_target_and_gradients", no_init)
         .def(init<
           af::const_ref<double> const&,
           af::const_ref<bool>,
@@ -251,8 +287,9 @@ namespace boost_python {
     targets::boost_python::least_squares_residual_wrappers<
       cctbx::xray::targets::f_calc_modulus_square>::wrap(
       "targets_least_squares_residual_for_intensity");
-    targets::boost_python::maximum_likelihood_criterion_wrappers::wrap();
-    targets::boost_python::maximum_likelihood_criterion_hl_wrappers::wrap();
+    targets::boost_python::mlf_wrappers::wrap();
+    targets::boost_python::mli_wrappers::wrap();
+    targets::boost_python::mlhl_wrappers::wrap();
     targets::boost_python::r_factor_wrappers::wrap();
   }
 

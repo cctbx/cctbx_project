@@ -1792,7 +1792,7 @@ def exercise_maximum_likelihood_targets():
     False, True])
   for rff in [None, r_free_flags]:
     for compute_gradients in [False, True]:
-      ml = xray.targets_maximum_likelihood_criterion(
+      ml = xray.mlf_target_and_gradients(
         f_obs=f_obs,
         r_free_flags=rff,
         f_calc=f_calc,
@@ -1839,7 +1839,7 @@ def exercise_maximum_likelihood_targets():
             (-2.0687651811123766+0j), (-72.441129066322489+0j),
             (-0.76067164988421032+0.26237080451806666j),
             (-19.978576482609739+0j)])
-        mlw = xray.targets_maximum_likelihood_criterion(
+        mlw = xray.mlf_target_and_gradients(
           f_obs=f_obs.select(~rff),
           r_free_flags=None,
           f_calc=f_calc.select(~rff),
@@ -1853,7 +1853,7 @@ def exercise_maximum_likelihood_targets():
         assert approx_equal(mlw.target_work(), tw)
         assert mlw.target_test() is None
         assert approx_equal(mlw.gradients_work(), gw)
-      ml = xray.targets_maximum_likelihood_criterion_hl(
+      ml = xray.mlhl_target_and_gradients(
         f_obs=f_obs,
         r_free_flags=rff,
         experimental_phases=experimental_phases,
@@ -1905,7 +1905,7 @@ def exercise_maximum_likelihood_targets():
             (-2.0687651811123762+0j), (-72.441129066322489+0j),
             (-0.76801831707645452+0.24000614441408163j),
             (-19.978576482609743+0j)])
-        mlw = xray.targets_maximum_likelihood_criterion_hl(
+        mlw = xray.mlhl_target_and_gradients(
           f_obs=f_obs.select(~rff),
           r_free_flags=None,
           experimental_phases=experimental_phases.select(~rff),

@@ -142,11 +142,165 @@ namespace cctbx { namespace maptbx {
     MapFloatType f_xy1 = (1-y)*f_x01 + y*f_x11;
     MapFloatType f_x1z = (1-z)*f_x10 + z*f_x11;
     MapFloatType f_1yz = (1-z)*f_1y0 + z*f_1y1;
-    //CCTBX_ASSERT((1-z)*f_xy0+z*f_xy1, result);
+    // Comment out for performance
+    CCTBX_ASSERT( std::abs((1-z)*f_xy0+z*f_xy1-result)<1.e-6 );
+    CCTBX_ASSERT( std::abs((1-x)*f_0yz+x*f_1yz-result)<1.e-6 );
+    CCTBX_ASSERT( std::abs((1-y)*f_x0z+y*f_x1z-result)<1.e-6 );
     MapFloatType gx = (f_1yz-f_0yz) / step[0];
     MapFloatType gy = (f_x1z-f_x0z) / step[1];
     MapFloatType gz = (f_xy1-f_xy0) / step[2];
     return af::tiny<MapFloatType, 4>(result, gx,gy,gz);
+  }
+
+  //----------------------------------------------------------------------------
+  template <
+    typename MapFloatType,
+    typename SiteFloatType>
+  af::tiny<MapFloatType, 4>
+  quadratic_interpolation_with_gradients(
+    //af::const_ref<MapFloatType, af::c_grid_padded<3> > const& map,
+    af::const_ref<MapFloatType, af::flex_grid<> > const& map,
+    scitbx::vec3<SiteFloatType> const& x_frac,
+    scitbx::vec3<SiteFloatType> const& step)
+  {
+    //typedef af::c_grid_padded<3>::index_type index_t;
+    typedef af::flex_grid<>::index_type index_t;
+    typedef typename index_t::value_type iv_t;
+    index_t const& grid_n = map.accessor().focus();
+
+    cctbx::fractional<> x_frac_mp = cctbx::fractional<>(x_frac).mod_positive();
+    get_corner<index_t, SiteFloatType> corner(grid_n, x_frac_mp);
+    //get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
+
+
+    //MapFloatType result = 0;
+    MapFloatType f_000, f_100, f_010, f_110, f_001, f_101, f_011, f_111;
+    MapFloatType f_m100, f_0m10, f_00m1;
+    MapFloatType f_200, f_020, f_002;
+    for(int s0=-1;s0<3;s0++) { int i0 = (corner.i_grid[0] + s0) % grid_n[0];
+    for(int s1=-1;s1<3;s1++) { int i1 = (corner.i_grid[1] + s1) % grid_n[1];
+    for(int s2=-1;s2<3;s2++) { int i2 = (corner.i_grid[2] + s2) % grid_n[2];
+      MapFloatType map_value = map(i0,i1,i2);
+      //result += map_value * corner.weight(s0,s1,s2);
+      if(s0==0&&s1==0&&s2==0) f_000 = map_value;
+      if(s0==1&&s1==0&&s2==0) f_100 = map_value;
+      if(s0==0&&s1==1&&s2==0) f_010 = map_value;
+      if(s0==1&&s1==1&&s2==0) f_110 = map_value;
+      if(s0==0&&s1==0&&s2==1) f_001 = map_value;
+      if(s0==1&&s1==0&&s2==1) f_101 = map_value;
+      if(s0==0&&s1==1&&s2==1) f_011 = map_value;
+      if(s0==1&&s1==1&&s2==1) f_111 = map_value;
+      if(s0==-1&&s1== 0&&s2== 0) f_m100 = map_value;
+      if(s0== 0&&s1==-1&&s2== 0) f_0m10 = map_value;
+      if(s0== 0&&s1== 0&&s2==-1) f_00m1 = map_value;
+      if(s0==2&&s1==0&&s2==0) f_200 = map_value;
+      if(s0==0&&s1==2&&s2==0) f_020 = map_value;
+      if(s0==0&&s1==0&&s2==2) f_002 = map_value;
+    }}}
+    MapFloatType x = corner.weights_[0][1];
+    MapFloatType y = corner.weights_[1][1];
+    MapFloatType z = corner.weights_[2][1];
+
+    MapFloatType f_x00 = (1-x)*f_000 + x*f_100;
+    MapFloatType f_x01 = (1-x)*f_001 + x*f_101;
+    MapFloatType f_0y0 = (1-y)*f_000 + y*f_010;
+    MapFloatType f_0y1 = (1-y)*f_001 + y*f_011;
+    MapFloatType f_x10 = (1-x)*f_010 + x*f_110;
+    MapFloatType f_x11 = (1-x)*f_011 + x*f_111;
+    MapFloatType f_1y0 = (1-y)*f_100 + y*f_110;
+    MapFloatType f_1y1 = (1-y)*f_101 + y*f_111;
+    MapFloatType f_xy0 = (1-y)*f_x00 + y*f_x10;
+    MapFloatType f_x0z = (1-z)*f_x00 + z*f_x01;
+    MapFloatType f_0yz = (1-z)*f_0y0 + z*f_0y1;
+    MapFloatType f_xy1 = (1-y)*f_x01 + y*f_x11;
+    MapFloatType f_x1z = (1-z)*f_x10 + z*f_x11;
+    MapFloatType f_1yz = (1-z)*f_1y0 + z*f_1y1;
+
+    //std::cout<<"LOOK: "<<((1-z)*f_xy0+z*f_xy1)<<std::endl;
+    //std::cout<<"result: "<<result<<std::endl;
+
+    MapFloatType t = (f_111+f_100+f_010+f_001-f_011-f_110-f_101-f_000) / 8;
+    MapFloatType f_000_bar = f_000-t;
+    MapFloatType f_100_bar = f_100-t;
+    MapFloatType f_010_bar = f_010-t;
+    MapFloatType f_110_bar = f_110-t;
+    MapFloatType f_001_bar = f_001-t;
+    MapFloatType f_101_bar = f_101-t;
+    MapFloatType f_011_bar = f_011-t;
+    MapFloatType f_111_bar = f_111-t;
+    MapFloatType axy = (f_110_bar+f_000_bar-f_100_bar-f_010_bar)/2;
+    MapFloatType ayz = (f_011_bar+f_000_bar-f_010_bar-f_001_bar)/2;
+    MapFloatType axz = (f_101_bar+f_000_bar-f_100_bar-f_001_bar)/2;
+    MapFloatType c = f_000_bar;
+    MapFloatType axx,ayy,azz, bx,by,bz;
+    //x=x_frac_mp[0]; // overwrite previous
+    //y=x_frac_mp[1]; // overwrite previous
+    //z=x_frac_mp[2]; // overwrite previous
+    if(x>=0 && x<0.5) {
+      axx = (f_100_bar-2*f_000_bar+f_m100)/2;
+      bx  = (f_100_bar-f_m100)/2;
+    }
+    else {
+      axx = (f_200-2*f_100_bar+f_000_bar)/2;
+      bx  = (4*f_100_bar-f_200-3*f_000_bar)/2;
+    }
+
+    if(y>=0 && y<0.5) {
+      ayy = (f_010_bar-2*f_000+f_0m10)/2;
+      by  = (f_010_bar-f_0m10)/2;
+    }
+    else {
+      ayy = (f_020-2*f_010_bar+f_000_bar)/2;
+      by  = (4*f_010_bar-f_020-3*f_000_bar)/2;
+    }
+
+    if(z>=0 && z<0.5) {
+      azz = (f_001_bar-2*f_000_bar+f_00m1);
+      bz  = (f_001_bar-f_00m1)/2;
+    }
+    else {
+      azz = (f_002-2*f_001_bar+f_000_bar)/2;
+      bz  = (4*f_001_bar-f_002-3*f_000_bar)/2;
+    }
+
+    MapFloatType result = axx*x*x +
+                          ayy*y*y +
+                          azz*z*z +
+                          2*axy*x*y +
+                          2*axz*x*z +
+                          2*ayz*y*z +
+                          bx*x + by*y + bz*z + c;
+    //std::cout<<"axx,ayy,azz:"<<axx<<" "<<ayy<<" "<<azz<<std::endl;
+    //std::cout<<"axy,ayz,axz:"<<axy<<" "<<ayz<<" "<<axz<<std::endl;
+    //std::cout<<"bx,by,bz:"<<bx<<" "<<by<<" "<<bz<<std::endl;
+    //std::cout<<"c:"<<c<<std::endl;
+    //std::cout<<"result:"<<result<<std::endl;
+    MapFloatType gx = (2*x*axx + 2*y*axy + 2*z*axz + bx) / step[0];
+    MapFloatType gy = (2*x*axy + 2*y*ayy + 2*z*ayz + by) / step[1];
+    MapFloatType gz = (2*x*axz + 2*y*ayz + 2*z*azz + bz) / step[2];
+    return af::tiny<MapFloatType, 4>(result, gx,gy,gz);
+  }
+  //----------------------------------------------------------------------------
+
+  template <
+    typename MapFloatType,
+    typename SiteFloatType>
+  MapFloatType
+  eight_point_interpolation(
+    af::const_ref<MapFloatType, af::flex_grid<> > const& map,
+    scitbx::vec3<SiteFloatType> const& x_frac)
+  {
+    typedef af::flex_grid<>::index_type index_t;
+    typedef typename index_t::value_type iv_t;
+    index_t const& grid_n = map.accessor().focus();
+    get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
+    MapFloatType result = 0;
+    for(iv_t s0=0;s0<2;s0++) { iv_t i0 = (corner.i_grid[0] + s0) % grid_n[0];
+    for(iv_t s1=0;s1<2;s1++) { iv_t i1 = (corner.i_grid[1] + s1) % grid_n[1];
+    for(iv_t s2=0;s2<2;s2++) { iv_t i2 = (corner.i_grid[2] + s2) % grid_n[2];
+      result += map(i0,i1,i2) * corner.weight(s0,s1,s2);
+    }}}
+    return result;
   }
 
   template <
