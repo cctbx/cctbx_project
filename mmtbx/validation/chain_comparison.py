@@ -24,12 +24,13 @@ master_phil = iotbx.phil.parse("""
 
     unique_only = True
       .type = bool
-      .help = Use only unique chains in query
+      .help = Use only unique chains in query (also counts only residues in \
+          unique chains of target for percentage found)
       .short_caption = Unique only
 
     unique_target_pdb_in = None
       .type = path
-      .help = Target model to choose which element is selected with \
+      .help = Target model identifying which element is selected with \
            unique_only. NOTE: must be specified by keyword.
       .short_caption = Target model
 
@@ -198,15 +199,12 @@ def best_match(sites1,sites2,crystal_symmetry=None,
     i+=1
   return best_info
 
-def apply_atom_selection(atom_selection,hierarchy=None):
-  asc=hierarchy.atom_selection_cache()
-  sel = asc.selection(string = atom_selection)
-  return hierarchy.select(sel)
-
 def select_atom_lines(hierarchy):
   lines=[]
-  for atom in hierarchy.atoms():
-    lines.append(atom.format_atom_record())
+  for line in hierarchy.as_pdb_string().splitlines():
+    if line.startswith("ATOM "): # XXX NOTE USING PDB FORMAT HERE
+      line=line.strip()
+      lines.append(line)
   return lines
 
 def get_best_match(xyz1,xyz2,crystal_symmetry=None,
@@ -258,6 +256,13 @@ def get_match_percent(seq1,seq2):
     if a==b: match_n+=1
   match_percent=100.*match_n/len(seq1)
   return match_n,match_percent
+
+def apply_atom_selection(atom_selection,hierarchy=None):
+  asc=hierarchy.atom_selection_cache()
+  sel = asc.selection(string = atom_selection)
+  return hierarchy.deep_copy().select(sel)  # deep copy is required
+  #return hierarchy.select(sel)
+
 
 def extract_unique_part_of_hierarchy(ph,target_ph=None,out=sys.stdout):
   new_hierarchy=iotbx.pdb.input(
@@ -449,25 +454,45 @@ def run(args=None,
      chain_file=params.input_files.pdb_in[1] # query
 
   # get the hierarchies
+  target_unique_hierarchy=None
   if not chain_hierarchy or not target_hierarchy:
     assert chain_file and target_file
     pdb_inp=get_pdb_inp(file_name=chain_file  )
     if params.input_files.unique_target_pdb_in:
       target_unique_hierarchy=get_pdb_inp(
         file_name=params.input_files.unique_target_pdb_in).construct_hierarchy()
-    else:
-      target_unique_hierarchy=None
     if not crystal_symmetry:
       crystal_symmetry=pdb_inp.crystal_symmetry_from_cryst1()
     chain_hierarchy=pdb_inp.construct_hierarchy()
-    if params.input_files.unique_only:
-      print >>out,"\nUsing only unique part of query\n"
-      chain_hierarchy=extract_unique_part_of_hierarchy(
-        chain_hierarchy,target_ph=target_unique_hierarchy,out=local_out)
+
     target_pdb_inp=get_pdb_inp(file_name=target_file)
     if not crystal_symmetry or not crystal_symmetry.unit_cell():
       crystal_symmetry=target_pdb_inp.crystal_symmetry_from_cryst1()
     target_hierarchy=target_pdb_inp.construct_hierarchy()
+
+  # Take unique part of query if requested
+  if params.input_files.unique_only:
+    print >>out,"\nUsing only unique part of query\n"
+    chain_hierarchy=extract_unique_part_of_hierarchy(
+      chain_hierarchy,target_ph=target_unique_hierarchy,out=local_out)
+
+
+  # remove hetero atoms as they are not relevant
+  chain_hierarchy=apply_atom_selection('not hetero',chain_hierarchy)
+  target_hierarchy=apply_atom_selection('not hetero',target_hierarchy)
+
+  if params.input_files.unique_only: # count unique residues/total
+    unique_part_of_target_hierarchy=extract_unique_part_of_hierarchy(
+        target_hierarchy,target_ph=target_unique_hierarchy,out=local_out)
+    ratio_unique_to_total_target=\
+       unique_part_of_target_hierarchy.overall_counts().n_residues/  \
+       max(1,target_hierarchy.overall_counts().n_residues)
+    print >>out,"Counting unique residues in target when calculating "+\
+      "\npercentage built (fraction=%.2f)" %(ratio_unique_to_total_target)
+  else:
+    ratio_unique_to_total_target=1.
+    print >>out,"Counting all residues in target when calculating "+\
+      "percentage built"
 
   if params.crystal_info.use_crystal_symmetry is None: # set default
     if crystal_symmetry and crystal_symmetry.space_group() and \
@@ -717,6 +742,9 @@ def run(args=None,
       rv.add_match_percent(id='close',match_percent=match_percent)
 
       percent_close=rv.get_close_to_target_percent('close')
+      if ratio_unique_to_total_target:
+        percent_close=percent_close/ratio_unique_to_total_target
+
       print >>out,\
         "\nAll residues near target: "+\
          "%4d  RMSD: %6.2f Seq match (%%):%5.1f  %% Found: %5.1f" %(
