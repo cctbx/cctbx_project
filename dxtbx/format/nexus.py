@@ -529,7 +529,7 @@ class NXdetector(object):
       "pixel_mask" : {
         "minOccurs" : 0,
         "checks" : [
-          check_dset(dtype="int32")
+          check_dset(dtype=['uint32', 'int32'])
         ]
       },
       "countrate_correction_applied" : {
