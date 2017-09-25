@@ -226,11 +226,15 @@ class FormatSMVTimePix_SU(FormatSMV):
     return d
 
   def _beam(self):
-    '''Return a simple model for the beam.'''
+    '''Return an unpolarized beam model.'''
 
     wavelength = float(self._header_dictionary['WAVELENGTH'])
 
-    return self._beam_factory.simple(wavelength)
+    return self._beam_factory.make_polarized_beam(
+        sample_to_source=(0.0, 0.0, 1.0),
+        wavelength=wavelength,
+        polarization=(0, 1, 0),
+        polarization_fraction=0.5)
 
   def _scan(self):
     '''Return the scan information for this image.'''

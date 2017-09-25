@@ -317,10 +317,14 @@ class FormatGatanDM4(FormatMultiImage, Format):
     return d
 
   def _beam(self):
-    '''Dummy beam, energy 200 keV'''
+    '''Dummy unpolarized beam, energy 200 keV'''
 
     wavelength = 0.02508
-    return self._beam_factory.simple(wavelength)
+    return self._beam_factory.make_polarized_beam(
+        sample_to_source=(0.0, 0.0, 1.0),
+        wavelength=wavelength,
+        polarization=(0, 1, 0),
+        polarization_fraction=0.5)
 
   def _scan(self):
     '''Dummy scan for this stack'''
