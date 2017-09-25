@@ -1078,7 +1078,9 @@ namespace dxtbx {
 
       // Check the scan is the same length and number of images
       DXTBX_ASSERT(scan.get() != NULL);
-      DXTBX_ASSERT(data.size() == scan->get_num_images());
+      if (data.size() > 1) {
+	DXTBX_ASSERT(data.size() == scan->get_num_images());
+      }
 
       // Set the models for each image
       for (std::size_t i = 0; i < size(); ++i) {
