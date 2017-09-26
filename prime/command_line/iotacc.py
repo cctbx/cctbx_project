@@ -16,6 +16,7 @@ from cctbx.crystal import symmetry
 from scitbx.matrix import sqr
 import shutil
 from libtbx.easy_mp import pool_map
+from prime.postrefine.mod_input import read_frame
 
 def read_input(args):
   from prime.postrefine.mod_input import process_input
@@ -34,7 +35,7 @@ def get_Eoc_corrected_observations(pickle_filename, iparams):
   '''
   Read pickle file name and output Eoc corrected original miller array object.
   '''
-  observations_pickle = pickle.load(open(pickle_filename,"rb"))
+  observations_pickle = read_frame(pickle_filename)
   observations_original = observations_pickle["observations"][0]
   wavelength = observations_pickle["wavelength"]
   crystal_init_orientation = observations_pickle["current_orientation"][0]

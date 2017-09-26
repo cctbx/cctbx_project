@@ -1,17 +1,17 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.explore_twin_operators
 
-import cPickle as pickle
 from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler
-import glob, argparse, os
+import argparse, os
+from prime.postrefine.mod_input import read_frame, read_pickles
 
 def main(data, only_merohedral):
   indambh = indamb_handler()
-  intFileList = glob.glob(data)
+  intFileList = read_pickles([data])
   if intFileList:
     obsList = {}
     for intFileName in intFileList:
-      intPickle = pickle.load(open(intFileName,'rb'))
+      intPickle = read_frame(intFileName)
       try:
         obs = intPickle['observations'][0]
         obsList[intFileName] = obs

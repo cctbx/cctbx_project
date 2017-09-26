@@ -9,7 +9,7 @@ Description : read integration pickles and view systemetic absences and beam X, 
 import cPickle as pickle
 from cctbx.array_family import flex
 from iotbx import reflection_file_reader
-import sys, os, math
+import sys, math
 from scitbx.matrix import sqr
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,6 +17,7 @@ import matplotlib.mlab as mlab
 from cctbx.uctbx import unit_cell
 from prime.postrefine.mod_leastsqr import good_unit_cell
 from cctbx import statistics
+from prime.postrefine.mod_input import read_frame, read_pickles
 
 def calc_wilson(observations_full, n_residues):
   """
@@ -63,26 +64,6 @@ def get_miller_array_from_mtz(mtz_filename):
     perm = miller_array_iso.sort_permutation(by_value="resolution", reverse=True)
     miller_array_iso = miller_array_iso.select(perm)
   return flag_hklisoin_found, miller_array_iso
-
-def read_pickles(data):
-  frame_files = []
-  for p in data:
-    if os.path.isdir(p) == False:
-      #check if list-of-pickle text file is given
-      pickle_list_file = open(p,'r')
-      pickle_list = pickle_list_file.read().split("\n")
-      for pickle_filename in pickle_list:
-        if os.path.isfile(pickle_filename):
-          frame_files.append(pickle_filename)
-    else:
-      for pickle_filename in os.listdir(p):
-        if pickle_filename.endswith('.pickle'):
-          frame_files.append(p+'/'+pickle_filename)
-  #check if pickle_dir is given in input file instead of from cmd arguments.
-  if len(frame_files)==0:
-    print 'No pickle files found.'
-    exit()
-  return frame_files
 
 def read_input(args):
   if len(args) == 0:
@@ -170,7 +151,7 @@ if (__name__ == "__main__"):
   wavelength_set = flex.double()
   for pickle_filename in frame_files:
     check_sys_absent = check_sys_absent_input
-    observations_pickle = pickle.load(open(pickle_filename,"rb"))
+    observations_pickle = read_frame(pickle_filename)
     pickle_filename_arr = pickle_filename.split('/')
     pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
     flag_hklisoin_found, miller_array_iso = get_miller_array_from_mtz(hklrefin)

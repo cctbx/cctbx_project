@@ -11,7 +11,8 @@ class InvalidNumberOfResidues(ReadInputError): pass
 
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
-import sys, os, shutil, glob
+import sys, os, shutil, glob, tarfile
+import cPickle as pickle
 
 master_phil = iotbx.phil.parse("""
 data = None
@@ -426,7 +427,7 @@ def process_input(argv=None, flag_mkdir=True):
       frame_files = read_pickles(params.data)
       frame_0 = frame_files[0]
       import cPickle as pickle
-      int_pickle = pickle.load(open(frame_0,"rb"))
+      int_pickle = read_frame(frame_0)
       params.pixel_size_mm = int_pickle['pixel_size']
       print 'Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)'%(params.pixel_size_mm)
     except Exception:
@@ -477,23 +478,47 @@ def process_input(argv=None, flag_mkdir=True):
 
 def read_pickles(data):
   frame_files = []
+  pickle_files = []
+  tar_files = []
   for p in data:
     if os.path.isdir(p) == False:
       if os.path.isfile(p):
-        #check if list-of-pickle text file is given
-        pickle_list_file = open(p,'r')
-        pickle_list = pickle_list_file.read().split("\n")
+        #read all file paths in the given input file
+        file_data = open(p,'r')
+        file_list = file_data.read().split("\n")
       else:
         # p is a glob
-        pickle_list = glob.glob(p)
-      for pickle_filename in pickle_list:
-        if os.path.isfile(pickle_filename):
-          frame_files.append(pickle_filename)
+        file_list = glob.glob(p)
     else:
-      for pickle_filename in os.listdir(p):
-        if pickle_filename.endswith('.pickle'):
-          frame_files.append(p+'/'+pickle_filename)
+      file_list = os.listdir(p)
+    for filename in file_list:
+        if os.path.isfile(filename):
+          if filename.endswith('.pickle'):
+            pickle_files.append(filename)
+          elif filename.endswith('.tar'):
+            tar_files.append(filename)
   #check if pickle_dir is given in input file instead of from cmd arguments.
-  if not frame_files:
+  if len(pickle_files) + len(tar_files) == 0:
     raise InvalidData, "Error: no integration results found in the specified data parameter."
+  frame_files.extend(pickle_files)
+  #take care of tar files
+  for tar_filename in tar_files:
+    tarf = tarfile.open(name=tar_filename, mode='r')
+    for myindex in xrange(len(tarf.getmembers())):
+      frame_files.append(tar_filename+':ind'+str(myindex))
   return frame_files
+
+def read_frame(frame_file):
+  '''
+  A frame_file can be .pickle or .tar:ind#no.
+  Read accordingly and return integration pickle
+  '''
+  observations_pickle = None
+  if frame_file.endswith('.pickle'):
+    observations_pickle = pickle.load(open(frame_file,"rb"))
+  else:
+    tar_filename, tar_index = frame_file.split(':ind')
+    tarf = tarfile.open(name=tar_filename, mode='r')
+    tar_member = tarf.extractfile(member=tarf.getmembers()[int(tar_index)])
+    observations_pickle = pickle.load(tar_member)
+  return observations_pickle

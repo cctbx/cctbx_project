@@ -10,33 +10,14 @@ import cPickle as pickle
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
 from scitbx.matrix import sqr
-import sys, os, math
+import sys, math
 import numpy as np
 import matplotlib.pyplot as plt
 from prime.postrefine.mod_leastsqr import good_unit_cell
 from prime.postrefine.mod_partiality import partiality_handler
 from prime.postrefine.mod_mx import mx_handler
 from prime.postrefine.mod_leastsqr import good_unit_cell
-
-def read_pickles(data):
-  frame_files = []
-  for p in data:
-    if os.path.isdir(p) == False:
-      #check if list-of-pickle text file is given
-      pickle_list_file = open(p,'r')
-      pickle_list = pickle_list_file.read().split("\n")
-      for pickle_filename in pickle_list:
-        if os.path.isfile(pickle_filename):
-          frame_files.append(pickle_filename)
-    else:
-      for pickle_filename in os.listdir(p):
-        if pickle_filename.endswith('.pickle'):
-          frame_files.append(p+'/'+pickle_filename)
-  #check if pickle_dir is given in input file instead of from cmd arguments.
-  if len(frame_files)==0:
-    print 'No pickle files found.'
-    exit()
-  return frame_files
+from prime.postrefine.mod_input import read_frame, read_pickles
 
 def read_input(args):
   if len(args) == 0:
@@ -88,7 +69,7 @@ if (__name__ == "__main__"):
     d_min, d_max = read_input(args = sys.argv[1:])
   frame_files = read_pickles(data)
   for pickle_filename in frame_files:
-    observations_pickle = pickle.load(open(pickle_filename,"rb"))
+    observations_pickle = read_frame(pickle_filename)
     pickle_filename_arr = pickle_filename.split('/')
     pickle_filename_only = pickle_filename_arr[len(pickle_filename_arr)-1]
     mxh = mx_handler()

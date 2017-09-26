@@ -6,11 +6,12 @@ Desc        : Read pickle files (hopefully fine-sliced, and named after the
               order of the slices. Grab selected reflections and plot the
               intensity.
 """
-import sys, os
+import sys
 import cPickle as pickle
 from dials.array_family import flex
 import matplotlib.pyplot as plt
 import numpy as np
+from prime.postrefine.mod_input import read_frame, read_pickles
 
 def read_input(args):
   data = []
@@ -27,26 +28,6 @@ def read_input(args):
     exit()
   return data, data_sweep
 
-def read_pickles(data):
-  frame_files = []
-  for p in data:
-    if os.path.isdir(p) == False:
-      #check if list-of-pickle text file is given
-      pickle_list_file = open(p,'r')
-      pickle_list = pickle_list_file.read().split("\n")
-      for pickle_filename in pickle_list:
-        if os.path.isfile(pickle_filename):
-          frame_files.append(pickle_filename)
-    else:
-      for pickle_filename in os.listdir(p):
-        if pickle_filename.endswith('.pickle'):
-          frame_files.append(p+'/'+pickle_filename)
-  #check if pickle_dir is given in input file instead of from cmd arguments.
-  if len(frame_files)==0:
-    print 'No pickle files found.'
-    exit()
-  return frame_files
-
 if (__name__ == "__main__"):
   #Read input parameters and frames (pickle files)
   data_fine, data_sweep = read_input(args = sys.argv[1:])
@@ -58,7 +39,7 @@ if (__name__ == "__main__"):
   obs_fine_sample = None
   for i in range(2000):
     frame = frames_fine[i]
-    pickle_fine = pickle.load(open(frame, "rb"))
+    pickle_fine = read_frame(frame)
     obs_fine = pickle_fine["observations"][0]
     obs_fine = obs_fine.select(obs_fine.data() > 0)
     if len(obs_fine.data())> 5:
@@ -75,7 +56,7 @@ if (__name__ == "__main__"):
   colors = np.random.rand(n_frames_sel)
   i = 0
   for frame in frames_fine[sample_no:sample_no+n_frames_sel]:
-    pickle_fine = pickle.load(open(frame, "rb"))
+    pickle_fine = read_frame(frame)
     obs_fine = pickle_fine["observations"][0]
     mm_predictions = pixel_size_mm * (pickle_fine['mapped_predictions'][0])
     xbeam = pickle_fine["xbeam"]
