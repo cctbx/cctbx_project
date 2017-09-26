@@ -1302,9 +1302,7 @@ class manager(object):
     Re-process PDB from scratch and create restraints.  Not recommended for
     general use.
     """
-    raw_records = [iotbx.pdb.format_cryst1_record(
-      crystal_symmetry=self.xray_structure)]
-    raw_records.extend(self._pdb_hierarchy.as_pdb_string().splitlines())
+    raw_records = self.model_as_pdb()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records)
     pip = self.pdb_interpretation_params
     pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = -1.0
