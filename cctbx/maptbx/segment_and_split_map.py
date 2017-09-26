@@ -6826,7 +6826,7 @@ def select_box_map_data(si=None,
     if first_half_map_data:
       print >>out,"Getting first map as box"
       box_first=run_map_box(args,
-        map_data=first_half_map_data,pdb_hierarchy=hierarchy.deep_copy(),
+        map_data=first_half_map_data,pdb_hierarchy=local_hierarchy,
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
       box_first_half_map=box_first.map_box.as_double()
@@ -6836,7 +6836,7 @@ def select_box_map_data(si=None,
     if second_half_map_data:
       print >>out,"Getting second map as box"
       box_second=run_map_box(args,
-        map_data=second_half_map_data,pdb_hierarchy=hierarchy.deep_copy(),
+        map_data=second_half_map_data,pdb_hierarchy=local_hierarchy,
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
       box_second_half_map=box_second.map_box.as_double()
