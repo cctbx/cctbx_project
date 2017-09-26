@@ -291,11 +291,17 @@ class manager(object):
   def crystal_symmetry(self):
     return self._crystal_symmetry
 
+  def set_crystal_symmetry(self, cs):
+    self._crystal_symmetry = cs
+
   def set_refinement_flags(self, flags):
     self.refinement_flags = flags
 
   def get_number_of_atoms(self):
     return self.pdb_atoms.size()
+
+  def get_atoms(self):
+    return self.pdb_atoms
 
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is not None:
