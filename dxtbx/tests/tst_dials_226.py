@@ -5,10 +5,10 @@ import os
 
 def run():
   # https://github.com/dials/dials/issues/226
-
-  dials_regression = libtbx.env.find_in_repositories('dials_regression')
-  if dials_regression is None:
+  if not libtbx.env.has_module("dials_regression"):
     print "Skipping tst_dials_226.py: dials_regression not present"
+    return
+  dials_regression = libtbx.env.dist_path('dials_regression')
   h5_path = os.path.join(
     dials_regression, 'image_examples/SACLA_MPCCD_Cheetah/run266702-0-subset.h5')
   datablock = DataBlockFactory.from_filenames([h5_path])[0]
