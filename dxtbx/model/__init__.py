@@ -510,6 +510,8 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
       # elif isinstance(imset, MemImageSet):
       #   r = OrderedDict([
       #     ('__id__', 'MemImageSet')])
+        if imset.reader().is_single_file_reader():
+          r['single_file_indices'] = list(imset.indices())
       elif isinstance(imset, ImageSet):
         r = OrderedDict([
           ('__id__', 'ImageSet'),

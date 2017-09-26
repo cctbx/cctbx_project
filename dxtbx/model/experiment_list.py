@@ -261,8 +261,11 @@ class ExperimentListDict(object):
       indices = imageset['single_file_indices']
       assert len(indices) == len(filenames)
     return ImageSetFactory.make_imageset(
-      filenames, None, check_format=self._check_format,
-      single_file_indices=indices, format_kwargs=format_kwargs)
+      filenames,
+      None,
+      check_format=self._check_format,
+      single_file_indices=indices,
+      format_kwargs=format_kwargs)
 
   def _make_grid(self, imageset, format_kwargs=None):
     ''' Make a still imageset. '''
@@ -281,6 +284,7 @@ class ExperimentListDict(object):
     from dxtbx.sweep_filenames import template_image_range
     from dxtbx.imageset import ImageSetFactory
     from dxtbx.serialize.filename import load_path
+    from dxtbx.format.FormatMultiImage import FormatMultiImage
 
     # Get the template format
     template = load_path(imageset['template'])
@@ -292,11 +296,16 @@ class ExperimentListDict(object):
     else:
       i0, i1 = scan.get_image_range()
 
+    format_class = None
+    if self._check_format is False:
+      if "single_file_indices" in imageset:
+        format_class = FormatMultiImage
+
     # Make a sweep from the input data
     return ImageSetFactory.make_sweep(
       template,
       list(range(i0, i1+1)),
-      None,
+      format_class = format_class,
       check_format=self._check_format,
       beam=beam,
       detector=detector,

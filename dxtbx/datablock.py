@@ -658,6 +658,7 @@ class DataBlockDictImporter(object):
     from dxtbx.serialize.filename import load_path
     from dxtbx.imageset import ImageSetFactory, ImageGrid
     from dxtbx.format.image import ImageBool, ImageDouble
+    from dxtbx.format.FormatMultiImage import FormatMultiImage
 
     # If we have a list, extract for each dictionary in the list
     if isinstance(obj, list):
@@ -732,10 +733,20 @@ class DataBlockDictImporter(object):
           i0, i1 = scan.get_image_range()
           indices = imageset['images']
           assert min(indices) <= i0-1 and max(indices) >= i1-1
+          if check_format == False:
+            format_class = FormatMultiImage
+          else:
+            format_class = None
           iset = ImageSetFactory.make_sweep(
-            template, range(i0, i1+1), None,
-            beam, detector, gonio, scan, check_format,
-            format_kwargs=format_kwargs)
+            template,
+            list(range(i0, i1+1)),
+            format_class  = format_class,
+            beam          = beam,
+            detector      = detector,
+            goniometer    = gonio,
+            scan          = scan,
+            check_format  = check_format,
+            format_kwargs = format_kwargs)
           if 'mask' in imageset and imageset['mask'] is not None:
             imageset['mask'] = load_path(imageset['mask'])
             iset.external_lookup.mask.filename = imageset['mask']
