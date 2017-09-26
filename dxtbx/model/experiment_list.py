@@ -11,6 +11,14 @@
 from __future__ import absolute_import, division
 from dxtbx.model import Experiment, ExperimentList
 
+class InvalidExperimentListError(RuntimeError):
+  """
+  Indicates an error whilst validating the experiment list.
+
+  This means that there is some structural problem that prevents the given data
+  from representing a well-formed experiment list. This doesn't indicate e.g.
+  some problem with the data or model consistency.
+  """
 
 class ExperimentListDict(object):
   ''' A helper class for serializing the experiment list to dictionary (needed
@@ -19,11 +27,21 @@ class ExperimentListDict(object):
   def __init__(self, obj, check_format=True):
     ''' Initialise. Copy the dictionary. '''
     from copy import deepcopy
+    # Basic check: This is a dict-like object. This can happen if e.g. we 
+    # were passed a DataBlock list instead of an ExperimentList dictionary
+    if isinstance(obj, list) or not hasattr(obj, "get"):
+      raise InvalidExperimentListError("Expected dictionary, not {}".format(type(obj)))
+
     self._obj = deepcopy(obj)
     self._check_format = check_format
 
   def decode(self):
     ''' Decode the dictionary into a list of experiments. '''
+
+    # If this doesn't claim to be an ExperimentList, don't even try
+    if not self._obj.get('__id__', None) == 'ExperimentList':
+      raise InvalidExperimentListError(
+        "Expected __id__ 'ExperimentList', but found {}".format(repr(self._obj.get("__id__"))))
 
     # Extract lists of models referenced by experiments
     self._blist = self._extract_models('beam')

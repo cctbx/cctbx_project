@@ -642,6 +642,16 @@ class DataBlockFilenameImporter(object):
       abspath(filename),
       format_kwargs=format_kwargs)
 
+
+class InvalidDataBlockError(RuntimeError):
+  """
+  Indicates an error whilst validating the experiment list.
+
+  This means that there is some structural problem that prevents the given data
+  from representing a well-formed experiment list. This doesn't indicate e.g.
+  some problem with the data or model consistency.
+  """
+
 class DataBlockDictImporter(object):
   ''' A class to import a datablock from dictionary. '''
 
@@ -664,8 +674,11 @@ class DataBlockDictImporter(object):
     if isinstance(obj, list):
       return [self._load_datablocks(dd, check_format) for dd in obj]
     elif not isinstance(obj, dict):
-      raise RuntimeError('unknown datablock dictionary type')
-    assert(obj['__id__'] == 'DataBlock')
+      raise InvalidDataBlockError("Unexpected datablock type {} instead of dict".format(type(obj)))
+    # Make sure the id signature is correct
+    if not obj.get("__id__") == "DataBlock":
+      raise InvalidDataBlockError(
+        "Expected __id__ 'DataBlock', but found {}".format(repr(obj.get("__id__"))))
 
     # Get the list of models
     blist = obj.get('beam', [])
