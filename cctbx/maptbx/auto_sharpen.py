@@ -512,13 +512,15 @@ master_phil = iotbx.phil.parse("""
 
       k_sol = 0.35
         .type = float
-        .help = k_sol value for model map calculation
-        .short_caption = k_sol
+        .help = k_sol value for model map calculation. IGNORED (Not applied)
+        .short_caption = k_sol IGNORED
+        .style = hidden 
   
       b_sol = 50
         .type = float
-        .help = b_sol value for model map calculation
-        .short_caption = b_sol
+        .help = b_sol value for model map calculation. IGNORED (Not applied)
+        .short_caption = b_sol IGNORED
+        .style = hidden
   }
 
    control
