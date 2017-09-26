@@ -587,6 +587,12 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       return cstringio
     return cstringio.getvalue()
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: This is not equivalent conversion. Hierarchy does not have a lot
+# of information pdb_input and cif_input should have. Therefore this
+# function should not be used at all to avoid confusion and having crippled
+# input objects.
+
   def as_pdb_input (self, crystal_symmetry=None) :
     """
     Generate corresponding pdb.input object.
@@ -609,6 +615,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     cif_model['pdb_hierarchy'] = cif_block
     cif_input = mmcif.cif_input(cif_object=cif_model)
     return cif_input
+# END_MARKED_FOR_DELETION_OLEG
 
   def extract_xray_structure(self, crystal_symmetry=None) :
     """
