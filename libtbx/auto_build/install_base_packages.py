@@ -997,11 +997,9 @@ _replace_sysconfig_paths(build_time_vars)
         confirm_import_module="OpenGL")
 
   def build_cython(self):
-    self.build_python_module_simple(
-      pkg_url=pypi_pkg_url('Cython'),
-      pkg_name=CYTHON_PKG,
-      pkg_name_label="cython",
-      confirm_import_module="Cython")
+    self.build_python_module_pip(
+      'Cython', package_version=CYTHON_VERSION,
+      confirm_import_module='cython')
 
   def build_jinja2(self):
     self.build_python_module_pip(

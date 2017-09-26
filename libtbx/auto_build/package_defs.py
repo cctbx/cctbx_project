@@ -15,15 +15,6 @@ import sys
 import urllib2
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
-BASE_PIPY_PKG_URL = "https://pypi.python.org/packages/source"
-
-def pypi_pkg_url(package):
-  '''Translate a package filename into a PyPi URL prefix'''
-  if '-' in package:
-    pkgname = package[:package.rindex('-')]
-  else:
-    pkgname = package
-  return "%s/%s/%s" % (BASE_PIPY_PKG_URL, package[0], pkgname)
 
 def get_pypi_package_information(package, version=None, information_only=False):
   '''Retrieve information about a PyPi package.'''
@@ -77,13 +68,12 @@ LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
 COLORAMA_VERSION="0.3.7"
+CYTHON_VERSION="0.22"
 JINJA2_VERSION = "2.9.6"
 JUNIT_XML_VERSION="1.7"
 MOCK_VERSION="2.0.0"
 PILLOW_VERSION = "4.2.1"
 PYTEST_VERSION="2.9.1"
-
-CYTHON_PKG = "cython-0.22.tar.gz"
 
 # HDF5
 BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/"
