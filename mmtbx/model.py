@@ -1343,23 +1343,6 @@ class manager(object):
           set_inelastic_form_factors = scattering_dict_info.set_inelastic_form_factors,
           iff_wavelength = scattering_dict_info.iff_wavelength)
 
-  def backbone_selections(self, bool=True):
-    get_class = iotbx.pdb.common_residue_names_get_class
-    backbone_names = set(["CA","CB","C","O","N"])
-    result = flex.size_t()
-    for model in self._pdb_hierarchy.models():
-      for chain in model.chains():
-        for rg in chain.residue_groups():
-          for ag in rg.atom_groups():
-            is_common_amino_acid=get_class(name=ag.resname)=="common_amino_acid"
-            for atom in rg.atoms():
-              if(is_common_amino_acid and
-                 atom.name.strip().upper() in backbone_names):
-                result.append(atom.i_seq)
-    if(bool):
-      result = flex.bool(self.xray_structure.scatterers().size(), result)
-    return result
-
   def hd_group_selections(self):
     return utils.combine_hd_exchangable(hierarchy = self._pdb_hierarchy)
 
@@ -1389,6 +1372,8 @@ class manager(object):
           assert [adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0
           scatterers[i_seq_min_q].u_iso = scatterers[i_seq_max_q].u_iso
 
+  # MARKED_FOR_DELETION_OLEG
+  # Reason: duplication, use mmtb.refinement.geometry_minimization
   def geometry_minimization(
         self,
         correct_special_position_tolerance=1.0,
@@ -1447,6 +1432,7 @@ class manager(object):
         sites_cart_orig = sites_cart
       self.xray_structure.set_sites_cart(sites_cart = sites_cart_orig)
     return minimized
+  # END_MARKED_FOR_DELETION_OLEG
 
   def rms_b_iso_or_b_equiv_bonded(self):
     return utils.rms_b_iso_or_b_equiv_bonded(
