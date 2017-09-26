@@ -1727,6 +1727,9 @@ class manager(object):
     time_model_show += timer.elapsed()
 
   def remove_alternative_conformations(self, always_keep_one_conformer):
+    # XXX This is not working correctly when something was deleted.
+    # Need to figure out a way to update everything so GRM
+    # construction will not fail.
     self.geometry_restraints = None
     self._pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer=always_keep_one_conformer)

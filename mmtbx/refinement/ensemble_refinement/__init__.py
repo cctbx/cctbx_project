@@ -1726,6 +1726,12 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
     f = open(pdb_file_removed_alt_confs, 'w')
     f.write(pdb_str)
     f.close()
+    pdb_inp = iotbx.pdb.input(file_name=pdb_file_removed_alt_confs)
+    model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      restraint_objects = cif_objects,
+      pdb_interpretation_params = pdb_ip,
+      log = log)
 
   # Refinement flags
   class rf:
