@@ -27,6 +27,7 @@ sources = [
   "parameter_map.cpp",
   "twin_components.cpp",
   "extinction.cpp",
+  "sigmaa.cpp",
   "../targets/shelxl_wght_ls_bpl.cpp",
 ]
 env.Prepend(LIBS=libs)

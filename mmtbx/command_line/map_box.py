@@ -219,7 +219,6 @@ Parameters:"""%h
     print >>log,"\nSoft mask will be applied to model-based mask"
   if params.keep_map_size:
     print >>log,"\nEntire map will be kept (not cutting out region)"
-
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
     map_data         = map_data.as_double(),
