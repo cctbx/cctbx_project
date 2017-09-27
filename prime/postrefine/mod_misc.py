@@ -187,6 +187,12 @@ class wilson_plot_handler(object):
     """
 
   def show_plot(self, miller_array_in, n_bins=None):
+    try:
+      import matplotlib.pyplot as plt
+    except Exception as e:
+      print "Warning: error importing matplotlib.pyplot"
+      print e
+      return
     if n_bins is None:
       binner = miller_array_in.setup_binner(auto_binning=True)
     else:
@@ -200,7 +206,6 @@ class wilson_plot_handler(object):
       avg_I_bin.append(np.mean(I_sel))
       one_dsqr_bin.append(1/binner.bin_d_range(i)[1]**2)
     x_axis = one_dsqr_bin
-    import matplotlib.pyplot as plt
     fig, ax1 = plt.subplots()
     ln1 = ax1.plot(x_axis, avg_I_bin, linestyle='-', linewidth=2.0, c='b')
     ax1.set_xlabel('1/d^2')

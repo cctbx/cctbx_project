@@ -6,7 +6,6 @@ from iotbx import mtz
 from libtbx.utils import Sorry
 import math, os
 import numpy as np
-import matplotlib.pyplot as plt
 from copy import deepcopy
 import cPickle as pickle
 from collections import Counter
@@ -541,6 +540,12 @@ class intensities_scaler(object):
       f.close()
     #plotting
     if iparams.flag_plot:
+      try:
+        import matplotlib.pyplot as plt
+      except Exception as e:
+        print "Warning: error importing matplotlib.pyplot"
+        print e
+        return
       n_rows = 3
       n_cols = int(math.ceil(len(params)/n_rows))
       num_bins = 10

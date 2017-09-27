@@ -54,9 +54,6 @@ class partiality_handler(object):
     f1 = 1/( X * sig_set * math.sqrt(2*math.pi) )
     f2 = np.exp( -1 * (np.log(X)-x0)**2 / (2*(sig_set**2)) )
     svx = flex.double(f1 * f2 / g)
-    import matplotlib.pyplot as plt
-    plt.scatter(x, svx, s=20, color='r')
-    #plt.show()
     return svx
 
   def calc_partiality_anisotropy_set(self, my_uc, rotx, roty, miller_indices,
