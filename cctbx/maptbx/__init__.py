@@ -1476,3 +1476,69 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
     map_data=map_data,
     labels=flex.std_string([""]))
   return fo_sharp, map_data
+
+def loc_res(map,
+            pdb_hierarchy,
+            crystal_symmetry,
+            chunk_size=10,
+            soft_mask_radius=3.,
+            method="fsc",
+            fsc_cutoff=0.143):
+  assert method in ["fsc", "rscc"]
+  mmm = map.as_1d().min_max_mean().as_tuple()
+  map = map-mmm[2]
+  map = map/map.sample_standard_deviation()
+  cg = maptbx.crystal_gridding(
+    unit_cell             = crystal_symmetry.unit_cell(),
+    space_group_info      = crystal_symmetry.space_group_info(),
+    pre_determined_n_real = map.accessor().all())
+  #
+  ph_dc = pdb_hierarchy.deep_copy()
+  xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=crystal_symmetry)
+  mmtbx.utils.setup_scattering_dictionaries(
+    scattering_table = "electron",
+    xray_structure   = xrs,
+    d_min            = 1.0)
+  #
+  bs = pdb_hierarchy.atoms().extract_b()
+  results = flex.double()
+  chunk_selections = pdb_hierarchy.chunk_selections(
+    residues_per_chunk=chunk_size)
+  #
+  for chunk_sel in chunk_selections:
+    ph_sel  = pdb_hierarchy.select(chunk_sel).deep_copy()
+    xrs_sel = xrs.select(chunk_sel)
+    box = mmtbx.utils.extract_box_around_model_and_map(
+      xray_structure   = xrs_sel,
+      map_data         = map,
+      box_cushion      = 3,
+      soft_mask        = True,
+      soft_mask_radius = soft_mask_radius,
+      mask_atoms       = True)
+    #####
+    fo = miller.structure_factor_box_from_map(
+      crystal_symmetry = box.xray_structure_box.crystal_symmetry(),
+      map              = box.map_box)
+    fc = fo.structure_factors_from_scatterers(
+      xray_structure = box.xray_structure_box).f_calc()
+    if(method=="fsc"):
+      d_min = fc.d_min_from_fsc(other=fo, bin_width=100,
+        fsc_cutoff=fsc_cutoff).d_min
+    if(method=="rscc"):
+      d_spacings = fc.d_spacings().data()
+      ss = 1./flex.pow2(d_spacings) / 4.
+      d_min, cc = maptbx.cc_complex_complex(
+        f_1        = fo.data(),
+        f_2        = fc.data(),
+        d_spacings = d_spacings,
+        ss         = ss,
+        d_mins     = flex.double([i/10. for i in range(15,100)]),
+        b_iso      = 0)
+    ph_sel.adopt_xray_structure(box.xray_structure_box)
+    results.append(d_min)
+    #
+    bs = bs.set_selected(chunk_sel, d_min)
+  print flex.min(results), flex.max(results), flex.mean(results)
+  print flex.min(bs), flex.max(bs), flex.mean(bs)
+  pdb_hierarchy.atoms().set_b(bs)
+  return pdb_hierarchy
