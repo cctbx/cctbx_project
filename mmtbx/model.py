@@ -46,6 +46,9 @@ from mmtbx.refinement import print_statistics
 import mmtbx.tls.tools as tls_tools
 from iotbx.pdb.atom_selection import AtomSelectionError
 from mmtbx.refinement import anomalous_scatterer_groups
+import boost.python
+ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+from mmtbx_validation_ramachandran_ext import rama_eval
 
 time_model_show = 0.0
 
@@ -212,8 +215,8 @@ class manager(object):
     self._grm = None
     self._atom_selection_cache = None
     self._ncs_obj = None
-    self.mon_lib_srv = None
-    self.ener_lib = None
+    self._mon_lib_srv = None
+    self._ener_lib = None
     self._rotamer_eval = None
     self._rama_eval = None
     self.original_model_format = None
@@ -437,14 +440,24 @@ class manager(object):
           crystal_symmetry=self.crystal_symmetry())
 
   def get_mon_lib_srv(self):
-    if self.mon_lib_srv is None:
-      self.mon_lib_srv = mmtbx.monomer_library.server.server()
-    return self.mon_lib_srv
+    if self._mon_lib_srv is None:
+      self._mon_lib_srv = mmtbx.monomer_library.server.server()
+    return self._mon_lib_srv
 
   def get_ener_lib(self):
-    if self.ener_lib is None:
-      self.ener_lib = mmtbx.monomer_library.server.ener_lib()
-    return self.ener_lib
+    if self._ener_lib is None:
+      self._ener_lib = mmtbx.monomer_library.server.ener_lib()
+    return self._ener_lib
+
+  def get_rotamer_manager(self):
+    if self._rotamer_eval is None:
+      self._rotamer_eval = RotamerEval(mon_lib_srv=self.get_mon_lib_srv)
+    return self._rotamer_eval
+
+  def get_ramachandran_manager(self):
+    if self._rama_eval is None:
+      self._rama_eval = rama_eval()
+    return self._rama_eval
 
   def get_apply_cif_links(self):
     if self.all_chain_proxies is not None:
@@ -629,8 +642,8 @@ class manager(object):
         self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
       self.xray_structure = xray_structure_all
 
-    self.mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
-    self.ener_lib = self.processed_pdb_files_srv.ener_lib
+    self._mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
+    self._ener_lib = self.processed_pdb_files_srv.ener_lib
     self._ncs_obj = self.processed_pdb_file.ncs_obj
 
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
@@ -686,8 +699,8 @@ class manager(object):
       add_reference_dihedral_restraints_if_requested(
           geometry=restraints_manager.geometry,
           processed_pdb_file=self.processed_pdb_file,
-          mon_lib_srv=self.mon_lib_srv,
-          ener_lib=self.ener_lib,
+          mon_lib_srv=self.get_mon_lib_srv(),
+          ener_lib=self.get_ener_lib(),
           has_hd=self.has_hd,
           params=self.pdb_interpretation_params.reference_model,
           selection=None,
