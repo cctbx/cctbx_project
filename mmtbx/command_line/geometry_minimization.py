@@ -555,9 +555,7 @@ class run(object):
   def show_model_statistics(self, prefix):
     if self.params.write_geo_file:
       broadcast(m=prefix, log = self.log)
-      s = mmtbx.model.statistics(
-        pdb_hierarchy               = self.model.get_hierarchy(),
-        geometry_restraints_manager = self.model.get_restraints_manager().geometry)
+      s = self.model.geometry_statistics()
       s.show(log = self.log)
 
 class launcher (runtime_utils.target_with_save_result) :
