@@ -109,7 +109,6 @@ class d99(object):
       print >> log, fmt%(d_min, cc)
 
 def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
-  assert [sites_cart, crystal_symmetry].count(None) in [0, 2]
   shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
      map_data.is_0_based())
