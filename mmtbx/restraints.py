@@ -103,8 +103,9 @@ class manager(object):
             ligand_names,
             pdb_hierarchy,
             params.afitt.ff,
-            pdb_hierarchy.atoms().sites_cart(),
+            pdb_hierarchy.atoms().extract_xyz(),
             self.geometry)
+        self.afitt_object = afitt_object
 
   def select(self, selection):
     if (self.geometry is None):
