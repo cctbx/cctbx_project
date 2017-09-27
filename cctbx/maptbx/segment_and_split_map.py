@@ -42,7 +42,7 @@ master_phil = iotbx.phil.parse("""
                the center specified). Typically in  PDB format. \
               Can also be a .ncs_spec file from phenix. \
               Created automatically if ncs_type is specified.
-      .short_caption = NCS info file
+      .short_caption = NCS  info file
 
     pdb_file = None
       .type = path
