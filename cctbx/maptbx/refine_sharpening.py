@@ -19,7 +19,7 @@ def write_mtz(ma=None,phases=None,file_name=None):
 #  close to what we want. Figure this out later...
 # XXX Also set means=1 not mean square = 1
 
-def amplitude_quasi_normalisations(ma, d_star_power=1, set_to_minimum=None):
+def amplitude_quasi_normalisations(ma, d_star_power=1, set_to_minimum=None): # Not used
     epsilons = ma.epsilons().data().as_double()
     mean_f_sq_over_epsilon = flex.double()
     for i_bin in ma.binner().range_used():
@@ -893,7 +893,7 @@ def run(map_coeffs=None,
     (d_max,d_min)=ma.d_max_min()
     ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
     if normalize_amplitudes_in_resdep: 
-      print >>out,"Normalizing structure factors..." 
+      print >>out,"Normalizing structure factors..."  
       ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
   else:
     assert resolution is not None
