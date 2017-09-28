@@ -6,6 +6,17 @@ from __future__ import division
 # See also:
 #   http://cctbx.sourceforge.net/iotbx_cif
 #
+#
+
+
+
+
+# hard-coded mmCIF words (probably outdated)
+# does not pass its own validation
+
+
+
+
 
 def run():
   quartz_as_cif = """\
@@ -103,6 +114,7 @@ loop_
   cif_model["quartz"].add_loop(symop_loop)
 
   cif_core_dic = validation.smart_load_dictionary(name="cif_core.dic")
+  print "validation"
   cif_model.validate(cif_core_dic, show_warnings=True)
 
 if __name__ == "__main__":
