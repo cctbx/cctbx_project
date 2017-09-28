@@ -168,9 +168,10 @@ def run(args, log = sys.stdout, as_gui_program=False):
   model_map = None
   model_map_coeffs = None
   if len(processed_args.pdb_file_names):
-    pdb_file = mmtbx.utils.pdb_file(
-      pdb_file_names=processed_args.pdb_file_names)
-    xs = pdb_file.pdb_inp.xray_structure_simple()
+    pdb_inp = mmtbx.utils.pdb_inp_from_multiple_files(
+      pdb_files=processed_args.pdb_file_names,
+      log=log)
+    xs = pdb_inp.xray_structure_simple()
     fo_, hl_ = fo, hl_coeffs
     if params.change_basis_to_niggli_cell:
       change_of_basis_op = xs.change_of_basis_op_to_niggli_cell()
