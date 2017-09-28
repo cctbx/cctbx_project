@@ -67,7 +67,6 @@ VIRTUALENV_PKG = "virtualenv-14.0.6.tar.gz" # virtualenv
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-COLORAMA_VERSION="0.3.7"
 CYTHON_VERSION="0.22"
 JINJA2_VERSION = "2.9.6"
 JUNIT_XML_VERSION="1.7"

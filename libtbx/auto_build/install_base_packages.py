@@ -890,8 +890,6 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_pytest(self):
     self.build_python_module_pip(
-      'colorama', package_version=COLORAMA_VERSION)
-    self.build_python_module_pip(
       'mock', package_version=MOCK_VERSION)
     self.build_python_module_pip(
       'pytest', package_version=PYTEST_VERSION)
