@@ -44,17 +44,28 @@ class manager(object):
     self.use_afitt = use_afitt
     self.afitt_object = afitt_object
 
-  def init_amber(self, params, log):
-   if hasattr(params, "amber"):
+  def init_amber(self, params, pdb_hierarchy, log):
+    if hasattr(params, "amber"):
       self.use_amber = params.amber.use_amber
       print_amber_energies = params.amber.print_amber_energies
       if (self.use_amber) :
+        sites_cart = pdb_hierarchy.atoms().extract_xyz()
+        compute_gradients=False
         make_header("Initializing AMBER", out=log)
         print >> log, "  topology    : %s" % params.amber.topology_file_name
         print >> log, "  coordinates : %s" % params.amber.coordinate_file_name
         from amber_adaptbx import interface
         self.amber_structs, sander = interface.get_amber_struct_object(params)
         self.sander=sander # used for cleanup
+        import amber_adaptbx
+        amber_geometry_manager = amber_adaptbx.geometry_manager(
+          sites_cart=sites_cart,
+          #number_of_restraints=geometry_energy.number_of_restraints,
+          gradients_factory=flex.vec3_double,
+          amber_structs=self.amber_structs)
+        geometry = amber_geometry_manager.energies_sites(
+          crystal_symmetry = self.geometry.crystal_symmetry,
+          compute_gradients = compute_gradients)
 
   def cleanup_amber(self):
     if self.sander and self.amber_structs:
