@@ -39,6 +39,7 @@ def run(args):
   model.set_xray_structure(xrs)
   # output result in PDB format to the screen
   print model.model_as_pdb()
+  print "END"
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
