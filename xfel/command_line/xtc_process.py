@@ -1128,7 +1128,7 @@ class InMemScript(DialsProcessScript):
 
     if not self.params.dispatch.integrate:
       self.debug_write("index_ok_%d"%len(indexed), "done")
-      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
+      self.log_frame(experiments, indexed, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     # integrate
