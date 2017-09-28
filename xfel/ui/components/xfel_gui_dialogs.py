@@ -1680,6 +1680,7 @@ class TrialDialog(BaseDialog):
                                           label_size=(180, -1),
                                           ctrl_size=(80, -1),
                                           choices=choices)
+    self.copy_runblocks.ctr.SetSelection(0)
     self.throttle = gctr.SpinCtrl(self,
                                   label='Percent events processed:',
                                   label_size=(180, -1),

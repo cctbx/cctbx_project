@@ -641,7 +641,6 @@ class PHILBox(CtrlBase):
 
     self.sizer = wx.GridBagSizer(5, 5)
     self.SetSizer(self.sizer)
-    self.sizer.AddGrowableCol(1)
 
     self.ctr = wx.richtext.RichTextCtrl(self,
                                         size=ctr_size,
@@ -668,13 +667,14 @@ class PHILBox(CtrlBase):
       span_counter += 1
 
     if span_counter > 0:
-      self.sizer.AddGrowableRow(span_counter)
       self.sizer.Add(self.ctr, pos=(0, 1), span=(span_counter + 1, 1),
                      flag=wx.EXPAND)
+      self.sizer.AddGrowableRow(span_counter)
     elif span_counter == 0:
       self.sizer = wx.BoxSizer(wx.VERTICAL)
       self.sizer.Add(self.ctr, 1, flag=wx.EXPAND)
 
+    self.sizer.AddGrowableCol(1)
 
 class GaugeBar(CtrlBase):
   def __init__(self, parent,

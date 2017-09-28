@@ -331,7 +331,7 @@ class ProgressSentinel(Thread):
                                             'gamma':cell.cell_gamma,
                                             'n_img':n_img}
         #if len(self.noiso_cells) > 0:
-        if len(self.info) == 0:
+        if len(self.info) == 0 and len(self.noiso_cells) > 0:
           sum_n_img = sum([cell['n_img'] for cell in self.noiso_cells])
           mean_a = sum([cell['n_img']*cell['a'] for cell in self.noiso_cells])/sum_n_img
           mean_b = sum([cell['n_img']*cell['b'] for cell in self.noiso_cells])/sum_n_img
@@ -1312,8 +1312,6 @@ class JobsTab(BaseTab):
     self.data = {}
 
     self.job_list = gctr.SortableListCtrl(self, style=wx.LC_REPORT|wx.BORDER_SUNKEN)
-    self.job_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.job_list.SetSizer(self.job_sizer)
     self.job_list.InsertColumn(0, "Trial")
     self.job_list.InsertColumn(1, "Run")
     self.job_list.InsertColumn(2, "Block")
@@ -1511,8 +1509,6 @@ class JobsTab(BaseTab):
           self.job_list.Select(i)
         if job_id == focused_job_id:
           self.job_list.Focus(i)
-
-    self.job_sizer.Layout()
 
   def onColClick(self, e):
     # Note: the sortable list binds the event first and activates this method after.
@@ -1898,7 +1894,7 @@ class RunStatsTab(BaseTab):
     self.runstats_panel = wx.Panel(self, size=(100, 100))
     self.runstats_panelsize = self.runstats_panel.GetSize()
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
-    self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.ALL | wx.EXPAND)
+    self.runstats_sizer = wx.StaticBoxSizer(self.runstats_box, wx.HORIZONTAL)
     self.runstats_panel.SetSizer(self.runstats_sizer)
 
     self.trial_number = gctr.ChoiceCtrl(self,
@@ -2095,7 +2091,8 @@ class RunStatsTab(BaseTab):
     self.run_numbers.ctr.Clear()
     if self.trial is not None:
       self.runs_available = [str(r.run) for r in self.trial.runs]
-      self.run_numbers.ctr.InsertItems(items=self.all_runs, pos=0)
+      if len(self.all_runs) > 0:
+        self.run_numbers.ctr.InsertItems(items=self.all_runs, pos=0)
 
   def onRefresh(self, e):
     self.refresh_trials()
@@ -2378,7 +2375,7 @@ class UnitCellTab(BaseTab):
     self.unit_cell_panel = wx.Panel(self, size=(200, 120))
     self.unit_cell_panelsize = self.unit_cell_panel.GetSize()
     self.unit_cell_box = wx.StaticBox(self.unit_cell_panel, label='Unit cell analysis')
-    self.unit_cell_sizer = wx.StaticBoxSizer(self.unit_cell_box, wx.VERTICAL | wx.EXPAND)
+    self.unit_cell_sizer = wx.StaticBoxSizer(self.unit_cell_box, wx.VERTICAL)
     self.unit_cell_panel.SetSizer(self.unit_cell_sizer)
 
     # self.main_sizer.Add(self.selection_columns_panel, 1,
@@ -2568,8 +2565,6 @@ class MergeTab(BaseTab):
                                   style=wx.TE_MULTILINE | wx.TE_READONLY)
 
     self.trial_tag_sizer = wx.GridBagSizer(2, 3)
-    self.trial_tag_sizer.AddGrowableCol(2)
-    self.trial_tag_sizer.AddGrowableRow(1)
     self.trial_tag_sizer.Add(self.opt_prefix, pos=(0, 0))
     self.trial_tag_sizer.Add(self.trial_number, pos=(1, 0),
                              flag=wx.TOP, border=10)
@@ -2587,7 +2582,8 @@ class MergeTab(BaseTab):
                              border=15)
     self.input_box_sizer.Add(self.trial_tag_sizer, 1, flag=wx.ALL | wx.EXPAND,
                              border=10)
-
+    self.trial_tag_sizer.AddGrowableCol(2)
+    self.trial_tag_sizer.AddGrowableRow(1)
     self.main_sizer.Add(self.toolbar, border=10,
                         flag=wx.EXPAND | wx.LEFT | wx.RIGHT)
     self.main_sizer.Add(self.input_panel, proportion=1,
