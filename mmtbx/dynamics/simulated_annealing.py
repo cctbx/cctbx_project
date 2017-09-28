@@ -75,7 +75,7 @@ def manager(params,
   print_statistics.make_header("simulated annealing refinement", out = out)
   model.set_refine_individual_sites()
   fmodel = fmodels.fmodel_xray() # XXX use only xray data
-  fmodel.xray_structure = model.xray_structure # XXX use only xray data
+  fmodel.xray_structure = model.get_xray_structure() # XXX use only xray data
   if (params.max_number_of_iterations >= 0):
     print_statistics.make_sub_header(
       "lbfgs minimization: before simulated annealing", out = out)
@@ -94,7 +94,7 @@ def manager(params,
       target_weights           = target_weights,
       h_params                 = h_params,
       verbose                  = 0)
-  fmodel.update_xray_structure(xray_structure = model.xray_structure,
+  fmodel.update_xray_structure(xray_structure = model.get_xray_structure(),
                                update_f_calc  = True,
                                update_f_mask  = True)
   print_statistics.make_header("simulated annealing", out = out)

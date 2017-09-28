@@ -410,8 +410,8 @@ class run_ensemble_refinement(object):
     #Dummy miller array
     self.copy_ma = self.fmodel_running.f_masks()[0].array(data = self.fmodel_running.f_masks()[0].data()*0).deep_copy()
     #
-    self.fmodel_running.xray_structure = self.model.xray_structure
-    assert self.fmodel_running.xray_structure is self.model.xray_structure
+    self.fmodel_running.xray_structure = self.model.get_xray_structure()
+    assert self.fmodel_running.xray_structure is self.model.get_xray_structure()
     self.pdb_hierarchy = self.model.pdb_hierarchy
 
     #Atom selections
@@ -460,7 +460,7 @@ class run_ensemble_refinement(object):
     #Set occupancies to 1.0
     if self.params.set_occupancies:
       make_header("Set occupancies to 1.0", out = self.log)
-      self.model.xray_structure.set_occupancies(
+      self.model.get_xray_structure().set_occupancies(
         value      = 1.0)
       self.model.show_occupancy_statistics(out = self.log)
     #Initiates running average SFs
@@ -504,8 +504,8 @@ class run_ensemble_refinement(object):
           or self.macro_cycle%self.params.ordered_solvent_update_cycle == 0):
         self.ordered_solvent_update()
 
-      xrs_previous = self.model.xray_structure.deep_copy_scatterers()
-      assert self.fmodel_running.xray_structure is self.model.xray_structure
+      xrs_previous = self.model.get_xray_structure().deep_copy_scatterers()
+      assert self.fmodel_running.xray_structure is self.model.get_xray_structure()
 
       if self.cdp.verbose >= 1:
         if self.macro_cycle == 1 or self.macro_cycle%100 == 0:
@@ -516,7 +516,7 @@ class run_ensemble_refinement(object):
         cdp_verbose = -1
 
       cd_manager = ensemble_cd.cartesian_dynamics(
-        structure                   = self.model.xray_structure,
+        structure                   = self.model.get_xray_structure(),
         restraints_manager          = self.model.restraints_manager,
         temperature                 = self.cdp.temperature - self.params.wxray_coupled_tbath_offset,
         protein_thermostat          = self.cdp.protein_thermostat,
@@ -548,7 +548,7 @@ class run_ensemble_refinement(object):
 
       #Update Fmodel
       self.fmodel_running.update_xray_structure(
-        xray_structure      = self.model.xray_structure,
+        xray_structure      = self.model.get_xray_structure(),
         update_f_calc       = True,
         update_f_mask       = True,
         force_update_f_mask = True)
@@ -653,24 +653,24 @@ class run_ensemble_refinement(object):
       #Store current structure, current KE
       if self.macro_cycle % self.pdb_store_cycle == 0 \
            and self.macro_cycle >= self.equilibrium_macro_cycles:
-        self.er_data.xray_structures.append(self.model.xray_structure.deep_copy_scatterers())
+        self.er_data.xray_structures.append(self.model.get_xray_structure().deep_copy_scatterers())
         self.er_data.pdb_hierarchys.append(self.model.pdb_hierarchy().deep_copy())
         if self.er_data.ke_protein_running is None:
-          self.er_data.ke_pdb.append(flex.double(self.model.xray_structure.sites_cart().size(), 0.0) )
+          self.er_data.ke_pdb.append(flex.double(self.model.get_xray_structure().sites_cart().size(), 0.0) )
         else:
-          ke_expanded = flex.double(self.model.xray_structure.sites_cart().size(), 0.0)
+          ke_expanded = flex.double(self.model.get_sites_cart().size(), 0.0)
           ke_expanded.set_selected(~self.model.solvent_selection(),
                                    self.er_data.ke_protein_running)
           self.er_data.ke_pdb.append(ke_expanded)
 
       #Current structural deviation vs starting structure and previous macro-cycle structure
-      if xrs_previous.distances(other = self.model.xray_structure).min_max_mean().mean > 1.0:
+      if xrs_previous.distances(other = self.model.get_xray_structure()).min_max_mean().mean > 1.0:
         print >> self.log, "\n\nWARNING:"
         print >> self.log, "Macro cycle too long, max atomic deviation w.r.t. previous cycle"
         print >> self.log, "greater than 1.0A"
         print >> self.log, "Reduce params.cartesian_dynamics.number_of_steps"
         print >> self.log, "Max deviation : {0:1.3f}"\
-          .format(xrs_previous.distances(other = self.model.xray_structure).min_max_mean().mean)
+          .format(xrs_previous.distances(other = self.model.get_xray_structure()).min_max_mean().mean)
 
       if self.fmodel_running.r_work() > 0.75:
         raise Sorry("Simulation aborted, running Rfree > 75%")
@@ -709,7 +709,7 @@ class run_ensemble_refinement(object):
       if self.macro_cycle == self.equilibrium_macro_cycles:
         self.reset_totals()
       #
-      assert self.model.xray_structure is cd_manager.structure
+      assert self.model.get_xray_structure() is cd_manager.structure
       assert self.fmodel_running.xray_structure is cd_manager.structure
       if self.fix_scale == True:
         assert self.fmodel_running.scale_k1() == self.er_data.fix_scale_factor
@@ -949,7 +949,7 @@ class run_ensemble_refinement(object):
     self.tls_manager.tls_selections_no_sol_no_hd        = tls_no_sol_no_hd_selections
     self.tls_manager.tls_operators = mmtbx.tls.tools.generate_tlsos(
         selections     = self.tls_manager.tls_selections_no_sol,
-        xray_structure = model_no_solvent.xray_structure,
+        xray_structure = model_no_solvent.get_xray_structure(),
         value          = 0.0)
 
     self.model.tls_groups = mmtbx.tls.tools.tls_groups(
@@ -962,10 +962,10 @@ class run_ensemble_refinement(object):
     model_copy = model_copy.remove_solvent()
     print >> self.log, 'Reference model :'
     model_copy.show_adp_statistics(padded = True, out = self.log)
-    start_xrs = model_copy.xray_structure.deep_copy_scatterers()
+    start_xrs = model_copy.get_xray_structure().deep_copy_scatterers()
     start_xrs.convert_to_isotropic()
     start_biso = start_xrs.scatterers().extract_u_iso()/adptbx.b_as_u(1)
-    model_copy.xray_structure.convert_to_anisotropic()
+    model_copy.get_xray_structure().convert_to_anisotropic()
     tls_selection_no_sol_hd            = self.tls_manager.tls_selections_no_sol_no_hd
     tls_selection_no_sol_hd_exclusions = self.tls_manager.tls_selections_no_sol_no_hd
     pre_fitted_mean = 999999.99
@@ -1009,14 +1009,14 @@ class run_ensemble_refinement(object):
       for fit_cycle in xrange(self.params.max_ptls_cycles):
         fit_tlsos = mmtbx.tls.tools.generate_tlsos(
           selections     = tls_selection_no_sol_hd_exclusions,
-          xray_structure = model_copy.xray_structure,
+          xray_structure = model_copy.get_xray_structure(),
           value          = 0.0)
         print >> self.log, '\nFitting cycle : ', fit_cycle+1
         for rt,rl,rs in [[1,0,1],[1,1,1],[0,1,1],
                          [1,0,0],[0,1,0],[0,0,1],[1,1,1],
                          [0,0,1]]*10:
           fit_tlsos = mmtbx.tls.tools.tls_from_uanisos(
-            xray_structure               = model_copy.xray_structure,
+            xray_structure               = model_copy.get_xray_structure(),
             selections                   = tls_selection_no_sol_hd_exclusions,
             tlsos_initial                = fit_tlsos,
             number_of_macro_cycles       = 10,
@@ -1027,7 +1027,7 @@ class run_ensemble_refinement(object):
             enforce_positive_definite_TL = True,
             verbose                      = -1,
             out                          = self.log)
-        fitted_tls_xrs = model_copy.xray_structure.deep_copy_scatterers()
+        fitted_tls_xrs = model_copy.get_xray_structure().deep_copy_scatterers()
         us_tls = mmtbx.tls.tools.u_cart_from_tls(
                sites_cart = fitted_tls_xrs.sites_cart(),
                selections = self.tls_manager.tls_selections_no_sol,
@@ -1049,7 +1049,7 @@ class run_ensemble_refinement(object):
               print >> self.log, atom_info.name, atom_info.resseq, atom_info.resname, atom_info.chain_id, " | ", i_seq, start_biso[i_seq], fitted_biso[i_seq]
 
         delta_ref_fit = start_biso - fitted_biso
-        hd_selection = model_copy.xray_structure.hd_selection()
+        hd_selection = model_copy.get_hd_selection()
         delta_ref_fit_no_h = delta_ref_fit.select(~hd_selection)
         delta_ref_fit_no_h_basic_stats = scitbx.math.basic_statistics(delta_ref_fit_no_h )
         start_biso_no_hd = start_biso.select(~hd_selection)
@@ -1078,8 +1078,8 @@ class run_ensemble_refinement(object):
         include_array = flex.bool(delta_ref_fit < percentile_cutoff)
         #
         include_i_seq = []
-        assert delta_ref_fit.size() == model_copy.xray_structure.sites_cart().size()
-        assert include_array.size() == model_copy.xray_structure.sites_cart().size()
+        assert delta_ref_fit.size() == model_copy.get_number_of_atoms()
+        assert include_array.size() == model_copy.get_number_of_atoms()
         for i_seq, include_flag in enumerate(include_array):
           if include_flag and not hd_selection[i_seq]:
             include_i_seq.append(i_seq)
@@ -1096,13 +1096,13 @@ class run_ensemble_refinement(object):
           tls_selection_no_sol_hd_exclusions.append(new_group)
 
     print >> self.log, '\nFinal non-solvent b-factor model'
-    model_copy.xray_structure.convert_to_anisotropic()
+    model_copy.get_xray_structure().convert_to_anisotropic()
 
     us_tls = mmtbx.tls.tools.u_cart_from_tls(
-             sites_cart = model_copy.xray_structure.sites_cart(),
+             sites_cart = model_copy.get_sites_cart(),
              selections = self.tls_manager.tls_selections_no_sol_no_hd,
              tlsos      = fit_tlsos)
-    model_copy.xray_structure.set_u_cart(us_tls)
+    model_copy.get_xray_structure().set_u_cart(us_tls)
     model_copy.show_adp_statistics(padded = True, out = self.log)
     del model_copy
 
@@ -1112,24 +1112,24 @@ class run_ensemble_refinement(object):
     self.assign_solvent_tls_groups()
 
   def tls_parameters_update(self):
-    self.model.xray_structure.convert_to_anisotropic()
+    self.model.get_xray_structure().convert_to_anisotropic()
     #Apply TLS w.r.t. to atomic position
     selections = self.tls_manager.tls_selections_with_sol
     us_tls = mmtbx.tls.tools.u_cart_from_tls(
-               sites_cart = self.model.xray_structure.sites_cart(),
+               sites_cart = self.model.get_sites_cart(),
                selections = selections,
                tlsos      = self.tls_manager.tls_operators)
     for selection in selections:
-      self.model.xray_structure.set_u_cart(us_tls, selection = selection)
+      self.model.get_xray_structure().set_u_cart(us_tls, selection = selection)
     self.fmodel_running.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = False,
       update_f_mask  = False)
 
   def assign_solvent_tls_groups(self):
-    self.model.xray_structure.convert_to_anisotropic(selection =  self.model.solvent_selection())
+    self.model.get_xray_structure().convert_to_anisotropic(selection =  self.model.solvent_selection())
     self.fmodel_running.update_xray_structure(
-      xray_structure  = self.model.xray_structure,
+      xray_structure  = self.model.get_xray_structure(),
       update_f_calc   = False,
       update_f_mask   = False)
     #
@@ -1146,14 +1146,14 @@ class run_ensemble_refinement(object):
     else:
       model             = self.model.deep_copy()
       solvent_selection = model.solvent_selection()
-      solvent_xrs       = model.xray_structure.select(solvent_selection)
+      solvent_xrs       = model.get_xray_structure().select(solvent_selection)
       model             = model.remove_solvent()
-      closest_distances = model.xray_structure.closest_distances(
+      closest_distances = model.get_xray_structure().closest_distances(
                               sites_frac      = solvent_xrs.sites_frac(),
-                              use_selection   = ~model.xray_structure.hd_selection(),
+                              use_selection   = ~model.get_xray_structure().hd_selection(),
                               distance_cutoff = 10.0)
       assert len(solvent_xrs.sites_cart()) == len(closest_distances.i_seqs)
-      number_non_solvent_atoms = model.xray_structure.sites_cart().size()
+      number_non_solvent_atoms = model.get_number_of_atoms()
       for n, i_seq in enumerate(closest_distances.i_seqs):
         for grp in self.tls_manager.tls_selections_with_sol:
           if i_seq in grp:
@@ -1164,7 +1164,7 @@ class run_ensemble_refinement(object):
 
   def kinetic_energy_running_average(self):
     #Kinetic energy
-    atomic_weights = self.model.xray_structure.atomic_weights()
+    atomic_weights = self.model.get_xray_structure().atomic_weights()
     ke = 0.5 * atomic_weights * self.er_data.velocities.dot()
     #Select non-solvent atoms
     ke = ke.select(~self.model.solvent_selection() )
@@ -1185,10 +1185,10 @@ class run_ensemble_refinement(object):
     self.model = ensemble_ordered_solvent_manager.model
     self.er_data.velocities = ensemble_ordered_solvent_manager.velocities
     self.fmodel_running.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = False,
       update_f_mask  = False)
-    assert self.fmodel_running.xray_structure is self.model.xray_structure
+    assert self.fmodel_running.xray_structure is self.model.get_xray_structure()
     self.xray_gradient = None
     #Update atom selections
     self.pdb_hierarchy = self.model.pdb_hierarchy
@@ -1210,7 +1210,7 @@ class run_ensemble_refinement(object):
 
   #Generates list of atom selections (needed to pass to CD)
   def atom_selections(self):
-    self.er_data.all_sel     = flex.bool(self.model.xray_structure.sites_cart().size(), True)
+    self.er_data.all_sel     = flex.bool(self.model.get_number_of_atoms(), True)
     self.er_data.solvent_sel = self.model.solvent_selection()
 
   def save_multiple_fmodel(self):
@@ -1459,7 +1459,7 @@ class run_ensemble_refinement(object):
     # get mean geometry stats for ensemble
     self.final_geometry_pdb_string = self.ensemble_utils.ensemble_mean_geometry_stats(
         restraints_manager       = self.model.restraints_manager,
-        xray_structure           = self.model.xray_structure,
+        xray_structure           = self.model.get_xray_structure(),
         ensemble_xray_structures = self.er_data.xray_structures,
         ignore_hd                = True,
         verbose                  = False,
@@ -1751,7 +1751,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   model.get_restraints_manager()
 
   # Geometry file
-  xray_structure = model.xray_structure
+  xray_structure = model.get_xray_structure()
   sites_cart = xray_structure.sites_cart()
   site_labels = xray_structure.scatterers().extract_labels()
   model.restraints_manager.geometry.show_sorted(
@@ -1773,7 +1773,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
 
   fmodel = mmtbx.utils.fmodel_simple(
     f_obs                      = f_obs,
-    xray_structures            = [model.xray_structure],
+    xray_structures            = [model.get_xray_structure()],
     scattering_table           = "n_gaussian",
     r_free_flags               = r_free_flags,
     target_name                = er_params.target_name,
@@ -1797,19 +1797,19 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
   # XXX is this intentional?
   fmodel = mmtbx.f_model.manager(
     mask_params                  = er_params.mask,
-    xray_structure               = model.xray_structure,
+    xray_structure               = model.get_xray_structure(),
     f_obs                        = fmodel.f_obs(),
     r_free_flags                 = fmodel.r_free_flags(),
     target_name                  = er_params.target_name,
     abcd                         = hl_coeffs)
-  hd_sel = model.xray_structure.hd_selection()
-  model.xray_structure.set_occupancies(
+  hd_sel = model.get_hd_selection()
+  model.get_xray_structure().set_occupancies(
         value     = 1.0,
         selection = hd_sel)
   model.show_occupancy_statistics(out = log)
 
   fmodel.update_xray_structure(
-    xray_structure      = model.xray_structure,
+    xray_structure      = model.get_xray_structure(),
     update_f_calc       = True,
     update_f_mask       = False,
     force_update_f_mask = False)

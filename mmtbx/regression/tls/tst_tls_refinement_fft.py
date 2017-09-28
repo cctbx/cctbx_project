@@ -148,7 +148,7 @@ def exercise_2(eps = 1.e-6):
       if(start_tls_value is None):
          run_finite_differences_test = True
       else: run_finite_differences_test = False
-      model.xray_structure = fmodel_cp.xray_structure
+      model.set_xray_structure(fmodel_cp.xray_structure)
       tls_refinement_manager = tools.tls_refinement(
                      fmodel                      = fmodel_cp,
                      model                       = model,

@@ -276,26 +276,26 @@ def run(fmodel, model, log, params = None):
     peaks = peaks,
     pdb_hierarchy = model.pdb_hierarchy(),
     pdb_atoms = model.pdb_atoms,
-    xray_structure = model.xray_structure)
+    xray_structure = model.get_xray_structure())
   print_statistics.make_sub_header("6D rigid body fit of HOH", out = log)
   print >> log, "Fit quality:"
   for water_and_peaks in waters_and_peaks:
     fit_water(water_and_peaks = water_and_peaks,
-              xray_structure  = model.xray_structure,
+              xray_structure  = model.get_xray_structure(),
               params          = params,
               log             = log)
   # adjust ADP for H
   # TODO mrt: probably H bfactors should be equal to those
   # of the bonded atom
-  u_isos = model.xray_structure.extract_u_iso_or_u_equiv()
+  u_isos = model.get_xray_structure().extract_u_iso_or_u_equiv()
   u_iso_mean = flex.mean(u_isos)
   sel_big = u_isos > u_iso_mean*2
-  hd_sel = model.xray_structure.hd_selection()
+  hd_sel = model.get_hd_selection()
   sel_big.set_selected(~hd_sel, False)
-  model.xray_structure.set_u_iso(value = u_iso_mean, selection = sel_big)
+  model.get_xray_structure().set_u_iso(value = u_iso_mean, selection = sel_big)
 
 def build_dod_and_od(model, fmodels, log=None, params=None):
-  fmodels.update_xray_structure(xray_structure = model.xray_structure,
+  fmodels.update_xray_structure(xray_structure = model.get_xray_structure(),
     update_f_calc  = True,
     update_f_mask  = True)
   fmodels.show_short()
@@ -320,24 +320,24 @@ def build_dod_and_od(model, fmodels, log=None, params=None):
     water_map_correlations(model, fmodels, log)
     model = remove_zero_occupancy(model,0.01,bmax)
     model.reprocess_pdb_hierarchy_inefficient()
-  fmodels.update_xray_structure(xray_structure = model.xray_structure,
+  fmodels.update_xray_structure(xray_structure = model.get_xray_structure(),
     update_f_calc  = True,
     update_f_mask  = True)
   fmodels.show_short()
   mmtbx.utils.assert_model_is_consistent(model)
   sol_sel = model.solvent_selection()
-  hd_sel = sol_sel & model.xray_structure.hd_selection()
+  hd_sel = sol_sel & model.get_hd_selection()
   print>>log, "Final number of water hydrogens: ", hd_sel.count(True)
   return model, fmodels
 
 def remove_zero_occupancy(model, min_occupancy=0.05, max_b_iso=80.):
-  atoms = model.xray_structure.scatterers()
+  atoms = model.get_xray_structure().scatterers()
   occ = atoms.extract_occupancies()
   # print "dir(atoms): ", dir(atoms)
   umax = cctbx.adptbx.b_as_u(max_b_iso)
-  uiso = atoms.extract_u_iso_or_u_equiv(model.xray_structure.unit_cell())
+  uiso = atoms.extract_u_iso_or_u_equiv(model.get_xray_structure().unit_cell())
   sol_sel = model.solvent_selection()
-  hd_sel = model.xray_structure.hd_selection()
+  hd_sel = model.get_hd_selection()
   sel = sol_sel & hd_sel & ((occ < min_occupancy) | (uiso>umax))
   sel = ~sel
   return model.select( selection = sel)
@@ -557,7 +557,7 @@ def atom_as_str(atom):
   return s.getvalue()
 
 def assert_water_is_consistent(model):
-  xs = model.xray_structure
+  xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
   hier = model.pdb_hierarchy()
@@ -623,10 +623,10 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   params.map_next_to_model.max_model_peak_dist = keep_max
   params.map_next_to_model.min_model_peak_dist = keep_min
   sol_O = model.solvent_selection().set_selected(
-    model.xray_structure.hd_selection(), False)
+    model.get_hd_selection(), False)
   print >>log, "Number of solvent molecules: ", sol_O.count(True)
   sol_sel = model.solvent_selection()
-  hd_sel = sol_sel & model.xray_structure.hd_selection()
+  hd_sel = sol_sel & model.get_hd_selection()
   print>>log, "Number of water hydrogens: ", hd_sel.count(True)
   pks = distances_to_peaks(xs, peaks.sites, hs, max_od_dist, use_selection=sol_O)
   pkss = distances_to_peaks(xs, peaks.sites, hs, max_od_dist*1.7, use_selection=sol_O)
@@ -719,11 +719,11 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   #print "DEBUG! ", model.refinement_flags.sites_individual.size()
   model.reprocess_pdb_hierarchy_inefficient()
   np =  model.refinement_flags.sites_individual.size()
-  assert np == model.xray_structure.scatterers().size()
+  assert np == model.get_number_of_atoms()
   assert model.refinement_flags.sites_individual.count(True) == np
   mmtbx.utils.assert_model_is_consistent(model)
   sol_sel = model.solvent_selection()
-  hd_sel = sol_sel & model.xray_structure.hd_selection()
+  hd_sel = sol_sel & model.get_hd_selection()
   assert hd_sel.count(True) >= len(next_to_i_seqs)
   return model
 
@@ -749,8 +749,8 @@ def select_one_water(water_residue_group, n_atoms):
   return result
 
 def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
-  self = model
-  xs = self.xray_structure
+  # self = model
+  xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
   hier = model.pdb_hierarchy()
@@ -794,10 +794,10 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   params.map_next_to_model.max_model_peak_dist = keep_max
   params.map_next_to_model.min_model_peak_dist = keep_min
   sol_O = model.solvent_selection().set_selected(
-    model.xray_structure.hd_selection(), False)
+    model.get_hd_selection(), False)
   print >>log, "Number of solvent molecules: ", sol_O.count(True)
   sol_sel = model.solvent_selection()
-  hd_sel = sol_sel & model.xray_structure.hd_selection()
+  hd_sel = sol_sel & model.get_hd_selection()
   print>>log, "Number of water hydrogens: ", hd_sel.count(True)
   # pks = distances_to_peaks(xs, peaks.sites, hs, max_od_dist, use_selection=sol_O)
   obsmap = obs_map(fmodel, map_type=params.secondary_map_type)
@@ -813,7 +813,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   for pk in pkss.values():
     npeaks = npeaks + len(pk)
   print>>log, "Peaks to consider: ", npeaks
-  water_rgs = self.extract_water_residue_groups()
+  water_rgs = model.extract_water_residue_groups()
   water_rgs.reverse()
   element='D'
   next_to_i_seqs = []
@@ -924,11 +924,11 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   model.reprocess_pdb_hierarchy_inefficient()
   if model.refinement_flags.sites_individual is not None:
     np =  model.refinement_flags.sites_individual.size()
-    assert np == model.xray_structure.scatterers().size()
+    assert np == model.get_number_of_atoms()
     assert model.refinement_flags.sites_individual.count(True) == np
   mmtbx.utils.assert_model_is_consistent(model)
   sol_sel = model.solvent_selection()
-  hd_sel = sol_sel & model.xray_structure.hd_selection()
+  hd_sel = sol_sel & model.get_hd_selection()
   assert hd_sel.count(True) >= len(next_to_i_seqs)
   assert_water_is_consistent(model)
   if False:
@@ -965,7 +965,7 @@ def one_water_correlation(model, fmodels, water):
   title = "xray"
   if fmodel.xray_structure.guess_scattering_type_neutron():
     title="neutron"
-  scatterers = model.xray_structure.scatterers()
+  scatterers = model.get_xray_structure().scatterers()
   assert scatterers is fmodel.xray_structure.scatterers()
   results = real_space_correlation.map_statistics_for_atom_selection(
     atom_selection = water,
@@ -1007,10 +1007,10 @@ def map_peak_filter(sites_frac, obs_map, cutoff):
 
 def water_map_correlations(model, fmodels, log=None):
   print_statistics.make_header("Water real space correlations", out=log)
-  fmodels.update_xray_structure(xray_structure = model.xray_structure,
+  fmodels.update_xray_structure(xray_structure = model.get_xray_structure(),
     update_f_calc=True, update_f_mask=True)
   fmodels.show_short()
-  scatterers = model.xray_structure.scatterers()
+  scatterers = model.get_xray_structure().scatterers()
   waters = model.solvent_selection()
   water_rgs = model.extract_water_residue_groups()
   n_atoms = len(scatterers)
@@ -1032,12 +1032,12 @@ def water_map_correlations(model, fmodels, log=None):
               s.u_iso = o_scat.u_iso
             else:
               s.occupancy = 0.0
-            fmodels.update_xray_structure(xray_structure = model.xray_structure,
+            fmodels.update_xray_structure(xray_structure = model.get_xray_structure(),
               update_f_calc=True, update_f_mask=True)
             ncc = one_water_correlation(model, fmodels, water)
             if ncc < neutron_cc:
               s.occupancy = keep_occ
-              fmodels.update_xray_structure(xray_structure = model.xray_structure,
+              fmodels.update_xray_structure(xray_structure = model.get_xray_structure(),
                 update_f_calc=True, update_f_mask=True)
             else:
               neutron_cc = ncc

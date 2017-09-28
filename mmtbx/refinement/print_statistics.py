@@ -157,8 +157,8 @@ class refinement_monitor(object):
     global time_collect_and_process
     t1 = time.time()
     if(self.sites_cart_start is None):
-      self.sites_cart_start = model.xray_structure.sites_cart()
-    sites_cart_curr = model.xray_structure.sites_cart()
+      self.sites_cart_start = model.get_sites_cart()
+    sites_cart_curr = model.get_sites_cart()
     if(sites_cart_curr.size()==self.sites_cart_start.size()):
       self.shifts.append(
         flex.mean(flex.sqrt((self.sites_cart_start-sites_cart_curr).dot())))
@@ -179,16 +179,16 @@ class refinement_monitor(object):
       from mmtbx.geometry_restraints import afitt
       general_selection = afitt.get_non_afitt_selection(
         model.restraints_manager,
-        model.xray_structure.sites_cart(),
-        model.xray_structure.hd_selection(),
+        model.get_sites_cart(),
+        model.get_hd_selection(),
         None)
     geom = model.geometry_statistics(
       general_selection=general_selection)
     if(geom is not None): self.geom.append(geom)
     hd_sel = None
     if(not self.neutron_refinement and not self.is_neutron_monitor):
-      hd_sel = model.xray_structure.hd_selection()
-    b_isos = model.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+      hd_sel = model.get_hd_selection()
+    b_isos = model.get_xray_structure().extract_u_iso_or_u_equiv() * math.pi**2*8
     if(hd_sel is not None): b_isos = b_isos.select(~hd_sel)
     self.bs_iso_max_a.append(flex.max_default( b_isos, 0))
     self.bs_iso_min_a.append(flex.min_default( b_isos, 0))
@@ -413,7 +413,7 @@ class trajectory_output (object) :
       file_name=file_base+".mtz")
     f = open(file_base + ".pdb", "w")
     f.write(pdb_hierarchy.as_pdb_string(
-      crystal_symmetry=model.xray_structure))
+      crystal_symmetry=model.get_xray_structure()))
     f.close()
     print >> self.log, "wrote model to %s.pdb" % file_base
     print >> self.log, "wrote map coefficients to %s.mtz" % file_base

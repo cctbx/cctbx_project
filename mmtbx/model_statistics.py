@@ -20,11 +20,11 @@ from libtbx import group_args
 
 class model_content(object):
   def __init__(self, model):
-    self.atoms_count = model.xray_structure.scatterers().size()
+    self.atoms_count = model.get_number_of_atoms()
     self.atoms_occupancy_sum = \
-      flex.sum(model.xray_structure.scatterers().extract_occupancies())
+      flex.sum(model.get_xray_structure().scatterers().extract_occupancies())
     self.scattering_types_counts_and_occupancy_sums = \
-      model.xray_structure.scattering_types_counts_and_occupancy_sums()
+      model.get_xray_structure().scattering_types_counts_and_occupancy_sums()
 
   def show(self, out = None, prefix = "", pdb_deposition = False):
     if(out is None): out = sys.stdout
@@ -47,15 +47,15 @@ class adp(object):
     self.rms_b_iso_or_b_equiv_bonded = model.rms_b_iso_or_b_equiv_bonded()
     eps = math.pi**2*8
     solvent_selection = model.solvent_selection()
-    hd_selection = model.xray_structure.hd_selection()
+    hd_selection = model.get_hd_selection()
     m_noH_sel = ((~solvent_selection) & (~hd_selection))
     s_noH_sel = ((solvent_selection) & (~hd_selection))
     #
-    xs_a     = model.xray_structure
-    xs_a_noH = model.xray_structure.select(~hd_selection)
-    xs_s_noH = model.xray_structure.select(s_noH_sel)
-    xs_m_noH = model.xray_structure.select(m_noH_sel)
-    xs_h     = model.xray_structure.select(hd_selection)
+    xs_a     = model.get_xray_structure()
+    xs_a_noH = model.get_xray_structure().select(~hd_selection)
+    xs_s_noH = model.get_xray_structure().select(s_noH_sel)
+    xs_m_noH = model.get_xray_structure().select(m_noH_sel)
+    xs_h     = model.get_xray_structure().select(hd_selection)
     #
     u_a     = xs_a    .extract_u_iso_or_u_equiv()
     u_a_noH = xs_a_noH.extract_u_iso_or_u_equiv()
@@ -68,7 +68,7 @@ class adp(object):
     self.b_min_m_noH,self.b_max_m_noH,self.b_mean_m_noH= self.mmmd(u_m_noH,eps)
     self.b_min_h,    self.b_max_h,    self.b_mean_h    = self.mmmd(u_h,    eps)
     #
-    uc = model.xray_structure.unit_cell()
+    uc = model.get_xray_structure().unit_cell()
     a_a     = xs_a    .scatterers().anisotropy(unit_cell =uc).select(xs_a    .use_u_aniso())
     a_a_noH = xs_a_noH.scatterers().anisotropy(unit_cell =uc).select(xs_a_noH.use_u_aniso())
     a_s_noH = xs_s_noH.scatterers().anisotropy(unit_cell =uc).select(xs_s_noH.use_u_aniso())

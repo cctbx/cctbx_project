@@ -456,10 +456,10 @@ class run(object):
 
     self.ncs_obj = self.model.get_ncs_obj()
     self.output_crystal_symmetry = not is_non_crystallographic_unit_cell
-    self.sites_cart_start = self.model.get_xrs().sites_cart().deep_copy()
+    self.sites_cart_start = self.model.get_xray_structure().sites_cart().deep_copy()
     if(self.params.show_states):
       self.states_collector = mmtbx.utils.states(
-        xray_structure = self.model.get_xrs(),
+        xray_structure = self.model.get_xray_structure(),
         pdb_hierarchy  = self.model.get_hierarchy())
     self.setup_output_file_names()
 
@@ -539,7 +539,7 @@ class run(object):
 
   def min_max_mean_shift(self):
     return "min,max,mean shift from start: %6.3f %6.3f %6.3f"%flex.sqrt((
-      self.sites_cart_start - self.model.get_xrs().sites_cart()).dot()
+      self.sites_cart_start - self.model.get_xray_structure().sites_cart()).dot()
       ).min_max_mean().as_tuple()
 
   def write_geo_file(self, prefix):

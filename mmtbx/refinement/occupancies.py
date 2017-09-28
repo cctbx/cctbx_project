@@ -18,12 +18,12 @@ class manager(object):
                      log                         = None,
                      exclude_hd                  = False):
     self.show(fmodels=fmodels, log= log, message="occupancy refinement: start")
-    fmodels.update_xray_structure(xray_structure = model.xray_structure,
+    fmodels.update_xray_structure(xray_structure = model.get_xray_structure(),
                                   update_f_calc  = True)
     selections = model.refinement_flags.s_occupancies
     # exclude H or D from refinement if requested
     if(exclude_hd):
-      hd_sel = model.xray_structure.hd_selection()
+      hd_sel = model.get_hd_selection()
       tmp_sel = []
       for sel in selections:
         tmp_sel_ = []
@@ -85,7 +85,7 @@ class manager(object):
           occ_min   = occupancy_min,
           selection = i_selection)
       xray_structure_final = fmodels.fmodel_xray().xray_structure
-      model.xray_structure = xray_structure_final
+      model.set_xray_structure(xray_structure_final)
       fmodels.update_xray_structure(xray_structure = xray_structure_final,
                                     update_f_calc  = True)
       refined_occ = xray_structure_final.scatterers().extract_occupancies().\
@@ -331,7 +331,7 @@ def occupancy_selections(
     size = model.get_number_of_atoms())
   result.extend(pogl)
   # add partial occupancies
-  occupancies = model.xray_structure.scatterers().extract_occupancies()
+  occupancies = model.get_xray_structure().scatterers().extract_occupancies()
   sel = (occupancies != 1.) & (occupancies != 0.)
   result = add_occupancy_selection(
     result     = result,
@@ -457,7 +457,7 @@ def occupancy_selections(
     result = result_
     if (constrain_correlated_3d_groups) and (len(result) > 0) :
       result = assemble_constraint_groups_3d(
-        xray_structure=model.xray_structure,
+        xray_structure=model.get_xray_structure(),
         pdb_atoms=model.pdb_hierarchy().atoms(),
         constraint_groups=result,
         log=log)

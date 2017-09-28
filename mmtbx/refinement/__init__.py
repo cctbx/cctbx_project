@@ -38,7 +38,7 @@ class monitors(object):
     if(fmodels is not None): self.fmodels = fmodels
     utils.assert_xray_structures_equal(
       x1 = self.fmodels.fmodel_xray().xray_structure,
-      x2 = self.model.xray_structure)
+      x2 = self.model.get_xray_structure())
     self.monitor_xray.collect(
       model                        = self.model,
       fmodel                       = self.fmodels.fmodel_xray(),
@@ -48,7 +48,7 @@ class monitors(object):
     if(self.monitor_neutron is not None):
       utils.assert_xray_structures_equal(
         x1 = self.fmodels.fmodel_neutron().xray_structure,
-        x2 = self.model.xray_structure)
+        x2 = self.model.get_xray_structure())
       self.monitor_neutron.collect(
         model                        = self.model,
         fmodel                       = self.fmodels.fmodel_neutron(),

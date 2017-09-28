@@ -169,7 +169,7 @@ class manager(object):
       mmtbx.utils.print_header("Ensemble refinement ordered solvent update", out = self.log)
     if(self.params is None): self.params = master_params().extract()
     self.fpp = self.params.find_peaks
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     self.move_solvent_to_the_end_of_atom_list()
     if self.verbose > 0:
       self.show(message = 'Number of waters in current model')
@@ -178,21 +178,21 @@ class manager(object):
 
     #copy existing solvent xrs
     self.existing_solvent_xrs_selection = self.model.solvent_selection()
-    self.existing_solvent_xrs = self.model.xray_structure.select(self.existing_solvent_xrs_selection)
+    self.existing_solvent_xrs = self.model.get_xray_structure().select(self.existing_solvent_xrs_selection)
     if self.velocities is not None:
       self.existing_solvent_velocities = self.velocities.select(self.existing_solvent_xrs_selection)
       self.velocities = self.velocities.select(~self.existing_solvent_xrs_selection)
     self.remove_solvent()
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     assert self.params.primary_map_type is not None
 
     if self.verbose > 0:
       print >> self.log, "\nCycle 1 - Evaluate Existing Solvent Atoms vs Primary Map and Secondary Map"
     # map next to model (ignore hd)
     if self.params.ordered_solvent_map_to_model:
-      closest_distances = self.model.xray_structure.closest_distances(
+      closest_distances = self.model.get_xray_structure().closest_distances(
                                         sites_frac = self.existing_solvent_xrs.sites_frac(),
-                                        use_selection = ~self.model.xray_structure.hd_selection(),
+                                        use_selection = ~self.model.get_hd_selection(),
                                         distance_cutoff = 10.0)
       existing_sf = self.existing_solvent_xrs.sites_frac()
       cntr = 0
@@ -244,7 +244,7 @@ class manager(object):
       self.velocities.extend(solvent_velocities_near_peaks)
     if self.verbose > 0:
       self.show(message = 'Number of preserved waters')
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
 
     if(not self.is_water_last()):
       raise RuntimeError("Water picking failed: solvent must be last.")
@@ -267,7 +267,7 @@ class manager(object):
         label                          = 'HOH'))
       new_scatterers.set_sites(peaks_fo_fc.sites)
       new_solvent_xray_structure = xray.structure(
-        special_position_settings = self.model.xray_structure,
+        special_position_settings = self.model.get_xray_structure(),
         scatterers                = new_scatterers)
 
       peaks_2fo_fc = self.find_peaks(
@@ -290,11 +290,11 @@ class manager(object):
       self.add_new_solvent()
       if self.verbose > 0:
         self.show(message = 'Total number of waters')
-      assert self.fmodel.xray_structure is self.model.xray_structure
+      assert self.fmodel.xray_structure is self.model.get_xray_structure()
 
     if self.velocities is not None:
-      self.model.xray_structure.scatterers().size()
-      self.new_solvent_atom_velocities = flex.vec3_double((self.model.xray_structure.scatterers().size() - self.velocities.size()),[0,0,0])
+      self.model.get_number_of_atoms()
+      self.new_solvent_atom_velocities = flex.vec3_double((self.model.get_number_of_atoms() - self.velocities.size()),[0,0,0])
       self.randomize_new_velocities()
       self.velocities.extend(self.new_solvent_atom_velocities)
     if self.verbose > 0:
@@ -335,18 +335,18 @@ class manager(object):
   def move_solvent_to_the_end_of_atom_list(self):
     solsel = flex.bool(self.model.solvent_selection().count(False), False)
     solsel.extend(flex.bool(self.model.solvent_selection().count(True), True))
-    xrs_sol =  self.model.xray_structure.select(self.model.solvent_selection())
+    xrs_sol =  self.model.get_xray_structure().select(self.model.solvent_selection())
     if(xrs_sol.hd_selection().count(True) == 0):
       self.reset_solvent(
         solvent_selection      = solsel,
         solvent_xray_structure = xrs_sol)
     self.model.renumber_water()
-    self.fmodel.xray_structure = self.model.xray_structure
+    self.fmodel.xray_structure = self.model.get_xray_structure()
 
   def remove_solvent(self):
     self.model = self.model.remove_solvent()
     self.fmodel.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = False)
 
   def reset_solvent(self, solvent_selection, solvent_xray_structure):
@@ -373,7 +373,7 @@ class manager(object):
 
   def find_peaks(self, map_type, map_cutoff):
     self.fmodel.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = False)
     #N.B. essential that 'use_all_data = False' so only working reflections are used
     if self.verbose > 0:
@@ -397,10 +397,10 @@ class manager(object):
               label                          = 'HOH'))
     new_scatterers.set_sites(self.sites)
     solvent_xray_structure = xray.structure(
-      special_position_settings = self.model.xray_structure,
+      special_position_settings = self.model.get_xray_structure(),
       scatterers                = new_scatterers)
-    xrs_sol = self.model.xray_structure.select(self.model.solvent_selection())
-    xrs_mac = self.model.xray_structure.select(~self.model.solvent_selection())
+    xrs_sol = self.model.get_xray_structure().select(self.model.solvent_selection())
+    xrs_mac = self.model.get_xray_structure().select(~self.model.solvent_selection())
     xrs_sol = xrs_sol.concatenate(other = solvent_xray_structure)
     sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
     sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
@@ -412,7 +412,7 @@ class manager(object):
             refine_occupancies     = self.params.refine_occupancies,
             refine_adp             = self.params.new_solvent)
     self.fmodel.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = False)
 
   def show(self, message = None):

@@ -931,7 +931,7 @@ def exercise(mon_lib_srv, ener_lib):
     restraints_manager = restraints_manager,
     xray_structure = xray_structure,
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-  mol.xray_structure.scattering_type_registry(table = "wk1995")
+  mol.get_xray_structure().scattering_type_registry(table = "wk1995")
 ################
 
 
@@ -971,7 +971,7 @@ def exercise(mon_lib_srv, ener_lib):
     restraints_manager = restraints_manager,
     xray_structure = xray_structure,
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-  mol_other.xray_structure.scattering_type_registry(table = "wk1995")
+  mol_other.get_xray_structure().scattering_type_registry(table = "wk1995")
 ################
 
   mol_other.geometry_statistics()
@@ -1030,7 +1030,7 @@ def exercise_2(mon_lib_srv, ener_lib):
     restraints_manager = restraints_manager,
     xray_structure = xray_structure,
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-  mol.xray_structure.scattering_type_registry(table = "wk1995")
+  mol.get_xray_structure().scattering_type_registry(table = "wk1995")
 
   out = StringIO()
   adp_stat = mol.show_adp_statistics(out = out)

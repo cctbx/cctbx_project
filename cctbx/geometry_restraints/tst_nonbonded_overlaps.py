@@ -744,10 +744,10 @@ class test_nonbonded_overlaps(unittest.TestCase):
       force_symmetry = True)
     macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
     nb_overlaps = mol.restraints_manager.geometry.nb_overlaps_info(
-      sites_cart  = mol.xray_structure.sites_cart(),
+      sites_cart  = mol.get_sites_cart(),
       macro_mol_sel=macro_mol_sel,
-      site_labels = mol.xray_structure.scatterers().extract_labels(),
-      hd_sel      = mol.xray_structure.hd_selection())
+      site_labels = mol.get_xray_structure().scatterers().extract_labels(),
+      hd_sel      = mol.get_hd_selection())
     expected = 2500
     result = nb_overlaps.normalized_nbo_all
     msg = outstring.format('Selection related clashscore', expected, result)

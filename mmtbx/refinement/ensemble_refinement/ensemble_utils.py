@@ -22,7 +22,7 @@ class manager(object):
     pdb_atoms = pdb_hierarchy.atoms()
     if selection_bool_array == None:
       selection_bool_array = pdb_hierarchy.atom_selection_cache().selection(selection_string)
-    xrs = model.xray_structure.deep_copy_scatterers()
+    xrs = model.get_xray_structure().deep_copy_scatterers()
     xrs.convert_to_isotropic()
     b_iso_atoms = xrs.scatterers().extract_u_iso()/adptbx.b_as_u(1)
     q_atoms = xrs.scatterers().extract_occupancies()

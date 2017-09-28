@@ -217,7 +217,7 @@ class manager(object):
        fmodels.update_xray_structure(
             xray_structure = self.tls_refinement_manager.fmodel.xray_structure,
             update_f_calc  = True)
-       model.xray_structure = fmodels.fmodel_xray().xray_structure
+       model.set_xray_structure(fmodels.fmodel_xray().xray_structure)
 
     if(refine_adp_individual):
        refine_adp(
@@ -285,7 +285,7 @@ class refine_adp(object):
         min_diff_b_iso_bonded = wsc.min_diff_b_iso_bonded
     #
     print_statistics.make_sub_header(text="Individual ADP refinement", out = log)
-    assert fmodels.fmodel_xray().xray_structure is model.xray_structure
+    assert fmodels.fmodel_xray().xray_structure is model.get_xray_structure()
     #
     fmodels.create_target_functors()
     assert approx_equal(self.fmodels.fmodel_xray().target_w(),
@@ -412,7 +412,7 @@ class refine_adp(object):
     assert approx_equal(self.fmodels.fmodel_xray().target_w(),
        self.fmodels.target_functor_result_xray(
          compute_gradients=False).target_work())
-    self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
+    self.model.set_xray_structure(self.fmodels.fmodel_xray().xray_structure)
 
   # XXX parallelized
   def try_weight (self, weight, print_stats=False) :
@@ -435,7 +435,7 @@ class refine_adp(object):
     r_work = self.fmodels.fmodel_xray().r_work()*100.
     r_free = self.fmodels.fmodel_xray().r_free()*100.
     mean_b = flex.mean(
-      self.model.xray_structure.extract_u_iso_or_u_equiv())*adptbx.u_as_b(1)
+      self.model.get_xray_structure().extract_u_iso_or_u_equiv())*adptbx.u_as_b(1)
     if(deltab is None):
       print >> self.log, "  r_work=%5.2f r_free=%5.2f"%(r_work, r_free)
       return None
@@ -492,14 +492,14 @@ class refine_adp(object):
   def minimize(self):
     utils.assert_xray_structures_equal(
       x1 = self.fmodels.fmodel_xray().xray_structure,
-      x2 = self.model.xray_structure)
+      x2 = self.model.get_xray_structure())
     self.model.set_refine_individual_adp()
     self.run_lbfgs()
-    self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
-    #assert minimized.xray_structure is self.model.xray_structure
+    self.model.set_xray_structure(self.fmodels.fmodel_xray().xray_structure)
+    #assert minimized.xray_structure is self.model.get_xray_structure()
     #utils.assert_xray_structures_equal(
     #  x1 = minimized.xray_structure,
-    #  x2 = self.model.xray_structure)
+    #  x2 = self.model.get_xray_structure())
     #return minimized
 
   def run_lbfgs(self):
@@ -537,7 +537,7 @@ class refine_adp(object):
         params        = self.all_params,
         refine_u_iso  = True,
         prefix        = "NCS constrained ADP refinement").minimized
-      self.model.xray_structure = fmodel.xray_structure
+      self.model.set_xray_structure(fmodel.xray_structure)
     else: raise RuntimeError("Bad ncs options.")
 
 class weight_result (object) :

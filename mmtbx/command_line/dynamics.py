@@ -85,15 +85,15 @@ Usage examples:
     self.show_times()
 
   def atom_selection (self, prefix) :
-    self.selection = flex.bool(self.model.get_xrs().sites_cart().size(), True)
+    self.selection = flex.bool(self.model.get_xray_structure().sites_cart().size(), True)
     geometry_minimization.broadcast(m=prefix, log = self.log)
 
   def dynamics (self, prefix) :
     geometry_minimization.broadcast(m=prefix, log = self.log)
-    self.sites_cart = self.model.get_xrs().sites_cart()
+    self.sites_cart = self.model.get_sites_cart()
     if (self.params.dynamics_type == "cartesian") :
       run_cartesian_dynamics(
-        xray_structure=self.model.get_xrs(),
+        xray_structure=self.model.get_xray_structure(),
         restraints_manager=self.model.get_restraints_manager(),
         states_collector=self.states_collector,
         params=self.params.cartesian_dynamics,

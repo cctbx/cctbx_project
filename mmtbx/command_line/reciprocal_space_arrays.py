@@ -211,7 +211,7 @@ def run(args, log = sys.stdout):
   if(model.get_number_of_models()>1): #XXX support multi-models
     raise Sorry("Multiple model file not supported in this tool.")
   # XXX Twining not supported
-  xray_structure = model.xray_structure
+  xray_structure = model.get_xray_structure()
   if (not xray_structure.unit_cell().is_similar_to(f_obs.unit_cell())) :
     raise Sorry("The unit cells in the model and reflections files are not "+
       "isomorphous.")

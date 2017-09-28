@@ -115,13 +115,13 @@ def find_and_build_ions (
   fmodel = fmodels.fmodel_xray()
   anomalous_flag = fmodel.f_obs().anomalous_flag()
   if (out is None) : out = sys.stdout
-  model.xray_structure = fmodel.xray_structure
-  model.xray_structure.tidy_us()
+  model.set_xray_structure(fmodel.xray_structure)
+  model.get_xray_structure().tidy_us()
   pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   # FIXME why does B for anisotropic waters end up negative?
-  u_iso = model.xray_structure.extract_u_iso_or_u_equiv()
+  u_iso = model.get_xray_structure().extract_u_iso_or_u_equiv()
   for i_seq, atom in enumerate(pdb_atoms) :
     labels = atom.fetch_labels()
     if (labels.resname == "HOH") and (atom.b < 0) :
@@ -227,7 +227,7 @@ def find_and_build_ions (
         refine_adp=refine_adp,
         refine_occupancies=False) #params.refine_ion_occupancies)
       if (params.refine_anomalous) and (anomalous_flag) :
-        scatterer = model.xray_structure.scatterers()[i_seq]
+        scatterer = model.get_xray_structure().scatterers()[i_seq]
         if (wavelength is not None) :
           fp_fdp_info = sasaki.table(final_choice.element).at_angstrom(
             wavelength)
@@ -245,21 +245,21 @@ def find_and_build_ions (
         anomalous_groups.append(group)
       modified_iselection.append(i_seq)
   if (len(modified_iselection) > 0) :
-    scatterers = model.xray_structure.scatterers()
+    scatterers = model.get_xray_structure().scatterers()
     # FIXME not sure this is actually working as desired...
-    site_symmetry_table = model.xray_structure.site_symmetry_table()
+    site_symmetry_table = model.get_xray_structure().site_symmetry_table()
     for i_seq in site_symmetry_table.special_position_indices() :
       scatterers[i_seq].site = crystal.correct_special_position(
-        crystal_symmetry=model.xray_structure,
+        crystal_symmetry=model.get_xray_structure(),
         special_op=site_symmetry_table.get(i_seq).special_op(),
         site_frac=scatterers[i_seq].site,
         site_label=scatterers[i_seq].label,
         tolerance=1.0)
-    model.xray_structure.replace_scatterers(scatterers=scatterers)
+    model.get_xray_structure().replace_scatterers(scatterers=scatterers)
     def show_r_factors () :
        return "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free())
     fmodel.update_xray_structure(
-      xray_structure=model.xray_structure,
+      xray_structure=model.get_xray_structure(),
       update_f_calc=True,
       update_f_mask=True)
     n_anom = len(anomalous_groups)
@@ -346,15 +346,15 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
   if (len(ion_iselection) == 0) :
     print >> log, "  No ions (segid=ION) found."
     return model
-  n_sites_start = model.xray_structure.scatterers().size()
+  n_sites_start = model.get_number_of_atoms()
   new_model = model.select(~ion_selection)
   ion_model = model.select(ion_selection)
   ion_pdb_hierarchy = ion_model.pdb_hierarchy(sync_with_xray_structure=True)
   ion_atoms = ion_pdb_hierarchy.atoms()
-  ion_xrs = ion_model.xray_structure
+  ion_xrs = ion_model.get_xray_structure()
   perm = mmtbx.ions.utils.sort_atoms_permutation(
     pdb_atoms=ion_pdb_hierarchy.atoms(),
-    xray_structure=ion_model.xray_structure)
+    xray_structure=ion_model.get_xray_structure())
   nonbonded_types = ion_model.restraints_manager.geometry.nonbonded_types
   nonbonded_charges = ion_model.restraints_manager.geometry.nonbonded_charges
   ion_atoms = ion_atoms.select(perm)
@@ -369,7 +369,7 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
     refine_occupancies=params.refine_ion_occupancies,
     refine_adp="isotropic",
     reset_labels=True)
-  n_sites_end = new_model.xray_structure.scatterers().size()
+  n_sites_end = new_model.get_number_of_atoms()
   new_hierarchy = new_model.pdb_hierarchy()
   n_sites_pdb = new_hierarchy.atoms_size()
   assert (n_sites_start == n_sites_end == n_sites_pdb)
@@ -380,5 +380,5 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
     for atom in ion_atoms :
       print >> log, "    %s" % atom.id_str()
     print >> log, ""
-  fmodel.update_xray_structure(new_model.xray_structure)
+  fmodel.update_xray_structure(new_model.get_xray_structure())
   return new_model

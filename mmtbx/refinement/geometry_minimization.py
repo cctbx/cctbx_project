@@ -215,7 +215,8 @@ class run2(object):
                allow_allowed_rotamers         = True,
                states_collector               = None,
                log                            = None,
-               mon_lib_srv                    = None):
+               mon_lib_srv                    = None
+               ):
     self.log = log
     if self.log is None:
       self.log = sys.stdout

@@ -165,34 +165,34 @@ class manager(object):
     assert (0 < len(self.params.output_atom_name) <= 4)
     assert (len(self.params.output_chain_id) <= 2)
     assert (0 < len(self.params.output_residue_name) <= 3)
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     if(self.params is None): self.params = master_params().extract()
     if(self.find_peaks_params is None):
       self.find_peaks_params = find_peaks.master_params.extract()
     if(self.params.mode == "filter_only"): self.filter_only = True
     else: self.filter_only = False
     if(self.log is None): self.log = sys.stdout
-    assert self.model.xray_structure == self.fmodel.xray_structure
+    assert self.model.get_xray_structure() == self.fmodel.xray_structure
     self.sites = None
     self.heights = None
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     if(self.find_peaks_params.max_number_of_peaks is None):
       if(self.model.solvent_selection().count(False) > 0):
         self.find_peaks_params.max_number_of_peaks = \
           self.model.solvent_selection().count(False)
       else:
         self.find_peaks_params.max_number_of_peaks = \
-          self.model.xray_structure.scatterers().size()
-    assert self.fmodel.xray_structure is self.model.xray_structure
+          self.model.get_number_of_atoms()
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     self.move_solvent_to_the_end_of_atom_list()
     if(not self.is_water_last()):
       raise RuntimeError("Water picking failed: solvent must be last.")
     self.show(message = "Start model:")
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     if(self.params.filter_at_start):
       self.filter_solvent()
       self.show(message = "Filtered:")
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     if(not self.filter_only):
       assert self.params.primary_map_type is not None
       peaks = self.find_peaks(
@@ -201,12 +201,12 @@ class manager(object):
       if(peaks is not None):
         self.sites, self.heights = peaks.sites, peaks.heights
         self.add_new_solvent()
-        assert self.fmodel.xray_structure is self.model.xray_structure
+        assert self.fmodel.xray_structure is self.model.get_xray_structure()
         self.show(message = "Just added new:")
         if(self.params.filter_at_start):
           self.filter_solvent()
           self.show(message = "Filtered:")
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     #
     if(self.filter_only):
       self.correct_drifted_waters(map_cutoff =
@@ -220,30 +220,30 @@ class manager(object):
         self.refine_adp()
         self.refine_occupancies()
     self.show(message = "Before filtering:")
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     self.filter_solvent()
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     ###
     if(self.params.secondary_map_and_map_cc_filter.cc_map_2_type is not None):
       self.find_peaks_2fofc()
       self.show(message = "%s map selection:"%
         self.params.secondary_map_and_map_cc_filter.cc_map_2_type)
     ###
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     self.show(message = "Final:")
     self.move_solvent_to_the_end_of_atom_list()
     self.convert_water_adp()
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
 
   def convert_water_adp(self):
-    hd_sel     = self.model.xray_structure.hd_selection()
+    hd_sel     = self.model.get_hd_selection()
     not_hd_sel = ~hd_sel
     sol_sel    = self.model.solvent_selection()
     not_sol_sel= ~sol_sel
-    selection_aniso = self.model.xray_structure.use_u_aniso().deep_copy()
+    selection_aniso = self.model.get_xray_structure().use_u_aniso().deep_copy()
     if(self.params.new_solvent == "anisotropic"):
       selection_aniso.set_selected(sol_sel, True)
-    selection_iso   = self.model.xray_structure.use_u_iso().deep_copy()
+    selection_iso   = self.model.get_xray_structure().use_u_iso().deep_copy()
     selection_aniso.set_selected(not_sol_sel, False)
     selection_iso  .set_selected(not_sol_sel, False)
     if(not self.is_neutron_scat_table):
@@ -251,22 +251,22 @@ class manager(object):
       selection_iso.set_selected(hd_sel, False)
     selection_aniso.set_selected(selection_iso, False)
     selection_iso.set_selected(selection_aniso, False)
-    self.model.xray_structure.convert_to_anisotropic(selection = selection_aniso)
-    self.model.xray_structure.convert_to_isotropic(selection = selection_iso.iselection())
+    self.model.get_xray_structure().convert_to_anisotropic(selection = selection_aniso)
+    self.model.get_xray_structure().convert_to_isotropic(selection = selection_iso.iselection())
     self.fmodel.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = True)
 
   def move_solvent_to_the_end_of_atom_list(self):
     solsel = flex.bool(self.model.solvent_selection().count(False), False)
     solsel.extend(flex.bool(self.model.solvent_selection().count(True), True))
-    xrs_sol =  self.model.xray_structure.select(self.model.solvent_selection())
+    xrs_sol =  self.model.get_xray_structure().select(self.model.solvent_selection())
     if(xrs_sol.hd_selection().count(True) == 0):
       self.reset_solvent(
         solvent_selection      = solsel,
         solvent_xray_structure = xrs_sol)
     self.model.renumber_water()
-    self.fmodel.xray_structure = self.model.xray_structure
+    self.fmodel.xray_structure = self.model.get_xray_structure()
 
   def is_water_last(self):
     result = True
@@ -280,23 +280,23 @@ class manager(object):
 
   def filter_solvent(self):
     sol_sel = self.model.solvent_selection()
-    hd_sel = self.model.xray_structure.hd_selection()
-    selection = self.model.xray_structure.all_selection()
-    scatterers = self.model.xray_structure.scatterers()
+    hd_sel = self.model.get_hd_selection()
+    selection = self.model.get_xray_structure().all_selection()
+    scatterers = self.model.get_xray_structure().scatterers()
     occ = scatterers.extract_occupancies()
     b_isos = scatterers.extract_u_iso_or_u_equiv(
-      self.model.xray_structure.unit_cell()) * math.pi**2*8
+      self.model.get_xray_structure().unit_cell()) * math.pi**2*8
     anisotropy = scatterers.anisotropy(unit_cell =
-      self.model.xray_structure.unit_cell())
+      self.model.get_xray_structure().unit_cell())
     #
     distance_iselection = mmtbx.utils.select_water_by_distance(
-      sites_frac_all      = self.model.xray_structure.sites_frac(),
-      element_symbols_all = self.model.xray_structure.scattering_types(),
+      sites_frac_all      = self.model.get_xray_structure().sites_frac(),
+      element_symbols_all = self.model.get_xray_structure().scattering_types(),
       water_selection_o   = sol_sel.set_selected(hd_sel, False).iselection(),
       dist_max            = self.params.h_bond_max,
       dist_min_mac        = self.params.h_bond_min_mac,
       dist_min_sol        = self.params.h_bond_min_sol,
-      unit_cell           = self.model.xray_structure.unit_cell())
+      unit_cell           = self.model.get_xray_structure().unit_cell())
     distance_selection = flex.bool(scatterers.size(), distance_iselection)
     #
     selection &= distance_selection
@@ -311,9 +311,9 @@ class manager(object):
     anisosel = anisotropy < self.params.anisotropy_min
     anisosel.set_selected(hd_sel, False)
     anisosel.set_selected(~sol_sel, False)
-    self.model.xray_structure.convert_to_isotropic(selection =
+    self.model.get_xray_structure().convert_to_isotropic(selection =
       anisosel.iselection())
-    self.model.xray_structure.convert_to_anisotropic(selection =
+    self.model.get_xray_structure().convert_to_anisotropic(selection =
       anisosel.iselection())
     #
     xht = self.model.xh_connectivity_table()
@@ -324,7 +324,7 @@ class manager(object):
     if(selection.size() != selection.count(True)):
       self.model = self.model.select(selection)
       self.fmodel.update_xray_structure(
-        xray_structure = self.model.xray_structure,
+        xray_structure = self.model.get_xray_structure(),
         update_f_calc  = True)
 
   def reset_solvent(self, solvent_selection, solvent_xray_structure):
@@ -342,16 +342,16 @@ class manager(object):
   def show(self, message):
     print >> self.log, message
     sol_sel = self.model.solvent_selection()
-    xrs_mac_h = self.model.xray_structure.select(~sol_sel)
-    xrs_sol_h = self.model.xray_structure.select(sol_sel)
-    hd_sol = self.model.xray_structure.hd_selection().select(sol_sel)
-    hd_mac = self.model.xray_structure.hd_selection().select(~sol_sel)
+    xrs_mac_h = self.model.get_xray_structure().select(~sol_sel)
+    xrs_sol_h = self.model.get_xray_structure().select(sol_sel)
+    hd_sol = self.model.get_hd_selection().select(sol_sel)
+    hd_mac = self.model.get_hd_selection().select(~sol_sel)
     xrs_sol = xrs_sol_h.select(~hd_sol)
     xrs_mac = xrs_mac_h.select(~hd_mac)
     scat = xrs_sol.scatterers()
     occ = scat.extract_occupancies()
     b_isos = scat.extract_u_iso_or_u_equiv(
-      self.model.xray_structure.unit_cell()) * math.pi**2*8
+      self.model.get_xray_structure().unit_cell()) * math.pi**2*8
     smallest_distances = xrs_mac.closest_distances(
       sites_frac      = xrs_sol.sites_frac(),
       distance_cutoff = self.find_peaks_params.map_next_to_model.\
@@ -387,7 +387,7 @@ class manager(object):
 
   def find_peaks(self, map_type, map_cutoff):
     self.fmodel.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = True)
     return find_peaks.manager(
       fmodel     = self.fmodel,
@@ -398,7 +398,7 @@ class manager(object):
 
   def correct_drifted_waters(self, map_cutoff):
     self.fmodel.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = True)
     find_peaks_params_drifted = find_peaks.master_params.extract()
     find_peaks_params_drifted.map_next_to_model.min_model_peak_dist=0.01
@@ -415,16 +415,16 @@ class manager(object):
       log            = self.log).peaks_mapped()
     if(peaks is not None and self.fmodel.r_work() > 0.01):
       sites_frac, heights = peaks.sites, peaks.heights
-      model_sites_frac = self.model.xray_structure.sites_frac()
+      model_sites_frac = self.model.get_xray_structure().sites_frac()
       solvent_selection = self.model.solvent_selection()
       mmtbx.utils.correct_drifted_waters(
         sites_frac_all   = model_sites_frac,
         sites_frac_peaks = sites_frac,
         water_selection  = solvent_selection,
-        unit_cell        = self.model.xray_structure.unit_cell())
-      self.model.xray_structure.set_sites_frac(sites_frac = model_sites_frac)
+        unit_cell        = self.model.get_xray_structure().unit_cell())
+      self.model.get_xray_structure().set_sites_frac(sites_frac = model_sites_frac)
       self.fmodel.update_xray_structure(
-        xray_structure = self.model.xray_structure,
+        xray_structure = self.model.get_xray_structure(),
         update_f_calc  = True)
 
   def find_peaks_2fofc(self):
@@ -433,9 +433,9 @@ class manager(object):
       return
     print >> self.log, "Before RSCC filtering: ", \
       self.model.solvent_selection().count(True)
-    assert self.fmodel.xray_structure is self.model.xray_structure
+    assert self.fmodel.xray_structure is self.model.get_xray_structure()
     assert len(list(self.model.pdb_hierarchy().atoms_with_labels())) == \
-      self.model.xray_structure.scatterers().size()
+      self.model.get_number_of_atoms()
     par = self.params.secondary_map_and_map_cc_filter
     selection = self.model.solvent_selection()
     # filter by map cc and value
@@ -458,8 +458,8 @@ class manager(object):
     map_2 = fft_map_2.real_map_unpadded()
     sites_cart = self.fmodel.xray_structure.sites_cart()
     sites_frac = self.fmodel.xray_structure.sites_frac()
-    scatterers = self.model.xray_structure.scatterers()
-    assert approx_equal(self.model.xray_structure.sites_frac(), sites_frac)
+    scatterers = self.model.get_xray_structure().scatterers()
+    assert approx_equal(self.model.get_xray_structure().sites_frac(), sites_frac)
     unit_cell = self.fmodel.xray_structure.unit_cell()
     for i, sel_i in enumerate(selection):
       if(sel_i):
@@ -480,7 +480,7 @@ class manager(object):
           selection[i]=False
     #
     sol_sel = self.model.solvent_selection()
-    hd_sel = self.model.xray_structure.hd_selection()
+    hd_sel = self.model.get_hd_selection()
     selection.set_selected(hd_sel, True)
     selection.set_selected(~sol_sel, True)
     xht = self.model.xh_connectivity_table()
@@ -491,7 +491,7 @@ class manager(object):
     if(selection.size() != selection.count(True)):
       self.model = self.model.select(selection)
       self.fmodel.update_xray_structure(
-        xray_structure = self.model.xray_structure,
+        xray_structure = self.model.get_xray_structure(),
         update_f_calc  = True)
     print >> self.log, "After RSCC filtering: ", \
       self.model.solvent_selection().count(True)
@@ -499,8 +499,8 @@ class manager(object):
   def add_new_solvent(self):
     if(self.params.b_iso is None):
       sol_sel = self.model.solvent_selection()
-      xrs_mac_h = self.model.xray_structure.select(~sol_sel)
-      hd_mac = self.model.xray_structure.hd_selection().select(~sol_sel)
+      xrs_mac_h = self.model.get_xray_structure().select(~sol_sel)
+      hd_mac = self.model.get_hd_selection().select(~sol_sel)
       xrs_mac = xrs_mac_h.select(~hd_mac)
       b = xrs_mac.extract_u_iso_or_u_equiv() * math.pi**2*8
       b_solv = flex.mean_default(b, None)
@@ -516,7 +516,7 @@ class manager(object):
                        b               = b_solv,
                        scattering_type = self.params.scattering_type))
     elif(self.params.new_solvent == "anisotropic"):
-      u_star = adptbx.u_iso_as_u_star(self.model.xray_structure.unit_cell(),
+      u_star = adptbx.u_iso_as_u_star(self.model.get_xray_structure().unit_cell(),
         adptbx.b_as_u(b_solv))
       new_scatterers = flex.xray_scatterer(
         self.sites.size(),
@@ -527,10 +527,10 @@ class manager(object):
     else: raise RuntimeError
     new_scatterers.set_sites(self.sites)
     solvent_xray_structure = xray.structure(
-      special_position_settings = self.model.xray_structure,
+      special_position_settings = self.model.get_xray_structure(),
       scatterers                = new_scatterers)
-    xrs_sol = self.model.xray_structure.select(self.model.solvent_selection())
-    xrs_mac = self.model.xray_structure.select(~self.model.solvent_selection())
+    xrs_sol = self.model.get_xray_structure().select(self.model.solvent_selection())
+    xrs_mac = self.model.get_xray_structure().select(~self.model.solvent_selection())
     xrs_sol = xrs_sol.concatenate(other = solvent_xray_structure)
     sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
     sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
@@ -542,7 +542,7 @@ class manager(object):
       refine_occupancies     = self.params.refine_occupancies,
       refine_adp             = self.params.new_solvent)
     self.fmodel.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = True)
 
   def refine_adp(self):
@@ -550,21 +550,21 @@ class manager(object):
        self.model.refinement_flags.individual_adp and
        self.model.solvent_selection().count(True) > 0):
       self.fmodels.update_xray_structure(
-         xray_structure = self.model.xray_structure,
+         xray_structure = self.model.get_xray_structure(),
          update_f_calc  = True,
          update_f_mask  = True)
       print >> self.log, \
         "ADP refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
         self.fmodel.r_work(), self.fmodel.r_free())
       # set refinement flags (not exercised!)
-      hd_sel     = self.model.xray_structure.hd_selection()
+      hd_sel     = self.model.get_hd_selection()
       not_hd_sel = ~hd_sel
       sol_sel    = self.model.solvent_selection()
       not_sol_sel= ~sol_sel
-      selection_aniso = self.model.xray_structure.use_u_aniso().deep_copy()
+      selection_aniso = self.model.get_xray_structure().use_u_aniso().deep_copy()
       if(self.params.new_solvent == "anisotropic"):
         selection_aniso.set_selected(sol_sel, True)
-      selection_iso   = self.model.xray_structure.use_u_iso().deep_copy()
+      selection_iso   = self.model.get_xray_structure().use_u_iso().deep_copy()
       selection_aniso.set_selected(not_sol_sel, False)
       selection_iso  .set_selected(not_sol_sel, False)
       if(not self.is_neutron_scat_table):
@@ -592,7 +592,7 @@ class manager(object):
        self.model.refinement_flags.occupancies and
        self.model.solvent_selection().count(True) > 0):
       self.fmodels.update_xray_structure(
-         xray_structure = self.model.xray_structure,
+         xray_structure = self.model.get_xray_structure(),
          update_f_calc  = True,
          update_f_mask  = True)
       print >> self.log,\

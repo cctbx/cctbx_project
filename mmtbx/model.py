@@ -172,7 +172,7 @@ class manager(object):
                      anomalous_scatterer_groups = None, # remove later. ! It is used in def select(), hard to get rid of.
                      ):
 
-    self.xray_structure = xray_structure
+    self._xray_structure = xray_structure
     self._pdb_hierarchy = pdb_hierarchy
     self.model_input = model_input
     self.restraint_objects = restraint_objects
@@ -276,18 +276,18 @@ class manager(object):
       self._build_grm()
 
     # do xray_structure
-    if self.xray_structure is None:
+    if self._xray_structure is None:
       self._create_xray_structure()
     else:
       if self.crystal_symmetry() is None:
-        self._crystal_symmetry = self.xray_structure.crystal_symmetry()
+        self._crystal_symmetry = self._xray_structure.crystal_symmetry()
 
-    assert self.xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
+    assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
     if self.crystal_symmetry() is None:
-      self._crystal_symmetry = self.xray_structure.crystal_symmetry()
+      self._crystal_symmetry = self._xray_structure.crystal_symmetry()
 
-    if(self.xray_structure.hd_selection().count(True) > 0):
+    if(self._xray_structure.hd_selection().count(True) > 0):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
 
@@ -305,6 +305,11 @@ class manager(object):
 
   def get_atoms(self):
     return self.pdb_atoms
+
+  def get_sites_cart(self):
+    if self._xray_structure is not None:
+      return self._xray_structure.sites_cart()
+    return None
 
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is not None:
@@ -348,7 +353,7 @@ class manager(object):
     if find_automatically:
       result = anomalous_scatterer_groups.find_anomalous_scatterer_groups(
         pdb_atoms=self.all_chain_proxies.pdb_atoms,
-        xray_structure=self.xray_structure,
+        xray_structure=self._xray_structure,
         group_same_element=False,
         out=self.log)
       for group in result:
@@ -375,7 +380,7 @@ class manager(object):
           self.n_anomalous_total += aag.iselection.size()
     self.anomalous_scatterer_groups = result
     for group in self.anomalous_scatterer_groups:
-      group.copy_to_scatterers_in_place(scatterers=self.xray_structure.scatterers())
+      group.copy_to_scatterers_in_place(scatterers=self._xray_structure.scatterers())
     return self.anomalous_scatterer_groups, self.n_anomalous_total
 
   def get_restraints_manager(self):
@@ -386,14 +391,14 @@ class manager(object):
       return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
-    if self.xray_structure is not None:
-      self.xray_structure.set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(value)
-      self.xray_structure = self.xray_structure.customized_copy(
+    if self._xray_structure is not None:
+      self._xray_structure.set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(value)
+      self._xray_structure = self._xray_structure.customized_copy(
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value)
 
   def get_hd_selection(self):
-    if self.xray_structure is not None:
-      return self.xray_structure.hd_selection()
+    if self._xray_structure is not None:
+      return self._xray_structure.hd_selection()
     return None
 
   def get_ias_selection(self):
@@ -425,18 +430,23 @@ class manager(object):
   def get_hierarchy(self):
     return self._pdb_hierarchy
 
-  def get_xrs(self):
-    if self.xray_structure is None:
+  def get_xray_structure(self):
+    if self._xray_structure is None:
       self._create_xray_structure()
-    return self.xray_structure
+    return self._xray_structure
+
+  def set_xray_structure(self, xray_structure, update_hierarchy=True):
+    self._xray_structure = xray_structure
+    if update_hierarchy:
+      self.set_sites_cart_from_xrs()
 
   def _create_xray_structure(self):
-    if self.xray_structure is not None:
+    if self._xray_structure is not None:
       return
     if self.all_chain_proxies is not None:
-      self.xray_structure = self.all_chain_proxies.extract_xray_structure()
+      self._xray_structure = self.all_chain_proxies.extract_xray_structure()
     else:
-      self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
+      self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=self.crystal_symmetry())
 
   def get_mon_lib_srv(self):
@@ -478,7 +488,7 @@ class manager(object):
       # cctbx_project/mmtbx/secondary_structure/build/tst_1.py
       assert hierarchy.is_similar_hierarchy(other=self._pdb_hierarchy)
       self._pdb_hierarchy = hierarchy
-    self.xray_structure = self._pdb_hierarchy.extract_xray_structure(
+    self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
         crystal_symmetry=self.crystal_symmetry())
 
   def model_as_pdb(self,
@@ -587,11 +597,11 @@ class manager(object):
       self.get_restraints_manager()
     self.restraints_manager.write_geo_file(
         sites_cart=self.pdb_hierarchy().atoms().extract_xyz(),
-        site_labels=self.xray_structure.scatterers().extract_labels(),
+        site_labels=self._xray_structure.scatterers().extract_labels(),
         header=header,
         # Stuff for outputting ncs_groups
         excessive_distance_limit = excessive_distance_limit,
-        xray_structure=self.xray_structure,
+        xray_structure=self._xray_structure,
         processed_pdb_file=self.processed_pdb_file,
         file_descriptor=result)
     return result.getvalue()
@@ -600,7 +610,7 @@ class manager(object):
     return self.original_model_format == "mmcif"
 
   def _process_input_model(self):
-    # Not clear if we can handle this correctly for self.xray_structure
+    # Not clear if we can handle this correctly for self._xray_structure
     # assert self.get_number_of_models() < 2
     if self.processed_pdb_files_srv is None:
       self.processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
@@ -625,7 +635,7 @@ class manager(object):
     self._atom_selection_cache = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
     if self._pdb_hierarchy is None:
       self._pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
-    if self.xray_structure is None:
+    if self._xray_structure is None:
       xray_structure_all = \
           self.processed_pdb_file.xray_structure(show_summary = False)
       # XXX ad hoc manipulation
@@ -640,7 +650,7 @@ class manager(object):
         raise Sorry("Empty xray_structure.")
       if self.all_chain_proxies is not None:
         self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
-      self.xray_structure = xray_structure_all
+      self._xray_structure = xray_structure_all
 
     self._mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
     self._ener_lib = self.processed_pdb_files_srv.ener_lib
@@ -648,8 +658,8 @@ class manager(object):
 
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
-    if(self.xray_structure is not None):
-      sctr_keys = self.xray_structure.scattering_type_registry().type_count_dict().keys()
+    if(self._xray_structure is not None):
+      sctr_keys = self._xray_structure.scattering_type_registry().type_count_dict().keys()
       self.has_hd = "H" in sctr_keys or "D" in sctr_keys
 
   def _build_grm(
@@ -705,8 +715,8 @@ class manager(object):
           params=self.pdb_interpretation_params.reference_model,
           selection=None,
           log=self.log)
-    if(self.xray_structure is not None):
-      restraints_manager.crystal_symmetry = self.xray_structure.crystal_symmetry()
+    if(self._xray_structure is not None):
+      restraints_manager.crystal_symmetry = self._xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
 
     # Here we do all what is necessary when GRM and all related become available
@@ -733,28 +743,28 @@ class manager(object):
         (show_string(scattering_table),
         "Possible choices are: %s"%" ".join(known_scattering_tables)))
     if(scattering_table in ["n_gaussian", "wk1995", "it1992", "electron"]):
-      self.xray_structure.scattering_type_registry(
+      self._xray_structure.scattering_type_registry(
         table = scattering_table,
         d_min = d_min,
         types_without_a_scattering_contribution=["?"])
-      self.xray_structure.scattering_type_registry(
+      self._xray_structure.scattering_type_registry(
         custom_dict = ias.ias_scattering_dict)
       self.xray_scattering_dict = \
-        self.xray_structure.scattering_type_registry().as_type_gaussian_dict()
+        self._xray_structure.scattering_type_registry().as_type_gaussian_dict()
       if(log is not None):
         print_statistics.make_sub_header("X-ray scattering dictionary",out=log)
-        self.xray_structure.scattering_type_registry().show(out = log)
+        self._xray_structure.scattering_type_registry().show(out = log)
     if(scattering_table == "neutron"):
       try :
         self.neutron_scattering_dict = \
-          self.xray_structure.switch_to_neutron_scattering_dictionary()
+          self._xray_structure.switch_to_neutron_scattering_dictionary()
       except ValueError, e :
         raise Sorry("Error setting up neutron scattering dictionary: %s"%str(e))
       if(log is not None):
         print_statistics.make_sub_header(
           "Neutron scattering dictionary", out = log)
-        self.xray_structure.scattering_type_registry().show(out = log)
-      self.xray_structure.scattering_type_registry_params.table = "neutron"
+        self._xray_structure.scattering_type_registry().show(out = log)
+      self._xray_structure.scattering_type_registry_params.table = "neutron"
     if self.all_chain_proxies is not None:
       scattering_type_registry = self.all_chain_proxies.scattering_type_registry
       if(scattering_type_registry.n_unknown_type_symbols() > 0):
@@ -771,7 +781,7 @@ class manager(object):
       if(log is not None):
         print >> log
     if set_inelastic_form_factors is not None and iff_wavelength is not None:
-      self.xray_structure.set_inelastic_form_factors(
+      self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
           table=set_inelastic_form_factors)
     return self.xray_scattering_dict, self.neutron_scattering_dict
@@ -790,7 +800,7 @@ class manager(object):
         params=tls_params,
         pdb_inp=self.model_input,
         pdb_hierarchy=self._pdb_hierarchy,
-        xray_structure=deepcopy(self.xray_structure),
+        xray_structure=deepcopy(self._xray_structure),
         return_as_list=True,
         ignore_pdb_header_groups=True,
         out=StringIO())
@@ -802,7 +812,7 @@ class manager(object):
 
       tlsos = tls_tools.generate_tlsos(
         selections     = generate_tlsos,
-        xray_structure = self.xray_structure,
+        xray_structure = self._xray_structure,
         value          = 0.0)
       self.tls_groups.tlsos = tlsos
 
@@ -858,15 +868,15 @@ class manager(object):
 
   def setup_riding_h_manager(self, idealize=True):
     assert self.riding_h_manager is None
-    if(self.xray_structure.hd_selection().count(True)==0): return
+    if(self._xray_structure.hd_selection().count(True)==0): return
     if(self.restraints_manager is None): return
-    sites_cart = self.xray_structure.sites_cart()
+    sites_cart = self._xray_structure.sites_cart()
     self.riding_h_manager = riding.manager(
       pdb_hierarchy       = self.pdb_hierarchy(),
       geometry_restraints = self.restraints_manager.geometry)
     if(idealize):
       self.riding_h_manager.idealize(sites_cart = sites_cart)
-      self.xray_structure.set_sites_cart(sites_cart=sites_cart)
+      self._xray_structure.set_sites_cart(sites_cart=sites_cart)
       self.pdb_hierarchy(sync_with_xray_structure=True)
 
   def pdb_hierarchy(self, sync_with_xray_structure=False):
@@ -880,29 +890,29 @@ class manager(object):
     """
     if(sync_with_xray_structure):
       self._pdb_hierarchy.adopt_xray_structure(
-        xray_structure = self.xray_structure)
+        xray_structure = self._xray_structure)
     return self._pdb_hierarchy
 
   def set_sites_cart_from_hierarchy(self):
-    self.xray_structure.set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
+    self._xray_structure.set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
     self.model_statistics_info = None
 
   def set_sites_cart_from_xrs(self):
-    self._pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    self._pdb_hierarchy.adopt_xray_structure(self._xray_structure)
     self.model_statistics_info = None
 
   def set_sites_cart(self, sites_cart, update_grm=False):
     assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
-        self.xray_structure.scatterers().size()
-    self.xray_structure.set_sites_cart(sites_cart)
-    self._pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+        self._xray_structure.scatterers().size()
+    self._xray_structure.set_sites_cart(sites_cart)
+    self._pdb_hierarchy.adopt_xray_structure(self._xray_structure)
     if update_grm:
       self.restraints_manager.geometry.pair_proxies(sites_cart)
     self.model_statistics_info = None
 
   def sync_pdb_hierarchy_with_xray_structure(self):
     # to be deleted.
-    self._pdb_hierarchy.adopt_xray_structure(xray_structure=self.xray_structure)
+    self._pdb_hierarchy.adopt_xray_structure(xray_structure=self._xray_structure)
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     self.model_statistics_info = None
@@ -910,8 +920,8 @@ class manager(object):
   def normalize_adjacent_adp(self):
     bond_proxies_simple, asu = \
       self.restraints_manager.geometry.get_all_bond_proxies(
-        sites_cart = self.xray_structure.sites_cart())
-    scatterers = self.xray_structure.scatterers()
+        sites_cart = self._xray_structure.sites_cart())
+    scatterers = self._xray_structure.scatterers()
     for proxy in bond_proxies_simple:
       i_seq, j_seq = proxy.i_seqs
       bi = adptbx.u_as_b(scatterers[i_seq].u_iso)
@@ -925,11 +935,11 @@ class manager(object):
   def xh_connectivity_table(self):
     result = None
     if(self.restraints_manager is not None):
-      if(self.xray_structure.hd_selection().count(True) > 0):
-        xray_structure = self.xray_structure
+      if(self._xray_structure.hd_selection().count(True) > 0):
+        xray_structure = self._xray_structure
         ias_selection = self.get_ias_selection()
         if ias_selection and ias_selection.count(True) > 0:
-          xray_structure = self.xray_structure.select(~ias_selection)
+          xray_structure = self._xray_structure.select(~ias_selection)
         result = xh_connectivity_table(
           geometry       = self.restraints_manager,
           xray_structure = xray_structure).table
@@ -938,11 +948,11 @@ class manager(object):
   def xh_connectivity_table2(self):
     result = None
     if(self.restraints_manager is not None):
-      if(self.xray_structure.hd_selection().count(True) > 0):
-        xray_structure = self.xray_structure
+      if(self._xray_structure.hd_selection().count(True) > 0):
+        xray_structure = self._xray_structure
         ias_selection = self.get_ias_selection()
         if ias_selection and ias_selection.count(True) > 0:
-          xray_structure = self.xray_structure.select(~ias_selection)
+          xray_structure = self._xray_structure.select(~ias_selection)
         result = xh_connectivity_table2(
           geometry       = self.restraints_manager,
           xray_structure = xray_structure).table
@@ -950,7 +960,7 @@ class manager(object):
 
   def extend_xh_bonds(self, value=1.1):
     if(self.restraints_manager is None): return
-    if(self.xray_structure.hd_selection().count(True)==0): return
+    if(self._xray_structure.hd_selection().count(True)==0): return
     assert self.original_xh_lengths is None
     h_i_seqs = []
     xhct = self.xh_connectivity_table()
@@ -966,7 +976,7 @@ class manager(object):
 
   def restore_xh_bonds(self):
     if(self.restraints_manager is None): return
-    if(self.xray_structure.hd_selection().count(True)==0): return
+    if(self._xray_structure.hd_selection().count(True)==0): return
     assert self.original_xh_lengths is not None
     xhct = self.xh_connectivity_table()
     if(xhct is None): return
@@ -985,9 +995,9 @@ class manager(object):
   def isolated_atoms_selection(self):
     if(self.restraints_manager is None):
       raise Sorry("Geometry restraints manager must be defined.")
-    selection = flex.bool(self.xray_structure.scatterers().size(), True)
+    selection = flex.bool(self._xray_structure.scatterers().size(), True)
     bond_proxies_simple, asu = self.restraints_manager.geometry.\
-        get_all_bond_proxies(sites_cart=self.xray_structure.sites_cart())
+        get_all_bond_proxies(sites_cart=self._xray_structure.sites_cart())
     for proxy in bond_proxies_simple:
       i_seq, j_seq = proxy.i_seqs
       selection[i_seq] = False
@@ -1001,14 +1011,14 @@ class manager(object):
     1.2.
     """
     if(self.restraints_manager is None): return
-    hd_sel = self.xray_structure.hd_selection()
+    hd_sel = self._xray_structure.hd_selection()
     if(hd_sel.count(True) > 0):
       xh_conn_table = self.xh_connectivity_table()
-      bfi = self.xray_structure.extract_u_iso_or_u_equiv()
+      bfi = self._xray_structure.extract_u_iso_or_u_equiv()
       for t in self.xh_connectivity_table():
         i_x, i_h = t[0], t[1]
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*1.2
-      self.xray_structure.set_b_iso(values = bfi, selection = hd_sel)
+      self._xray_structure.set_b_iso(values = bfi, selection = hd_sel)
 
   def reset_occupancies_for_hydrogens(self):
     """
@@ -1020,11 +1030,11 @@ class manager(object):
         for occsel_ in occsel:
           occupancy_refinement_selections_1d.extend(occsel_)
     if(self.restraints_manager is None): return
-    hd_sel = self.xray_structure.hd_selection()
-    scatterers = self.xray_structure.scatterers()
+    hd_sel = self._xray_structure.hd_selection()
+    scatterers = self._xray_structure.scatterers()
     if(hd_sel.count(True) > 0):
       xh_conn_table = self.xh_connectivity_table()
-      qi = self.xray_structure.scatterers().extract_occupancies()
+      qi = self._xray_structure.scatterers().extract_occupancies()
       ct = self.xh_connectivity_table2()
       for t_ in ct.values():
         i_x, i_h = t_[0][0],t_[0][1]
@@ -1052,11 +1062,11 @@ class manager(object):
             for rf_ in rf2:
               if(o is not None):
                 qi[rf_] = o
-      self.xray_structure.scatterers().set_occupancies(qi, hd_sel)
+      self._xray_structure.scatterers().set_occupancies(qi, hd_sel)
 
   def reset_coordinates_for_exchangable_hd(self):
     if(len(self.exchangable_hd_groups) > 0):
-      scatterers =  self.xray_structure.scatterers()
+      scatterers =  self._xray_structure.scatterers()
       occ = scatterers.extract_occupancies()
       for g in self.exchangable_hd_groups:
         i, j = g[0][0], g[1][0]
@@ -1077,9 +1087,9 @@ class manager(object):
     return flex.size_t(sel_i)
 
   def h_counts(self):
-    occupancies = self.xray_structure.scatterers().extract_occupancies()
+    occupancies = self._xray_structure.scatterers().extract_occupancies()
     occ_sum = flex.sum(occupancies)
-    hd_selection = self.xray_structure.hd_selection()
+    hd_selection = self._xray_structure.hd_selection()
     h_occ_sum = flex.sum(occupancies.select(hd_selection))
     sel_rot = self.rotatable_hd_selection()
     hrot_occ_sum = flex.sum(occupancies.select(sel_rot))
@@ -1108,8 +1118,8 @@ class manager(object):
     Perform geometry regularization on hydrogen atoms only.
     """
     if(self.restraints_manager is None): return
-    if(self.xray_structure.hd_selection().count(True) > 0):
-      hd_selection = self.xray_structure.hd_selection()
+    if(self._xray_structure.hd_selection().count(True) > 0):
+      hd_selection = self._xray_structure.hd_selection()
       if(selection is not None): hd_selection = selection
       if(hd_selection.count(True)==0): return
       not_hd_selection = ~hd_selection
@@ -1119,7 +1129,7 @@ class manager(object):
       if (ias_selection is not None):
         not_hd_selection.set_selected(ias_selection, False)
       sites_cart_mac_before = \
-        self.xray_structure.sites_cart().select(not_hd_selection)
+        self._xray_structure.sites_cart().select(not_hd_selection)
       xhd = flex.double()
       if(hd_selection.count(True)==0): return
       for t in self.xh_connectivity_table():
@@ -1145,7 +1155,7 @@ class manager(object):
             planarity = True,
             parallelity = True)
       sites_cart_mac_after = \
-        self.xray_structure.sites_cart().select(not_hd_selection)
+        self._xray_structure.sites_cart().select(not_hd_selection)
       assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
         sites_cart_mac_after.as_double()), 0)
       xhd = flex.double()
@@ -1207,7 +1217,7 @@ class manager(object):
   def add_hydrogens(self, correct_special_position_tolerance,
         element = "H", neutron = False, occupancy=0.01):
     result = []
-    xs = self.xray_structure
+    xs = self._xray_structure
     if(neutron): element = "D"
     frac = xs.unit_cell().fractionalize
     sites_cart = xs.sites_cart()
@@ -1260,7 +1270,7 @@ class manager(object):
       atoms = ag.atoms()
       # do not add H or D to O at or close to special position
       skip = False
-      sps = self.xray_structure.special_position_settings(
+      sps = self._xray_structure.special_position_settings(
         min_distance_sym_equiv=3.0)
       for atom in atoms:
         if (atom.element.strip() == "O"):
@@ -1360,7 +1370,7 @@ class manager(object):
     return utils.combine_hd_exchangable(hierarchy = self._pdb_hierarchy)
 
   def reset_adp_of_hd_sites_to_be_equal(self):
-    scatterers = self.xray_structure.scatterers()
+    scatterers = self._xray_structure.scatterers()
     adp_fl = self.refinement_flags.adp_individual_iso
     adp_fl_a = self.refinement_flags.adp_individual_aniso
     if(adp_fl is not None):
@@ -1419,7 +1429,7 @@ class manager(object):
       planarity          = planarity,
       parallelity        = parallelity)
     for i in xrange(number_of_macro_cycles):
-      sites_cart = self.xray_structure.sites_cart()
+      sites_cart = self._xray_structure.sites_cart()
       sites_cart_orig = sites_cart.deep_copy()
       ias_selection = self.get_ias_selection()
       if ias_selection is not None and ias_selection.count(True) > 0:
@@ -1436,21 +1446,21 @@ class manager(object):
         sites_cart_selection        = selection,
         rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff,
         rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
-        site_labels=self.xray_structure.scatterers().extract_labels())
+        site_labels=self._xray_structure.scatterers().extract_labels())
       if(ias_selection is not None):
         for i_seq, ias_s in enumerate(ias_selection): # assumes that IAS appended to the back
           if(not ias_s):
             sites_cart_orig[i_seq] = sites_cart[i_seq]
       else:
         sites_cart_orig = sites_cart
-      self.xray_structure.set_sites_cart(sites_cart = sites_cart_orig)
+      self._xray_structure.set_sites_cart(sites_cart = sites_cart_orig)
     return minimized
   # END_MARKED_FOR_DELETION_OLEG
 
   def rms_b_iso_or_b_equiv_bonded(self):
     return utils.rms_b_iso_or_b_equiv_bonded(
       restraints_manager = self.restraints_manager,
-      xray_structure     = self.xray_structure,
+      xray_structure     = self._xray_structure,
       ias_manager        = self.ias_manager)
 
   def extract_ncs_groups(self):
@@ -1458,12 +1468,12 @@ class manager(object):
     if(self.restraints_manager is not None and
        self.restraints_manager.ncs_groups is not None):
       result = self.restraints_manager.ncs_groups.extract_ncs_groups(
-        sites_cart = self.xray_structure.sites_cart())
+        sites_cart = self._xray_structure.sites_cart())
     return result
 
   def deep_copy(self):
     return self.select(selection = flex.bool(
-      self.xray_structure.scatterers().size(), True))
+      self._xray_structure.scatterers().size(), True))
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
@@ -1472,7 +1482,7 @@ class manager(object):
     """
     if(self.ias_manager is not None):
        self.remove_ias()
-       fmodel.update_xray_structure(xray_structure = self.xray_structure,
+       fmodel.update_xray_structure(xray_structure = self._xray_structure,
                                     update_f_calc = True)
     print >> self.log, ">>> Adding IAS.........."
     self.old_refinement_flags = None
@@ -1480,18 +1490,18 @@ class manager(object):
     self.ias_manager = ias.manager(
                     geometry             = self.restraints_manager.geometry,
                     pdb_atoms            = self.pdb_atoms,
-                    xray_structure       = self.xray_structure,
+                    xray_structure       = self._xray_structure,
                     fmodel               = fmodel,
                     params               = ias_params,
                     file_name            = file_name,
                     log                  = self.log)
-    size_all = self.xray_structure.scatterers().size()
+    size_all = self._xray_structure.scatterers().size()
     if(not build_only):
       ias_xray_structure = self.ias_manager.ias_xray_structure
       ias_selection = self.get_ias_selection()
-      self.xray_structure.concatenate_inplace(other = ias_xray_structure)
+      self._xray_structure.concatenate_inplace(other = ias_xray_structure)
       print >> self.log, "Scattering dictionary for combined xray_structure:"
-      self.xray_structure.scattering_type_registry().show(out=self.log)
+      self._xray_structure.scattering_type_registry().show(out=self.log)
       if(self.refinement_flags is not None):
          self.old_refinement_flags = self.refinement_flags.deep_copy()
          # define flags
@@ -1518,11 +1528,11 @@ class manager(object):
            self.refinement_flags.adp_individual_aniso.set_selected(ias_selection, False)
          if(self.refinement_flags.adp_individual_iso is not None):
            self.refinement_flags.adp_individual_iso.set_selected(ias_selection, True)
-         #occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
-         #self.xray_structure.scatterers().set_occupancies(occs, ~self.ias_selection)
+         #occs = flex.double(self._xray_structure.scatterers().size(), 0.9)
+         #self._xray_structure.scatterers().set_occupancies(occs, ~self.ias_selection)
          # D9
-         sel = self.xray_structure.scatterers().extract_scattering_types() == "IS9"
-         self.xray_structure.convert_to_anisotropic(selection = sel)
+         sel = self._xray_structure.scatterers().extract_scattering_types() == "IS9"
+         self._xray_structure.convert_to_anisotropic(selection = sel)
          if(self.refinement_flags.adp_individual_aniso is not None):
            self.refinement_flags.adp_individual_aniso.set_selected(sel, True)
          if(self.refinement_flags.adp_individual_iso is not None):
@@ -1552,19 +1562,19 @@ class manager(object):
       self.refinement_flags = self.old_refinement_flags.deep_copy()
       self.old_refinement_flags = None
     if(ias_selection is not None):
-      self.xray_structure.select_inplace(
+      self._xray_structure.select_inplace(
         selection = ~ias_selection)
-      self.xray_structure.scattering_type_registry().show(out=self.log)
+      self._xray_structure.scattering_type_registry().show(out=self.log)
       self._pdb_hierarchy = self._pdb_hierarchy.select(
         atom_selection = ~ias_selection)
       self.pdb_atoms = self._pdb_hierarchy.atoms()
 
   def show_rigid_bond_test(self, out=None, use_id_str=False, prefix=""):
     if (out is None): out = sys.stdout
-    scatterers = self.xray_structure.scatterers()
-    unit_cell = self.xray_structure.unit_cell()
+    scatterers = self._xray_structure.scatterers()
+    unit_cell = self._xray_structure.unit_cell()
     rbt_array = flex.double()
-    sites_cart = self.xray_structure.sites_cart()
+    sites_cart = self._xray_structure.sites_cart()
     ias_selection = self.get_ias_selection()
     if ias_selection is not None:#
       sites_cart = sites_cart.select(~ias_selection)
@@ -1602,7 +1612,7 @@ class manager(object):
         gradients=None,
         disable_asu_cache=False):
     if(self.restraints_manager is None): return None
-    sites_cart = self.xray_structure.sites_cart()
+    sites_cart = self._xray_structure.sites_cart()
     ias_selection = self.get_ias_selection()
     if(self.use_ias and ias_selection is not None and
        ias_selection.count(True) > 0):
@@ -1615,7 +1625,7 @@ class manager(object):
       compute_gradients=compute_gradients,
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
-      hd_selection=self.xray_structure.hd_selection(),
+      hd_selection=self._xray_structure.hd_selection(),
     )
     return result
 
@@ -1634,7 +1644,7 @@ class manager(object):
   def xray_structure_macromolecule(self):
     sel = self.solvent_selection(include_ions=True)
     if(self.use_ias): sel = sel | self.get_ias_selection()
-    result = self.xray_structure.select(~sel)
+    result = self._xray_structure.select(~sel)
     return result
 
   def select(self, selection):
@@ -1660,20 +1670,20 @@ class manager(object):
         new_restraints_manager = self.restraints_manager.select(
           selection = selection)
       new_restraints_manager.geometry.pair_proxies(sites_cart =
-        self.xray_structure.sites_cart().select(selection)) # XXX is it necessary ?
+        self._xray_structure.sites_cart().select(selection)) # XXX is it necessary ?
     new = manager(
       model_input                = self.model_input, # any selection here?
       processed_pdb_file         = self.processed_pdb_file,
       processed_pdb_files_srv    = self.processed_pdb_files_srv,
       restraints_manager         = new_restraints_manager,
-      xray_structure             = self.xray_structure.select(selection),
+      xray_structure             = self._xray_structure.select(selection),
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self.pdb_interpretation_params,
       # refinement_flags           = new_refinement_flags,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
       anomalous_scatterer_groups = self.anomalous_scatterer_groups,
       log                        = self.log)
-    new.xray_structure.scattering_type_registry()
+    new.get_xray_structure().scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
     return new
@@ -1699,13 +1709,13 @@ class manager(object):
     upper_line = "|-"+text+"-"*(fill_len)+"|"
     print >> out, upper_line
     next = "| Total number of atoms = %-6d  Number of rigid groups = %-3d                |"
-    natoms_total = self.xray_structure.scatterers().size()
+    natoms_total = self._xray_structure.scatterers().size()
     print >> out, next % (natoms_total, len(selections))
     print >> out, "| group: start point:                        end point:                       |"
     print >> out, "|               x      B  atom  residue  <>        x      B  atom  residue    |"
     next = "| %5d: %8.3f %6.2f %5s %3s %5s <> %8.3f %6.2f %5s %3s %5s   |"
-    sites = self.xray_structure.sites_cart()
-    b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+    sites = self._xray_structure.sites_cart()
+    b_isos = self._xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     for i_seq, selection in enumerate(selections):
       if (isinstance(selection, flex.bool)):
         i_selection = selection.iselection()
@@ -1736,7 +1746,7 @@ class manager(object):
     self.geometry_restraints = None
     self._pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer=always_keep_one_conformer)
-    self.xray_structure = self._pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.crystal_symmetry())
+    self._xray_structure = self._pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.crystal_symmetry())
     self._atom_selection_cache = None
     n_old_atoms = self.get_number_of_atoms()
     self.pdb_atoms = self._pdb_hierarchy.atoms()
@@ -1753,7 +1763,7 @@ class manager(object):
     # XXX make this more complete and smart
     if(out is None): out = sys.stdout
     print >> out, "|-"+text+"-"*(80 - len("| "+text+"|") - 1)+"|"
-    occ = self.xray_structure.scatterers().extract_occupancies()
+    occ = self._xray_structure.scatterers().extract_occupancies()
     # this needs to stay the same size - mask out HD selection
     less_than_zero = (occ < 0.0)
     occ_min = flex.min(occ)
@@ -1814,10 +1824,10 @@ class manager(object):
       chain_id     = " ",
       reset_labels=False) :
     assert refine_adp in ["isotropic", "anisotropic"]
-    ms = self.xray_structure.scatterers().size() #
+    ms = self._xray_structure.scatterers().size() #
     number_of_new_atoms = new_xray_structure.scatterers().size()
-    self.xray_structure = \
-      self.xray_structure.concatenate(new_xray_structure)
+    self._xray_structure = \
+      self._xray_structure.concatenate(new_xray_structure)
     occupancy_flags = None
     if(refine_occupancies):
       occupancy_flags = []
@@ -1903,8 +1913,8 @@ class manager(object):
         self.restraints_manager.ncs_groups.register_additional_isolated_sites(
           number=number_of_new_atoms)
       self.restraints_manager.geometry.update_plain_pair_sym_table(
-        sites_frac = self.xray_structure.sites_frac())
-    assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
+        sites_frac = self._xray_structure.sites_frac())
+    assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
 
   def _append_pdb_atoms (self,
       new_xray_structure,
@@ -1949,7 +1959,7 @@ class manager(object):
     self.pdb_atoms = self._pdb_hierarchy.atoms()
     self.pdb_atoms.reset_i_seq()
     if (reset_labels) :
-      for sc, atom in zip(self.xray_structure.scatterers(), self.pdb_atoms) :
+      for sc, atom in zip(self._xray_structure.scatterers(), self.pdb_atoms) :
         sc.label = atom.id_str()
 
   def convert_atom (self,
@@ -1986,10 +1996,10 @@ class manager(object):
     if (segid is not None) :
       assert (len(segid) <= 4)
       atom.segid = segid
-    scatterer = self.xray_structure.scatterers()[i_seq]
+    scatterer = self._xray_structure.scatterers()[i_seq]
     scatterer.scattering_type = scattering_type
     label = atom.id_str()
-    all_labels = [ s.label for s in self.xray_structure.scatterers() ]
+    all_labels = [ s.label for s in self._xray_structure.scatterers() ]
     while (label in all_labels) :
       rg = atom.parent().parent()
       resseq = rg.resseq_as_int()
@@ -2007,7 +2017,7 @@ class manager(object):
       scatterer.u_iso = adptbx.b_as_u(initial_b_iso)
     atom_selection = flex.size_t([i_seq])
     if(refine_adp == "isotropic"):
-      scatterer.convert_to_isotropic(unit_cell=self.xray_structure.unit_cell())
+      scatterer.convert_to_isotropic(unit_cell=self._xray_structure.unit_cell())
       if ((self.refinement_flags is not None) and
           (self.refinement_flags.adp_individual_iso is not None)) :
         self.refinement_flags.adp_individual_iso.set_selected(atom_selection,
@@ -2017,7 +2027,7 @@ class manager(object):
             atom_selection, False)
     elif(refine_adp == "anisotropic"):
       scatterer.convert_to_anisotropic(
-        unit_cell=self.xray_structure.unit_cell())
+        unit_cell=self._xray_structure.unit_cell())
       if ((self.refinement_flags is not None) and
           (self.refinement_flags.adp_individual_aniso is not None)) :
         self.refinement_flags.adp_individual_aniso.set_selected(atom_selection,
@@ -2042,13 +2052,13 @@ class manager(object):
       i_seq=i_seq,
       nonbonded_type=element,
       charge=charge)
-    self.xray_structure.discard_scattering_type_registry()
-    assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
+    self._xray_structure.discard_scattering_type_registry()
+    assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
     self.pdb_hierarchy(sync_with_xray_structure=True)
     return atom
 
   def scale_adp(self, scale_max, scale_min):
-    b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+    b_isos = self._xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     b_isos_mean = flex.mean(b_isos)
     max_b_iso = b_isos_mean * scale_max
     min_b_iso = b_isos_mean / scale_min
@@ -2056,15 +2066,15 @@ class manager(object):
     sel_outliers_min = b_isos < min_b_iso
     b_isos.set_selected(sel_outliers_max, max_b_iso)
     b_isos.set_selected(sel_outliers_min, min_b_iso)
-    self.xray_structure.set_b_iso(values = b_isos)
+    self._xray_structure.set_b_iso(values = b_isos)
 
   def geometry_statistics(self,
                           general_selection = None):
     scattering_table = \
-      self.xray_structure.scattering_type_registry().last_table()
+      self._xray_structure.scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
     ph = self.pdb_hierarchy(sync_with_xray_structure=True)
-    hd_selection = self.xray_structure.hd_selection()
+    hd_selection = self._xray_structure.hd_selection()
     if(self.use_ias):
       ias_selection = self.get_ias_selection()
       hd_selection = hd_selection.select(~ias_selection)
@@ -2098,7 +2108,7 @@ class manager(object):
 
   def energies_adp(self, iso_restraints, compute_gradients, use_hd):
     assert self.refinement_flags is not None
-    xrs = self.xray_structure
+    xrs = self._xray_structure
     sel_ = xrs.use_u_iso() | xrs.use_u_aniso()
     selection = sel_
     ias_selection = self.get_ias_selection()
@@ -2138,26 +2148,26 @@ class manager(object):
     return result()
 
   def set_refine_individual_sites(self, selection = None):
-    self.xray_structure.scatterers().flags_set_grads(state=False)
+    self._xray_structure.scatterers().flags_set_grads(state=False)
     if(selection is None):
       if(self.refinement_flags is not None):
         selection = self.refinement_flags.sites_individual
     if(selection is not None):
-      self.xray_structure.scatterers().flags_set_grad_site(
+      self._xray_structure.scatterers().flags_set_grad_site(
         iselection = selection.iselection())
 
   def set_refine_individual_adp(self, selection_iso = None,
                                       selection_aniso = None):
-    self.xray_structure.scatterers().flags_set_grads(state=False)
+    self._xray_structure.scatterers().flags_set_grads(state=False)
     if(selection_iso is None):
       selection_iso = self.refinement_flags.adp_individual_iso
     if(selection_iso is not None):
-      self.xray_structure.scatterers().flags_set_grad_u_iso(
+      self._xray_structure.scatterers().flags_set_grad_u_iso(
         iselection = selection_iso.iselection())
     if(selection_aniso is None):
       selection_aniso = self.refinement_flags.adp_individual_aniso
     if(selection_aniso is not None):
-      self.xray_structure.scatterers().flags_set_grad_u_aniso(
+      self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
 
   def update_anomalous_groups (self, out=sys.stdout) :

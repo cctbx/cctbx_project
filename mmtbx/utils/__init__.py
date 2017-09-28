@@ -850,7 +850,7 @@ def get_atom_selections(
     residues = []
     hd_selection = None
     if (hydrogens_only):
-      scat_types = model.xray_structure.scatterers().extract_scattering_types()
+      scat_types = model.get_xray_structure().scatterers().extract_scattering_types()
       if not model.has_hd:
         raise Sorry('No hydrogens to select.')
     for m in model.pdb_hierarchy().models():
@@ -874,13 +874,13 @@ def get_atom_selections(
     raise Sorry('Ambiguous selection.')
   if(len(selections)>1):
     if(not isinstance(selections[0], flex.bool)):
-      tmp = flex.bool(model.xray_structure.scatterers().size(), selections[0]).as_int()
+      tmp = flex.bool(model.get_number_of_atoms(), selections[0]).as_int()
     else:
       tmp = selections[0].deep_copy().as_int()
     for k_, tmp_s in enumerate(selections[1:]):
       k = k_ + 1 # XXX Python 2.5 workaround
       if(not isinstance(tmp_s, flex.bool)):
-        tmp = tmp + flex.bool(model.xray_structure.scatterers().size(),tmp_s).as_int()
+        tmp = tmp + flex.bool(model.get_number_of_atoms(),tmp_s).as_int()
       else:
         tmp = tmp + tmp_s.as_int()
     if(flex.max(tmp)>1):
@@ -1264,14 +1264,14 @@ def compare_hierarchy(hierarchy, scatterers, cell):
     assert match[n-1] == True
 
 def assert_model_is_consistent(model):
-  xs = model.xray_structure
+  xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
   hier = model.pdb_hierarchy()
   compare_hierarchy(hier, scatterers, unit_cell)
 
 def assert_water_is_consistent(model):
-  xs = model.xray_structure
+  xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
   hier = model.pdb_hierarchy()
@@ -2797,7 +2797,7 @@ def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
   if(model is not None):
     assert_xray_structures_equal(
       x1 = fmodel.xray_structure,
-      x2 = model.xray_structure)
+      x2 = model.get_xray_structure())
     model.reset_occupancies_for_hydrogens()
   if(model is not None): pdb_hierarchy = model.pdb_hierarchy()
   import mmtbx.hydrogens
@@ -2811,11 +2811,11 @@ def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
   fmodel.xray_structure.set_occupancies(value = 0, selection = rmh_sel_i_seqs)
   fmodel.update_f_hydrogens(log=log)
   if(model is not None):
-    model.xray_structure = fmodel.xray_structure
+    model.set_xray_structure(fmodel.xray_structure)
   fmodel.xray_structure.set_occupancies(value = 0,
     selection = fmodel.xray_structure.hd_selection())
   if(model is not None):
-    model.xray_structure = fmodel.xray_structure
+    model.set_xray_structure(fmodel.xray_structure)
   if(verbose):
     print >> log, "  after optimization:  r_work=%6.4f r_free=%6.4f"%(
       fmodel.r_work(), fmodel.r_free())

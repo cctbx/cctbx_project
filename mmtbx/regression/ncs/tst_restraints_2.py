@@ -153,7 +153,7 @@ def exercise_two_models_with_holes(model):
                      sites_average=energies_sites.sites_average)):
     assert eps_eq(ag, fg)
   #
-  u_isos = model.xray_structure.extract_u_iso_or_u_equiv()
+  u_isos = model.get_xray_structure().extract_u_iso_or_u_equiv()
   eng = group.energies_adp_iso(
     u_isos=u_isos, average_power=1, compute_gradients=False)
   energies_adp_iso_no_gradients = eng

@@ -45,10 +45,10 @@ class manager(object):
       den_manager.build_den_proxies(pdb_hierarchy=pdb_hierarchy)
       den_manager.build_den_restraints()
       den_manager.show_den_summary(
-        sites_cart=self.model.xray_structure.sites_cart())
+        sites_cart=self.model.get_sites_cart())
     if den_manager.params.output_kinemage:
       den_manager.output_kinemage(
-        self.model.xray_structure.sites_cart())
+        self.model.get_sites_cart())
     print_statistics.make_sub_header(
       "coordinate minimization before annealing", out=self.log)
     self.minimize(ca_only=self.params.den.minimize_c_alpha_only)
@@ -141,11 +141,11 @@ class manager(object):
       update_f_calc  = True)
     utils.assert_xray_structures_equal(
       x1 = fmodels.fmodel_xray().xray_structure,
-      x2 = model.xray_structure)
+      x2 = model.get_xray_structure())
     model.restraints_manager.geometry.\
       den_manager.import_eq_distances(eq_distances=best_eq_distances)
     self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
-        sites_cart=self.model.xray_structure.sites_cart(),
+        sites_cart=self.model.get_sites_cart(),
         pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
         log=self.log)
     #DEN refinement done, turn off
@@ -163,7 +163,7 @@ class manager(object):
       update_f_calc  = True)
     utils.assert_xray_structures_equal(
       x1 = self.fmodels.fmodel_xray().xray_structure,
-      x2 = self.model.xray_structure)
+      x2 = self.model.get_xray_structure())
     gamma_local = grid_pair[0]
     weight_local = grid_pair[1]
     self.model.restraints_manager.geometry.\
@@ -213,11 +213,11 @@ class manager(object):
         call_back_after_step=False)
       if self.params.den.bulk_solvent_and_scale:
         self.bulk_solvent_and_scale(log=local_log)
-        self.fmodels.fmodel_xray().xray_structure = self.model.xray_structure
+        self.fmodels.fmodel_xray().xray_structure = self.model.get_xray_structure()
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
       self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
-          sites_cart=self.model.xray_structure.sites_cart(),
+          sites_cart=self.model.get_sites_cart(),
           pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
           log=local_log)
       cycle += 1
@@ -247,7 +247,7 @@ class manager(object):
       update_f_calc  = True)
     utils.assert_xray_structures_equal(
       x1 = self.fmodels.fmodel_xray().xray_structure,
-      x2 = self.model.xray_structure)
+      x2 = self.model.get_xray_structure())
     gamma_local = grid_pair[0]
     weight_local = grid_pair[1]
     self.model.restraints_manager.geometry.\
@@ -291,7 +291,7 @@ class manager(object):
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
       self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
-          sites_cart=self.model.xray_structure.sites_cart(),
+          sites_cart=self.model.get_sites_cart(),
           pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
           log=local_log)
       cycle += 1
@@ -369,7 +369,7 @@ class manager(object):
       ###> Make ADP of H/D sites equal
     self.model.reset_adp_of_hd_sites_to_be_equal()
     self.fmodels.update_xray_structure(
-      xray_structure = self.model.xray_structure,
+      xray_structure = self.model.get_xray_structure(),
       update_f_calc  = True)
     self.adp_refinement_manager = adp_refinement.manager(
       fmodels                = self.fmodels,
@@ -397,11 +397,11 @@ class manager(object):
     pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
     if ca_only:
       ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
-      restraint_sites_cart = self.model.xray_structure.sites_cart().\
+      restraint_sites_cart = self.model.get_sites_cart().\
         deep_copy().select(ca_selection)
       restraint_selection = ca_selection
     else:
-      restraint_sites_cart = self.model.xray_structure.sites_cart().deep_copy()
+      restraint_sites_cart = self.model.get_sites_cart().deep_copy()
       restraint_selection = pdb_hierarchy.atoms().extract_i_seq()
     self.model.restraints_manager.geometry.\
         add_reference_coordinate_restraints_in_place(
@@ -425,7 +425,7 @@ class manager(object):
       planarity                      = True)
     utils.assert_xray_structures_equal(
       x1 = self.fmodels.fmodel_xray().xray_structure,
-      x2 = self.model.xray_structure)
+      x2 = self.model.get_xray_structure())
     self.model.restraints_manager.geometry.\
         remove_reference_coordinate_restraints_in_place()
     # self.model.restraints_manager.geometry.generic_restraints_manager.\

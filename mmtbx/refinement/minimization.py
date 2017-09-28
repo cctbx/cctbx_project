@@ -171,20 +171,20 @@ class lbfgs(object):
         if(self.tmp_XYZ is not None):
           diff,max_diff,max_elem = qb_refinement.array_difference(
             self.tmp_XYZ,
-            self.model.xray_structure.sites_cart(),
+            self.model.get_sites_cart(),
             )
           if(self.XYZ_diff_curr is not None):
             self.XYZ_diff_curr=max_elem
           else:
             self.XYZ_diff_curr=max_elem
           if(max_elem>=self.qblib_params.skip_divcon_threshold):
-               self.tmp_XYZ = self.model.xray_structure.sites_cart()
+               self.tmp_XYZ = self.model.gett_sites_cart()
         else:
-          self.tmp_XYZ = self.model.xray_structure.sites_cart()
+          self.tmp_XYZ = self.model.get_sites_cart()
         if (self.macro_cycle != self.qblib_params.macro_cycle_to_skip):
           qblib_call = qb_refinement.QBblib_call_manager(
             hierarchy = self.model.pdb_hierarchy(),
-            xray_structure=self.model.xray_structure,
+            xray_structure=self.model.get_xray_structure(),
             geometry_residuals = self.stereochemistry_residuals,
             qblib_params=self.qblib_params,
             diff_curr=self.XYZ_diff_curr,
@@ -287,7 +287,7 @@ class monitor(object):
   def collect(self, iter = None, nfun = None):
     if(iter is not None): self.iter = format_value("%-4d", iter)
     if(nfun is not None): self.nfun = format_value("%-4d", nfun)
-    self.fmodels.fmodel_xray().xray_structure == self.model.xray_structure
+    self.fmodels.fmodel_xray().xray_structure == self.model.get_xray_structure()
     fmodels_tg = self.fmodels.target_and_gradients(
       weights           = self.weights,
       compute_gradients = False)
@@ -421,4 +421,4 @@ class run_constrained(object):
         refine_u_iso                = refine_u_iso,
         refine_transformations      = refine_transformations)
     fmodel.update_xray_structure(update_f_calc=True)
-    model.xray_structure = fmodel.xray_structure
+    model.set_xray_structure(fmodel.xray_structure)

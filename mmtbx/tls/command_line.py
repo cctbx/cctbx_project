@@ -189,13 +189,13 @@ def run(args, command_name = "phenix.tls"):
       "Fit TLS matrices to B-factors of selected sets of atoms", out = log)
     tlsos = mmtbx.tls.tools.generate_tlsos(
       selections     = selections,
-      xray_structure = model.xray_structure,
+      xray_structure = model.get_xray_structure(),
       value          = 0.0)
     for rt,rl,rs in [[1,0,1],[1,1,1],[0,1,1],
                      [1,0,0],[0,1,0],[0,0,1],[1,1,1],
                      [0,0,1]]*10:
       tlsos = mmtbx.tls.tools.tls_from_uanisos(
-        xray_structure               = model.xray_structure,
+        xray_structure               = model.get_xray_structure(),
         selections                   = selections,
         tlsos_initial                = tlsos,
         number_of_macro_cycles       = 10,
@@ -208,23 +208,23 @@ def run(args, command_name = "phenix.tls"):
         out                          = log)
       mmtbx.tls.tools.show_tls(tlsos = tlsos, out = log)
     u_cart_from_tls = mmtbx.tls.tools.u_cart_from_tls(
-      sites_cart = model.xray_structure.sites_cart(),
+      sites_cart = model.get_sites_cart(),
       selections = selections,
       tlsos      = tlsos)
-    unit_cell = model.xray_structure.unit_cell()
-    for i_seq, sc in enumerate(model.xray_structure.scatterers()):
+    unit_cell = model.get_xray_structure().unit_cell()
+    for i_seq, sc in enumerate(model.get_xray_structure().scatterers()):
       if(u_cart_from_tls[i_seq] != (0,0,0,0,0,0)):
         u_star_tls = adptbx.u_cart_as_u_star(unit_cell,
           tuple(u_cart_from_tls[i_seq]))
         sc.u_star = tuple(flex.double(sc.u_star) - flex.double(u_star_tls))
     for sel in selections:
-      model.xray_structure.convert_to_isotropic(selection = sel)
+      model.get_xray_structure().convert_to_isotropic(selection = sel)
     mmtbx.tls.tools.remark_3_tls(tlsos = tlsos,
       selection_strings = tls_selections_strings, out = ofo)
   #
   if(params.combine_tls):
     utils.print_header("Combine B_tls with B_residual", out = log)
-    mmtbx.tls.tools.combine_tls_and_u_local(xray_structure = model.xray_structure,
+    mmtbx.tls.tools.combine_tls_and_u_local(xray_structure = model.get_xray_structure(),
       tls_selections = selections, tls_groups = tls_groups)
     print >> log, "All done."
   #

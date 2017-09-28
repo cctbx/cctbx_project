@@ -73,7 +73,7 @@ def exercise(tolerance=0.01):
       dihedral  = True,
       chirality = True,
       planarity = True)
-    ph.adopt_xray_structure(mmodel.xray_structure)
+    ph.adopt_xray_structure(mmodel.get_xray_structure())
     suffix = "X"
     if(use_neutron_distances): suffix = "N"
     ph.write_pdb_file(file_name="output_%s.pdb"%suffix)

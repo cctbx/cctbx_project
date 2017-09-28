@@ -57,7 +57,7 @@ def exercise():
   pdb_hierarchy = model.get_hierarchy()
   restraints_manager = model.get_restraints_manager()
   geometry_restraints = restraints_manager.geometry
-  xray_structure = model.get_xrs()
+  xray_structure = model.get_xray_structure()
 
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
