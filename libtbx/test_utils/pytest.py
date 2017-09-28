@@ -54,7 +54,7 @@ def discover(module, pytestargs=None):
   class TestDiscoveryPlugin:
     def pytest_itemcollected(self, item):
       testarray = L([ "libtbx.python", "-m", "pytest", '--noconftest', '--basetemp=pytest',
-        '"%s"' % os.path.join(dist_dir, item.nodeid) ])
+        '"%s"' % (item.fspath + '::' + item.nodeid.split('::', 1)[1]) ])
       testclass = module + '.' + item.location[0].replace(os.path.sep, '.')
       if testclass.endswith('.py'):
         testclass = testclass[:-3]
