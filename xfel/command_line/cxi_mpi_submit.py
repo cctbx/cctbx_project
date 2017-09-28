@@ -80,7 +80,7 @@ phil_str = '''
       .type = int
       .help = Optional. If used, will add _rgXXX to the trial path. Useful for organizing \
               runs with similar parameters into logical groupings.
-    dispatcher = cxi.xtc_process
+    dispatcher = cctbx.xfel.xtc_process
       .type = str
       .help = Which program to run. cxi.xtc_process is for module only based processing, \
               such as mod_hitfind. cctbx.xfel.xtc_process uses the DIALS back end.
@@ -93,7 +93,7 @@ phil_str = '''
     output_dir = "."
       .type = str
       .help = Directory for output files
-    split_logs = False
+    split_logs = True
       .type = bool
       .help = Option to split error and log files into separate per process
   }
