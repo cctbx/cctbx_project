@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from scitbx.math import superpose
 from mmtbx.conformation_dependent_library import mcl_sf4_coordination
 from six.moves import range
+from mmtbx.conformation_dependent_library import metal_coordination_library
 
 def get_pdb_hierarchy_from_restraints(code):
   from mmtbx.monomer_library import server
@@ -49,37 +50,60 @@ def update(grm,
            log=sys.stdout,
            verbose=False,
            ):
-  # SF4
-  rc = mcl_sf4_coordination.get_sulfur_iron_cluster_coordination(
-    pdb_hierarchy=pdb_hierarchy,
-    nonbonded_proxies=grm.pair_proxies(
-      sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
-    verbose=verbose,
-  )
   if link_records is None: link_records={}
   link_records.setdefault('LINK', [])
-  bproxies, aproxies = mcl_sf4_coordination.get_all_proxies(rc)
-  if len(bproxies):
-    print("  SF4/F3S coordination", file=log)
-    atoms = pdb_hierarchy.atoms()
-    sf4_coordination = {}
-    for bp in bproxies:
-      sf4_ag = atoms[bp.i_seqs[0]].parent()
-      sf4_coordination.setdefault(sf4_ag.id_str(), [])
-      sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]],
-                                                atoms[bp.i_seqs[1]]))
-      link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
-      if link not in link_records: link_records['LINK'].append(link)
-    for sf4, aas in sorted(sf4_coordination.items()):
-      print('    %s' % sf4, file=log)
-      for aa in sorted(aas):
-        print('       %s - %s' % (aa[0].id_str(), aa[1].id_str()), file=log)
-    print(file=log)
-  grm.add_new_bond_restraints_in_place(
-    proxies=bproxies,
-    sites_cart=pdb_hierarchy.atoms().extract_xyz(),
-  )
-  grm.add_angles_in_place(aproxies)
+  hooks = [
+    ["SF4 coordination",
+     mcl_sf4_coordination.get_sulfur_iron_cluster_coordination, #(
+       #pdb_hierarchy=pdb_hierarchy,
+       #nonbonded_proxies=grm.pair_proxies(
+       #  sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
+       #verbose=verbose,
+     #),
+     mcl_sf4_coordination.get_all_proxies,
+      ],
+    ['Zn2+ tetrahedral',
+     metal_coordination_library.get_metal_coordination_proxies, #(
+       #pdb_hierarchy=pdb_hierarchy,
+       #nonbonded_proxies=grm.pair_proxies(
+       #  sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
+       #verbose=verbose,
+     #),
+     metal_coordination_library.get_proxies,
+      ],
+    ]
+  outl = ''
+  for label, get_coordination, get_all_proxies in hooks:
+    rc = get_coordination(
+      pdb_hierarchy=pdb_hierarchy,
+      nonbonded_proxies=grm.pair_proxies(
+        sites_cart=pdb_hierarchy.atoms().extract_xyz()).nonbonded_proxies,
+      verbose=verbose,
+    )
+    bproxies, aproxies = get_all_proxies(rc)
+    if len(bproxies):
+      outl += '    %s\n' % label
+      atoms = pdb_hierarchy.atoms()
+      sf4_coordination = {}
+      for bp in bproxies:
+        sf4_ag = atoms[bp.i_seqs[0]].parent()
+        sf4_coordination.setdefault(sf4_ag.id_str(), [])
+        sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]],
+                                                  atoms[bp.i_seqs[1]]))
+        link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
+        if link not in link_records: link_records['LINK'].append(link)
+      for sf4, aas in sorted(sf4_coordination.items()):
+        outl += '%spdb="%s"\n' % (' '*6, sf4)
+        for aa in sorted(aas):
+          outl += '%s%s - %s\n' % (' '*8, aa[0].id_str(), aa[1].id_str())
+    grm.add_new_bond_restraints_in_place(
+      proxies=bproxies,
+      sites_cart=pdb_hierarchy.atoms().extract_xyz(),
+    )
+    grm.add_angles_in_place(aproxies)
+  if outl:
+    print >> log, '  Dynamic metal coordination'
+    print >> log, outl
 
 def _extract_sites_cart(ag, element=None):
   selection = []

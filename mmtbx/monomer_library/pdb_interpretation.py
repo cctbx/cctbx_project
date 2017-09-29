@@ -161,7 +161,7 @@ master_params_str = """\
     .short_caption = Sort atoms in input pdb so they would be in the same order
   superpose_ideal_ligand = *None all %(ideal_ligands_str)s
     .type = choice(multi=True)
-    .short_caption = Substitute correctly oriented F3S metal cluster
+    .short_caption = Substitute correctly oriented SF4 metal cluster
   flip_symmetric_amino_acids = False
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention

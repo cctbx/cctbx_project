@@ -519,6 +519,14 @@ class linking_mixins(object):
         if ( atom1.parent().resname in moved or
              atom2.parent().resname in moved
              ): continue
+        moved = ['ZN', 'CYS']
+        if ( atom1.parent().resname.strip() in moved and
+             atom2.parent().resname.strip() in moved
+             ): continue
+        moved = ['ZN', 'HIS']
+        if ( atom1.parent().resname.strip() in moved and
+             atom2.parent().resname.strip() in moved
+             ): continue
       if verbose:
         print(i_seq, j_seq, atom1.quote(), end=' ')
         print(atom2.quote(), end=' ')
