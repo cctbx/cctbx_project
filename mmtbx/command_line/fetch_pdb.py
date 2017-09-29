@@ -6,6 +6,7 @@ reflection data.
 from __future__ import division
 
 # LIBTBX_SET_DISPATCHER_NAME phenix.fetch_pdb
+# LIBTBX_SET_DISPATCHER_NAME iotbx.fetch_pdb
 
 # XXX most of this code is unused when run from the command line, but the
 # PHENIX GUI includes a simple frontend that uses the phil interface.
