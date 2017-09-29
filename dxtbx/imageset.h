@@ -660,15 +660,15 @@ namespace dxtbx {
         // Apply dark
         if (p.size() > 0) {
           for (std::size_t j = 0; j < r.size(); ++j) {
-            c[i] = c[i] - p[i];
+            c[j] = c[j] - p[j];
           }
         }
 
         // Apply gain
         if (g.size() > 0) {
           for (std::size_t j = 0; j < r.size(); ++j) {
-            DXTBX_ASSERT(g[i] > 0);
-            c[i] = c[i] / g[i];
+            DXTBX_ASSERT(g[j] > 0);
+            c[j] = c[j] / g[j];
           }
         }
 
@@ -1079,7 +1079,7 @@ namespace dxtbx {
       // Check the scan is the same length and number of images
       DXTBX_ASSERT(scan.get() != NULL);
       if (data.size() > 1) {
-	DXTBX_ASSERT(data.size() == scan->get_num_images());
+        DXTBX_ASSERT(data.size() == scan->get_num_images());
       }
 
       // Set the models for each image
