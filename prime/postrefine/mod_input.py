@@ -478,35 +478,29 @@ def process_input(argv=None, flag_mkdir=True):
 
 def read_pickles(data):
   frame_files = []
-  pickle_files = []
   tar_files = []
   for p in data:
+    is_tar = False
+    if p.find('tar') >= 0: is_tar = True
     if os.path.isdir(p) == False:
       if os.path.isfile(p):
         #read all file paths in the given input file
-        file_data = open(p,'r')
-        file_list = file_data.read().split("\n")
+        with open(p,'r') as f: file_list = f.read().splitlines()
       else:
         # p is a glob
         file_list = glob.glob(p)
     else:
       file_list = os.listdir(p)
-    for filename in file_list:
-        if os.path.isfile(filename):
-          if filename.endswith('.pickle'):
-            pickle_files.append(filename)
-          elif filename.endswith('.tar'):
-            tar_files.append(filename)
-  #check if pickle_dir is given in input file instead of from cmd arguments.
-  if len(pickle_files) + len(tar_files) == 0:
+    frame_files.extend(file_list)
+  if len(frame_files) == 0:
     raise InvalidData, "Error: no integration results found in the specified data parameter."
-  frame_files.extend(pickle_files)
+  if not is_tar: return frame_files
   #take care of tar files
-  for tar_filename in tar_files:
+  for tar_filename in frame_files:
     tarf = tarfile.open(name=tar_filename, mode='r')
     for myindex in xrange(len(tarf.getmembers())):
-      frame_files.append(tar_filename+':ind'+str(myindex))
-  return frame_files
+      tar_files.append(tar_filename+':ind'+str(myindex))
+  return tar_files
 
 def read_frame(frame_file):
   '''
@@ -514,11 +508,15 @@ def read_frame(frame_file):
   Read accordingly and return integration pickle
   '''
   observations_pickle = None
-  if frame_file.endswith('.pickle'):
-    observations_pickle = pickle.load(open(frame_file,"rb"))
-  else:
-    tar_filename, tar_index = frame_file.split(':ind')
-    tarf = tarfile.open(name=tar_filename, mode='r')
-    tar_member = tarf.extractfile(member=tarf.getmembers()[int(tar_index)])
-    observations_pickle = pickle.load(tar_member)
+  try:
+    if frame_file.endswith('.pickle'):
+      observations_pickle = pickle.load(open(frame_file,"rb"))
+    else:
+      tar_filename, tar_index = frame_file.split(':ind')
+      tarf = tarfile.open(name=tar_filename, mode='r')
+      tar_member = tarf.extractfile(member=tarf.getmembers()[int(tar_index)])
+      observations_pickle = pickle.load(tar_member)
+  except Exception:
+    print "Warning: unable to read %s"%(frame_file)
+    pass
   return observations_pickle
