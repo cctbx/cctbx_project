@@ -1484,6 +1484,10 @@ def loc_res(map,
             method="fsc",
             fsc_cutoff=0.143):
   assert method in ["fsc", "rscc"]
+  from cctbx import maptbx
+  from cctbx import miller
+  import mmtbx.utils
+
   mmm = map.as_1d().min_max_mean().as_tuple()
   map = map-mmm[2]
   map = map/map.sample_standard_deviation()
