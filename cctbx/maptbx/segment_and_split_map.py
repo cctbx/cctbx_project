@@ -6727,6 +6727,8 @@ def bounds_to_cart(b,map_data,crystal_symmetry=None):
 
 def select_inside_box(lower_bounds=None,upper_bounds=None,xrs=None,
      hierarchy=None):
+  if not hierarchy or not xrs:
+    return None
   selection = flex.bool(xrs.scatterers().size())
   for atom_group in hierarchy.atom_groups():
     for atom in atom_group.atoms():
@@ -6783,18 +6785,18 @@ def select_box_map_data(si=None,
       upper_cart=bounds_to_cart(
         upper_bounds,map_data,crystal_symmetry=crystal_symmetry)
 
-      xrs=hierarchy.extract_xray_structure(
-        crystal_symmetry=si.crystal_symmetry)
- 
-      # find everything in box
-      sel_hierarchy=select_inside_box(lower_bounds=lower_cart,
+      if hierarchy:
+        xrs=hierarchy.extract_xray_structure(
+          crystal_symmetry=si.crystal_symmetry)
+        # find everything in box
+        sel_hierarchy=select_inside_box(lower_bounds=lower_cart,
          upper_bounds=upper_cart, xrs=xrs,hierarchy=hierarchy) 
-      n=sel_hierarchy.overall_counts().n_atoms
-      print "Selected atoms inside box: %d" %(n)
-      if n<n_min:
-        print "Skipping...using entire structure"
-      else:
-        hierarchy=sel_hierarchy
+        n=sel_hierarchy.overall_counts().n_atoms
+        print "Selected atoms inside box: %d" %(n)
+        if n<n_min:
+          print "Skipping...using entire structure"
+        else:
+          hierarchy=sel_hierarchy
 
 
     from mmtbx.command_line.map_box import run as run_map_box

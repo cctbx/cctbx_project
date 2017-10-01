@@ -1482,8 +1482,13 @@ def loc_res(map,
             chunk_size=10,
             soft_mask_radius=3.,
             method="fsc",
-            fsc_cutoff=0.143):
-  assert method in ["fsc", "rscc"]
+            hard_d_min=1.5,
+            b_range_low=-200,
+            b_range_high=500,
+            fsc_cutoff=0.143,
+            verbose=False,
+            log=sys.stdout):
+  assert method in ["fsc", "rscc", "rscc_d_min_b"]
   from cctbx import maptbx
   from cctbx import miller
   import mmtbx.utils
@@ -1504,6 +1509,11 @@ def loc_res(map,
     d_min            = 1.0)
   #
   bs = pdb_hierarchy.atoms().extract_b()
+  if method=="rscc_d_min_b":
+    occs = pdb_hierarchy.atoms().extract_occ()
+  else:
+    occs = None
+  results_b = flex.double()
   results = flex.double()
   chunk_selections = pdb_hierarchy.chunk_selections(
     residues_per_chunk=chunk_size)
@@ -1522,12 +1532,18 @@ def loc_res(map,
     fo = miller.structure_factor_box_from_map(
       crystal_symmetry = box.xray_structure_box.crystal_symmetry(),
       map              = box.map_box)
+    if method=="rscc_d_min_b":
+      fo=fo.resolution_filter(d_min=hard_d_min)
+      box.xray_structure_box.set_b_iso(value=0.0)
     fc = fo.structure_factors_from_scatterers(
       xray_structure = box.xray_structure_box).f_calc()
+    b_iso=0
+    d_min=0
+    cc=0
     if(method=="fsc"):
       d_min = fc.d_min_from_fsc(other=fo, bin_width=100,
         fsc_cutoff=fsc_cutoff).d_min
-    if(method=="rscc"):
+    elif(method=="rscc"):
       d_spacings = fc.d_spacings().data()
       ss = 1./flex.pow2(d_spacings) / 4.
       d_min, cc = maptbx.cc_complex_complex(
@@ -1537,11 +1553,47 @@ def loc_res(map,
         ss         = ss,
         d_mins     = flex.double([i/10. for i in range(15,100)]),
         b_iso      = 0)
-    ph_sel.adopt_xray_structure(box.xray_structure_box)
+    elif(method=="rscc_d_min_b"):
+      d_spacings = fc.d_spacings().data()
+      ss = 1./flex.pow2(d_spacings) / 4.
+      d_min_best=None
+      cc_best=None
+      b_best=None
+      scale=20
+      low_value=int(b_range_low/scale)
+      high_value=max(low_value+1,int(b_range_high/scale))
+      for b_iso in  [ i*scale for i in xrange(low_value,high_value)]:
+        d_min, cc = maptbx.cc_complex_complex(
+        f_1        = fc.data(), # note swapped from rscc f_1 is fixed
+        f_2        = fo.data(),
+        d_spacings = d_spacings,
+        ss         = ss,
+        d_mins     = flex.double([i/10. for i in range(int(hard_d_min*10),100)]),
+        b_iso      = b_iso)
+ 
+        if cc_best is None or cc>cc_best:
+          cc_best=cc
+          d_min_best=d_min
+          b_best=b_iso
+      cc=cc_best
+      d_min=d_min_best
+      b_iso=b_best
+
+    if verbose: 
+      print >>log,"CHUNK d_min %s b %s cc %s" %(d_min,b_iso,cc)
     results.append(d_min)
-    #
-    bs = bs.set_selected(chunk_sel, d_min)
-  print flex.min(results), flex.max(results), flex.mean(results)
-  print flex.min(bs), flex.max(bs), flex.mean(bs)
+    results_b.append(b_iso)
+
+    ph_sel.adopt_xray_structure(box.xray_structure_box)
+    if (method=="rscc_d_min_b"):
+      bs = bs.set_selected(chunk_sel, b_iso)  # b value in B
+      occs = occs.set_selected(chunk_sel, d_min) # d_min in occ
+    else:
+      bs = bs.set_selected(chunk_sel, d_min)  # d_min in B value
+
+  print >>log,flex.min(results), flex.max(results), flex.mean(results)
+  print >>log,flex.min(bs), flex.max(bs), flex.mean(bs)
   pdb_hierarchy.atoms().set_b(bs)
+  if (method=="rscc_d_min_b"):
+     pdb_hierarchy.atoms().set_occ(occs)
   return pdb_hierarchy
