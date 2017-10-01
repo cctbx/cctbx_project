@@ -234,7 +234,7 @@ def exercise():
   resolutions=list(pdb_hierarchy_new.select(sel1).atoms().extract_b())
   print "Bvalues (resolutions): for %s: %s" %(method,str(resolutions))
 
-  assert  approx_equal(resolutions,[8.286411404892835, 2.1497394511476364])
+  assert  approx_equal(resolutions,[8.286411404892835, 2.1497394511476364],eps=.05)
 
 if (__name__ == "__main__"):
   exercise()
