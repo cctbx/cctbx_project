@@ -188,9 +188,9 @@ def run(args):
   else:
     assert len(paths) == 0
     assert params.n_subset is None
+    print "Refining full dataset using tag", params.tag
+    refine(params, merged_scope, params.data_phil)
     if params.split_dataset:
-      print "Refining full dataset using tag", params.tag
-      refine(params, merged_scope, params.data_phil)
 
       input_scope = parse("""
         input {
