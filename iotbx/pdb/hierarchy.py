@@ -644,7 +644,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       a.set_xyz(new_xyz=orth(sc.site))
       a.set_occ(new_occ=sc.occupancy)
       if(sc.u_iso != -1):
-        a.set_b(new_b=adptbx.u_as_b(sc.u_iso))
+        a.set_b(new_b=adptbx.u_as_b(sc.u_iso_or_equiv(uc)))
       if(sc.flags.use_u_aniso() and sc.u_star != (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0)):
         a.set_uij(new_uij = adptbx.u_star_as_u_cart(uc,sc.u_star))
       else:
