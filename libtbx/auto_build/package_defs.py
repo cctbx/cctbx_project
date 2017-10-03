@@ -51,7 +51,7 @@ CERTIFI_PKG = "certifi-2017.4.17.tar.gz"
 # base packages updated on 2/15/2015 by bkpoon
 
 # from CCI
-PYTHON_PKG = "Python-2.7.13.tgz"
+PYTHON_PKG = "Python-2.7.14.tgz"
 NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
