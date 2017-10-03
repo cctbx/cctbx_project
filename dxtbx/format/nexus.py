@@ -298,13 +298,18 @@ def construct_vector(nx_file, item, vector=None):
     units = nx_file[item].attrs['units']
     ttype = nx_file[item].attrs['transformation_type']
     vector = nx_file[item].attrs['vector']
+    if 'offset' in nx_file[item].attrs:
+      offset = nx_file[item].attrs['offset']
+    else:
+      offset = vector * 0.0
     if ttype == 'translation':
       value = convert_units(value, units, "mm")
       try:
         vector = vector * value
       except ValueError, e:
         vector = vector * value[0]
-        
+      vector += offset
+
   else:
     pass
   visitor = TransformVisitor(vector)
