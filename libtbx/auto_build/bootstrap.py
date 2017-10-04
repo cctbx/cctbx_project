@@ -2104,7 +2104,6 @@ class QRBuilder(PhenixBuilder):
                            ['modules']])
 
     for name, command, workdir in instructions:
-      #print name, command, workdir
       self.add_step(self.shell(
         name       = name,
         command    = command,
@@ -2132,7 +2131,6 @@ class QRBuilder(PhenixBuilder):
 
   def add_tests(self):
     self.add_test_command('qr.test',
-                          #env = self.get_environment(),
                           haltOnFailure=False,
                           )
 
