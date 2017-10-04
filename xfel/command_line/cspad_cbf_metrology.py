@@ -327,10 +327,11 @@ def refine_hierarchical(params, merged_scope, combine_phil):
       if params.refine_energy:
         diff_phil += " refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
     else:
+      # Note, always need to fix something, so pick a panel group and fix its Tau1 (rotation around Z) always
       if params.flat_refinement:
-        diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Tau\n"
+        diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Group1Tau1,Tau2,Tau3\n" # refine only rotz and xy translation
       else:
-        diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
+        diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
 
     if i == params.start_at_hierarchy_level:
       command = "dials.refine %s %s_%s_experiments.json %s_%s_reflections.pickle"%(refine_phil_file, params.tag, input_name, params.tag, input_name)
@@ -401,13 +402,20 @@ def refine_expanding(params, merged_scope, combine_phil):
       refine_phil_file = "%s_refine_step%d_level%d.phil"%(params.tag, j, i)
       if i == 0:
         if params.refine_distance:
-          diff_phil = "refinement.parameterisation.detector.fix_list=Tau1\n" # fix detector rotz
+          diff_phil = "refinement.parameterisation.detector.fix_list=Tau1" # fix detector rotz
         else:
-          diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Tau1\n" # fix detector rotz, distance
+          diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Tau1" # fix detector rotz, distance
+        if params.flat_refinement:
+          diff_phil += ",Tau2,Tau3" # Also fix x and y rotations
+        diff_phil += "\n"
         if params.refine_energy:
           diff_phil += "refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
       else:
-        diff_phil = "refinement.parameterisation.detector.fix_list=None\n" # allow full freedom to refine
+        # Note, always need to fix something, so pick a panel group and fix its Tau1 (rotation around Z) always
+        if params.flat_refinement:
+          diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Group1Tau1,Tau2,Tau3\n" # refine only rotz and xy translation
+        else:
+          diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
 
       if previous_step_and_level is None:
         command = "dials.refine %s %s_combined_experiments.json %s_reflections_step%d.pickle"%( \
