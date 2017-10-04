@@ -87,7 +87,7 @@ class map_model_cc(object):
       mtriage_params.compute_d99=False
       mtriage_params.radius_smooth = self.atom_radius
       self.fsc = mtriage.mtriage(
-        map_data         = map_data,
+        map_data         = self.map_data,
         pdb_hierarchy    = self.pdb_hierarchy,
         crystal_symmetry = self.crystal_symmetry,
         params           = mtriage_params).run().get_results().fsc_curve_model.fsc
