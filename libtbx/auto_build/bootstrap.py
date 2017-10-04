@@ -2084,11 +2084,13 @@ class PhenixExternalRegression(PhenixBuilder):
 class QRBuilder(PhenixBuilder):
   #
   # Designed to be run in Phenix build to add Q|R
+  # and the entire PhenixBuilder if user is builder
   #
   EXTERNAL_CODEBASES = ["qrefine"]
+  user = os.environ.get('USER', None)
 
   def add_make(self):
-    #PhenixBuilder.add_make(self)
+    if self.user=='builder': PhenixBuilder.add_make(self)
     pip_installs = ['ase', 'JPype1','pymongo']
     instructions = []
     for pi in pip_installs:
@@ -2113,6 +2115,7 @@ class QRBuilder(PhenixBuilder):
     self.add_refresh()
 
   def get_hot(self):
+    if self.user=='builder': return PhenixBuilder.get_hot(self)
     return [] # don't have any HOT downloads and the difference between
               # anonymous and cciuser is making a mess
 
@@ -2121,7 +2124,10 @@ class QRBuilder(PhenixBuilder):
 
   def get_codebases(self):
     if self.isPlatformWindows(): assert 0, 'not supported'
-    rc = self.EXTERNAL_CODEBASES #+ ['cctbx_project']
+    if self.user=='builder':
+      rc = PhenixBuilder.get_codebases(self)
+    else:
+      rc = self.EXTERNAL_CODEBASES #+ ['cctbx_project']
     return rc
 
   def add_tests(self):
