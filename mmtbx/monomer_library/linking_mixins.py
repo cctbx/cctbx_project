@@ -513,6 +513,7 @@ class linking_mixins(object):
       #
       # moving sections of this to outside the loop
       #  - SF4
+      #  - ZN-CYS-HIS
       #
       if link_metals:
         moved = ['SF4', 'F3S']
