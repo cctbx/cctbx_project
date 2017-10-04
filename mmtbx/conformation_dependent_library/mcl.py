@@ -81,6 +81,7 @@ def update(grm,
       verbose=verbose,
     )
     bproxies, aproxies = get_all_proxies(rc)
+    if bproxies is None: continue
     if len(bproxies):
       outl += '    %s\n' % label
       atoms = pdb_hierarchy.atoms()

@@ -74,8 +74,7 @@ def get_metal_coordination_proxies(pdb_hierarchy,
   get_sorted_result = nonbonded_proxies.get_sorted(
       by_value="delta",
       sites_cart=sites_cart)
-  if get_sorted_result is None:
-    return result
+  if get_sorted_result is None: return mbonds
   sorted_nonb, n_not_shown = get_sorted_result
   n_nonb = len(sorted_nonb)
   i = 0
@@ -152,6 +151,7 @@ def get_proxies(coordination):
   bonds = []
   angles = []
   if coordination is None: return bonds, angles
+  atoms = None
   for metal_i_seq, atoms in coordination.items():
     if len(atoms['others'])!=4: continue
     cyss = []
@@ -164,6 +164,7 @@ def get_proxies(coordination):
     key = (len(cyss), len(hiss))
     metal_name = atoms['metal'].name.strip()
     ideals = database[metal_name][key]
+  if not atoms: return None, None
   for a1, a2 in _bond_generator(atoms):
     key = (a1.name.strip(), a2.name.strip())
     t = ideals[key]
