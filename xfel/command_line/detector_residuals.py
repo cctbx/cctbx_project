@@ -97,6 +97,124 @@ repredict
             mosaic parameters.
 }
 
+plots {
+  all_plots = False
+    .type = bool
+    .help = Override the rest of the flags in the plots phil scope to show    \
+            all plots available
+  reflection_energies = False
+    .type = bool
+    .help = Plot the energy each reflection would need to be exactly on the   \
+            Ewald sphere
+  pos_vs_neg_delta_psi = False
+    .type = bool
+    .help = For each image, determine how many reflections have a delta psi   \
+            > 0 and how many reflections have a delta psi < 0. It is expected \
+            that for most images these numbers will be about the same. Then   \
+            create a 2D histogram, where each pixel is how many images have   \
+            Y reflections with delta psi < 0  vs. X reflections with delta    \
+            psi > 0. It is expected most of the data lies on an x=y line.
+  deltaXY_histogram = False
+    .type = bool
+    .help = Histogram of the distance between the observed and predicted      \
+            reflections. Mean and mode are plotted, but it is expected that   \
+            this forms a Rayleigh distribution, so the Rayleigh mean is also  \
+            shown. Further, RMSD and Rayleigh RMSD obs - pred are also shown. \
+            This plot is also made for each panel.
+  per_image_RMSDs_histogram = True
+    .type = bool
+    .help = For each image, compute the RMSD of the observered - predicted    \
+            reflection locations. Then histogram these RMSDs over all the     \
+            images. This plot is also made for each panel.
+  per_image_RMSDs_boxplot = False
+    .type = bool
+    .help = Box plot of per-image RMSDs
+  positional_displacements = True
+    .type = bool
+    .help = Each reflection is plotted as observed on the detector. Three     \
+            plots are created: Overall: the color of the reflection is the    \
+            difference between the reflection's observed and predicted        \
+            locations.  Radial and transverse: the displacement vectors       \
+            between observed and predicted spot locations are split into      \
+            radial and transverse components, where radial is the component of\
+            the vector along the line from the refleciton to the beam center, \
+            and the transvrse component is the component of the diplacement   \
+            vector along the line orthogonal to the radial component.
+  deltaXY_by_deltapsi = True
+    .type = bool
+    .help = For each reflection, compute the displacement vector deltaXY      \
+            between the observed and predicted spot locations. Using the      \
+            center of the panel as an origin, plot the reflection displaced   \
+            from the center of its panel along its deltaXY vector. The        \
+            reflections are colored by their delta psi values.
+  deltaXY_by_reflection_energy = False
+    .type = bool
+    .help = As deltaXY_by_deltapsi, but reflections are colored mean pixel   \
+            energy. Every pixel in a reflection could be exactly on the Ewald \
+            sphere given a specific wavelength. The mean pixel energy for a   \
+            reflection is the mean energy of the pixels in the reflection if  \
+            each pixel was individually on the Ewald sphere.
+  repredict_from_reflection_energies = False
+    .type = bool
+    .help = As deltaXY_by_deltapsi, but repredict each reflection using the  \
+            wavelength needed to place that reflection on the Ewald sphere.
+  deltaXY_by_deltaXY = False
+    .type = bool
+    .help = As deltaXY_by_deltapsi, but color reflections by the magnitude   \
+            of the deltaXY vector.
+  manual_cdf = False
+    .type = bool
+  radial_vs_deltaPsi_vs_deltaXY = False
+    .type = bool
+    .help = For each panel, each reflection is plotted given an origin in the \
+            center of the panel. Y: radial displacement (obs-pred along the   \
+            radial direction), X: delta psi. Colored by the magnitude of      \
+            deltaXY
+  radial_difference_histograms = False
+    .type = bool
+    .help = For each panel, the radial displacements of each reflection are   \
+            histogrammed.  The center is marked with a red line. Asymmetry    \
+            indicates a panel not properly aligned in the radial direciton.
+  intensity_vs_radials_2dhist = False
+    .type = bool
+    .help = 2D histogram of reflection intensities vs radial displacements.   \
+            Each pixel is the number of reflections with a give intensity and \
+            a given radial displacement.
+  delta2theta_vs_deltapsi_2dhist = False
+    .type = bool
+    .help = For each reflection compute the difference in measured vs pred-   \
+            icted two theta and the delta psi. 2D histogram is plotted where  \
+            each pixel is the number of reflections with a given delta two    \
+            theta and a given delta psi.  10 plots are shown, one for each of \
+            10 resolution bins.
+  delta2theta_vs_2theta_2dhist = False
+    .type = bool
+    .help = For each reflection compute the two theta and the difference in   \
+            measured vs predicted two theta. 2D histogram is plotted where    \
+            each pixel is the number of reflections with a given delta two    \
+            theta and a given two theta.
+  grouped_stats = False
+    .type = bool
+    .help = 5 plots are shown with different stats. For each panel group, the \
+            stat is shown and the panel group is colored by that stat. Stats  \
+            are: number of reflections, overall, radial and transverse RMSDs, \
+            and the CC between delta 2 theta and delta psi among reflections  \
+            in that panel group.
+  unit_cell_histograms = True
+    .type = bool
+    .help = Unit cell histograms are shown for each of the a, b, and c axes.
+  stats_by_2theta = False
+    .type = bool
+    .help = Reflections are binned by 2 theta, then various stats are computed\
+            per bin. RMSD, R RMSD, T RMSD, RMSD delta 2theta: observed -      \
+            predicted RMSDs, including overall, radial and transverse as well \
+            as RMSD of delta 2theta. R/T RMSD: ratio of radial and transverse \
+            RMSDs.
+  stats_by_panelgroup = False
+    .type = bool
+    .help = As stats_by_2theta, but reflections are binned by panelgroup.
+}
+
 save_pdf = False
   .type = bool
   .help = Whether to show the plots or save as a multi-page pdf
@@ -531,6 +649,11 @@ class Script(DCScript):
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
     self.params = params
+    if params.plots.all_plots:
+      for attr in dir(params.plots):
+        if attr.startswith('__'): continue
+        setattr(params.plots, attr, True)
+
     experiments = flatten_experiments(params.input.experiments)
 
     # Find all detector objects
@@ -592,7 +715,7 @@ class Script(DCScript):
     else:
       reflections = predictions_from_per_reflection_energies(experiments, reflections, 'reflection_wavelength_from_pixels', 'pxlambda')
 
-      if params.show_plots:
+      if params.show_plots and params.plots.reflection_energies:
         fig = plt.figure()
         stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
         plt.title("Energies derived from indexed pixels, mean: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
@@ -648,7 +771,7 @@ class Script(DCScript):
     else:
       tag = '%s '%params.tag
 
-    if 'delpsical.rad' in reflections:
+    if 'delpsical.rad' in reflections and params.show_plots and params.plots.pos_vs_neg_delta_psi:
       # set up delta-psi ratio heatmap
       fig = plt.figure()
       p = flex.int() # positive
@@ -793,123 +916,140 @@ class Script(DCScript):
     print "Detector statistics.  Angles in degrees, RMSDs in microns"
     print table_utils.format(table_data,has_header=2,justify='center',delim=" ")
 
-    self.histogram(reflections, '%sDifference vector norms (mm)'%tag)
+    self.histogram(reflections, r"%s$\Delta$XY histogram (mm)"%tag, plots = params.show_plots and params.plots.deltaXY_histogram)
 
     if params.show_plots:
       if self.params.tag is None:
         t = ""
       else:
         t = "%s "%self.params.tag
-      self.image_rmsd_histogram(reflections, tag)
+      if params.plots.per_image_RMSDs_histogram: self.image_rmsd_histogram(reflections, tag, boxplot = params.plots.per_image_RMSDs_boxplot)
 
       # Plots! these are plots with callbacks to draw on individual panels
-      self.detector_plot_refls(detector, reflections, '%sOverall positional displacements (mm)'%tag, show=False, plot_callback=self.plot_obs_colored_by_deltas)
-      self.detector_plot_refls(detector, reflections, '%sRadial positional displacements (mm)'%tag, show=False, plot_callback=self.plot_obs_colored_by_radial_deltas)
-      self.detector_plot_refls(detector, reflections, '%sTransverse positional displacements (mm)'%tag, show=False, plot_callback=self.plot_obs_colored_by_transverse_deltas)
-      self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$'%tag, show=False, plot_callback=self.plot_obs_colored_by_deltapsi, colorbar_units=r"$\circ$")
-      self.detector_plot_refls(detector, reflections, '%sMean pixel energy'%tag, show=False, plot_callback=self.plot_obs_colored_by_mean_pixel_wavelength, colorbar_units="eV")
-      self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$ from mean pixel energies'%tag, show=False, plot_callback=self.plot_obs_colored_by_deltapsi_pxlambda, colorbar_units=r"$\circ$")
-      self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY*%s'%(tag, self.delta_scalar), show=False, plot_callback=self.plot_deltas)
-      self.detector_plot_refls(detector, reflections, '%sSP Manual CDF'%tag, show=False, plot_callback=self.plot_cdf_manually)
-      self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY Histograms'%tag, show=False, plot_callback=self.plot_histograms)
-      self.detector_plot_refls(detector, reflections, r'%sRadial displacements vs. $\Delta\Psi$, colored by $\Delta$XY'%tag, show=False, plot_callback=self.plot_radial_displacements_vs_deltapsi)
-      self.detector_plot_refls(detector, reflections, r'%sDistance vector norms'%tag, show=False, plot_callback=self.plot_difference_vector_norms_histograms)
-      self.detector_plot_refls(detector, reflections, r'%sRadial differences'%tag, show=False, plot_callback=self.plot_radial_difference_histograms)
+      if params.plots.positional_displacements:           self.detector_plot_refls(detector, reflections, '%sOverall positional displacements (mm)'%tag,
+                                                                                   show=False, plot_callback=self.plot_obs_colored_by_deltas)
+      if params.plots.positional_displacements:           self.detector_plot_refls(detector, reflections, '%sRadial positional displacements (mm)'%tag,
+                                                                                   show=False, plot_callback=self.plot_obs_colored_by_radial_deltas)
+      if params.plots.positional_displacements:           self.detector_plot_refls(detector, reflections, '%sTransverse positional displacements (mm)'%tag,
+                                                                                   show=False, plot_callback=self.plot_obs_colored_by_transverse_deltas)
+      if params.plots.deltaXY_by_deltapsi:                self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$'%tag,
+                                                                                   show=False, plot_callback=self.plot_obs_colored_by_deltapsi, colorbar_units=r"$\circ$")
+      if params.plots.deltaXY_by_reflection_energy:       self.detector_plot_refls(detector, reflections, '%sMean pixel energy'%tag,
+                                                                                   show=False, plot_callback=self.plot_obs_colored_by_mean_pixel_wavelength, colorbar_units="eV")
+      if params.plots.repredict_from_reflection_energies: self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$ from mean pixel energies'%tag,
+                                                                                   show=False, plot_callback=self.plot_obs_colored_by_deltapsi_pxlambda, colorbar_units=r"$\circ$")
+      if params.plots.deltaXY_by_deltaXY:                 self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY*%s'%(tag,
+                                                                                   self.delta_scalar), show=False, plot_callback=self.plot_deltas)
+      if params.plots.manual_cdf:                         self.detector_plot_refls(detector, reflections, '%sSP Manual CDF'%tag,
+                                                                                   show=False, plot_callback=self.plot_cdf_manually)
+      if params.plots.deltaXY_histogram:                  self.detector_plot_refls(detector, reflections, r'%s$\Delta$XY Histograms'%tag,
+                                                                                   show=False, plot_callback=self.plot_histograms)
+      if params.plots.radial_vs_deltaPsi_vs_deltaXY:      self.detector_plot_refls(detector, reflections, r'%sRadial displacements vs. $\Delta\Psi$, colored by $\Delta$XY'%tag,
+                                                                                   show=False, plot_callback=self.plot_radial_displacements_vs_deltapsi)
+      if params.plots.per_image_RMSDs_histogram:          self.detector_plot_refls(detector, reflections, r'%sPer image RMSD histograms'%tag,
+                                                                                   show=False, plot_callback=self.plot_difference_vector_norms_histograms)
+      if params.plots.radial_difference_histograms:       self.detector_plot_refls(detector, reflections, r'%sRadial differences'%tag,
+                                                                                   show=False, plot_callback=self.plot_radial_difference_histograms)
 
-      # Plot intensity vs. radial_displacement
-      fig = plt.figure()
-      panel_id = 15
-      panel_refls = reflections.select(reflections['panel'] == panel_id)
-      a = panel_refls['radial_displacements']
-      b = panel_refls['intensity.sum.value']
-      sel = (a > -0.2) & (a < 0.2) & (b < 50000)
-      plt.hist2d(a.select(sel), b.select(sel), bins=100)
-      plt.title("%s2D histogram of intensity vs. radial displacement for panel %d"%(tag, panel_id))
-      plt.xlabel("Radial displacement (mm)")
-      plt.ylabel("Intensity")
-      ax = plt.colorbar()
-      ax.set_label("Counts")
-
-      # Plot delta 2theta vs. deltapsi
-      n_bins = 10
-      bin_size = len(reflections)//n_bins
-      bin_low = []
-      bin_high = []
-      data = flex.sorted(reflections['two_theta_obs'])
-      for i in xrange(n_bins):
-        bin_low = data[i*bin_size]
-        if (i+1)*bin_size >= len(reflections):
-          bin_high = data[-1]
-        else:
-          bin_high = data[(i+1)*bin_size]
-        refls = reflections.select((reflections['two_theta_obs'] >= bin_low) &
-                                   (reflections['two_theta_obs'] <= bin_high))
-        a = refls['delpsical.rad']*180/math.pi
-        b = refls['two_theta_obs'] - refls['two_theta_cal']
+      if params.plots.intensity_vs_radials_2dhist:
+        # Plot intensity vs. radial_displacement
         fig = plt.figure()
-        sel = (a > -0.2) & (a < 0.2) & (b > -0.05) & (b < 0.05)
-        plt.hist2d(a.select(sel), b.select(sel), bins=50, range = [[-0.2, 0.2], [-0.05, 0.05]])
+        panel_id = 15
+        panel_refls = reflections.select(reflections['panel'] == panel_id)
+        a = panel_refls['radial_displacements']
+        b = panel_refls['intensity.sum.value']
+        sel = (a > -0.2) & (a < 0.2) & (b < 50000)
+        plt.hist2d(a.select(sel), b.select(sel), bins=100)
+        plt.title("%s2D histogram of intensity vs. radial displacement for panel %d"%(tag, panel_id))
+        plt.xlabel("Radial displacement (mm)")
+        plt.ylabel("Intensity")
+        ax = plt.colorbar()
+        ax.set_label("Counts")
+
+      if params.plots.delta2theta_vs_deltapsi_2dhist:
+        # Plot delta 2theta vs. deltapsi
+        n_bins = 10
+        bin_size = len(reflections)//n_bins
+        bin_low = []
+        bin_high = []
+        data = flex.sorted(reflections['two_theta_obs'])
+        for i in xrange(n_bins):
+          bin_low = data[i*bin_size]
+          if (i+1)*bin_size >= len(reflections):
+            bin_high = data[-1]
+          else:
+            bin_high = data[(i+1)*bin_size]
+          refls = reflections.select((reflections['two_theta_obs'] >= bin_low) &
+                                     (reflections['two_theta_obs'] <= bin_high))
+          a = refls['delpsical.rad']*180/math.pi
+          b = refls['two_theta_obs'] - refls['two_theta_cal']
+          fig = plt.figure()
+          sel = (a > -0.2) & (a < 0.2) & (b > -0.05) & (b < 0.05)
+          plt.hist2d(a.select(sel), b.select(sel), bins=50, range = [[-0.2, 0.2], [-0.05, 0.05]])
+          cb = plt.colorbar()
+          cb.set_label("N reflections")
+          plt.title(r'%sBin %d (%.02f, %.02f 2$\Theta$) $\Delta2\Theta$ vs. $\Delta\Psi$. Showing %d of %d refls'%(tag,i,bin_low,bin_high,len(a.select(sel)),len(a)))
+          plt.xlabel(r'$\Delta\Psi \circ$')
+          plt.ylabel(r'$\Delta2\Theta \circ$')
+
+      if params.plots.delta2theta_vs_2theta_2dhist:
+        # Plot delta 2theta vs. 2theta
+        a = reflections['two_theta_obs']#[:71610]
+        b = reflections['two_theta_obs'] - reflections['two_theta_cal']
+        fig = plt.figure()
+        limits = -0.10, 0.10
+        sel = (b > limits[0]) & (b < limits[1])
+        plt.hist2d(a.select(sel), b.select(sel), bins=100, range=((0,45), limits))
+        plt.clim((0,400))
         cb = plt.colorbar()
         cb.set_label("N reflections")
-        plt.title(r'%sBin %d (%.02f, %.02f 2$\Theta$) $\Delta2\Theta$ vs. $\Delta\Psi$. Showing %d of %d refls'%(tag,i,bin_low,bin_high,len(a.select(sel)),len(a)))
-        plt.xlabel(r'$\Delta\Psi \circ$')
+        plt.title(r'%s$\Delta2\Theta$ vs. 2$\Theta$. Showing %d of %d refls'%(tag,len(a.select(sel)),len(a)))
+        plt.xlabel(r'2$\Theta \circ$')
         plt.ylabel(r'$\Delta2\Theta \circ$')
 
-      # Plot delta 2theta vs. 2theta
-      a = reflections['two_theta_obs']#[:71610]
-      b = reflections['two_theta_obs'] - reflections['two_theta_cal']
-      fig = plt.figure()
-      limits = -0.10, 0.10
-      sel = (b > limits[0]) & (b < limits[1])
-      plt.hist2d(a.select(sel), b.select(sel), bins=100, range=((0,45), limits))
-      plt.clim((0,400))
-      cb = plt.colorbar()
-      cb.set_label("N reflections")
-      plt.title(r'%s$\Delta2\Theta$ vs. 2$\Theta$. Showing %d of %d refls'%(tag,len(a.select(sel)),len(a)))
-      plt.xlabel(r'2$\Theta \circ$')
-      plt.ylabel(r'$\Delta2\Theta \circ$')
+        # calc the trendline
+        z = np.polyfit(a.select(sel), b.select(sel), 1)
+        print 'y=%.7fx+(%.7f)'%(z[0],z[1])
 
-      # calc the trendline
-      z = np.polyfit(a.select(sel), b.select(sel), 1)
-      print 'y=%.7fx+(%.7f)'%(z[0],z[1])
+      if params.plots.grouped_stats:
+        # Plots with single values per panel
+        self.detector_plot_dict(detector, refl_counts, u"%s N reflections"%t, u"%6d", show=False)
+        self.detector_plot_dict(detector, rmsds, "%s Positional RMSDs (microns)"%t, u"%4.1f", show=False)
+        self.detector_plot_dict(detector, radial_rmsds, "%s Radial RMSDs (microns)"%t, u"%4.1f", show=False)
+        self.detector_plot_dict(detector, transverse_rmsds, "%s Transverse RMSDs (microns)"%t, u"%4.1f", show=False)
+        self.detector_plot_dict(detector, ttdpcorr, r"%s $\Delta2\Theta$ vs. $\Delta\Psi$ CC"%t, u"%5.3f", show=False)
 
-      # Plots with single values per panel
-      self.detector_plot_dict(detector, refl_counts, u"%s N reflections"%t, u"%6d", show=False)
-      self.detector_plot_dict(detector, rmsds, "%s Positional RMSDs (microns)"%t, u"%4.1f", show=False)
-      self.detector_plot_dict(detector, radial_rmsds, "%s Radial RMSDs (microns)"%t, u"%4.1f", show=False)
-      self.detector_plot_dict(detector, transverse_rmsds, "%s Transverse RMSDs (microns)"%t, u"%4.1f", show=False)
-      self.detector_plot_dict(detector, ttdpcorr, r"%s $\Delta2\Theta$ vs. $\Delta\Psi$ CC"%t, u"%5.3f", show=False)
+      if params.plots.unit_cell_histograms: self.plot_unitcells(experiments)
+      if params.plots.stats_by_2theta:      self.plot_data_by_two_theta(reflections, tag)
 
-      self.plot_unitcells(experiments)
-      self.plot_data_by_two_theta(reflections, tag)
+      if params.plots.stats_by_panelgroup:
+        # Plot data by panel group
+        sorted_values = sorted(pg_bc_dists.values())
+        vdict = {}
+        for k in pg_bc_dists:
+          vdict[pg_bc_dists[k]] = k
+        sorted_keys = [vdict[v] for v in sorted_values if vdict[v] in rmsds]
+        x = [sorted_values[i] for i in xrange(len(sorted_values)) if pg_bc_dists.keys()[i] in rmsds]
 
-      # Plot data by panel group
-      sorted_values = sorted(pg_bc_dists.values())
-      vdict = {}
-      for k in pg_bc_dists:
-        vdict[pg_bc_dists[k]] = k
-      sorted_keys = [vdict[v] for v in sorted_values if vdict[v] in rmsds]
-      x = [sorted_values[i] for i in xrange(len(sorted_values)) if pg_bc_dists.keys()[i] in rmsds]
-
-      self.plot_multi_data(x,
-                           [[pg_refls_count_d[k] for k in sorted_keys],
-                            ([rmsds[k] for k in sorted_keys],
-                             [radial_rmsds[k] for k in sorted_keys],
-                             [transverse_rmsds[k] for k in sorted_keys]),
-                            [radial_rmsds[k]/transverse_rmsds[k] for k in sorted_keys],
-                            [mean_delta_two_theta[k] for k in sorted_keys]],
-                           "Panel group distance from beam center (mm)",
-                           ["N reflections",
-                            ("Overall RMSD",
-                             "Radial RMSD",
-                             "Transverse RMSD"),
-                            "R/T RMSD ratio",
-                            "Delta two theta"],
-                           ["N reflections",
-                            "RMSD (microns)",
-                            "R/T RMSD ratio",
-                            "Delta two theta (degrees)"],
-                           "%sData by panelgroup"%tag)
+        self.plot_multi_data(x,
+                             [[pg_refls_count_d[k] for k in sorted_keys],
+                              ([rmsds[k] for k in sorted_keys],
+                               [radial_rmsds[k] for k in sorted_keys],
+                               [transverse_rmsds[k] for k in sorted_keys]),
+                              [radial_rmsds[k]/transverse_rmsds[k] for k in sorted_keys],
+                              [mean_delta_two_theta[k] for k in sorted_keys]],
+                             "Panel group distance from beam center (mm)",
+                             ["N reflections",
+                              ("Overall RMSD",
+                               "Radial RMSD",
+                               "Transverse RMSD"),
+                              "R/T RMSD ratio",
+                              "Delta two theta"],
+                             ["N reflections",
+                              "RMSD (microns)",
+                              "R/T RMSD ratio",
+                              "Delta two theta (degrees)"],
+                             "%sData by panelgroup"%tag)
 
       if self.params.save_pdf:
         pp = PdfPages('residuals_%s.pdf'%(tag.strip()))
@@ -1002,7 +1142,7 @@ class Script(DCScript):
                           r'$\Delta2\Theta RMSD (\circ)$'],
                          title)
 
-  def histogram(self, reflections, title):
+  def histogram(self, reflections, title, plots = True):
     data = reflections['difference_vector_norms']
     n_slots = 100
     if self.params.residuals.histogram_max is None:
@@ -1029,6 +1169,8 @@ class Script(DCScript):
     print "Overall radial RMSD (microns)", math.sqrt(flex.sum_sq(r)/len(r)) * 1000
     print "Overall transverse RMSD (microns)", math.sqrt(flex.sum_sq(t)/len(t)) * 1000
 
+    if not plots: return
+
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.plot(h.slot_centers().as_numpy_array(), h.slots().as_numpy_array(), '-')
@@ -1051,7 +1193,7 @@ class Script(DCScript):
     ax.set_xlabel("(mm)")
     ax.set_ylabel("Count")
 
-  def image_rmsd_histogram(self, reflections, tag):
+  def image_rmsd_histogram(self, reflections, tag, boxplot = True):
     data = flex.double()
     for i in set(reflections['id']):
       refls = reflections.select(reflections['id']==i)
@@ -1067,6 +1209,8 @@ class Script(DCScript):
     plt.title("%sHistogram of image RMSDs"%tag)
     ax.set_xlabel("RMSD (microns)")
     ax.set_ylabel("Count")
+
+    if not boxplot: return
 
     fig = plt.figure()
     ax = fig.add_subplot('111')
