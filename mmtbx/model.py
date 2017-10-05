@@ -287,7 +287,10 @@ class manager(object):
     if self.crystal_symmetry() is None:
       self._crystal_symmetry = self._xray_structure.crystal_symmetry()
 
-    if(self._xray_structure.hd_selection().count(True) > 0):
+    if self.has_hd is None:
+      self._update_has_hd()
+
+    if self.has_hd:
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
 
@@ -393,8 +396,9 @@ class manager(object):
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
     if self._xray_structure is not None:
       self._xray_structure.set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(value)
-      self._xray_structure = self._xray_structure.customized_copy(
-          non_unit_occupancy_implies_min_distance_sym_equiv_zero=value)
+      self.set_xray_structure(self._xray_structure.customized_copy(
+          non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
+
 
   def get_hd_selection(self):
     if self._xray_structure is not None:
@@ -439,6 +443,7 @@ class manager(object):
     self._xray_structure = xray_structure
     if update_hierarchy:
       self.set_sites_cart_from_xrs()
+    self._update_has_hd()
 
   def _create_xray_structure(self):
     if self._xray_structure is not None:
@@ -658,6 +663,9 @@ class manager(object):
 
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
+    self._update_has_hd()
+
+  def _update_has_hd(self):
     if(self._xray_structure is not None):
       sctr_keys = self._xray_structure.scattering_type_registry().type_count_dict().keys()
       self.has_hd = "H" in sctr_keys or "D" in sctr_keys
@@ -868,7 +876,7 @@ class manager(object):
 
   def setup_riding_h_manager(self, idealize=True):
     assert self.riding_h_manager is None
-    if(self._xray_structure.hd_selection().count(True)==0): return
+    if not self.has_hd: return
     if(self.restraints_manager is None): return
     sites_cart = self._xray_structure.sites_cart()
     self.riding_h_manager = riding.manager(
@@ -935,7 +943,7 @@ class manager(object):
   def xh_connectivity_table(self):
     result = None
     if(self.restraints_manager is not None):
-      if(self._xray_structure.hd_selection().count(True) > 0):
+      if self.has_hd:
         xray_structure = self._xray_structure
         ias_selection = self.get_ias_selection()
         if ias_selection and ias_selection.count(True) > 0:
@@ -948,7 +956,7 @@ class manager(object):
   def xh_connectivity_table2(self):
     result = None
     if(self.restraints_manager is not None):
-      if(self._xray_structure.hd_selection().count(True) > 0):
+      if self.has_hd:
         xray_structure = self._xray_structure
         ias_selection = self.get_ias_selection()
         if ias_selection and ias_selection.count(True) > 0:
@@ -960,7 +968,7 @@ class manager(object):
 
   def extend_xh_bonds(self, value=1.1):
     if(self.restraints_manager is None): return
-    if(self._xray_structure.hd_selection().count(True)==0): return
+    if not self.has_hd: return
     assert self.original_xh_lengths is None
     h_i_seqs = []
     xhct = self.xh_connectivity_table()
@@ -976,7 +984,7 @@ class manager(object):
 
   def restore_xh_bonds(self):
     if(self.restraints_manager is None): return
-    if(self._xray_structure.hd_selection().count(True)==0): return
+    if not self.has_hd: return
     assert self.original_xh_lengths is not None
     xhct = self.xh_connectivity_table()
     if(xhct is None): return
@@ -1011,7 +1019,7 @@ class manager(object):
     1.2.
     """
     if(self.restraints_manager is None): return
-    hd_sel = self._xray_structure.hd_selection()
+    hd_sel = self.get_hd_selection()
     if(hd_sel.count(True) > 0):
       xh_conn_table = self.xh_connectivity_table()
       bfi = self._xray_structure.extract_u_iso_or_u_equiv()
@@ -1030,7 +1038,7 @@ class manager(object):
         for occsel_ in occsel:
           occupancy_refinement_selections_1d.extend(occsel_)
     if(self.restraints_manager is None): return
-    hd_sel = self._xray_structure.hd_selection()
+    hd_sel = self.get_hd_selection()
     scatterers = self._xray_structure.scatterers()
     if(hd_sel.count(True) > 0):
       xh_conn_table = self.xh_connectivity_table()
@@ -1089,7 +1097,7 @@ class manager(object):
   def h_counts(self):
     occupancies = self._xray_structure.scatterers().extract_occupancies()
     occ_sum = flex.sum(occupancies)
-    hd_selection = self._xray_structure.hd_selection()
+    hd_selection = self.get_hd_selection()
     h_occ_sum = flex.sum(occupancies.select(hd_selection))
     sel_rot = self.rotatable_hd_selection()
     hrot_occ_sum = flex.sum(occupancies.select(sel_rot))
@@ -1118,8 +1126,8 @@ class manager(object):
     Perform geometry regularization on hydrogen atoms only.
     """
     if(self.restraints_manager is None): return
-    if(self._xray_structure.hd_selection().count(True) > 0):
-      hd_selection = self._xray_structure.hd_selection()
+    if self.has_hd:
+      hd_selection = self.get_hd_selection()
       if(selection is not None): hd_selection = selection
       if(hd_selection.count(True)==0): return
       not_hd_selection = ~hd_selection
@@ -1625,7 +1633,7 @@ class manager(object):
       compute_gradients=compute_gradients,
       gradients=gradients,
       disable_asu_cache=disable_asu_cache,
-      hd_selection=self._xray_structure.hd_selection(),
+      hd_selection=self.get_hd_selection(),
     )
     return result
 
@@ -1686,6 +1694,7 @@ class manager(object):
     new.get_xray_structure().scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
+    new._update_has_hd()
     return new
 
   def number_of_ordered_solvent_molecules(self):
@@ -1801,7 +1810,7 @@ class manager(object):
     nonbonded_types = flex.std_string([ "OH2" ] * n_atoms)
     i_seq = find_common_water_resseq_max(pdb_hierarchy=self._pdb_hierarchy)
     if (i_seq is None or i_seq < 0): i_seq = 0
-    return self.append_single_atoms(
+    self.append_single_atoms(
       new_xray_structure=solvent_xray_structure,
       atom_names=atom_names,
       residue_names=residue_names,
@@ -1810,6 +1819,7 @@ class manager(object):
       chain_id=chain_id,
       refine_adp=refine_adp,
       refine_occupancies=refine_occupancies)
+    self._update_has_hd()
 
   def append_single_atoms(self,
       new_xray_structure,
@@ -2074,7 +2084,7 @@ class manager(object):
       self._xray_structure.scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
     ph = self.pdb_hierarchy(sync_with_xray_structure=True)
-    hd_selection = self._xray_structure.hd_selection()
+    hd_selection = self.get_hd_selection()
     if(self.use_ias):
       ias_selection = self.get_ias_selection()
       hd_selection = hd_selection.select(~ias_selection)

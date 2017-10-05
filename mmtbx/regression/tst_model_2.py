@@ -4,6 +4,7 @@ import mmtbx.model
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
+import iotbx.pdb
 import sys
 import time
 
@@ -119,29 +120,10 @@ def run(args):
       print "use_neutron_distances:", use_neutron_distances, "*"*30
       params = monomer_library.pdb_interpretation.master_params.extract()
       params.use_neutron_distances = use_neutron_distances
-      processed_pdb_file = monomer_library.pdb_interpretation.process(
-        mon_lib_srv    = monomer_library.server.server(),
-        ener_lib       = monomer_library.server.ener_lib(
-          use_neutron_distances=use_neutron_distances),
-        raw_records    = pdb_str,
-        params         = params,
-        force_symmetry = True)
-      xray_structure = processed_pdb_file.xray_structure()
-      sctr_keys = \
-        xray_structure.scattering_type_registry().type_count_dict().keys()
-      has_hd = "H" in sctr_keys or "D" in sctr_keys
-      geometry = processed_pdb_file.geometry_restraints_manager(
-        show_energies      = False,
-        assume_hydrogens_all_missing = not has_hd,
-        plain_pairs_radius = 5.0)
-      restraints_manager = mmtbx.restraints.manager(
-        geometry = geometry, normalization = False)
-      xrs = xray_structure.deep_copy_scatterers()
+      inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
       m = mmtbx.model.manager(
-        restraints_manager = restraints_manager,
-        xray_structure     = xrs,
-        pdb_hierarchy      = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-      #
+          model_input = inp,
+          build_grm=True)
       r1 = m.geometry_statistics()
       m.idealize_h(show=False)
       r2 = m.geometry_statistics()
