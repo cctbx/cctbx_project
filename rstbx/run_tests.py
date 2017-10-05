@@ -19,7 +19,7 @@ def run():
   print "OK"
 
 tst_list = (
-  "$D/simage/tst.py",
+  #"$D/simage/tst.py",
   "$D/dps_core/tst_iotbx_converter.py",
   "$D/diffraction/tst_predict.py",
   "$D/diffraction/tst_ewald_sphere.py",
