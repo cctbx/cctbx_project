@@ -7,50 +7,59 @@ restraints.
 """
 
 from __future__ import division
-from cctbx.array_family import flex
-import math
+
+import scitbx.lbfgs
+
 from libtbx.test_utils import approx_equal
-import sys
+from libtbx.utils import Sorry, user_plus_sys_time, null_out
+from libtbx import group_args, str_utils
+
+import iotbx.pdb
+import iotbx.cif.model
+from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
+from iotbx.pdb.atom_selection import AtomSelectionError
+from iotbx.pdb.misc_records_output import link_record_output
+from iotbx.cif import category_sort_function
+
+from cctbx.array_family import flex
 from cctbx import xray
 from cctbx import adptbx
-import mmtbx.restraints
-from iotbx import pdb
 from cctbx import geometry_restraints
-import scitbx.lbfgs
-from libtbx.utils import Sorry, user_plus_sys_time
 from cctbx import adp_restraints
-from mmtbx import ias
-from mmtbx import utils
-import iotbx.pdb
-from libtbx import group_args
+
+import mmtbx.restraints
+import mmtbx.hydrogens
 from mmtbx.hydrogens import riding
 import mmtbx.model_statistics
-from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import mmtbx.monomer_library.server
-from iotbx.pdb.misc_records_output import link_record_output
+import mmtbx.geometry_restraints.torsion_restraints.utils as torsion_utils
+import mmtbx.tls.tools as tls_tools
+from mmtbx import ias
+from mmtbx import utils
+from mmtbx.command_line import find_tls_groups
+from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
-import mmtbx.geometry_restraints.torsion_restraints.utils as torsion_utils
 from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
-from cStringIO import StringIO
-from copy import deepcopy
+from mmtbx.refinement import print_statistics
+from mmtbx.refinement import anomalous_scatterer_groups
+from mmtbx.refinement import geometry_minimization
+
 from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.validation.clashscore import clashscore
 from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
-import iotbx.cif.model
-from libtbx.utils import null_out
-from libtbx.str_utils import format_value
-from libtbx import str_utils
-from mmtbx.refinement import print_statistics
-import mmtbx.tls.tools as tls_tools
-from iotbx.pdb.atom_selection import AtomSelectionError
-from mmtbx.refinement import anomalous_scatterer_groups
+
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
+
+from cStringIO import StringIO
+from copy import deepcopy
+import sys
+import math
 
 time_model_show = 0.0
 
@@ -556,7 +565,6 @@ class manager(object):
       cif_block_name = "default",
       additional_blocks = None,
       align_columns = False):
-    from iotbx.cif import category_sort_function
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
@@ -592,7 +600,6 @@ class manager(object):
     if (self.all_chain_proxies is not None
         and self.all_chain_proxies.cif is not None):
       # should writing ALL restraints be optional?
-      from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
       skip_residues = one_letter_given_three_letter.keys() + ['HOH']
       restraints = self.all_chain_proxies.cif
       keys = restraints.keys()
@@ -842,7 +849,6 @@ class manager(object):
 
   def get_searched_tls_selections(self, nproc):
     if "searched_tls_selections" not in self.__dict__.keys():
-      from mmtbx.command_line import find_tls_groups
       tls_params = find_tls_groups.master_phil.fetch().extract()
       tls_params.nproc = nproc
       self.searched_tls_selections = find_tls_groups.find_tls(
@@ -1125,7 +1131,6 @@ class manager(object):
           scatterers[i].site = scatterers[j].site
 
   def rotatable_hd_selection(self):
-    import mmtbx.hydrogens
     rmh_sel = mmtbx.hydrogens.rotatable(
       pdb_hierarchy      = self.pdb_hierarchy(),
       mon_lib_srv        = self.get_mon_lib_srv(),
@@ -1260,7 +1265,7 @@ class manager(object):
 
   def renumber_water(self):
     for i,rg in enumerate(self.extract_water_residue_groups()):
-      rg.resseq = pdb.resseq_encode(value=i+1)
+      rg.resseq = iotbx.pdb.resseq_encode(value=i+1)
       rg.icode = " "
 
   def add_hydrogens(self, correct_special_position_tolerance,
@@ -1294,7 +1299,7 @@ class manager(object):
         h.b = adptbx.u_as_b(u_isos[i_seq])
         h.sigb = 0
         h.uij = (-1,-1,-1,-1,-1,-1)
-        if (pdb.hierarchy.atom.has_siguij()):
+        if (iotbx.pdb.hierarchy.atom.has_siguij()):
           h.siguij = (-1,-1,-1,-1,-1,-1)
         h.element = "%2s" % element.strip()
         ag.append_atom(atom=h)
@@ -1465,8 +1470,6 @@ class manager(object):
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity,
             parallelity].count(False) < 7
-    from mmtbx.refinement import geometry_minimization
-    import scitbx.lbfgs
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
       max_iterations = max_number_of_iterations)
     geometry_restraints_flags = geometry_restraints.flags.flags(
@@ -1980,15 +1983,15 @@ class manager(object):
             len(new_xray_structure.scatterers()))
     assert (segids is None) or (len(segids) == len(atom_names))
     pdb_model = self._pdb_hierarchy.only_model()
-    new_chain = pdb.hierarchy.chain(id=chain_id)
+    new_chain = iotbx.pdb.hierarchy.chain(id=chain_id)
     orth = new_xray_structure.unit_cell().orthogonalize
     n_seq = self.pdb_atoms.size()
     i_seq = i_seq_start
     for j_seq, sc in enumerate(new_xray_structure.scatterers()) :
       i_seq += 1
       element, charge = sc.element_and_charge_symbols()
-      new_atom = (pdb.hierarchy.atom()
-        .set_serial(new_serial=pdb.hy36encode(width=5, value=n_seq+i_seq))
+      new_atom = (iotbx.pdb.hierarchy.atom()
+        .set_serial(new_serial=iotbx.pdb.hy36encode(width=5, value=n_seq+i_seq))
         .set_name(new_name=atom_names[j_seq])
         .set_xyz(new_xyz=orth(sc.site))
         .set_occ(new_occ=sc.occupancy)
@@ -1998,11 +2001,11 @@ class manager(object):
         .set_hetero(new_hetero=True))
       if (segids is not None) :
         new_atom.segid = segids[j_seq]
-      new_atom_group = pdb.hierarchy.atom_group(altloc="",
+      new_atom_group = iotbx.pdb.hierarchy.atom_group(altloc="",
         resname=residue_names[j_seq])
       new_atom_group.append_atom(atom=new_atom)
-      new_residue_group = pdb.hierarchy.residue_group(
-        resseq=pdb.resseq_encode(value=i_seq), icode=" ")
+      new_residue_group = iotbx.pdb.hierarchy.residue_group(
+        resseq=iotbx.pdb.resseq_encode(value=i_seq), icode=" ")
       new_residue_group.append_atom_group(atom_group=new_atom_group)
       new_chain.append_residue_group(residue_group=new_residue_group)
     if (new_chain.residue_groups_size() != 0):
@@ -2440,7 +2443,7 @@ class statistics(object):
 %s    TWISTED PROLINE : %s
 %s    TWISTED GENERAL : %s"""%(
         prefix,
-        prefix, format_value("%-6.2f", self.clash().score).strip(),
+        prefix, str_utils.format_value("%-6.2f", self.clash().score).strip(),
         prefix,
         prefix, self.ramachandran().outliers, "%",
         prefix, self.ramachandran().allowed, "%",
