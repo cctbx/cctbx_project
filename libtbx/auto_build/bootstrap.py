@@ -23,8 +23,8 @@ rosetta_version_tar_bundle="rosetta_src_3.7_bundle"
 rosetta_version_directory='rosetta_src_2016.32.58837_bundle'
 # LICENSE REQUIRED
 afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
-amber_version='linux-64.ambertools-17.0.0-py27' # same as circle download file
-amber_dir='amber17'
+amber_version='ambertools-18' # same as circle download file
+amber_dir='amber18'
 envs = {
   "AMBERHOME"           : ["modules", "amber"],
   "PHENIX_ROSETTA_PATH" : ["modules", "rosetta"],
@@ -1872,15 +1872,16 @@ class PhenixExternalRegression(PhenixBuilder):
     lt = time.localtime()
     cleaning = ['dist', 'tests', 'doc', 'tmp', 'base_tmp']
     if lt.tm_wday==5: # do a completer build on Saturday night
-      cleaning += ['base', 'build']
+      cleaning += ['base', 'base_tmp', 'build']
     # Preparation
     # AFITT
     if self.subcategory in [None, "afitt"]:
       self.add_step(cleanup_dirs(['openeye'], 'modules'))
     # Amber
     if self.subcategory in [None, "amber"]:
-      self.add_step(cleanup_dirs(['amber16'], 'modules'))
+      self.add_step(cleanup_dirs(['amber18'], 'modules'))
       self.add_step(cleanup_dirs(['amber17'], 'modules'))
+      self.add_step(cleanup_dirs(['amber16'], 'modules'))
     PhenixBuilder.cleanup(self, cleaning)
 
   def get_environment(self, add_build_python_to_path=True):
