@@ -402,7 +402,7 @@ class run_constrained(object):
     tg_object = mmtbx.refinement.minimization_ncs_constraints.\
       target_function_and_grads_reciprocal_space(
         fmodel                    = fmodel,
-        ncs_restraints_group_list = model.ncs_groups,
+        ncs_restraints_group_list = model.get_ncs_groups(),
         refine_selection          = None,
         restraints_manager        = model.restraints_manager,
         iso_restraints            = params.adp_restraints.iso,
@@ -413,7 +413,7 @@ class run_constrained(object):
     self.minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
        target_and_grads_object      = tg_object,
        xray_structure               = fmodel.xray_structure,
-       ncs_restraints_group_list    = model.ncs_groups,
+       ncs_restraints_group_list    = model.get_ncs_groups(),
        refine_selection             = None,
        finite_grad_differences_test = False,
        max_iterations               = params.main.max_number_of_iterations,

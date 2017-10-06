@@ -191,7 +191,7 @@ class manager(object):
     self.use_ias = False    # remove later, use presence of ias_manager
                           # somewhat challenging because of ias.build_only parameter in phenix.refine
     self.tls_groups = tls_groups         # remove later? No action performed on them here
-    self.ncs_groups = None
+    self._ncs_groups = None
     self.anomalous_scatterer_groups = anomalous_scatterer_groups, # remove later. ! It is used in def select(), hard to get rid of.
     self.log = log
     self.exchangable_hd_groups = []
@@ -313,6 +313,14 @@ class manager(object):
     if self._xray_structure is not None:
       return self._xray_structure.sites_cart()
     return None
+
+  def get_ncs_groups(self):
+    return self._ncs_groups
+
+  def setup_ncs_groups(self, chain_max_rmsd=10):
+    if self.get_ncs_obj() is not None:
+      self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list(
+          chain_max_rmsd=chain_max_rmsd)
 
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is not None:
