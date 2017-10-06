@@ -716,6 +716,14 @@ class manager(object):
     if self.reference_dihedral_manager is not None:
       return self.reference_dihedral_manager.get_n_proxies()
 
+  def sync_reference_dihedral_with_ncs(self, log):
+    if (self.reference_dihedral_manager is not None and
+        self.ncs_dihedral_manager is not None):
+      self.reference_dihedral_manager.remove_restraints_with_ncs_matches(
+          ncs_dihedral_proxies = self.ncs_dihedral_manager.ncs_dihedral_proxies,
+          ncs_match_hash       = self.ncs_dihedral_manager.ncs_match_hash,
+          log=log)
+
   #=================================================================
   # DEN manager/proxies methods
   #=================================================================

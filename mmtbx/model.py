@@ -30,6 +30,8 @@ import mmtbx.monomer_library.server
 from iotbx.pdb.misc_records_output import link_record_output
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
+import mmtbx.geometry_restraints.torsion_restraints.utils as torsion_utils
+from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from cStringIO import StringIO
 from copy import deepcopy
 from mmtbx.validation.ramalyze import ramalyze
@@ -315,9 +317,17 @@ class manager(object):
     return None
 
   def get_ncs_groups(self):
+    """
+    This returns object mmtbx.ncs.ncs.ncs_group, used primarily in
+    Tom's tools for historic reasons
+    """
     return self._ncs_groups
 
   def setup_ncs_groups(self, chain_max_rmsd=10):
+    """
+    This will be used directly (via get_ncs_groups) in
+    mmtbx/refinement/minimization.py, mmtbx/refinement/adp_refinement.py
+    """
     if self.get_ncs_obj() is not None:
       self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list(
           chain_max_rmsd=chain_max_rmsd)
@@ -738,6 +748,29 @@ class manager(object):
     # Here we do all what is necessary when GRM and all related become available
     #
     self.extract_tls_selections_from_input()
+
+  def setup_torsion_ncs_restraints(self,
+      fmodel,
+      ncs_torsion_params,
+      sites_individual,
+      log):
+    torsion_utils.check_for_internal_chain_ter_records(
+        pdb_hierarchy = self.pdb_hierarchy(),
+        ter_indices   = self.model_input.ter_indices())
+    ncs_obj = self.get_ncs_obj()
+    if ncs_obj is None: return
+    geometry = self.get_restraints_manager().geometry
+    if ncs_obj.number_of_ncs_groups > 0:
+      print >> log, "\n"
+      geometry.ncs_dihedral_manager = torsion_ncs(
+          model              = self,
+          fmodel             = fmodel,
+          params             = ncs_torsion_params,
+          selection          = sites_individual,
+          log                = log)
+      if geometry.ncs_dihedral_manager.get_n_proxies() == 0:
+        geometry.ncs_dihedral_manager = None
+    geometry.sync_reference_dihedral_with_ncs(log=log)
 
   def setup_scattering_dictionaries(self,
       scattering_table,

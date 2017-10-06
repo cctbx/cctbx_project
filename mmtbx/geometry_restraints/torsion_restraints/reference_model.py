@@ -843,6 +843,8 @@ class reference_model(object):
                                          ncs_dihedral_proxies,
                                          ncs_match_hash,
                                          log=None):
+    if not self.params.auto_shutoff_for_ncs:
+      return
     if log is None:
       log = sys.stdout
     proxy_list = []

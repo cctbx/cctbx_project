@@ -348,6 +348,7 @@ def get_unique_segid(chain):
 def check_for_internal_chain_ter_records(
       pdb_hierarchy,
       ter_indices):
+  if ter_indices.size() == 0: return
   chains = pdb_hierarchy.chains()
   atoms = pdb_hierarchy.atoms()
   chain_ter_matches = {}
