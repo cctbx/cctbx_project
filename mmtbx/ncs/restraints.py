@@ -234,7 +234,7 @@ class pair_lists_generator(object):
     self.registry = pair_registry(n_seq=self.n_seq, n_ncs=n_ncs)
     special_position_indices = scitbx.stl.set.unsigned(iter(
       model.get_site_symmetry_table().special_position_indices()))
-    pdb_hierarchy = model.pdb_hierarchy()
+    pdb_hierarchy = model.get_hierarchy()
     reference_hierarchy = pdb_hierarchy.select(
       atom_selection=self.selection_properties[0].iselection)
     for j_ncs in xrange(1,n_ncs):

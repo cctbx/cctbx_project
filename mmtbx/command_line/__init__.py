@@ -520,7 +520,7 @@ class load_model_and_data (object) :
       self.geometry = full_grm.geometry
       self.processed_pdb_file = self.model.processed_pdb_file # to remove later
     self.xray_structure = self.model.get_xray_structure()
-    self.pdb_hierarchy = self.model.pdb_hierarchy()
+    self.pdb_hierarchy = self.model.get_hierarchy()
     self.pdb_hierarchy.atoms().reset_i_seq()
     # wavelength
     if (params.input.energy is not None) :

@@ -626,12 +626,12 @@ class manager(object):
     if force:
       self.get_restraints_manager()
     self.restraints_manager.write_geo_file(
-        sites_cart=self.pdb_hierarchy().atoms().extract_xyz(),
-        site_labels=self._xray_structure.scatterers().extract_labels(),
+        sites_cart=self.get_sites_cart(),
+        site_labels=self.get_xray_structure().scatterers().extract_labels(),
         header=header,
         # Stuff for outputting ncs_groups
         excessive_distance_limit = excessive_distance_limit,
-        xray_structure=self._xray_structure,
+        xray_structure=self.get_xray_structure(),
         processed_pdb_file=self.processed_pdb_file,
         file_descriptor=result)
     return result.getvalue()
@@ -762,7 +762,7 @@ class manager(object):
       sites_individual,
       log):
     torsion_utils.check_for_internal_chain_ter_records(
-        pdb_hierarchy = self.pdb_hierarchy(),
+        pdb_hierarchy = self.get_hierarchy(),
         ter_indices   = self.model_input.ter_indices())
     ncs_obj = self.get_ncs_obj()
     if ncs_obj is None: return
@@ -927,14 +927,14 @@ class manager(object):
     if(self.restraints_manager is None): return
     sites_cart = self._xray_structure.sites_cart()
     self.riding_h_manager = riding.manager(
-      pdb_hierarchy       = self.pdb_hierarchy(),
+      pdb_hierarchy       = self.get_hierarchy(),
       geometry_restraints = self.restraints_manager.geometry)
     if(idealize):
       self.riding_h_manager.idealize(sites_cart = sites_cart)
       self._xray_structure.set_sites_cart(sites_cart=sites_cart)
-      self.pdb_hierarchy(sync_with_xray_structure=True)
+      self.get_hierarchy(sync_with_xray_structure=True)
 
-  def pdb_hierarchy(self, sync_with_xray_structure=False):
+  def get_hierarchy(self, sync_with_xray_structure=False):
     """
     Accessor for the underlying PDB hierarchy, incorporating optional update of
     properties from the xray_structure attribute.
@@ -1132,9 +1132,9 @@ class manager(object):
 
   def rotatable_hd_selection(self):
     rmh_sel = mmtbx.hydrogens.rotatable(
-      pdb_hierarchy      = self.pdb_hierarchy(),
+      pdb_hierarchy      = self.get_hierarchy(),
       mon_lib_srv        = self.get_mon_lib_srv(),
-      restraints_manager = self.restraints_manager,
+      restraints_manager = self.get_restraints_manager(),
       log                = self.log)
     sel_i = []
     for s in rmh_sel: sel_i.extend(s[1])
@@ -2108,7 +2108,7 @@ class manager(object):
       charge=charge)
     self._xray_structure.discard_scattering_type_registry()
     assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
-    self.pdb_hierarchy(sync_with_xray_structure=True)
+    self.get_hierarchy(sync_with_xray_structure=True)
     return atom
 
   def scale_adp(self, scale_max, scale_min):
@@ -2127,7 +2127,7 @@ class manager(object):
     scattering_table = \
       self._xray_structure.scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
-    ph = self.pdb_hierarchy(sync_with_xray_structure=True)
+    ph = self.get_hierarchy(sync_with_xray_structure=True)
     hd_selection = self.get_hd_selection()
     if(self.use_ias):
       ias_selection = self.get_ias_selection()

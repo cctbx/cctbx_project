@@ -117,7 +117,7 @@ def find_and_build_ions (
   if (out is None) : out = sys.stdout
   model.set_xray_structure(fmodel.xray_structure)
   model.get_xray_structure().tidy_us()
-  pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
+  pdb_hierarchy = model.get_hierarchy(sync_with_xray_structure=True)
   pdb_atoms = pdb_hierarchy.atoms()
   pdb_atoms.reset_i_seq()
   # FIXME why does B for anisotropic waters end up negative?
@@ -304,7 +304,7 @@ def find_and_build_ions (
         show_r_factors()
       if (len(zero_occ) > 0) :
         print >> out, "  WARNING: occupancy dropped to zero for %d atoms:"
-        atoms = model.pdb_hierarchy().atoms()
+        atoms = model.get_atoms()
         for i_seq in zero_occ :
           print >> out, "    %s" % atoms[i_seq].id_str(suppress_segid=True)
       print >> out, ""
@@ -340,7 +340,7 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
   if (log is None) :
     log = null_out()
   import mmtbx.ions.utils
-  ion_selection = model.pdb_hierarchy().atom_selection_cache().selection(
+  ion_selection = model.selection(
     "segid ION")
   ion_iselection = ion_selection.iselection()
   if (len(ion_iselection) == 0) :
@@ -349,7 +349,7 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
   n_sites_start = model.get_number_of_atoms()
   new_model = model.select(~ion_selection)
   ion_model = model.select(ion_selection)
-  ion_pdb_hierarchy = ion_model.pdb_hierarchy(sync_with_xray_structure=True)
+  ion_pdb_hierarchy = ion_model.get_hierarchy(sync_with_xray_structure=True)
   ion_atoms = ion_pdb_hierarchy.atoms()
   ion_xrs = ion_model.get_xray_structure()
   perm = mmtbx.ions.utils.sort_atoms_permutation(
@@ -370,7 +370,7 @@ def clean_up_ions (fmodel, model, params, log=None, verbose=True) :
     refine_adp="isotropic",
     reset_labels=True)
   n_sites_end = new_model.get_number_of_atoms()
-  new_hierarchy = new_model.pdb_hierarchy()
+  new_hierarchy = new_model.get_hierarchy()
   n_sites_pdb = new_hierarchy.atoms_size()
   assert (n_sites_start == n_sites_end == n_sites_pdb)
   new_selection = new_hierarchy.atom_selection_cache().selection("segid ION")

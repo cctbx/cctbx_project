@@ -853,7 +853,7 @@ def get_atom_selections(
       scat_types = model.get_xray_structure().scatterers().extract_scattering_types()
       if not model.has_hd:
         raise Sorry('No hydrogens to select.')
-    for m in model.pdb_hierarchy().models():
+    for m in model.get_hierarchy().models():
       for chain in m.chains():
         for rg in chain.residue_groups():
           rg_i_seqs = []
@@ -1267,14 +1267,14 @@ def assert_model_is_consistent(model):
   xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
-  hier = model.pdb_hierarchy()
+  hier = model.get_hierarchy()
   compare_hierarchy(hier, scatterers, unit_cell)
 
 def assert_water_is_consistent(model):
   xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
-  hier = model.pdb_hierarchy()
+  hier = model.get_hierarchy()
   water_rgs = model.extract_water_residue_groups()
   for rg in water_rgs:
     if (rg.atom_groups_size() != 1):
@@ -2799,7 +2799,7 @@ def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
       x1 = fmodel.xray_structure,
       x2 = model.get_xray_structure())
     model.reset_occupancies_for_hydrogens()
-  if(model is not None): pdb_hierarchy = model.pdb_hierarchy()
+  if(model is not None): pdb_hierarchy = model.get_hierarchy()
   import mmtbx.hydrogens
   rmh_sel = mmtbx.hydrogens.rotatable(pdb_hierarchy = pdb_hierarchy,
     mon_lib_srv=mon_lib_srv, restraints_manager=model.restraints_manager)

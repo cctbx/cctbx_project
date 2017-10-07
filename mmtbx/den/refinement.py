@@ -38,7 +38,7 @@ class manager(object):
     den_manager = model.restraints_manager. \
       geometry.den_manager
     print_statistics.make_header("DEN refinement", out=self.log)
-    pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
+    pdb_hierarchy = self.model.get_hierarchy(sync_with_xray_structure=True)
     if den_manager.get_n_proxies() == 0:
       print_statistics.make_sub_header(
         "DEN restraint nework", out = self.log)
@@ -146,7 +146,7 @@ class manager(object):
       den_manager.import_eq_distances(eq_distances=best_eq_distances)
     self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
         sites_cart=self.model.get_sites_cart(),
-        pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
+        pdb_hierarchy=self.model.get_hierarchy(sync_with_xray_structure=True),
         log=self.log)
     #DEN refinement done, turn off
 
@@ -218,7 +218,7 @@ class manager(object):
         self.adp_refinement(log=local_log)
       self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
           sites_cart=self.model.get_sites_cart(),
-          pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
+          pdb_hierarchy=self.model.get_hierarchy(sync_with_xray_structure=True),
           log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
@@ -292,7 +292,7 @@ class manager(object):
         self.adp_refinement(log=local_log)
       self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
           sites_cart=self.model.get_sites_cart(),
-          pdb_hierarchy=self.model.pdb_hierarchy(sync_with_xray_structure=True),
+          pdb_hierarchy=self.model.get_hierarchy(sync_with_xray_structure=True),
           log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
@@ -394,7 +394,7 @@ class manager(object):
       nproc                  = 1)
 
   def minimize(self, ca_only=False):
-    pdb_hierarchy = self.model.pdb_hierarchy(sync_with_xray_structure=True)
+    pdb_hierarchy = self.model.get_hierarchy(sync_with_xray_structure=True)
     if ca_only:
       ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
       restraint_sites_cart = self.model.get_sites_cart().\

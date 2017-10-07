@@ -306,22 +306,22 @@ def occupancy_selections(
     other_constrained_groups = None
   if(remove_selection is not None and len(remove_selection) == 0):
     remove_selection = None
-  result = model.pdb_hierarchy().occupancy_groups_simple(
+  result = model.get_hierarchy().occupancy_groups_simple(
     common_residue_name_class_only = None,
     always_group_adjacent          = False,
     ignore_hydrogens               = False)
   exchangable_hd_pairs = mmtbx.utils.combine_hd_exchangable(hierarchy =
-    model.pdb_hierarchy())
+    model.get_hierarchy())
   if(len(exchangable_hd_pairs)==0 and result is not None):
     occupancy_regroupping(
-      pdb_hierarchy = model.pdb_hierarchy(),
+      pdb_hierarchy = model.get_hierarchy(),
       cgs           = result)
   result = mmtbx.utils.remove_selections(selection = result,
     other = exchangable_hd_pairs,
     size = model.get_number_of_atoms())
   result.extend(exchangable_hd_pairs)
   # extract group-[0,1]-constrained atoms withing a residue
-  pogl = extract_partial_occupancy_selections(hierarchy = model.pdb_hierarchy())
+  pogl = extract_partial_occupancy_selections(hierarchy = model.get_hierarchy())
   rm_duplicate_with_pogl = []
   for t_ in pogl:
     for t__ in t_:
@@ -458,7 +458,7 @@ def occupancy_selections(
     if (constrain_correlated_3d_groups) and (len(result) > 0) :
       result = assemble_constraint_groups_3d(
         xray_structure=model.get_xray_structure(),
-        pdb_atoms=model.pdb_hierarchy().atoms(),
+        pdb_atoms=model.get_atoms(),
         constraint_groups=result,
         log=log)
   return result

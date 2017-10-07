@@ -240,12 +240,12 @@ def run_fit_rotatable(
       log = None,
       use_h_omit_map = False,
       map_type="2mFo-DFc"):
-  pdb_hierarchy = ref_model.pdb_hierarchy(sync_with_xray_structure=True)
+  pdb_hierarchy = ref_model.get_hierarchy(sync_with_xray_structure=True)
   xrs = fmodel.xray_structure
   rotatable_h_selection = rotatable(
     pdb_hierarchy      = pdb_hierarchy,
-    mon_lib_srv        = ref_model.processed_pdb_files_srv.mon_lib_srv,
-    restraints_manager = ref_model.restraints_manager,
+    mon_lib_srv        = ref_model.get_mon_lib_srv(),
+    restraints_manager = ref_model.get_restraints_manager(),
     log                = log)
   rotatable_h_selection_1d = []
   for s in rotatable_h_selection:

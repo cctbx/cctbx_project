@@ -183,7 +183,7 @@ class lbfgs(object):
           self.tmp_XYZ = self.model.get_sites_cart()
         if (self.macro_cycle != self.qblib_params.macro_cycle_to_skip):
           qblib_call = qb_refinement.QBblib_call_manager(
-            hierarchy = self.model.pdb_hierarchy(),
+            hierarchy = self.model.get_hierarchy(),
             xray_structure=self.model.get_xray_structure(),
             geometry_residuals = self.stereochemistry_residuals,
             qblib_params=self.qblib_params,

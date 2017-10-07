@@ -412,7 +412,7 @@ class run_ensemble_refinement(object):
     #
     self.fmodel_running.xray_structure = self.model.get_xray_structure()
     assert self.fmodel_running.xray_structure is self.model.get_xray_structure()
-    self.pdb_hierarchy = self.model.pdb_hierarchy
+    self.pdb_hierarchy = self.model.get_hierarchy()
 
     #Atom selections
     self.atom_selections()
@@ -654,7 +654,7 @@ class run_ensemble_refinement(object):
       if self.macro_cycle % self.pdb_store_cycle == 0 \
            and self.macro_cycle >= self.equilibrium_macro_cycles:
         self.er_data.xray_structures.append(self.model.get_xray_structure().deep_copy_scatterers())
-        self.er_data.pdb_hierarchys.append(self.model.pdb_hierarchy().deep_copy())
+        self.er_data.pdb_hierarchys.append(self.model.get_hierarchy().deep_copy())
         if self.er_data.ke_protein_running is None:
           self.er_data.ke_pdb.append(flex.double(self.model.get_xray_structure().sites_cart().size(), 0.0) )
         else:
@@ -802,7 +802,7 @@ class run_ensemble_refinement(object):
     hr_selections = mmtbx.utils.get_atom_selections(
         model = self.model,
         selection_strings = self.params.harmonic_restraints.selections)
-    pdb_atoms = self.pdb_hierarchy().atoms()
+    pdb_atoms = self.pdb_hierarchy.atoms()
     print >> self.log, "\nAdd atomic harmonic restraints:"
     restraint_info = []
     for i_seq in hr_selections[0]:
@@ -897,7 +897,7 @@ class run_ensemble_refinement(object):
       print >> self.log, '\nNo TLS groups supplied - automatic setup'
       # Get chain information
       chains_info = []
-      for chain in model_no_solvent.pdb_hierarchy().chains():
+      for chain in model_no_solvent.get_hierarchy().chains():
         count_h = 0
         for atom in chain.atoms():
           if atom.element_is_hydrogen(): count_h+=1
@@ -1138,7 +1138,7 @@ class run_ensemble_refinement(object):
       self.tls_manager.tls_selections_with_sol.append(grp.deep_copy())
     #
     if len(self.tls_manager.tls_selections_with_sol) == 1:
-      pdb_atoms     = self.pdb_hierarchy().atoms()
+      pdb_atoms     = self.pdb_hierarchy.atoms()
       hoh_selection = self.model.solvent_selection()
       for n, atom in enumerate(pdb_atoms):
         if hoh_selection[n]:
@@ -1191,7 +1191,7 @@ class run_ensemble_refinement(object):
     assert self.fmodel_running.xray_structure is self.model.get_xray_structure()
     self.xray_gradient = None
     #Update atom selections
-    self.pdb_hierarchy = self.model.pdb_hierarchy
+    self.pdb_hierarchy = self.model.get_hierarchy()
     self.atom_selections()
     #Reset solvent tls groups
     if self.tls_manager is not None:

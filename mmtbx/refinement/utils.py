@@ -17,7 +17,7 @@ def two_group_selections_per_residue(
   #   bb = all_chain_proxies.sel_backbone().iselection()
   sc = model.sel_sidechain()
   bb = model.sel_backbone()
-  ogpr = [rg.atoms().extract_i_seq() for rg in model.pdb_hierarchy().residue_groups()]
+  ogpr = [rg.atoms().extract_i_seq() for rg in model.get_hierarchy().residue_groups()]
   result = []
   for g in ogpr:
     s1 = g.intersection(sc)
