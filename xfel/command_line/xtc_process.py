@@ -718,18 +718,25 @@ class InMemScript(DialsProcessScript):
               rankreq = comm.recv(source=MPI.ANY_SOURCE)
               self.mpi_log_write("Sending stop to %d\n"%rankreq)
               comm.send('endrun',dest=rankreq)
+            self.mpi_log_write("All stops sent.")
           else:
             # client process
             while True:
               # inform the server this process is ready for an event
+              print "Rank %d getting next task"%rank
               comm.send(rank,dest=0)
               offset = comm.recv(source=0)
-              if offset == 'endrun': break
+              if offset == 'endrun':
+                print "Rank %d recieved endrun"%rank
+                break
               evt = ds.jump(offset.filenames, offset.offsets, offset.lastBeginCalibCycleDgram)
+              print "Rank %d beginning processing"%rank
               self.process_event(run, evt)
+              print "Rank %d event processed"%rank
         except Exception, e:
           print "Error caught in main loop"
           print str(e)
+        print "Rank %d done with main loop"%rank
       else:
         import resource
         # chop the list into pieces, depending on rank.  This assigns each process
@@ -757,7 +764,12 @@ class InMemScript(DialsProcessScript):
           last = mem
         print 'Total memory leaked in %d cycles: %dkB' % (nevent+1-50, mem - first)
 
-    self.finalize()
+    print "Rank %d finalizing"%rank
+    try:
+      self.finalize()
+    except Exception, e:
+      print "Rank %d, exception caught in finalize"%rank
+      print str(e)
 
     if params.format.file_format == "cbf" and params.output.tmp_output_dir == "(NONE)":
       try:
@@ -840,6 +852,7 @@ class InMemScript(DialsProcessScript):
             dump.as_json(os.path.join(reint_dir, base_name + "_refined_experiments.json"))
           except Exception, e:
             print "Couldn't reintegrate", img_file, str(e)
+    print "Rank %d signing off"%rank
 
   def process_event(self, run, evt):
     """
