@@ -700,65 +700,66 @@ class Script(DCScript):
       reflections = reflections.select(sel)
       print "After filtering by I/sigi cutoff of %f, there are %d reflections left"%(self.params.residuals.i_sigi_cutoff,len(reflections))
 
-    reflections = reflection_wavelength_from_pixels(experiments, reflections)
-    stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
-    print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
-    self.min_energy = stats.mean() - stats.unweighted_sample_standard_deviation()
-    self.max_energy = stats.mean() + stats.unweighted_sample_standard_deviation()
-
-    try:
-      from dials_scratch.asb.predictions_from_reflection_wavelengths import predictions_from_per_reflection_energies, tophat_vector_wavelengths, refine_wavelengths, wavelengths_from_gaussians
-    except ImportError:
-      if params.repredict.enable:
-        from libtbx.utils import Sorry
-        raise Sorry("dials_scratch not configured so cannot do reprediction")
-    else:
-      reflections = predictions_from_per_reflection_energies(experiments, reflections, 'reflection_wavelength_from_pixels', 'pxlambda')
-
-      if params.show_plots and params.plots.reflection_energies:
-        fig = plt.figure()
-        stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
-        plt.title("Energies derived from indexed pixels, mean: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
-        plt.hist(12398.4/reflections['reflection_wavelength_from_pixels'], bins=100)
-        plt.xlabel("Energy (eV)")
-        plt.ylabel("Count")
-
-    if params.repredict.enable:
-      init_mp = params.repredict.initial_mosaic_parameters
-
-      if params.repredict.mode == 'tophat_mosaicity_and_bandpass':
-        tag = 'reflection_wavelength_from_mosaicity_and_bandpass'
-        dest = 'mosbandp'
-        func = tophat_vector_wavelengths
-        gaussians = False
-      elif params.repredict.mode == 'gaussian_mosaicity_and_bandpass':
-        tag = 'reflection_wavelength_from_gaussian_mosaicity_and_bandpass'
-        dest = 'gmosbandp'
-        func = wavelengths_from_gaussians
-        gaussians = True
-
-      if params.repredict.refine_mode == 'per_experiment':
-        refined_reflections = flex.reflection_table()
-        for expt_id in xrange(len(experiments)):
-          print "*"*80, "EXPERIMENT", expt_id
-          refls = reflections.select(reflections['id']==expt_id)
-          refls['id'] = flex.int(len(refls), 0)
-          refls = refine_wavelengths(experiments[expt_id:expt_id+1], refls, init_mp, tag, dest,
-            refine_bandpass=params.repredict.refine_bandpass, gaussians=gaussians)
-          refls['id'] = flex.int(len(refls), expt_id)
-          refined_reflections.extend(refls)
-        reflections = refined_reflections
-      elif params.repredict.refine_mode == 'all':
-        reflections = refine_wavelengths(experiments, reflections, init_mp, tag, dest,
-          refine_bandpass=params.repredict.refine_bandpass, gaussians=gaussians)
-      elif params.repredict.refine_mode is None or params.repredict.refine_mode == 'None':
-        reflections = func(experiments, reflections, init_mp)
-      reflections = predictions_from_per_reflection_energies(experiments, reflections, tag, dest)
-      stats = flex.mean_and_variance(12398.4/reflections[tag])
+    if 'shoebox' in reflections:
+      reflections = reflection_wavelength_from_pixels(experiments, reflections)
+      stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
       print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
-      reflections['delpsical.rad'] = reflections['delpsical.rad.%s'%dest]
-      reflections['xyzcal.mm'] = reflections['xyzcal.mm.%s'%dest]
-      reflections['xyzcal.px'] = reflections['xyzcal.px.%s'%dest]
+      self.min_energy = stats.mean() - stats.unweighted_sample_standard_deviation()
+      self.max_energy = stats.mean() + stats.unweighted_sample_standard_deviation()
+
+      try:
+        from dials_scratch.asb.predictions_from_reflection_wavelengths import predictions_from_per_reflection_energies, tophat_vector_wavelengths, refine_wavelengths, wavelengths_from_gaussians
+      except ImportError:
+        if params.repredict.enable:
+          from libtbx.utils import Sorry
+          raise Sorry("dials_scratch not configured so cannot do reprediction")
+      else:
+        reflections = predictions_from_per_reflection_energies(experiments, reflections, 'reflection_wavelength_from_pixels', 'pxlambda')
+
+        if params.show_plots and params.plots.reflection_energies:
+          fig = plt.figure()
+          stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
+          plt.title("Energies derived from indexed pixels, mean: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
+          plt.hist(12398.4/reflections['reflection_wavelength_from_pixels'], bins=100)
+          plt.xlabel("Energy (eV)")
+          plt.ylabel("Count")
+
+      if params.repredict.enable:
+        init_mp = params.repredict.initial_mosaic_parameters
+
+        if params.repredict.mode == 'tophat_mosaicity_and_bandpass':
+          tag = 'reflection_wavelength_from_mosaicity_and_bandpass'
+          dest = 'mosbandp'
+          func = tophat_vector_wavelengths
+          gaussians = False
+        elif params.repredict.mode == 'gaussian_mosaicity_and_bandpass':
+          tag = 'reflection_wavelength_from_gaussian_mosaicity_and_bandpass'
+          dest = 'gmosbandp'
+          func = wavelengths_from_gaussians
+          gaussians = True
+
+        if params.repredict.refine_mode == 'per_experiment':
+          refined_reflections = flex.reflection_table()
+          for expt_id in xrange(len(experiments)):
+            print "*"*80, "EXPERIMENT", expt_id
+            refls = reflections.select(reflections['id']==expt_id)
+            refls['id'] = flex.int(len(refls), 0)
+            refls = refine_wavelengths(experiments[expt_id:expt_id+1], refls, init_mp, tag, dest,
+              refine_bandpass=params.repredict.refine_bandpass, gaussians=gaussians)
+            refls['id'] = flex.int(len(refls), expt_id)
+            refined_reflections.extend(refls)
+          reflections = refined_reflections
+        elif params.repredict.refine_mode == 'all':
+          reflections = refine_wavelengths(experiments, reflections, init_mp, tag, dest,
+            refine_bandpass=params.repredict.refine_bandpass, gaussians=gaussians)
+        elif params.repredict.refine_mode is None or params.repredict.refine_mode == 'None':
+          reflections = func(experiments, reflections, init_mp)
+        reflections = predictions_from_per_reflection_energies(experiments, reflections, tag, dest)
+        stats = flex.mean_and_variance(12398.4/reflections[tag])
+        print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+        reflections['delpsical.rad'] = reflections['delpsical.rad.%s'%dest]
+        reflections['xyzcal.mm'] = reflections['xyzcal.mm.%s'%dest]
+        reflections['xyzcal.px'] = reflections['xyzcal.px.%s'%dest]
 
     reflections['difference_vector_norms'] = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
 
@@ -951,7 +952,7 @@ class Script(DCScript):
       if params.plots.radial_difference_histograms:       self.detector_plot_refls(detector, reflections, r'%sRadial differences'%tag,
                                                                                    show=False, plot_callback=self.plot_radial_difference_histograms)
 
-      if params.plots.intensity_vs_radials_2dhist:
+      if params.plots.intensity_vs_radials_2dhist and 'intensity.sum.value' in reflections:
         # Plot intensity vs. radial_displacement
         fig = plt.figure()
         panel_id = 15
