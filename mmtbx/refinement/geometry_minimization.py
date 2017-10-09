@@ -215,12 +215,14 @@ class run2(object):
                allow_allowed_rotamers         = True,
                states_collector               = None,
                log                            = None,
-               mon_lib_srv                    = None
+               mon_lib_srv                    = None,
+               ias_selection                  = None,
                ):
     self.log = log
     if self.log is None:
       self.log = sys.stdout
     self.pdb_hierarchy = pdb_hierarchy
+    self.ias_selection = ias_selection
     self.minimized = None
     self.mon_lib_srv = mon_lib_srv
     if self.mon_lib_srv is None:
@@ -306,6 +308,9 @@ class run2(object):
           refine_transformations       = False)
         self.pdb_hierarchy.adopt_xray_structure(xrs)
       else:
+        sites_cart_orig = sites_cart.deep_copy()
+        if ias_selection is not None and ias_selection.count(True) > 0:
+          sites_cart = sites_cart.select(~ias_selection)
         self.minimized = lbfgs(
           sites_cart                      = sites_cart,
           riding_h_manager                = riding_h_manager,
@@ -319,7 +324,13 @@ class run2(object):
           rmsd_angles_termination_cutoff  = rmsd_angles_termination_cutoff,
           states_collector                = states_collector,
           site_labels                     = None)
-        self.pdb_hierarchy.atoms().set_xyz(sites_cart)
+        if(ias_selection is not None):
+          for i_seq, ias_s in enumerate(ias_selection): # assumes that IAS appended to the back
+            if(not ias_s):
+              sites_cart_orig[i_seq] = sites_cart[i_seq]
+        else:
+          sites_cart_orig = sites_cart
+        self.pdb_hierarchy.atoms().set_xyz(sites_cart_orig)
       self.show()
       self.log.flush()
       geometry_restraints_flags.nonbonded = nonbonded

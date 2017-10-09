@@ -332,15 +332,6 @@ class manager(object):
     """
     return self._ncs_groups
 
-  def setup_ncs_groups(self, chain_max_rmsd=10):
-    """
-    This will be used directly (via get_ncs_groups) in
-    mmtbx/refinement/minimization.py, mmtbx/refinement/adp_refinement.py
-    """
-    if self.get_ncs_obj() is not None:
-      self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list(
-          chain_max_rmsd=chain_max_rmsd)
-
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is not None:
       return self._atom_selection_cache
@@ -425,7 +416,6 @@ class manager(object):
       self._xray_structure.set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(value)
       self.set_xray_structure(self._xray_structure.customized_copy(
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=value))
-
 
   def get_hd_selection(self):
     if self._xray_structure is not None:
@@ -778,6 +768,15 @@ class manager(object):
       if geometry.ncs_dihedral_manager.get_n_proxies() == 0:
         geometry.ncs_dihedral_manager = None
     geometry.sync_reference_dihedral_with_ncs(log=log)
+
+  def setup_ncs_groups(self, chain_max_rmsd=10):
+    """
+    This will be used directly (via get_ncs_groups) in
+    mmtbx/refinement/minimization.py, mmtbx/refinement/adp_refinement.py
+    """
+    if self.get_ncs_obj() is not None:
+      self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list(
+          chain_max_rmsd=chain_max_rmsd)
 
   def setup_scattering_dictionaries(self,
       scattering_table,
@@ -1467,6 +1466,38 @@ class manager(object):
         rmsd_bonds_termination_cutoff  = 0,
         rmsd_angles_termination_cutoff = 0):
     # XXX consolidate with mmtbx.refinement.geometry_minimization.run2
+    l = StringIO()
+    minimized = geometry_minimization.run2(
+        restraints_manager = self.get_restraints_manager(),
+        pdb_hierarchy = self.get_hierarchy(),
+        correct_special_position_tolerance = correct_special_position_tolerance,
+        riding_h_manager               = None, # didn't go in original implementation
+        ncs_restraints_group_list      = [], # didn't go in original implementation
+        max_number_of_iterations       = max_number_of_iterations,
+        number_of_macro_cycles         = number_of_macro_cycles,
+        selection                      = selection,
+        bond                           = bond,
+        nonbonded                      = nonbonded,
+        angle                          = angle,
+        dihedral                       = dihedral,
+        chirality                      = chirality,
+        planarity                      = planarity,
+        parallelity                    = parallelity,
+        rmsd_bonds_termination_cutoff  = rmsd_bonds_termination_cutoff,
+        rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
+        # alternate_nonbonded_off_on     = False, # default
+        # cdl                            = False,
+        # rdl                            = False,
+        # correct_hydrogens              = False,
+        # fix_rotamer_outliers           = True,
+        # allow_allowed_rotamers         = True,
+        # states_collector               = None,
+        log                            = l,
+        mon_lib_srv                    = self.get_mon_lib_srv(),
+      )
+    self.set_sites_cart_from_hierarchy()
+    return
+    assert 0
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity,
             parallelity].count(False) < 7
