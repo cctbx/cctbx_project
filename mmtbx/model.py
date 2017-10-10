@@ -1197,16 +1197,34 @@ class manager(object):
           sel = sel_pair[0]
           if(ias_selection is not None and ias_selection.count(True) > 0):
             sel = sel.select(~ias_selection)
-          min_result = self.geometry_minimization(
-            correct_special_position_tolerance=correct_special_position_tolerance,
-            selection = sel,
-            bond      = True,
-            nonbonded = sel_pair[1],
-            angle     = True,
-            dihedral  = True,
-            chirality = True,
-            planarity = True,
-            parallelity = True)
+          minimized = geometry_minimization.run2(
+              restraints_manager = self.get_restraints_manager(),
+              pdb_hierarchy = self.get_hierarchy(),
+              correct_special_position_tolerance = correct_special_position_tolerance,
+              riding_h_manager               = None, # didn't go in original implementation
+              ncs_restraints_group_list      = [], # didn't go in original implementation
+              max_number_of_iterations       = 500,
+              number_of_macro_cycles         = 5,
+              selection                      = sel,
+              bond                           = True,
+              nonbonded                      = sel_pair[1],
+              angle                          = True,
+              dihedral                       = True,
+              chirality                      = True,
+              planarity                      = True,
+              parallelity                    = True,
+              # rmsd_bonds_termination_cutoff  = rmsd_bonds_termination_cutoff,
+              # rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
+              # alternate_nonbonded_off_on     = False, # default
+              # cdl                            = False,
+              # rdl                            = False,
+              # correct_hydrogens              = False,
+              # fix_rotamer_outliers           = True,
+              # allow_allowed_rotamers         = True,
+              # states_collector               = None,
+              log                            = StringIO(),
+              mon_lib_srv                    = self.get_mon_lib_srv())
+          self.set_sites_cart_from_hierarchy()
       sites_cart_mac_after = \
         self._xray_structure.sites_cart().select(not_hd_selection)
       assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
@@ -1447,98 +1465,6 @@ class manager(object):
           adp_fl[i_seq_min_q] = False
           assert [adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0
           scatterers[i_seq_min_q].u_iso = scatterers[i_seq_max_q].u_iso
-
-  # MARKED_FOR_DELETION_OLEG
-  # Reason: duplication, use mmtb.refinement.geometry_minimization
-  def geometry_minimization(
-        self,
-        correct_special_position_tolerance=1.0,
-        max_number_of_iterations       = 500,
-        number_of_macro_cycles         = 5,
-        selection                      = None,
-        bond                           = False,
-        nonbonded                      = False,
-        angle                          = False,
-        dihedral                       = False,
-        chirality                      = False,
-        planarity                      = False,
-        parallelity                    = False,
-        rmsd_bonds_termination_cutoff  = 0,
-        rmsd_angles_termination_cutoff = 0):
-    # XXX consolidate with mmtbx.refinement.geometry_minimization.run2
-    l = StringIO()
-    minimized = geometry_minimization.run2(
-        restraints_manager = self.get_restraints_manager(),
-        pdb_hierarchy = self.get_hierarchy(),
-        correct_special_position_tolerance = correct_special_position_tolerance,
-        riding_h_manager               = None, # didn't go in original implementation
-        ncs_restraints_group_list      = [], # didn't go in original implementation
-        max_number_of_iterations       = max_number_of_iterations,
-        number_of_macro_cycles         = number_of_macro_cycles,
-        selection                      = selection,
-        bond                           = bond,
-        nonbonded                      = nonbonded,
-        angle                          = angle,
-        dihedral                       = dihedral,
-        chirality                      = chirality,
-        planarity                      = planarity,
-        parallelity                    = parallelity,
-        rmsd_bonds_termination_cutoff  = rmsd_bonds_termination_cutoff,
-        rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
-        # alternate_nonbonded_off_on     = False, # default
-        # cdl                            = False,
-        # rdl                            = False,
-        # correct_hydrogens              = False,
-        # fix_rotamer_outliers           = True,
-        # allow_allowed_rotamers         = True,
-        # states_collector               = None,
-        log                            = l,
-        mon_lib_srv                    = self.get_mon_lib_srv(),
-      )
-    self.set_sites_cart_from_hierarchy()
-    return
-    assert 0
-    assert max_number_of_iterations+number_of_macro_cycles > 0
-    assert [bond,nonbonded,angle,dihedral,chirality,planarity,
-            parallelity].count(False) < 7
-    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-      max_iterations = max_number_of_iterations)
-    geometry_restraints_flags = geometry_restraints.flags.flags(
-      bond               = bond,
-      nonbonded          = nonbonded,
-      angle              = angle,
-      dihedral           = dihedral,
-      chirality          = chirality,
-      planarity          = planarity,
-      parallelity        = parallelity)
-    for i in xrange(number_of_macro_cycles):
-      sites_cart = self._xray_structure.sites_cart()
-      sites_cart_orig = sites_cart.deep_copy()
-      ias_selection = self.get_ias_selection()
-      if ias_selection is not None and ias_selection.count(True) > 0:
-        sites_cart = sites_cart.select(~ias_selection)
-      exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
-        ignore_line_search_failed_step_at_lower_bound = True)
-      minimized = geometry_minimization.lbfgs(
-        sites_cart                  = sites_cart,
-        correct_special_position_tolerance=correct_special_position_tolerance,
-        geometry_restraints_manager = self.restraints_manager.geometry,
-        geometry_restraints_flags   = geometry_restraints_flags,
-        lbfgs_termination_params    = lbfgs_termination_params,
-        lbfgs_exception_handling_params = exception_handling_params,
-        sites_cart_selection        = selection,
-        rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff,
-        rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
-        site_labels=self._xray_structure.scatterers().extract_labels())
-      if(ias_selection is not None):
-        for i_seq, ias_s in enumerate(ias_selection): # assumes that IAS appended to the back
-          if(not ias_s):
-            sites_cart_orig[i_seq] = sites_cart[i_seq]
-      else:
-        sites_cart_orig = sites_cart
-      self._xray_structure.set_sites_cart(sites_cart = sites_cart_orig)
-    return minimized
-  # END_MARKED_FOR_DELETION_OLEG
 
   def rms_b_iso_or_b_equiv_bonded(self):
     return utils.rms_b_iso_or_b_equiv_bonded(
