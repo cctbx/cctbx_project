@@ -1474,7 +1474,7 @@ selfx:
 
   def write_setpath_files(self):
     for suffix in ["", "_all", "_debug"]:
-      if (hasattr(os, "symlink")):
+      if os.name != "nt":
         self.write_setpaths_sh(suffix)
         self.write_setpaths_csh(suffix)
       else:
