@@ -1,3 +1,4 @@
+from __future__ import print_function
 import fftw3tbx
 import libtbx.load_env
 import os
@@ -26,8 +27,8 @@ if (not env_etc.no_boost_python):
   flag = conf.TryCompile("#include <%s>" % fftw3tbx.fftw3_h, extension=".cpp")
   conf.Finish()
   if (not flag):
-    print "fftw3tbx: %s not available." % fftw3tbx.fftw3_h
-    print "fftw3tbx: Compilation skipped."
+    print("fftw3tbx: %s not available." % fftw3tbx.fftw3_h)
+    print("fftw3tbx: Compilation skipped.")
   else:
     env_bpl.SharedLibrary(
       target="#lib/fftw3tbx_ext",

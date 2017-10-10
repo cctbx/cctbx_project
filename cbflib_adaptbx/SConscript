@@ -1,3 +1,4 @@
+from __future__ import print_function
 import libtbx.load_env
 import os
 import sys
@@ -35,7 +36,7 @@ else:
                                 'sw', 'external', 'hdf5', '1.8.6',
                                 os.environ.get('SIT_ARCH',""), 'include')
   if os.path.exists(psdm_hdf5_path):
-    print "Using HDF5 include folder:", psdm_hdf5_path
+    print("Using HDF5 include folder:", psdm_hdf5_path)
     env_etc.cbflib_common_includes.append(psdm_hdf5_path)
   #else:
     # if you have CBFlib from bleeding edge this will not work, but an old version

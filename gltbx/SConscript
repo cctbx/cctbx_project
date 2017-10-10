@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import range
 import libtbx.load_env
 Import("env_etc")
 
@@ -28,7 +30,7 @@ if (not env_etc.no_boost_python):
       e.Append(SHLINKFLAGS=["-framework", "OpenGL"])
   else:
     for e in [trial_env, env]:
-      if (not e.has_key("LIBS")):
+      if ("LIBS" not in e):
         libs = []
         i = 0
       else:
@@ -62,16 +64,16 @@ int main() { std::cout << GL_POINT << std::endl; return 0; }
     conf.Finish()
   #
   if (not env_etc.gltbx_has_usable_opengl):
-    print "gltbx: OpenGL headers and/or libraries not available."
-    print "gltbx: Compilation skipped."
+    print("gltbx: OpenGL headers and/or libraries not available.")
+    print("gltbx: Compilation skipped.")
   else:
     for namespace,n_fragments_def,n_fragments_fun in [("gl", 8, 16),
                                                       ("glu", 2, 4)]:
       source=["%s_ext.cpp" % namespace]
-      for i_fragment in xrange(n_fragments_def):
+      for i_fragment in range(n_fragments_def):
         source.append("#gltbx/%s_defines_%02d_bpl.cpp" % (
           namespace, i_fragment))
-      for i_fragment in xrange(n_fragments_fun):
+      for i_fragment in range(n_fragments_fun):
         source.append("#gltbx/%s_functions_%02d_bpl.cpp" % (
           namespace, i_fragment))
       env.SharedLibrary(

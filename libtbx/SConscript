@@ -14,13 +14,12 @@ if (hasattr(Environment, "Clone")):
 
 def SCons_Action_FunctionAction_get_contents(self, target, source, env,
                                                    dict=None):
-  import cPickle, string
+  import pickle
   try:
-    code = cPickle.dumps(self.execfunction)
-  except (TypeError, cPickle.PicklingError):
+    code = pickle.dumps(self.execfunction)
+  except (TypeError, pickle.PicklingError):
     code = self.execfunction.func_name
-  return str(code) + env.subst(string.join(map(lambda v: '${'+v+'}',
-                                               self.varlist)))
+  return str(code) + env.subst("".join(map(lambda v: '${'+v+'}',self.varlist)))
 if (1):
   import SCons.Action
   SCons.Action.FunctionAction.get_contents = \
