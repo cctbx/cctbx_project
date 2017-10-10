@@ -1,21 +1,19 @@
 from __future__ import division
 from scitbx.math import superpose
-import iotbx.pdb
-from cctbx.array_family import flex
-from mmtbx.monomer_library import idealized_aa
+
 from libtbx.utils import Sorry, null_out
 from libtbx import Auto
+from cctbx.array_family import flex
+from cctbx import crystal
+import iotbx.pdb
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter as one_three
 from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_one
-from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx import secondary_structure
-from mmtbx.command_line.geometry_minimization import \
-  get_geometry_restraints_manager
-from time import time
+from mmtbx.monomer_library import idealized_aa
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
-from cctbx import crystal
 from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
-
+from mmtbx.rotamer.rotamer_eval import RotamerEval
+from time import time
 
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -457,17 +455,13 @@ def ss_element_is_good(ss_stats_obj, hsh_tuple):
     return False
   return True
 
-def substitute_ss(real_h,
-                    xray_structure,
-                    ss_annotation,
+def substitute_ss(
+                    model,
                     params = None,
-                    grm=None,
                     use_plane_peptide_bond_restr=True,
                     fix_rotamer_outliers=True,
-                    cif_objects=None,
                     log=null_out(),
                     check_rotamer_clashes=True,
-                    rotamer_manager=None,
                     reference_map=None,
                     verbose=False):
   """
@@ -482,13 +476,16 @@ def substitute_ss(real_h,
   ss_annotation - iotbx.pdb.annotation object.
   """
   import mmtbx.utils
+
+  ss_annotation = model.get_ss_annotation()
+
   t0 = time()
-  if rotamer_manager is None:
-    rotamer_manager = RotamerEval()
-  if real_h.models_size() > 1:
+  # if rotamer_manager is None:
+  #   rotamer_manager = RotamerEval()
+  if model.get_hierarchy().models_size() > 1:
     raise Sorry("Multi model files are not supported")
-  for model in real_h.models():
-    for chain in model.chains():
+  for m in model.get_hierarchy().models():
+    for chain in m.chains():
       if len(chain.conformers()) > 1:
         raise Sorry("Alternative conformations are not supported.")
 
@@ -502,9 +499,9 @@ def substitute_ss(real_h,
   ann = ss_annotation
   for h in ann.helices:
     expected_n_hbonds += h.get_n_maximum_hbonds()
-  edited_h = real_h.deep_copy()
-  n_atoms_in_real_h = real_h.atoms_size()
-  selection_cache = real_h.atom_selection_cache()
+  edited_h = model.get_hierarchy().deep_copy()
+  n_atoms_in_real_h = model.get_number_of_atoms()
+  selection_cache = model.get_atom_selection_cache()
 
   # check the annotation for correctness (atoms are actually in hierarchy)
   error_msg = "The following secondary structure annotations result in \n"
@@ -512,7 +509,7 @@ def substitute_ss(real_h,
   t1 = time()
   # Checking for SS selections
   deleted_annotations = ann.remove_empty_annotations(
-      hierarchy=real_h,
+      hierarchy=model.get_hierarchy(),
       asc=selection_cache)
   if not deleted_annotations.is_empty():
     if processed_params.skip_empty_ss_elements:
@@ -534,12 +531,12 @@ def substitute_ss(real_h,
 
   # gathering initial special position atoms
   special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = xray_structure.crystal_symmetry())
+      crystal_symmetry = model.crystal_symmetry())
   site_symmetry_table = \
       special_position_settings.site_symmetry_table(
-        sites_cart = real_h.atoms().extract_xyz(),
+        sites_cart = model.get_sites_cart(),
         unconditional_general_position_flags=(
-          real_h.atoms().extract_occ() != 1))
+          model.get_atoms().extract_occ() != 1))
   original_spi = site_symmetry_table.special_position_indices()
 
   t2 = time()
@@ -547,7 +544,7 @@ def substitute_ss(real_h,
   fixed_ss_selection = flex.bool(n_atoms_in_real_h, False)
   log.write("Replacing ss-elements with ideal ones:\n")
   log.flush()
-  ss_stats = gather_ss_stats(pdb_h=real_h)
+  ss_stats = gather_ss_stats(pdb_h=model.get_hierarchy())
   n_idealized_elements = 0
   for h in ann.helices:
     log.write("  %s\n" % h.as_pdb_str())
@@ -562,10 +559,10 @@ def substitute_ss(real_h,
       fixed_ss_selection.set_selected(isel, True)
       all_bsel = flex.bool(n_atoms_in_real_h, False)
       all_bsel.set_selected(isel, True)
-      sel_h = real_h.select(all_bsel, copy_atoms=True)
+      sel_h = model.get_hierarchy().select(all_bsel, copy_atoms=True)
       ideal_h = get_helix(helix_class=h.helix_class,
                           pdb_hierarchy_template=sel_h,
-                          rotamer_manager=rotamer_manager)
+                          rotamer_manager=model.get_rotamer_manager())
       # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
       set_xyz_carefully(dest_h=edited_h.select(all_bsel), source_h=ideal_h)
       # set_xyz_smart(dest_h=edited_h.select(all_bsel), source_h=ideal_h) # does not work here
@@ -585,12 +582,12 @@ def substitute_ss(real_h,
         all_bsel = flex.bool(n_atoms_in_real_h, False)
         all_bsel.set_selected(isel, True)
         fixed_ss_selection.set_selected(isel, True)
-        sel_h = real_h.select(all_bsel, copy_atoms=True)
+        sel_h = model.get_hierarchy().select(all_bsel, copy_atoms=True)
         ideal_h = secondary_structure_from_sequence(
             pdb_str=beta_pdb_str,
             sequence=None,
             pdb_hierarchy_template=sel_h,
-            rotamer_manager=rotamer_manager,
+            rotamer_manager=model.get_rotamer_manager(),
             )
         set_xyz_carefully(edited_h.select(all_bsel), ideal_h)
         # edited_h.select(all_bsel).atoms().set_xyz(ideal_h.atoms().extract_xyz())
@@ -598,17 +595,23 @@ def substitute_ss(real_h,
     log.write("Nothing was idealized.\n")
     # Don't do geometry minimization and stuff if nothing was changed.
     return None
+
+
+
+  # XXX here we want to adopt new coordinates
+  model.set_sites_cart(sites_cart=edited_h.atoms().extract_xyz())
+
+
+
   t3 = time()
-  pre_result_h = edited_h
-  pre_result_h.reset_i_seq_if_necessary()
-  n_atoms = real_h.atoms_size()
-  bsel = flex.bool(n_atoms, False)
-  helix_selection = flex.bool(n_atoms, False)
-  sheet_selection = flex.bool(n_atoms, False)
-  other_selection = flex.bool(n_atoms, False)
-  ss_for_tors_selection = flex.bool(n_atoms, False)
-  nonss_for_tors_selection = flex.bool(n_atoms, False)
-  selection_cache = real_h.atom_selection_cache()
+  # pre_result_h = edited_h
+  # pre_result_h.reset_i_seq_if_necessary()
+  bsel = flex.bool(n_atoms_in_real_h, False)
+  helix_selection = flex.bool(n_atoms_in_real_h, False)
+  sheet_selection = flex.bool(n_atoms_in_real_h, False)
+  other_selection = flex.bool(n_atoms_in_real_h, False)
+  ss_for_tors_selection = flex.bool(n_atoms_in_real_h, False)
+  nonss_for_tors_selection = flex.bool(n_atoms_in_real_h, False)
   # set all CA atoms to True for other_selection
   #isel = selection_cache.iselection("name ca")
   isel = selection_cache.iselection("name ca or name n or name o or name c")
@@ -668,87 +671,42 @@ def substitute_ss(real_h,
   # print "="*80
   # print "="*80
   # print "="*80
-  if grm is None:
-    custom_par_text = "\n".join([
-        "pdb_interpretation.secondary_structure {protein.remove_outliers = False\n%s}" \
-            % phil_str,
-        "pdb_interpretation.peptide_link.ramachandran_restraints = True",
-        "c_beta_restraints = True",
-        "pdb_interpretation.secondary_structure.enabled=True",
-        "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None",
-        "pdb_interpretation.max_reasonable_bond_distance=None",
-        # "pdb_interpretation.nonbonded_weight=500",
-        "pdb_interpretation.peptide_link.oldfield.weight_scale=3",
-        "pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03",
-        "pdb_interpretation.peptide_link.omega_esd_override_value=3",
-        "pdb_interpretation.peptide_link.apply_all_trans=True",
-        ])
-
-    if use_plane_peptide_bond_restr:
-      custom_par_text += "\npdb_interpretation.peptide_link.apply_peptide_plane=True"
-
-    custom_pars = params.fetch(
-        source=iotbx.phil.parse(custom_par_text)).extract()
-    # params.format(python_object=custom_pars)
-    # params.show()
-    # STOP()
-    params = custom_pars
-    # params = w_params
-
-    t6 = time()
-    import mmtbx.utils
-    processed_pdb_files_srv = mmtbx.utils.\
-        process_pdb_file_srv(
-            crystal_symmetry= xray_structure.crystal_symmetry(),
-            pdb_interpretation_params = params.pdb_interpretation,
-            log=null_out(),
-            cif_objects=cif_objects)
-    if verbose:
-      print >> log, "Processing file..."
-      log.flush()
-    processed_pdb_file, junk = processed_pdb_files_srv.\
-        process_pdb_files(raw_records=flex.split_lines(real_h.as_pdb_string()))
-    t7 = time()
-
-    grm = get_geometry_restraints_manager(
-      processed_pdb_file, xray_structure)
-    t8 = time()
-  else:
-    ssm_log = null_out()
-    if verbose:
-      ssm_log = log
-    ss_params = secondary_structure.sec_str_master_phil.fetch().extract()
-    ss_params.secondary_structure.protein.remove_outliers=False
-    ss_manager = secondary_structure.manager(
-        pdb_hierarchy=real_h,
-        geometry_restraints_manager=grm.geometry,
-        sec_str_from_pdb_file=ss_annotation,
-        params=ss_params.secondary_structure,
-        mon_lib_srv=None,
-        verbose=-1,
-        log=ssm_log)
-    grm.geometry.set_secondary_structure_restraints(
-        ss_manager=ss_manager,
-        hierarchy=real_h,
-        log=ssm_log)
-  real_h.reset_i_seq_if_necessary()
+  grm = model.get_restraints_manager()
+  ssm_log = null_out()
+  if verbose:
+    ssm_log = log
+  ss_params = secondary_structure.sec_str_master_phil.fetch().extract()
+  ss_params.secondary_structure.protein.remove_outliers=False
+  ss_manager = secondary_structure.manager(
+      pdb_hierarchy=model.get_hierarchy(),
+      geometry_restraints_manager=grm.geometry,
+      sec_str_from_pdb_file=ss_annotation,
+      params=ss_params.secondary_structure,
+      mon_lib_srv=None,
+      verbose=-1,
+      log=ssm_log)
+  grm.geometry.set_secondary_structure_restraints(
+      ss_manager=ss_manager,
+      hierarchy=model.get_hierarchy(),
+      log=ssm_log)
+  model.get_hierarchy().reset_i_seq_if_necessary()
   from mmtbx.geometry_restraints import reference
   if reference_map is None:
     if verbose:
       print >> log, "Adding reference coordinate restraints..."
     grm.geometry.append_reference_coordinate_restraints_in_place(
         reference.add_coordinate_restraints(
-            sites_cart = real_h.atoms().extract_xyz().select(helix_selection),
+            sites_cart = model.get_sites_cart().select(helix_selection),
             selection  = helix_selection,
             sigma      = processed_params.sigma_on_reference_helix))
     grm.geometry.append_reference_coordinate_restraints_in_place(
         reference.add_coordinate_restraints(
-            sites_cart = real_h.atoms().extract_xyz().select(sheet_selection),
+            sites_cart = model.get_sites_cart().select(sheet_selection),
             selection  = sheet_selection,
             sigma      = processed_params.sigma_on_reference_sheet))
     grm.geometry.append_reference_coordinate_restraints_in_place(
         reference.add_coordinate_restraints(
-            sites_cart = real_h.atoms().extract_xyz().select(other_selection),
+            sites_cart = model.get_sites_cart().select(other_selection),
             selection  = other_selection,
             sigma      = processed_params.sigma_on_reference_non_ss))
 
@@ -759,50 +717,55 @@ def substitute_ss(real_h,
   # to avoid clashes.
   if check_rotamer_clashes:
     print >> log, "Fixing/checking rotamers..."
-    pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
-    pre_result_h = mmtbx.utils.fix_rotamer_outliers(
-      pdb_hierarchy=pre_result_h,
+    # pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
+    br_txt = model.model_as_pdb()
+    with open("before_rotamers.pdb", 'w') as f:
+      f.write(br_txt)
+    mmtbx.utils.fix_rotamer_outliers(
+      pdb_hierarchy=model.get_hierarchy(),
       grm=grm.geometry,
-      xrs=real_h.extract_xray_structure(crystal_symmetry=xray_structure.crystal_symmetry()),
+      xrs=model.get_xray_structure(),
       map_data=reference_map,
       radius=5,
-      mon_lib_srv=None,
-      rotamer_manager=rotamer_manager,
+      mon_lib_srv=model.get_mon_lib_srv(),
+      rotamer_manager=model.get_rotamer_manager(),
       backrub_range=None, # don't sample backrub at this point
       non_outliers_to_check=fixed_ss_selection, # bool selection
       asc=selection_cache,
       verbose=True,
       log=log)
+    model.set_sites_cart_from_hierarchy()
 
   if verbose:
     print >> log, "Adding chi torsion restraints..."
   # only backbone
   grm.geometry.add_chi_torsion_restraints_in_place(
-          pdb_hierarchy   = pre_result_h,
-          sites_cart      = pre_result_h.atoms().extract_xyz().\
+          pdb_hierarchy   = model.get_hierarchy(),
+          sites_cart      = model.get_sites_cart().\
                                  select(ss_for_tors_selection),
           selection = ss_for_tors_selection,
           chi_angles_only = False,
           sigma           = processed_params.sigma_on_torsion_ss)
   grm.geometry.add_chi_torsion_restraints_in_place(
-          pdb_hierarchy   = pre_result_h,
-          sites_cart      = real_h.atoms().extract_xyz().\
+          pdb_hierarchy   = model.get_hierarchy(),
+          sites_cart      = model.get_sites_cart().\
                                 select(nonss_for_tors_selection),
           selection = nonss_for_tors_selection,
           chi_angles_only = False,
           sigma           = processed_params.sigma_on_torsion_nonss)
 
-  real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
+  # real_h.atoms().set_xyz(pre_result_h.atoms().extract_xyz())
   #
   # Check and correct for special positions
   #
+  real_h = model.get_hierarchy() # just a shortcut here...
   special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = xray_structure.crystal_symmetry())
+      crystal_symmetry = model.crystal_symmetry())
   site_symmetry_table = \
       special_position_settings.site_symmetry_table(
-        sites_cart = real_h.atoms().extract_xyz(),
+        sites_cart = model.get_sites_cart(),
         unconditional_general_position_flags=(
-          real_h.atoms().extract_occ() != 1))
+          model.get_atoms().extract_occ() != 1))
   spi = site_symmetry_table.special_position_indices()
   if spi.size() > 0:
     print >> log, "Moving atoms from special positions:"
@@ -815,26 +778,32 @@ def substitute_ss(real_h,
         print >> log, "  ", real_h.atoms()[spi_i].id_str(),
         print >> log, tuple(real_h.atoms()[spi_i].xyz), "-->", new_coords
         real_h.atoms()[spi_i].set_xyz(new_coords)
+  model.set_sites_cart_from_hierarchy()
+
 
   t9 = time()
   if processed_params.file_name_before_regularization is not None:
-    grm.geometry.pair_proxies(sites_cart=real_h.atoms().extract_xyz())
+    grm.geometry.pair_proxies(sites_cart=model.get_sites_cart())
     if grm.geometry.ramachandran_manager is not None:
       grm.geometry.ramachandran_manager.update_phi_psi_targets(
-          sites_cart=real_h.atoms().extract_xyz())
+          sites_cart=model.get_sites_cart())
     print >> log, "Outputting model before regularization %s" % processed_params.file_name_before_regularization
-    real_h.write_pdb_file(
-        file_name=processed_params.file_name_before_regularization)
+
+    m_txt = model.model_as_pdb()
+    g_txt = model.restraints_as_geo()
+    with open(processed_params.file_name_before_regularization, 'w') as f:
+      f.write(m_txt)
+
     geo_fname = processed_params.file_name_before_regularization[:-4]+'.geo'
     print >> log, "Outputting geo file for regularization %s" % geo_fname
-    grm.write_geo_file(
-        site_labels=[atom.id_str() for atom in real_h.atoms()],
-        file_name=geo_fname)
+    with open(geo_fname, 'w') as f:
+      f.write(g_txt)
 
   #testing number of restraints
   assert grm.geometry.get_n_den_proxies() == 0
   if reference_map is None:
-    assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms
+    assert grm.geometry.get_n_reference_coordinate_proxies() == n_main_chain_atoms, "" +\
+        "%d %d" % (grm.geometry.get_n_reference_coordinate_proxies(), n_main_chain_atoms)
   refinement_log = null_out()
   log.write(
       "Refining geometry of substituted secondary structure elements...")
@@ -849,7 +818,7 @@ def substitute_ss(real_h,
       n_cycles = processed_params.n_macro
     obj = run2(
         restraints_manager       = grm,
-        pdb_hierarchy            = real_h,
+        pdb_hierarchy            = model.get_hierarchy(),
         correct_special_position_tolerance = 1.0,
         max_number_of_iterations = processed_params.n_iter,
         number_of_macro_cycles   = n_cycles,
@@ -861,11 +830,11 @@ def substitute_ss(real_h,
         planarity                = True,
         fix_rotamer_outliers     = fix_rotamer_outliers,
         log                      = refinement_log)
+    model.set_sites_cart_from_hierarchy()
   else:
-    ref_xrs = real_h.extract_xray_structure(
-        crystal_symmetry=xray_structure.crystal_symmetry())
+    ref_xrs = model.crystal_symmetry()
     minimize_wrapper_with_map(
-        pdb_h=real_h,
+        pdb_h=model.get_hierarchy(),
         xrs=ref_xrs,
         target_map=reference_map,
         grm=grm,
@@ -875,7 +844,7 @@ def substitute_ss(real_h,
         refine_ncs_operators=False,
         number_of_cycles=processed_params.n_macro,
         log=log)
-    # real_h.write_pdb_file("after_ss_map_min.pdb")
+    model.set_sites_cart_from_hierarchy()
 
   log.write(" Done\n")
   log.flush()
@@ -890,6 +859,7 @@ def substitute_ss(real_h,
   # print >> log, "Adding restraints to GRM : %.4f" % (t9-t8)
   # print >> log, "Running GM               : %.4f" % (t11-t10)
   # print_hbond_proxies(grm.geometry,real_h)
+  grm.geometry.remove_reference_coordinate_restraints_in_place()
   return grm.geometry.get_chi_torsion_proxies()
 
 

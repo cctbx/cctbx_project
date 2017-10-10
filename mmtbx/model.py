@@ -55,6 +55,7 @@ from mmtbx.validation import cablam
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
+from mmtbx.rotamer.rotamer_eval import RotamerEval
 
 from cStringIO import StringIO
 from copy import deepcopy
@@ -186,7 +187,7 @@ class manager(object):
     self._xray_structure = xray_structure
     self._pdb_hierarchy = pdb_hierarchy
     self.model_input = model_input
-    self.restraint_objects = restraint_objects
+    self._restraint_objects = restraint_objects
     self.monomer_parameters = monomer_parameters
     self.pdb_interpretation_params = pdb_interpretation_params
     self.build_grm = build_grm
@@ -271,8 +272,7 @@ class manager(object):
       elif self.model_input is not None:
         self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
     self._atom_selection_cache = self._pdb_hierarchy.atom_selection_cache()
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
-    self.pdb_atoms.reset_i_seq()
+    self._update_pdb_atoms()
 
     if not self.all_chain_proxies and self.processed_pdb_file:
       self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
@@ -307,6 +307,15 @@ class manager(object):
 
   def crystal_symmetry(self):
     return self._crystal_symmetry
+
+  def get_restraint_objects(self):
+    return self._restraint_objects
+
+  def get_ss_annotation(self):
+    return self._ss_annotation
+
+  def set_ss_annotation(self, ann):
+    self._ss_annotation = ann
 
   def set_crystal_symmetry(self, cs):
     self._crystal_symmetry = cs
@@ -483,7 +492,7 @@ class manager(object):
 
   def get_rotamer_manager(self):
     if self._rotamer_eval is None:
-      self._rotamer_eval = RotamerEval(mon_lib_srv=self.get_mon_lib_srv)
+      self._rotamer_eval = RotamerEval(mon_lib_srv=self.get_mon_lib_srv())
     return self._rotamer_eval
 
   def get_ramachandran_manager(self):
@@ -638,7 +647,7 @@ class manager(object):
           pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
           stop_for_unknowns         = self.stop_for_unknowns,
           log                       = self.log,
-          cif_objects               = self.restraint_objects,
+          cif_objects               = self._restraint_objects,
           cif_parameters            = self.monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
           mon_lib_srv               = None,
           ener_lib                  = None,
@@ -949,7 +958,12 @@ class manager(object):
 
   def set_sites_cart_from_hierarchy(self):
     self._xray_structure.set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
+    self._update_pdb_atoms()
     self.model_statistics_info = None
+
+  def _update_pdb_atoms(self):
+    self.pdb_atoms = self._pdb_hierarchy.atoms()
+    self.pdb_atoms.reset_i_seq()
 
   def set_sites_cart_from_xrs(self):
     self._pdb_hierarchy.adopt_xray_structure(self._xray_structure)
@@ -967,8 +981,7 @@ class manager(object):
   def sync_pdb_hierarchy_with_xray_structure(self):
     # to be deleted.
     self._pdb_hierarchy.adopt_xray_structure(xray_structure=self._xray_structure)
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
-    self.pdb_atoms.reset_i_seq()
+    self._update_pdb_atoms()
     self.model_statistics_info = None
 
   def normalize_adjacent_adp(self):
@@ -1420,7 +1433,7 @@ class manager(object):
     self.__init__(
         model_input = pdb_inp,
         crystal_symmetry = cs,
-        restraint_objects = self.restraint_objects,
+        restraint_objects = self._restraint_objects,
         pdb_interpretation_params = pip,
         process_input = True,
         build_grm = False,
