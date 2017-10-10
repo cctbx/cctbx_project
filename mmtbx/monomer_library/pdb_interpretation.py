@@ -5457,29 +5457,6 @@ class process(object):
         if atom_i_seq in unknown_atoms:
           self.all_chain_proxies.nonbonded_energy_type_registry.symbols[atom_i_seq] = \
               item.type_energy
-    # ss_idealization
-    # if self.all_chain_proxies.params.ss_idealization.enabled:
-    #   from mmtbx.secondary_structure import build as ssb
-    #   from iotbx.pdb import secondary_structure as ioss
-    #   ss_params = self.all_chain_proxies.params.secondary_structure
-    #   ann = ioss.annotation.from_phil(
-    #       phil_helices=ss_params.protein.helix,
-    #       phil_sheets=ss_params.protein.sheet,
-    #       pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy)
-    #   if ann.get_n_helices() + ann.get_n_sheets() == 0:
-    #     ann = self.all_chain_proxies.extract_secondary_structure()
-    #   if ann is not None and ann.get_n_helices() + ann.get_n_sheets() > 0:
-    #     self.ss_torsion_restraints = ssb.substitute_ss(
-    #         real_h=self.all_chain_proxies.pdb_hierarchy,
-    #         xray_structure=self.all_chain_proxies.extract_xray_structure(),
-    #         ss_annotation=ann,
-    #         params=self.all_chain_proxies.params.ss_idealization,
-    #         fname_before_regularization=None,
-    #         log=self.log,
-    #         rotamer_manager=None,
-    #         verbose=False)
-    #     self.all_chain_proxies.update_internals_due_to_coordinates_change(
-    #         self.all_chain_proxies.pdb_hierarchy)
 
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,

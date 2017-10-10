@@ -1,3 +1,5 @@
+# MARKED_FOR_DELETION_OLEG
+# Reason: does not work. No module mmtbx.command_line.real_space_refine is available
 from __future__ import division
 from scitbx.array_family import flex
 import mmtbx.command_line.real_space_refine as rs

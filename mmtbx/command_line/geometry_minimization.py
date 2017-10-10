@@ -167,47 +167,6 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
   reference_torsion_proxies = None
   if params is None:
     params = master_params().fetch().extract()
-  # disabled temporarily due to architecture changes
-  """
-  id_params = params.secondary_structure.idealization
-  from mmtbx.secondary_structure.build import substitute_ss
-  if id_params.enabled:
-    print >> log, "Substituting secondary structure elements with ideal ones:"
-    annot = None
-    if len(params.secondary_structure.helix) +\
-       len(params.secondary_structure.sheet) >0:
-      annot = iotbx.pdb_secondary_structure.annotation.from_phil(
-        phil_helices=params.secondary_structure.helix,
-        phil_sheets=params.secondary_structure.sheet,
-        pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-        log=log)
-    else:
-      annot = processed_pdb_file.all_chain_proxies.pdb_inp.\
-          extract_secondary_structure()
-    if annot is not None:
-      reference_torsion_proxies = substitute_ss(
-          real_h=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-          xray_structure=xray_structure,
-          ss_annotation=annot,
-          sigma_on_reference_non_ss=id_params.sigma_on_reference_non_ss,
-          sigma_on_reference_helix=id_params.sigma_on_reference_helix,
-          sigma_on_reference_sheet=id_params.sigma_on_reference_sheet,
-          sigma_on_torsion_ss=id_params.sigma_on_torsion_ss,
-          sigma_on_torsion_nonss=id_params.sigma_on_torsion_nonss,
-          sigma_on_ramachandran=id_params.sigma_on_ramachandran,
-          sigma_on_cbeta=id_params.sigma_on_cbeta,
-          n_macro=id_params.n_macro,
-          n_iter=id_params.n_iter,
-          log=log,
-          verbose=False)
-      xray_structure.set_sites_cart(
-          processed_pdb_file.all_chain_proxies.pdb_hierarchy.\
-              atoms().extract_xyz())
-      print >> log, "Substituting secondary structure elements is done"
-    else:
-      print >> log, "No secondary structure definition found in phil"+\
-          "or HELIX/SHEET records. No substitution done."
-  """
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies                = False,
     params_edits                 = params.geometry_restraints.edits,
