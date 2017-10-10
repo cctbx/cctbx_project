@@ -40,8 +40,7 @@ class empty(object):
           raise RuntimeError(
             'include path with embedded "%s" character: %s' % (
               os.pathsep, show_string(path)))
-      print >> open(libtbx.env.under_build("include_paths"), "a"), \
-        key, os.pathsep.join(include_paths)
+      print(key, os.pathsep.join(include_paths), file=open(libtbx.env.under_build("include_paths"), "a"))
 
   def _():
     def fget(self):
@@ -345,6 +344,11 @@ if (sys.platform == "win32" or
         ENV=os.environ, MSVC_VERSION="12.0", TARGET_ARCH=target_arch)
       env_etc.have_manifest_tool = True
       env_etc.msvc_version = 12
+    elif visual_studio_version == "19.00":
+      env_base = Environment(
+        ENV=os.environ, MSVC_VERSION="14.0", TARGET_ARCH=target_arch)
+      env_etc.have_manifest_tool = True
+      env_etc.msvc_version = 14
     else:
       raise RuntimeError("""\
 Unknown or unsupported cl.exe version.
@@ -352,7 +356,7 @@ Unknown or unsupported cl.exe version.
 Minimum version is 7.1 (Visual Studio 2003).
 For newer versions, please adjust this SConscript.
 """)
-    print "MSVC_VERSION:", env_base["MSVC_VERSION"]
+    print ("MSVC_VERSION:", env_base["MSVC_VERSION"])
     env_base.Replace(
       SHCC="cl",
       SHCXX="cl",
@@ -373,10 +377,10 @@ For newer versions, please adjust this SConscript.
       "/Zm800"]
     if (libtbx.env.build_options.debug_symbols):
       if (not env_etc.no_boost_python):
-        print """\
+        print ("""\
 libtbx.scons: Warning: compiling with /MDd:
                        Boost.Python extensions will work reliably
-                       only with a debug build of Python."""
+                       only with a debug build of Python.""")
       env_etc.ccflags_base.extend([
         "/MDd",
         "/D_DEBUG",
@@ -421,7 +425,7 @@ libtbx.scons: Warning: compiling with /MDd:
       env_base = Environment(ENV=os.environ, MSVC_VERSION="8.0")
     else:
       env_base = Environment(ENV=os.environ)
-    print "MSVC_VERSION:", env_base["MSVC_VERSION"]
+    print ("MSVC_VERSION:", env_base["MSVC_VERSION"])
     env_etc.have_manifest_tool = op.isfile(
       op.join(op.dirname(cl_exe), "mt.exe"))
     env_base.Replace(
@@ -801,23 +805,23 @@ int main() {
       else:
         env_etc.gcc_is_llvm_gcc = False
 
-    print "On MacOS, using ",
+    print ("On MacOS, using ",)
     if env_etc.clang_version:
       if env_etc.clang_version[2] is not None:
-        print "clang %i.%i.%i" % env_etc.clang_version
+        print ("clang %i.%i.%i" % env_etc.clang_version)
       else:
-        print "clang %i.%i" % env_etc.clang_version[:2]
+        print ("clang %i.%i" % env_etc.clang_version[:2])
     elif env_etc.gcc_version:
-      print "gcc %i.%i.%i" % env_etc.gcc_version,
+      print ("gcc %i.%i.%i" % env_etc.gcc_version,)
       if env_etc.gcc_is_llvm_gcc:
-        print "which is llvm-gcc",
+        print ("which is llvm-gcc",)
         if env_etc.apple_gcc_builds.llvm is not None:
-          print ", LLVM build %i" % env_etc.apple_gcc_builds.llvm,
+          print (", LLVM build %i" % env_etc.apple_gcc_builds.llvm,)
     try:
       subprocess.check_call(('xcodebuild', '-version'))
     except subprocess.CalledProcessError:
-      print "Not using Xcode"
-    print
+      print ("Not using Xcode")
+    print()
 
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
@@ -903,11 +907,11 @@ int main() {
 # at the time of configure
 if( libtbx.env.build_options.use_environment_flags ):
   opts = libtbx.env.build_options
-  print "libtbx.scons: using flags from initial environment: "
-  print "              CXXFLAGS = ", opts.env_cxxflags
-  print "              CFLAGS = ", opts.env_cflags
-  print "              CPPFLAGS = ", opts.env_cppflags
-  print "              LDFLAGS = ", opts.env_ldflags
+  print ("libtbx.scons: using flags from initial environment: ")
+  print ("              CXXFLAGS = ", opts.env_cxxflags)
+  print ("              CFLAGS = ", opts.env_cflags)
+  print ("              CPPFLAGS = ", opts.env_cppflags)
+  print ("              LDFLAGS = ", opts.env_ldflags)
   flg = opts.env_cxxflags.split(" ")
   if( hasattr(env_etc, "cxxflags_base") ):
     env_etc.cxxflags_base.extend(flg)
@@ -1098,16 +1102,16 @@ int main() {
   #
   env_etc.have_openmp = False
   if (env_etc.compiler == "win32_cl" and env_base["MSVC_VERSION"] == "7.1"):
-    print "libtbx.scons: OpenMP is not available."
+    print ("libtbx.scons: OpenMP is not available.")
     return
   if env_etc.compiler == "darwin_clang":
-    print "libtbx.scons: OpenMP is not supported by clang yet."
+    print ("libtbx.scons: OpenMP is not supported by clang yet.")
     return
   if env_etc.compiler == "darwin_gcc-4.2" :
-    print "libtbx.scons: OpenMP implementation broken."
+    print ("libtbx.scons: OpenMP implementation broken.")
     return
   if (not libtbx.env.build_options.enable_openmp_if_possible):
-    print "libtbx.scons: OpenMP is disabled."
+    print ("libtbx.scons: OpenMP is disabled.")
     return
   from libtbx.utils import select_matching
   compiler_options, linker_options = select_matching(
@@ -1122,7 +1126,7 @@ int main() {
     ],
     default=[None]*2)
   if (compiler_options is None):
-    print "libtbx.scons: OpenMP is not supported."
+    print ("libtbx.scons: OpenMP is not supported.")
     return
   env = env_base.Clone()
   env.Append(CCFLAGS=compiler_options)
@@ -1131,7 +1135,7 @@ int main() {
   flag, output = conf.TryRun(test_code, extension='.cpp')
   conf.Finish()
   if (not flag or output.strip() != "e=2.71828, pi=3.14159"):
-    print "libtbx.scons: OpenMP is not usable."
+    print ("libtbx.scons: OpenMP is not usable.")
     return
   msg = "libtbx.scons: OpenMP is not usable (in shared libraries)."
   if (    sys.platform == 'linux2'
@@ -1139,9 +1143,9 @@ int main() {
       and env_etc.gcc_version is not None
       and env_etc.gcc_version < 40300):
     # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
-    print msg
+    print (msg)
     return
-  print "libtbx.scons: OpenMP is available."
+  print ("libtbx.scons: OpenMP is available.")
   env_etc.have_openmp = True
   env_etc.ccflags_base.extend(compiler_options)
   env_base.Append(LINKFLAGS=linker_options)

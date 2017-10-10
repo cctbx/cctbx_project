@@ -423,13 +423,6 @@ try:
 except Exception:
     MAXFD = 256
 
-# True/False does not exist on 2.2.0
-try:
-    False
-except NameError:
-    False = 0
-    True = 1
-
 _active = []
 
 def _cleanup():
